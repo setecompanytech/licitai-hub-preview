@@ -340,3 +340,14 @@ SET saldo_atual = fc.saldo_inicial + COALESCE((
 > ```sql
 > DROP TRIGGER IF EXISTS trg_saldo_lancamento ON public.financeiro_lancamentos;
 > ```
+
+---
+
+## [2026-07-20] Bucket de anexos de pedidos
+
+> Crie o bucket privado `pedidos-anexos` em **Supabase → Storage → New Bucket** com:
+> - Name: `pedidos-anexos`
+> - Public: **OFF** (privado)
+>
+> Arquivos armazenados no caminho `{empresa_id}/{pedido_id}/{nome_do_arquivo}`.
+> Não é necessário SQL — só criar o bucket no painel do Supabase.

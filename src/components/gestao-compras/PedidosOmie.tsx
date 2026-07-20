@@ -19,8 +19,8 @@ import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
-  Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Mail,
-  History, ClipboardList, RefreshCw, User, LayoutGrid, List,
+  Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
+  History, RefreshCw, User, LayoutGrid, List,
   ChevronsUpDown, Filter,
 } from 'lucide-react';
 
@@ -374,12 +374,20 @@ export default function PedidosOmie() {
   const [dateTo, setDateTo]         = useState('');
   const [kanbanMenu, setKanbanMenu] = useState<string | null>(null);
   const draggingIdRef               = useRef<string | null>(null);
+  const fileInputRef                = useRef<HTMLInputElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [ghostPos, setGhostPos]     = useState<{ x: number; y: number } | null>(null);
   const [dragOverCol, setDragOverCol] = useState<Pedido['status'] | null>(null);
   const [nfeAlertOpen, setNfeAlertOpen]       = useState(false);
   const [pendingFaturarId, setPendingFaturarId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus]     = useState<Pedido['status']>('pedido');
+  const [duplicating, setDuplicating]         = useState(false);
+  const [anexosOpen, setAnexosOpen]           = useState(false);
+  const [anexosLoading, setAnexosLoading]     = useState(false);
+  const [uploadingAnexo, setUploadingAnexo]   = useState(false);
+  const [anexosList, setAnexosList]           = useState<{ name: string; size: number; url: string }[]>([]);
+  const [historicoOpen, setHistoricoOpen]     = useState(false);
+  const [historicoData, setHistoricoData]     = useState<Pedido | null>(null);
 
   // Filtered by tipo
   const clientes = useMemo(() =>
@@ -630,6 +638,173 @@ export default function PedidosOmie() {
     setForm(defaultForm()); setItens([]); setSelectedItem(null);
   }
 
+  function handleImprimir() {
+    const pessoaNome = getPessoaNome(form.pessoa_id) ?? '—';
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { toast.error('Habilite pop-ups para imprimir'); return; }
+    const itemRows = itens.map(i => {
+      const qt = parseM(i.quantidade);
+      const pu = parseM(i.preco_unitario);
+      return `<tr>
+        <td>${i.codigo_produto || '—'}</td>
+        <td>${i.descricao}</td>
+        <td>${i.unidade}</td>
+        <td style="text-align:right">${fmtM(qt)}</td>
+        <td style="text-align:right">R$ ${fmtM(pu)}</td>
+        <td style="text-align:right">R$ ${fmtM(qt * pu)}</td>
+      </tr>`;
+    }).join('');
+    const isV = form.tipo === 'venda';
+    win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+      <meta charset="utf-8"/>
+      <title>Pedido Nº ${editingNum ?? 'Novo'}</title>
+      <style>
+        body{font-family:Arial,sans-serif;font-size:13px;color:#111;padding:24px;max-width:900px;margin:0 auto}
+        h2{margin:0 0 4px;font-size:18px}h3{font-size:14px;margin:16px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}
+        .row{display:flex;gap:24px;margin-bottom:8px}.field{flex:1}.label{font-size:11px;color:#666;margin-bottom:2px}
+        table{width:100%;border-collapse:collapse;margin-top:4px}
+        th{background:#f5f5f5;text-align:left;padding:6px 8px;font-size:11px;border:1px solid #ddd}
+        td{padding:6px 8px;font-size:12px;border:1px solid #ddd}
+        .totals{text-align:right;margin-top:12px}.totals p{margin:2px 0}
+        @media print{.no-print{display:none}}
+      </style>
+    </head><body>
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <h2>Pedido de ${isV ? 'Venda' : 'Compra'} Nº ${editingNum ?? '—'}</h2>
+          <p style="color:#666;font-size:12px;margin:2px 0">${STATUS_MSG[editingStatus] ?? editingStatus}</p>
+        </div>
+        <button class="no-print" onclick="window.print()" style="padding:6px 16px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer">Imprimir</button>
+      </div>
+      <h3>${isV ? 'Cliente' : 'Fornecedor'}</h3>
+      <div class="row">
+        <div class="field"><div class="label">Nome</div><div>${pessoaNome}</div></div>
+        <div class="field"><div class="label">Previsão de Faturamento</div><div>${fmtDateBR(form.previsao_faturamento)}</div></div>
+        <div class="field"><div class="label">Pagamento</div><div>${form.numero_parcelas || 'A Vista'}</div></div>
+      </div>
+      ${form.vendedor ? `<div class="row"><div class="field"><div class="label">Vendedor</div><div>${form.vendedor}</div></div></div>` : ''}
+      <h3>Itens</h3>
+      <table>
+        <thead><tr>
+          <th>Código</th><th>Descrição</th><th>Unid.</th>
+          <th style="text-align:right">Qtd</th><th style="text-align:right">Preço Unit.</th><th style="text-align:right">Total</th>
+        </tr></thead>
+        <tbody>${itemRows || '<tr><td colspan="6" style="text-align:center;color:#999">Nenhum item</td></tr>'}</tbody>
+      </table>
+      <div class="totals">
+        <p>Total de Mercadorias: <strong>R$ ${fmtM(totalMerc)}</strong></p>
+        ${desconto > 0 ? `<p>Desconto: <strong>− R$ ${fmtM(desconto)}</strong></p>` : ''}
+        <p style="font-size:16px;margin-top:6px">Valor Total: <strong>R$ ${fmtM(valorTotal)}</strong></p>
+      </div>
+      ${form.observacoes ? `<h3>Observações</h3><p style="white-space:pre-wrap">${form.observacoes}</p>` : ''}
+    </body></html>`);
+    win.document.close();
+  }
+
+  async function handleDuplicar() {
+    if (!editingId || !empresaAtiva) return;
+    setDuplicating(true);
+    try {
+      const nextNum = await getNextNumero();
+      const { data: saved, error: e1 } = await supabase
+        .from('pedidos' as never)
+        .insert({
+          empresa_id: empresaAtiva.id, numero: nextNum, tipo: form.tipo, status: 'pedido',
+          pessoa_id: form.pessoa_id || null, previsao_faturamento: form.previsao_faturamento || null,
+          total_mercadorias: totalMerc, valor_desconto: desconto,
+          total_ipi: 0, total_icms_st: 0, valor_total: valorTotal,
+          vendedor: form.vendedor || null, numero_parcelas: form.numero_parcelas || 'A Vista',
+          cenario_fiscal: form.cenario_fiscal || null, categoria: form.categoria || null,
+          conta_corrente: form.conta_corrente || null, etapa: form.etapa || null,
+          num_pedido_cliente: form.num_pedido_cliente || null, num_contrato_venda: form.num_contrato_venda || null,
+          contato: form.contato || null, projeto: form.projeto || null,
+          origem_pedido: form.origem_pedido || 'sistema',
+          dados_adicionais_nfe: form.dados_adicionais_nfe || null,
+          nf_consumo_final: form.nf_consumo_final, email_destinatario: form.email_destinatario || null,
+          enviar_boleto: form.enviar_boleto, observacoes: form.observacoes || null,
+        } as never)
+        .select().single();
+      if (e1 || !saved) throw e1 ?? new Error('Falha ao duplicar');
+      const newId = (saved as { id: string }).id;
+      if (itens.length > 0) {
+        await supabase.from('pedido_itens' as never).insert(
+          itens.map(i => ({
+            pedido_id: newId, empresa_id: empresaAtiva.id,
+            produto_id: i.produto_id || null, codigo_produto: i.codigo_produto || null,
+            descricao: i.descricao, unidade: i.unidade,
+            quantidade: parseM(i.quantidade) || 1, preco_unitario: parseM(i.preco_unitario),
+            valor_total: parseM(i.quantidade) * parseM(i.preco_unitario),
+            local_estoque: i.local_estoque || null,
+          })) as never
+        );
+      }
+      await loadPedidos();
+      toast.success(`Pedido Nº ${nextNum} criado como cópia do Nº ${editingNum}.`);
+    } catch {
+      toast.error('Erro ao duplicar pedido.');
+    } finally {
+      setDuplicating(false);
+    }
+  }
+
+  async function handleConferir() {
+    if (!editingId) return;
+    const PROX: Partial<Record<Pedido['status'], Pedido['status']>> = {
+      pedido: 'separar_estoque',
+      separar_estoque: 'faturar',
+    };
+    const prox = PROX[editingStatus];
+    if (!prox) { toast.info('Pedido já está na etapa final de conferência.'); return; }
+    await updatePedidoStatus(editingId, prox);
+    setEditingStatus(prox);
+    toast.success(`Pedido movido para: ${STATUS_MSG[prox]}`);
+  }
+
+  function handleFaturarAgora() {
+    if (!editingId) return;
+    setPendingFaturarId(editingId);
+    setNfeAlertOpen(true);
+  }
+
+  async function loadAnexos() {
+    if (!editingId || !empresaAtiva) return;
+    setAnexosLoading(true);
+    const path = `${empresaAtiva.id}/${editingId}`;
+    const { data, error } = await supabase.storage.from('pedidos-anexos').list(path);
+    if (error) { toast.error('Erro ao listar anexos. Verifique se o bucket "pedidos-anexos" existe.'); setAnexosLoading(false); return; }
+    const items = (data ?? []).filter(f => f.name !== '.emptyFolderPlaceholder');
+    const urls = await Promise.all(
+      items.map(async f => {
+        const { data: urlData } = await supabase.storage.from('pedidos-anexos').createSignedUrl(`${path}/${f.name}`, 3600);
+        return { name: f.name, size: (f as any).metadata?.size ?? 0, url: urlData?.signedUrl ?? '' };
+      })
+    );
+    setAnexosList(urls);
+    setAnexosLoading(false);
+  }
+
+  async function uploadAnexo(file: File) {
+    if (!editingId || !empresaAtiva) return;
+    setUploadingAnexo(true);
+    const path = `${empresaAtiva.id}/${editingId}/${file.name}`;
+    const { error } = await supabase.storage.from('pedidos-anexos').upload(path, file, { upsert: true });
+    if (error) { toast.error('Erro ao enviar arquivo.'); } else { toast.success('Arquivo enviado.'); await loadAnexos(); }
+    setUploadingAnexo(false);
+  }
+
+  async function openAnexos() {
+    setAnexosOpen(true);
+    await loadAnexos();
+  }
+
+  async function openHistorico() {
+    if (!editingId) return;
+    setHistoricoData(null);
+    setHistoricoOpen(true);
+    const { data } = await supabase.from('pedidos' as never).select('*').eq('id', editingId).single();
+    setHistoricoData((data as Pedido) ?? null);
+  }
+
   function addOrUpdateItem(item: ItemForm) {
     setItens(prev => {
       const idx = prev.findIndex(i => i._key === item._key);
@@ -757,12 +932,123 @@ export default function PedidosOmie() {
     </Dialog>
   );
 
+  // ── Anexos Dialog ──────────────────────────────────────────────────────
+  const AnexosDialog = (
+    <Dialog open={anexosOpen} onOpenChange={setAnexosOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-base flex items-center gap-2">
+            <Paperclip className="w-4 h-4 text-amber-500" />
+            Anexos — Pedido Nº {editingNum}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{anexosList.length} arquivo(s)</span>
+            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingAnexo}>
+              {uploadingAnexo
+                ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                : <Plus className="w-4 h-4 mr-1" />}
+              Adicionar arquivo
+            </Button>
+          </div>
+          {anexosLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+            </div>
+          ) : anexosList.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm border rounded-md border-dashed">
+              Nenhum arquivo anexado.
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              {anexosList.map(f => (
+                <div key={f.name} className="flex items-center gap-2 p-2.5 rounded-md border text-sm">
+                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 truncate font-medium">{f.name}</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {f.size > 1024 * 1024
+                      ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
+                      : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                  </span>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer">
+                    <Button size="icon" variant="ghost" className="h-7 w-7">
+                      <Download className="w-3.5 h-3.5" />
+                    </Button>
+                  </a>
+                  <Button
+                    size="icon" variant="ghost" className="h-7 w-7"
+                    onClick={async () => {
+                      const path = `${empresaAtiva!.id}/${editingId}/${f.name}`;
+                      await supabase.storage.from('pedidos-anexos').remove([path]);
+                      toast.success('Arquivo removido.');
+                      await loadAnexos();
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Bucket: <code>pedidos-anexos</code> (crie o bucket privado no Supabase Storage se necessário)
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // ── Histórico Dialog ────────────────────────────────────────────────────
+  const HistoricoDialog = (
+    <Dialog open={historicoOpen} onOpenChange={setHistoricoOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base flex items-center gap-2">
+            <History className="w-4 h-4 text-amber-500" />
+            Histórico — Pedido Nº {editingNum}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {!historicoData ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5 border rounded-md p-3 bg-muted/20">
+                {[
+                  { label: 'Criado em',       value: new Date(historicoData.created_at).toLocaleString('pt-BR') },
+                  { label: 'Última alteração', value: new Date(historicoData.updated_at).toLocaleString('pt-BR') },
+                  { label: 'Status atual',     value: STATUS_MSG[historicoData.status] ?? historicoData.status },
+                  { label: 'Tipo',             value: historicoData.tipo === 'venda' ? 'Pedido de Venda' : 'Pedido de Compra' },
+                  { label: 'Origem',           value: historicoData.origem_pedido ?? 'sistema' },
+                  { label: 'Etapa',            value: historicoData.etapa ?? '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-start gap-2 text-sm">
+                    <span className="text-muted-foreground w-36 shrink-0">{label}</span>
+                    <span className="font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground bg-muted/30 rounded-md p-2.5">
+                Registro detalhado de alterações requer configuração de auditoria no banco de dados.
+              </p>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // ── KANBAN VIEW ─────────────────────────────────────────────────────────
   if (view === 'kanban') {
     return (
       <div className="flex flex-col gap-3">
         {TypeDialog}
         {NfeAlertDialog}
+        {AnexosDialog}
+        {HistoricoDialog}
 
         {/* Search bar */}
         <div className="flex items-center gap-3">
@@ -1079,22 +1365,34 @@ export default function PedidosOmie() {
     ? `Pedido de ${isVenda ? 'Venda' : 'Compra'} Nº ${editingNum}`
     : `Inclusão de Pedido de ${isVenda ? 'Venda' : 'Compra'}`;
 
+  const canConferir = !!editingId && (editingStatus === 'pedido' || editingStatus === 'separar_estoque');
+
   const rightActions = [
-    { label: 'Salvar', icon: Save, action: handleSave, disabled: false },
-    { label: 'Imprimir', icon: Printer, action: () => {}, disabled: true },
-    { label: 'Duplicar', icon: Copy, action: () => {}, disabled: true },
-    { label: 'Conferir', icon: Check, action: () => {}, disabled: true },
-    { label: 'Faturar Agora', icon: Zap, action: () => {}, disabled: true },
-    { label: 'Anexos', icon: Paperclip, action: () => {}, disabled: true },
-    { label: 'Emails Enviados', icon: Mail, action: () => {}, disabled: true },
-    { label: 'Histórico de Alterações', icon: History, action: () => {}, disabled: true },
-    { label: 'Tarefas', icon: ClipboardList, action: () => {}, disabled: true },
+    { label: 'Salvar',        icon: Save,      action: handleSave,      disabled: false,               loading: saving },
+    { label: 'Imprimir',      icon: Printer,   action: handleImprimir,  disabled: !editingId,          loading: false },
+    { label: 'Duplicar',      icon: Copy,      action: handleDuplicar,  disabled: !editingId,          loading: duplicating },
+    { label: 'Conferir',      icon: Check,     action: handleConferir,  disabled: !canConferir,        loading: false },
+    { label: 'Faturar Agora', icon: Zap,       action: handleFaturarAgora, disabled: !editingId,      loading: false },
+    { label: 'Anexos',        icon: Paperclip, action: openAnexos,      disabled: !editingId,          loading: false },
+    { label: 'Histórico',     icon: History,   action: openHistorico,   disabled: !editingId,          loading: false },
   ];
 
   return (
     <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
       {TypeDialog}
       {NfeAlertDialog}
+      {AnexosDialog}
+      {HistoricoDialog}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (f) await uploadAnexo(f);
+          e.target.value = '';
+        }}
+      />
       <ItemDialog
         open={itemDialogOpen}
         onOpenChange={v => { setItemDialogOpen(v); if (!v) setEditingItem(undefined); }}
@@ -1464,14 +1762,14 @@ export default function PedidosOmie() {
         {/* Right panel */}
         <div className="w-44 border-l bg-background shrink-0 overflow-y-auto">
           <div className="p-2 space-y-0.5">
-            {rightActions.map(({ label, icon: Icon, action, disabled }) => (
-              <button key={label} onClick={action} disabled={disabled || saving}
+            {rightActions.map(({ label, icon: Icon, action, disabled, loading }) => (
+              <button key={label} onClick={action} disabled={disabled || loading}
                 className={`w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors
                   ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}
               >
                 <Icon className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="text-xs">{label}</span>
-                {label === 'Salvar' && saving && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
+                {loading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
               </button>
             ))}
             {editingId && (
