@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
-  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle, AlertTriangle,
+  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle, AlertTriangle, Bot,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -85,7 +85,7 @@ export default function PlanilhaCustosEdital({
   const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
   const { addItem, pendingItems } = usePropostaCart();
-  const { sugestoesPorItem, fetchSugestoes } = useSugestaoMarcas();
+  const { sugestoesPorItem, fetchSugestoes, gerarSugestoes, isGenerating } = useSugestaoMarcas();
   const { loadRascunho, autoSave, flush, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
     modulo: 'precificacao_planilha',
     licitacaoId: licitacaoId || null,
@@ -739,6 +739,26 @@ export default function PlanilhaCustosEdital({
                   <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Cotando...</>
                 ) : (
                   <><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cotar Todos</>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  if (!licitacaoId || itens.length === 0) return;
+                  await gerarSugestoes(licitacaoId, itens.map(it => ({
+                    descricao: it.descricao,
+                    quantidade: it.quantidade,
+                    unidade: it.unidade,
+                    valor_unitario: it.valorUnitarioRef ?? undefined,
+                  })));
+                }}
+                disabled={isGenerating || !licitacaoId || itens.length === 0}
+              >
+                {isGenerating ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Avaliando...</>
+                ) : (
+                  <><Bot className="w-3.5 h-3.5 mr-1" /> Avaliar Itens</>
                 )}
               </Button>
               <Button variant="outline" size="sm" onClick={addEmptyItem}>
