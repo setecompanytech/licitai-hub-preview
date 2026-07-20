@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
-  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle,
+  ShoppingCart, TrendingDown, TrendingUp, Minus, ExternalLink, Link2, AlertCircle, AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
@@ -703,8 +703,16 @@ export default function PlanilhaCustosEdital({
                 </Badge>
               )}
               {totalGeral > 0 && (
-                <Badge className="text-[10px] bg-success/20 text-success border-0">
+                <Badge
+                  className={`text-[10px] border-0 flex items-center gap-0.5 ${
+                    totalRef > 0 && totalGeral > totalRef
+                      ? 'bg-destructive/20 text-destructive'
+                      : 'bg-success/20 text-success'
+                  }`}
+                >
+                  {totalRef > 0 && totalGeral > totalRef && <AlertTriangle className="w-3 h-3" />}
                   Total: {formatCurrency(totalGeral)}
+                  {totalRef > 0 && totalGeral > totalRef && <span>↑ acima do contrato</span>}
                 </Badge>
               )}
             {lastSaved && (
@@ -815,6 +823,7 @@ export default function PlanilhaCustosEdital({
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Marca</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Unitário</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Total</th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10">Link</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10"></th>
                 </tr>
               </thead>
@@ -901,17 +910,6 @@ export default function PlanilhaCustosEdital({
                               </span>
                             );
                           })()}
-                          {it.fontes?.[0]?.url && (
-                            <a
-                              href={it.fontes[0].url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[9px] text-muted-foreground/60 hover:text-primary flex items-center gap-0.5"
-                            >
-                              <ExternalLink className="w-2.5 h-2.5" />
-                              {FONTE_LABELS[it.fontes[0].fonte] ?? it.fontes[0].fonte}
-                            </a>
-                          )}
                         </div>
                       ) : it.cotacaoFalhou ? (
                         <div
@@ -922,6 +920,19 @@ export default function PlanilhaCustosEdital({
                           Não encontrado
                         </div>
                       ) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {it.fontes?.[0]?.url ? (
+                        <a
+                          href={it.fontes[0].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={it.fontes[0].titulo || (FONTE_LABELS[it.fontes[0].fonte] ?? it.fontes[0].fonte)}
+                          className="text-primary hover:text-primary/80 inline-flex items-center justify-center w-7 h-7 rounded hover:bg-primary/10 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Button
@@ -950,9 +961,17 @@ export default function PlanilhaCustosEdital({
                   </td>
                   <td className="px-3 py-2">{/* marca col */}</td>
                   <td className="px-3 py-2">{/* unit price col */}</td>
-                  <td className="px-3 py-2 text-right text-sm text-primary font-bold">
-                    {totalGeral > 0 ? formatCurrency(totalGeral) : '—'}
+                  <td className={`px-3 py-2 text-right text-sm font-bold ${totalRef > 0 && totalGeral > totalRef ? 'text-destructive' : 'text-primary'}`}>
+                    {totalGeral > 0 ? (
+                      <div className="flex flex-col items-end leading-tight">
+                        <span>{formatCurrency(totalGeral)}</span>
+                        {totalRef > 0 && totalGeral > totalRef && (
+                          <span className="text-[9px] font-normal text-destructive/80">acima do contrato</span>
+                        )}
+                      </div>
+                    ) : '—'}
                   </td>
+                  <td></td>
                   <td></td>
                 </tr>
               </tfoot>

@@ -95,12 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // força loading=false após 8s para o usuário ver a tela de login.
     const safetyTimer = window.setTimeout(() => {
       if (initialLoad) {
-        console.warn('[Auth] safety timeout disparado — forçando loading=false');
-        purgeSupabaseAuthStorage();
+        console.warn('[Auth] safety timeout disparado — forçando loading=false sem purgar storage');
         setLoading(false);
-        setUser(null);
-        setSession(null);
-        setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false });
         initialLoad = false;
       }
     }, 8000);
@@ -143,8 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.warn('[Auth] getSession error, purgando storage:', error.message);
-        purgeSupabaseAuthStorage();
+        console.warn('[Auth] getSession error (sessão mantida):', error.message);
       }
       setSession(session);
       setUser(session?.user ?? null);

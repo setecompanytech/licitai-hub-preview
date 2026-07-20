@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const LAST_ACTIVITY_KEY = 'praefectus_last_activity';
 const THROTTLE_MS = 30_000; // update storage at most every 30s
 

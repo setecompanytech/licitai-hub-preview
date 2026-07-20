@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, AlertTriangle, Pencil, Check, X } from 'lucide-react';
+import { Trash2, AlertTriangle, Pencil, Check, X, CheckCircle2, CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import type { LicitacaoItem } from '@/hooks/useEditalExtraction';
 
@@ -23,6 +23,16 @@ const origemBadge: Record<string, { label: string; className: string }> = {
   manual: { label: 'Manual', className: 'bg-muted text-muted-foreground border-border' },
   importado: { label: 'Importado', className: 'bg-accent/10 text-accent border-accent/20' },
 };
+
+function avaliarItem(item: LicitacaoItem): { nivel: 'completo' | 'parcial' | 'incompleto'; motivo: string } {
+  const semDescricao = !item.descricao || item.descricao.trim().length < 3;
+  const semQtd = !item.quantidade || item.quantidade <= 0;
+  if (semDescricao || semQtd) return { nivel: 'incompleto', motivo: semDescricao ? 'Sem descrição' : 'Quantidade inválida' };
+  const semUnidade = !item.unidade || item.unidade.trim().length === 0;
+  const semPreco = !item.valor_unitario || item.valor_unitario <= 0;
+  if (semUnidade || semPreco) return { nivel: 'parcial', motivo: semUnidade ? 'Sem unidade' : 'Sem valor unitário' };
+  return { nivel: 'completo', motivo: 'Item completo' };
+}
 
 export default function EditalItensTable({
   itens,
@@ -166,6 +176,18 @@ export default function EditalItensTable({
             {formatCurrency((isEditing ? (editValues.valor_unitario ?? 0) * (editValues.quantidade ?? 0) : item.valor_unitario * item.quantidade))}
           </span>
         </TableCell>
+        <TableCell className="w-16 text-center">
+          {(() => {
+            const { nivel, motivo } = avaliarItem(isEditing ? { ...item, ...editValues } as LicitacaoItem : item);
+            if (nivel === 'completo') return (
+              <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" title={motivo} />
+            );
+            if (nivel === 'parcial') return (
+              <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" title={motivo} />
+            );
+            return <CircleAlert className="w-4 h-4 text-destructive mx-auto" title={motivo} />;
+          })()}
+        </TableCell>
         {showOrigin && (
           <TableCell className="w-20">
             <Badge variant="outline" className={`text-[9px] ${origemBadge[item.origem]?.className || ''}`}>
@@ -241,6 +263,7 @@ export default function EditalItensTable({
               <TableHead className="w-14 text-center text-[10px]">Und</TableHead>
               <TableHead className="w-28 text-right text-[10px]">Vlr Unit.</TableHead>
               <TableHead className="w-28 text-right text-[10px]">Vlr Total</TableHead>
+              <TableHead className="w-16 text-center text-[10px]">Status</TableHead>
               {showOrigin && <TableHead className="w-20 text-[10px]">Origem</TableHead>}
               {!readOnly && <TableHead className="w-20 text-[10px]">Ações</TableHead>}
             </TableRow>
