@@ -413,16 +413,23 @@ export default function FinEmissorNFe() {
     setEmitting(true);
     try {
       const fnName = modelo === "nfse" ? "emitir-nfse" : "emitir-nfe";
+      const docDest = destinatario.documento.replace(/\D/g, "");
       const payload: any = {
         empresa_id: empresaAtiva!.id,
+        // Fix: edge fn needs cnpj_emitente explicitly
+        cnpj_emitente: (empresaAtiva!.cnpj || "").replace(/\D/g, ""),
         modelo,
         natureza_operacao: naturezaOp,
         finalidade,
         presenca_comprador: presenca,
         serie,
         destinatario: {
+          // Fix: edge fn reads razao_social, not nome
+          razao_social: destinatario.nome,
           nome: destinatario.nome,
-          documento: destinatario.documento.replace(/\D/g, ""),
+          // Fix: edge fn reads cnpj/cpf separately, not documento
+          ...(docDest.length === 14 ? { cnpj: docDest } : {}),
+          ...(docDest.length === 11 ? { cpf: docDest } : {}),
           email: destinatario.email || undefined,
           inscricao_estadual: destinatario.ie || undefined,
           indicador_ie: destinatario.indicador_ie,
@@ -440,7 +447,6 @@ export default function FinEmissorNFe() {
         transporte: { ...transporte },
         valores: { frete: valorFrete, seguro: valorSeguro, desconto, outras: outrasDespesas },
         info_complementares: infoComplementares || undefined,
-        // SEFAZ 4.00 — Sprints 1/2/3
         fiscais: {
           tpNF: fiscais.tpNF,
           indFinal: fiscais.indFinal,
@@ -454,7 +460,44 @@ export default function FinEmissorNFe() {
       if (modelo === "nfse") {
         payload.servico = { descricao: serviceDescricao, valor: serviceValor, codigo_servico: serviceCodigo || undefined };
       } else {
-        payload.itens = itens;
+        // Fix: transform flat item fields into nested icms/pis/cofins and add valor_total
+        payload.itens = itens.map(item => {
+          const qt = Number(item.quantidade) || 0;
+          const pu = Number(item.valor_unitario) || 0;
+          const vt = qt * pu;
+          const aliqIcms = Number(item.aliq_icms) || 0;
+          const aliqIpi  = Number(item.aliq_ipi)  || 0;
+          const aliqPis  = Number(item.aliq_pis)  || 0;
+          const aliqCofins = Number(item.aliq_cofins) || 0;
+          return {
+            codigo: item.codigo,
+            descricao: item.descricao,
+            ncm: item.ncm,
+            cfop: item.cfop,
+            unidade: item.unidade,
+            quantidade: qt,
+            valor_unitario: pu,
+            valor_total: vt,
+            icms: {
+              origem: item.origem,
+              cst: item.cst_csosn,
+              aliquota: aliqIcms,
+              base_calculo: vt,
+              valor: parseFloat(((aliqIcms / 100) * vt).toFixed(2)),
+            },
+            pis: {
+              cst: aliqPis > 0 ? "01" : "07",
+              aliquota: aliqPis,
+              valor: parseFloat(((aliqPis / 100) * vt).toFixed(2)),
+            },
+            cofins: {
+              cst: aliqCofins > 0 ? "01" : "07",
+              aliquota: aliqCofins,
+              valor: parseFloat(((aliqCofins / 100) * vt).toFixed(2)),
+            },
+            ...(aliqIpi > 0 ? { ipi: { cst: "50", aliquota: aliqIpi, valor: parseFloat(((aliqIpi / 100) * vt).toFixed(2)) } } : {}),
+          };
+        });
         payload.valor_total = totalNota;
       }
 

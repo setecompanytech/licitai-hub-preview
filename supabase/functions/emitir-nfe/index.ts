@@ -46,13 +46,17 @@ interface ItemNFe {
 }
 
 interface EmitirNFeRequest {
-  cnpj_emitente: string;
+  cnpj_emitente?: string;
+  empresa_id?: string;
   natureza_operacao: string;
   finalidade?: "1" | "2" | "3" | "4";
   presenca?: "0" | "1" | "2" | "3" | "4" | "9";
   consumidor_final?: boolean;
   destinatario: {
-    cnpj?: string; cpf?: string; razao_social: string;
+    cnpj?: string; cpf?: string;
+    razao_social?: string;  // preferred
+    nome?: string;          // fallback from frontend
+    documento?: string;     // fallback: 11=CPF, 14=CNPJ
     inscricao_estadual?: string; email?: string;
     endereco: {
       logradouro: string; numero: string; complemento?: string; bairro: string;
@@ -167,7 +171,15 @@ async function handleEmitirNFe(req: Request, supabase: any, userId: string, mode
   const refUnico = crypto.randomUUID();
   const ambiente = Deno.env.get("FOCUS_NFE_AMBIENTE") === "producao" ? "producao" : "homologacao";
 
-  const valorTotal = body.itens.reduce((s, i) => s + i.valor_total, 0);
+  // Fallback: look up cnpj_emitente from empresas table if not provided in body
+  let cnpjEmitente = (body.cnpj_emitente ?? "").replace(/\D/g, "");
+  if (!cnpjEmitente && body.empresa_id) {
+    const { data: emp } = await supabase.from("empresas").select("cnpj").eq("id", body.empresa_id).single();
+    if (emp?.cnpj) cnpjEmitente = emp.cnpj.replace(/\D/g, "");
+  }
+  if (!cnpjEmitente) return error(400, "cnpj_emitente_obrigatorio");
+
+  const valorTotal = body.itens.reduce((s, i) => s + (i.valor_total ?? 0), 0);
 
   const { data: nfeLocal, error: localErr } = await supabase
     .from("financeiro_nfes_emitidas")
@@ -249,13 +261,15 @@ async function handleEmitirNFe(req: Request, supabase: any, userId: string, mode
     data_emissao: new Date().toISOString(),
     data_entrada_saida: new Date().toISOString(),
     finalidade_emissao: body.finalidade ?? "1",
-    cnpj_emitente: body.cnpj_emitente.replace(/\D/g, ""),
+    cnpj_emitente: cnpjEmitente,
     presenca_comprador: body.presenca ?? "9",
     ...fiscaisFields,
     ...transporteFields,
-    nome_destinatario: body.destinatario.razao_social,
-    cnpj_destinatario: body.destinatario.cnpj?.replace(/\D/g, ""),
-    cpf_destinatario: body.destinatario.cpf?.replace(/\D/g, ""),
+    nome_destinatario: body.destinatario.razao_social ?? body.destinatario.nome,
+    cnpj_destinatario: body.destinatario.cnpj?.replace(/\D/g, "") ||
+      ((body.destinatario.documento?.replace(/\D/g, "").length === 14) ? body.destinatario.documento!.replace(/\D/g, "") : undefined),
+    cpf_destinatario: body.destinatario.cpf?.replace(/\D/g, "") ||
+      ((body.destinatario.documento?.replace(/\D/g, "").length === 11) ? body.destinatario.documento!.replace(/\D/g, "") : undefined),
     inscricao_estadual_destinatario: body.destinatario.inscricao_estadual,
     email_destinatario: body.destinatario.email,
     logradouro_destinatario: body.destinatario.endereco.logradouro,
