@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
-import { purgeSupabaseAuthStorage } from '@/lib/auth-bootstrap';
 import { queryClient, invalidatePermissionCaches } from '@/lib/query-client';
 
 type SubscriptionState = {
@@ -102,9 +101,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 8000);
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Token refresh falhou — purga storage para próxima tentativa nascer limpa
+      // TOKEN_REFRESHED com session null pode ser falha de rede transitória durante chamadas longas
+      // (ex: extração de edital). NÃO purgamos o storage — o SDK guarda o refresh_token e
+      // vai tentar novamente. Só fazemos log para diagnóstico.
       if (event === 'TOKEN_REFRESHED' && !session) {
-        purgeSupabaseAuthStorage();
+        console.warn('[Auth] TOKEN_REFRESHED sem sessão — possível falha de rede transitória');
+      }
+
+      // Se TOKEN_REFRESHED falhou (session null), mantém o estado atual do usuário —
+      // não derruba a sessão por uma falha transitória de rede.
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        if (initialLoad) { setLoading(false); initialLoad = false; }
+        return;
       }
 
       const prevUserId = lastUserIdRef.current;
