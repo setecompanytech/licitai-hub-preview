@@ -858,7 +858,10 @@ export default function MonitoramentoEditais() {
 
       const reduziu = filtrados.length !== rows.length;
       const total = reduziu ? filtrados.length : Math.max(totalReportado, totalUnico);
-      const paginas = Math.max(1, Math.ceil(total / tamanho));
+      // paginas usa sempre o total do servidor: filtros client-side afetam só a página atual,
+      // não o número total de páginas — preserva a navegação entre páginas.
+      const totalParaPaginas = Math.max(totalReportado, totalUnico);
+      const paginas = Math.max(1, Math.ceil(totalParaPaginas / tamanho));
 
       if (Object.keys(divergencias).length > 0) {
         logCtx({
