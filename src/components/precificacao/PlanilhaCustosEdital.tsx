@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import { extractTextFromFile } from '@/lib/pdf-text-extractor';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
+import { useSugestaoMarcas } from '@/hooks/useSugestaoMarcas';
 import { useRascunho } from '@/hooks/useRascunho';
 import { writeExcelFile } from '@/lib/excel-utils';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
@@ -83,6 +85,7 @@ export default function PlanilhaCustosEdital({
   const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
   const { addItem, pendingItems } = usePropostaCart();
+  const { sugestoesPorItem, fetchSugestoes } = useSugestaoMarcas();
   const { loadRascunho, autoSave, flush, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
     modulo: 'precificacao_planilha',
     licitacaoId: licitacaoId || null,
@@ -194,6 +197,10 @@ export default function PlanilhaCustosEdital({
       ativo = false;
     };
   }, [loadRascunho, licitacaoId, fetchItens, mapLinkedItensToPlanilha, markLoaded]);
+
+  useEffect(() => {
+    if (licitacaoId) fetchSugestoes(licitacaoId);
+  }, [licitacaoId, fetchSugestoes]);
 
   useEffect(() => {
     const titulo = licitacaoNumero ? `Planilha de custos — ${licitacaoNumero}` : 'Planilha de custos';
@@ -823,6 +830,7 @@ export default function PlanilhaCustosEdital({
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Unitário</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Total</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10">Link</th>
+                  <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[140px]">Avaliação</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10"></th>
                 </tr>
               </thead>
@@ -933,6 +941,52 @@ export default function PlanilhaCustosEdital({
                         </a>
                       ) : null}
                     </td>
+                    <td className="px-3 py-2 min-w-[140px]">
+                      {(() => {
+                        const sugestoes = sugestoesPorItem[it.descricao];
+                        const top = sugestoes?.[0];
+                        if (!top) return <span className="text-[10px] text-muted-foreground/40">—</span>;
+                        const scoreColor = top.score_confianca >= 90
+                          ? 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950'
+                          : top.score_confianca >= 70
+                          ? 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950'
+                          : top.score_confianca >= 50
+                          ? 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950'
+                          : 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950';
+                        const fonteLabel: Record<string, string> = {
+                          agente_ia: 'Agente IA', historico_precos: 'Histórico',
+                          itens_anteriores: 'Itens Ant.', pncp: 'PNCP',
+                        };
+                        return (
+                          <TooltipProvider>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-wrap gap-1">
+                                <Badge variant="outline" className="text-[9px] py-0 h-4">
+                                  {fonteLabel[top.fonte] ?? top.fonte}
+                                </Badge>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge className={`text-[9px] py-0 h-4 cursor-help border ${scoreColor}`}>
+                                      {top.score_confianca}% confiança
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  {top.justificativa_ia && (
+                                    <TooltipContent className="max-w-xs" side="left">
+                                      <p className="text-xs">{top.justificativa_ia}</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </div>
+                              {top.justificativa_ia && (
+                                <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">
+                                  {top.justificativa_ia}
+                                </p>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        );
+                      })()}
+                    </td>
                     <td className="px-3 py-2 text-center">
                       <Button
                         variant="ghost"
@@ -970,7 +1024,8 @@ export default function PlanilhaCustosEdital({
                       </div>
                     ) : '—'}
                   </td>
-                  <td></td>
+                  <td></td>{/* link col */}
+                  <td></td>{/* avaliacao col */}
                   <td></td>
                 </tr>
               </tfoot>
