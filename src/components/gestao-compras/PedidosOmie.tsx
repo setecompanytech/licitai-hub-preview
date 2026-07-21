@@ -788,7 +788,12 @@ export default function PedidosOmie() {
     setUploadingAnexo(true);
     const path = `${empresaAtiva.id}/${editingId}/${file.name}`;
     const { error } = await supabase.storage.from('pedidos-anexos').upload(path, file, { upsert: true });
-    if (error) { toast.error('Erro ao enviar arquivo.'); } else { toast.success('Arquivo enviado.'); await loadAnexos(); }
+    if (error) {
+      toast.error(`Erro ao enviar arquivo: ${error.message}`);
+    } else {
+      toast.success('Arquivo enviado.');
+      await loadAnexos();
+    }
     setUploadingAnexo(false);
   }
 

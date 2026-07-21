@@ -343,11 +343,32 @@ SET saldo_atual = fc.saldo_inicial + COALESCE((
 
 ---
 
-## [2026-07-20] Bucket de anexos de pedidos
+## [2026-07-20] Bucket de anexos de pedidos + políticas RLS
 
 > Crie o bucket privado `pedidos-anexos` em **Supabase → Storage → New Bucket** com:
 > - Name: `pedidos-anexos`
 > - Public: **OFF** (privado)
 >
-> Arquivos armazenados no caminho `{empresa_id}/{pedido_id}/{nome_do_arquivo}`.
-> Não é necessário SQL — só criar o bucket no painel do Supabase.
+> Depois rode o SQL abaixo para habilitar upload/download para usuários autenticados.
+
+```sql
+-- RLS: usuários autenticados podem fazer upload de anexos de pedidos
+CREATE POLICY "pedidos_anexos_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'pedidos-anexos');
+
+-- RLS: usuários autenticados podem ler/listar seus anexos
+CREATE POLICY "pedidos_anexos_select"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'pedidos-anexos');
+
+-- RLS: usuários autenticados podem deletar anexos
+CREATE POLICY "pedidos_anexos_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'pedidos-anexos');
+
+-- RLS: usuários autenticados podem atualizar (upsert)
+CREATE POLICY "pedidos_anexos_update"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'pedidos-anexos');
+```
