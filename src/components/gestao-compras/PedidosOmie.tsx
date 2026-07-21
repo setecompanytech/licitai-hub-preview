@@ -773,12 +773,10 @@ export default function PedidosOmie() {
     const { data, error } = await supabase.storage.from('pedidos-anexos').list(path);
     if (error) { toast.error('Erro ao listar anexos. Verifique se o bucket "pedidos-anexos" existe.'); setAnexosLoading(false); return; }
     const items = (data ?? []).filter(f => f.name !== '.emptyFolderPlaceholder');
-    const urls = await Promise.all(
-      items.map(async f => {
-        const { data: urlData } = await supabase.storage.from('pedidos-anexos').createSignedUrl(`${path}/${f.name}`, 3600);
-        return { name: f.name, size: (f as any).metadata?.size ?? 0, url: urlData?.signedUrl ?? '' };
-      })
-    );
+    const urls = items.map(f => {
+      const { data: urlData } = supabase.storage.from('pedidos-anexos').getPublicUrl(`${path}/${f.name}`);
+      return { name: f.name, size: (f as any).metadata?.size ?? 0, url: urlData.publicUrl };
+    });
     setAnexosList(urls);
     setAnexosLoading(false);
   }
