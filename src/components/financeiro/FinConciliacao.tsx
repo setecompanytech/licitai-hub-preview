@@ -66,12 +66,18 @@ import {
   Search,
   CheckCircle2,
   TrendingUp,
+  TrendingDown,
   BarChart3,
   Plus,
   ArrowLeftRight,
   Ban,
   ChevronDown,
   RotateCcw,
+  ArrowUp,
+  ArrowDown,
+  Clock,
+  XCircle,
+  Wallet,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
@@ -79,7 +85,6 @@ import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
 import LancamentoDialog from "./LancamentoDialog";
-
 
 type MatchSugestao = {
   movimento_id: string;
@@ -91,11 +96,14 @@ type MatchSugestao = {
 };
 
 export default function FinConciliacao() {
+  // ─── Refs ─────────────────────────────────────────────────────────────────
   const fileRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const reprocFileRef = useRef<HTMLInputElement>(null);
-  const [reprocessando, setReprocessando] = useState<string | null>(null);
   const reprocAlvo = useRef<{ extrato_id: string; conta_id: string; arquivo_nome: string } | null>(null);
+
+  // ─── State ────────────────────────────────────────────────────────────────
+  const [reprocessando, setReprocessando] = useState<string | null>(null);
   const [confirmReproc, setConfirmReproc] = useState<{
     extrato_id: string;
     conta_id: string;
@@ -103,7 +111,6 @@ export default function FinConciliacao() {
     total_movimentos: number;
   } | null>(null);
   const qc = useQueryClient();
-  
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<
     "todos" | "pendente" | "conciliado" | "ignorado"
@@ -116,16 +123,14 @@ export default function FinConciliacao() {
     valor: number;
     natureza: "receita" | "despesa";
   } | null>(null);
-
-  // Diálogo de criação on-the-fly de lançamento direto da conciliação (estilo Omie)
   const [novoLanc, setNovoLanc] = useState<{
     movimento_id: string;
     initial: Record<string, unknown>;
     defaultTipo: "a_pagar" | "a_receber" | "movimentacao";
   } | null>(null);
-
   const [movsSelecionados, setMovsSelecionados] = useState<Set<string>>(new Set());
 
+  // ─── Data ─────────────────────────────────────────────────────────────────
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
   const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
@@ -137,13 +142,13 @@ export default function FinConciliacao() {
   });
   const { data: lancamentosTodos } = useLancamentos({});
 
+  // ─── Mutations ────────────────────────────────────────────────────────────
   const importar = useImportarOFX();
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
   const desfazer = useDesfazerConciliacao();
   const upsertLancamento = useUpsertLancamento();
 
-  // Marca/desmarca movimento como ignorado (tarifas, estornos, lançamentos pessoais)
   const ignorarMov = useMutation({
     mutationFn: async (params: { id: string; ignorar: boolean; motivo?: string }) => {
       const patch: Record<string, unknown> = params.ignorar
@@ -162,7 +167,7 @@ export default function FinConciliacao() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Filtragem client-side por status "ignorado" (mantém compatibilidade com o hook atual)
+  // ─── Derived ──────────────────────────────────────────────────────────────
   const movimentosFiltrados = useMemo(() => {
     const lista = movimentos ?? [];
     if (filtroConciliado === "ignorado") return lista.filter((m: any) => m.ignorado === true);
@@ -180,18 +185,29 @@ export default function FinConciliacao() {
     return { entradas, saidas, saldo: entradas - saidas };
   }, [movimentosFiltrados]);
 
-  // Indexa movimentos e lançamentos para exibir detalhes nas sugestões
+  const resumoGeral = useMemo(() => {
+    const all = movimentos ?? [];
+    return {
+      total: all.length,
+      pendentes: all.filter((m: any) => !m.conciliado && !m.ignorado).length,
+      conciliados: all.filter((m: any) => m.conciliado).length,
+      ignorados: all.filter((m: any) => m.ignorado).length,
+    };
+  }, [movimentos]);
+
   const movMap = useMemo(() => {
     const m = new Map<string, NonNullable<typeof movimentos>[number]>();
     (movimentos ?? []).forEach((mov) => m.set(mov.id, mov));
     return m;
   }, [movimentos]);
+
   const lancMap = useMemo(() => {
     const m = new Map<string, NonNullable<typeof lancamentosTodos>[number]>();
     (lancamentosTodos ?? []).forEach((l) => m.set(l.id, l));
     return m;
   }, [lancamentosTodos]);
 
+  // ─── Handlers ─────────────────────────────────────────────────────────────
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -266,7 +282,6 @@ export default function FinConciliacao() {
     if (!file || !alvo) return;
     setReprocessando(alvo.extrato_id);
     try {
-      // Apaga movimentos e extrato antigo (cascade já remove conciliações pendentes)
       const { error: errMov } = await supabase
         .from("financeiro_extrato_movimentos")
         .delete()
@@ -277,7 +292,6 @@ export default function FinConciliacao() {
         .delete()
         .eq("id", alvo.extrato_id);
       if (errExt) throw errExt;
-
       const conteudo = await file.text();
       importar.mutate(
         { conta_id: alvo.conta_id, arquivo_nome: file.name, conteudo_ofx: conteudo },
@@ -312,9 +326,7 @@ export default function FinConciliacao() {
           setSugestoes(data.matches ?? []);
           setSelecionadas(new Set((data.matches ?? []).map((m) => m.movimento_id)));
           const iaSug = (data as { ia_sugeridos?: number }).ia_sugeridos;
-          if (usar_ia && iaSug) {
-            toast.success(`IA sugeriu ${iaSug} novos matches.`);
-          }
+          if (usar_ia && iaSug) toast.success(`IA sugeriu ${iaSug} novos matches.`);
         },
       }
     );
@@ -322,12 +334,8 @@ export default function FinConciliacao() {
 
   function aplicarSelecionadas() {
     const aAplicar = sugestoes.filter((s) => selecionadas.has(s.movimento_id));
-    if (aAplicar.length === 0) {
-      toast.info("Nenhuma sugestão selecionada.");
-      return;
-    }
-    let aplicados = 0;
-    let erros = 0;
+    if (aAplicar.length === 0) { toast.info("Nenhuma sugestão selecionada."); return; }
+    let aplicados = 0, erros = 0;
     Promise.all(
       aAplicar.map(
         (s) =>
@@ -335,14 +343,8 @@ export default function FinConciliacao() {
             conciliarManual.mutate(
               { movimento_id: s.movimento_id, lancamento_id: s.lancamento_id },
               {
-                onSuccess: () => {
-                  aplicados++;
-                  resolve();
-                },
-                onError: () => {
-                  erros++;
-                  resolve();
-                },
+                onSuccess: () => { aplicados++; resolve(); },
+                onError: () => { erros++; resolve(); },
               }
             );
           })
@@ -357,10 +359,7 @@ export default function FinConciliacao() {
 
   function aplicarTodasAlta() {
     const auto = sugestoes.filter((s) => s.score >= 90);
-    if (auto.length === 0) {
-      toast.info("Nenhuma sugestão com score ≥ 90 disponível.");
-      return;
-    }
+    if (auto.length === 0) { toast.info("Nenhuma sugestão com score ≥ 90 disponível."); return; }
     setSelecionadas(new Set(auto.map((s) => s.movimento_id)));
     setTimeout(() => aplicarSelecionadas(), 50);
   }
@@ -404,314 +403,655 @@ export default function FinConciliacao() {
     qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
   }
 
+  // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <Tabs defaultValue="conciliar" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="conciliar">
+      <TabsList className="h-9">
+        <TabsTrigger value="conciliar" className="text-xs px-3">
           <Link2 className="w-3.5 h-3.5 mr-1.5" />Conciliação
         </TabsTrigger>
-        <TabsTrigger value="relatorio">
+        <TabsTrigger value="relatorio" className="text-xs px-3">
           <BarChart3 className="w-3.5 h-3.5 mr-1.5" />Relatório por período
         </TabsTrigger>
       </TabsList>
 
+      {/* ════════════════════════════════════════════════════════════════════ */}
       <TabsContent value="conciliar" className="space-y-4 mt-0">
-      {/* Toolbar */}
-      <Card>
-        <CardContent className="p-4 flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-xs text-muted-foreground">Conta bancária</label>
-            <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma conta" />
-              </SelectTrigger>
-              <SelectContent>
-                {(contas ?? [])
-                  .filter((c) => c.tipo === "corrente" || c.tipo === "poupanca" || c.tipo === "caixa")
-                  .map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div className="min-w-[160px]">
-            <label className="text-xs text-muted-foreground">Status</label>
-            <Select
-              value={filtroConciliado}
-              onValueChange={(v) => setFiltroConciliado(v as typeof filtroConciliado)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendente">Pendentes</SelectItem>
-                <SelectItem value="conciliado">Conciliados</SelectItem>
-                <SelectItem value="ignorado">Ignorados</SelectItem>
-                <SelectItem value="todos">Todos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* ── Controles ── */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs text-muted-foreground mb-1 block">Conta bancária</label>
+                <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione uma conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(contas ?? [])
+                      .filter((c) => ["corrente", "poupanca", "caixa"].includes(c.tipo ?? ""))
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".ofx,.OFX"
-            className="hidden"
-            onChange={onFile}
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileRef.current?.click()}
-            disabled={importar.isPending || !contaSelecionada}
-          >
-            {importar.isPending ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4 mr-1.5" />
-            )}
-            Importar OFX
-          </Button>
+              <div className="min-w-[150px]">
+                <label className="text-xs text-muted-foreground mb-1 block">Exibindo</label>
+                <Select
+                  value={filtroConciliado}
+                  onValueChange={(v) => setFiltroConciliado(v as typeof filtroConciliado)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendentes</SelectItem>
+                    <SelectItem value="conciliado">Conciliados</SelectItem>
+                    <SelectItem value="ignorado">Ignorados</SelectItem>
+                    <SelectItem value="todos">Todos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <input
-            ref={csvRef}
-            type="file"
-            accept=".csv,.CSV,text/csv"
-            className="hidden"
-            onChange={onCsvFile}
-          />
-          <Button
-            variant="outline"
-            onClick={() => csvRef.current?.click()}
-            disabled={importar.isPending || !contaSelecionada}
-            title="CSV com colunas: data, descricao, valor (opcional documento)"
-          >
-            {importar.isPending ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4 mr-1.5" />
-            )}
-            Importar CSV
-          </Button>
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <input ref={fileRef} type="file" accept=".ofx,.OFX" className="hidden" onChange={onFile} />
+                <input ref={csvRef} type="file" accept=".csv,.CSV,text/csv" className="hidden" onChange={onCsvFile} />
 
-          <Button
-            onClick={() =>
-              conciliarAuto.mutate({
-                conta_id: contaSelecionada || undefined,
-                auto_aplicar: true,
-                score_minimo: 90,
-              })
-            }
-            disabled={conciliarAuto.isPending}
-          >
-            {conciliarAuto.isPending ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4 mr-1.5" />
-            )}
-            Auto-conciliar (score ≥ 90)
-          </Button>
-        </CardContent>
-      </Card>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={importar.isPending || !contaSelecionada}
+                >
+                  {importar.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                  Importar OFX
+                </Button>
 
-      {/* Painel de Sugestões com Score */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            Sugestões assistidas (Score 0–100)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[260px]">
-              <label className="text-xs text-muted-foreground flex items-center justify-between">
-                <span>Score mínimo para análise</span>
-                <span className="font-mono font-semibold text-foreground">{scoreMinimo}</span>
-              </label>
-              <Slider
-                value={[scoreMinimo]}
-                onValueChange={([v]) => setScoreMinimo(v)}
-                min={50}
-                max={100}
-                step={5}
-                className="mt-2"
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>Permissivo (50)</span>
-                <span>Recomendado (75)</span>
-                <span>Estrito (100)</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={() => csvRef.current?.click()}
+                  disabled={importar.isPending || !contaSelecionada}
+                  title="CSV com colunas: data, descricao, valor (opcional documento)"
+                >
+                  {importar.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                  Importar CSV
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="h-9"
+                  onClick={() =>
+                    conciliarAuto.mutate({
+                      conta_id: contaSelecionada || undefined,
+                      auto_aplicar: true,
+                      score_minimo: 90,
+                    })
+                  }
+                  disabled={conciliarAuto.isPending}
+                >
+                  {conciliarAuto.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                  Auto-conciliar (≥ 90)
+                </Button>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => buscarSugestoes(false)}
-              disabled={conciliarAuto.isPending}
-            >
-              {conciliarAuto.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4 mr-1.5" />
-              )}
-              Buscar sugestões
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => buscarSugestoes(true)}
-              disabled={conciliarAuto.isPending}
-              title="Usa IA para encontrar matches em casos ambíguos (descrições diferentes, valores próximos)"
-            >
-              {conciliarAuto.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-1.5 text-primary" />
-              )}
-              Sugerir com IA
-            </Button>
-            {sugestoes.length > 0 && (
-              <>
-                <Button onClick={aplicarSelecionadas} disabled={selecionadas.size === 0}>
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                  Aplicar selecionadas ({selecionadas.size})
-                </Button>
-                <Button variant="secondary" onClick={aplicarTodasAlta}>
-                  <Sparkles className="w-4 h-4 mr-1.5" />
-                  Aprovar todas com score ≥ 90
-                </Button>
-              </>
-            )}
-          </div>
+          </CardContent>
+        </Card>
 
-          {sugestoes.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-md">
-              Clique em <strong>Buscar sugestões</strong> para listar correspondências entre
-              movimentos do extrato e lançamentos previstos, sem aplicar alterações.
+        {/* ── Stats strip ── */}
+        {(movimentos ?? []).length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <StatCard label="Total" value={String(resumoGeral.total)} icon={Wallet} tone="default" />
+            <StatCard label="Pendentes" value={String(resumoGeral.pendentes)} icon={Clock} tone="warning" />
+            <StatCard label="Conciliados" value={String(resumoGeral.conciliados)} icon={CheckCircle2} tone="success" />
+            <StatCard label="Ignorados" value={String(resumoGeral.ignorados)} icon={XCircle} tone="muted" />
+            <StatCard label="Entradas" value={formatBRL(resumoMovimentos.entradas)} icon={ArrowUp} tone="success" />
+            <StatCard label="Saídas" value={formatBRL(resumoMovimentos.saidas)} icon={ArrowDown} tone="danger" />
+            <StatCard
+              label="Saldo"
+              value={formatBRL(resumoMovimentos.saldo)}
+              icon={resumoMovimentos.saldo >= 0 ? TrendingUp : TrendingDown}
+              tone={resumoMovimentos.saldo >= 0 ? "success" : "danger"}
+            />
+          </div>
+        )}
+
+        {/* ── Sugestões ── */}
+        <Card>
+          <CardHeader className="py-3 px-5 border-b">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <CardTitle className="text-sm font-semibold">Sugestões de conciliação</CardTitle>
+                {sugestoes.length > 0 && (
+                  <Badge variant="secondary" className="tabular-nums text-xs px-2">
+                    {sugestoes.length}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 min-w-[210px]">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Score mín.</span>
+                  <Slider
+                    value={[scoreMinimo]}
+                    onValueChange={([v]) => setScoreMinimo(v)}
+                    min={50} max={100} step={5}
+                    className="flex-1"
+                  />
+                  <span className="text-xs font-mono font-semibold w-6 text-right">{scoreMinimo}</span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => buscarSugestoes(false)}
+                  disabled={conciliarAuto.isPending}
+                >
+                  {conciliarAuto.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    : <Search className="w-3.5 h-3.5 mr-1" />}
+                  Buscar
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => buscarSugestoes(true)}
+                  disabled={conciliarAuto.isPending}
+                  title="Usa IA para encontrar matches em casos ambíguos"
+                >
+                  {conciliarAuto.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    : <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />}
+                  Sugerir com IA
+                </Button>
+
+                {sugestoes.length > 0 && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={aplicarSelecionadas}
+                      disabled={selecionadas.size === 0}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      Aplicar ({selecionadas.size})
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={aplicarTodasAlta}>
+                      <Sparkles className="w-3.5 h-3.5 mr-1" />
+                      Aprovar ≥ 90
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-          ) : (
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {sugestoes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center px-6 gap-2">
+                <Search className="w-8 h-8 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">
+                  Clique em <strong>Buscar</strong> para encontrar correspondências entre movimentos do extrato e lançamentos, sem aplicar alterações.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Use <strong>Auto-conciliar</strong> para aplicar automaticamente todos os matches com score ≥ 90.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-xs bg-muted/30">
+                      <TableHead className="w-[44px] pl-5">
+                        <Checkbox
+                          checked={selecionadas.size === sugestoes.length && sugestoes.length > 0}
+                          onCheckedChange={(v) => toggleTodas(!!v)}
+                          aria-label="Selecionar todas"
+                        />
+                      </TableHead>
+                      <TableHead className="w-[88px]">Score</TableHead>
+                      <TableHead>Movimento (extrato)</TableHead>
+                      <TableHead>Lançamento previsto</TableHead>
+                      <TableHead className="w-[160px]">Compatibilidade</TableHead>
+                      <TableHead className="text-right w-[100px] pr-5">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sugestoes.map((s) => {
+                      const mov = movMap.get(s.movimento_id);
+                      const lanc = lancMap.get(s.lancamento_id);
+                      const checked = selecionadas.has(s.movimento_id);
+                      return (
+                        <TableRow key={s.movimento_id + s.lancamento_id} className="text-sm hover:bg-muted/30">
+                          <TableCell className="pl-5">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSelecionadas((curr) => {
+                                  const next = new Set(curr);
+                                  if (v) next.add(s.movimento_id);
+                                  else next.delete(s.movimento_id);
+                                  return next;
+                                });
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <ScoreBadge score={s.score} metodo={s.metodo} />
+                          </TableCell>
+                          <TableCell>
+                            {mov ? (
+                              <div>
+                                <div className="font-medium truncate max-w-[220px]">{mov.descricao}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {formatDate(mov.data_movimento)} ·{" "}
+                                  <span className={Number(mov.valor) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                                    {formatBRL(Number(mov.valor))}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            {lanc ? (
+                              <div>
+                                <div className="font-medium truncate max-w-[220px]">{lanc.descricao}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {lanc.data_vencimento ? `Venc.: ${formatDate(lanc.data_vencimento)}` : "—"} · {formatBRL(Number(lanc.valor))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Lançamento fora da página atual</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <MotivosBadges motivos={s.motivos} />
+                              {s.justificativa_ia && (
+                                <p className="text-[11px] italic text-muted-foreground max-w-[240px] leading-snug">
+                                  "{s.justificativa_ia}"
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() =>
+                                conciliarManual.mutate(
+                                  { movimento_id: s.movimento_id, lancamento_id: s.lancamento_id },
+                                  {
+                                    onSuccess: () =>
+                                      setSugestoes((curr) =>
+                                        curr.filter((x) => x.movimento_id !== s.movimento_id)
+                                      ),
+                                  }
+                                )
+                              }
+                            >
+                              <Link2 className="w-3 h-3 mr-1" />
+                              Vincular
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Extratos importados ── */}
+        {(extratos?.length ?? 0) > 0 && (
+          <Card>
+            <CardHeader className="py-3 px-5 border-b">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-primary" />
+                Extratos importados
+                <Badge variant="outline" className="text-xs">{extratos!.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                {(extratos ?? []).slice(0, 6).map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="flex items-start justify-between gap-2 rounded-lg border bg-card p-3 hover:bg-accent/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <FileCheck2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {ex.conta?.nome ?? "—"} · {ex.total_movimentos ?? 0} movimentos
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} → {ex.data_fim ? formatDate(ex.data_fim) : "?"}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <Badge
+                        variant={ex.status === "concluido" ? "default" : "secondary"}
+                        className="text-[10px] px-1.5"
+                      >
+                        {ex.status}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
+                        disabled={reprocessando === ex.id}
+                        title="Reprocessar extrato com parser atualizado"
+                      >
+                        {reprocessando === ex.id
+                          ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          : <RotateCcw className="w-3 h-3 mr-1" />}
+                        Reprocessar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <input
+                ref={reprocFileRef}
+                type="file"
+                accept=".ofx,.OFX"
+                className="hidden"
+                onChange={onReprocessarFile}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── AlertDialog: confirmar reprocesso ── */}
+        <AlertDialog open={!!confirmReproc} onOpenChange={(o) => !o && setConfirmReproc(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reprocessar extrato?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    Esta ação irá <strong>apagar permanentemente</strong> o extrato{" "}
+                    <span className="font-mono text-foreground">{confirmReproc?.arquivo_nome}</span> e os{" "}
+                    <strong>{confirmReproc?.total_movimentos ?? 0} movimentos</strong> associados, incluindo
+                    conciliações pendentes vinculadas.
+                  </p>
+                  <p>
+                    Em seguida, será solicitado o arquivo OFX para reimportar. Conciliações já efetivadas
+                    em lançamentos não serão revertidas, mas perderão o vínculo com o movimento.
+                  </p>
+                  <p className="text-muted-foreground">Tem certeza que deseja continuar?</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmarReprocesso}>Apagar e reprocessar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ── Movimentos do extrato ── */}
+        <Card>
+          <CardHeader className="py-3 px-5 border-b">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-sm font-semibold">Movimentos do extrato</CardTitle>
+              {movsSelecionados.size > 0 && (
+                <Button
+                  size="sm"
+                  className="h-8"
+                  onClick={efetivarSelecionados}
+                  disabled={upsertLancamento.isPending || conciliarManual.isPending}
+                >
+                  {(upsertLancamento.isPending || conciliarManual.isPending)
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
+                  Efetivar e conciliar ({movsSelecionados.size})
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">
+                  <TableRow className="text-xs bg-muted/30">
+                    <TableHead className="w-[44px] pl-5">
                       <Checkbox
                         checked={
-                          selecionadas.size === sugestoes.length && sugestoes.length > 0
+                          movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
+                          movimentosFiltrados
+                            .filter((m: any) => !m.conciliado && !m.ignorado)
+                            .every((m: any) => movsSelecionados.has(m.id))
                         }
-                        onCheckedChange={(v) => toggleTodas(!!v)}
-                        aria-label="Selecionar todas"
+                        onCheckedChange={(v) => {
+                          const pendentes = movimentosFiltrados.filter(
+                            (m: any) => !m.conciliado && !m.ignorado
+                          );
+                          setMovsSelecionados(v ? new Set(pendentes.map((m: any) => m.id)) : new Set());
+                        }}
+                        aria-label="Selecionar todos"
+                        disabled={movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
                       />
                     </TableHead>
-                    <TableHead className="w-[110px]">Score</TableHead>
-                    <TableHead>Movimento (extrato)</TableHead>
-                    <TableHead>Lançamento previsto</TableHead>
-                    <TableHead>Justificativa</TableHead>
-                    <TableHead className="text-right w-[120px]">Ação</TableHead>
+                    <TableHead className="w-[90px]">Data</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="hidden md:table-cell w-[140px]">Conta</TableHead>
+                    <TableHead className="text-right w-[130px]">Valor</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[120px] text-right pr-5">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sugestoes.map((s) => {
-                    const mov = movMap.get(s.movimento_id);
-                    const lanc = lancMap.get(s.lancamento_id);
-                    const checked = selecionadas.has(s.movimento_id);
+                  {loadingMov && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-14 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando movimentos…
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingMov && movimentosFiltrados.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-14 text-muted-foreground">
+                        {contaSelecionada
+                          ? "Nenhum movimento. Importe um arquivo OFX ou CSV para começar."
+                          : "Selecione uma conta bancária para visualizar os movimentos."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {movimentosFiltrados.map((m: any) => {
+                    const valorAbs = Math.abs(Number(m.valor));
+                    const isCredito = Number(m.valor) >= 0;
+                    const naturezaSugerida: "receita" | "despesa" = isCredito ? "receita" : "despesa";
+                    const baseInitial = {
+                      descricao: m.descricao || "Movimento bancário",
+                      valor: valorAbs,
+                      data_competencia: m.data_movimento,
+                      data_vencimento: m.data_movimento,
+                      data_realizado: m.data_movimento,
+                      conta_id: m.conta_id,
+                      status: "realizado" as const,
+                    };
                     return (
-                      <TableRow key={s.movimento_id + s.lancamento_id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              setSelecionadas((curr) => {
-                                const next = new Set(curr);
-                                if (v) next.add(s.movimento_id);
-                                else next.delete(s.movimento_id);
-                                return next;
-                              });
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <ScoreBadge score={s.score} />
-                            {s.metodo === "ia" && (
-                              <Badge variant="outline" className="text-[10px] gap-1 border-primary/40 text-primary">
-                                <Sparkles className="w-2.5 h-2.5" />
-                                IA
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {mov ? (
-                            <div>
-                              <div className="text-sm font-medium truncate max-w-[260px]">
-                                {mov.descricao}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatDate(mov.data_movimento)} •{" "}
-                                <span
-                                  className={
-                                    Number(mov.valor) >= 0 ? "text-success" : "text-destructive"
-                                  }
-                                >
-                                  {formatBRL(Number(mov.valor))}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                      <TableRow
+                        key={m.id}
+                        className={`border-l-2 ${isCredito ? "border-l-emerald-400" : "border-l-rose-400"} ${m.ignorado ? "opacity-50" : ""} hover:bg-muted/20`}
+                      >
+                        <TableCell className="pl-4">
+                          {!m.conciliado && !m.ignorado && (
+                            <Checkbox
+                              checked={movsSelecionados.has(m.id)}
+                              onCheckedChange={(v) => {
+                                setMovsSelecionados((curr) => {
+                                  const next = new Set(curr);
+                                  if (v) next.add(m.id);
+                                  else next.delete(m.id);
+                                  return next;
+                                });
+                              }}
+                              aria-label="Selecionar movimento"
+                            />
                           )}
                         </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(m.data_movimento)}
+                        </TableCell>
                         <TableCell>
-                          {lanc ? (
-                            <div>
-                              <div className="text-sm font-medium truncate max-w-[260px]">
-                                {lanc.descricao}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Venc.:{" "}
-                                {lanc.data_vencimento ? formatDate(lanc.data_vencimento) : "—"}{" "}
-                                • {formatBRL(Number(lanc.valor))}
-                              </div>
+                          <div className="font-medium text-sm truncate max-w-[280px]">{m.descricao}</div>
+                          {m.descricao_extra && (
+                            <div className="text-xs text-muted-foreground truncate max-w-[280px]">
+                              {m.descricao_extra}
                             </div>
+                          )}
+                          {m.lancamento && (
+                            <div className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                              <Link2 className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[240px]">{m.lancamento.descricao}</span>
+                            </div>
+                          )}
+                          {m.ignorado && m.ignorado_motivo && (
+                            <div className="text-xs text-muted-foreground italic mt-0.5">
+                              Ignorado: {m.ignorado_motivo}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                          {m.conta?.nome ?? "—"}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-mono font-semibold text-sm whitespace-nowrap tabular-nums ${
+                            isCredito
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-rose-600 dark:text-rose-400"
+                          }`}
+                        >
+                          {isCredito ? "+" : ""}{formatBRL(Number(m.valor))}
+                        </TableCell>
+                        <TableCell>
+                          {m.ignorado ? (
+                            <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
+                              ignorado
+                            </Badge>
+                          ) : m.conciliado ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3.5 h-3.5" />conciliado
+                            </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Lançamento fora da página atual
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="w-3.5 h-3.5" />pendente
                             </span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <MotivosBadges motivos={s.motivos} />
-                            {s.justificativa_ia && (
-                              <p className="text-[11px] italic text-muted-foreground max-w-[280px] leading-snug">
-                                "{s.justificativa_ia}"
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              conciliarManual.mutate(
-                                {
-                                  movimento_id: s.movimento_id,
-                                  lancamento_id: s.lancamento_id,
-                                },
-                                {
-                                  onSuccess: () =>
-                                    setSugestoes((curr) =>
-                                      curr.filter((x) => x.movimento_id !== s.movimento_id)
-                                    ),
-                                }
-                              )
-                            }
-                          >
-                            <Link2 className="w-3.5 h-3.5 mr-1" />
-                            Aplicar
-                          </Button>
+                        <TableCell className="text-right pr-4 whitespace-nowrap">
+                          {m.conciliado && m.lancamento_id ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs text-muted-foreground"
+                              onClick={() =>
+                                desfazer.mutate({ movimento_id: m.id, lancamento_id: m.lancamento_id! })
+                              }
+                            >
+                              <Unlink className="w-3 h-3 mr-1" />Desfazer
+                            </Button>
+                          ) : m.ignorado ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs text-muted-foreground"
+                              onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />Restaurar
+                            </Button>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="outline" className="h-7 text-xs">
+                                  <Link2 className="w-3 h-3 mr-1" />
+                                  Tratar
+                                  <ChevronDown className="w-3 h-3 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                  {isCredito ? "+" : ""}{formatBRL(Number(m.valor))} · {formatDate(m.data_movimento)}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDialogManual({ movimento_id: m.id, valor: valorAbs, natureza: naturezaSugerida })
+                                  }
+                                >
+                                  <Link2 className="w-3.5 h-3.5 mr-2" />
+                                  Vincular a lançamento existente
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setNovoLanc({
+                                      movimento_id: m.id,
+                                      initial: { ...baseInitial, tipo: "a_pagar", natureza: "despesa" },
+                                      defaultTipo: "a_pagar",
+                                    })
+                                  }
+                                >
+                                  <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a pagar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setNovoLanc({
+                                      movimento_id: m.id,
+                                      initial: { ...baseInitial, tipo: "a_receber", natureza: "receita" },
+                                      defaultTipo: "a_receber",
+                                    })
+                                  }
+                                >
+                                  <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a receber
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setNovoLanc({
+                                      movimento_id: m.id,
+                                      initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" },
+                                      defaultTipo: "movimentacao",
+                                    })
+                                  }
+                                >
+                                  <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />Transferência / Movimentação
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-muted-foreground"
+                                  onClick={() => {
+                                    const motivo = window.prompt("Motivo (opcional) para ignorar este movimento:", "");
+                                    if (motivo === null) return;
+                                    ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                  }}
+                                >
+                                  <Ban className="w-3.5 h-3.5 mr-2" />Ignorar / desconsiderar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -719,415 +1059,41 @@ export default function FinConciliacao() {
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Histórico de extratos */}
-      {(extratos?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Extratos importados (últimos)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {(extratos ?? []).slice(0, 6).map((ex) => (
-                <div
-                  key={ex.id}
-                  className="border rounded-md p-3 text-sm flex items-start justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium flex items-center gap-1.5">
-                      <FileCheck2 className="w-4 h-4 text-primary shrink-0" />
-                      <span className="truncate">{ex.arquivo_nome}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {ex.conta?.nome ?? "—"} • {ex.total_movimentos ?? 0} mov.
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} a{" "}
-                      {ex.data_fim ? formatDate(ex.data_fim) : "?"}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <Badge variant={ex.status === "concluido" ? "default" : "secondary"}>
-                      {ex.status}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
-                      disabled={reprocessando === ex.id}
-                      title="Selecione novamente o arquivo OFX para reprocessar com o parser atualizado"
-                    >
-                      {reprocessando === ex.id ? (
-                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                      ) : (
-                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                      )}
-                      Reprocessar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <input
-              ref={reprocFileRef}
-              type="file"
-              accept=".ofx,.OFX"
-              className="hidden"
-              onChange={onReprocessarFile}
-            />
           </CardContent>
         </Card>
-      )}
 
-      <AlertDialog open={!!confirmReproc} onOpenChange={(o) => !o && setConfirmReproc(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reprocessar extrato?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm">
-                <p>
-                  Esta ação irá <strong>apagar permanentemente</strong> o extrato{" "}
-                  <span className="font-mono text-foreground">{confirmReproc?.arquivo_nome}</span> e
-                  os <strong>{confirmReproc?.total_movimentos ?? 0} movimentos</strong> associados,
-                  incluindo conciliações pendentes vinculadas.
-                </p>
-                <p>
-                  Em seguida, será solicitado o arquivo OFX para reimportar com o parser atualizado.
-                  Conciliações já efetivadas em lançamentos não serão revertidas, mas perderão o
-                  vínculo com o movimento.
-                </p>
-                <p className="text-muted-foreground">
-                  Tem certeza que deseja continuar?
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmarReprocesso}>
-              Apagar e reprocessar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-
-      {/* Movimentos */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-base">Movimentos do extrato</CardTitle>
-            {movsSelecionados.size > 0 && (
-              <Button
-                size="sm"
-                onClick={efetivarSelecionados}
-                disabled={upsertLancamento.isPending || conciliarManual.isPending}
-              >
-                {upsertLancamento.isPending || conciliarManual.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                )}
-                Efetivar selecionados ({movsSelecionados.size})
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {movimentosFiltrados.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="rounded-lg border border-success/30 bg-success/5 p-3">
-                <div className="text-xs text-muted-foreground mb-0.5">Entradas</div>
-                <div className="text-base font-semibold text-success">{formatBRL(resumoMovimentos.entradas)}</div>
-              </div>
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                <div className="text-xs text-muted-foreground mb-0.5">Saídas</div>
-                <div className="text-base font-semibold text-destructive">{formatBRL(resumoMovimentos.saidas)}</div>
-              </div>
-              <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground mb-0.5">Saldo Final</div>
-                <div className={`text-base font-semibold ${resumoMovimentos.saldo >= 0 ? "text-success" : "text-destructive"}`}>
-                  {formatBRL(resumoMovimentos.saldo)}
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={
-                        movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
-                        movimentosFiltrados
-                          .filter((m: any) => !m.conciliado && !m.ignorado)
-                          .every((m: any) => movsSelecionados.has(m.id))
-                      }
-                      onCheckedChange={(v) => {
-                        const pendentes = movimentosFiltrados.filter(
-                          (m: any) => !m.conciliado && !m.ignorado
-                        );
-                        setMovsSelecionados(v ? new Set(pendentes.map((m: any) => m.id)) : new Set());
-                      }}
-                      aria-label="Selecionar todos"
-                      disabled={
-                        movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0
-                      }
-                    />
-                  </TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Conta</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[140px] text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadingMov && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
-                      Carregando…
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!loadingMov && movimentosFiltrados.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      Nenhum movimento. Importe um arquivo OFX para começar.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {movimentosFiltrados.map((m: any) => {
-                  const valorAbs = Math.abs(Number(m.valor));
-                  const isCredito = Number(m.valor) >= 0;
-                  const naturezaSugerida: "receita" | "despesa" = isCredito ? "receita" : "despesa";
-                  const baseInitial = {
-                    descricao: m.descricao || "Movimento bancário",
-                    valor: valorAbs,
-                    data_competencia: m.data_movimento,
-                    data_vencimento: m.data_movimento,
-                    data_realizado: m.data_movimento,
-                    conta_id: m.conta_id,
-                    status: "realizado" as const,
-                  };
-                  return (
-                    <TableRow key={m.id} className={m.ignorado ? "opacity-60" : ""}>
-                      <TableCell>
-                        {!m.conciliado && !m.ignorado && (
-                          <Checkbox
-                            checked={movsSelecionados.has(m.id)}
-                            onCheckedChange={(v) => {
-                              setMovsSelecionados((curr) => {
-                                const next = new Set(curr);
-                                if (v) next.add(m.id); else next.delete(m.id);
-                                return next;
-                              });
-                            }}
-                            aria-label="Selecionar movimento"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(m.data_movimento)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-medium text-sm">{m.descricao}</span>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-blue-400/60 text-blue-500 dark:text-blue-400 shrink-0 font-normal">
-                            OFX
-                          </Badge>
-                        </div>
-                        {m.descricao_extra && (
-                          <div className="text-xs text-muted-foreground">{m.descricao_extra}</div>
-                        )}
-                        {m.lancamento && (
-                          <div className="text-xs text-primary mt-0.5">
-                            → {m.lancamento.descricao}
-                          </div>
-                        )}
-                        {m.ignorado && m.ignorado_motivo && (
-                          <div className="text-xs text-muted-foreground italic mt-0.5">
-                            Ignorado: {m.ignorado_motivo}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
-                      <TableCell
-                        className={`text-right font-mono whitespace-nowrap tabular-nums ${
-                          isCredito ? "text-success" : "text-destructive"
-                        }`}
-                      >
-                        {formatBRL(Number(m.valor))}
-                      </TableCell>
-                      <TableCell>
-                        {m.ignorado ? (
-                          <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
-                            ignorado
-                          </Badge>
-                        ) : m.conciliado ? (
-                          <Badge variant="default">conciliado</Badge>
-                        ) : (
-                          <Badge variant="secondary">pendente</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        {m.conciliado && m.lancamento_id ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              desfazer.mutate({
-                                movimento_id: m.id,
-                                lancamento_id: m.lancamento_id!,
-                              })
-                            }
-                            className="shrink-0"
-                          >
-                            <Unlink className="w-3.5 h-3.5 mr-1" />
-                            Desfazer
-                          </Button>
-                        ) : m.ignorado ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
-                            className="shrink-0"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                            Restaurar
-                          </Button>
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline" className="shrink-0">
-                                <Link2 className="w-3.5 h-3.5 mr-1" />
-                                Tratar
-                                <ChevronDown className="w-3 h-3 ml-1" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-64">
-                              <DropdownMenuLabel className="text-xs">
-                                Tratar movimento ({formatBRL(Number(m.valor))})
-                              </DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setDialogManual({
-                                    movimento_id: m.id,
-                                    valor: valorAbs,
-                                    natureza: naturezaSugerida,
-                                  })
-                                }
-                              >
-                                <Link2 className="w-3.5 h-3.5 mr-2" />
-                                Vincular a lançamento existente
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setNovoLanc({
-                                    movimento_id: m.id,
-                                    initial: { ...baseInitial, tipo: "a_pagar", natureza: "despesa" },
-                                    defaultTipo: "a_pagar",
-                                  })
-                                }
-                              >
-                                <Plus className="w-3.5 h-3.5 mr-2" />
-                                Criar conta a pagar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setNovoLanc({
-                                    movimento_id: m.id,
-                                    initial: { ...baseInitial, tipo: "a_receber", natureza: "receita" },
-                                    defaultTipo: "a_receber",
-                                  })
-                                }
-                              >
-                                <Plus className="w-3.5 h-3.5 mr-2" />
-                                Criar conta a receber
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setNovoLanc({
-                                    movimento_id: m.id,
-                                    initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" },
-                                    defaultTipo: "movimentacao",
-                                  })
-                                }
-                              >
-                                <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />
-                                Transferência / Movimentação
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-muted-foreground"
-                                onClick={() => {
-                                  const motivo = window.prompt(
-                                    "Motivo (opcional) para ignorar este movimento:",
-                                    ""
-                                  );
-                                  if (motivo === null) return;
-                                  ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
-                                }}
-                              >
-                                <Ban className="w-3.5 h-3.5 mr-2" />
-                                Ignorar / desconsiderar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <DialogVincularManual
-        info={dialogManual}
-        onClose={() => setDialogManual(null)}
-        onConfirm={(lancamento_id) => {
-          if (!dialogManual) return;
-          conciliarManual.mutate(
-            { movimento_id: dialogManual.movimento_id, lancamento_id },
-            { onSuccess: () => setDialogManual(null) }
-          );
-        }}
-      />
-
-      {/* Criação de lançamento on-the-fly direto da conciliação (estilo Omie).
-          Após salvar, vincula automaticamente o movimento ao lançamento criado. */}
-      {novoLanc && (
-        <LancamentoDialog
-          open={!!novoLanc}
-          onOpenChange={(v) => !v && setNovoLanc(null)}
-          initial={novoLanc.initial as never}
-          defaultTipo={novoLanc.defaultTipo as never}
-          onSaved={(lanc) => {
-            const movId = novoLanc.movimento_id;
-            setNovoLanc(null);
+        {/* ── Dialogs ── */}
+        <DialogVincularManual
+          info={dialogManual}
+          onClose={() => setDialogManual(null)}
+          onConfirm={(lancamento_id) => {
+            if (!dialogManual) return;
             conciliarManual.mutate(
-              { movimento_id: movId, lancamento_id: (lanc as { id: string }).id },
-              {
-                onSuccess: () => toast.success("Lançamento criado e movimento conciliado."),
-              }
+              { movimento_id: dialogManual.movimento_id, lancamento_id },
+              { onSuccess: () => setDialogManual(null) }
             );
           }}
         />
-      )}
+
+        {novoLanc && (
+          <LancamentoDialog
+            open={!!novoLanc}
+            onOpenChange={(v) => !v && setNovoLanc(null)}
+            initial={novoLanc.initial as never}
+            defaultTipo={novoLanc.defaultTipo as never}
+            onSaved={(lanc) => {
+              const movId = novoLanc.movimento_id;
+              setNovoLanc(null);
+              conciliarManual.mutate(
+                { movimento_id: movId, lancamento_id: (lanc as { id: string }).id },
+                { onSuccess: () => toast.success("Lançamento criado e movimento conciliado.") }
+              );
+            }}
+          />
+        )}
       </TabsContent>
 
+      {/* ════════════════════════════════════════════════════════════════════ */}
       <TabsContent value="relatorio" className="mt-0">
         <FinRelatorioConciliacao />
       </TabsContent>
@@ -1135,29 +1101,67 @@ export default function FinConciliacao() {
   );
 }
 
-// ----------------------------------------------------------------------------
-// Auxiliares visuais
-// ----------------------------------------------------------------------------
+// ─── Helpers visuais ──────────────────────────────────────────────────────────
 
-function ScoreBadge({ score }: { score: number }) {
-  const cor =
-    score >= 90
-      ? "bg-success text-success-foreground"
-      : score >= 75
-      ? "bg-primary text-primary-foreground"
-      : score >= 60
-      ? "bg-warning text-warning-foreground"
-      : "bg-destructive text-destructive-foreground";
-  const rotulo =
-    score >= 90 ? "Alta" : score >= 75 ? "Boa" : score >= 60 ? "Média" : "Baixa";
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  tone: "default" | "success" | "warning" | "danger" | "muted";
+}) {
+  const cls = {
+    default: "text-foreground",
+    success: "text-emerald-600 dark:text-emerald-400",
+    warning: "text-amber-600 dark:text-amber-400",
+    danger: "text-rose-600 dark:text-rose-400",
+    muted: "text-muted-foreground",
+  }[tone];
   return (
-    <div className="flex flex-col gap-1">
-      <span
-        className={`inline-flex items-center justify-center rounded-md text-xs font-semibold px-2 py-0.5 ${cor}`}
-      >
-        {score}/100
-      </span>
-      <span className="text-[10px] text-muted-foreground text-center">{rotulo}</span>
+    <div className="rounded-lg border bg-card p-3 flex flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{label}</span>
+        <Icon className={`w-3.5 h-3.5 ${cls}`} />
+      </div>
+      <span className={`text-base font-semibold tabular-nums ${cls}`}>{value}</span>
+    </div>
+  );
+}
+
+function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
+  const barColor =
+    score >= 90
+      ? "bg-emerald-500"
+      : score >= 75
+      ? "bg-primary"
+      : score >= 60
+      ? "bg-amber-500"
+      : "bg-rose-500";
+  const label = score >= 90 ? "Alta" : score >= 75 ? "Boa" : score >= 60 ? "Média" : "Baixa";
+  return (
+    <div className="w-[64px] space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold tabular-nums">{score}</span>
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full ${barColor} transition-all`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      {metodo === "ia" && (
+        <Badge
+          variant="outline"
+          className="text-[9px] px-1 py-0 h-3.5 border-primary/40 text-primary gap-0.5 mt-0.5"
+        >
+          <Sparkles className="w-2 h-2" /> IA
+        </Badge>
+      )}
     </div>
   );
 }
@@ -1170,7 +1174,7 @@ function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
   return (
     <div className="flex flex-wrap gap-1">
       {valor && (
-        <Badge variant="outline" className="text-[10px] border-success text-success">
+        <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
           Valor exato
         </Badge>
       )}
@@ -1193,9 +1197,7 @@ function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
   );
 }
 
-// ----------------------------------------------------------------------------
-// Diálogo de vínculo manual
-// ----------------------------------------------------------------------------
+// ─── Diálogo de vínculo manual ────────────────────────────────────────────────
 
 function DialogVincularManual({
   info,
@@ -1206,8 +1208,6 @@ function DialogVincularManual({
   onClose: () => void;
   onConfirm: (lancamentoId: string) => void;
 }) {
-  // Busca todos os lançamentos não cancelados/conciliados para permitir vínculo
-  // tanto com previstos (a pagar/a receber) quanto realizados (já lançados manualmente)
   const { data: lancamentos } = useLancamentos({ status: "todos" });
   if (!info) return null;
 
@@ -1215,14 +1215,11 @@ function DialogVincularManual({
     (l) =>
       l.natureza === info.natureza &&
       l.status !== "conciliado" &&
-      l.status !== "cancelado",
+      l.status !== "cancelado"
   );
 
-  // Sugestão: valor próximo (±2%) e mesma natureza — alta probabilidade de match
   const sugeridos = elegiveis.filter(
-    (l) =>
-      info.valor > 0 &&
-      Math.abs(Number(l.valor) - info.valor) / info.valor < 0.02,
+    (l) => info.valor > 0 && Math.abs(Number(l.valor) - info.valor) / info.valor < 0.02
   );
   const outros = elegiveis.filter((l) => !sugeridos.includes(l));
 
@@ -1230,19 +1227,15 @@ function DialogVincularManual({
     <button
       key={l.id}
       onClick={() => onConfirm(l.id)}
-      className="w-full text-left border rounded-md p-2 hover:bg-accent transition-colors mb-1.5"
+      className="w-full text-left border rounded-md p-2.5 hover:bg-accent transition-colors mb-1.5"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-sm ${destaque ? "font-medium" : ""} truncate`}>
-          {l.descricao}
-        </span>
-        <span className="text-sm font-mono whitespace-nowrap">
-          {formatBRL(Number(l.valor))}
-        </span>
+        <span className={`text-sm ${destaque ? "font-semibold" : ""} truncate`}>{l.descricao}</span>
+        <span className="text-sm font-mono whitespace-nowrap tabular-nums">{formatBRL(Number(l.valor))}</span>
       </div>
-      <div className="text-xs text-muted-foreground flex items-center gap-2">
+      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
         <span>{statusLabel[l.status] ?? l.status}</span>
-        <span>•</span>
+        <span>·</span>
         <span>
           {l.data_vencimento
             ? `Venc.: ${formatDate(l.data_vencimento)}`
@@ -1258,10 +1251,10 @@ function DialogVincularManual({
         <DialogHeader>
           <DialogTitle>Vincular a um lançamento</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           {sugeridos.length > 0 && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground mb-1">
+              <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
                 Sugestões (valor próximo)
               </div>
               {sugeridos.map((l) => renderItem(l, true))}
@@ -1269,14 +1262,14 @@ function DialogVincularManual({
           )}
           {outros.length > 0 && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground mb-1">
+              <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
                 Outros lançamentos {info.natureza === "receita" ? "a receber" : "a pagar"} ({outros.length})
               </div>
               {outros.slice(0, 50).map((l) => renderItem(l))}
             </div>
           )}
           {sugeridos.length === 0 && outros.length === 0 && (
-            <div className="text-sm text-muted-foreground text-center py-6 space-y-2">
+            <div className="text-sm text-muted-foreground text-center py-8 space-y-2">
               <p>Nenhum lançamento disponível para vincular.</p>
               <p className="text-xs">
                 Crie primeiro um lançamento em <strong>Lançamentos → Novo lançamento</strong>{" "}

@@ -785,7 +785,11 @@ export function useResumoFinanceiro() {
         .filter((l) => l.tipo === "a_receber" && (l.status === "previsto" || l.status === "em_atraso"))
         .reduce((s, l) => s + Number(l.valor ?? 0), 0);
       const realizadoMes = lancs
-        .filter((l) => (l.data_realizado ?? "").startsWith(mesAtual))
+        .filter((l) => {
+          if (l.status !== "realizado" && l.status !== "conciliado") return false;
+          const dataRef = l.data_realizado || l.data_competencia;
+          return (dataRef ?? "").startsWith(mesAtual);
+        })
         .reduce((s, l) => s + (l.natureza === "receita" ? 1 : -1) * Number(l.valor ?? 0), 0);
 
       // Top 5 despesas (realizadas) por categoria
