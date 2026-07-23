@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import FinExtracaoDocumentos from "./FinExtracaoDocumentos";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
@@ -92,6 +93,7 @@ export default function FinKanban({ tipo }: Props) {
   const [dragOverCol, setDragOverCol] = useState<ColunaKanban | null>(null);
   const pendingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+  const qc = useQueryClient();
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
   const { data: categorias = [] } = useCategorias();
@@ -214,6 +216,9 @@ export default function FinKanban({ tipo }: Props) {
           }
         }),
       );
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
       toast.success(`${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`);
       limparSelecao();
     } catch {
@@ -230,6 +235,9 @@ export default function FinKanban({ tipo }: Props) {
     if (l.conta_id) {
       const delta = l.natureza === "receita" ? Number(l.valor) : -Number(l.valor);
       await ajustarSaldoConta(l.conta_id, delta);
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
     }
   };
 
@@ -328,6 +336,9 @@ export default function FinKanban({ tipo }: Props) {
           const delta = lanc.natureza === "receita" ? Number(lanc.valor) : -Number(lanc.valor);
           await ajustarSaldoConta(lanc.conta_id, delta);
         }
+        qc.invalidateQueries({ queryKey: ["fin-contas"] });
+        qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+        qc.invalidateQueries({ queryKey: ["fin-resumo"] });
         toast.success("Lançamento marcado como concluído.");
       } else {
         // Tirar de "pago" → volta para previsto; reverte saldo
@@ -340,6 +351,9 @@ export default function FinKanban({ tipo }: Props) {
           const delta = lanc.natureza === "receita" ? -Number(lanc.valor) : Number(lanc.valor);
           await ajustarSaldoConta(lanc.conta_id, delta);
         }
+        qc.invalidateQueries({ queryKey: ["fin-contas"] });
+        qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+        qc.invalidateQueries({ queryKey: ["fin-resumo"] });
         toast.success("Lançamento reaberto.");
       }
     } catch {

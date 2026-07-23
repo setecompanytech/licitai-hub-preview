@@ -435,25 +435,33 @@ export function useUpsertLancamento() {
       if (!empresaId) throw new Error("Selecione uma empresa ativa.");
       const { data: userData } = await supabase.auth.getUser();
       const usuarioId = userData.user?.id ?? null;
-      const body: LancamentoInsert = {
-        ...(payload as LancamentoInsert),
-        empresa_id: empresaId,
-        descricao: payload.descricao ?? "",
-        valor: payload.valor ?? 0,
-        data_competencia: payload.data_competencia ?? new Date().toISOString().slice(0, 10),
-        natureza: payload.natureza ?? "despesa",
-        tipo: payload.tipo ?? "a_pagar",
-      };
-      if (!payload.id) {
-        // Apenas em criação — preserva origem em updates posteriores
-        body.origem_tipo = (payload as any).origem_tipo ?? "manual";
-        body.origem_job = (payload as any).origem_job ?? "useUpsertLancamento";
-        body.origem_usuario_id = (payload as any).origem_usuario_id ?? usuarioId;
-        body.origem_timestamp = (payload as any).origem_timestamp ?? new Date().toISOString();
-      }
+      // UPDATE: envia apenas os campos fornecidos (sem sobrescrever com defaults)
+      // INSERT: aplica defaults para campos obrigatórios
+      const { id: _payloadId, ...restPayload } = payload as any;
       const q = payload.id
-        ? supabase.from("financeiro_lancamentos").update(body).eq("id", payload.id).select().single()
-        : supabase.from("financeiro_lancamentos").insert(body).select().single();
+        ? supabase
+            .from("financeiro_lancamentos")
+            .update({ ...restPayload, empresa_id: empresaId })
+            .eq("id", payload.id)
+            .select()
+            .single()
+        : supabase
+            .from("financeiro_lancamentos")
+            .insert({
+              ...(payload as LancamentoInsert),
+              empresa_id: empresaId,
+              descricao: payload.descricao ?? "",
+              valor: payload.valor ?? 0,
+              data_competencia: payload.data_competencia ?? new Date().toISOString().slice(0, 10),
+              natureza: payload.natureza ?? "despesa",
+              tipo: payload.tipo ?? "a_pagar",
+              origem_tipo: (payload as any).origem_tipo ?? "manual",
+              origem_job: (payload as any).origem_job ?? "useUpsertLancamento",
+              origem_usuario_id: (payload as any).origem_usuario_id ?? usuarioId,
+              origem_timestamp: (payload as any).origem_timestamp ?? new Date().toISOString(),
+            } as LancamentoInsert)
+            .select()
+            .single();
       const { data, error } = await q;
       if (error) throw error;
       return data;

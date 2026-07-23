@@ -9,6 +9,7 @@ import {
   useDesfazerConciliacao,
   useLancamentos,
   useUpsertLancamento,
+  ajustarSaldoConta,
 } from "@/hooks/useFinanceiro";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -392,6 +393,10 @@ export default function FinConciliacao() {
           movimento_id: m.id,
           lancamento_id: (lanc as any).id,
         });
+        if (m.conta_id) {
+          const delta = isCredito ? Math.abs(Number(m.valor)) : -Math.abs(Number(m.valor));
+          await ajustarSaldoConta(m.conta_id, delta);
+        }
         ok++;
       } catch {
         erros++;
@@ -401,6 +406,9 @@ export default function FinConciliacao() {
     if (erros > 0) toast.error(`${erros} falha(s) ao efetivar.`);
     setMovsSelecionados(new Set());
     qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+    qc.invalidateQueries({ queryKey: ["fin-contas"] });
+    qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+    qc.invalidateQueries({ queryKey: ["fin-resumo"] });
   }
 
   // ─── JSX ──────────────────────────────────────────────────────────────────
