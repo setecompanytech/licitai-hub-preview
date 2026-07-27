@@ -390,6 +390,11 @@ export default function PedidosOmie() {
   const [pendingFaturarId, setPendingFaturarId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus]     = useState<Pedido['status']>('pedido');
   const [duplicating, setDuplicating]         = useState(false);
+
+  // Modal de exclusão com motivo
+  const [deleteConfirmId, setDeleteConfirmId]     = useState<string | null>(null);
+  const [deleteMotivo, setDeleteMotivo]           = useState('');
+  const [deletingPedido, setDeletingPedido]       = useState(false);
   const [anexosOpen, setAnexosOpen]           = useState(false);
   const [anexosLoading, setAnexosLoading]     = useState(false);
   const [uploadingAnexo, setUploadingAnexo]   = useState(false);
@@ -426,6 +431,19 @@ export default function PedidosOmie() {
       setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('pedido'); return n; });
     }
   }, [searchParams.get('pedido'), pedidos]);
+
+  // Abre o formulário de novo pedido vindo da Gestão de Contratos via ?novo_contrato=<id>
+  useEffect(() => {
+    const paramContrato = searchParams.get('novo_contrato');
+    if (!paramContrato || !empresaAtiva) return;
+    setForm(f => ({ ...defaultForm('venda'), contrato_id: paramContrato }));
+    setItens([]);
+    setEditingId(null);
+    setEditingNum(null);
+    setEditingStatus('pedido');
+    setView('form');
+    setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('novo_contrato'); return n; });
+  }, [searchParams.get('novo_contrato'), empresaAtiva]);
 
   async function loadPedidos() {
     setLoading(true);
@@ -680,12 +698,25 @@ export default function PedidosOmie() {
     closeForm();
   }
 
-  async function handleDelete(id: string) {
-    const { error } = await supabase.from('pedidos' as never).delete().eq('id', id);
-    if (error) { toast.error('Erro ao excluir pedido'); return; }
-    toast.success('Pedido excluído');
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+    setDeleteMotivo('');
     setKanbanMenu(null);
-    if (editingId === id) closeForm();
+  }
+
+  async function confirmarDelete() {
+    if (!deleteConfirmId) return;
+    if (!deleteMotivo.trim()) { toast.error('Informe o motivo da exclusão'); return; }
+    setDeletingPedido(true);
+    // Sincroniza: remove o registro em contrato_pedidos vinculado a este pedido
+    await supabase.from('contrato_pedidos').delete().eq('pedido_id', deleteConfirmId);
+    const { error } = await supabase.from('pedidos' as never).delete().eq('id', deleteConfirmId);
+    setDeletingPedido(false);
+    if (error) { toast.error('Erro ao excluir pedido'); return; }
+    toast.success('Pedido excluído e vínculo com contrato removido.');
+    if (editingId === deleteConfirmId) closeForm();
+    setDeleteConfirmId(null);
+    setDeleteMotivo('');
     await loadPedidos();
   }
 
@@ -921,6 +952,43 @@ export default function PedidosOmie() {
     cancelado:       'border-red-400/60 text-red-500',
   };
 
+  // ── Delete Confirm Dialog ──────────────────────────────────────────────
+  const DeleteConfirmDialog = (
+    <Dialog open={!!deleteConfirmId} onOpenChange={v => { if (!v) { setDeleteConfirmId(null); setDeleteMotivo(''); } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-base flex items-center gap-2 text-destructive">
+            <Trash2 className="w-4 h-4" /> Excluir Pedido
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <p className="text-sm text-muted-foreground">
+            Esta ação também removerá o vínculo deste pedido dentro da <strong>Gestão de Contratos</strong>, caso exista.
+          </p>
+          <div>
+            <Label className="text-xs">Motivo da exclusão <span className="text-destructive">*</span></Label>
+            <Textarea
+              className="mt-1 text-sm resize-none"
+              rows={3}
+              placeholder="Descreva o motivo para excluir este pedido..."
+              value={deleteMotivo}
+              onChange={e => setDeleteMotivo(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={() => { setDeleteConfirmId(null); setDeleteMotivo(''); }}>
+            Cancelar
+          </Button>
+          <Button size="sm" variant="destructive" onClick={confirmarDelete} disabled={deletingPedido || !deleteMotivo.trim()}>
+            {deletingPedido ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+            Excluir
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // ── NF-e Alert Dialog ──────────────────────────────────────────────────
   const NfeAlertDialog = (
     <Dialog open={nfeAlertOpen} onOpenChange={setNfeAlertOpen}>
@@ -1108,6 +1176,7 @@ export default function PedidosOmie() {
         {NfeAlertDialog}
         {AnexosDialog}
         {HistoricoDialog}
+        {DeleteConfirmDialog}
 
         {/* Search bar */}
         <div className="flex items-center gap-3">
@@ -1454,6 +1523,7 @@ export default function PedidosOmie() {
       {NfeAlertDialog}
       {AnexosDialog}
       {HistoricoDialog}
+      {DeleteConfirmDialog}
       <input
         ref={fileInputRef}
         type="file"
