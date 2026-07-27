@@ -105,6 +105,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
   const [kanbanStatuses, setKanbanStatuses] = useState<Record<string, string>>({});
+  const [updatingKanban, setUpdatingKanban] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -752,6 +753,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
+  const updateKanbanStatus = async (pedidoId: string, newStatus: string) => {
+    setUpdatingKanban(prev => ({ ...prev, [pedidoId]: true }));
+    const { error } = await supabase
+      .from('pedidos' as never)
+      .update({ status: newStatus } as any)
+      .eq('id', pedidoId);
+    if (error) {
+      toast.error('Erro ao atualizar status: ' + error.message);
+    } else {
+      setKanbanStatuses(prev => ({ ...prev, [pedidoId]: newStatus }));
+    }
+    setUpdatingKanban(prev => ({ ...prev, [pedidoId]: false }));
+  };
+
   const totalPedidos = pedidos.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.valor_total, 0);
   const totalExtracted = extractedItens.reduce((s, ei) => {
     const qty = parseFloat(ei.quantidade) || 0;
@@ -1138,10 +1153,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
-                      {p.pedido_id && kanbanStatuses[p.pedido_id] ? (
-                        <Badge className={`text-[10px] border ${kanbanCfg[kanbanStatuses[p.pedido_id]]?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
-                          {kanbanCfg[kanbanStatuses[p.pedido_id]]?.label ?? kanbanStatuses[p.pedido_id]}
-                        </Badge>
+                      {p.pedido_id ? (
+                        updatingKanban[p.pedido_id] ? (
+                          <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
+                        ) : (
+                          <Select
+                            value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
+                            onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
+                          >
+                            <SelectTrigger className={`h-6 text-[10px] border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(kanbanCfg).map(([key, cfg]) => (
+                                <SelectItem key={key} value={key} className="text-xs">{cfg.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
                       ) : (
                         <span className="text-muted-foreground/40 text-xs">—</span>
                       )}

@@ -52,6 +52,7 @@ import FinAuditoriaConciliacao from "@/components/financeiro/FinAuditoriaConcili
 import FinPlanoContasPadrao from "@/components/financeiro/FinPlanoContasPadrao";
 import FinIntegracoesFiscais from "@/components/financeiro/FinIntegracoesFiscais";
 import FinLotesAuditoria from "@/components/financeiro/FinLotesAuditoria";
+import FinPedidosAFaturar from "@/components/financeiro/FinPedidosAFaturar";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
@@ -60,6 +61,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   // Aliases retrocompatíveis: rotas antigas redirecionam para o painel unificado
   resumo: () => <FinPanorama />,
   dashboard: () => <FinPanorama />,
+  pedidos_faturar: () => <FinPedidosAFaturar />,
   lancamentos: () => <FinLancamentos />,
   a_pagar: () => <FinContasPagar />,
   a_receber: () => <FinContasReceber />,

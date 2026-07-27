@@ -28,6 +28,7 @@ export type HubItem = {
 export const HUB_ITEMS: HubItem[] = [
   // Operação diária
   { id: "panorama", label: "Painel", description: "Visão geral, KPIs CFO/Executivo/Operacional, projeção e atrasos — tudo em um só lugar.", icon: Eye, group: "operacao", highlight: true, badge: "Unificado" },
+  { id: "pedidos_faturar", label: "Pedidos a Faturar", description: "Pedidos de contratos aguardando faturamento — ao faturar, lança automaticamente em Contas a Receber.", icon: Receipt, group: "operacao", highlight: true, badge: "Novo" },
   { id: "calendario_financeiro", label: "Calendário Financeiro", description: "Calendário dinâmico de pagamentos e recebimentos com saldo proporcional por dia.", icon: CalendarDays, group: "operacao", badge: "Novo" },
   { id: "quadro_omie", label: "Quadro Financeiro", description: "Visão estilo Omie com 9 cards de operação consolidados.", icon: LayoutDashboard, group: "operacao" },
   { id: "lancamentos", label: "Lançamentos", description: "Todos os lançamentos com filtros avançados.", icon: ListOrdered, group: "operacao" },
