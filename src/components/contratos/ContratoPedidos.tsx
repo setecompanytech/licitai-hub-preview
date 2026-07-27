@@ -142,6 +142,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   /** Quando true, ao salvar pedido(s) o sistema também cria lançamento(s) "a receber" no Financeiro vinculados a este contrato. */
   const [gerarContaReceber, setGerarContaReceber] = useState(true);
 
+  // Novo pedido integrado (Gestão de Compras)
+  const [novoIntegradoOpen, setNovoIntegradoOpen] = useState(false);
+  const [novoIntegradoForm, setNovoIntegradoForm] = useState({
+    tipo: 'venda' as 'venda' | 'compra',
+    data_pedido: new Date().toISOString().split('T')[0],
+    data_entrega: '',
+    observacoes: '',
+  });
+  const [novoIntegradoItens, setNovoIntegradoItens] = useState<Array<{
+    key: string; descricao: string; quantidade: string; valor_unitario: string;
+  }>>([]);
+  const [savingIntegrado, setSavingIntegrado] = useState(false);
+
   // Multi-item support
   const [extractedItens, setExtractedItens] = useState<Array<{
     key: string; descricao: string; quantidade: string; valor_unitario: string;
@@ -442,6 +455,95 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       }
     } catch (e: any) {
       console.error(e);
+    }
+  };
+
+  const handleSaveIntegrado = async () => {
+    const itensValidos = novoIntegradoItens.filter(i => i.descricao.trim() && parseFloat(i.quantidade) > 0);
+    if (!itensValidos.length) { toast.error('Adicione ao menos um item com descrição e quantidade'); return; }
+
+    setSavingIntegrado(true);
+    try {
+      // Próximo número do pedido
+      const { data: maxNum } = await supabase
+        .from('pedidos' as any)
+        .select('numero')
+        .eq('empresa_id', empresaAtiva!.id)
+        .order('numero', { ascending: false })
+        .limit(1)
+        .single();
+      const numero = ((maxNum as any)?.numero ?? 0) + 1;
+      const valorTotal = itensValidos.reduce((s, i) => s + parseFloat(i.quantidade) * parseFloat(i.valor_unitario || '0'), 0);
+
+      // 1. Cria o pedido na tabela pedidos (vinculado ao contrato)
+      const { data: pedidoCriado, error: e1 } = await supabase
+        .from('pedidos' as any)
+        .insert({
+          empresa_id: empresaAtiva!.id,
+          numero,
+          tipo: novoIntegradoForm.tipo,
+          status: 'pedido',
+          previsao_faturamento: novoIntegradoForm.data_pedido || null,
+          total_mercadorias: valorTotal,
+          valor_desconto: 0, total_ipi: 0, total_icms_st: 0,
+          valor_total: valorTotal,
+          numero_parcelas: 'A Vista',
+          etapa: novoIntegradoForm.tipo === 'venda' ? 'Pedido de Venda' : 'Pedido de Compra',
+          origem_pedido: 'contrato',
+          contrato_id: contratoId,
+          observacoes: novoIntegradoForm.observacoes || null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .select('id')
+        .single();
+
+      if (e1 || !pedidoCriado) {
+        toast.error('Erro ao criar pedido: ' + (e1?.message ?? 'desconhecido'));
+        return;
+      }
+      const pedidoId = (pedidoCriado as any).id as string;
+
+      // 2. Itens do pedido
+      await supabase.from('pedido_itens' as any).insert(
+        itensValidos.map(i => ({
+          empresa_id: empresaAtiva!.id,
+          pedido_id: pedidoId,
+          descricao: i.descricao,
+          unidade: 'UN',
+          quantidade: parseFloat(i.quantidade),
+          preco_unitario: parseFloat(i.valor_unitario || '0'),
+          valor_total: parseFloat(i.quantidade) * parseFloat(i.valor_unitario || '0'),
+        })) as any
+      );
+
+      // 3. Registro no contrato_pedidos com link de volta ao pedido
+      const { data: cp, error: e3 } = await supabase.from('contrato_pedidos').insert({
+        contrato_id: contratoId,
+        user_id: user!.id,
+        numero_pedido: String(numero),
+        descricao: itensValidos.map(i => i.descricao).join('; ').slice(0, 255),
+        quantidade: itensValidos.reduce((s, i) => s + parseFloat(i.quantidade), 0),
+        valor_unitario: valorTotal,
+        valor_total: valorTotal,
+        data_pedido: novoIntegradoForm.data_pedido || null,
+        data_entrega: novoIntegradoForm.data_entrega || null,
+        status: 'pendente',
+        pedido_id: pedidoId,
+      } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
+
+      if (!e3 && cp) {
+        await gerarLancamentosFinanceiros([cp as any]);
+      }
+
+      toast.success(`Pedido Nº ${numero} criado na Gestão de Compras e vinculado ao contrato.`);
+      setNovoIntegradoOpen(false);
+      setNovoIntegradoItens([]);
+      setNovoIntegradoForm({ tipo: 'venda', data_pedido: new Date().toISOString().split('T')[0], data_entrega: '', observacoes: '' });
+      load();
+    } catch (err: any) {
+      toast.error('Erro: ' + err.message);
+    } finally {
+      setSavingIntegrado(false);
     }
   };
 
@@ -750,9 +852,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <Button size="sm" variant="outline" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
             <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
           </Button>
+          <Button size="sm" onClick={() => setNovoIntegradoOpen(true)}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm" onClick={openNewDialog}><Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido</Button>
+            <Button size="sm" variant="outline" onClick={openNewDialog} className="gap-1">
+              <Plus className="w-3.5 h-3.5" /> Novo Pedido
+              <Badge variant="outline" className="text-[9px] px-1 py-0 border-muted-foreground/40 text-muted-foreground ml-0.5">Legada</Badge>
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
@@ -1047,6 +1155,129 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </Dialog>
         </div>
       </div>
+
+      {/* ── Dialog: Novo Pedido Integrado (Gestão de Compras) ── */}
+      <Dialog open={novoIntegradoOpen} onOpenChange={v => { setNovoIntegradoOpen(v); if (!v) { setNovoIntegradoItens([]); } }}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-primary" /> Novo Pedido — Gestão de Compras
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-1">
+            {/* Tipo + Datas */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Tipo</Label>
+                <Select value={novoIntegradoForm.tipo} onValueChange={(v: 'venda' | 'compra') => setNovoIntegradoForm(f => ({ ...f, tipo: v }))}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="venda">Pedido de Venda</SelectItem>
+                    <SelectItem value="compra">Pedido de Compra</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Data do Pedido</Label>
+                <Input type="date" value={novoIntegradoForm.data_pedido}
+                  onChange={e => setNovoIntegradoForm(f => ({ ...f, data_pedido: e.target.value }))}
+                  className="h-8 text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Previsão de Entrega</Label>
+                <Input type="date" value={novoIntegradoForm.data_entrega}
+                  onChange={e => setNovoIntegradoForm(f => ({ ...f, data_entrega: e.target.value }))}
+                  className="h-8 text-xs" />
+              </div>
+            </div>
+
+            {/* Itens */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Itens do Pedido</Label>
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => setNovoIntegradoItens(prev => [...prev, { key: crypto.randomUUID(), descricao: '', quantidade: '1', valor_unitario: '0' }])}>
+                  <Plus className="w-3 h-3 mr-1" /> Adicionar Item
+                </Button>
+              </div>
+
+              {novoIntegradoItens.length === 0 ? (
+                <div className="border border-dashed rounded-md py-6 text-center text-xs text-muted-foreground">
+                  Nenhum item adicionado. Clique em "Adicionar Item" para começar.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {novoIntegradoItens.map((item, idx) => (
+                    <Card key={item.key} className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-muted-foreground">Item {idx + 1}</span>
+                        <Button size="icon" variant="ghost" className="h-6 w-6"
+                          onClick={() => setNovoIntegradoItens(prev => prev.filter(i => i.key !== item.key))}>
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div>
+                        <Label className="text-[11px]">Descrição</Label>
+                        <Input value={item.descricao}
+                          onChange={e => setNovoIntegradoItens(prev => prev.map(i => i.key === item.key ? { ...i, descricao: e.target.value } : i))}
+                          className="h-8 text-xs" placeholder="Descrição do item" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[11px]">Quantidade</Label>
+                          <Input type="number" min="0" step="0.01" value={item.quantidade}
+                            onChange={e => setNovoIntegradoItens(prev => prev.map(i => i.key === item.key ? { ...i, quantidade: e.target.value } : i))}
+                            className="h-8 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-[11px]">Valor Unitário (R$)</Label>
+                          <MoneyInput
+                            value={parseFloat(item.valor_unitario) || 0}
+                            onValueChange={v => setNovoIntegradoItens(prev => prev.map(i => i.key === item.key ? { ...i, valor_unitario: String(v) } : i))}
+                            className="h-8 text-xs" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+
+                  <div className="flex justify-between items-center px-1 pt-1">
+                    <span className="text-xs text-muted-foreground">{novoIntegradoItens.filter(i => i.descricao && parseFloat(i.quantidade) > 0).length} itens válidos</span>
+                    <span className="text-sm font-bold text-primary">
+                      Total: {fmt(novoIntegradoItens.reduce((s, i) => s + parseFloat(i.quantidade || '0') * parseFloat(i.valor_unitario || '0'), 0))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Observações */}
+            <div>
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={novoIntegradoForm.observacoes} rows={2}
+                onChange={e => setNovoIntegradoForm(f => ({ ...f, observacoes: e.target.value }))}
+                placeholder="Observações opcionais..." />
+            </div>
+
+            {/* Gerar conta a receber */}
+            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+              <Checkbox id="ger-cr-int" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+              <Label htmlFor="ger-cr-int" className="text-xs cursor-pointer">
+                <DollarSign className="w-3 h-3 inline mr-1" />
+                Gerar <b>conta a receber</b> no Financeiro vinculada a este contrato
+              </Label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setNovoIntegradoOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveIntegrado} disabled={savingIntegrado}>
+                {savingIntegrado && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                Criar Pedido
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>

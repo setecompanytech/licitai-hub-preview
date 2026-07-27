@@ -40,6 +40,7 @@ type Pedido = {
   dados_adicionais_nfe: string | null; nf_consumo_final: boolean;
   email_destinatario: string | null; enviar_boleto: boolean;
   observacoes: string | null;
+  contrato_id: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -1179,9 +1180,16 @@ export default function PedidosOmie() {
                     >
                       <td className="py-2 px-3 font-medium text-xs">#{p.numero}</td>
                       <td className="py-2 px-3">
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
-                          {p.tipo === 'venda' ? 'Venda' : 'Compra'}
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
+                            {p.tipo === 'venda' ? 'Venda' : 'Compra'}
+                          </Badge>
+                          {p.contrato_id && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-400/50 text-violet-600">
+                              Contrato
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2 px-3 text-xs font-medium">{pessoaNome ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="py-2 px-3">
@@ -1275,6 +1283,11 @@ export default function PedidosOmie() {
                               <Badge variant="outline" className={`text-[9px] px-1 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
+                              {p.contrato_id && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 border-violet-400/50 text-violet-600">
+                                  Contrato
+                                </Badge>
+                              )}
                             </div>
                             {pessoaNome && (
                               <p className="text-xs font-medium mt-0.5 leading-tight truncate">{pessoaNome}</p>
