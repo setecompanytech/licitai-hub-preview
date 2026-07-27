@@ -402,6 +402,13 @@ export default function PedidosOmie() {
   const [historicoOpen, setHistoricoOpen]     = useState(false);
   const [historicoData, setHistoricoData]     = useState<Pedido | null>(null);
 
+  // Faturado → Conta a Receber
+  const [faturadoContaOpen, setFaturadoContaOpen]     = useState(false);
+  const [faturadoContas, setFaturadoContas]           = useState<Array<{ id: string; nome: string; tipo: string }>>([]);
+  const [faturadoContaId, setFaturadoContaId]         = useState('');
+  const [faturadoParcelas, setFaturadoParcelas]       = useState('1');
+  const [savingFaturado, setSavingFaturado]           = useState(false);
+
   // Filtered by tipo
   const clientes = useMemo(() =>
     todasPessoas.filter(p => p.tipo === 'cliente' || p.tipo === 'ambos'), [todasPessoas]);
@@ -1015,10 +1022,132 @@ export default function PedidosOmie() {
               if (pendingFaturarId) {
                 await updatePedidoStatus(pendingFaturarId, 'faturado');
                 if (pendingFaturarId === editingId) setEditingStatus('faturado');
+                // Open conta a receber dialog
+                if (empresaAtiva?.id) {
+                  const { data: contas } = await supabase
+                    .from('financeiro_contas' as never)
+                    .select('id, nome, tipo')
+                    .eq('empresa_id', empresaAtiva.id)
+                    .order('nome');
+                  setFaturadoContas((contas ?? []) as any[]);
+                }
+                setFaturadoContaId('');
+                setFaturadoParcelas('1');
+                setNfeAlertOpen(false);
+                setFaturadoContaOpen(true);
+              } else {
+                setNfeAlertOpen(false);
+                setPendingFaturarId(null);
               }
-              setNfeAlertOpen(false); setPendingFaturarId(null);
             }}>
             <Zap className="w-3.5 h-3.5 mr-1" /> Faturar mesmo assim
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // ── Faturado → Conta a Receber dialog ─────────────────────────────────
+  const faturadoPedido = pendingFaturarId ? pedidos.find(x => x.id === pendingFaturarId) : null;
+  const FaturadoContaDialog = (
+    <Dialog open={faturadoContaOpen} onOpenChange={(open) => {
+      if (!open) { setFaturadoContaOpen(false); setPendingFaturarId(null); }
+    }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-base">Lançar Conta a Receber</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-1">
+          <p className="text-sm text-muted-foreground">
+            Pedido faturado com sucesso. Deseja registrar uma conta a receber no Financeiro?
+          </p>
+          {faturadoPedido && (
+            <div className="bg-muted/40 border rounded-md p-3 text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pedido</span>
+                <span className="font-medium">#{faturadoPedido.numero}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor total</span>
+                <span className="font-semibold text-primary">
+                  {faturadoPedido.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Conta destino</Label>
+            <Select value={faturadoContaId} onValueChange={setFaturadoContaId}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Selecione a conta bancária..." />
+              </SelectTrigger>
+              <SelectContent>
+                {faturadoContas.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Número de parcelas</Label>
+            <Input
+              type="number" min="1" max="60"
+              className="h-8 text-sm"
+              value={faturadoParcelas}
+              onChange={e => setFaturadoParcelas(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" size="sm" onClick={() => { setFaturadoContaOpen(false); setPendingFaturarId(null); }}>
+            Pular
+          </Button>
+          <Button size="sm" disabled={!faturadoContaId || savingFaturado}
+            onClick={async () => {
+              if (!faturadoPedido || !faturadoContaId) return;
+              setSavingFaturado(true);
+              try {
+                const parcelas = Math.max(1, parseInt(faturadoParcelas) || 1);
+                const valorParcela = faturadoPedido.valor_total / parcelas;
+                const hoje = new Date();
+                const inserts = Array.from({ length: parcelas }, (_, i) => {
+                  const venc = new Date(hoje);
+                  venc.setMonth(venc.getMonth() + i + 1);
+                  return {
+                    empresa_id: faturadoPedido.empresa_id,
+                    tipo: 'a_receber' as const,
+                    natureza: 'receita' as const,
+                    status: 'previsto' as const,
+                    descricao: `Pedido #${faturadoPedido.numero}${parcelas > 1 ? ` — Parcela ${i + 1}/${parcelas}` : ''}`,
+                    valor: parseFloat(valorParcela.toFixed(2)),
+                    data_competencia: venc.toISOString().slice(0, 10),
+                    conta_id: faturadoContaId,
+                    origem: 'manual' as const,
+                    origem_tipo: 'manual' as const,
+                    origem_job: 'PedidosOmie.faturado',
+                    origem_usuario_id: user?.id ?? null,
+                    origem_timestamp: new Date().toISOString(),
+                    created_by: user?.id ?? null,
+                  };
+                });
+                const { error } = await supabase.from('financeiro_lancamentos' as never).insert(inserts as any);
+                if (error) {
+                  toast.error('Erro ao gerar conta a receber: ' + error.message);
+                } else {
+                  toast.success(`${parcelas} conta(s) a receber criada(s) no Financeiro.`);
+                  setFaturadoContaOpen(false);
+                  setPendingFaturarId(null);
+                }
+              } catch {
+                toast.error('Erro ao gerar conta a receber.');
+              } finally {
+                setSavingFaturado(false);
+              }
+            }}>
+            {savingFaturado
+              ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+              : <Check className="w-3.5 h-3.5 mr-1" />}
+            Gerar {parseInt(faturadoParcelas) > 1 ? `${faturadoParcelas} parcelas` : 'conta'}
           </Button>
         </div>
       </DialogContent>
@@ -1174,6 +1303,7 @@ export default function PedidosOmie() {
       <div className="flex flex-col gap-3">
         {TypeDialog}
         {NfeAlertDialog}
+        {FaturadoContaDialog}
         {AnexosDialog}
         {HistoricoDialog}
         {DeleteConfirmDialog}
@@ -1521,6 +1651,7 @@ export default function PedidosOmie() {
     <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
       {TypeDialog}
       {NfeAlertDialog}
+      {FaturadoContaDialog}
       {AnexosDialog}
       {HistoricoDialog}
       {DeleteConfirmDialog}
