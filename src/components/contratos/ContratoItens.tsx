@@ -11,15 +11,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package, Copy, Download, Link2, History, Layers
+  Plus, Trash2, Loader2, Package, Copy, Download, Link2, History, Layers, Search
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 import EstruturaDocumentoCard from './EstruturaDocumentoCard';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+type Produto = { id: string; codigo: string | null; descricao: string; unidade: string; preco_venda: number | null };
 
 type ContratoItem = {
   id: string; contrato_id: string; descricao: string; unidade: string;
@@ -56,6 +59,7 @@ type ItemConsolidado = ContratoItem & {
 
 export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;
   const [meta, setMeta] = useState<ContratoMeta | null>(null);
@@ -66,14 +70,39 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [importing, setImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [consolidado, setConsolidado] = useState(true); // visão mesclada por padrão
+  const [consolidado, setConsolidado] = useState(true);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [prodSearch, setProdSearch] = useState('');
+  const [prodPopover, setProdPopover] = useState(false);
   const [form, setForm] = useState({
-    descricao: '', unidade: 'UN', quantidade_contratada: '',
+    produto_id: '', descricao: '', unidade: 'UN', quantidade_contratada: '',
     valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '',
     ata_item_id: '',
   });
 
   const isContratoComATA = meta?.tipo_documento === 'contrato' && !!meta?.ata_srp_id;
+
+  const filteredProdutos = useMemo(() => {
+    if (!prodSearch.trim()) return produtos.slice(0, 12);
+    const q = prodSearch.toLowerCase();
+    return produtos.filter(p =>
+      p.descricao.toLowerCase().includes(q) ||
+      (p.codigo && p.codigo.toLowerCase().includes(q))
+    ).slice(0, 20);
+  }, [prodSearch, produtos]);
+
+  const onSelectProduto = (prod: Produto) => {
+    setForm(f => ({
+      ...f,
+      produto_id: prod.id,
+      descricao: prod.descricao,
+      unidade: prod.unidade,
+      codigo_item: prod.codigo || f.codigo_item,
+      valor_unitario: prod.preco_venda != null ? String(prod.preco_venda) : f.valor_unitario,
+    }));
+    setProdSearch(prod.descricao);
+    setProdPopover(false);
+  };
 
   // Agrupa itens pelo mesmo item físico (mesmo codigo_item ou mesma descrição)
   // e retorna a visão consolidada: uma linha por item físico com o estado mais recente
@@ -125,16 +154,22 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
-    const [itensRes, aditivosRes] = await Promise.all([
+    const empresaId = (m as any)?.empresa_id || empresaAtiva?.id;
+
+    const [itensRes, aditivosRes, produtosRes] = await Promise.all([
       supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      empresaId
+        ? supabase.from('produtos').select('id, codigo, descricao, unidade, preco_venda').eq('empresa_id', empresaId).order('descricao')
+        : Promise.resolve({ data: [] }),
     ]);
     setItens((itensRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
+    setProdutos((produtosRes.data as any[]) || []);
 
     if (m?.tipo_documento === 'contrato' && m.ata_srp_id) {
       const ataItensRes = await supabase.from('contrato_itens').select('*').eq('contrato_id', m.ata_srp_id).order('created_at', { ascending: true });
@@ -206,6 +241,39 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     const custoTotal = qty * custoUnit;
 
     setSaving(true);
+
+    // Resolve produto_id: usa o selecionado, ou busca por nome, ou cria automaticamente
+    let produtoId: string | null = form.produto_id || null;
+    const empresaId = (meta as any)?.empresa_id || empresaAtiva?.id;
+    if (!produtoId && empresaId) {
+      const { data: existing } = await supabase
+        .from('produtos')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .ilike('descricao', form.descricao.trim())
+        .maybeSingle();
+      if (existing) {
+        produtoId = (existing as any).id;
+      } else {
+        // Cria produto automaticamente para manter sincronização
+        const { data: newProd } = await supabase
+          .from('produtos')
+          .insert({
+            empresa_id: empresaId,
+            descricao: form.descricao.trim(),
+            unidade: form.unidade,
+            codigo: form.codigo_item || null,
+            preco_venda: unit || null,
+          } as any)
+          .select('id')
+          .single();
+        if (newProd) {
+          produtoId = (newProd as any).id;
+          toast.info('Produto criado automaticamente no catálogo.');
+        }
+      }
+    }
+
     const { error } = await supabase.from('contrato_itens').insert({
       contrato_id: contratoId,
       user_id: user!.id,
@@ -222,12 +290,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       observacoes: form.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
       ata_item_id: form.ata_item_id || null,
+      produto_id: produtoId,
     } as any);
     setSaving(false);
     if (error) { toast.error('Erro ao salvar item', { description: error.message }); return; }
     toast.success('Item cadastrado!');
     setDialogOpen(false);
-    setForm({ descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
+    setForm({ produto_id: '', descricao: '', unidade: 'UN', quantidade_contratada: '', valor_unitario: '', custo_unitario: '', codigo_item: '', observacoes: '', origem_aditivo_id: '', ata_item_id: '' });
+    setProdSearch('');
     loadData();
   };
 
@@ -277,7 +347,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   };
 
   const handleDuplicate = async (item: ContratoItem) => {
+    const prodId = (item as any).produto_id || '';
     setForm({
+      produto_id: prodId,
       descricao: item.descricao,
       unidade: item.unidade,
       quantidade_contratada: String(item.quantidade_contratada),
@@ -288,6 +360,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       origem_aditivo_id: '',
       ata_item_id: item.ata_item_id || '',
     });
+    setProdSearch(item.descricao);
     setDialogOpen(true);
   };
 
@@ -342,6 +415,49 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Cadastrar Item {meta?.tipo_documento === 'ata_srp' ? 'da ATA' : 'do Contrato'}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3 mt-3">
+                {/* Busca de produto sincronizado */}
+                <div className="col-span-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-accent" /> Buscar Produto do Catálogo
+                    {form.produto_id && <span className="text-[10px] text-success font-normal">(vinculado)</span>}
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      value={prodSearch}
+                      onChange={e => { setProdSearch(e.target.value); setProdPopover(true); setForm(f => ({ ...f, produto_id: '', descricao: e.target.value })); }}
+                      onFocus={() => setProdPopover(true)}
+                      onBlur={() => setTimeout(() => setProdPopover(false), 150)}
+                      placeholder="Digite para buscar ou criar produto..."
+                      className={form.produto_id ? 'border-success/50 bg-success/5' : ''}
+                    />
+                    {prodPopover && (
+                      <div className="absolute z-50 w-full bg-popover border rounded-md shadow-lg mt-1 max-h-52 overflow-y-auto">
+                        {filteredProdutos.length > 0 ? (
+                          filteredProdutos.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 flex items-center gap-2"
+                              onMouseDown={() => onSelectProduto(p)}
+                            >
+                              {p.codigo && <span className="font-mono text-muted-foreground text-[10px] shrink-0">[{p.codigo}]</span>}
+                              <span className="flex-1 truncate">{p.descricao}</span>
+                              <span className="shrink-0 text-muted-foreground">{p.unidade}{p.preco_venda ? ` · ${fmt(p.preco_venda)}` : ''}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                            Produto não encontrado — será criado automaticamente ao salvar.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Selecione um produto existente ou digite para criar um novo automaticamente.
+                  </p>
+                </div>
+
                 {isContratoComATA && (
                   <div className="col-span-2">
                     <Label>Item da ATA de origem *</Label>

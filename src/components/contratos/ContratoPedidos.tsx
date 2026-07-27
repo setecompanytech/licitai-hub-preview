@@ -59,6 +59,7 @@ type Pedido = {
   valor_total: number; data_pedido: string | null; data_entrega: string | null;
   status: string; nota_fiscal: string | null; observacoes: string | null;
   nf_quitada: boolean; data_quitacao: string | null;
+  pedido_id?: string | null;
 };
 type NotaFiscalSync = {
   id: string; numero_nf: string | null; tipo: string; status: string | null;
@@ -72,6 +73,15 @@ const statusCfg: Record<string, { label: string; color: string }> = {
   entregue: { label: 'Entregue', color: 'bg-success/10 text-success' },
   parcial: { label: 'Parcial', color: 'bg-accent/10 text-accent' },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
+};
+
+const kanbanCfg: Record<string, { label: string; color: string }> = {
+  pedido:          { label: 'Aguard. Faturamento', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  separar_estoque: { label: 'Separar Estoque',     color: 'bg-yellow-600/10 text-yellow-600 border-yellow-600/20' },
+  faturar:         { label: 'Faturar',             color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
+  faturado:        { label: 'Faturado',            color: 'bg-primary/10 text-primary border-primary/20' },
+  entrega:         { label: 'Em Entrega',          color: 'bg-accent/10 text-accent border-accent/20' },
+  cancelado:       { label: 'Cancelado',           color: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
 
 const tiposDocumento = [
@@ -94,6 +104,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
   const [nfsSync, setNfsSync] = useState<NotaFiscalSync[]>([]);
+  const [kanbanStatuses, setKanbanStatuses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -160,7 +171,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       supabase.from('contratos').select('ata_srp_id').eq('id', contratoId).single(),
     ]);
-    setPedidos((pedidosRes.data as any[]) || []);
+    const pedidosData = (pedidosRes.data as any[]) || [];
+    setPedidos(pedidosData);
+    // Fetch kanban status for linked pedidos
+    const linkedIds = pedidosData.map((p: any) => p.pedido_id).filter(Boolean) as string[];
+    if (linkedIds.length > 0) {
+      const { data: kRows } = await supabase.from('pedidos' as never).select('id, status').in('id', linkedIds);
+      const kMap: Record<string, string> = {};
+      for (const k of (kRows ?? []) as any[]) kMap[k.id] = k.status;
+      setKanbanStatuses(kMap);
+    } else {
+      setKanbanStatuses({});
+    }
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
@@ -1077,6 +1099,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
                 <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-xs text-center whitespace-nowrap">Status Kanban</TableHead>
                 <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
                 <TableHead className="text-xs w-20"></TableHead>
               </TableRow>
@@ -1113,6 +1136,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      {p.pedido_id && kanbanStatuses[p.pedido_id] ? (
+                        <Badge className={`text-[10px] border ${kanbanCfg[kanbanStatuses[p.pedido_id]]?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                          {kanbanCfg[kanbanStatuses[p.pedido_id]]?.label ?? kanbanStatuses[p.pedido_id]}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs">
                       <div className="space-y-1">
