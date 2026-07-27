@@ -15,13 +15,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
   History, RefreshCw, User, LayoutGrid, List,
-  ChevronsUpDown, Filter,
+  ChevronsUpDown, Filter, FileText, Link2,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ type ProdutoCat = {
 
 type PessoaOpt = { id: string; nome: string; documento: string | null; tipo: string };
 
+type ContratoOpt = { id: string; numero_contrato: string; orgao_contratante: string | null };
+
 type PedidoForm = {
   tipo: 'venda' | 'compra'; pessoa_id: string;
   previsao_faturamento: string; vendedor: string;
@@ -68,6 +71,7 @@ type PedidoForm = {
   dados_adicionais_nfe: string; nf_consumo_final: boolean;
   email_destinatario: string; enviar_boleto: boolean;
   observacoes: string; valor_desconto: string;
+  contrato_id: string;
 };
 
 type ItemForm = {
@@ -128,6 +132,7 @@ function defaultForm(tipo: 'venda' | 'compra' = 'venda'): PedidoForm {
     dados_adicionais_nfe: '', nf_consumo_final: false,
     email_destinatario: '', enviar_boleto: false,
     observacoes: '', valor_desconto: '0,00',
+    contrato_id: '',
   };
 }
 
@@ -350,10 +355,12 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function PedidosOmie() {
   const { empresaAtiva } = useEmpresa();
+  const { user } = useAuth();
   const { data: todasPessoas = [] } = usePessoas();
 
   const [pedidos, setPedidos]   = useState<Pedido[]>([]);
   const [produtos, setProdutos] = useState<ProdutoCat[]>([]);
+  const [contratos, setContratos] = useState<ContratoOpt[]>([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
 
@@ -406,6 +413,7 @@ export default function PedidosOmie() {
     if (!empresaAtiva) { setLoading(false); return; }
     loadPedidos();
     loadProdutos();
+    loadContratos();
   }, [empresaAtiva]);
 
   // Abre pedido direto quando vem de outra página via ?pedido=<id>
@@ -429,6 +437,15 @@ export default function PedidosOmie() {
     if (error) toast.error('Erro ao carregar pedidos');
     else setPedidos((data ?? []) as Pedido[]);
     setLoading(false);
+  }
+
+  async function loadContratos() {
+    const { data } = await supabase
+      .from('contratos' as never)
+      .select('id, numero_contrato, orgao_contratante')
+      .eq('empresa_id', empresaAtiva!.id)
+      .order('numero_contrato' as never);
+    setContratos((data ?? []) as ContratoOpt[]);
   }
 
   async function loadProdutos() {
@@ -477,6 +494,7 @@ export default function PedidosOmie() {
       email_destinatario: p.email_destinatario ?? '',
       enviar_boleto: p.enviar_boleto,
       observacoes: p.observacoes ?? '', valor_desconto: fmtM(p.valor_desconto),
+      contrato_id: p.contrato_id ?? '',
     });
     const { data } = await supabase
       .from('pedido_itens' as never)
@@ -579,6 +597,7 @@ export default function PedidosOmie() {
       email_destinatario: form.email_destinatario || null,
       enviar_boleto: form.enviar_boleto,
       observacoes: form.observacoes || null,
+      contrato_id: form.contrato_id || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -616,6 +635,42 @@ export default function PedidosOmie() {
             local_estoque: i.local_estoque || null,
           })) as never
         );
+      }
+    }
+
+    // Sincroniza vínculo com contrato
+    if (pedidoId) {
+      if (form.contrato_id) {
+        const cpDescricao = itens.map(i => i.descricao).join('; ').slice(0, 255) || `Pedido Nº ${numero}`;
+        const cpQtd = itens.reduce((s, i) => s + (parseM(i.quantidade) || 1), 0) || 1;
+        const { data: existing } = await supabase
+          .from('contrato_pedidos')
+          .select('id')
+          .eq('pedido_id', pedidoId)
+          .maybeSingle();
+        if (existing) {
+          await supabase.from('contrato_pedidos').update({
+            contrato_id: form.contrato_id,
+            descricao: cpDescricao,
+            valor_total: valorTotal,
+            valor_unitario: valorTotal,
+          }).eq('id', (existing as any).id);
+        } else {
+          await supabase.from('contrato_pedidos').insert({
+            contrato_id: form.contrato_id,
+            pedido_id: pedidoId,
+            user_id: user?.id ?? null,
+            numero_pedido: String(numero),
+            descricao: cpDescricao,
+            quantidade: cpQtd,
+            valor_unitario: valorTotal,
+            valor_total: valorTotal,
+            status: 'pendente',
+          } as any);
+        }
+      } else if (editingId) {
+        // Vínculo removido manualmente: limpa o registro em contrato_pedidos
+        await supabase.from('contrato_pedidos').delete().eq('pedido_id', pedidoId);
       }
     }
 
@@ -1493,6 +1548,44 @@ export default function PedidosOmie() {
                   className="text-sm mt-1 w-40"
                 />
               </div>
+            </div>
+
+            {/* Vínculo com Contrato (opcional) */}
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-violet-50/60 dark:bg-violet-950/10 border border-violet-200/60 dark:border-violet-800/30">
+              <Link2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+              <span className="text-xs font-medium text-violet-700 dark:text-violet-400 whitespace-nowrap">Contrato vinculado:</span>
+              {form.contrato_id ? (
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 truncate">
+                    {contratos.find(c => c.id === form.contrato_id)?.numero_contrato ?? '—'}
+                    {contratos.find(c => c.id === form.contrato_id)?.orgao_contratante
+                      ? ` · ${contratos.find(c => c.id === form.contrato_id)!.orgao_contratante}`
+                      : ''}
+                  </span>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, contrato_id: '' }))}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                    title="Remover vínculo"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <Select value="" onValueChange={v => setForm(f => ({ ...f, contrato_id: v }))}>
+                  <SelectTrigger className="h-7 text-xs flex-1 max-w-sm border-violet-200 dark:border-violet-800 bg-white dark:bg-background">
+                    <SelectValue placeholder="Nenhum — selecione para vincular (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contratos.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum contrato cadastrado</div>
+                    ) : contratos.map(c => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.numero_contrato}{c.orgao_contratante ? ` — ${c.orgao_contratante}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Totals */}
