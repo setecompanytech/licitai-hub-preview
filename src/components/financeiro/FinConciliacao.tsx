@@ -10,6 +10,7 @@ import {
   useLancamentos,
   useUpsertLancamento,
   ajustarSaldoConta,
+  useEmpresaId,
 } from "@/hooks/useFinanceiro";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,7 +132,17 @@ export default function FinConciliacao() {
   } | null>(null);
   const [movsSelecionados, setMovsSelecionados] = useState<Set<string>>(new Set());
 
+  type AiClassif = {
+    tipo: string; natureza: string; descricao_sugerida: string;
+    categoria_id: string | null; categoria_nome: string | null;
+    pessoa_id: string | null; pessoa_nome: string | null;
+    confianca: number; justificativa: string;
+  };
+  const [aiClassifs, setAiClassifs] = useState<Record<string, AiClassif>>({});
+  const [classificandoIA, setClassificandoIA] = useState<Record<string, boolean>>({});
+
   // ─── Data ─────────────────────────────────────────────────────────────────
+  const empresaId = useEmpresaId();
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
   const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
@@ -451,6 +462,28 @@ export default function FinConciliacao() {
     qc.invalidateQueries({ queryKey: ["fin-resumo"] });
   }
 
+  async function classificarLancamento(m: any) {
+    if (!empresaId) return;
+    setClassificandoIA((prev) => ({ ...prev, [m.id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke("classificar-lancamento", {
+        body: {
+          empresa_id: empresaId,
+          descricao: m.descricao,
+          valor: m.valor,
+          data_movimento: m.data_movimento,
+          conta_id: m.conta_id,
+        },
+      });
+      if (error) throw error;
+      setAiClassifs((prev) => ({ ...prev, [m.id]: data as AiClassif }));
+    } catch {
+      toast.error("Falha na classificação com IA.");
+    } finally {
+      setClassificandoIA((prev) => ({ ...prev, [m.id]: false }));
+    }
+  }
+
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <Tabs defaultValue="conciliar" className="space-y-4">
@@ -562,8 +595,14 @@ export default function FinConciliacao() {
           const diferenca = saldoExtrato - saldoSistema;
           const emEquilibrio = Math.abs(diferenca) < 0.01;
           const pct = resumoGeral.total ? Math.round((resumoGeral.conciliados / resumoGeral.total) * 100) : 0;
+          const todosMovs = movimentos ?? [];
+          const movsPendentes = (todosMovs as any[]).filter((m) => !m.conciliado && !m.ignorado);
+          const valorPendente = movsPendentes.reduce((s: number, m: any) => s + Math.abs(Number(m.valor)), 0);
+          const entradasPendentes = movsPendentes.filter((m: any) => Number(m.valor) >= 0).reduce((s: number, m: any) => s + Number(m.valor), 0);
+          const saidasPendentes = movsPendentes.filter((m: any) => Number(m.valor) < 0).reduce((s: number, m: any) => s + Math.abs(Number(m.valor)), 0);
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {/* 1. Saldo extrato */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
@@ -579,6 +618,7 @@ export default function FinConciliacao() {
                 </div>
               </div>
 
+              {/* 2. Saldo sistema */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
@@ -590,7 +630,8 @@ export default function FinConciliacao() {
                 <div className="text-[11px] text-muted-foreground">Lançamentos da conta</div>
               </div>
 
-              <div className="rounded-lg border bg-card p-3 space-y-1">
+              {/* 3. Diferença */}
+              <div className={`rounded-lg border p-3 space-y-1 ${emEquilibrio ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
                   {emEquilibrio
@@ -603,9 +644,10 @@ export default function FinConciliacao() {
                 <div className="text-[11px] text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
               </div>
 
+              {/* 4. Conciliados / progresso */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Progresso</span>
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
                 <span className="text-base font-semibold tabular-nums">
@@ -614,6 +656,34 @@ export default function FinConciliacao() {
                 </span>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+
+              {/* 5. Pendentes */}
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
+                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+                <span className="text-base font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                  {resumoGeral.pendentes}
+                </span>
+                <div className="text-[11px] text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
+              </div>
+
+              {/* 6. Valor pendente de conciliar */}
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">A conciliar</span>
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <span className="text-base font-semibold tabular-nums text-foreground">
+                  {formatBRL(valorPendente)}
+                </span>
+                <div className="text-[11px] text-muted-foreground">
+                  <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(entradasPendentes)}</span>
+                  {" / "}
+                  <span className="text-rose-600 dark:text-rose-400">-{formatBRL(saidasPendentes)}</span>
                 </div>
               </div>
             </div>
@@ -1073,11 +1143,106 @@ export default function FinConciliacao() {
                         </>
                       ) : (
                         <>
+                          {/* Card de sugestão IA se já classificou */}
+                          {aiClassifs[m.id] ? (
+                            <div className="flex-1 min-w-0">
+                              <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    <span className="text-xs font-semibold text-primary">Sugestão IA</span>
+                                    <span className="text-[10px] text-muted-foreground bg-muted px-1 rounded tabular-nums">{aiClassifs[m.id].confianca}%</span>
+                                  </div>
+                                  <button
+                                    className="text-muted-foreground/50 hover:text-muted-foreground"
+                                    onClick={() => setAiClassifs((p) => { const n = { ...p }; delete n[m.id]; return n; })}
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                                <div className="text-xs space-y-0.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 h-4">
+                                      {aiClassifs[m.id].tipo === "a_pagar" ? "Conta a Pagar" : aiClassifs[m.id].tipo === "a_receber" ? "Conta a Receber" : "Movimentação"}
+                                    </Badge>
+                                    {aiClassifs[m.id].categoria_nome && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 border-blue-300 text-blue-600 dark:text-blue-400">
+                                        {aiClassifs[m.id].categoria_nome}
+                                      </Badge>
+                                    )}
+                                    {aiClassifs[m.id].pessoa_nome && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 border-violet-300 text-violet-600 dark:text-violet-400">
+                                        {aiClassifs[m.id].pessoa_nome}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-muted-foreground italic text-[10px] leading-snug">{aiClassifs[m.id].justificativa}</p>
+                                </div>
+                                <div className="flex gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[10px] px-2 flex-1"
+                                    onClick={() => {
+                                      const ai = aiClassifs[m.id];
+                                      setNovoLanc({
+                                        movimento_id: m.id,
+                                        initial: {
+                                          ...baseInitial,
+                                          tipo: ai.tipo,
+                                          natureza: ai.natureza,
+                                          descricao: ai.descricao_sugerida,
+                                          ...(ai.categoria_id ? { categoria_id: ai.categoria_id } : {}),
+                                          ...(ai.pessoa_id ? { pessoa_id: ai.pessoa_id } : {}),
+                                        },
+                                        defaultTipo: ai.tipo as "a_pagar" | "a_receber" | "movimentacao",
+                                      });
+                                    }}
+                                  >
+                                    <Plus className="w-3 h-3 mr-1" />Criar com IA
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-1.5">
+                                        <ChevronDown className="w-3 h-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-56">
+                                      <DropdownMenuItem onClick={() => setDialogManual({ movimento_id: m.id, valor: valorAbs, natureza: naturezaSugerida })}>
+                                        <Link2 className="w-3.5 h-3.5 mr-2" />Vincular existente
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-muted-foreground" onClick={() => {
+                                        const motivo = window.prompt("Motivo (opcional):", "");
+                                        if (motivo === null) return;
+                                        ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                      }}>
+                                        <Ban className="w-3.5 h-3.5 mr-2" />Ignorar
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                          <>
                           {movSugs.length > 0 && (
                             <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">
                               <Sparkles className="w-3 h-3 mr-1" />{movSugs.length} sugestão
                             </Badge>
                           )}
+                          {/* Botão Analisar com IA */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-primary hover:bg-primary/10 shrink-0"
+                            onClick={() => classificarLancamento(m)}
+                            disabled={classificandoIA[m.id]}
+                          >
+                            {classificandoIA[m.id]
+                              ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              : <Sparkles className="w-3 h-3 mr-1" />}
+                            {classificandoIA[m.id] ? "Analisando…" : "IA"}
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" className="h-7 text-xs ml-auto">
@@ -1142,6 +1307,8 @@ export default function FinConciliacao() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
+                        </>
+                          )}
                         </>
                       )}
                     </div>
