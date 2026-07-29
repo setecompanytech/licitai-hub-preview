@@ -208,6 +208,46 @@ export default function FinConciliacao() {
     return m;
   }, [lancamentosTodos]);
 
+  const saldoExtrato = useMemo(() => {
+    return (movimentos ?? []).reduce((s: number, m: any) => s + Number(m.valor), 0);
+  }, [movimentos]);
+
+  const saldoSistema = useMemo(() => {
+    if (!contaSelecionada) return 0;
+    return (lancamentosTodos ?? [])
+      .filter((l: any) => l.conta_id === contaSelecionada && l.status !== "cancelado")
+      .reduce((s: number, l: any) => {
+        const val = Number(l.valor);
+        return l.natureza === "receita" ? s + val : s - val;
+      }, 0);
+  }, [lancamentosTodos, contaSelecionada]);
+
+  const movimentosAgrupados = useMemo(() => {
+    const grupos = new Map<string, any[]>();
+    for (const m of movimentosFiltrados) {
+      const date = (m as any).data_movimento?.slice(0, 10) ?? "sem-data";
+      if (!grupos.has(date)) grupos.set(date, []);
+      grupos.get(date)!.push(m);
+    }
+    return Array.from(grupos.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, movs]) => ({
+        date,
+        movimentos: movs,
+        creditos: movs.filter((m: any) => Number(m.valor) > 0).reduce((s: number, m: any) => s + Number(m.valor), 0),
+        debitos: movs.filter((m: any) => Number(m.valor) < 0).reduce((s: number, m: any) => s + Math.abs(Number(m.valor)), 0),
+      }));
+  }, [movimentosFiltrados]);
+
+  const movSugestoesMap = useMemo(() => {
+    const m = new Map<string, MatchSugestao[]>();
+    for (const s of sugestoes) {
+      if (!m.has(s.movimento_id)) m.set(s.movimento_id, []);
+      m.get(s.movimento_id)!.push(s);
+    }
+    return m;
+  }, [sugestoes]);
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -517,23 +557,68 @@ export default function FinConciliacao() {
           </CardContent>
         </Card>
 
-        {/* ── Stats strip ── */}
-        {(movimentos ?? []).length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-            <StatCard label="Total" value={String(resumoGeral.total)} icon={Wallet} tone="default" />
-            <StatCard label="Pendentes" value={String(resumoGeral.pendentes)} icon={Clock} tone="warning" />
-            <StatCard label="Conciliados" value={String(resumoGeral.conciliados)} icon={CheckCircle2} tone="success" />
-            <StatCard label="Ignorados" value={String(resumoGeral.ignorados)} icon={XCircle} tone="muted" />
-            <StatCard label="Entradas" value={formatBRL(resumoMovimentos.entradas)} icon={ArrowUp} tone="success" />
-            <StatCard label="Saídas" value={formatBRL(resumoMovimentos.saidas)} icon={ArrowDown} tone="danger" />
-            <StatCard
-              label="Saldo"
-              value={formatBRL(resumoMovimentos.saldo)}
-              icon={resumoMovimentos.saldo >= 0 ? TrendingUp : TrendingDown}
-              tone={resumoMovimentos.saldo >= 0 ? "success" : "danger"}
-            />
-          </div>
-        )}
+        {/* ── Resumo de conciliação ── */}
+        {(movimentos ?? []).length > 0 && (() => {
+          const diferenca = saldoExtrato - saldoSistema;
+          const emEquilibrio = Math.abs(diferenca) < 0.01;
+          const pct = resumoGeral.total ? Math.round((resumoGeral.conciliados / resumoGeral.total) * 100) : 0;
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
+                  <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <span className={`text-base font-semibold tabular-nums ${saldoExtrato >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {formatBRL(saldoExtrato)}
+                </span>
+                <div className="text-[11px] text-muted-foreground">
+                  <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(resumoMovimentos.entradas)}</span>
+                  {" / "}
+                  <span className="text-rose-600 dark:text-rose-400">-{formatBRL(resumoMovimentos.saidas)}</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
+                  <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <span className={`text-base font-semibold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400"}`}>
+                  {formatBRL(saldoSistema)}
+                </span>
+                <div className="text-[11px] text-muted-foreground">Lançamentos da conta</div>
+              </div>
+
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
+                  {emEquilibrio
+                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    : <XCircle className="w-3.5 h-3.5 text-amber-500" />}
+                </div>
+                <span className={`text-base font-semibold tabular-nums ${emEquilibrio ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  {emEquilibrio ? "Em dia" : formatBRL(Math.abs(diferenca))}
+                </span>
+                <div className="text-[11px] text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
+              </div>
+
+              <div className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Progresso</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                </div>
+                <span className="text-base font-semibold tabular-nums">
+                  {resumoGeral.conciliados}
+                  <span className="text-sm text-muted-foreground font-normal"> / {resumoGeral.total}</span>
+                </span>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Sugestões ── */}
         <Card>
@@ -817,258 +902,255 @@ export default function FinConciliacao() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* ── Movimentos do extrato ── */}
-        <Card>
-          <CardHeader className="py-3 px-5 border-b">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <CardTitle className="text-sm font-semibold">Movimentos do extrato</CardTitle>
+        {/* ── Extrato bancário — layout padrão de mercado ── */}
+        <div className="rounded-lg border overflow-hidden">
+          {/* Cabeçalho split */}
+          <div className="grid grid-cols-[1fr_auto_1fr] bg-muted/30 border-b">
+            <div className="px-5 py-2.5 flex items-center gap-3">
+              <Checkbox
+                checked={
+                  movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
+                  movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).every((m: any) => movsSelecionados.has(m.id))
+                }
+                onCheckedChange={(v) => {
+                  const pendentes = movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado);
+                  setMovsSelecionados(v ? new Set(pendentes.map((m: any) => m.id)) : new Set());
+                }}
+                aria-label="Selecionar todos"
+                disabled={movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
+              />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Extrato bancário</span>
+            </div>
+            <div className="w-px bg-border" />
+            <div className="px-5 py-2.5 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lançamento do sistema</span>
               {movsSelecionados.size > 0 && (
                 <Button
                   size="sm"
-                  className="h-8"
+                  className="h-7 text-xs"
                   onClick={efetivarSelecionados}
                   disabled={upsertLancamento.isPending || conciliarManual.isPending}
                 >
                   {(upsertLancamento.isPending || conciliarManual.isPending)
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
-                  Efetivar e conciliar ({movsSelecionados.size})
+                    ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    : <CheckCircle2 className="w-3 h-3 mr-1.5" />}
+                  Efetivar ({movsSelecionados.size})
                 </Button>
               )}
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="text-xs bg-muted/30">
-                    <TableHead className="w-[44px] pl-5">
-                      <Checkbox
-                        checked={
-                          movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
-                          movimentosFiltrados
-                            .filter((m: any) => !m.conciliado && !m.ignorado)
-                            .every((m: any) => movsSelecionados.has(m.id))
-                        }
-                        onCheckedChange={(v) => {
-                          const pendentes = movimentosFiltrados.filter(
-                            (m: any) => !m.conciliado && !m.ignorado
-                          );
-                          setMovsSelecionados(v ? new Set(pendentes.map((m: any) => m.id)) : new Set());
-                        }}
-                        aria-label="Selecionar todos"
-                        disabled={movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
-                      />
-                    </TableHead>
-                    <TableHead className="w-[90px]">Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="hidden md:table-cell w-[140px]">Conta</TableHead>
-                    <TableHead className="text-right w-[130px]">Valor</TableHead>
-                    <TableHead className="w-[120px]">Status</TableHead>
-                    <TableHead className="w-[120px] text-right pr-5">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingMov && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-14 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando movimentos…
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!loadingMov && movimentosFiltrados.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-14 text-muted-foreground">
-                        {contaSelecionada
-                          ? "Nenhum movimento. Importe um arquivo OFX ou CSV para começar."
-                          : "Selecione uma conta bancária para visualizar os movimentos."}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {movimentosFiltrados.map((m: any) => {
-                    const valorAbs = Math.abs(Number(m.valor));
-                    const isCredito = Number(m.valor) >= 0;
-                    const naturezaSugerida: "receita" | "despesa" = isCredito ? "receita" : "despesa";
-                    const baseInitial = {
-                      descricao: m.descricao || "Movimento bancário",
-                      valor: valorAbs,
-                      data_competencia: m.data_movimento,
-                      data_vencimento: m.data_movimento,
-                      data_realizado: m.data_movimento,
-                      conta_id: m.conta_id,
-                      status: "realizado" as const,
-                    };
-                    return (
-                      <TableRow
-                        key={m.id}
-                        className={`border-l-2 ${isCredito ? "border-l-emerald-400" : "border-l-rose-400"} ${m.ignorado ? "opacity-50" : ""} hover:bg-muted/20`}
-                      >
-                        <TableCell className="pl-4">
-                          {!m.conciliado && !m.ignorado && (
-                            <Checkbox
-                              checked={movsSelecionados.has(m.id)}
-                              onCheckedChange={(v) => {
-                                setMovsSelecionados((curr) => {
-                                  const next = new Set(curr);
-                                  if (v) next.add(m.id);
-                                  else next.delete(m.id);
-                                  return next;
-                                });
-                              }}
-                              aria-label="Selecionar movimento"
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDate(m.data_movimento)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-sm truncate max-w-[280px]">{m.descricao}</div>
-                          {m.descricao_extra && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[280px]">
-                              {m.descricao_extra}
-                            </div>
-                          )}
-                          {m.lancamento && (
-                            <div className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                              <Link2 className="w-3 h-3 shrink-0" />
-                              <span className="truncate max-w-[240px]">{m.lancamento.descricao}</span>
-                            </div>
-                          )}
-                          {m.ignorado && m.ignorado_motivo && (
-                            <div className="text-xs text-muted-foreground italic mt-0.5">
-                              Ignorado: {m.ignorado_motivo}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                          {m.conta?.nome ?? "—"}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right font-mono font-semibold text-sm whitespace-nowrap tabular-nums ${
-                            isCredito
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400"
-                          }`}
-                        >
-                          {isCredito ? "+" : ""}{formatBRL(Number(m.valor))}
-                        </TableCell>
-                        <TableCell>
-                          {m.ignorado ? (
-                            <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
-                              ignorado
-                            </Badge>
-                          ) : m.conciliado ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                              <CheckCircle2 className="w-3.5 h-3.5" />conciliado
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="w-3.5 h-3.5" />pendente
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right pr-4 whitespace-nowrap">
-                          {m.conciliado && m.lancamento_id ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs text-muted-foreground"
-                              onClick={() =>
-                                desfazer.mutate({ movimento_id: m.id, lancamento_id: m.lancamento_id! })
-                              }
-                            >
-                              <Unlink className="w-3 h-3 mr-1" />Desfazer
-                            </Button>
-                          ) : m.ignorado ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs text-muted-foreground"
-                              onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
-                            >
-                              <RotateCcw className="w-3 h-3 mr-1" />Restaurar
-                            </Button>
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline" className="h-7 text-xs">
-                                  <Link2 className="w-3 h-3 mr-1" />
-                                  Tratar
-                                  <ChevronDown className="w-3 h-3 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                  {isCredito ? "+" : ""}{formatBRL(Number(m.valor))} · {formatDate(m.data_movimento)}
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setDialogManual({ movimento_id: m.id, valor: valorAbs, natureza: naturezaSugerida })
-                                  }
-                                >
-                                  <Link2 className="w-3.5 h-3.5 mr-2" />
-                                  Vincular a lançamento existente
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setNovoLanc({
-                                      movimento_id: m.id,
-                                      initial: { ...baseInitial, tipo: "a_pagar", natureza: "despesa" },
-                                      defaultTipo: "a_pagar",
-                                    })
-                                  }
-                                >
-                                  <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a pagar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setNovoLanc({
-                                      movimento_id: m.id,
-                                      initial: { ...baseInitial, tipo: "a_receber", natureza: "receita" },
-                                      defaultTipo: "a_receber",
-                                    })
-                                  }
-                                >
-                                  <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a receber
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setNovoLanc({
-                                      movimento_id: m.id,
-                                      initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" },
-                                      defaultTipo: "movimentacao",
-                                    })
-                                  }
-                                >
-                                  <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />Transferência / Movimentação
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-muted-foreground"
-                                  onClick={() => {
-                                    const motivo = window.prompt("Motivo (opcional) para ignorar este movimento:", "");
-                                    if (motivo === null) return;
-                                    ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
-                                  }}
-                                >
-                                  <Ban className="w-3.5 h-3.5 mr-2" />Ignorar / desconsiderar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+          {/* Estado vazio / loading */}
+          {loadingMov && (
+            <div className="py-14 text-center text-muted-foreground text-sm">
+              <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando movimentos…
             </div>
-          </CardContent>
-        </Card>
+          )}
+          {!loadingMov && movimentosFiltrados.length === 0 && (
+            <div className="py-14 text-center text-muted-foreground text-sm">
+              {contaSelecionada
+                ? "Nenhum movimento. Importe um arquivo OFX ou CSV para começar."
+                : "Selecione uma conta bancária para visualizar os movimentos."}
+            </div>
+          )}
+
+          {/* Grupos por data */}
+          {!loadingMov && movimentosAgrupados.map((group) => (
+            <div key={group.date}>
+              {/* Separador de data */}
+              <div className="flex items-center gap-3 px-5 py-1.5 bg-muted/20 border-b border-t text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{formatDate(group.date)}</span>
+                <div className="flex-1 h-px bg-border/60" />
+                {group.creditos > 0 && (
+                  <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">+{formatBRL(group.creditos)}</span>
+                )}
+                {group.debitos > 0 && (
+                  <span className="text-rose-600 dark:text-rose-400 tabular-nums">-{formatBRL(group.debitos)}</span>
+                )}
+                <span className="text-muted-foreground/50">{group.movimentos.length} mov.</span>
+              </div>
+
+              {/* Movimentos do grupo */}
+              {group.movimentos.map((m: any) => {
+                const isCredito = Number(m.valor) >= 0;
+                const valorAbs = Math.abs(Number(m.valor));
+                const naturezaSugerida: "receita" | "despesa" = isCredito ? "receita" : "despesa";
+                const baseInitial = {
+                  descricao: m.descricao || "Movimento bancário",
+                  valor: valorAbs,
+                  data_competencia: m.data_movimento,
+                  data_vencimento: m.data_movimento,
+                  data_realizado: m.data_movimento,
+                  conta_id: m.conta_id,
+                  status: "realizado" as const,
+                };
+                const movSugs = movSugestoesMap.get(m.id) ?? [];
+                const borderColor = m.conciliado
+                  ? "border-l-emerald-400"
+                  : m.ignorado
+                  ? "border-l-muted-foreground/20"
+                  : movSugs.length > 0
+                  ? "border-l-primary"
+                  : "border-l-amber-400";
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`grid grid-cols-[1fr_auto_1fr] border-b border-l-2 hover:bg-muted/10 transition-colors ${borderColor} ${m.ignorado ? "opacity-50" : ""}`}
+                  >
+                    {/* ESQUERDA: Extrato */}
+                    <div className="flex items-start gap-3 px-4 py-3">
+                      {!m.conciliado && !m.ignorado ? (
+                        <Checkbox
+                          checked={movsSelecionados.has(m.id)}
+                          onCheckedChange={(v) => {
+                            setMovsSelecionados((curr) => {
+                              const next = new Set(curr);
+                              v ? next.add(m.id) : next.delete(m.id);
+                              return next;
+                            });
+                          }}
+                          aria-label="Selecionar movimento"
+                          className="mt-0.5 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-4 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-medium truncate">{m.descricao}</span>
+                          <span className={`text-sm font-semibold tabular-nums shrink-0 ${isCredito ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                            {isCredito ? "+" : ""}{formatBRL(Number(m.valor))}
+                          </span>
+                        </div>
+                        {m.descricao_extra && (
+                          <div className="text-xs text-muted-foreground truncate">{m.descricao_extra}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-0.5">{m.conta?.nome ?? "—"}</div>
+                      </div>
+                    </div>
+
+                    {/* DIVISOR VERTICAL */}
+                    <div className="w-px bg-border/70 my-2" />
+
+                    {/* DIREITA: Sistema */}
+                    <div className="flex items-center gap-2 px-4 py-3 min-w-0">
+                      {m.conciliado && m.lancamento ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{m.lancamento.descricao}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {statusLabel[m.lancamento.status] ?? m.lancamento.status}
+                              {m.lancamento.data_vencimento && ` · Venc: ${formatDate(m.lancamento.data_vencimento)}`}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-muted-foreground shrink-0"
+                            onClick={() => desfazer.mutate({ movimento_id: m.id, lancamento_id: m.lancamento_id! })}
+                          >
+                            <Unlink className="w-3 h-3 mr-1" />Desfazer
+                          </Button>
+                        </>
+                      ) : m.ignorado ? (
+                        <>
+                          <Ban className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs text-muted-foreground italic">
+                              {m.ignorado_motivo || "Ignorado"}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-muted-foreground shrink-0"
+                            onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
+                          >
+                            <RotateCcw className="w-3 h-3 mr-1" />Restaurar
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {movSugs.length > 0 && (
+                            <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">
+                              <Sparkles className="w-3 h-3 mr-1" />{movSugs.length} sugestão
+                            </Badge>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-7 text-xs ml-auto">
+                                <Link2 className="w-3 h-3 mr-1" />Tratar<ChevronDown className="w-3 h-3 ml-1" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-60">
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                {isCredito ? "+" : ""}{formatBRL(Number(m.valor))} · {formatDate(m.data_movimento)}
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {movSugs.map((s) => {
+                                const lancSug = lancMap.get(s.lancamento_id);
+                                return lancSug ? (
+                                  <DropdownMenuItem
+                                    key={s.lancamento_id}
+                                    onClick={() =>
+                                      conciliarManual.mutate(
+                                        { movimento_id: m.id, lancamento_id: s.lancamento_id },
+                                        { onSuccess: () => setSugestoes((curr) => curr.filter((x) => x.movimento_id !== m.id)) }
+                                      )
+                                    }
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 text-primary mr-2 shrink-0" />
+                                    <span className="truncate flex-1">{lancSug.descricao}</span>
+                                    <span className="ml-2 text-xs text-muted-foreground tabular-nums">{s.score}</span>
+                                  </DropdownMenuItem>
+                                ) : null;
+                              })}
+                              {movSugs.length > 0 && <DropdownMenuSeparator />}
+                              <DropdownMenuItem
+                                onClick={() => setDialogManual({ movimento_id: m.id, valor: valorAbs, natureza: naturezaSugerida })}
+                              >
+                                <Link2 className="w-3.5 h-3.5 mr-2" />Vincular a lançamento existente
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "a_pagar", natureza: "despesa" }, defaultTipo: "a_pagar" })}
+                              >
+                                <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a pagar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "a_receber", natureza: "receita" }, defaultTipo: "a_receber" })}
+                              >
+                                <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a receber
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" }, defaultTipo: "movimentacao" })}
+                              >
+                                <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />Transferência / Movimentação
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-muted-foreground"
+                                onClick={() => {
+                                  const motivo = window.prompt("Motivo (opcional) para ignorar este movimento:", "");
+                                  if (motivo === null) return;
+                                  ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                }}
+                              >
+                                <Ban className="w-3.5 h-3.5 mr-2" />Ignorar / desconsiderar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
 
         {/* ── Dialogs ── */}
         <DialogVincularManual
