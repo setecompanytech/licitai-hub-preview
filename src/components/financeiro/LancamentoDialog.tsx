@@ -272,6 +272,41 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       conta_destino_id: isTransferencia ? (contaDestinoId || null) : null,
     };
 
+    // ── Transferência entre contas: cria dois lançamentos espelhados ──────────
+    if (isTransferencia && !editando) {
+      const loteId = crypto.randomUUID();
+      const sharedBase = {
+        ...baseBody,
+        tipo: "transferencia" as const,
+        origem_lote_id: loteId,
+        // conta_destino_id e natureza serão sobrepostos abaixo por lançamento
+      };
+
+      // Lançamento A: saída da conta de origem
+      const savedA = await upsert.mutateAsync({
+        ...sharedBase,
+        conta_id: contaId || null,
+        natureza: "despesa" as const,
+        conta_destino_id: contaDestinoId || null,
+      } as any);
+
+      // Lançamento B: entrada na conta de destino
+      await upsert.mutateAsync({
+        ...sharedBase,
+        conta_id: contaDestinoId || null,
+        natureza: "receita" as const,
+        conta_destino_id: contaId || null,
+      } as any);
+
+      // Ajusta saldos das duas contas (a transferência já ocorreu no extrato)
+      if (contaId) await ajustarSaldoConta(contaId, -valor);
+      if (contaDestinoId) await ajustarSaldoConta(contaDestinoId, valor);
+
+      if (savedA && onSaved) onSaved(savedA as unknown as Lancamento);
+      onOpenChange(false);
+      return;
+    }
+
     if (parcelar && podeParcelar && qtdParcelas >= 2 && dataVencimento) {
       await gerarParcelas.mutateAsync({
         ...baseBody,

@@ -1493,7 +1493,7 @@ export default function FinConciliacao() {
                                 <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a receber
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "transferencia", natureza: "movimentacao", conta_id: m.conta_id }, defaultTipo: "transferencia" })}
+                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "transferencia", natureza: "movimentacao", conta_id: m.conta_id, status: "conciliado" }, defaultTipo: "transferencia" })}
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />Transferência / Movimentação
                               </DropdownMenuItem>
