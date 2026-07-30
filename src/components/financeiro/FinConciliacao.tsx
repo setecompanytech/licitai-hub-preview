@@ -135,7 +135,7 @@ export default function FinConciliacao() {
   const [novoLanc, setNovoLanc] = useState<{
     movimento_id: string;
     initial: Record<string, unknown>;
-    defaultTipo: "a_pagar" | "a_receber" | "movimentacao";
+    defaultTipo: "a_pagar" | "a_receber" | "movimentacao" | "transferencia";
   } | null>(null);
   const [movsSelecionados, setMovsSelecionados] = useState<Set<string>>(new Set());
 
@@ -1493,7 +1493,7 @@ export default function FinConciliacao() {
                                 <Plus className="w-3.5 h-3.5 mr-2" />Criar conta a receber
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "movimentacao", natureza: "movimentacao" }, defaultTipo: "movimentacao" })}
+                                onClick={() => setNovoLanc({ movimento_id: m.id, initial: { ...baseInitial, tipo: "transferencia", natureza: "movimentacao", conta_id: m.conta_id }, defaultTipo: "transferencia" })}
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5 mr-2" />Transferência / Movimentação
                               </DropdownMenuItem>

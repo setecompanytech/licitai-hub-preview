@@ -77,7 +77,7 @@ export default function FinLancamentos() {
   );
 
   const lancsAtivos = useMemo(
-    () => lancs.filter((l) => l.origem_tipo !== "ignorado_conciliacao"),
+    () => lancs.filter((l) => l.origem_tipo !== "ignorado_conciliacao" && l.tipo !== "transferencia"),
     [lancs]
   );
 
@@ -381,6 +381,7 @@ export default function FinLancamentos() {
                 ) : (
                   sortedLancs.map((l) => {
                     const isIgnorado = l.origem_tipo === "ignorado_conciliacao";
+                    const isTransferencia = l.tipo === "transferencia";
                     const isReceita = l.natureza === "receita";
                     const vencDiferente =
                       l.data_vencimento && l.data_vencimento !== l.data_competencia;
@@ -415,6 +416,11 @@ export default function FinLancamentos() {
                           {isIgnorado && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30 mt-0.5">
                               ignorado no somatório
+                            </Badge>
+                          )}
+                          {isTransferencia && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-700 mt-0.5">
+                              transferência entre contas
                             </Badge>
                           )}
                           {(l as any).parcela_numero && (l as any).parcela_total && (

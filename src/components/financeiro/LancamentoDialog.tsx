@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle } from "lucide-react";
@@ -140,6 +141,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [diaFixo, setDiaFixo] = useState<string>("");
   const [simulacaoEdits, setSimulacaoEdits] = useState<Record<number, { vencimento?: string; valor?: number }>>({});
 
+  // Transferência entre contas
+  const [contaDestinoId, setContaDestinoId] = useState<string>("");
+
   // Departamento e projeto
   const [departamento, setDepartamento] = useState<string>("");
   const [projetoId, setProjetoId] = useState<string>("");
@@ -174,6 +178,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     setDepartamento((initial as any)?.departamento ?? "");
     setProjetoId((initial as any)?.projeto_id ?? "");
     setVendedorId((initial as any)?.vendedor_responsavel_id ?? "");
+    setContaDestinoId((initial as any)?.conta_destino_id ?? "");
     setParcelar(false);
     setQtdParcelas(2);
     setModoParc("dividir");
@@ -223,6 +228,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const calcDelta = (nat: string, v: number) => (nat === "receita" ? v : -v);
 
+  const isTransferencia = tipo === "transferencia";
+
   const handleSubmit = async () => {
     if (!descricao.trim()) {
       toast.error("Informe uma descrição para o lançamento.");
@@ -230,6 +237,10 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     }
     if (!valor || valor <= 0) {
       toast.error("Informe um valor maior que zero.");
+      return;
+    }
+    if (isTransferencia && !contaDestinoId) {
+      toast.error("Informe a conta de destino da transferência.");
       return;
     }
     const baseBody: any = {
@@ -258,6 +269,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       departamento: departamento || null,
       projeto_id: projetoId || null,
       vendedor_responsavel_id: vendedorId || null,
+      conta_destino_id: isTransferencia ? (contaDestinoId || null) : null,
     };
 
     if (parcelar && podeParcelar && qtdParcelas >= 2 && dataVencimento) {
@@ -413,23 +425,25 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
               </div>
 
               {/* Valor + Conta + Forma de pagamento */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className={cn("grid gap-3", isTransferencia ? "grid-cols-2" : "grid-cols-3")}>
                 <div className="space-y-1.5">
                   <Label className={valor <= 0 ? "text-destructive" : ""}>Valor *</Label>
                   <MoneyInput value={valor} onValueChange={setValor} className={valor <= 0 ? "border-destructive focus-visible:ring-destructive" : ""} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Conta</Label>
-                  <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Sem conta —</SelectItem>
-                      {contas.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!isTransferencia && (
+                  <div className="space-y-1.5">
+                    <Label>Conta</Label>
+                    <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Sem conta —</SelectItem>
+                        {contas.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label>Forma de pagamento</Label>
                   <Select value={formaPagamento || "none"} onValueChange={(v) => setFormaPagamento(v === "none" ? "" : v)}>
@@ -463,6 +477,73 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
                   </div>
                 </div>
+              </div>
+
+              {/* Transferência entre contas */}
+              <div className={cn(
+                "rounded-lg border p-3 space-y-3 transition-colors",
+                isTransferencia ? "border-primary/40 bg-primary/5" : "border-border bg-muted/20"
+              )}>
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    id="chk-transferencia"
+                    checked={isTransferencia}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setTipo("transferencia");
+                        setNatureza("movimentacao");
+                      } else {
+                        setTipo("movimentacao");
+                        setContaDestinoId("");
+                      }
+                    }}
+                  />
+                  <label htmlFor="chk-transferencia" className="text-sm font-medium cursor-pointer select-none flex items-center gap-1.5">
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
+                    Transferência entre contas
+                  </label>
+                  {isTransferencia && (
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      Não soma nos totais de receita/despesa
+                    </span>
+                  )}
+                </div>
+
+                {isTransferencia && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Conta de origem</Label>
+                      <Select value={contaId || "none"} onValueChange={(v) => setContaId(v === "none" ? "" : v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Sem conta —</SelectItem>
+                          {contas.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-primary font-medium">Conta de destino *</Label>
+                      <Select
+                        value={contaDestinoId || "none"}
+                        onValueChange={(v) => setContaDestinoId(v === "none" ? "" : v)}
+                      >
+                        <SelectTrigger className={cn("h-8 text-xs", !contaDestinoId && "border-primary/50")}>
+                          <SelectValue placeholder="Selecione a conta destino" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Selecione —</SelectItem>
+                          {contas
+                            .filter((c) => c.id !== contaId)
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Classificação */}
