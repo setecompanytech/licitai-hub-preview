@@ -76,16 +76,18 @@ export default function FinLancamentos() {
     [filtro.contaId, contas]
   );
 
+  const hasContaFiltro = !!(filtro.contaId && filtro.contaId !== "todos");
+
   const lancsAtivos = useMemo(
     () =>
       lancs.filter((l) => {
         if (l.origem_tipo === "ignorado_conciliacao") return false;
         // Transferências: excluir dos totais globais (cancelam entre si),
         // mas incluir quando há filtro por conta específica (é fluxo real daquela conta)
-        if (l.tipo === "transferencia" && !contaSelecionada) return false;
+        if (l.tipo === "transferencia" && !hasContaFiltro) return false;
         return true;
       }),
-    [lancs, contaSelecionada]
+    [lancs, hasContaFiltro]
   );
 
   const sortedLancs = useMemo(() => {
@@ -293,14 +295,14 @@ export default function FinLancamentos() {
         <StatCard
           label="Entradas"
           value={formatBRL(totalEntradas)}
-          sub={`${lancs.filter((l) => l.natureza === "receita").length} lançamentos`}
+          sub={`${lancsAtivos.filter((l) => l.natureza === "receita").length} lançamentos`}
           icon={ArrowUpRight}
           tone="success"
         />
         <StatCard
           label="Saídas"
           value={formatBRL(totalSaidas)}
-          sub={`${lancs.filter((l) => l.natureza !== "receita").length} lançamentos`}
+          sub={`${lancsAtivos.filter((l) => l.natureza !== "receita").length} lançamentos`}
           icon={ArrowDownRight}
           tone="danger"
         />
