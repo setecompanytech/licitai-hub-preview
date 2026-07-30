@@ -77,8 +77,15 @@ export default function FinLancamentos() {
   );
 
   const lancsAtivos = useMemo(
-    () => lancs.filter((l) => l.origem_tipo !== "ignorado_conciliacao" && l.tipo !== "transferencia"),
-    [lancs]
+    () =>
+      lancs.filter((l) => {
+        if (l.origem_tipo === "ignorado_conciliacao") return false;
+        // Transferências: excluir dos totais globais (cancelam entre si),
+        // mas incluir quando há filtro por conta específica (é fluxo real daquela conta)
+        if (l.tipo === "transferencia" && !contaSelecionada) return false;
+        return true;
+      }),
+    [lancs, contaSelecionada]
   );
 
   const sortedLancs = useMemo(() => {
