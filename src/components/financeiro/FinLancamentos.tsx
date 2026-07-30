@@ -518,10 +518,24 @@ export default function FinLancamentos() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDel?.descricao
-                ? `"${confirmDel.descricao}" será removido permanentemente.`
-                : "Esta ação não pode ser desfeita."}
+            <AlertDialogDescription asChild>
+              <div className="space-y-1.5 text-sm">
+                {confirmDel?.descricao && (
+                  <p className="font-medium text-foreground">"{confirmDel.descricao}"</p>
+                )}
+                {confirmDel?.tipo === "transferencia" ? (
+                  <p>
+                    Este é um lançamento de <strong>transferência entre contas</strong>. Ambos os lançamentos do par
+                    (saída e entrada) serão excluídos e os saldos revertidos. Os movimentos do extrato voltarão para a
+                    fila de conciliação.
+                  </p>
+                ) : (
+                  <p>
+                    O lançamento será removido permanentemente. Se estava conciliado, o movimento do extrato voltará
+                    para a fila de conciliação.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -484,18 +484,63 @@ export function useDeleteLancamento() {
   return useMutation({
     mutationFn: async (payload: string | { id: string; contaId?: string | null; valor?: number; natureza?: string | null; status?: string | null }) => {
       const id = typeof payload === "string" ? payload : payload.id;
-      // Reverte saldo antes de deletar se o lancamento estava pago/conciliado
-      if (typeof payload !== "string" && payload.contaId && isStatusPago(payload.status)) {
-        const delta = payload.natureza === "receita" ? -Number(payload.valor ?? 0) : Number(payload.valor ?? 0);
-        await ajustarSaldoConta(payload.contaId, delta);
+
+      // Busca dados completos do lançamento para decidir como proceder
+      const { data: lanc } = await supabase
+        .from("financeiro_lancamentos")
+        .select("id, conta_id, valor, natureza, status, tipo, origem_lote_id")
+        .eq("id", id)
+        .single();
+
+      const idsToDelete: string[] = [id];
+
+      // Para transferências entre contas: encontra e inclui o lançamento espelhado
+      if (lanc?.tipo === "transferencia" && (lanc as any)?.origem_lote_id) {
+        const { data: pares } = await supabase
+          .from("financeiro_lancamentos")
+          .select("id, conta_id, valor, natureza, status")
+          .eq("origem_lote_id", (lanc as any).origem_lote_id)
+          .neq("id", id);
+        for (const par of pares ?? []) {
+          idsToDelete.push(par.id);
+          // Reverte saldo do par
+          if (isStatusPago(par.status) && par.conta_id) {
+            const d = par.natureza === "receita" ? -Number(par.valor) : Number(par.valor);
+            await ajustarSaldoConta(par.conta_id, d);
+          }
+        }
       }
-      const { error } = await supabase.from("financeiro_lancamentos").delete().eq("id", id);
+
+      // Reverte saldo do lançamento principal
+      if (lanc && isStatusPago(lanc.status) && lanc.conta_id) {
+        const delta = lanc.natureza === "receita" ? -Number(lanc.valor) : Number(lanc.valor);
+        await ajustarSaldoConta(lanc.conta_id, delta);
+      }
+
+      // Remove FKs: desconcilia movimentos do extrato e apaga conciliações
+      for (const lid of idsToDelete) {
+        await supabase
+          .from("financeiro_extrato_movimentos")
+          .update({ lancamento_id: null, conciliado: false } as never)
+          .eq("lancamento_id", lid);
+        await supabase
+          .from("financeiro_conciliacoes")
+          .delete()
+          .eq("lancamento_id", lid);
+      }
+
+      // Apaga o(s) lançamento(s)
+      const { error } = await supabase
+        .from("financeiro_lancamentos")
+        .delete()
+        .in("id", idsToDelete);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo"] });
       qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
       toast.success("Lançamento removido.");
     },
     onError: (e: Error) => toast.error(e.message),
