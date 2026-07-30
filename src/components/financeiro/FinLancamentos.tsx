@@ -66,19 +66,38 @@ export default function FinLancamentos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Lancamento | null>(null);
   const [confirmDel, setConfirmDel] = useState<Lancamento | null>(null);
+  const [sort, setSort] = useState<{ campo: "data_competencia" | "data_vencimento"; dir: "asc" | "desc" }>({
+    campo: "data_competencia",
+    dir: "desc",
+  });
 
   const contaSelecionada = useMemo(
     () => (filtro.contaId && filtro.contaId !== "todos" ? contas.find((c) => c.id === filtro.contaId) : null),
     [filtro.contaId, contas]
   );
 
-  const totalEntradas = useMemo(
-    () => lancs.filter((l) => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0),
+  const lancsAtivos = useMemo(
+    () => lancs.filter((l) => l.origem_tipo !== "ignorado_conciliacao"),
     [lancs]
   );
+
+  const sortedLancs = useMemo(() => {
+    const lista = [...lancs];
+    lista.sort((a, b) => {
+      const av = (a[sort.campo] as string | null) ?? "";
+      const bv = (b[sort.campo] as string | null) ?? "";
+      return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    return lista;
+  }, [lancs, sort]);
+
+  const totalEntradas = useMemo(
+    () => lancsAtivos.filter((l) => l.natureza === "receita").reduce((s, l) => s + Number(l.valor), 0),
+    [lancsAtivos]
+  );
   const totalSaidas = useMemo(
-    () => lancs.filter((l) => l.natureza !== "receita").reduce((s, l) => s + Number(l.valor), 0),
-    [lancs]
+    () => lancsAtivos.filter((l) => l.natureza !== "receita").reduce((s, l) => s + Number(l.valor), 0),
+    [lancsAtivos]
   );
   const resultado = totalEntradas - totalSaidas;
 
@@ -311,7 +330,25 @@ export default function FinLancamentos() {
             <table className="w-full text-sm min-w-[960px]">
               <thead>
                 <tr className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
-                  <th className="text-left px-5 py-2.5 whitespace-nowrap w-[110px]">Competência</th>
+                  <th
+                    className="text-left px-5 py-2.5 whitespace-nowrap w-[110px] cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() =>
+                      setSort((s) =>
+                        s.campo === "data_competencia"
+                          ? { ...s, dir: s.dir === "asc" ? "desc" : "asc" }
+                          : { campo: "data_competencia", dir: "desc" }
+                      )
+                    }
+                  >
+                    <span className="inline-flex items-center gap-0.5">
+                      Competência
+                      {sort.campo === "data_competencia" ? (
+                        sort.dir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </span>
+                  </th>
                   <th className="text-left px-3 py-2.5 whitespace-nowrap w-[110px]">Vencimento</th>
                   <th className="text-left px-3 py-2.5">Descrição</th>
                   <th className="text-left px-3 py-2.5 whitespace-nowrap w-[140px]">Categoria</th>
@@ -342,7 +379,8 @@ export default function FinLancamentos() {
                     </td>
                   </tr>
                 ) : (
-                  lancs.map((l) => {
+                  sortedLancs.map((l) => {
+                    const isIgnorado = l.origem_tipo === "ignorado_conciliacao";
                     const isReceita = l.natureza === "receita";
                     const vencDiferente =
                       l.data_vencimento && l.data_vencimento !== l.data_competencia;
@@ -374,6 +412,11 @@ export default function FinLancamentos() {
                           <span className="font-medium text-sm block truncate" title={l.descricao}>
                             {l.descricao}
                           </span>
+                          {isIgnorado && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30 mt-0.5">
+                              ignorado no somatório
+                            </Badge>
+                          )}
                           {(l as any).parcela_numero && (l as any).parcela_total && (
                             <span className="text-[10px] text-muted-foreground">
                               Parcela {(l as any).parcela_numero}/{(l as any).parcela_total}

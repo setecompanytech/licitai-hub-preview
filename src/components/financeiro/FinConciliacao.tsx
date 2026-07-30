@@ -80,6 +80,7 @@ import {
   Clock,
   XCircle,
   Wallet,
+  Trash2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
@@ -112,6 +113,12 @@ export default function FinConciliacao() {
     arquivo_nome: string;
     total_movimentos: number;
   } | null>(null);
+  const [confirmApagarExtrato, setConfirmApagarExtrato] = useState<{
+    extrato_id: string;
+    arquivo_nome: string;
+    total_movimentos: number;
+  } | null>(null);
+  const [apagandoExtrato, setApagandoExtrato] = useState<string | null>(null);
   const qc = useQueryClient();
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<
@@ -163,18 +170,69 @@ export default function FinConciliacao() {
   const upsertLancamento = useUpsertLancamento();
 
   const ignorarMov = useMutation({
-    mutationFn: async (params: { id: string; ignorar: boolean; motivo?: string }) => {
-      const patch: Record<string, unknown> = params.ignorar
-        ? { ignorado: true, ignorado_em: new Date().toISOString(), ignorado_motivo: params.motivo ?? null }
-        : { ignorado: false, ignorado_em: null, ignorado_motivo: null };
-      const { error } = await supabase
-        .from("financeiro_extrato_movimentos")
-        .update(patch as never)
-        .eq("id", params.id);
-      if (error) throw error;
+    mutationFn: async (params: {
+      id: string;
+      ignorar: boolean;
+      motivo?: string;
+      mov?: { valor: number; descricao?: string; data_movimento?: string; conta_id?: string; lancamento_id?: string | null };
+    }) => {
+      if (params.ignorar) {
+        const { error: errPatch } = await supabase
+          .from("financeiro_extrato_movimentos")
+          .update({ ignorado: true, ignorado_em: new Date().toISOString(), ignorado_motivo: params.motivo ?? null } as never)
+          .eq("id", params.id);
+        if (errPatch) throw errPatch;
+
+        if (params.mov && empresaId) {
+          const valor = Math.abs(Number(params.mov.valor));
+          const natureza: string = Number(params.mov.valor) >= 0 ? "receita" : "despesa";
+          const tipo: string = natureza === "receita" ? "a_receber" : "a_pagar";
+          const { data: lanc, error: errLanc } = await supabase
+            .from("financeiro_lancamentos")
+            .insert({
+              empresa_id: empresaId,
+              conta_id: params.mov.conta_id ?? null,
+              descricao: params.mov.descricao ?? "Movimento ignorado na conciliação",
+              valor,
+              natureza: natureza as never,
+              tipo: tipo as never,
+              status: "cancelado" as never,
+              data_competencia: params.mov.data_movimento ?? new Date().toISOString().slice(0, 10),
+              origem_tipo: "ignorado_conciliacao",
+              origem_job: "ignorarMov",
+              origem_timestamp: new Date().toISOString(),
+            } as never)
+            .select("id")
+            .single();
+          if (!errLanc && lanc) {
+            await supabase
+              .from("financeiro_extrato_movimentos")
+              .update({ lancamento_id: lanc.id } as never)
+              .eq("id", params.id);
+          }
+        }
+      } else {
+        const lancamentoId = params.mov?.lancamento_id;
+        if (lancamentoId) {
+          const { data: lancamentoCheck } = await supabase
+            .from("financeiro_lancamentos")
+            .select("id, origem_tipo")
+            .eq("id", lancamentoId)
+            .single();
+          if ((lancamentoCheck as any)?.origem_tipo === "ignorado_conciliacao") {
+            await supabase.from("financeiro_lancamentos").delete().eq("id", lancamentoId);
+          }
+        }
+        const { error } = await supabase
+          .from("financeiro_extrato_movimentos")
+          .update({ ignorado: false, ignorado_em: null, ignorado_motivo: null, lancamento_id: null } as never)
+          .eq("id", params.id);
+        if (error) throw error;
+      }
     },
     onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["fin-movimentos-extrato"] });
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       toast.success(vars.ignorar ? "Movimento ignorado." : "Movimento restaurado.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -972,7 +1030,7 @@ export default function FinConciliacao() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                {(extratos ?? []).slice(0, 6).map((ex) => (
+                {(extratos ?? []).map((ex) => (
                   <div
                     key={ex.id}
                     className="flex items-start justify-between gap-2 rounded-lg border bg-card p-3 hover:bg-accent/40 transition-colors"
@@ -1008,6 +1066,19 @@ export default function FinConciliacao() {
                           ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                           : <RotateCcw className="w-3 h-3 mr-1" />}
                         Reprocessar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs text-destructive/70 hover:text-destructive"
+                        onClick={() => setConfirmApagarExtrato({ extrato_id: ex.id, arquivo_nome: ex.arquivo_nome, total_movimentos: ex.total_movimentos ?? 0 })}
+                        disabled={apagandoExtrato === ex.id}
+                        title="Apagar extrato e seus movimentos"
+                      >
+                        {apagandoExtrato === ex.id
+                          ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          : <Trash2 className="w-3 h-3 mr-1" />}
+                        Apagar
                       </Button>
                     </div>
                   </div>
@@ -1048,6 +1119,58 @@ export default function FinConciliacao() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={confirmarReprocesso}>Apagar e reprocessar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ── AlertDialog: confirmar apagar extrato ── */}
+        <AlertDialog open={!!confirmApagarExtrato} onOpenChange={(o) => !o && setConfirmApagarExtrato(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apagar extrato?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    Esta ação irá <strong>apagar permanentemente</strong> o extrato{" "}
+                    <span className="font-mono text-foreground">{confirmApagarExtrato?.arquivo_nome}</span> e os{" "}
+                    <strong>{confirmApagarExtrato?.total_movimentos ?? 0} movimentos</strong> associados.
+                  </p>
+                  <p className="text-muted-foreground">
+                    Lançamentos já conciliados não serão excluídos, mas perderão o vínculo com o extrato.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  if (!confirmApagarExtrato) return;
+                  setApagandoExtrato(confirmApagarExtrato.extrato_id);
+                  setConfirmApagarExtrato(null);
+                  try {
+                    await supabase
+                      .from("financeiro_extrato_movimentos")
+                      .delete()
+                      .eq("extrato_id", confirmApagarExtrato.extrato_id);
+                    const { error } = await supabase
+                      .from("financeiro_extratos_importados")
+                      .delete()
+                      .eq("id", confirmApagarExtrato.extrato_id);
+                    if (error) throw error;
+                    qc.invalidateQueries({ queryKey: ["fin-extratos"] });
+                    qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+                    toast.success("Extrato apagado.");
+                  } catch (e: any) {
+                    toast.error(e.message ?? "Erro ao apagar extrato.");
+                  } finally {
+                    setApagandoExtrato(null);
+                  }
+                }}
+              >
+                Apagar
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -1216,7 +1339,7 @@ export default function FinConciliacao() {
                             size="sm"
                             variant="ghost"
                             className="h-7 text-xs text-muted-foreground shrink-0"
-                            onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false })}
+                            onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false, mov: { valor: m.valor, descricao: m.descricao, data_movimento: m.data_movimento, conta_id: m.conta_id, lancamento_id: m.lancamento_id } })}
                           >
                             <RotateCcw className="w-3 h-3 mr-1" />Restaurar
                           </Button>
@@ -1294,7 +1417,7 @@ export default function FinConciliacao() {
                                       <DropdownMenuItem className="text-muted-foreground" onClick={() => {
                                         const motivo = window.prompt("Motivo (opcional):", "");
                                         if (motivo === null) return;
-                                        ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                        ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined, mov: { valor: m.valor, descricao: m.descricao, data_movimento: m.data_movimento, conta_id: m.conta_id } });
                                       }}>
                                         <Ban className="w-3.5 h-3.5 mr-2" />Ignorar
                                       </DropdownMenuItem>
@@ -1380,7 +1503,7 @@ export default function FinConciliacao() {
                                 onClick={() => {
                                   const motivo = window.prompt("Motivo (opcional) para ignorar este movimento:", "");
                                   if (motivo === null) return;
-                                  ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined });
+                                  ignorarMov.mutate({ id: m.id, ignorar: true, motivo: motivo || undefined, mov: { valor: m.valor, descricao: m.descricao, data_movimento: m.data_movimento, conta_id: m.conta_id } });
                                 }}
                               >
                                 <Ban className="w-3.5 h-3.5 mr-2" />Ignorar / desconsiderar

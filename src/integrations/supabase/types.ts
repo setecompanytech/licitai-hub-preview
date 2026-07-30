@@ -16034,6 +16034,7 @@ export type Database = {
         | "seed"
         | "demo"
         | "migracao"
+        | "ignorado_conciliacao"
       financeiro_status_lancamento:
         | "previsto"
         | "realizado"
@@ -16246,6 +16247,7 @@ export const Constants = {
         "seed",
         "demo",
         "migracao",
+        "ignorado_conciliacao",
       ],
       financeiro_status_lancamento: [
         "previsto",
