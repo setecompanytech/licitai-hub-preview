@@ -140,6 +140,7 @@ export default function FinConciliacao() {
   };
   const [aiClassifs, setAiClassifs] = useState<Record<string, AiClassif>>({});
   const [classificandoIA, setClassificandoIA] = useState<Record<string, boolean>>({});
+  const [classificandoTodas, setClassificandoTodas] = useState(false);
 
   // ─── Data ─────────────────────────────────────────────────────────────────
   const empresaId = useEmpresaId();
@@ -521,6 +522,34 @@ export default function FinConciliacao() {
     }
   }
 
+  async function classificarTodas() {
+    const pendentes = (movimentos ?? []).filter((m: any) => !m.conciliado && !m.ignorado && !aiClassifs[(m as any).id]);
+    if (pendentes.length === 0) { toast.info("Nenhum movimento pendente para classificar."); return; }
+    setClassificandoTodas(true);
+    let ok = 0;
+    // Processa em lotes de 5 para não sobrecarregar
+    const LOTE = 5;
+    for (let i = 0; i < pendentes.length; i += LOTE) {
+      const lote = pendentes.slice(i, i + LOTE);
+      await Promise.all(lote.map(async (m: any) => {
+        try {
+          const { data, error } = await supabase.functions.invoke("classificar-lancamento", {
+            body: { empresa_id: empresaId, descricao: m.descricao, valor: m.valor, data_movimento: m.data_movimento, conta_id: m.conta_id },
+          });
+          const resultado = (error || !data) ? classificarHeuristica(m.descricao, m.valor) : data as AiClassif;
+          setAiClassifs((prev) => ({ ...prev, [m.id]: resultado }));
+          ok++;
+        } catch {
+          const resultado = classificarHeuristica(m.descricao, m.valor);
+          setAiClassifs((prev) => ({ ...prev, [m.id]: resultado }));
+          ok++;
+        }
+      }));
+    }
+    setClassificandoTodas(false);
+    toast.success(`${ok} movimento(s) classificado(s) com IA.`);
+  }
+
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <Tabs defaultValue="conciliar" className="space-y-4">
@@ -621,6 +650,20 @@ export default function FinConciliacao() {
                     ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                     : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
                   Auto-conciliar (≥ 90)
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={classificarTodas}
+                  disabled={classificandoTodas || !contaSelecionada || (movimentos ?? []).filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
+                  title="Classifica todos os movimentos pendentes com IA de uma vez"
+                >
+                  {classificandoTodas
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                  Classificar todas com IA
                 </Button>
               </div>
             </div>
