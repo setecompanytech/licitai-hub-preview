@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Archive, ArchiveRestore } from 'lucide-react';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,8 +74,10 @@ const toCents = (value: number | null): number => {
 
 export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onSaved, onDeleted }: Props) {
   const { user } = useAuth();
+  const { arquivarProcesso, excluirProcesso } = useLicitacaoIntegration();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [arquivando, setArquivando] = useState(false);
   const [form, setForm] = useState({
     numero: '',
     orgao: '',
@@ -155,24 +158,26 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
   const handleDelete = async () => {
     if (!user || !licitacao) return;
     setDeleting(true);
-    try {
-      const { error } = await supabase
-        .from('licitacoes')
-        .delete()
-        .eq('id', licitacao.id)
-        .eq('user_id', user.id);
+    // excluirProcesso remove também o compromisso vinculado — senão ele fica
+    // órfão e continua listado na aba Compromissos
+    const ok = await excluirProcesso(licitacao.id);
+    setDeleting(false);
+    if (!ok) { toast.error('Erro ao excluir processo.'); return; }
+    onDeleted(licitacao.id);
+    toast.success('Processo e compromisso removidos.');
+    onOpenChange(false);
+  };
 
-      if (error) throw error;
-
-      onDeleted(licitacao.id);
-      toast.success('Processo removido.');
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao excluir processo.');
-    } finally {
-      setDeleting(false);
-    }
+  const handleArquivar = async () => {
+    if (!licitacao) return;
+    const restaurar = licitacao.status === 'Arquivada';
+    setArquivando(true);
+    const ok = await arquivarProcesso(licitacao.id, !restaurar);
+    setArquivando(false);
+    if (!ok) return;
+    onSaved({ ...licitacao, status: restaurar ? 'Monitorando' : 'Arquivada' });
+    toast.success(restaurar ? 'Processo restaurado.' : 'Processo arquivado no Kanban e nos Compromissos.');
+    onOpenChange(false);
   };
 
   if (!licitacao) return null;
@@ -302,6 +307,21 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           />
 
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-muted-foreground"
+              onClick={handleArquivar}
+              disabled={arquivando}
+            >
+              {arquivando
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : licitacao.status === 'Arquivada'
+                ? <ArchiveRestore className="w-3.5 h-3.5" />
+                : <Archive className="w-3.5 h-3.5" />}
+              {licitacao.status === 'Arquivada' ? 'Restaurar' : 'Arquivar'}
+            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs">
@@ -313,7 +333,9 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                 <AlertDialogHeader>
                   <AlertDialogTitle>Excluir processo?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação é irreversível. O processo <strong>{licitacao.numero}</strong> será removido permanentemente da gestão.
+                    Esta ação é irreversível. O processo <strong>{licitacao.numero}</strong> será removido
+                    permanentemente da gestão, junto com o compromisso vinculado. Para tirar da tela sem
+                    perder o histórico, use <strong>Arquivar</strong>.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -328,6 +350,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            </div>
 
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>

@@ -16,8 +16,9 @@ import {
   CalendarDays, Clock, Building2, Bell, Mail, MessageSquare, Zap,
   CheckCircle2, XCircle, Trash2, ExternalLink, Bot, AlertTriangle,
   ArrowRight, Loader2, RefreshCw, ListChecks, Brain, Shield,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Archive, ArchiveRestore,
 } from 'lucide-react';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -49,6 +50,7 @@ type ProcessoInteresse = {
   ia_recomendacao: string | null;
   ia_score: number | null;
   notas: string | null;
+  licitacao_id: string | null;
   created_at: string;
 };
 
@@ -58,6 +60,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   aprovado: { label: 'Aprovado', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
   cadastrado: { label: 'Cadastrado', color: 'bg-accent/10 text-accent border-accent/20', icon: Shield },
   rejeitado: { label: 'Rejeitado', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
+  arquivado: { label: 'Arquivado', color: 'bg-muted text-muted-foreground border-border', icon: Archive },
 };
 
 const formatCurrency = (v: number) =>
@@ -108,6 +111,8 @@ export default function MeusCompromissos() {
   const [filtroStatus, setFiltroStatus] = useState<string>('all');
   const [analisandoIA, setAnalisandoIA] = useState<string | null>(null);
   const [iaResult, setIaResult] = useState<Record<string, string>>({});
+  const [arquivando, setArquivando] = useState<string | null>(null);
+  const { arquivarProcesso } = useLicitacaoIntegration();
 
   const carregarProcessos = useCallback(async () => {
     if (!user) return;
@@ -139,6 +144,28 @@ export default function MeusCompromissos() {
     await supabase.from('processos_interesse').update({ aprovado_usuario: true, status: 'aprovado' }).eq('id', id);
     toast.success('Processo aprovado!');
     carregarProcessos();
+  };
+
+  /** Arquivar aqui move o card para "Arquivada" no Kanban quando há vínculo. */
+  const handleArquivar = async (p: ProcessoInteresse) => {
+    const restaurar = p.status === 'arquivado';
+    setArquivando(p.id);
+    try {
+      if (p.licitacao_id) {
+        const ok = await arquivarProcesso(p.licitacao_id, !restaurar);
+        if (!ok) return;
+      } else {
+        const { error } = await supabase
+          .from('processos_interesse')
+          .update({ status: restaurar ? 'interessado' : 'arquivado' })
+          .eq('id', p.id);
+        if (error) { toast.error('Erro ao arquivar processo.'); return; }
+      }
+      toast.success(restaurar ? 'Processo restaurado.' : 'Processo arquivado.');
+      carregarProcessos();
+    } finally {
+      setArquivando(null);
+    }
   };
 
   // State for rejection/removal dialog
@@ -250,12 +277,13 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
   const filtered = processos.filter(p => {
     if (filtroEmpresa !== 'all' && p.empresa_id !== filtroEmpresa) return false;
-    if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
-    return true;
+    // Arquivados só aparecem na aba própria — inclusive em "Todos"
+    if (filtroStatus === 'all') return p.status !== 'arquivado';
+    return p.status === filtroStatus;
   });
 
   const stats = {
-    total: processos.length,
+    total: processos.filter(p => p.status !== 'arquivado').length,
     interessados: processos.filter(p => p.status === 'interessado').length,
     aprovados: processos.filter(p => p.status === 'aprovado').length,
     cadastrados: processos.filter(p => p.status === 'cadastrado').length,
@@ -413,6 +441,21 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                           <XCircle className="w-3.5 h-3.5 mr-1" /> Rejeitar
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted-foreground"
+                        onClick={() => handleArquivar(p)}
+                        disabled={arquivando === p.id}
+                        title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
+                      >
+                        {arquivando === p.id
+                          ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                          : p.status === 'arquivado'
+                          ? <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
+                          : <Archive className="w-3.5 h-3.5 mr-1" />}
+                        {p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
+                      </Button>
                       {p.status !== 'rejeitado' && (
                         <Button size="sm" variant="ghost" onClick={() => setAcaoDialog({ tipo: 'remover', processo: p })}>
                           <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover

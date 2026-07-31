@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen } from 'lucide-react';
+import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
 import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { toast } from 'sonner';
@@ -44,10 +44,12 @@ function diasAte(iso: string | null): number | null {
 export default function CompromissosResumo() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { iniciarProcesso } = useLicitacaoIntegration();
+  const { iniciarProcesso, arquivarProcesso } = useLicitacaoIntegration();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState<string | null>(null);
+  const [arquivando, setArquivando] = useState<string | null>(null);
+  const [verArquivados, setVerArquivados] = useState(false);
 
   const abrirPasta = useCallback(async (p: Item) => {
     if (p.licitacao_id) { navigate(`/processo/${p.licitacao_id}`); return; }
@@ -84,6 +86,28 @@ export default function CompromissosResumo() {
     setLoading(false);
   }, [user]);
 
+  /** Arquivar aqui também move o card no Kanban, quando há licitação vinculada. */
+  const alternarArquivo = useCallback(async (p: Item) => {
+    const restaurar = p.status === 'arquivado';
+    setArquivando(p.id);
+    try {
+      if (p.licitacao_id) {
+        const ok = await arquivarProcesso(p.licitacao_id, !restaurar);
+        if (!ok) return;
+      } else {
+        const { error } = await supabase
+          .from('processos_interesse')
+          .update({ status: restaurar ? 'interessado' : 'arquivado' })
+          .eq('id', p.id);
+        if (error) { toast.error('Erro ao arquivar compromisso.'); return; }
+      }
+      toast.success(restaurar ? 'Compromisso restaurado.' : 'Compromisso arquivado.');
+      carregar();
+    } finally {
+      setArquivando(null);
+    }
+  }, [arquivarProcesso, carregar]);
+
   useEffect(() => { carregar(); }, [carregar]);
 
   useEffect(() => {
@@ -102,6 +126,9 @@ export default function CompromissosResumo() {
       </div>
     );
   }
+
+  const arquivados = items.filter((p) => p.status === 'arquivado');
+  const visiveis = verArquivados ? arquivados : items.filter((p) => p.status !== 'arquivado');
 
   if (items.length === 0) {
     return (
@@ -125,18 +152,36 @@ export default function CompromissosResumo() {
         <GlobalProcessoBar />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
-          {items.length} compromissos ativos — exibindo prazos críticos primeiro
+          {verArquivados
+            ? `${arquivados.length} compromisso(s) arquivado(s)`
+            : `${visiveis.length} compromissos ativos — exibindo prazos críticos primeiro`}
         </p>
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/meus-compromissos" className="text-xs">
-            Abrir página completa <ArrowRight className="w-3.5 h-3.5 ml-1" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          {arquivados.length > 0 && (
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setVerArquivados(v => !v)}>
+              <Archive className="w-3.5 h-3.5 mr-1" />
+              {verArquivados ? 'Ver ativos' : `Arquivados (${arquivados.length})`}
+            </Button>
+          )}
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/meus-compromissos" className="text-xs">
+              Abrir página completa <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {items.map((p) => {
+      {visiveis.length === 0 && (
+        <Card className="p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {verArquivados ? 'Nenhum compromisso arquivado.' : 'Nenhum compromisso ativo — todos estão arquivados.'}
+          </p>
+        </Card>
+      )}
+
+      {visiveis.map((p) => {
         const dias = diasAte(p.data_encerramento);
         const urgencia = dias === null ? 'normal'
           : dias <= 1 ? 'danger'
@@ -185,12 +230,29 @@ export default function CompromissosResumo() {
                   </span>
                 </div>
               </div>
-              <Button size="sm" variant="outline" onClick={() => abrirPasta(p)} disabled={opening === p.id}>
-                {opening === p.id
-                  ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                  : <FolderOpen className="w-3.5 h-3.5 mr-1" />}
-                Abrir Pasta
-              </Button>
+              <div className="flex flex-col gap-1 shrink-0">
+                <Button size="sm" variant="outline" onClick={() => abrirPasta(p)} disabled={opening === p.id}>
+                  {opening === p.id
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    : <FolderOpen className="w-3.5 h-3.5 mr-1" />}
+                  Abrir Pasta
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => alternarArquivo(p)}
+                  disabled={arquivando === p.id}
+                  title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
+                >
+                  {arquivando === p.id
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    : p.status === 'arquivado'
+                    ? <ArchiveRestore className="w-3.5 h-3.5 mr-1" />
+                    : <Archive className="w-3.5 h-3.5 mr-1" />}
+                  {p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
+                </Button>
+              </div>
             </div>
           </Card>
         );

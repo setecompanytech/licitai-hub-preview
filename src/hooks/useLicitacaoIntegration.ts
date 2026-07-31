@@ -168,6 +168,27 @@ export function useLicitacaoIntegration() {
     }
   }, [user]);
 
+  /**
+   * Espelha o arquivamento no compromisso vinculado. O Kanban e a aba
+   * Compromissos leem tabelas diferentes (`licitacoes` e `processos_interesse`),
+   * então arquivar de um lado precisa refletir no outro.
+   */
+  const sincronizarCompromisso = useCallback(async (
+    licitacaoId: string,
+    arquivada: boolean,
+  ) => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('processos_interesse')
+        .update({ status: arquivada ? 'arquivado' : 'interessado' })
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId);
+    } catch (err) {
+      console.error('[sincronizarCompromisso]', err);
+    }
+  }, [user]);
+
   /** Update licitação status and create notification */
   const atualizarStatus = useCallback(async (
     licitacaoId: string,
@@ -184,6 +205,19 @@ export function useLicitacaoIntegration() {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      // Arquivar/desarquivar no Kanban reflete no compromisso
+      const arquivada = novoStatus === 'Arquivada';
+      const { data: compromisso } = await supabase
+        .from('processos_interesse')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId)
+        .maybeSingle();
+
+      if (compromisso && (arquivada || compromisso.status === 'arquivado')) {
+        await sincronizarCompromisso(licitacaoId, arquivada);
+      }
 
       // System message in chat
       await supabase.from('licitacao_mensagens').insert({
@@ -203,6 +237,62 @@ export function useLicitacaoIntegration() {
     } catch (err) {
       console.error(err);
       toast.error('Erro ao atualizar status.');
+    }
+  }, [user, sincronizarCompromisso]);
+
+  /**
+   * Arquiva (ou restaura) um processo a partir de qualquer uma das telas,
+   * mantendo Kanban e Compromissos na mesma situação.
+   */
+  const arquivarProcesso = useCallback(async (
+    licitacaoId: string,
+    arquivar = true,
+  ) => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase
+        .from('licitacoes')
+        .update({
+          status: arquivar ? 'Arquivada' : 'Monitorando',
+          arquivado_em: arquivar ? new Date().toISOString() : null,
+        })
+        .eq('id', licitacaoId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+
+      await sincronizarCompromisso(licitacaoId, arquivar);
+      return true;
+    } catch (err) {
+      console.error('[arquivarProcesso]', err);
+      toast.error(arquivar ? 'Erro ao arquivar processo.' : 'Erro ao restaurar processo.');
+      return false;
+    }
+  }, [user, sincronizarCompromisso]);
+
+  /**
+   * Remove a licitação e o compromisso vinculado. Sem isso o compromisso fica
+   * órfão (`licitacao_id` vira NULL pelo ON DELETE SET NULL) e o processo
+   * continua aparecendo na aba Compromissos depois de excluído no Kanban.
+   */
+  const excluirProcesso = useCallback(async (licitacaoId: string) => {
+    if (!user) return false;
+    try {
+      await supabase
+        .from('processos_interesse')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('licitacao_id', licitacaoId);
+
+      const { error } = await supabase
+        .from('licitacoes')
+        .delete()
+        .eq('id', licitacaoId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('[excluirProcesso]', err);
+      return false;
     }
   }, [user]);
 
@@ -282,6 +372,8 @@ export function useLicitacaoIntegration() {
     iniciarProcesso,
     criarCompromisso,
     atualizarStatus,
+    arquivarProcesso,
+    excluirProcesso,
     registrarResultadoDisputa,
     criarNotificacao,
   };
