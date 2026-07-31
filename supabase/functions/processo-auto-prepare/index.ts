@@ -33,10 +33,12 @@ serve(async (req) => {
     });
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Validate user
+    // Validate user — getUser, e não getClaims: o runtime das Edge Functions
+    // carrega uma versão do supabase-js sem getClaims, e a chamada estourava
+    // "userClient.auth.getClaims is not a function" (500) em toda requisição.
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims } = await userClient.auth.getClaims(token);
-    const userId = claims?.claims?.sub;
+    const { data: userData } = await userClient.auth.getUser(token);
+    const userId = userData?.user?.id;
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -167,17 +169,28 @@ serve(async (req) => {
             const payload = await rArqs.json();
             const arr: any[] = Array.isArray(payload) ? payload : (payload?.data ?? []);
 
-            // Prefere arquivo com "EDITAL" no título e extensão PDF
-            const arq = arr.find(
-              (a: any) => /edital/i.test(a.titulo ?? "") && /\.pdf($|\?)/i.test(a.url ?? ""),
-            ) ?? arr.find(
-              (a: any) => /\.pdf($|\?)/i.test(a.url ?? ""),
-            ) ?? arr[0];
+            // Prefere arquivo com "EDITAL" no título/nome e extensão PDF.
+            // A API do PNCP nem sempre traz a extensão na URL (várias vêm como
+            // .../arquivos/1), então o PDF também é reconhecido pelo nome do arquivo.
+            const ehPdf = (a: any) =>
+              /\.pdf($|\?)/i.test(a.url ?? "") || /\.pdf$/i.test(a.nomeArquivo ?? "");
+            const ehEdital = (a: any) =>
+              /edital/i.test(a.titulo ?? "") || /edital/i.test(a.nomeArquivo ?? "");
 
-            if (!arq?.url) return { kind: "pdf", ok: false, error: "Nenhum arquivo PDF no PNCP" };
+            const arq = arr.find((a: any) => ehEdital(a) && ehPdf(a))
+              ?? arr.find((a: any) => ehPdf(a))
+              ?? arr.find((a: any) => ehEdital(a))
+              ?? arr[0];
+
+            if (!arq) return { kind: "pdf", ok: false, error: "Nenhum arquivo listado no PNCP" };
+
+            // Quando a listagem não traz URL, monta o endpoint por sequencial
+            const seqArq = arq.sequencialDocumento ?? arq.sequencialArquivo ?? 1;
+            const urlArquivo = arq.url
+              ?? `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos/${seqArq}`;
 
             // Download direto do PDF (timeout conservador para caber dentro do limite da edge function)
-            const rPdf = await fetch(arq.url, {
+            const rPdf = await fetch(urlArquivo, {
               redirect: "follow",
               headers: { "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)" },
               signal: AbortSignal.timeout(40_000),
