@@ -26,6 +26,20 @@ interface Props {
 const VISUALIZAVEL = ['pdf'];
 
 /**
+ * Em resposta não-2xx o supabase-js devolve FunctionsHttpError, cujo `message`
+ * é sempre genérico ("non-2xx status code"). A causa real vem no corpo, então
+ * lemos a Response anexada antes de cair no texto padrão.
+ */
+async function mensagemDoErro(error: unknown, fallback: string): Promise<string> {
+  const ctx = (error as { context?: { response?: Response } })?.context;
+  if (ctx?.response) {
+    const body = await ctx.response.clone().json().catch(() => null);
+    if (body?.error) return String(body.error);
+  }
+  return (error as Error)?.message || fallback;
+}
+
+/**
  * Lê os arquivos da contratação no PNCP e exibe o selecionado num frame,
  * sem sair da aplicação. O arquivo é materializado no bucket privado pela
  * Edge Function `pncp-arquivos-edital` — assim ele continua abrindo mesmo
@@ -39,6 +53,8 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
   const [abrindo, setAbrindo] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
+  // Só o download revela a extensão: a listagem do PNCP não traz nome de arquivo
+  const [arquivoAberto, setArquivoAberto] = useState<{ nome: string; ext: string } | null>(null);
 
   // A contratação pode não ser rastreável até o PNCP (processo de outro portal,
   // sem correspondência no cache). Nesse caso o card some da tela em vez de
@@ -58,7 +74,11 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
         return;
       }
       if (error || !data?.success) {
-        setErroLista(error?.message || data?.error || 'Não foi possível listar os arquivos no PNCP.');
+        setErroLista(
+          error
+            ? await mensagemDoErro(error, 'Não foi possível listar os arquivos no PNCP.')
+            : data?.error || 'Não foi possível listar os arquivos no PNCP.',
+        );
         setArquivos([]);
         return;
       }
@@ -76,13 +96,18 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
     setSelecionado(arq);
     setSignedUrl(null);
     setErroArquivo(null);
+    setArquivoAberto(null);
     setAbrindo(true);
     try {
       const { data, error } = await supabase.functions.invoke('pncp-arquivos-edital', {
         body: { licitacao_id: licitacaoId, action: 'abrir', sequencial: arq.sequencial },
       });
       if (error || !data?.success || !data?.path) {
-        setErroArquivo(error?.message || data?.error || 'Não foi possível baixar este arquivo do PNCP.');
+        setErroArquivo(
+          error
+            ? await mensagemDoErro(error, 'Não foi possível baixar este arquivo do PNCP.')
+            : data?.error || 'Não foi possível baixar este arquivo do PNCP.',
+        );
         return;
       }
 
@@ -94,6 +119,11 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
         setErroArquivo('Arquivo baixado, mas não foi possível gerar o link de visualização.');
         return;
       }
+      const nomeReal: string = data.nome || arq.nome;
+      const ext = (String(data.path).match(/\.([a-z0-9]{2,5})$/i) || [])[1]?.toLowerCase()
+        || (nomeReal.match(/\.([a-z0-9]{2,5})$/i) || [])[1]?.toLowerCase()
+        || '';
+      setArquivoAberto({ nome: nomeReal, ext });
       setSignedUrl(signed.signedUrl);
       if (data.cached === false) toast.success(`${arq.titulo} carregado do PNCP.`);
     } catch (e) {
@@ -103,11 +133,13 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
     }
   };
 
-  // Primeiro arquivo com "edital" no título abre sozinho
+  // Abre sozinho o que parece ser o edital. A escolha é pelo título/tipo porque
+  // a listagem do PNCP não informa extensão.
   useEffect(() => {
     if (selecionado || arquivos.length === 0) return;
+    const ehEdital = (a: ArquivoPncp) => /edital/i.test(a.titulo) || /edital/i.test(a.tipo);
     const preferido =
-      arquivos.find((a) => /edital/i.test(a.titulo) && a.extensao === 'pdf') ||
+      arquivos.find((a) => ehEdital(a) && !/capa/i.test(a.titulo)) ||
       arquivos.find((a) => a.extensao === 'pdf') ||
       arquivos[0];
     if (preferido) abrirArquivo(preferido);
@@ -116,7 +148,7 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
 
   if (semFontePncp) return null;
 
-  const podeExibirNoFrame = selecionado && VISUALIZAVEL.includes(selecionado.extensao);
+  const podeExibirNoFrame = !!arquivoAberto && VISUALIZAVEL.includes(arquivoAberto.ext);
 
   return (
     <Card className="p-4">
@@ -178,7 +210,9 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{a.titulo}</p>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <Badge variant="outline" className="text-[9px] uppercase">{a.extensao}</Badge>
+                        {a.extensao && (
+                          <Badge variant="outline" className="text-[9px] uppercase">{a.extensao}</Badge>
+                        )}
                         <span className="text-[10px] text-muted-foreground truncate">{a.tipo}</span>
                         {a.data_publicacao && (
                           <span className="text-[10px] text-muted-foreground">
@@ -207,7 +241,7 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
                     </a>
                   </Button>
                   <Button asChild size="sm" variant="ghost" className="h-7">
-                    <a href={signedUrl} download={selecionado?.nome} title="Baixar">
+                    <a href={signedUrl} download={arquivoAberto?.nome} title="Baixar">
                       <Download className="w-3.5 h-3.5" />
                     </a>
                   </Button>
@@ -248,12 +282,14 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
                 <div className="p-6 text-center space-y-3">
                   <FileText className="w-8 h-8 mx-auto text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">
-                    <strong>{selecionado?.nome}</strong> é um arquivo <strong>.{selecionado?.extensao}</strong> —
+                    <strong>{arquivoAberto?.nome}</strong>
+                    {arquivoAberto?.ext ? <> é um arquivo <strong>.{arquivoAberto.ext}</strong> —</> : ' —'}{' '}
                     o navegador não renderiza esse formato. Baixe para abrir no aplicativo correspondente.
                   </p>
                   <Button asChild size="sm" variant="outline">
-                    <a href={signedUrl} download={selecionado?.nome}>
-                      <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar {selecionado?.extensao.toUpperCase()}
+                    <a href={signedUrl} download={arquivoAberto?.nome}>
+                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                      Baixar {arquivoAberto?.ext ? arquivoAberto.ext.toUpperCase() : 'arquivo'}
                     </a>
                   </Button>
                 </div>

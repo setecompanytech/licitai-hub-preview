@@ -141,39 +141,66 @@ function extensaoDe(nome: string, contentType: string) {
   return "bin";
 }
 
-/** Lista os arquivos da contratação na API pública de Consulta do PNCP. */
+/**
+ * Lista os arquivos da contratação.
+ *
+ * O endpoint é o `/api/pncp/v1/` — a API de Consulta (`/api/consulta/v1/`)
+ * responde 404 para `/arquivos`, ela não expõe esse recurso. A de Consulta fica
+ * como fallback só para o caso de a principal sair do ar.
+ *
+ * A listagem NÃO traz nome de arquivo nem extensão: só `titulo` e
+ * `tipoDocumentoNome`. A extensão real aparece apenas no Content-Disposition do
+ * download, então aqui ela fica vazia quando não dá para deduzir.
+ */
 async function listarArquivos(cnpj: string, ano: string, seq: string) {
-  const url =
+  const endpoints = [
+    `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos`,
     `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}` +
-    `/arquivos?pagina=1&tamanhoPagina=100`;
+      `/arquivos?pagina=1&tamanhoPagina=100`,
+  ];
 
-  const resp = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": UA },
-    signal: AbortSignal.timeout(25_000),
-  });
+  let ultimoErro = "";
+  for (const url of endpoints) {
+    let resp: Response;
+    try {
+      resp = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": UA },
+        signal: AbortSignal.timeout(25_000),
+      });
+    } catch (e) {
+      ultimoErro = e instanceof Error ? e.message : String(e);
+      continue;
+    }
 
-  if (!resp.ok) {
-    throw new Error(`PNCP respondeu ${resp.status} ao listar arquivos`);
+    if (!resp.ok) {
+      ultimoErro = `PNCP respondeu ${resp.status} ao listar arquivos`;
+      continue;
+    }
+
+    const payload = await resp.json();
+    const arr: any[] = Array.isArray(payload) ? payload : (payload?.data ?? []);
+
+    return arr
+      .filter((a: any) => a?.statusAtivo !== false)
+      .map((a: any, idx: number) => {
+        const sequencial = a.sequencialDocumento ?? a.sequencialArquivo ?? idx + 1;
+        const nome = a.nomeArquivo || a.titulo || `documento-${sequencial}`;
+        return {
+          sequencial,
+          nome,
+          titulo: a.titulo || nome,
+          tipo: a.tipoDocumentoNome || a.tipoDocumentoDescricao || "Arquivo",
+          data_publicacao: a.dataPublicacaoPncp || a.dataPublicacao || null,
+          // A API às vezes traz a URL pronta, às vezes só o sequencial — o download
+          // aceita as duas formas (ver baixarArquivo).
+          url: a.url || a.uri || null,
+          // "" = desconhecida; quem sabe é o download
+          extensao: (nome.match(/\.([a-z0-9]{2,5})$/i) || [])[1]?.toLowerCase() ?? "",
+        };
+      });
   }
 
-  const payload = await resp.json();
-  const arr: any[] = Array.isArray(payload) ? payload : (payload?.data ?? []);
-
-  return arr.map((a: any, idx: number) => {
-    const sequencial = a.sequencialDocumento ?? a.sequencialArquivo ?? idx + 1;
-    const nome = a.nomeArquivo || a.titulo || `documento-${sequencial}`;
-    return {
-      sequencial,
-      nome,
-      titulo: a.titulo || nome,
-      tipo: a.tipoDocumentoNome || a.tipoDocumentoDescricao || "Arquivo",
-      data_publicacao: a.dataPublicacaoPncp || a.dataPublicacao || null,
-      // A API às vezes traz a URL pronta, às vezes só o sequencial — o download
-      // aceita as duas formas (ver baixarArquivo).
-      url: a.url || a.uri || null,
-      extensao: extensaoDe(nome, ""),
-    };
-  });
+  throw new Error(ultimoErro || "Não foi possível listar os arquivos no PNCP");
 }
 
 /** Baixa o arquivo tentando a URL da listagem e, se falhar, o endpoint por sequencial. */
