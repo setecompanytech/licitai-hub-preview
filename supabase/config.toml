@@ -93,5 +93,7 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.import-ofx]
     verify_jwt = false
+  [functions.pncp-arquivos-edital]
+    verify_jwt = true
   [functions.reconciliation-engine]
     verify_jwt = false

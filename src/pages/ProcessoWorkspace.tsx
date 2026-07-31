@@ -14,6 +14,7 @@ import {
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
 import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
+import EditalViewer from '@/components/workspace/EditalViewer';
 import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
 
@@ -423,6 +424,7 @@ export default function ProcessoWorkspace() {
             )}
 
             <EditalOriginalCard licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
+            <EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ATALHOS.map(a => (
                 <Link key={a.label} to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
