@@ -49,6 +49,8 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.consulta-portal-compras]
     verify_jwt = false
+  [functions.consulta-painel-precos]
+    verify_jwt = false
   [functions.whatsapp-envio]
     verify_jwt = false
   [functions.portal-healthcheck]
