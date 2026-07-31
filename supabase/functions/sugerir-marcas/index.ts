@@ -106,19 +106,20 @@ Deno.serve(async (req) => {
 
     // 3. Use AI to match items with historical brand/model data
     const systemPrompt = `Você é um especialista em licitações públicas brasileiras (Lei 14.133/2021).
-Sua tarefa é analisar itens de um Termo de Referência e sugerir MARCAS, FABRICANTES e MODELOS compatíveis com base em dados históricos de processos anteriores.
+Sua tarefa é analisar itens de um Termo de Referência e sugerir MARCAS, FABRICANTES e MODELOS compatíveis.
 
-REGRAS CRÍTICAS:
-1. Só sugira marcas/fabricantes que REALMENTE aparecem no histórico fornecido
-2. Verifique se a marca atende às especificações do TR (ex: selo ABIC, normas INMETRO, etc.)
+REGRAS:
+1. Priorize marcas que aparecem no histórico fornecido. Se não houver histórico, use seu conhecimento geral sobre marcas reconhecidas no mercado brasileiro para o tipo de produto.
+2. Verifique se a marca atende às especificações do TR (ex: selos, normas INMETRO, etc.)
 3. Para cada sugestão, atribua um score de confiança (0-100):
-   - 90-100: Mesmo órgão, mesmo objeto, processo recente (<1 ano)
-   - 70-89: Mesmo objeto, órgão diferente, marca consolidada
-   - 50-69: Objeto similar, marca compatível com especificações
-   - <50: Baixa certeza, necessita validação
+   - 90-100: Aparece no histórico, mesmo órgão/objeto, processo recente
+   - 70-89: Aparece no histórico OU marca líder de mercado amplamente reconhecida
+   - 50-69: Marca compatível com as especificações, sem histórico direto
+   - <50: Sugestão genérica, necessita validação
 4. Sugira até 3 opções ranqueadas por confiança
-5. Se o TR exige marca/modelo específico, priorize a marca de referência
-6. Inclua justificativa técnica para cada sugestão
+5. Se o TR exige marca/modelo específico, priorize essa marca de referência com score alto
+6. Inclua justificativa técnica resumida para cada sugestão
+7. SEMPRE retorne sugestões para TODOS os itens — nunca deixe um item sem ao menos 1 sugestão
 
 Retorne EXCLUSIVAMENTE um JSON array via tool call.`;
 
@@ -221,13 +222,20 @@ Analise cada item do TR, cruze com o histórico e sugira marcas/modelos compatí
     // 4. Persist suggestions
     const rowsToInsert: any[] = [];
     for (const sug of sugestoes) {
-      const matchingItem = itens.find((i: any) => (i.numero || 0) === sug.item_numero);
+      // Match by numero first, then by description (AI may alter the description text)
+      const matchingItem = itens.find((i: any) =>
+        (i.numero != null && i.numero === sug.item_numero) ||
+        (i.descricao && sug.descricao_item &&
+          i.descricao.toLowerCase().trim() === sug.descricao_item.toLowerCase().trim())
+      ) || itens[sug.item_numero - 1]; // fallback: positional match
+      // Always use the ORIGINAL description so frontend lookup works
+      const descricaoOriginal = matchingItem?.descricao || sug.descricao_item;
       for (const opcao of sug.opcoes || []) {
         rowsToInsert.push({
           licitacao_id,
           licitacao_item_id: matchingItem?.id || null,
           user_id: user.id,
-          descricao_item: sug.descricao_item,
+          descricao_item: descricaoOriginal,
           marca_sugerida: opcao.marca,
           fabricante_sugerido: opcao.fabricante || null,
           modelo_sugerido: opcao.modelo || null,

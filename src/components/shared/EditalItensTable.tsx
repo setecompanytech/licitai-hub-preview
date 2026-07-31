@@ -202,26 +202,26 @@ export default function EditalItensTable({
             if (top) {
               return (
                 <TooltipProvider>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant="outline" className="text-[9px] py-0 h-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-xs">
                         {fonteLabel[top.fonte] ?? top.fonte}
                       </Badge>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge className={`text-[9px] py-0 h-4 cursor-help border ${scoreColor(top.score_confianca)}`}>
+                          <Badge className={`text-xs cursor-help ${scoreColor(top.score_confianca)}`}>
                             {top.score_confianca}% confiança
                           </Badge>
                         </TooltipTrigger>
                         {top.justificativa_ia && (
                           <TooltipContent className="max-w-xs" side="left">
-                            <p className="text-xs">{top.justificativa_ia}</p>
+                            <p className="text-sm">{top.justificativa_ia}</p>
                           </TooltipContent>
                         )}
                       </Tooltip>
                     </div>
                     {top.justificativa_ia && (
-                      <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">
+                      <p className="text-[10px] text-muted-foreground line-clamp-2 leading-snug">
                         {top.justificativa_ia}
                       </p>
                     )}

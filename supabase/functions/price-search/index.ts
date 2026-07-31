@@ -12,6 +12,8 @@ interface PriceResult {
   vendedor: string;
   condicao: string;
   url: string;
+  nota?: number;
+  total_avaliacoes?: number;
   data_contrato?: string;
   orgao?: string;
   uf_orgao?: string;
@@ -89,8 +91,37 @@ async function coletorPNCP(termos: string[], codigoCatmat?: string): Promise<Pri
   return resultados;
 }
 
+async function batchFetchMLReviews(
+  ids: string[]
+): Promise<Record<string, { average: number; total: number }>> {
+  const result: Record<string, { average: number; total: number }> = {};
+  if (ids.length === 0) return result;
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += 20) batches.push(ids.slice(i, i + 20));
+  for (const batch of batches) {
+    try {
+      const res = await fetch(
+        `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,reviews`,
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      for (const entry of data) {
+        if (entry.code === 200 && entry.body?.reviews?.rating_average) {
+          result[entry.body.id] = {
+            average: entry.body.reviews.rating_average,
+            total: entry.body.reviews.total ?? 0,
+          };
+        }
+      }
+    } catch (e) { console.error('ML reviews batch error:', e); }
+  }
+  return result;
+}
+
 async function coletorMercadoLivre(termos: string[]): Promise<PriceResult[]> {
   const resultados: PriceResult[] = [];
+  const rawItems: any[] = [];
 
   for (const termo of termos.slice(0, 3)) {
     try {
@@ -99,21 +130,32 @@ async function coletorMercadoLivre(termos: string[]): Promise<PriceResult[]> {
         { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) }
       );
       if (!res.ok) continue;
-
       const data = await res.json();
-      for (const item of (data.results ?? []).slice(0, 10)) {
-        if (item.price > 0) {
-          const marca = item.attributes?.find((a: any) => a.id === 'BRAND')?.value_name || '';
-          resultados.push({
-            fonte: 'mercadolivre', titulo: item.title,
-            preco_unitario: item.price, vendedor: item.seller?.nickname || 'Mercado Livre',
-            condicao: item.condition === 'new' ? 'Novo' : 'Usado', url: item.permalink,
-            ean: marca ? `Marca: ${marca}` : undefined, coletado_em: new Date().toISOString(),
-          });
-        }
-      }
-      if (resultados.length > 0) break; // Got results, stop trying more terms
+      rawItems.push(...(data.results ?? []).slice(0, 10).filter((i: any) => i.price > 0));
+      if (rawItems.length > 0) break;
     } catch (e) { console.error('ML API error:', e); }
+  }
+
+  if (rawItems.length === 0) return resultados;
+
+  // Fetch reviews for items that don't have them from search
+  const idsParaReview = rawItems.filter((i: any) => !i.reviews?.rating_average).map((i: any) => i.id);
+  const reviewsMap = await batchFetchMLReviews(idsParaReview);
+
+  for (const item of rawItems) {
+    const marca = item.attributes?.find((a: any) => a.id === 'BRAND')?.value_name || '';
+    const reviewFromSearch = item.reviews?.rating_average
+      ? { average: item.reviews.rating_average, total: item.reviews.total ?? 0 }
+      : null;
+    const review = reviewFromSearch || reviewsMap[item.id] || null;
+    resultados.push({
+      fonte: 'mercadolivre', titulo: item.title,
+      preco_unitario: item.price, vendedor: item.seller?.nickname || 'Mercado Livre',
+      condicao: item.condition === 'new' ? 'Novo' : 'Usado', url: item.permalink,
+      nota: review ? parseFloat(review.average.toFixed(1)) : undefined,
+      total_avaliacoes: review?.total ?? undefined,
+      ean: marca ? `Marca: ${marca}` : undefined, coletado_em: new Date().toISOString(),
+    });
   }
 
   return resultados;

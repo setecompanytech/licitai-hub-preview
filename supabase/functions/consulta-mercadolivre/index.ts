@@ -45,6 +45,10 @@ interface MLProduct {
   }>;
   catalog_product_id?: string;
   catalog_listing?: boolean;
+  reviews?: {
+    rating_average: number;
+    total: number;
+  };
   installments?: {
     quantity: number;
     amount: number;
@@ -85,6 +89,49 @@ function extractModel(attrs: MLProduct["attributes"]): string {
     (a) => a.id === "MODEL" || a.name?.toLowerCase() === "modelo"
   );
   return modelAttr?.value_name || "";
+}
+
+/** Converte level_id de reputação do vendedor ML para estrelas (1–5) */
+function reputacaoParaEstrelas(levelId: string | null | undefined): number | null {
+  const map: Record<string, number> = {
+    '5_green': 5, '4_light_green': 4, '3_yellow': 3, '2_orange': 2, '1_red': 1,
+  };
+  return levelId ? (map[levelId] ?? null) : null;
+}
+
+/**
+ * Busca avaliação de produtos em lote.
+ * Usa o endpoint público /items?ids=...&attributes=id,reviews
+ * (funciona sem OAuth para produtos de catálogo).
+ */
+async function batchFetchReviews(
+  ids: string[]
+): Promise<Record<string, { average: number; total: number }>> {
+  const result: Record<string, { average: number; total: number }> = {};
+  if (ids.length === 0) return result;
+
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += 20) batches.push(ids.slice(i, i + 20));
+
+  for (const batch of batches) {
+    try {
+      const res = await fetch(
+        `${ML_API_BASE}/items?ids=${batch.join(',')}&attributes=id,reviews`,
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      for (const entry of data) {
+        if (entry.code === 200 && entry.body?.reviews?.rating_average) {
+          result[entry.body.id] = {
+            average: entry.body.reviews.rating_average,
+            total: entry.body.reviews.total ?? 0,
+          };
+        }
+      }
+    } catch (e) { console.error('ML reviews batch error:', e); }
+  }
+  return result;
 }
 
 function mapCondition(condition: string): string {
@@ -295,6 +342,13 @@ serve(async (req) => {
       }
     }
 
+    // Buscar avaliações: primeiro tenta via campo reviews do resultado,
+    // depois via batch para os itens sem nota
+    const idsParaReview = mlData.results
+      .filter((r) => !r.reviews?.rating_average)
+      .map((r) => r.id);
+    const reviewsMap = await batchFetchReviews(idsParaReview);
+
     // Formatar resposta
     const produtos = mlData.results.map((item) => {
       const marca = extractBrand(item.attributes);
@@ -305,6 +359,17 @@ serve(async (req) => {
       const thumbnailHQ = item.thumbnail_id
         ? `https://http2.mlstatic.com/D_NQ_NP_${item.thumbnail_id}-O.webp`
         : item.thumbnail;
+
+      // Nota de avaliação: prioridade → campo reviews na busca → batch → reputação do vendedor
+      const reviewFromSearch = item.reviews?.rating_average
+        ? { average: item.reviews.rating_average, total: item.reviews.total ?? 0 }
+        : null;
+      const reviewFromBatch = reviewsMap[item.id] ?? null;
+      const review = reviewFromSearch || reviewFromBatch;
+      const reputacaoEstrelas = reputacaoParaEstrelas(item.seller.seller_reputation?.level_id);
+      const nota_avaliacao = review
+        ? parseFloat(review.average.toFixed(1))
+        : null;
 
       return {
         id: item.id,
@@ -322,9 +387,13 @@ serve(async (req) => {
           : [thumbnailHQ],
         marca,
         modelo,
+        nota_avaliacao,
+        total_avaliacoes: review?.total ?? null,
+        reputacao_vendedor: reputacaoEstrelas,
         vendedor: {
           nome: item.seller.nickname,
           reputacao: item.seller.power_seller_status || item.seller.seller_reputation?.level_id,
+          estrelas: reputacaoEstrelas,
           power_seller: !!item.seller.power_seller_status,
         },
         frete_gratis: item.shipping.free_shipping,

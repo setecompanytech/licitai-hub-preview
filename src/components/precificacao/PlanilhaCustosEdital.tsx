@@ -6,6 +6,7 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Upload, FileText, Loader2, X, Sparkles, Download, Trash2,
   Plus, CheckCircle, Edit3, Save, Package, FileSpreadsheet,
@@ -34,7 +35,8 @@ export interface PlanilhaItem {
   valorUnitario: number | null;
   valorTotal: number | null;
   marca: string;
-  fontes?: { fonte: string; titulo: string; url: string; preco: number }[];
+  fontes?: { fonte: string; vendedor?: string; titulo: string; url: string; preco: number; nota?: number; total_avaliacoes?: number }[];
+  avaliacao?: { score: number; nivel: 'alto' | 'medio' | 'baixo'; justificativa: string };
   cotacaoFalhou?: boolean;
 }
 
@@ -82,10 +84,12 @@ export default function PlanilhaCustosEdital({
   const [cotacaoProgress, setCotacaoProgress] = useState(0);
   const [cotacaoMsgs, setCotacaoMsgs] = useState<{ text: string; fontes?: { fonte: string; titulo: string; url: string; preco: number }[] }[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
   const { extrairItensDoTexto, fetchItens, saveItensManual, deleteAllItens } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
   const { addItem, pendingItems } = usePropostaCart();
   const { sugestoesPorItem, fetchSugestoes, gerarSugestoes, isGenerating } = useSugestaoMarcas();
+  const effectiveLicitacaoId = licitacaoId || sessionIdRef.current;
   const { loadRascunho, autoSave, flush, saving, lastSaved, markLoaded } = useRascunho<{ itens: PlanilhaItem[]; sourceLabel?: string | null }>({
     modulo: 'precificacao_planilha',
     licitacaoId: licitacaoId || null,
@@ -198,9 +202,34 @@ export default function PlanilhaCustosEdital({
     };
   }, [loadRascunho, licitacaoId, fetchItens, mapLinkedItensToPlanilha, markLoaded]);
 
+  // Auto-gera sugestões quando itens são carregados e ainda não existe avaliação para este processo
+  const autoSuggestKey = useRef<string | null>(null);
   useEffect(() => {
-    if (licitacaoId) fetchSugestoes(licitacaoId);
-  }, [licitacaoId, fetchSugestoes]);
+    if (itens.length === 0) return;
+    if (autoSuggestKey.current === effectiveLicitacaoId) return;
+    autoSuggestKey.current = effectiveLicitacaoId;
+
+    fetchSugestoes(effectiveLicitacaoId).then(existing => {
+      const itemDescs = new Set(itens.map(it => it.descricao.toLowerCase().trim()));
+      const hasMatch = existing.some(s => itemDescs.has(s.descricao_item.toLowerCase().trim()));
+      if (existing.length === 0 || !hasMatch) {
+        gerarSugestoes(effectiveLicitacaoId, itens.map(it => ({
+          numero: it.item,
+          descricao: it.descricao,
+          quantidade: it.quantidade,
+          unidade: it.unidade,
+          valor_unitario: it.valorUnitarioRef ?? undefined,
+        })));
+      }
+    });
+  }, [effectiveLicitacaoId, itens, fetchSugestoes, gerarSugestoes]);
+
+  // Lookup normalizado: case-insensitive + trim para casar descrições do PDF com as salvas no banco
+  const sugestoesPorDescNorm = Object.fromEntries(
+    Object.entries(sugestoesPorItem).map(([k, v]) => [k.toLowerCase().trim(), v])
+  );
+  const getSugestoes = (descricao: string) =>
+    sugestoesPorDescNorm[descricao.toLowerCase().trim()];
 
   useEffect(() => {
     const titulo = licitacaoNumero ? `Planilha de custos — ${licitacaoNumero}` : 'Planilha de custos';
@@ -251,29 +280,55 @@ export default function PlanilhaCustosEdital({
           continue;
         }
 
-        // Find best result for marca
-        const results = data.resultados || [];
+        // Filtra por faixa de preço aceitável: entre 20% e 100% do referencial
+        const precoRef = it.valorUnitarioRef || 0;
+        const allResults = (data.resultados || []).filter((r: any) => r.preco_unitario > 0);
+        const results = precoRef > 0
+          ? allResults.filter((r: any) => r.preco_unitario >= precoRef * 0.20 && r.preco_unitario <= precoRef)
+          : allResults;
+
+        if (results.length === 0) {
+          const msg = precoRef > 0 && allResults.length > 0
+            ? `❌ Item ${it.item}: menor preço encontrado (${formatCurrency(allResults[0]?.preco_unitario)}) acima do referencial — sem margem`
+            : `❌ Item ${it.item}: preço não encontrado`;
+          setCotacaoMsgs(prev => [...prev, { text: msg }]);
+          setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
+          continue;
+        }
+
+        // Recalcula bestPrice usando apenas resultados dentro da faixa
+        const precosValidos = results.map((r: any) => r.preco_unitario).sort((a: number, b: number) => a - b);
+        const validBestPrice = precosValidos[Math.floor(precosValidos.length / 2)] ?? bestPrice;
+
         const closest = results
-          .filter((r: any) => r.preco_unitario > 0)
-          .sort((a: any, b: any) => Math.abs(a.preco_unitario - bestPrice) - Math.abs(b.preco_unitario - bestPrice))[0];
+          .sort((a: any, b: any) => Math.abs(a.preco_unitario - validBestPrice) - Math.abs(b.preco_unitario - validBestPrice))[0];
 
         const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
-        const valorTotal = Math.round(bestPrice * it.quantidade * 100) / 100;
+        const valorTotal = Math.round(validBestPrice * it.quantidade * 100) / 100;
 
-        // Store top 3 sources — show even without URL so origin is always visible
+        // Deduplica por vendedor/fonte e limita a 3
+        const seenFonte = new Set<string>();
         const topFontes = results
-          .filter((r: any) => r.preco_unitario > 0)
+          .filter((r: any) => {
+            const key = r.vendedor || r.fonte;
+            if (seenFonte.has(key)) return false;
+            seenFonte.add(key);
+            return true;
+          })
           .slice(0, 3)
           .map((r: any) => ({
             fonte: r.fonte || 'marketplace',
+            vendedor: r.vendedor || undefined,
             titulo: (r.titulo || '').slice(0, 120),
             url: r.url || '',
             preco: r.preco_unitario,
+            nota: r.nota ?? undefined,
+            total_avaliacoes: r.total_avaliacoes ?? undefined,
           }));
 
         setItens(prev => prev.map((item, i) => i === idx ? {
           ...item,
-          valorUnitario: Math.round(bestPrice * 100) / 100,
+          valorUnitario: Math.round(validBestPrice * 100) / 100,
           valorTotal,
           marca: item.marca || marca,
           fontes: topFontes.length > 0 ? topFontes : undefined,
@@ -282,13 +337,13 @@ export default function PlanilhaCustosEdital({
         // Calc diff vs reference
         let diffMsg = '';
         if (it.valorUnitarioRef && it.valorUnitarioRef > 0) {
-          const diff = ((bestPrice - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
+          const diff = ((validBestPrice - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
           const sinal = diff > 0 ? '+' : '';
           diffMsg = ` | ${sinal}${diff.toFixed(1)}% vs referência`;
         }
 
         setCotacaoMsgs(prev => [...prev, {
-          text: `✅ Item ${it.item}: ${formatCurrency(bestPrice)} (${stats.total_registros} fontes)${diffMsg}`,
+          text: `✅ Item ${it.item}: ${formatCurrency(validBestPrice)} (${stats.total_registros} fontes)${diffMsg}`,
           fontes: topFontes.length > 0 ? topFontes : undefined,
         }]);
         cotados++;
@@ -301,6 +356,39 @@ export default function PlanilhaCustosEdital({
     setCotacaoProgress(100);
     setIsCotando(false);
     toast.success(`Cotação finalizada: ${cotados}/${itens.length} itens cotados.`);
+
+    // Avaliação automática por IA após cotação
+    setItens(currentItens => {
+      const itensParaAvaliar = currentItens.filter(it => it.valorUnitario && it.fontes?.length);
+      if (itensParaAvaliar.length === 0) return currentItens;
+
+      supabase.functions.invoke('avaliar-cotacoes', {
+        body: {
+          itens: itensParaAvaliar.map(it => ({
+            item_numero: it.item,
+            descricao: it.descricao,
+            quantidade: it.quantidade,
+            unidade: it.unidade,
+            preco_ref: it.valorUnitarioRef ?? null,
+            produto: it.fontes?.[0] ? {
+              titulo: it.fontes[0].titulo,
+              preco: it.fontes[0].preco,
+              fonte: it.fontes[0].vendedor || it.fontes[0].fonte,
+              nota_loja: it.fontes[0].nota ?? null,
+              total_avaliacoes: it.fontes[0].total_avaliacoes ?? null,
+            } : null,
+          })),
+        },
+      }).then(({ data, error }) => {
+        if (error || !data?.avaliacoes) return;
+        setItens(prev => prev.map(it => {
+          const av = data.avaliacoes.find((a: any) => a.item_numero === it.item);
+          return av ? { ...it, avaliacao: { score: av.score, nivel: av.nivel, justificativa: av.justificativa } } : it;
+        }));
+      });
+
+      return currentItens;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -741,26 +829,6 @@ export default function PlanilhaCustosEdital({
                   <><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cotar Todos</>
                 )}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  if (!licitacaoId || itens.length === 0) return;
-                  await gerarSugestoes(licitacaoId, itens.map(it => ({
-                    descricao: it.descricao,
-                    quantidade: it.quantidade,
-                    unidade: it.unidade,
-                    valor_unitario: it.valorUnitarioRef ?? undefined,
-                  })));
-                }}
-                disabled={isGenerating || !licitacaoId || itens.length === 0}
-              >
-                {isGenerating ? (
-                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Avaliando...</>
-                ) : (
-                  <><Bot className="w-3.5 h-3.5 mr-1" /> Avaliar Itens</>
-                )}
-              </Button>
               <Button variant="outline" size="sm" onClick={addEmptyItem}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
               </Button>
@@ -836,7 +904,7 @@ export default function PlanilhaCustosEdital({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b border-border/40">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-12">Item</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground w-12 whitespace-nowrap">Item</th>
                   <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[200px]">Descrição</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-16">Qtd</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-20">Unidade</th>
@@ -849,7 +917,7 @@ export default function PlanilhaCustosEdital({
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Marca</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Unitário</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Total</th>
-                  <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10">Link</th>
+                  <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[110px]">Fonte</th>
                   <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[140px]">Avaliação</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10"></th>
                 </tr>
@@ -948,64 +1016,60 @@ export default function PlanilhaCustosEdital({
                         </div>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      {it.fontes?.[0]?.url ? (
-                        <a
-                          href={it.fontes[0].url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={it.fontes[0].titulo || (FONTE_LABELS[it.fontes[0].fonte] ?? it.fontes[0].fonte)}
-                          className="text-primary hover:text-primary/80 inline-flex items-center justify-center w-7 h-7 rounded hover:bg-primary/10 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2 min-w-[140px]">
-                      {(() => {
-                        const sugestoes = sugestoesPorItem[it.descricao];
-                        const top = sugestoes?.[0];
-                        if (!top) return <span className="text-[10px] text-muted-foreground/40">—</span>;
-                        const scoreColor = top.score_confianca >= 90
-                          ? 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950'
-                          : top.score_confianca >= 70
-                          ? 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950'
-                          : top.score_confianca >= 50
-                          ? 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950'
-                          : 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950';
-                        const fonteLabel: Record<string, string> = {
-                          agente_ia: 'Agente IA', historico_precos: 'Histórico',
-                          itens_anteriores: 'Itens Ant.', pncp: 'PNCP',
-                        };
-                        return (
-                          <TooltipProvider>
-                            <div className="flex flex-col gap-1">
-                              <div className="flex flex-wrap gap-1">
-                                <Badge variant="outline" className="text-[9px] py-0 h-4">
-                                  {fonteLabel[top.fonte] ?? top.fonte}
-                                </Badge>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge className={`text-[9px] py-0 h-4 cursor-help border ${scoreColor}`}>
-                                      {top.score_confianca}% confiança
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  {top.justificativa_ia && (
-                                    <TooltipContent className="max-w-xs" side="left">
-                                      <p className="text-xs">{top.justificativa_ia}</p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </div>
-                              {top.justificativa_ia && (
-                                <p className="text-[9px] text-muted-foreground line-clamp-2 leading-tight">
-                                  {top.justificativa_ia}
-                                </p>
+                    <td className="px-3 py-2 min-w-[110px] text-center">
+                      {it.fontes && it.fontes.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {it.fontes.slice(0, 1).map((f, fi) => (
+                            <div key={fi} className="space-y-0.5">
+                              {f.url ? (
+                                <a
+                                  href={f.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={f.titulo}
+                                  className="block text-[11px] font-medium text-primary hover:text-primary/80 hover:underline"
+                                >
+                                  {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
+                                </a>
+                              ) : (
+                                <span className="block text-[11px] font-medium text-muted-foreground">
+                                  {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
+                                </span>
+                              )}
+                              {f.nota != null && (
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <span className="text-[10px] text-amber-400">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
+                                  <span className="text-[9px] text-muted-foreground">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
+                                </div>
                               )}
                             </div>
-                          </TooltipProvider>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 min-w-[160px] max-w-[220px]">
+                      {it.avaliacao ? (() => {
+                        const av = it.avaliacao!;
+                        const scoreColorCls = av.score >= 80
+                          ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950'
+                          : av.score >= 60
+                          ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950'
+                          : av.score >= 40
+                          ? 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950'
+                          : 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950';
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Badge className={`text-xs cursor-pointer ${scoreColorCls}`}>
+                                {av.score}% confiança
+                              </Badge>
+                            </PopoverTrigger>
+                            <PopoverContent side="left" className="w-72 text-sm leading-relaxed">
+                              {av.justificativa}
+                            </PopoverContent>
+                          </Popover>
                         );
-                      })()}
+                      })() : <span className="text-xs text-muted-foreground/40">—</span>}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Button
@@ -1063,10 +1127,11 @@ export default function PlanilhaCustosEdital({
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border/30">
-                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground w-12">Item</th>
+                      <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground w-12 whitespace-nowrap">Item</th>
                       <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Fonte</th>
                       <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground min-w-[200px]">Produto</th>
                       <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground w-24">Preço</th>
+                      <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-24">Avaliação</th>
                       <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-16">Link</th>
                     </tr>
                   </thead>
@@ -1077,13 +1142,37 @@ export default function PlanilhaCustosEdital({
                           <td className="px-3 py-1.5 text-center font-medium text-muted-foreground">{fi === 0 ? it.item : ''}</td>
                           <td className="px-3 py-1.5">
                             <Badge variant="outline" className="text-[9px] py-0">
-                              {FONTE_LABELS[f.fonte] ?? f.fonte}
+                              {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
                             </Badge>
                           </td>
                           <td className="px-3 py-1.5 text-muted-foreground truncate max-w-[300px]" title={f.titulo}>
                             {f.titulo}
                           </td>
                           <td className="px-3 py-1.5 text-right font-medium">{formatCurrency(f.preco)}</td>
+                          <td className="px-3 py-1.5 text-center">
+                            {fi === 0 && it.avaliacao ? (() => {
+                              const av = it.avaliacao!;
+                              const scoreColorCls = av.score >= 80
+                                ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950'
+                                : av.score >= 60
+                                ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950'
+                                : av.score >= 40
+                                ? 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950'
+                                : 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950';
+                              return (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Badge className={`text-[9px] py-0 cursor-pointer ${scoreColorCls}`}>
+                                      {av.score}%
+                                    </Badge>
+                                  </PopoverTrigger>
+                                  <PopoverContent side="left" className="w-72 text-sm leading-relaxed">
+                                    {av.justificativa}
+                                  </PopoverContent>
+                                </Popover>
+                              );
+                            })() : <span className="text-muted-foreground/40">—</span>}
+                          </td>
                           <td className="px-3 py-1.5 text-center">
                             {f.url ? (
                               <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 inline-flex">
