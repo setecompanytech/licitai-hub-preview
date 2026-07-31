@@ -908,11 +908,14 @@ export function useExtratosImportados() {
   });
 }
 
-export function useMovimentosExtrato(filtros: { conta_id?: string; conciliado?: boolean } = {}) {
+export function useMovimentosExtrato(
+  filtros: { conta_id?: string; conciliado?: boolean; extrato_id?: string } = {},
+  options: { enabled?: boolean } = {},
+) {
   const empresaId = useEmpresaId();
   return useQuery({
     queryKey: ["fin-movimentos", empresaId, filtros],
-    enabled: !!empresaId,
+    enabled: !!empresaId && options.enabled !== false,
     queryFn: async () => {
       let q = supabase
         .from("financeiro_extrato_movimentos")
@@ -920,6 +923,7 @@ export function useMovimentosExtrato(filtros: { conta_id?: string; conciliado?: 
         .eq("empresa_id", empresaId!)
         .order("data_movimento", { ascending: false })
         .limit(500);
+      if (filtros.extrato_id) q = q.eq("extrato_id", filtros.extrato_id);
       if (filtros.conta_id) q = q.eq("conta_id", filtros.conta_id);
       if (typeof filtros.conciliado === "boolean") q = q.eq("conciliado", filtros.conciliado);
       const { data, error } = await q;
@@ -928,6 +932,56 @@ export function useMovimentosExtrato(filtros: { conta_id?: string; conciliado?: 
         conta: { id: string; nome: string } | null;
         lancamento: { id: string; descricao: string; valor: number } | null;
       })[];
+    },
+  });
+}
+
+export type ResumoExtrato = {
+  total: number;
+  conciliados: number;
+  pendentes: number;
+  ignorados: number;
+  valor_pendente: number;
+};
+
+/**
+ * Situação de conciliação de cada extrato importado, para a lista inicial.
+ * Traz só as colunas do agregado — o detalhe dos movimentos só é buscado
+ * quando o usuário abre um extrato.
+ */
+export function useResumoPorExtrato() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    // Prefixo "fin-movimentos" de propósito: as mutações de conciliação já
+    // invalidam esse prefixo, então o progresso da lista atualiza junto.
+    queryKey: ["fin-movimentos", "resumo-extratos", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .select("extrato_id, conciliado, ignorado, valor")
+        .eq("empresa_id", empresaId!)
+        .limit(20000);
+      if (error) throw error;
+
+      const mapa = new Map<string, ResumoExtrato>();
+      for (const m of (data ?? []) as Pick<
+        ExtratoMovimento,
+        "extrato_id" | "conciliado" | "ignorado" | "valor"
+      >[]) {
+        const atual = mapa.get(m.extrato_id) ?? {
+          total: 0, conciliados: 0, pendentes: 0, ignorados: 0, valor_pendente: 0,
+        };
+        atual.total += 1;
+        if (m.conciliado) atual.conciliados += 1;
+        else if (m.ignorado) atual.ignorados += 1;
+        else {
+          atual.pendentes += 1;
+          atual.valor_pendente += Math.abs(Number(m.valor));
+        }
+        mapa.set(m.extrato_id, atual);
+      }
+      return mapa;
     },
   });
 }

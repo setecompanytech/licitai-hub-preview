@@ -7,6 +7,7 @@ import {
   useConciliarAutomatico,
   useConciliarManual,
   useDesfazerConciliacao,
+  useResumoPorExtrato,
   useLancamentos,
   useUpsertLancamento,
   ajustarSaldoConta,
@@ -71,6 +72,7 @@ import {
   TrendingDown,
   BarChart3,
   Plus,
+  ArrowLeft,
   ArrowLeftRight,
   Ban,
   ChevronDown,
@@ -120,6 +122,9 @@ export default function FinConciliacao() {
   } | null>(null);
   const [apagandoExtrato, setApagandoExtrato] = useState<string | null>(null);
   const qc = useQueryClient();
+  // Fluxo em dois passos: a tela abre na lista de extratos e só monta a área de
+  // conciliação (movimentos, sugestões, IA) do extrato que o usuário escolher.
+  const [extratoAberto, setExtratoAberto] = useState<string | null>(null);
   const [contaSelecionada, setContaSelecionada] = useState<string>("");
   const [filtroConciliado, setFiltroConciliado] = useState<
     "todos" | "pendente" | "conciliado" | "ignorado"
@@ -153,14 +158,40 @@ export default function FinConciliacao() {
   const empresaId = useEmpresaId();
   const { data: contas } = useContas();
   const { data: extratos } = useExtratosImportados();
-  const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato({
-    conta_id: contaSelecionada || undefined,
-    conciliado:
-      filtroConciliado === "todos" || filtroConciliado === "ignorado"
-        ? undefined
-        : filtroConciliado === "conciliado",
-  });
+  const { data: resumoExtratos } = useResumoPorExtrato();
+  const { data: movimentos, isLoading: loadingMov } = useMovimentosExtrato(
+    {
+      extrato_id: extratoAberto || undefined,
+      conta_id: contaSelecionada || undefined,
+      conciliado:
+        filtroConciliado === "todos" || filtroConciliado === "ignorado"
+          ? undefined
+          : filtroConciliado === "conciliado",
+    },
+    { enabled: !!extratoAberto },
+  );
   const { data: lancamentosTodos } = useLancamentos({});
+
+  const extratoAtivo = useMemo(
+    () => (extratos ?? []).find((e) => e.id === extratoAberto) ?? null,
+    [extratos, extratoAberto],
+  );
+
+  function abrirExtrato(ex: { id: string; conta_id: string }) {
+    setExtratoAberto(ex.id);
+    setContaSelecionada(ex.conta_id);
+    setSugestoes([]);
+    setSelecionadas(new Set());
+    setMovsSelecionados(new Set());
+    setFiltroConciliado("pendente");
+  }
+
+  function voltarParaLista() {
+    setExtratoAberto(null);
+    setSugestoes([]);
+    setSelecionadas(new Set());
+    setMovsSelecionados(new Set());
+  }
 
   // ─── Mutations ────────────────────────────────────────────────────────────
   const importar = useImportarOFX();
@@ -623,24 +654,211 @@ export default function FinConciliacao() {
       {/* ════════════════════════════════════════════════════════════════════ */}
       <TabsContent value="conciliar" className="space-y-4 mt-0">
 
+        {/* ══════════ LISTA DE EXTRATOS (tela inicial) ══════════ */}
+        {!extratoAberto && (
+          <>
+            {/* ── Importar ── */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-xs text-muted-foreground mb-1 block">Conta bancária</label>
+                    <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione uma conta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(contas ?? [])
+                          .filter((c) => ["corrente", "poupanca", "caixa"].includes(c.tipo ?? ""))
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2 ml-auto flex-wrap">
+                    <input ref={fileRef} type="file" accept=".ofx,.OFX" className="hidden" onChange={onFile} />
+                    <input ref={csvRef} type="file" accept=".csv,.CSV,text/csv" className="hidden" onChange={onCsvFile} />
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={importar.isPending || !contaSelecionada}
+                    >
+                      {importar.isPending
+                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                      Importar OFX
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      onClick={() => csvRef.current?.click()}
+                      disabled={importar.isPending || !contaSelecionada}
+                      title="CSV com colunas: data, descricao, valor (opcional documento)"
+                    >
+                      {importar.isPending
+                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                      Importar CSV
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ── Extratos para conciliar ── */}
+            <Card>
+              <CardHeader className="py-3 px-5 border-b">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <FileCheck2 className="w-4 h-4 text-primary" />
+                  Extratos importados
+                  <Badge variant="outline" className="text-xs">{extratos?.length ?? 0}</Badge>
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    Clique em um extrato para conciliar
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {(extratos?.length ?? 0) === 0 ? (
+                  <div className="py-14 text-center text-muted-foreground text-sm">
+                    Nenhum extrato importado. Selecione a conta e importe um arquivo OFX ou CSV.
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {(extratos ?? []).map((ex) => {
+                      const r = resumoExtratos?.get(ex.id);
+                      const total = r?.total ?? ex.total_movimentos ?? 0;
+                      const conciliados = r?.conciliados ?? 0;
+                      const pendentes = r?.pendentes ?? 0;
+                      const pct = total ? Math.round((conciliados / total) * 100) : 0;
+                      const concluido = total > 0 && pendentes === 0;
+                      return (
+                        <div
+                          key={ex.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => abrirExtrato(ex)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirExtrato(ex); }
+                          }}
+                          className="flex flex-wrap items-center gap-4 px-5 py-3 cursor-pointer hover:bg-muted/40 transition-colors focus:outline-none focus-visible:bg-muted/40"
+                        >
+                          <div className="min-w-[220px] flex-1">
+                            <div className="flex items-center gap-2">
+                              <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-emerald-500" : "text-primary"}`} />
+                              <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5 pl-6">
+                              {ex.conta?.nome ?? "—"} ·{" "}
+                              {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} → {ex.data_fim ? formatDate(ex.data_fim) : "?"}
+                            </div>
+                          </div>
+
+                          <div className="w-[150px]">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-muted-foreground tabular-nums">
+                                {conciliados}/{total}
+                              </span>
+                              <span className={`tabular-nums ${concluido ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                                {pct}%
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${concluido ? "bg-emerald-500" : "bg-primary"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="w-[130px] text-right">
+                            {concluido ? (
+                              <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />Conciliado
+                              </Badge>
+                            ) : (
+                              <>
+                                <div className="text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                                  {pendentes} pendente{pendentes === 1 ? "" : "s"}
+                                </div>
+                                {!!r?.valor_pendente && (
+                                  <div className="text-[11px] text-muted-foreground tabular-nums">
+                                    {formatBRL(r.valor_pendente)}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => abrirExtrato(ex)}
+                            >
+                              <Link2 className="w-3 h-3 mr-1" />Conciliar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-muted-foreground"
+                              onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
+                              disabled={reprocessando === ex.id}
+                              title="Reprocessar extrato com parser atualizado"
+                            >
+                              {reprocessando === ex.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <RotateCcw className="w-3 h-3" />}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-destructive/70 hover:text-destructive"
+                              onClick={() => setConfirmApagarExtrato({ extrato_id: ex.id, arquivo_nome: ex.arquivo_nome, total_movimentos: ex.total_movimentos ?? 0 })}
+                              disabled={apagandoExtrato === ex.id}
+                              title="Apagar extrato e seus movimentos"
+                            >
+                              {apagandoExtrato === ex.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Trash2 className="w-3 h-3" />}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* ══════════ CONCILIAÇÃO DO EXTRATO SELECIONADO ══════════ */}
+        {extratoAberto && (
+          <>
         {/* ── Controles ── */}
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-xs text-muted-foreground mb-1 block">Conta bancária</label>
-                <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Selecione uma conta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(contas ?? [])
-                      .filter((c) => ["corrente", "poupanca", "caixa"].includes(c.tipo ?? ""))
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex-1 min-w-[220px]">
+                <Button variant="ghost" size="sm" className="h-7 -ml-2 text-xs text-muted-foreground" onClick={voltarParaLista}>
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />Todos os extratos
+                </Button>
+                <div className="flex items-center gap-2 mt-1">
+                  <FileCheck2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-sm font-semibold truncate">{extratoAtivo?.arquivo_nome ?? "Extrato"}</span>
+                </div>
+                <div className="text-xs text-muted-foreground pl-6">
+                  {extratoAtivo?.conta?.nome ?? "—"} ·{" "}
+                  {extratoAtivo?.data_inicio ? formatDate(extratoAtivo.data_inicio) : "?"} →{" "}
+                  {extratoAtivo?.data_fim ? formatDate(extratoAtivo.data_fim) : "?"}
+                </div>
               </div>
 
               <div className="min-w-[150px]">
@@ -662,36 +880,6 @@ export default function FinConciliacao() {
               </div>
 
               <div className="flex items-center gap-2 ml-auto flex-wrap">
-                <input ref={fileRef} type="file" accept=".ofx,.OFX" className="hidden" onChange={onFile} />
-                <input ref={csvRef} type="file" accept=".csv,.CSV,text/csv" className="hidden" onChange={onCsvFile} />
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={importar.isPending || !contaSelecionada}
-                >
-                  {importar.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <Upload className="w-3.5 h-3.5 mr-1.5" />}
-                  Importar OFX
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  onClick={() => csvRef.current?.click()}
-                  disabled={importar.isPending || !contaSelecionada}
-                  title="CSV com colunas: data, descricao, valor (opcional documento)"
-                >
-                  {importar.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <Upload className="w-3.5 h-3.5 mr-1.5" />}
-                  Importar CSV
-                </Button>
-
                 <Button
                   size="sm"
                   className="h-9"
@@ -1018,82 +1206,17 @@ export default function FinConciliacao() {
           </CardContent>
         </Card>
 
-        {/* ── Extratos importados ── */}
-        {(extratos?.length ?? 0) > 0 && (
-          <Card>
-            <CardHeader className="py-3 px-5 border-b">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <FileCheck2 className="w-4 h-4 text-primary" />
-                Extratos importados
-                <Badge variant="outline" className="text-xs">{extratos!.length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                {(extratos ?? []).map((ex) => (
-                  <div
-                    key={ex.id}
-                    className="flex items-start justify-between gap-2 rounded-lg border bg-card p-3 hover:bg-accent/40 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <FileCheck2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {ex.conta?.nome ?? "—"} · {ex.total_movimentos ?? 0} movimentos
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} → {ex.data_fim ? formatDate(ex.data_fim) : "?"}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <Badge
-                        variant={ex.status === "concluido" ? "default" : "secondary"}
-                        className="text-[10px] px-1.5"
-                      >
-                        {ex.status}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
-                        disabled={reprocessando === ex.id}
-                        title="Reprocessar extrato com parser atualizado"
-                      >
-                        {reprocessando === ex.id
-                          ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                          : <RotateCcw className="w-3 h-3 mr-1" />}
-                        Reprocessar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-destructive/70 hover:text-destructive"
-                        onClick={() => setConfirmApagarExtrato({ extrato_id: ex.id, arquivo_nome: ex.arquivo_nome, total_movimentos: ex.total_movimentos ?? 0 })}
-                        disabled={apagandoExtrato === ex.id}
-                        title="Apagar extrato e seus movimentos"
-                      >
-                        {apagandoExtrato === ex.id
-                          ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                          : <Trash2 className="w-3 h-3 mr-1" />}
-                        Apagar
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <input
-                ref={reprocFileRef}
-                type="file"
-                accept=".ofx,.OFX"
-                className="hidden"
-                onChange={onReprocessarFile}
-              />
-            </CardContent>
-          </Card>
+          </>
         )}
+
+        {/* Input escondido do reprocesso — usado a partir da lista */}
+        <input
+          ref={reprocFileRef}
+          type="file"
+          accept=".ofx,.OFX"
+          className="hidden"
+          onChange={onReprocessarFile}
+        />
 
         {/* ── AlertDialog: confirmar reprocesso ── */}
         <AlertDialog open={!!confirmReproc} onOpenChange={(o) => !o && setConfirmReproc(null)}>
@@ -1176,6 +1299,7 @@ export default function FinConciliacao() {
         </AlertDialog>
 
         {/* ── Extrato bancário — layout padrão de mercado ── */}
+        {extratoAberto && (
         <div className="rounded-lg border overflow-hidden">
           {/* Cabeçalho split */}
           <div className="grid grid-cols-[1fr_auto_1fr] bg-muted/30 border-b">
@@ -1521,6 +1645,7 @@ export default function FinConciliacao() {
             </div>
           ))}
         </div>
+        )}
 
         {/* ── Dialogs ── */}
         <DialogVincularManual
