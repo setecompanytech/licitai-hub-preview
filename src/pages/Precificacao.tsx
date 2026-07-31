@@ -1080,7 +1080,7 @@ export default function Precificacao() {
 
           <TabsContent value="govbr">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
-              <PainelPrecosGov />
+              <PainelPrecosGov ufInicial={selectedEstado} municipioInicial={selectedCidade} />
             </div>
           </TabsContent>
 

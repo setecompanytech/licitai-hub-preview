@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, Building2, Calendar, MapPin, ExternalLink, TrendingDown, BarChart3, FileCheck, Scale, AlertTriangle } from 'lucide-react';
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, Search, Building2, Calendar, MapPin, ExternalLink, TrendingDown, BarChart3, FileCheck, Scale, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { fetchMunicipiosUF, UFS_BRASIL, type IBGEMunicipio } from '@/lib/ibge-municipios';
 
 type ResultadoGov = {
   descricao: string;
@@ -16,6 +22,7 @@ type ResultadoGov = {
   data_compra: string;
   modalidade: string;
   uf: string;
+  municipio?: string;
   fonte: string;
   url: string;
   numero_compra: string;
@@ -38,13 +45,70 @@ const formatCurrency = (v: number) =>
 
 const currentYear = new Date().getFullYear();
 
-export default function PainelPrecosGov() {
+const TODOS = 'todos';
+
+type Props = {
+  /** UF pré-selecionada pelo filtro de localização da página. */
+  ufInicial?: string;
+  /** Cidade pré-selecionada pelo filtro de localização da página. */
+  municipioInicial?: string;
+};
+
+export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = TODOS }: Props) {
   const [termo, setTermo] = useState('');
   const [anoInicio, setAnoInicio] = useState(String(currentYear - 2));
   const [anoFim, setAnoFim] = useState(String(currentYear));
+  const [uf, setUf] = useState(ufInicial || TODOS);
+  const [municipio, setMunicipio] = useState(municipioInicial || TODOS);
+  const [municipios, setMunicipios] = useState<IBGEMunicipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+  const [municipioOpen, setMunicipioOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resultados, setResultados] = useState<ResultadoGov[]>([]);
   const [resumo, setResumo] = useState<ResumoGov | null>(null);
+
+  // Acompanha o filtro de localização da página (Localização: Região/Estado/Cidade)
+  useEffect(() => {
+    setUf(ufInicial || TODOS);
+    setMunicipio(municipioInicial || TODOS);
+  }, [ufInicial, municipioInicial]);
+
+  // Carrega municípios do IBGE ao trocar de UF
+  useEffect(() => {
+    let cancelado = false;
+
+    if (uf === TODOS) {
+      setMunicipios([]);
+      return;
+    }
+
+    setLoadingMunicipios(true);
+    fetchMunicipiosUF(uf)
+      .then((lista) => {
+        if (!cancelado) setMunicipios(lista);
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setMunicipios([]);
+          toast.error(`Não foi possível carregar os municípios de ${uf}.`);
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setLoadingMunicipios(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [uf]);
+
+  const handleUfChange = (novaUf: string) => {
+    setUf(novaUf);
+    setMunicipio(TODOS);
+  };
+
+  const escopoLabel =
+    municipio !== TODOS ? `${municipio}/${uf}` : uf !== TODOS ? uf : 'todo o Brasil';
 
   const handleSearch = async () => {
     if (!termo.trim()) {
@@ -57,7 +121,13 @@ export default function PainelPrecosGov() {
 
     try {
       const { data, error } = await supabase.functions.invoke('consulta-painel-precos', {
-        body: { termo, anoInicio: Number(anoInicio), anoFim: Number(anoFim) },
+        body: {
+          termo,
+          anoInicio: Number(anoInicio),
+          anoFim: Number(anoFim),
+          uf: uf !== TODOS ? uf : undefined,
+          municipio: municipio !== TODOS ? municipio : undefined,
+        },
       });
 
       if (error || !data?.success) {
@@ -70,9 +140,18 @@ export default function PainelPrecosGov() {
       setResumo(data.resumo || null);
 
       if ((data.resultados || []).length === 0) {
-        toast.warning('Nenhum registro encontrado no PNCP para esse termo e período.');
+        const descartados = Number(data.total_sem_filtro || 0);
+        if (descartados > 0) {
+          toast.warning(
+            `Nenhum registro em ${escopoLabel}. ${descartados} registros foram encontrados em outras localidades — amplie o filtro para vê-los.`
+          );
+        } else {
+          toast.warning('Nenhum registro encontrado no PNCP para esse termo e período.');
+        }
       } else {
-        toast.success(`${data.resultados.length} registros de preços reais encontrados no PNCP!`);
+        toast.success(
+          `${data.resultados.length} registros de preços reais encontrados no PNCP (${escopoLabel})!`
+        );
       }
     } catch (e) {
       console.error(e);
@@ -136,6 +215,96 @@ export default function PainelPrecosGov() {
         </Button>
       </div>
 
+      {/* Filtro geográfico da consulta PNCP */}
+      <div className="flex gap-2 items-center flex-wrap">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="w-3.5 h-3.5" /> Localidade da contratação:
+        </span>
+
+        <Select value={uf} onValueChange={handleUfChange}>
+          <SelectTrigger className="w-[190px] h-9">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODOS}>Todos os estados</SelectItem>
+            {UFS_BRASIL.map((e) => (
+              <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Popover open={municipioOpen} onOpenChange={setMunicipioOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              role="combobox"
+              aria-expanded={municipioOpen}
+              disabled={uf === TODOS || loadingMunicipios}
+              className="w-[210px] h-9 justify-between font-normal"
+            >
+              <span className="truncate">
+                {uf === TODOS
+                  ? 'Selecione o estado'
+                  : loadingMunicipios
+                    ? 'Carregando cidades...'
+                    : municipio === TODOS
+                      ? 'Todas as cidades'
+                      : municipio}
+              </span>
+              {loadingMunicipios ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 opacity-70" />
+              ) : (
+                <ChevronsUpDown className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[260px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Buscar cidade..." className="h-9" />
+              <CommandList>
+                <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="Todas as cidades"
+                    onSelect={() => { setMunicipio(TODOS); setMunicipioOpen(false); }}
+                  >
+                    <Check className={cn('mr-2 w-3.5 h-3.5', municipio === TODOS ? 'opacity-100' : 'opacity-0')} />
+                    Todas as cidades
+                  </CommandItem>
+                  {municipios.map((m) => (
+                    <CommandItem
+                      key={`${m.uf}-${m.id}`}
+                      value={m.nome}
+                      onSelect={() => { setMunicipio(m.nome); setMunicipioOpen(false); }}
+                    >
+                      <Check className={cn('mr-2 w-3.5 h-3.5', municipio === m.nome ? 'opacity-100' : 'opacity-0')} />
+                      {m.nome}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {(uf !== TODOS || municipio !== TODOS) && (
+          <>
+            <Badge variant="outline" className="text-[10px] font-normal">
+              Filtrando por {escopoLabel}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => { setUf(TODOS); setMunicipio(TODOS); }}
+            >
+              Limpar
+            </Button>
+          </>
+        )}
+      </div>
+
       {/* Resumo */}
       {resumo && (
         <div className="bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/20 rounded-lg p-4">
@@ -175,7 +344,7 @@ export default function PainelPrecosGov() {
       {resultados.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            {resultados.length} itens com preço unitário encontrados no PNCP ({anoInicio}–{anoFim})
+            {resultados.length} itens com preço unitário encontrados no PNCP ({anoInicio}–{anoFim}) — {escopoLabel}
           </p>
           {resultados.map((r, i) => {
             const isCheapest = resumo ? r.preco_unitario === resumo.menor_preco : false;
@@ -214,9 +383,10 @@ export default function PainelPrecosGov() {
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Building2 className="w-3 h-3" /> {r.orgao}
                     </span>
-                    {r.uf && (
+                    {(r.municipio || r.uf) && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {r.uf}
+                        <MapPin className="w-3 h-3" />
+                        {r.municipio && r.uf ? `${r.municipio}/${r.uf}` : r.municipio || r.uf}
                       </span>
                     )}
                     {r.data_compra && (
@@ -261,7 +431,10 @@ export default function PainelPrecosGov() {
         <div className="text-center py-8 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Consulte preços unitários homologados em ATAs e contratos públicos</p>
-          <p className="text-xs mt-1">Dados oficiais do PNCP — últimos 3 anos</p>
+          <p className="text-xs mt-1">
+            Dados oficiais do PNCP — últimos 3 anos
+            {uf !== TODOS && ` • filtrando por ${escopoLabel}`}
+          </p>
         </div>
       )}
     </div>

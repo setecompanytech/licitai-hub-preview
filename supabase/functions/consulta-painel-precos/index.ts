@@ -20,10 +20,15 @@ serve(async (req) => {
   }
 
   try {
-    const { termo, anoInicio, anoFim } = await req.json();
+    const { termo, anoInicio, anoFim, uf, municipio } = await req.json();
     if (!termo) {
       return json({ error: "Termo de busca é obrigatório" }, 400);
     }
+
+    const filtro: FiltroLocal = {
+      uf: String(uf || "").trim().toUpperCase(),
+      municipio: String(municipio || "").trim(),
+    };
 
     const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_KEY) {
@@ -34,25 +39,30 @@ serve(async (req) => {
     const yearEnd = anoFim || now.getFullYear();
     const yearStart = anoInicio || yearEnd - 2;
 
-    console.log(`[painel-precos] Buscando "${termo}" de ${yearStart} a ${yearEnd}`);
+    const escopo = escopoLabel(filtro);
+    console.log(`[painel-precos] Buscando "${termo}" de ${yearStart} a ${yearEnd} em ${escopo}`);
 
     // Phase 1: Use Firecrawl/Google to find relevant PNCP procurement pages
-    const pncpLinks = await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY);
+    const pncpLinks = await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY, filtro);
     console.log(`[painel-precos] ${pncpLinks.length} links PNCP encontrados via busca`);
 
     if (pncpLinks.length === 0) {
       return json({
         success: true,
         termo,
+        filtros: filtro,
         resultados: [],
         resumo: null,
+        total_sem_filtro: 0,
         mensagem: "Nenhuma contratação encontrada para esse termo no período.",
       });
     }
 
-    // Phase 2: Fetch items from PNCP API for each procurement found
-    const allItems = await fetchAllItems(pncpLinks, termo);
-    console.log(`[painel-precos] ${allItems.length} itens com preço unitário encontrados`);
+    // Phase 2: Fetch items from PNCP API, mantendo só os da localidade pedida
+    const { itens: allItems, totalSemFiltro } = await fetchAllItems(pncpLinks, termo, filtro);
+    console.log(
+      `[painel-precos] ${allItems.length} itens em ${escopo} (${totalSemFiltro} antes do filtro de localidade)`
+    );
 
     // Sort by date descending
     const sorted = allItems.sort(
@@ -70,6 +80,7 @@ serve(async (req) => {
             mediana: calcMediana(precos),
             total_registros: sorted.length,
             periodo: `${yearStart}-${yearEnd}`,
+            escopo,
             fontes: ["PNCP - Portal Nacional de Contratações Públicas"],
           }
         : null;
@@ -77,8 +88,14 @@ serve(async (req) => {
     return json({
       success: true,
       termo,
+      filtros: filtro,
       resultados: sorted.slice(0, 100),
       resumo,
+      total_sem_filtro: totalSemFiltro,
+      mensagem:
+        sorted.length === 0 && totalSemFiltro > 0
+          ? `Nenhum registro em ${escopo}. ${totalSemFiltro} registros existem em outras localidades.`
+          : undefined,
     });
   } catch (e: any) {
     console.error("[painel-precos] Erro:", e);
@@ -98,17 +115,51 @@ type PncpLink = {
   dataPublicacao: string;
 };
 
+type FiltroLocal = {
+  uf: string;
+  municipio: string;
+};
+
+/** Texto legível do escopo geográfico, para logs e mensagens ao usuário. */
+function escopoLabel(filtro: FiltroLocal): string {
+  if (filtro.municipio && filtro.uf) return `${filtro.municipio}/${filtro.uf}`;
+  if (filtro.municipio) return filtro.municipio;
+  if (filtro.uf) return filtro.uf;
+  return "todo o Brasil";
+}
+
+/** Normaliza para comparar nomes de município (sem acento, sem caixa). */
+function norm(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Mn}/gu, "")
+    .trim();
+}
+
+/** Mantém apenas contratações da UF/município pedidos. */
+function matchLocal(item: any, filtro: FiltroLocal): boolean {
+  if (filtro.uf && String(item.uf || "").toUpperCase() !== filtro.uf) return false;
+  if (filtro.municipio && norm(item.municipio) !== norm(filtro.municipio)) return false;
+  return true;
+}
+
 async function findPncpLinks(
   termo: string,
   yearStart: number,
   yearEnd: number,
-  apiKey: string
+  apiKey: string,
+  filtro: FiltroLocal
 ): Promise<PncpLink[]> {
+  // Direciona a busca para a localidade pedida (o filtro rígido vem depois, na API do PNCP)
+  const local = [filtro.municipio, filtro.uf].filter(Boolean).join(" ");
+  const comLocal = (q: string) => (local ? `${q} ${local}` : q);
+
   // Run multiple search queries in parallel for better coverage
   const queries = [
-    `"${termo}" site:pncp.gov.br/app/editais`,
-    `"${termo}" preço unitário ata registro preços site:pncp.gov.br`,
-    `"${termo}" pregão eletrônico site:pncp.gov.br`,
+    comLocal(`"${termo}" site:pncp.gov.br/app/editais`),
+    comLocal(`"${termo}" preço unitário ata registro preços site:pncp.gov.br`),
+    comLocal(`"${termo}" pregão eletrônico site:pncp.gov.br`),
   ];
 
   const searches = queries.map((query) =>
@@ -177,10 +228,15 @@ async function firecrawlSearch(query: string, apiKey: string, limit: number): Pr
 // ============================================================
 // Phase 2: Fetch verified items from PNCP API
 // ============================================================
-async function fetchAllItems(links: PncpLink[], termo: string): Promise<any[]> {
+async function fetchAllItems(
+  links: PncpLink[],
+  termo: string,
+  filtro: FiltroLocal
+): Promise<{ itens: any[]; totalSemFiltro: number }> {
   const termoLower = termo.toLowerCase();
   const termoWords = termoLower.split(/\s+/).filter((w) => w.length > 2);
   const results: any[] = [];
+  let totalSemFiltro = 0;
 
   // Process in parallel batches of 8
   const batchSize = 8;
@@ -191,14 +247,17 @@ async function fetchAllItems(links: PncpLink[], termo: string): Promise<any[]> {
 
     for (const r of batchResults) {
       if (r.status === "fulfilled" && r.value.length > 0) {
-        results.push(...r.value);
+        totalSemFiltro += r.value.length;
+        // O corte por localidade acontece antes do teto de 80, para não
+        // encher a cota com registros de outros estados.
+        results.push(...r.value.filter((item) => matchLocal(item, filtro)));
       }
     }
 
     if (results.length >= 80) break;
   }
 
-  return results;
+  return { itens: results, totalSemFiltro };
 }
 
 async function fetchPncpItems(
@@ -262,6 +321,11 @@ async function fetchPncpItems(
         contratacao?.orgaoEntidade?.uf ||
         "";
 
+      const municipio =
+        contratacao?.unidadeOrgao?.municipioNome ||
+        contratacao?.unidadeOrgao?.municipio?.nome ||
+        "";
+
       matched.push({
         descricao: item.descricao || item.materialOuServico || "",
         orgao,
@@ -271,6 +335,7 @@ async function fetchPncpItems(
         data_compra: contratacao?.dataPublicacaoPncp || contratacao?.dataInclusao || "",
         modalidade: contratacao?.modalidadeNome || "Licitação",
         uf,
+        municipio,
         fonte: "PNCP",
         url: `https://pncp.gov.br/app/editais/${link.cnpj}/${link.ano}/${link.seq}`,
         numero_compra: contratacao?.numeroCompra || `${link.ano}/${link.seq}`,
