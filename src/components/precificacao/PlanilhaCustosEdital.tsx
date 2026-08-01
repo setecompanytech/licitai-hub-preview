@@ -255,75 +255,57 @@ export default function PlanilhaCustosEdital({
       setCotacaoProgress(Math.round(((idx) / itens.length) * 100));
 
       try {
-        const { data, error } = await supabase.functions.invoke('price-search', {
-          body: {
-            descricao: it.descricao.slice(0, 200),
-            codigoCatmat: it.catmat || undefined,
-            unidade: it.unidade,
-            quantidade: it.quantidade,
-            modo: 'auto',
-          },
+        // Busca direto no Google Shopping via pesquisa-preco-real (Serper)
+        const { data, error } = await supabase.functions.invoke('pesquisa-preco-real', {
+          body: { termo: it.descricao.slice(0, 200) },
         });
 
-        if (error || !data?.estatisticas) {
+        if (error || !data?.success) {
           setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: sem resultados` }]);
           setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
 
-        const stats = data.estatisticas;
-        const bestPrice = stats.preco_sugerido > 0 ? stats.preco_sugerido : stats.mediana;
+        const fornecedores: any[] = (data?.data?.fornecedores || []).filter((f: any) => f.preco > 0);
 
-        if (bestPrice <= 0) {
-          setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: preço não encontrado` }]);
+        if (fornecedores.length === 0) {
+          setCotacaoMsgs(prev => [...prev, { text: `❌ Item ${it.item}: nenhum resultado no Google Shopping` }]);
           setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
           continue;
         }
 
-        // Filtra por faixa de preço aceitável: entre 20% e 100% do referencial
+        // Filtra preços abaixo de 20% do referencial (confusão unidade vs caixa)
         const precoRef = it.valorUnitarioRef || 0;
-        const allResults = (data.resultados || []).filter((r: any) => r.preco_unitario > 0);
-        const results = precoRef > 0
-          ? allResults.filter((r: any) => r.preco_unitario >= precoRef * 0.20 && r.preco_unitario <= precoRef)
-          : allResults;
+        const pool = precoRef > 0
+          ? fornecedores.filter((f: any) => f.preco >= precoRef * 0.20)
+          : fornecedores;
+        const poolFinal = pool.length > 0 ? pool : fornecedores;
 
-        if (results.length === 0) {
-          const msg = precoRef > 0 && allResults.length > 0
-            ? `❌ Item ${it.item}: menor preço encontrado (${formatCurrency(allResults[0]?.preco_unitario)}) acima do referencial — sem margem`
-            : `❌ Item ${it.item}: preço não encontrado`;
-          setCotacaoMsgs(prev => [...prev, { text: msg }]);
-          setItens(prev => prev.map((item, i) => i === idx ? { ...item, cotacaoFalhou: true } : item));
-          continue;
-        }
+        // Prefere preços abaixo do referencial; se não houver, usa a mediana do pool
+        const abaixoRef = precoRef > 0 ? poolFinal.filter((f: any) => f.preco <= precoRef) : [];
+        const poolValido = abaixoRef.length > 0 ? abaixoRef : poolFinal;
+        const precosValidos = poolValido.map((f: any) => f.preco).sort((a: number, b: number) => a - b);
+        const validBestPrice = precosValidos[Math.floor(precosValidos.length / 2)];
 
-        // Recalcula bestPrice usando apenas resultados dentro da faixa
-        const precosValidos = results.map((r: any) => r.preco_unitario).sort((a: number, b: number) => a - b);
-        const validBestPrice = precosValidos[Math.floor(precosValidos.length / 2)] ?? bestPrice;
-
-        const closest = results
-          .sort((a: any, b: any) => Math.abs(a.preco_unitario - validBestPrice) - Math.abs(b.preco_unitario - validBestPrice))[0];
-
-        const marca = closest?.ean?.replace('Marca: ', '') || closest?.vendedor || '';
+        const marca = poolFinal.find((f: any) => f.marca)?.marca || '';
         const valorTotal = Math.round(validBestPrice * it.quantidade * 100) / 100;
 
-        // Deduplica por vendedor/fonte e limita a 3
-        const seenFonte = new Set<string>();
-        const topFontes = results
-          .filter((r: any) => {
-            const key = r.vendedor || r.fonte;
-            if (seenFonte.has(key)) return false;
-            seenFonte.add(key);
+        // Top 3 lojas únicas do Google Shopping
+        const seenLoja = new Set<string>();
+        const topFontes = poolFinal
+          .filter((f: any) => {
+            if (seenLoja.has(f.loja)) return false;
+            seenLoja.add(f.loja);
             return true;
           })
           .slice(0, 3)
-          .map((r: any) => ({
-            fonte: r.fonte || 'marketplace',
-            vendedor: r.vendedor || undefined,
-            titulo: (r.titulo || '').slice(0, 120),
-            url: r.url || '',
-            preco: r.preco_unitario,
-            nota: r.nota ?? undefined,
-            total_avaliacoes: r.total_avaliacoes ?? undefined,
+          .map((f: any) => ({
+            fonte: 'marketplace',
+            vendedor: f.loja,
+            titulo: (f.produto || '').slice(0, 120),
+            url: f.url || '',
+            preco: f.preco,
+            nota: f.avaliacao ?? undefined,
           }));
 
         setItens(prev => prev.map((item, i) => i === idx ? {
@@ -334,16 +316,15 @@ export default function PlanilhaCustosEdital({
           fontes: topFontes.length > 0 ? topFontes : undefined,
         } : item));
 
-        // Calc diff vs reference
+        // Diff vs referência
         let diffMsg = '';
         if (it.valorUnitarioRef && it.valorUnitarioRef > 0) {
           const diff = ((validBestPrice - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
-          const sinal = diff > 0 ? '+' : '';
-          diffMsg = ` | ${sinal}${diff.toFixed(1)}% vs referência`;
+          diffMsg = ` | ${diff > 0 ? '+' : ''}${diff.toFixed(1)}% vs referência`;
         }
 
         setCotacaoMsgs(prev => [...prev, {
-          text: `✅ Item ${it.item}: ${formatCurrency(validBestPrice)} (${stats.total_registros} fontes)${diffMsg}`,
+          text: `✅ Item ${it.item}: ${formatCurrency(validBestPrice)} (${fornecedores.length} lojas Google Shopping)${diffMsg}`,
           fontes: topFontes.length > 0 ? topFontes : undefined,
         }]);
         cotados++;

@@ -22,7 +22,7 @@ interface PriceResult {
 }
 
 function gerarChaveCache(descricao: string, codigoCatmat?: string): string {
-  const base = `${descricao.toLowerCase().trim()}|${codigoCatmat || ''}`;
+  const base = `serper1|${descricao.toLowerCase().trim()}|${codigoCatmat || ''}`;
   let hash = 0;
   for (let i = 0; i < base.length; i++) {
     const char = base.charCodeAt(i);
@@ -288,6 +288,77 @@ function contarFontes(resultados: PriceResult[]): Record<string, number> {
   }, {} as Record<string, number>);
 }
 
+const PNCP_CAT_KEYWORDS: Record<string, string[]> = {
+  escritorio: ['escritório', 'escritorio', 'expediente', 'papelaria'],
+  limpeza: ['limpeza', 'higiene', 'material de limpeza', 'sanitário'],
+  saude: ['saúde', 'saude', 'hospitalar', 'material médico', 'material medico'],
+  ti: ['informática', 'informatica', 'tecnologia', 'equipamento de ti', 'computador'],
+  alimentos: ['alimentação', 'alimentacao', 'alimentos', 'gêneros alimentícios'],
+  construcao: ['construção', 'construcao', 'material de construção', 'reforma'],
+  veiculos: ['veículo', 'veiculo', 'automóvel', 'frota'],
+};
+
+async function coletorPNCPitens(termos: string[], categoria: string, supabaseClient: any): Promise<PriceResult[]> {
+  const resultados: PriceResult[] = [];
+  try {
+    // Palavras-chave do item para match nos itens do PNCP
+    const termoPrincipal = termos[0] || '';
+    const palavrasItem = termoPrincipal.toLowerCase()
+      .split(/\s+/)
+      .filter((w: string) => w.length > 3 && !['para', 'com', 'uso', 'tipo', 'cor', 'não', 'nao'].includes(w))
+      .slice(0, 3);
+    if (palavrasItem.length === 0) return resultados;
+
+    // Palavras-chave para buscar no objeto do edital (usa categoria ou primeiras palavras do item)
+    const catKws = PNCP_CAT_KEYWORDS[categoria] || [];
+    const buscaObjeto = catKws.length > 0 ? catKws : palavrasItem;
+    const orFilter = buscaObjeto.slice(0, 3).map((k: string) => `objeto.ilike.%${k}%`).join(',');
+    if (!orFilter) return resultados;
+
+    const { data: editais } = await supabaseClient
+      .from('pncp_editais_cache')
+      .select('cnpj_orgao, ano_compra, sequencial_compra, orgao, url_pncp')
+      .or(orFilter)
+      .gte('data_publicacao_pncp', new Date(Date.now() - 365 * 86400000).toISOString())
+      .limit(8);
+
+    if (!editais?.length) return resultados;
+
+    const itemPromises = editais.slice(0, 5).map(async (edital: any) => {
+      try {
+        const res = await fetch(
+          `https://pncp.gov.br/api/pncp/v1/orgaos/${edital.cnpj_orgao}/compras/${edital.ano_compra}/${edital.sequencial_compra}/itens?tamanhoPagina=50`,
+          { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return [];
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.data || []);
+        const itens: PriceResult[] = [];
+        for (const item of items) {
+          const desc = (item.descricao || item.descricaoItem || '').toLowerCase();
+          const matched = palavrasItem.filter((p: string) => desc.includes(p)).length >= Math.ceil(palavrasItem.length * 0.5);
+          const preco = Number(item.valorUnitarioEstimado ?? item.valorUnitario ?? 0);
+          if (matched && preco > 0) {
+            itens.push({
+              fonte: 'pncp', titulo: item.descricao || item.descricaoItem || termoPrincipal,
+              preco_unitario: preco, vendedor: edital.orgao || 'Órgão Público',
+              condicao: 'Licitação Pública', url: edital.url_pncp || `https://pncp.gov.br/app/editais/${edital.cnpj_orgao}/${edital.ano_compra}/${edital.sequencial_compra}`,
+              orgao: edital.orgao, coletado_em: new Date().toISOString(),
+            });
+          }
+        }
+        return itens;
+      } catch { return []; }
+    });
+
+    const lotes = await Promise.allSettled(itemPromises);
+    for (const r of lotes) {
+      if (r.status === 'fulfilled') resultados.push(...(r.value as PriceResult[]));
+    }
+  } catch (e) { console.error('PNCP local error:', e); }
+  return resultados;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -329,9 +400,10 @@ Deno.serve(async (req) => {
     // PASSO 2: Normalizar query
     let queryNorm: any;
     try {
-      const { data } = await supabase.functions.invoke('price-search-normalizer', {
+      const { data, error: normErr } = await supabase.functions.invoke('price-search-normalizer', {
         body: { descricao, codigoCatmat, especificacoes, unidade, quantidade },
       });
+      if (!data || normErr) throw new Error('normalizer unavailable');
       queryNorm = data;
     } catch {
       const words = descricao.split(/\s+/).filter((t: string) => t.length > 2);
@@ -364,6 +436,7 @@ Deno.serve(async (req) => {
     }
 
     coletoresPromises.push(coletorPesquisaReal(termosGerais, authHeader));
+    coletoresPromises.push(coletorPNCPitens(termosGerais, categoria, supabase));
 
     const resultadosSettled = await Promise.allSettled(coletoresPromises);
 
@@ -385,15 +458,17 @@ Deno.serve(async (req) => {
     const precos = todosResultados.map(r => r.preco_unitario);
     const estatisticas = calcularEstatisticas(precos);
 
-    // PASSO 5: Salvar no cache e histórico
+    // PASSO 5: Salvar no cache e histórico (só cacheia se encontrou resultados)
     const agora = new Date();
     const expira = new Date(agora.getTime() + 6 * 60 * 60 * 1000);
 
-    await supabase.from('price_search_cache').upsert({
-      cache_key: cacheKey, descricao, codigo_catmat: codigoCatmat || null,
-      resultados: todosResultados, estatisticas,
-      coletado_em: agora.toISOString(), expira_em: expira.toISOString(),
-    }, { onConflict: 'cache_key' });
+    if (todosResultados.length > 0) {
+      await supabase.from('price_search_cache').upsert({
+        cache_key: cacheKey, descricao, codigo_catmat: codigoCatmat || null,
+        resultados: todosResultados, estatisticas,
+        coletado_em: agora.toISOString(), expira_em: expira.toISOString(),
+      }, { onConflict: 'cache_key' });
+    }
 
     await supabase.from('price_historico').insert({
       descricao, codigo_catmat: codigoCatmat || null,

@@ -65,53 +65,59 @@ export function useRascunho<T extends Record<string, any>>({
     return null;
   }, [user, modulo, licitacaoId]);
 
-  // Save (upsert) draft
+  // Save draft — find-then-update/insert to avoid onConflict issues with functional unique index
   const saveRascunho = useCallback(async (dados: T, titulo?: string) => {
     if (!user) return;
     setSaving(true);
 
-    const payload = {
-      user_id: user.id,
-      modulo,
-      licitacao_id: licitacaoId || null,
-      dados: dados as any,
-      titulo: titulo || null,
-    };
-
-    if (rascunhoId) {
-      const { error } = await supabase
-        .from('rascunhos')
-        .update({ dados: dados as any, titulo: titulo || null })
-        .eq('id', rascunhoId);
-      if (error) console.error('Erro ao salvar rascunho:', error);
-      else setLastSaved(new Date());
-    } else {
-      const { data, error } = await supabase
-        .from('rascunhos')
-        .upsert(payload, { onConflict: 'user_id,modulo,licitacao_id' })
-        .select('id')
-        .maybeSingle();
-      if (error) {
-        // Fallback: try insert
-        const { data: insertData, error: insertErr } = await supabase
+    try {
+      if (rascunhoId) {
+        const { error } = await supabase
           .from('rascunhos')
-          .insert(payload)
+          .update({ dados: dados as any, titulo: titulo || null })
+          .eq('id', rascunhoId);
+        if (error) console.error('Erro ao salvar rascunho:', error);
+        else setLastSaved(new Date());
+      } else {
+        // Find existing before inserting (unique index uses COALESCE, can't use onConflict)
+        let findQuery = supabase
+          .from('rascunhos')
           .select('id')
-          .maybeSingle();
-        if (insertErr) console.error('Erro ao criar rascunho:', insertErr);
-        else if (insertData) {
-          setRascunhoId(insertData.id);
-          setLastSaved(new Date());
-        }
-      } else if (data) {
-        setRascunhoId(data.id);
-        setLastSaved(new Date());
-      }
-    }
+          .eq('user_id', user.id)
+          .eq('modulo', modulo);
+        if (licitacaoId) findQuery = findQuery.eq('licitacao_id', licitacaoId);
+        else findQuery = findQuery.is('licitacao_id', null);
 
-    setSaving(false);
-    dataRef.current = dados;
-    setPending(false);
+        const { data: existing } = await findQuery.maybeSingle();
+
+        if (existing?.id) {
+          const { error } = await supabase
+            .from('rascunhos')
+            .update({ dados: dados as any, titulo: titulo || null })
+            .eq('id', existing.id);
+          if (error) console.error('Erro ao atualizar rascunho:', error);
+          else {
+            setRascunhoId(existing.id);
+            setLastSaved(new Date());
+          }
+        } else {
+          const { data: newData, error } = await supabase
+            .from('rascunhos')
+            .insert({ user_id: user.id, modulo, licitacao_id: licitacaoId || null, dados: dados as any, titulo: titulo || null })
+            .select('id')
+            .maybeSingle();
+          if (error) console.error('Erro ao criar rascunho:', error);
+          else if (newData) {
+            setRascunhoId(newData.id);
+            setLastSaved(new Date());
+          }
+        }
+      }
+    } finally {
+      setSaving(false);
+      dataRef.current = dados;
+      setPending(false);
+    }
   }, [user, modulo, licitacaoId, rascunhoId]);
 
   // Debounced auto-save

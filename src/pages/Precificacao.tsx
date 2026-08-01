@@ -532,8 +532,8 @@ export default function Precificacao() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todas as cidades</SelectItem>
-              {availableCidades.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+              {availableCidades.map((c, i) => (
+                <SelectItem key={`${i}-${c}`} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/@supabase/auth-js/package.json'\\); console.log\\('auth-js:', pkg.version\\)\")",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\('supabase-js:', pkg.dependencies['@supabase/supabase-js']\\)\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"https://sbnlovigyifvrkgsoalj.supabase.co/auth/v1/token?grant_type=password\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNibmxvdmlneWlmdnJrZ3NvYWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTI5MzUsImV4cCI6MjA4NzI4ODkzNX0.IAI8PmpKVKNuME8j9Otoq7htk-O4pjcM55og7ZZGVmU\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}' --max-time 10)",
+      "Bash(curl -v -s -X GET \"https://sbnlovigyifvrkgsoalj.supabase.co/auth/v1/health\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNibmxvdmlneWlmdnJrZ3NvYWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTI5MzUsImV4cCI6MjA4NzI4ODkzNX0.IAI8PmpKVKNuME8j9Otoq7htk-O4pjcM55og7ZZGVmU\" --max-time 10)"
+    ]
+  }
+}
