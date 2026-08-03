@@ -24,6 +24,10 @@ export type MetasConfig = {
   alerta_dias_limite: number;
   alerta_percentual_minimo: number;
   min_amostra_ticket: number;
+  // Colunas da Fase C — padrões de conversão usados quando falta histórico
+  tx_ganho_padrao: number;
+  tx_faturamento_padrao: number;
+  min_anos_sazonalidade: number;
 };
 
 export type ValorAlvo = {
@@ -266,6 +270,168 @@ export function useRealizadoMensal(params: { ano?: number; userId?: string } = {
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as RealizadoMensal[];
+    },
+  });
+}
+
+// ─── Metas mensais por colaborador ────────────────────────────────────────────
+
+export type Meta = {
+  id: string;
+  empresa_id: string;
+  user_id: string;
+  ano: number;
+  mes: number;
+  meta_faturamento: number;
+  meta_contratos: number | null;
+  meta_participacoes: number | null;
+  base_meta: 'faturamento' | 'contratos_ganhos';
+  observacao: string | null;
+};
+
+export function useMetas(params: { ano: number; mes?: number }) {
+  const empresaId = useEmpresaId();
+  const { ano, mes } = params;
+  return useQuery({
+    queryKey: ['comercial-metas', empresaId, ano, mes],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      let q = supabase
+        .from('comercial_metas' as never)
+        .select('*')
+        .eq('empresa_id', empresaId!)
+        .eq('ano', ano);
+      if (mes) q = q.eq('mes', mes);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as Meta[];
+    },
+  });
+}
+
+export function useSalvarMeta() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: {
+      user_id: string;
+      ano: number;
+      mes: number;
+      meta_faturamento: number;
+      meta_contratos?: number | null;
+      meta_participacoes?: number | null;
+      base_meta?: 'faturamento' | 'contratos_ganhos';
+      observacao?: string | null;
+    }) => {
+      if (!empresaId) throw new Error('Selecione uma empresa ativa.');
+      const { error } = await supabase
+        .from('comercial_metas' as never)
+        .upsert(
+          {
+            empresa_id: empresaId,
+            user_id: input.user_id,
+            ano: input.ano,
+            mes: input.mes,
+            meta_faturamento: input.meta_faturamento,
+            meta_contratos: input.meta_contratos ?? null,
+            meta_participacoes: input.meta_participacoes ?? null,
+            base_meta: input.base_meta ?? 'faturamento',
+            observacao: input.observacao ?? null,
+          } as never,
+          { onConflict: 'empresa_id,user_id,ano,mes' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comercial-metas'] });
+      toast.success('Meta salva.');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Feriados ─────────────────────────────────────────────────────────────────
+
+export type Feriado = {
+  id: string;
+  empresa_id: string;
+  data: string;
+  descricao: string;
+  abrangencia: string;
+};
+
+/** Feriados do ano, usados para descontar dias úteis do mês. */
+export function useFeriados(ano: number) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ['comercial-feriados', empresaId, ano],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('comercial_feriados' as never)
+        .select('*')
+        .eq('empresa_id', empresaId!)
+        .gte('data', `${ano}-01-01`)
+        .lte('data', `${ano}-12-31`)
+        .order('data', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Feriado[];
+    },
+  });
+}
+
+// ─── Colaboradores da empresa ─────────────────────────────────────────────────
+
+export type Colaborador = { user_id: string; nome: string | null; email: string | null };
+
+export function useColaboradores() {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ['comercial-colaboradores', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('empresa_membros')
+        .select('user_id, nome, email')
+        .eq('empresa_id', empresaId!)
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      return ((data ?? []) as unknown as Colaborador[]).filter((c) => !!c.user_id);
+    },
+  });
+}
+
+// ─── Histórico de contratos (insumo do ticket por modalidade) ─────────────────
+
+export type ContratoAssinado = {
+  modalidade: string | null;
+  valor_global: number;
+  data_assinatura: string;
+  vendedor_user_id: string;
+};
+
+/**
+ * Contratos assinados a partir de `desde`, para apurar o ticket por modalidade.
+ * Só traz as colunas que o cálculo usa — a tabela `contratos` é larga.
+ */
+export function useContratosAssinados(params: { desde: string; userId?: string }) {
+  const empresaId = useEmpresaId();
+  const { desde, userId } = params;
+  return useQuery({
+    queryKey: ['comercial-contratos-ticket', empresaId, desde, userId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      let q = supabase
+        .from('contratos')
+        .select('modalidade, valor_global, data_assinatura, vendedor_user_id')
+        .eq('empresa_id', empresaId!)
+        .not('vendedor_user_id', 'is', null)
+        .not('data_assinatura', 'is', null)
+        .gte('data_assinatura', desde);
+      if (userId) q = q.eq('vendedor_user_id', userId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as ContratoAssinado[];
     },
   });
 }

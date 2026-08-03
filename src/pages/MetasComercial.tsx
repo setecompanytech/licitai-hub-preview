@@ -4,12 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, SlidersHorizontal, LayoutDashboard, Lock } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
+import PainelMetas from '@/components/metas/PainelMetas';
 
 /**
  * Metas do Comercial.
  *
- * Fase A entrega apenas a parametrização (valores-alvo, limiares de alerta e
- * motivos de perda). O painel de acompanhamento entra na Fase D.
+ * Painel de acompanhamento (meta × realizado, projeção e alertas) e
+ * parametrização (valores-alvo, limiares e motivos de perda, restrita a admin).
  */
 export default function MetasComercial() {
   const { isAdmin, loading } = useMembroPermissoes();
@@ -37,14 +38,7 @@ export default function MetasComercial() {
         </TabsList>
 
         <TabsContent value="painel">
-          <Card className="p-12 text-center">
-            <LayoutDashboard className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Painel em construção</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              O acompanhamento de meta × realizado, projeções e alertas entra na Fase D.
-              Configure antes os valores-alvo na aba <strong>Parametrização</strong>.
-            </p>
-          </Card>
+          <PainelMetas />
         </TabsContent>
 
         <TabsContent value="parametros">
