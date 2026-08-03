@@ -40,7 +40,6 @@ import {
   Lock,
   Sparkles,
   Send,
-  Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -85,7 +84,6 @@ const navGroups: NavGroup[] = [
       { icon: Kanban, label: 'Kanban', path: '/kanban' },
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: Archive, label: 'Histórico', path: '/historico-licitacoes' },
-      { icon: Gauge, label: 'Metas do Comercial', path: '/metas-comercial' },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
       { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
     ],
