@@ -55,6 +55,51 @@ npx tsc --noEmit -p tsconfig.app.json
 
 ---
 
+## [2026-08-03] `npm run lint` falha no repo inteiro — 2.064 problemas
+
+**Como apareceu:** ao validar a Fase D das metas, `npx eslint src/components/layout` acusou
+2 problemas em `src/components/layout/AppLayout.tsx`, arquivo não tocado pelo módulo:
+
+```
+73:26  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+97:6   warning  React Hook useEffect has a missing dependency: 'navigate'
+                                                             react-hooks/exhaustive-deps
+```
+
+**Situação real:** não é um caso isolado do AppLayout. Rodando no repo inteiro:
+
+```sh
+npm run lint
+# ✖ 2064 problems (1932 errors, 132 warnings)
+# 381 de 720 arquivos com pelo menos um problema
+```
+
+Distribuição por regra:
+
+| Regra | Ocorrências |
+| --- | --- |
+| `@typescript-eslint/no-explicit-any` | 1.728 (84%) |
+| `no-useless-escape` | 119 |
+| `react-hooks/exhaustive-deps` | 100 |
+| `prefer-const` | 32 |
+| `@typescript-eslint/ban-ts-comment` | 28 |
+| `react-refresh/only-export-components` | 27 |
+| demais | ~30 |
+
+Só 30 erros e 5 avisos são corrigíveis com `--fix`. O grosso é `any` espalhado, que exige
+tipar caso a caso — e boa parte encosta no mesmo `types.ts` defasado da pendência acima.
+
+**Decisão:** nada a corrigir agora. O registro existe para que ninguém trate um lint vermelho
+como regressão de uma mudança recente: **ele já estava assim**. Os arquivos do módulo de
+metas passam limpos, e é esse o critério que tem sido usado — lintar o que se toca, não o
+repo.
+
+**Efeito colateral a considerar:** o mesmo alerta das outras pendências — se entrar
+verificação em CI ou hook de commit, `npm run lint` barra tudo. Ligar isso exige antes uma
+limpeza grande, ou começar com a regra `no-explicit-any` rebaixada a `warn`.
+
+---
+
 ## [2026-08-03] PRIORIZADA — dia útil por praça do colaborador (metas)
 
 **Prazo-alvo:** implementar antes do fechamento de setembro/2026.
