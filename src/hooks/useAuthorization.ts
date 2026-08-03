@@ -12,8 +12,8 @@
  * ignora TODOS os bloqueios** — plano, setor, módulo e rotas internas.
  * Rotas exclusivas de admin global continuam restritas via `isSystemAdmin`.
  *
- * Use este hook em guards (PlanGuard/AdminGuard), sidebar, megamenu e
- * qualquer página que precise condicionar UI por permissão. NÃO repita
+ * Use este hook em guards (PlanGuard/AdminGuard), na navegação (AppTopNav) e
+ * em qualquer página que precise condicionar UI por permissão. NÃO repita
  * a lógica de bypass em outros lugares.
  */
 import { useMemo } from 'react';
