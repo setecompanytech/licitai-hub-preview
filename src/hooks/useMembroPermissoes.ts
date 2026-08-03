@@ -25,6 +25,7 @@ export const MODULOS_SISTEMA: { value: string; label: string; setores: string[] 
   { value: 'contabil', label: 'Contábil', setores: ['contabil'] },
   { value: 'dashboard_custos', label: 'Dashboard Custos/Margem', setores: ['financeiro'] },
   { value: 'comissoes', label: 'Comissões', setores: ['financeiro', 'comercial'] },
+  { value: 'metas_comercial', label: 'Metas do Comercial', setores: ['comercial', 'financeiro'] },
 ];
 
 export type ModuloSistema = string;

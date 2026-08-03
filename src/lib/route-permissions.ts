@@ -30,6 +30,7 @@ export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   '/kanban': ['comercial', 'licitacoes'],
   '/robo-lances': ['comercial', 'licitacoes'],
   '/historico-licitacoes': ['comercial', 'licitacoes'],
+  '/metas-comercial': ['comercial', 'financeiro'],
   '/gestao-contratos': ['comercial', 'financeiro', 'juridico'],
   '/gestao-compras':   ['comercial', 'financeiro', 'logistica'],
 

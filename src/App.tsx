@@ -30,6 +30,7 @@ import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const lazyPage = (loader: () => Promise<any>) => lazy(() => lazyImportWithRecovery(loader));
 
 const KanbanPage = lazyPage(() => import("./pages/KanbanPage"));
+const MetasComercial = lazyPage(() => import("./pages/MetasComercial"));
 const RoboLances = lazyPage(() => import("./pages/RoboLances"));
 const Concorrentes = lazyPage(() => import("./pages/Concorrentes"));
 const Documentos = lazyPage(() => import("./pages/Documentos"));
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedPages><Index /></ProtectedPages>} />
               <Route path="/licitacoes" element={<Navigate to="/monitoramento-editais" replace />} />
               <Route path="/kanban" element={<ProtectedPages><KanbanPage /></ProtectedPages>} />
+              <Route path="/metas-comercial" element={<ProtectedPages><MetasComercial /></ProtectedPages>} />
               <Route path="/robo-lances" element={<PlanPages><RoboLances /></PlanPages>} />
               <Route path="/concorrentes" element={<PlanPages><Concorrentes /></PlanPages>} />
               <Route path="/documentos" element={<ProtectedPages><Documentos /></ProtectedPages>} />
