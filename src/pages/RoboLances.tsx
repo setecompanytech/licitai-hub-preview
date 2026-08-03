@@ -45,6 +45,8 @@ import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -70,8 +72,11 @@ const statusColors: Record<string, string> = {
 
 export default function RoboLances() {
   const { user } = useAuth();
-  const { registrarResultadoDisputa } = useLicitacaoIntegration();
+  const { empresaAtiva } = useEmpresa();
+  const { registrarResultadoDisputa, registrarPerda } = useLicitacaoIntegration();
   const { registrar } = useAuditLog();
+  const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -220,6 +225,18 @@ export default function RoboLances() {
   const handleEndDispute = async (resultado: 'venceu' | 'perdeu') => {
     if (!selectedLance) return;
 
+    // Derrota em processo vinculado passa pelo diálogo de motivo antes de
+    // qualquer gravação — o encerramento continua no fluxo abaixo.
+    if (resultado === 'perdeu' && selectedLance.licitacaoId) {
+      setPerdaAlvo({
+        licitacaoId: selectedLance.licitacaoId,
+        numero: selectedLance.edital,
+        orgao: selectedLance.portal,
+        valorEstimado: selectedLance.valorMinimo ?? null,
+      });
+      return;
+    }
+
     const valorFinal = resultado === 'venceu'
       ? selectedLance.meuLance || selectedLance.valorMinimo
       : undefined;
@@ -238,6 +255,28 @@ export default function RoboLances() {
     }
 
     // Switch to mural tab to show the result
+    setBottomTab('mural');
+  };
+
+  /** Registra o motivo e só então encerra a disputa como derrota. */
+  const confirmarPerdaDisputa = async ({ motivoId, observacao }: { motivoId: string; observacao: string }) => {
+    if (!perdaAlvo || !selectedLance || !empresaAtiva) return;
+    setSalvandoPerda(true);
+    const ok = await registrarPerda({
+      licitacaoId: perdaAlvo.licitacaoId,
+      empresaId: empresaAtiva.id,
+      motivoId,
+      observacao,
+      valorEstimado: perdaAlvo.valorEstimado,
+    });
+    setSalvandoPerda(false);
+    if (!ok) return;
+
+    setPerdaAlvo(null);
+    setLances(prev => prev.map(l =>
+      l.id === selectedLance.id ? { ...l, status: 'encerrado' as const } : l
+    ));
+    await postResultToMural(selectedLance, 'perdeu');
     setBottomTab('mural');
   };
 
@@ -813,6 +852,13 @@ export default function RoboLances() {
           )}
         </DialogContent>
       </Dialog>
+
+      <RegistrarPerdaDialog
+        alvo={perdaAlvo}
+        salvando={salvandoPerda}
+        onCancelar={() => setPerdaAlvo(null)}
+        onConfirmar={confirmarPerdaDisputa}
+      />
     </AppLayout>
   );
 }

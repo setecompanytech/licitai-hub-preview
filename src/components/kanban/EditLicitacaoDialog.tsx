@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,10 +76,13 @@ const toCents = (value: number | null): number => {
 
 export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onSaved, onDeleted }: Props) {
   const { user } = useAuth();
-  const { arquivarProcesso, excluirProcesso } = useLicitacaoIntegration();
+  const { empresaAtiva } = useEmpresa();
+  const { arquivarProcesso, excluirProcesso, registrarPerda } = useLicitacaoIntegration();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [arquivando, setArquivando] = useState(false);
+  const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
   const [form, setForm] = useState({
     numero: '',
     orgao: '',
@@ -110,6 +115,21 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
 
   const handleSave = async () => {
     if (!user || !licitacao) return;
+
+    // Marcar como "Perdida" exige motivo — o banco recusa a mudança sem
+    // registro em comercial_perdas. Salva o resto primeiro e delega o status
+    // ao diálogo de perda.
+    if (form.status === 'Perdida' && licitacao.status !== 'Perdida') {
+      setPerdaAlvo({
+        licitacaoId: licitacao.id,
+        numero: form.numero || licitacao.numero,
+        orgao: form.orgao || licitacao.orgao,
+        modalidade: null,
+        valorEstimado: form.valor_estimado ? parseBRL(form.valor_estimado) : null,
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const updateData: Record<string, unknown> = {
@@ -168,6 +188,40 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
     onOpenChange(false);
   };
 
+  const confirmarPerda = async ({ motivoId, observacao }: { motivoId: string; observacao: string }) => {
+    if (!perdaAlvo || !licitacao || !empresaAtiva) return;
+    setSalvandoPerda(true);
+    const ok = await registrarPerda({
+      licitacaoId: perdaAlvo.licitacaoId,
+      empresaId: empresaAtiva.id,
+      motivoId,
+      observacao,
+      modalidade: perdaAlvo.modalidade,
+      valorEstimado: perdaAlvo.valorEstimado,
+    });
+    setSalvandoPerda(false);
+    if (!ok) return;
+
+    // Demais campos do formulário, agora que o status já foi para "Perdida"
+    await supabase
+      .from('licitacoes')
+      .update({
+        numero: form.numero,
+        orgao: form.orgao,
+        objeto: form.objeto,
+        valor_estimado: form.valor_estimado ? parseBRL(form.valor_estimado) : null,
+        uf: form.uf || null,
+        municipio: form.municipio || null,
+        data_encerramento: form.data_encerramento || null,
+      })
+      .eq('id', licitacao.id)
+      .eq('user_id', user!.id);
+
+    onSaved({ ...licitacao, status: 'Perdida' });
+    setPerdaAlvo(null);
+    onOpenChange(false);
+  };
+
   const handleArquivar = async () => {
     if (!licitacao) return;
     const restaurar = licitacao.status === 'Arquivada';
@@ -183,6 +237,13 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
   if (!licitacao) return null;
 
   return (
+    <>
+    <RegistrarPerdaDialog
+      alvo={perdaAlvo}
+      salvando={salvandoPerda}
+      onCancelar={() => setPerdaAlvo(null)}
+      onConfirmar={confirmarPerda}
+    />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -369,5 +430,6 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

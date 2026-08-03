@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { normalizarModalidade } from '@/lib/metas/modalidades';
 
 type EditalData = {
   numero: string;
@@ -241,6 +242,74 @@ export function useLicitacaoIntegration() {
   }, [user, sincronizarCompromisso]);
 
   /**
+   * Registra a perda e só então move o processo para "Perdida".
+   *
+   * A ordem importa: o trigger `licitacoes_exigir_motivo_perda` recusa a
+   * mudança de status enquanto não existir o registro em `comercial_perdas`.
+   * Se o UPDATE falhar, o registro de perda é desfeito para não deixar um
+   * processo "perdido" no relatório e "em disputa" no Kanban.
+   */
+  const registrarPerda = useCallback(async (params: {
+    licitacaoId: string;
+    empresaId: string;
+    motivoId: string;
+    observacao?: string;
+    modalidade?: string | null;
+    valorEstimado?: number | null;
+  }) => {
+    if (!user) return false;
+
+    const { data: perda, error: erroPerda } = await supabase
+      .from('comercial_perdas' as never)
+      .insert({
+        empresa_id: params.empresaId,
+        licitacao_id: params.licitacaoId,
+        user_id: user.id,
+        motivo_id: params.motivoId,
+        observacao: params.observacao || null,
+        valor_estimado: params.valorEstimado ?? null,
+        modalidade_codigo: normalizarModalidade(params.modalidade),
+        registrado_por: user.id,
+      } as never)
+      .select('id')
+      .single();
+
+    if (erroPerda) {
+      console.error('[registrarPerda]', erroPerda);
+      toast.error(
+        erroPerda.code === '23505'
+          ? 'Este processo já tem uma perda registrada.'
+          : 'Não foi possível registrar o motivo da perda.',
+      );
+      return false;
+    }
+
+    const { error: erroStatus } = await supabase
+      .from('licitacoes')
+      .update({ status: 'Perdida', resultado: 'Perdedor' })
+      .eq('id', params.licitacaoId)
+      .eq('user_id', user.id);
+
+    if (erroStatus) {
+      // Desfaz para não deixar os dois módulos discordando entre si
+      await supabase.from('comercial_perdas' as never).delete().eq('id', (perda as { id: string }).id);
+      console.error('[registrarPerda] status', erroStatus);
+      toast.error('Motivo registrado, mas não foi possível atualizar o processo. Nada foi salvo.');
+      return false;
+    }
+
+    await supabase.from('licitacao_mensagens').insert({
+      licitacao_id: params.licitacaoId,
+      user_id: user.id,
+      conteudo: `❌ Processo marcado como **Perdido**.${params.observacao ? `\nObservação: ${params.observacao}` : ''}`,
+      tipo: 'sistema',
+    });
+
+    toast.success('Perda registrada.');
+    return true;
+  }, [user]);
+
+  /**
    * Arquiva (ou restaura) um processo a partir de qualquer uma das telas,
    * mantendo Kanban e Compromissos na mesma situação.
    */
@@ -303,6 +372,22 @@ export function useLicitacaoIntegration() {
     valorFinal?: number
   ) => {
     if (!user) return;
+
+    // Derrota exige motivo. Quem chama precisa ter passado por registrarPerda
+    // antes; sem o registro, o banco recusaria a mudança de status e a
+    // exceção do trigger apareceria como erro cru para o usuário.
+    if (resultado === 'perdeu') {
+      const { data: perda } = await supabase
+        .from('comercial_perdas' as never)
+        .select('id')
+        .eq('licitacao_id', licitacaoId)
+        .maybeSingle();
+
+      if (!perda) {
+        toast.error('Registre o motivo da perda para encerrar a disputa como derrota.');
+        return;
+      }
+    }
 
     const novoStatus = resultado === 'venceu' ? 'Vencida' : 'Perdida';
 
@@ -372,6 +457,7 @@ export function useLicitacaoIntegration() {
     iniciarProcesso,
     criarCompromisso,
     atualizarStatus,
+    registrarPerda,
     arquivarProcesso,
     excluirProcesso,
     registrarResultadoDisputa,

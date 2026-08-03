@@ -5,8 +5,10 @@ import { cn } from '@/lib/utils';
 import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
+import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CompromissosResumo from '@/components/gestao/CompromissosResumo';
 import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
@@ -18,6 +20,7 @@ type LicitacaoKanban = {
   orgao: string;
   objeto: string;
   status: string;
+  modalidade: string | null;
   valor_estimado: number | null;
   uf: string | null;
   municipio: string | null;
@@ -62,11 +65,14 @@ type DragState = { id: string; offsetX: number; offsetY: number } | null;
 
 export default function KanbanPage() {
   const { user } = useAuth();
-  const { atualizarStatus } = useLicitacaoIntegration();
+  const { empresaAtiva } = useEmpresa();
+  const { atualizarStatus, registrarPerda } = useLicitacaoIntegration();
   const [items, setItems] = useState<LicitacaoKanban[]>([]);
   const [loading, setLoading] = useState(true);
   const [editItem, setEditItem] = useState<LicitacaoKanban | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
 
   // Drag state — refs para leitura síncrona nos event handlers
   const dragStateRef = useRef<DragState>(null);
@@ -90,9 +96,40 @@ export default function KanbanPage() {
   const moverCard = useCallback(async (id: string, toColId: string) => {
     const item = itemsRef.current.find(i => i.id === id);
     if (!item || item.status === toColId) return;
+
+    // "Perdida" exige motivo: o banco recusa a mudança de status sem registro
+    // em comercial_perdas, então o card só se move depois do diálogo.
+    if (toColId === 'Perdida') {
+      setPerdaAlvo({
+        licitacaoId: id,
+        numero: item.numero,
+        orgao: item.orgao,
+        modalidade: item.modalidade ?? null,
+        valorEstimado: item.valor_estimado,
+      });
+      return;
+    }
+
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: toColId } : i));
     await atualizarStatus(id, toColId, `Status alterado de "${item.status}" para "${toColId}" via Kanban.`);
   }, [atualizarStatus]);
+
+  const confirmarPerda = useCallback(async ({ motivoId, observacao }: { motivoId: string; observacao: string }) => {
+    if (!perdaAlvo || !empresaAtiva) return;
+    setSalvandoPerda(true);
+    const ok = await registrarPerda({
+      licitacaoId: perdaAlvo.licitacaoId,
+      empresaId: empresaAtiva.id,
+      motivoId,
+      observacao,
+      modalidade: perdaAlvo.modalidade,
+      valorEstimado: perdaAlvo.valorEstimado,
+    });
+    setSalvandoPerda(false);
+    if (!ok) return;
+    setItems(prev => prev.map(i => i.id === perdaAlvo.licitacaoId ? { ...i, status: 'Perdida' } : i));
+    setPerdaAlvo(null);
+  }, [perdaAlvo, empresaAtiva, registrarPerda]);
 
   // Pointer Events — funciona em Chrome, Firefox, Safari, mobile
   const handlePointerDown = useCallback((e: React.PointerEvent, id: string) => {
@@ -162,7 +199,7 @@ export default function KanbanPage() {
     const loadData = async () => {
       const { data } = await supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, status, valor_estimado, uf, municipio, data_encerramento')
+        .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       setItems((data || []).map(item => ({ ...item, status: normalizeStatus(item.status) })));
@@ -359,6 +396,13 @@ export default function KanbanPage() {
         onOpenChange={setEditOpen}
         onSaved={handleSaved}
         onDeleted={handleDeleted}
+      />
+
+      <RegistrarPerdaDialog
+        alvo={perdaAlvo}
+        salvando={salvandoPerda}
+        onCancelar={() => setPerdaAlvo(null)}
+        onConfirmar={confirmarPerda}
       />
     </AppLayout>
   );

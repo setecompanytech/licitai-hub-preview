@@ -224,3 +224,48 @@ export function useRestaurarPadroes() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+// ─── Realizado mensal (derivado dos demais módulos) ───────────────────────────
+
+export type RealizadoMensal = {
+  empresa_id: string;
+  user_id: string;
+  ano: number;
+  mes: number;
+  participados: number;
+  ganhos: number;
+  perdidos: number;
+  valor_ganho: number;
+  valor_perdido: number;
+  pedidos_faturados: number;
+  valor_faturado: number;
+  nfe_quitadas: number;
+  valor_quitado: number;
+};
+
+/**
+ * Lê `vw_comercial_realizado_mensal`. A view roda com `security_invoker=on`,
+ * então a RLS das tabelas de origem continua valendo — um colaborador só
+ * enxerga o que já enxergaria nelas.
+ */
+export function useRealizadoMensal(params: { ano?: number; userId?: string } = {}) {
+  const empresaId = useEmpresaId();
+  const { ano, userId } = params;
+  return useQuery({
+    queryKey: ['comercial-realizado', empresaId, ano, userId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      let q = supabase
+        .from('vw_comercial_realizado_mensal' as never)
+        .select('*')
+        .eq('empresa_id', empresaId!)
+        .order('ano', { ascending: false })
+        .order('mes', { ascending: false });
+      if (ano) q = q.eq('ano', ano);
+      if (userId) q = q.eq('user_id', userId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as RealizadoMensal[];
+    },
+  });
+}
