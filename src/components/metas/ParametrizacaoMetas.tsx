@@ -18,13 +18,7 @@ import {
 } from '@/hooks/useMetasComercial';
 import { MODALIDADES, rotuloModalidade } from '@/lib/metas/modalidades';
 import { formatBRL } from '@/lib/financeiro/formatters';
-
-/** Converte "300.000,00" em 300000. Aceita também "300000". */
-function parseBRL(texto: string): number {
-  const limpo = texto.replace(/\./g, '').replace(',', '.');
-  const n = parseFloat(limpo);
-  return isNaN(n) ? 0 : n;
-}
+import { parseValorBRL } from '@/lib/metas/dinheiro';
 
 export default function ParametrizacaoMetas() {
   const { data: config } = useMetasConfig();
@@ -110,7 +104,7 @@ export default function ParametrizacaoMetas() {
                 salvarValor.mutate(
                   {
                     modalidade_codigo: novo.modalidade,
-                    valor_alvo: parseBRL(novo.valor),
+                    valor_alvo: parseValorBRL(novo.valor),
                     vigencia_inicio: novo.inicio,
                   },
                   { onSuccess: () => setNovo((n) => ({ ...n, valor: '' })) },
