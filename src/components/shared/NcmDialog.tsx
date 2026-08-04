@@ -52,7 +52,7 @@ export default function NcmDialog({ open, onOpenChange, onSelect }: Props) {
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setQuery(''); setSearched(''); setPage(1); } }}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-base font-semibold text-amber-700">Código NCM</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-accent">Código NCM</DialogTitle>
         </DialogHeader>
 
         <div className="px-6 py-4 border-b">
@@ -67,7 +67,7 @@ export default function NcmDialog({ open, onOpenChange, onSelect }: Props) {
               placeholder='Exemplo: "3004.10" ou "Medicamento" ou "30041011"'
               className="flex-1"
             />
-            <Button onClick={handleSearch} className="bg-amber-500 hover:bg-amber-600 text-white px-6 rounded-full gap-2">
+            <Button onClick={handleSearch} className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 rounded-full gap-2">
               <Search className="w-4 h-4" /> Pesquisar
             </Button>
           </div>
@@ -100,10 +100,10 @@ export default function NcmDialog({ open, onOpenChange, onSelect }: Props) {
               ) : pageItems.map((n, i) => (
                 <tr
                   key={n.codigo}
-                  className={`cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/20'}`}
+                  className={`cursor-pointer hover:bg-accent/10 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/20'}`}
                   onClick={() => handleSelect(n)}
                 >
-                  <td className="py-2 px-4 text-amber-700 font-medium text-xs whitespace-nowrap">{n.codigo}</td>
+                  <td className="py-2 px-4 text-accent font-medium text-xs whitespace-nowrap">{n.codigo}</td>
                   <td className="py-2 px-4 text-xs text-muted-foreground">{n.descricao}</td>
                   <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">{codigoSemMascara(n.codigo)}</td>
                 </tr>

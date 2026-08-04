@@ -59,7 +59,7 @@ export default function CestDialog({ open, onOpenChange, onSelect, ncmAtual }: P
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setQuery(''); setSearched(''); setPage(1); } }}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-base font-semibold text-teal-700">
+          <DialogTitle className="text-base font-semibold text-foreground">
             CEST (Código Especificador da Substituição Tributária)
           </DialogTitle>
         </DialogHeader>
@@ -74,9 +74,9 @@ export default function CestDialog({ open, onOpenChange, onSelect, ncmAtual }: P
               onChange={e => setQuery(e.target.value)}
               onKeyDown={handleKey}
               placeholder='Exemplo: "27.000.00" ou "Objetos de vidro para serviço de mesa ou de cozinha"'
-              className="flex-1 border-teal-400/60 focus-visible:ring-teal-400"
+              className="flex-1"
             />
-            <Button onClick={handleSearch} className="bg-amber-500 hover:bg-amber-600 text-white px-6 rounded-full gap-2">
+            <Button onClick={handleSearch} className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 rounded-full gap-2">
               <Search className="w-4 h-4" /> Pesquisar
             </Button>
           </div>
@@ -121,10 +121,10 @@ export default function CestDialog({ open, onOpenChange, onSelect, ncmAtual }: P
               ) : pageItems.map((c, i) => (
                 <tr
                   key={c.codigo}
-                  className={`cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors ${i === 0 && page === 1 ? 'bg-amber-50 dark:bg-amber-950/20' : i % 2 === 0 ? '' : 'bg-muted/20'}`}
+                  className={`cursor-pointer hover:bg-muted/50 transition-colors ${i === 0 && page === 1 ? 'bg-accent/10' : i % 2 === 0 ? '' : 'bg-muted/20'}`}
                   onClick={() => handleSelect(c)}
                 >
-                  <td className="py-2 px-4 text-amber-700 font-medium text-xs whitespace-nowrap">{c.codigo}</td>
+                  <td className="py-2 px-4 text-accent font-medium text-xs whitespace-nowrap">{c.codigo}</td>
                   <td className="py-2 px-4 text-xs text-muted-foreground">{c.descricao}</td>
                   <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">{codigoSemMascara(c.codigo)}</td>
                 </tr>

@@ -156,8 +156,8 @@ function DatePickerBtn({ value, onChange, placeholder }: {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs transition-colors hover:bg-muted/50 ${value ? 'text-foreground border-amber-400/60' : 'text-muted-foreground'}`}>
-          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+        <button className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs transition-colors hover:bg-muted/50 ${value ? 'text-foreground border-accent/60' : 'text-muted-foreground'}`}>
+          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-accent" />
           {label}
         </button>
       </PopoverTrigger>
@@ -288,14 +288,14 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
                 ? <p className="px-3 py-3 text-xs text-muted-foreground text-center">Nenhum produto encontrado</p>
                 : filtered.map(p => (
                   <button key={p.id}
-                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-amber-50 dark:hover:bg-amber-950/20 border-b last:border-0 transition-colors ${item.produto_id === p.id ? 'bg-amber-100 dark:bg-amber-900/20' : ''}`}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 border-b last:border-0 transition-colors ${item.produto_id === p.id ? 'bg-accent/20' : ''}`}
                     onClick={() => selectProd(p)}
                   >
-                    <span className="font-medium text-amber-700 mr-2">{p.codigo ?? '—'}</span>
+                    <span className="font-medium text-accent mr-2">{p.codigo ?? '—'}</span>
                     <span>{p.descricao}</span>
                     <span className="ml-2 text-muted-foreground">({p.unidade})</span>
                     {p.preco_venda != null && p.preco_venda > 0 && (
-                      <span className="ml-2 text-emerald-600 font-medium">R$ {fmtM(p.preco_venda)}</span>
+                      <span className="ml-2 text-success font-medium">R$ {fmtM(p.preco_venda)}</span>
                     )}
                   </button>
                 ))
@@ -343,7 +343,7 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
 
         <div className="flex justify-end gap-2 px-4 py-3 border-t">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={handleConfirm}>
+          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleConfirm}>
             {initial?.id ? 'Salvar' : 'Incluir'}
           </Button>
         </div>
@@ -951,12 +951,12 @@ export default function PedidosOmie() {
 
   // ── Status badge colors ────────────────────────────────────────────────
   const STATUS_BADGE: Record<string, string> = {
-    pedido:          'border-blue-400/60 text-blue-500',
-    separar_estoque: 'border-orange-400/60 text-orange-500',
-    faturar:         'border-yellow-400/60 text-yellow-600',
-    faturado:        'border-green-400/60 text-green-600',
-    entrega:         'border-purple-400/60 text-purple-500',
-    cancelado:       'border-red-400/60 text-red-500',
+    pedido:          'border-border text-muted-foreground',
+    separar_estoque: 'border-border text-muted-foreground',
+    faturar:         'border-border text-muted-foreground',
+    faturado:        'border-success/30 text-success',
+    entrega:         'border-border text-muted-foreground',
+    cancelado:       'border-destructive/30 text-destructive',
   };
 
   // ── Delete Confirm Dialog ──────────────────────────────────────────────
@@ -1008,8 +1008,8 @@ export default function PedidosOmie() {
             Ao mover para <strong>Faturado</strong>, o sistema pode emitir a NF-e automaticamente
             se houver um certificado A3 vinculado à conta.
           </p>
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-            <Zap className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+          <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-xs text-warning flex items-start gap-2">
+            <Zap className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
             <span>Nenhum certificado A3 vinculado. A NF-e <strong>não será emitida</strong> automaticamente.</span>
           </div>
         </div>
@@ -1017,7 +1017,7 @@ export default function PedidosOmie() {
           <Button variant="outline" size="sm" onClick={() => { setNfeAlertOpen(false); setPendingFaturarId(null); }}>
             Cancelar
           </Button>
-          <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white"
+          <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground"
             onClick={async () => {
               if (pendingFaturarId) {
                 await updatePedidoStatus(pendingFaturarId, 'faturado');
@@ -1165,9 +1165,9 @@ export default function PedidosOmie() {
         <div className="grid grid-cols-2 gap-3 mt-2">
           <button
             onClick={() => openNovo('compra')}
-            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all"
+            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
           >
-            <ShoppingBag className="w-9 h-9 text-amber-600" />
+            <ShoppingBag className="w-9 h-9 text-accent" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Compra</p>
               <p className="text-xs text-muted-foreground mt-0.5">Vincular fornecedor</p>
@@ -1175,9 +1175,9 @@ export default function PedidosOmie() {
           </button>
           <button
             onClick={() => openNovo('venda')}
-            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all"
+            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
           >
-            <ShoppingCart className="w-9 h-9 text-amber-600" />
+            <ShoppingCart className="w-9 h-9 text-accent" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Venda</p>
               <p className="text-xs text-muted-foreground mt-0.5">Vincular cliente</p>
@@ -1194,7 +1194,7 @@ export default function PedidosOmie() {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
-            <Paperclip className="w-4 h-4 text-amber-500" />
+            <Paperclip className="w-4 h-4 text-accent" />
             Anexos — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
@@ -1210,7 +1210,7 @@ export default function PedidosOmie() {
           </div>
           {anexosLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+              <Loader2 className="w-5 h-5 animate-spin text-accent" />
             </div>
           ) : anexosList.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm border rounded-md border-dashed">
@@ -1261,14 +1261,14 @@ export default function PedidosOmie() {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
-            <History className="w-4 h-4 text-amber-500" />
+            <History className="w-4 h-4 text-accent" />
             Histórico — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {!historicoData ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+              <Loader2 className="w-5 h-5 animate-spin text-accent" />
             </div>
           ) : (
             <>
@@ -1324,7 +1324,7 @@ export default function PedidosOmie() {
             )}
           </div>
           <button onClick={() => setSearch('')}
-            className="text-xs text-amber-600 hover:underline whitespace-nowrap">
+            className="text-xs text-accent hover:underline whitespace-nowrap">
             Exibindo tudo
           </button>
 
@@ -1333,21 +1333,21 @@ export default function PedidosOmie() {
             <button
               onClick={() => setViewMode('list')}
               title="Visualizar como lista"
-              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-amber-500 text-white' : 'text-muted-foreground hover:bg-muted/50'}`}
+              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
             >
               <List className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setViewMode('kanban')}
               title="Visualizar como kanban"
-              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'kanban' ? 'bg-amber-500 text-white' : 'text-muted-foreground hover:bg-muted/50'}`}
+              className={`px-2.5 py-1.5 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <div className="ml-auto">
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white"
+            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground"
               onClick={() => setTipoOpen(true)}>
               <Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido
             </Button>
@@ -1364,7 +1364,7 @@ export default function PedidosOmie() {
               {([['', 'Todos'], ['compra', 'Compra'], ['venda', 'Venda']] as const).map(([val, lbl]) => (
                 <button key={val}
                   onClick={() => setTipoFilter(val)}
-                  className={`px-2.5 py-1 transition-colors ${tipoFilter === val ? 'bg-amber-500 text-white' : 'text-muted-foreground hover:bg-muted/60'}`}>
+                  className={`px-2.5 py-1 transition-colors ${tipoFilter === val ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted/60'}`}>
                   {lbl}
                 </button>
               ))}
@@ -1388,15 +1388,15 @@ export default function PedidosOmie() {
           {/* Somatórios */}
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <ShoppingBag className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <ShoppingBag className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="text-xs text-muted-foreground">Compras:</span>
-              <span className="text-xs font-semibold text-amber-600">R$ {fmtM(totalCompras)}</span>
+              <span className="text-xs font-semibold text-accent">R$ {fmtM(totalCompras)}</span>
             </div>
             <div className="w-px h-4 bg-border" />
             <div className="flex items-center gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <ShoppingCart className="w-3.5 h-3.5 text-info shrink-0" />
               <span className="text-xs text-muted-foreground">Vendas:</span>
-              <span className="text-xs font-semibold text-blue-600">R$ {fmtM(totalVendas)}</span>
+              <span className="text-xs font-semibold text-info">R$ {fmtM(totalVendas)}</span>
             </div>
           </div>
         </div>
@@ -1435,11 +1435,11 @@ export default function PedidosOmie() {
                       <td className="py-2 px-3 font-medium text-xs">#{p.numero}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
+                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.tipo === 'venda' ? 'border-info/30 text-info' : 'border-accent/30 text-accent'}`}>
                             {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                           </Badge>
                           {p.contrato_id && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 border-violet-400/50 text-violet-600">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 border-border text-muted-foreground">
                               Contrato
                             </Badge>
                           )}
@@ -1451,7 +1451,7 @@ export default function PedidosOmie() {
                           {STATUS_MSG[p.status]}
                         </Badge>
                       </td>
-                      <td className={`py-2 px-3 text-xs ${isHoje ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                      <td className={`py-2 px-3 text-xs ${isHoje ? 'text-warning font-medium' : 'text-muted-foreground'}`}>
                         {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
                         {isHoje && <span className="ml-1 text-xs">• hoje</span>}
                       </td>
@@ -1462,7 +1462,7 @@ export default function PedidosOmie() {
                             onClick={() => openEdit(p)}
                             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                            <Pencil className="w-3.5 h-3.5 text-accent" />
                           </button>
                           <button
                             onClick={() => handleDelete(p.id)}
@@ -1490,7 +1490,7 @@ export default function PedidosOmie() {
               return dp ? (
                 <div
                   style={{ position: 'fixed', left: ghostPos.x + 12, top: ghostPos.y + 8, zIndex: 9999, pointerEvents: 'none', width: 210 }}
-                  className="bg-background border-2 border-amber-400 rounded-lg p-2.5 shadow-2xl opacity-90 rotate-1"
+                  className="bg-background border-2 border-accent rounded-lg p-2.5 shadow-2xl opacity-90 rotate-1"
                 >
                   <p className="text-xs font-semibold text-muted-foreground">Pedido Nº {dp.numero}</p>
                   {getPessoaNome(dp.pessoa_id) && <p className="text-xs font-medium mt-0.5 truncate">{getPessoaNome(dp.pessoa_id)}</p>}
@@ -1502,7 +1502,7 @@ export default function PedidosOmie() {
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${draggingId && dragOverCol === col.key ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-400/60 shadow-inner' : 'bg-muted/20 border-muted/40'}`}
+                className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-muted/20 border-muted/40'}`}
               >
                 {/* Column header */}
                 <div className="flex items-center justify-between px-3 py-2.5 border-b border-muted/40">
@@ -1534,11 +1534,11 @@ export default function PedidosOmie() {
                               <span className="text-xs font-semibold text-muted-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className={`text-xs px-1 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
+                              <Badge variant="outline" className={`text-xs px-1 py-0 ${p.tipo === 'venda' ? 'border-info/30 text-info' : 'border-accent/30 text-accent'}`}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="outline" className="text-xs px-1 py-0 border-violet-400/50 text-violet-600">
+                                <Badge variant="outline" className="text-xs px-1 py-0 border-border text-muted-foreground">
                                   Contrato
                                 </Badge>
                               )}
@@ -1570,7 +1570,7 @@ export default function PedidosOmie() {
                               className="w-full text-left text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted/50"
                               onClick={() => { setKanbanMenu(null); openEdit(p); }}
                             >
-                              <Pencil className="w-3 h-3 text-amber-600" /> Editar
+                              <Pencil className="w-3 h-3 text-accent" /> Editar
                             </button>
                             {KANBAN_STATUS.filter(s => s.key !== p.status).map(s => (
                               <button key={s.key}
@@ -1581,7 +1581,7 @@ export default function PedidosOmie() {
                                   else await updatePedidoStatus(p.id, s.key);
                                 }}
                               >
-                                <ChevronsUpDown className="w-3 h-3 text-blue-500" /> Mover → {s.label}
+                                <ChevronsUpDown className="w-3 h-3 text-muted-foreground" /> Mover → {s.label}
                               </button>
                             ))}
                             <button
@@ -1602,14 +1602,14 @@ export default function PedidosOmie() {
                   {colIdx === 0 && (
                     <button
                       onClick={() => setTipoOpen(true)}
-                      className="w-full text-center text-xs font-medium py-1.5 rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-1"
+                      className="w-full text-center text-xs font-medium py-1.5 rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors flex items-center justify-center gap-1"
                     >
                       <Plus className="w-3 h-3" /> Novo Pedido
                     </button>
                   )}
                   {colIdx === 2 && (
                     <button className="w-full text-center text-xs py-1.5 rounded-md border text-muted-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1">
-                      <Zap className="w-3 h-3 text-amber-500" /> Faturar Todos
+                      <Zap className="w-3 h-3 text-accent" /> Faturar Todos
                     </button>
                   )}
                   {colIdx === 3 && (
@@ -1734,7 +1734,7 @@ export default function PedidosOmie() {
                     onChange={id => setForm(f => ({ ...f, pessoa_id: id }))}
                   />
                   {isVenda && (
-                    <span className="text-xs text-amber-600 whitespace-nowrap cursor-pointer hover:underline">
+                    <span className="text-xs text-accent whitespace-nowrap cursor-pointer hover:underline">
                       @ Consulta de Crédito
                     </span>
                   )}
@@ -1752,12 +1752,12 @@ export default function PedidosOmie() {
             </div>
 
             {/* Vínculo com Contrato (opcional) */}
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-violet-50/60 dark:bg-violet-950/10 border border-violet-200/60 dark:border-violet-800/30">
-              <Link2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-              <span className="text-xs font-medium text-violet-700 dark:text-violet-400 whitespace-nowrap">Contrato vinculado:</span>
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/40 border border-border">
+              <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Contrato vinculado:</span>
               {form.contrato_id ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 truncate">
+                  <span className="text-xs font-semibold text-foreground truncate">
                     {contratos.find(c => c.id === form.contrato_id)?.numero_contrato ?? '—'}
                     {contratos.find(c => c.id === form.contrato_id)?.orgao_contratante
                       ? ` · ${contratos.find(c => c.id === form.contrato_id)!.orgao_contratante}`
@@ -1773,7 +1773,7 @@ export default function PedidosOmie() {
                 </div>
               ) : (
                 <Select value="" onValueChange={v => setForm(f => ({ ...f, contrato_id: v }))}>
-                  <SelectTrigger className="h-7 text-xs flex-1 max-w-sm border-violet-200 dark:border-violet-800 bg-white dark:bg-background">
+                  <SelectTrigger className="h-7 text-xs flex-1 max-w-sm border-border bg-background">
                     <SelectValue placeholder="Nenhum — selecione para vincular (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1853,7 +1853,7 @@ export default function PedidosOmie() {
                 { value: 'email',        label: `E-mail para o ${isVenda ? 'Cliente' : 'Fornecedor'}` },
               ].map(t => (
                 <TabsTrigger key={t.value} value={t.value}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 text-xs px-3 pb-2 bg-transparent shadow-none">
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:text-accent text-xs px-3 pb-2 bg-transparent shadow-none">
                   {t.label}
                 </TabsTrigger>
               ))}
@@ -1862,7 +1862,7 @@ export default function PedidosOmie() {
             {/* Itens */}
             <TabsContent value="itens" className="p-4 m-0">
               <div className="flex items-center gap-2 mb-3">
-                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs"
+                <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground h-7 text-xs"
                   onClick={() => { setEditingItem(undefined); setItemDialogOpen(true); }}>
                   <Plus className="w-3 h-3 mr-1" /> Novo Item
                 </Button>
@@ -1897,11 +1897,11 @@ export default function PedidosOmie() {
                       const isSel = selectedItem === item._key;
                       return (
                         <tr key={item._key}
-                          className={`cursor-pointer transition-colors ${isSel ? 'bg-amber-500/10 border-l-2 border-l-amber-500' : 'hover:bg-muted/30'}`}
+                          className={`cursor-pointer transition-colors ${isSel ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-muted/30'}`}
                           onClick={() => setSelectedItem(isSel ? null : item._key)}
                           onDoubleClick={() => { setEditingItem(item); setItemDialogOpen(true); }}
                         >
-                          <td className="py-1.5 px-2 text-amber-700 font-medium">{item.codigo_produto || '—'}</td>
+                          <td className="py-1.5 px-2 text-accent font-medium">{item.codigo_produto || '—'}</td>
                           <td className="py-1.5 px-2">{item.descricao}</td>
                           <td className="py-1.5 px-2 text-center">{item.quantidade} {item.unidade}</td>
                           <td className="py-1.5 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
@@ -2052,16 +2052,16 @@ export default function PedidosOmie() {
                   Enviar e-mail com o boleto de cobrança (juntamente com o DANFE e o XML da NF-e)
                 </Label>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300">
+              <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-xs text-warning">
                 Apenas o DANFE e o XML da NF-e serão enviados por meio do Portal para o cliente
               </div>
             </TabsContent>
           </Tabs>
 
           {/* Bottom status bar */}
-          <div className="border-t px-4 py-2 bg-amber-50/60 dark:bg-amber-950/10 border-amber-200/50 shrink-0">
-            <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+          <div className="border-t px-4 py-2 bg-accent/10 border-accent/30 shrink-0">
+            <p className="text-xs text-accent flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
               {form.previsao_faturamento
                 ? `Previsão de faturamento: ${fmtDateBR(form.previsao_faturamento)}`
                 : 'Sem previsão definida'}
@@ -2077,7 +2077,7 @@ export default function PedidosOmie() {
                 className={`w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors
                   ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}
               >
-                <Icon className="w-4 h-4 text-amber-600 shrink-0" />
+                <Icon className="w-4 h-4 text-accent shrink-0" />
                 <span className="text-xs">{label}</span>
                 {loading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
               </button>

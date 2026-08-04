@@ -36,10 +36,10 @@ const fonteLabel: Record<string, string> = {
 };
 
 const scoreColor = (score: number) => {
-  if (score >= 90) return 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950';
-  if (score >= 70) return 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950';
-  if (score >= 50) return 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950';
-  return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950';
+  if (score >= 90) return 'text-success bg-success/10 border-success/30';
+  if (score >= 70) return 'text-info bg-info/10 border-info/20';
+  if (score >= 50) return 'text-warning bg-warning/10 border-warning/30';
+  return 'text-destructive bg-destructive/10 border-destructive/30';
 };
 
 function avaliarItem(item: LicitacaoItem): { nivel: 'completo' | 'parcial' | 'incompleto'; motivo: string } {
@@ -230,8 +230,8 @@ export default function EditalItensTable({
               );
             }
             const { nivel, motivo } = avaliarItem(isEditing ? { ...item, ...editValues } as LicitacaoItem : item);
-            if (nivel === 'completo') return <CheckCircle2 className="w-4 h-4 text-green-500" title={motivo} />;
-            if (nivel === 'parcial') return <AlertTriangle className="w-4 h-4 text-amber-500" title={motivo} />;
+            if (nivel === 'completo') return <CheckCircle2 className="w-4 h-4 text-success" title={motivo} />;
+            if (nivel === 'parcial') return <AlertTriangle className="w-4 h-4 text-warning" title={motivo} />;
             return <CircleAlert className="w-4 h-4 text-destructive" title={motivo} />;
           })()}
         </TableCell>

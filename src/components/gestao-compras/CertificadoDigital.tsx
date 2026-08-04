@@ -98,22 +98,22 @@ export default function CertificadoDigital() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-              <Key className="w-4 h-4 text-amber-500" /> Adicionar Certificado Digital A1
+              <Key className="w-4 h-4 text-accent" /> Adicionar Certificado Digital A1
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-1">
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 rounded-md p-3 text-xs text-blue-800 dark:text-blue-300">
+            <div className="bg-info/10 border border-info/20 rounded-md p-3 text-xs text-info">
               O arquivo <strong>.pfx</strong> ou <strong>.p12</strong> contém seu certificado digital A1. Ele será armazenado de forma segura e usado para assinar as NFS-e enviadas à Prefeitura.
             </div>
 
             <div>
               <Label className="text-xs text-muted-foreground">Arquivo do certificado (.pfx / .p12)</Label>
               <div
-                className="mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-amber-400 transition-colors"
+                className="mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-accent transition-colors"
                 onClick={() => fileRef.current?.click()}
               >
                 {file
-                  ? <p className="text-sm font-medium text-amber-600">{file.name}</p>
+                  ? <p className="text-sm font-medium text-accent">{file.name}</p>
                   : <><Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground" /><p className="text-xs text-muted-foreground">Clique para selecionar</p></>
                 }
               </div>
@@ -141,7 +141,7 @@ export default function CertificadoDigital() {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={() => { setUploadOpen(false); setFile(null); setSenha(''); }}>Cancelar</Button>
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white"
+            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground"
               disabled={!file || !senha || uploading}
               onClick={handleUpload}>
               {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
@@ -155,13 +155,13 @@ export default function CertificadoDigital() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-amber-500" /> Certificado Digital
+            <ShieldCheck className="w-4 h-4 text-accent" /> Certificado Digital
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Usado para assinar e emitir NFS-e via Prefeitura de Belém (ABRASFv2)
           </p>
         </div>
-        <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs"
+        <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground h-7 text-xs"
           onClick={() => setUploadOpen(true)}>
           <Upload className="w-3 h-3 mr-1" /> Adicionar A1
         </Button>
@@ -194,17 +194,17 @@ export default function CertificadoDigital() {
           {certs.map(cert => (
             <div key={cert.id} className="border rounded-lg p-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${vencido ? 'bg-red-100 dark:bg-red-950/30' : 'bg-green-100 dark:bg-green-950/30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${vencido ? 'bg-destructive/10' : 'bg-success/10'}`}>
                   {vencido
-                    ? <AlertTriangle className="w-4 h-4 text-red-500" />
-                    : <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    ? <AlertTriangle className="w-4 h-4 text-destructive" />
+                    : <CheckCircle2 className="w-4 h-4 text-success" />
                   }
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold">{cert.nome_titular ?? 'Certificado A1'}</span>
                     <Badge variant="outline" className="text-xs px-1 py-0">Tipo {cert.tipo}</Badge>
-                    {vencido && <Badge variant="outline" className="text-xs px-1 py-0 border-red-400/60 text-red-500">Vencido</Badge>}
+                    {vencido && <Badge variant="outline" className="text-xs px-1 py-0 border-destructive/30 text-destructive">Vencido</Badge>}
                   </div>
                   {cert.cnpj_titular && <p className="text-xs text-muted-foreground">{cert.cnpj_titular}</p>}
                   {cert.validade && <p className="text-xs text-muted-foreground">Válido até {new Date(cert.validade).toLocaleDateString('pt-BR')}</p>}
@@ -220,10 +220,10 @@ export default function CertificadoDigital() {
       )}
 
       {/* Belém integration info */}
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+      <div className="bg-warning/10 border border-warning/30 rounded-md p-3 text-xs text-warning space-y-1">
         <p className="font-medium">Integração com Prefeitura de Belém (ISSNET/ABRASFv2)</p>
-        <p>Endpoint: <code className="text-xs bg-amber-100 dark:bg-amber-900/30 px-1 rounded">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
-        <p className="text-amber-700 dark:text-amber-400">O certificado é usado para assinar o XML RPS antes do envio ao webservice municipal.</p>
+        <p>Endpoint: <code className="text-xs bg-warning/20 px-1 rounded">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
+        <p>O certificado é usado para assinar o XML RPS antes do envio ao webservice municipal.</p>
       </div>
     </div>
   );
