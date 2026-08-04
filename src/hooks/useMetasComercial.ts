@@ -358,6 +358,9 @@ export type Feriado = {
   data: string;
   descricao: string;
   abrangencia: string;
+  /** NULL = nacional; preenchida = estadual; com municipio = municipal. */
+  uf: string | null;
+  municipio: string | null;
 };
 
 /** Feriados do ano, usados para descontar dias úteis do mês. */
@@ -382,7 +385,14 @@ export function useFeriados(ano: number) {
 
 // ─── Colaboradores da empresa ─────────────────────────────────────────────────
 
-export type Colaborador = { user_id: string; nome: string | null; email: string | null };
+export type Colaborador = {
+  user_id: string;
+  nome: string | null;
+  email: string | null;
+  /** Praça para o cálculo de dias úteis; NULL = só feriados nacionais. */
+  praca_uf: string | null;
+  praca_municipio: string | null;
+};
 
 export function useColaboradores() {
   const empresaId = useEmpresaId();
@@ -392,7 +402,7 @@ export function useColaboradores() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresa_membros')
-        .select('user_id, nome, email')
+        .select('user_id, nome, email, praca_uf, praca_municipio' as '*')
         .eq('empresa_id', empresaId!)
         .order('nome', { ascending: true });
       if (error) throw error;

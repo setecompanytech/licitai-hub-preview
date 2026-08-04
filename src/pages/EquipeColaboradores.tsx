@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2, MapPin } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
 import { MODULOS_SISTEMA, useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { useQueryClient } from '@tanstack/react-query';
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
@@ -35,6 +36,10 @@ const PAPEIS: { value: string; label: string }[] = [
   { value: 'viewer', label: 'Visualizador' },
 ];
 
+/** 'nenhuma' é sentinela do Select (Radix não aceita value=""); vira NULL no banco. */
+const UF_SEM_PRACA = 'nenhuma';
+const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
 type Membro = {
   id: string;
   user_id: string;
@@ -44,6 +49,9 @@ type Membro = {
   nome: string | null;
   email: string | null;
   created_at: string;
+  /** Praça do colaborador para o cálculo de dias úteis das metas. */
+  praca_uf: string | null;
+  praca_municipio: string | null;
 };
 
 export default function EquipeColaboradores() {
@@ -63,7 +71,13 @@ export default function EquipeColaboradores() {
   const [sectorPapel, setSectorPapel] = useState('operador');
   const [permDialog, setPermDialog] = useState<Membro | null>(null);
   const [permissoesSel, setPermissoesSel] = useState<string[]>([]);
+  // Praça do colaborador (Fase 1 das metas por praça)
+  const [pracaDialog, setPracaDialog] = useState<Membro | null>(null);
+  const [pracaUf, setPracaUf] = useState<string>(UF_SEM_PRACA);
+  const [pracaMunicipio, setPracaMunicipio] = useState('');
+  const [salvandoPraca, setSalvandoPraca] = useState(false);
 
+  const queryClient = useQueryClient();
   const currentMembro = empresas.find(e => e.empresa_id === empresaAtiva?.id);
   const { isAdmin: hasAdminAccess } = useMembroPermissoes();
   const isAdmin = hasAdminAccess || currentMembro?.papel === 'admin';
@@ -236,6 +250,37 @@ export default function EquipeColaboradores() {
     }
   };
 
+  const openPracaDialog = (m: Membro) => {
+    setPracaDialog(m);
+    setPracaUf(m.praca_uf || UF_SEM_PRACA);
+    setPracaMunicipio(m.praca_municipio || '');
+  };
+
+  const savePraca = async () => {
+    if (!pracaDialog) return;
+    setSalvandoPraca(true);
+    const uf = pracaUf === UF_SEM_PRACA ? null : pracaUf;
+    // Município sem UF não tem efeito nenhum no filtro — limpa junto para o
+    // registro não guardar um resto enganoso.
+    const municipio = uf ? pracaMunicipio.trim() || null : null;
+    const { error } = await supabase
+      .from('empresa_membros')
+      .update({ praca_uf: uf, praca_municipio: municipio } as never)
+      .eq('id', pracaDialog.id);
+    setSalvandoPraca(false);
+    if (error) {
+      toast.error('Erro ao salvar a praça');
+      return;
+    }
+    toast.success(uf ? `Praça definida: ${municipio ? `${municipio}/` : ''}${uf}` : 'Praça removida — só feriados nacionais');
+    setMembros(prev => prev.map(x => x.id === pracaDialog.id ? { ...x, praca_uf: uf, praca_municipio: municipio } : x));
+    // O PainelMetas lê a praça via react-query com staleTime de 2 minutos;
+    // sem invalidar, o admin confere lá e vê a praça antiga — exatamente o
+    // fluxo que o texto deste diálogo instrui a fazer.
+    queryClient.invalidateQueries({ queryKey: ['comercial-colaboradores'] });
+    setPracaDialog(null);
+  };
+
   const openPermDialog = (m: Membro) => {
     setPermDialog(m);
     setPermissoesSel(Array.isArray((m as any).permissoes) ? (m as any).permissoes : []);
@@ -352,6 +397,12 @@ export default function EquipeColaboradores() {
                               {isCurrentUser && <Badge variant="outline" className="text-xs">Você</Badge>}
                               <Badge className={`text-xs ${eq.color}`}>{eq.label}</Badge>
                               <Badge variant="secondary" className="text-xs">{m.papel}</Badge>
+                              {m.praca_uf && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <MapPin className="w-3 h-3" aria-hidden="true" />
+                                  {m.praca_municipio ? `${m.praca_municipio}/${m.praca_uf}` : m.praca_uf}
+                                </Badge>
+                              )}
                             </div>
                             {(m as any).email && <p className="text-xs text-muted-foreground truncate">{(m as any).email}</p>}
                           </div>
@@ -387,6 +438,9 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)">
+                              <MapPin className="w-4 h-4" />
+                            </Button>
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
                               <Shield className="w-4 h-4" />
                             </Button>
@@ -596,6 +650,56 @@ export default function EquipeColaboradores() {
         </Dialog>
 
         {/* Permissions Dialog */}
+        {/* Praça do colaborador — Fase 1 das metas por praça */}
+        <Dialog open={!!pracaDialog} onOpenChange={(v) => !v && setPracaDialog(null)}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                Praça de {pracaDialog?.nome || pracaDialog?.email || 'Colaborador'}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-base text-muted-foreground">
+              Define quais feriados contam nos dias úteis das metas: nacionais +
+              os da UF + os do município. Sem praça, só os nacionais.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">UF</Label>
+                <Select value={pracaUf} onValueChange={setPracaUf}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UF_SEM_PRACA}>Sem praça</SelectItem>
+                    {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Município (opcional)</Label>
+                <Input
+                  className="h-9"
+                  placeholder="Santa Rosa"
+                  value={pracaMunicipio}
+                  onChange={(e) => setPracaMunicipio(e.target.value)}
+                  disabled={pracaUf === UF_SEM_PRACA}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A grafia não precisa ser exata: a comparação ignora caixa, acento e
+              pontuação. O painel de metas mostra quantos feriados entraram no
+              cálculo — confira lá depois de definir.
+            </p>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setPracaDialog(null)} disabled={salvandoPraca}>Cancelar</Button>
+              <Button onClick={savePraca} disabled={salvandoPraca}>
+                {salvandoPraca && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                Salvar praça
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={!!permDialog} onOpenChange={(v) => !v && setPermDialog(null)}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>

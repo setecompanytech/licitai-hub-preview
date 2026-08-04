@@ -113,10 +113,12 @@ que exercita a regra é setembro (07/09, segunda) — daí o prazo-alvo.
 
 ### Faseamento
 
-**Fase 1 — schema + praça do colaborador.** Migration com as colunas novas nas duas tabelas,
-mais a tela de praça em `EquipeColaboradores.tsx`. Entregue isso, os feriados estaduais e
-municipais entram por SQL, como os nacionais entram hoje. É o que destrava o valor sem
-depender da parte grande, e é o dado que diz *quais* UFs e municípios cadastrar.
+**Fase 1 — schema + praça do colaborador.** ✅ **ENTREGUE em 2026-08-04** — migration
+`20260804000001` (colunas + UNIQUE com COALESCE + CHECKs pela forma normalizada +
+`normalize(NFC)` + ñ no `comercial_sem_acento`), filtro `filtrarFeriadosPorPraca` em
+`src/lib/metas/praca.ts` (14 testes, paridade TS↔SQL), praça no diálogo de
+`EquipeColaboradores.tsx` e contador de feriados visível no painel (ressalva 3).
+Feriados estaduais/municipais entram por SQL até a Fase 2.
 
 **Fase 2 — CRUD de feriados na Parametrização.** Hoje **não existe** tela nenhuma de
 feriados: tabela, formulário e exclusão saem do zero. É a maior parte do esforço e a única

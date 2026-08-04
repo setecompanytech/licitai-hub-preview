@@ -22,6 +22,7 @@ import { paraCentavos, paraReais } from '@/lib/metas/dinheiro';
 import { apurarTickets } from '@/lib/metas/tickets';
 import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
 import { filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
+import { filtrarFeriadosPorPraca } from '@/lib/metas/praca';
 import { avaliarAlerta, projetarMeta, type Severidade } from '@/lib/metas/projecao';
 import { rotuloModalidade } from '@/lib/metas/modalidades';
 import DefinirMetaDialog from './DefinirMetaDialog';
@@ -138,13 +139,24 @@ export default function PainelMetas() {
 
     const valoresAlvoCent = resolverValoresAlvo(valoresAlvo ?? [], hoje, selecionado);
 
+    // Fase 1 da praça: nacionais + os da UF/município do colaborador.
+    // Sem praça definida, só os nacionais — comportamento anterior.
+    const feriadosDaPraca = filtrarFeriadosPorPraca(
+      feriados ?? [],
+      colaborador ? { uf: colaborador.praca_uf, municipio: colaborador.praca_municipio } : null,
+    );
+    const prefixoMes = `${ano}-${String(mes).padStart(2, '0')}-`;
+    // Set: nacional + estadual na MESMA data são permitidos pelo índice novo,
+    // mas só descontam um dia útil — o contador auditável mostra datas únicas.
+    const feriadosNoMes = new Set(feriadosDaPraca.filter((d) => d.startsWith(prefixoMes))).size;
+
     const projecao = projetarMeta({
       metaCent: paraCentavos(Number(meta.meta_faturamento)),
       realizadoCent,
       ano,
       mes,
       hoje,
-      feriados: (feriados ?? []).map((f) => f.data),
+      feriados: feriadosDaPraca,
       historico,
       tickets,
       valoresAlvoCent,
@@ -161,8 +173,8 @@ export default function PainelMetas() {
       percentualMinimo: Number(config.alerta_percentual_minimo),
     });
 
-    return { projecao, severidade, tickets, historico };
-  }, [config, selecionado, meta, realizado, contratos, valoresAlvo, feriados, ano, mes, hoje]);
+    return { projecao, severidade, tickets, historico, feriadosNoMes };
+  }, [config, selecionado, meta, realizado, contratos, valoresAlvo, feriados, colaborador, ano, mes, hoje]);
 
   const anos = [anoRef - 2, anoRef - 1, anoRef, anoRef + 1];
   const carregando = carregandoColaboradores || carregandoRealizado;
@@ -302,7 +314,15 @@ export default function PainelMetas() {
             <Indicador
               rotulo="Dias úteis restantes"
               valor={String(analise.projecao.diasUteisRestantes)}
-              detalhe={`${analise.projecao.diasUteisDecorridos} decorrido(s)`}
+              // Ressalva 3 da auditoria: quantos feriados entraram no cálculo
+              // precisa ficar VISÍVEL — praça errada não dá erro, só distorce.
+              detalhe={`${analise.projecao.diasUteisDecorridos} decorrido(s) · ${analise.feriadosNoMes} feriado(s) da praça ${
+                colaborador?.praca_uf
+                  ? colaborador.praca_municipio
+                    ? `${colaborador.praca_municipio}/${colaborador.praca_uf}`
+                    : colaborador.praca_uf
+                  : 'nacional'
+              }`}
               icone={CalendarDays}
             />
           </div>
