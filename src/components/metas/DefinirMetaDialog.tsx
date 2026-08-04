@@ -72,7 +72,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
 
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Meta do mês (R$)</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Meta do mês (R$)</Label>
             <MoneyInput
               autoFocus
               value={faturamento}
@@ -81,7 +81,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Medida sobre</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Medida sobre</Label>
             <Select value={base} onValueChange={(v) => setBase(v as BaseMeta)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -93,7 +93,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Contratos (opcional)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Contratos (opcional)</Label>
               <Input
                 type="number" min={0} placeholder="—"
                 value={contratos}
@@ -101,7 +101,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Participações (opcional)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Participações (opcional)</Label>
               <Input
                 type="number" min={0} placeholder="—"
                 value={participacoes}
@@ -111,7 +111,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Observação (opcional)</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Observação (opcional)</Label>
             <Textarea
               rows={2}
               placeholder="Contexto da meta, acordo com o colaborador…"

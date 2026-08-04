@@ -22,7 +22,7 @@ export default function MetasComercial() {
           <Target className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
           Metas do Comercial
         </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <p className="text-base text-muted-foreground mt-1">
           Metas mensais por colaborador, com valores-alvo e alertas configuráveis
         </p>
       </div>
@@ -47,8 +47,8 @@ export default function MetasComercial() {
           ) : (
             <Card className="p-12 text-center">
               <Lock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">Acesso restrito</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-base font-medium text-muted-foreground">Acesso restrito</p>
+              <p className="text-base text-muted-foreground mt-1">
                 Apenas administradores da empresa podem alterar os valores-alvo e os limiares de alerta.
               </p>
             </Card>

@@ -49,13 +49,13 @@ export default function ParametrizacaoMetas() {
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" />
             Valores-alvo por modalidade
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
               Referência de meta usada nas projeções
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="flex items-start gap-2 px-5 py-3 text-xs text-muted-foreground border-b bg-muted/20">
+          <div className="flex items-start gap-2 px-5 py-3 text-base text-muted-foreground border-b bg-muted/20">
             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <p>
               O motor usa o valor-alvo como ticket de referência quando não há histórico
@@ -67,7 +67,7 @@ export default function ParametrizacaoMetas() {
           {/* Novo valor-alvo */}
           <div className="flex flex-wrap items-end gap-3 px-5 py-3 border-b">
             <div className="min-w-[200px] flex-1">
-              <Label className="text-xs text-muted-foreground mb-1 block">Modalidade</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Modalidade</Label>
               <Select value={novo.modalidade} onValueChange={(v) => setNovo((n) => ({ ...n, modalidade: v }))}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -78,7 +78,7 @@ export default function ParametrizacaoMetas() {
               </Select>
             </div>
             <div className="w-[160px]">
-              <Label className="text-xs text-muted-foreground mb-1 block">Valor-alvo (R$)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Valor-alvo (R$)</Label>
               <MoneyInput
                 className="h-9 text-sm"
                 value={novo.valor}
@@ -86,7 +86,7 @@ export default function ParametrizacaoMetas() {
               />
             </div>
             <div className="w-[150px]">
-              <Label className="text-xs text-muted-foreground mb-1 block">Vigência a partir de</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Vigência a partir de</Label>
               <Input
                 type="date"
                 className="h-9 text-sm"
@@ -134,7 +134,7 @@ export default function ParametrizacaoMetas() {
               <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando…
             </div>
           ) : (valores?.length ?? 0) === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
+            <div className="py-10 text-center text-base text-muted-foreground">
               Nenhum valor-alvo cadastrado. Use "Restaurar padrões" para criar os valores iniciais.
             </div>
           ) : (
@@ -192,7 +192,7 @@ export default function ParametrizacaoMetas() {
         <CardContent className="p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Janela histórica (meses)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Janela histórica (meses)</Label>
               <Input
                 type="number" min={1} max={36} className="h-9 text-sm"
                 value={campo('janela_historica_meses', 6)}
@@ -201,7 +201,7 @@ export default function ParametrizacaoMetas() {
               <p className="text-[11px] text-muted-foreground mt-1">Base da taxa de conversão e do ticket médio.</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Alertar faltando (dias úteis)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Alertar faltando (dias úteis)</Label>
               <Input
                 type="number" min={1} max={31} className="h-9 text-sm"
                 value={campo('alerta_dias_limite', 10)}
@@ -209,7 +209,7 @@ export default function ParametrizacaoMetas() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Realizado mínimo (%)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Realizado mínimo (%)</Label>
               <Input
                 type="number" min={0} max={100} step="0.01" className="h-9 text-sm"
                 value={campo('alerta_percentual_minimo', 70)}
@@ -218,7 +218,7 @@ export default function ParametrizacaoMetas() {
               <p className="text-[11px] text-muted-foreground mt-1">Abaixo disso, dispara alerta de risco.</p>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Amostra mínima (contratos)</Label>
+              <Label className="text-sm text-muted-foreground mb-1 block">Amostra mínima (contratos)</Label>
               <Input
                 type="number" min={1} className="h-9 text-sm"
                 value={campo('min_amostra_ticket', 3)}
@@ -256,7 +256,7 @@ export default function ParametrizacaoMetas() {
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             Motivos de perda
             <Badge variant="outline" className="text-xs">{motivos?.length ?? 0}</Badge>
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
               Usados no registro obrigatório de perda
             </span>
           </CardTitle>
@@ -291,7 +291,7 @@ export default function ParametrizacaoMetas() {
               ))}
               {(motivos?.length ?? 0) === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-base text-muted-foreground">
                     Nenhum motivo cadastrado. Use "Restaurar padrões" acima.
                   </TableCell>
                 </TableRow>

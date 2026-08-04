@@ -72,7 +72,7 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
               </SelectContent>
             </Select>
             {!isLoading && (motivos?.length ?? 0) === 0 && (
-              <p className="flex items-start gap-1.5 text-xs text-warning">
+              <p className="flex items-start gap-1.5 text-base text-warning">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 Nenhum motivo ativo cadastrado. Um administrador precisa configurá-los em
                 Metas do Comercial → Parametrização.

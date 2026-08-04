@@ -38,11 +38,11 @@ function hojeEmSaoPaulo(): string {
 
 const ESTILO_ALERTA: Record<Exclude<Severidade, 'nenhum'>, { classe: string; titulo: string }> = {
   atencao: {
-    classe: 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    classe: 'border-warning/40 bg-warning/10 text-warning',
     titulo: 'Atenção',
   },
   risco: {
-    classe: 'border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400',
+    classe: 'border-warning/50 bg-warning/15 text-warning',
     titulo: 'Meta em risco',
   },
   critico: {
@@ -173,7 +173,7 @@ export default function PainelMetas() {
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
           <div className="min-w-[200px] flex-1">
-            <Label className="text-xs text-muted-foreground mb-1 block">Colaborador</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Colaborador</Label>
             {isAdmin ? (
               <Select value={selecionado} onValueChange={setUserId}>
                 <SelectTrigger className="h-9">
@@ -195,7 +195,7 @@ export default function PainelMetas() {
             )}
           </div>
           <div className="w-[150px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Mês</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Mês</Label>
             <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -206,7 +206,7 @@ export default function PainelMetas() {
             </Select>
           </div>
           <div className="w-[110px]">
-            <Label className="text-xs text-muted-foreground mb-1 block">Ano</Label>
+            <Label className="text-sm text-muted-foreground mb-1 block">Ano</Label>
             <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -234,19 +234,19 @@ export default function PainelMetas() {
         </Card>
       ) : !selecionado ? (
         <Card className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Nenhum colaborador encontrado nesta empresa.
           </p>
         </Card>
       ) : !meta ? (
         <Card className="p-12 text-center">
           <Target className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-base font-medium text-muted-foreground">
             Sem meta definida para {NOMES_MES[mes - 1].toLowerCase()} de {ano}
           </p>
           {isAdmin ? (
             <>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">
+              <p className="text-base text-muted-foreground mt-1 mb-4">
                 Defina a meta de {nomeColaborador} para o painel calcular projeção e alertas.
               </p>
               <Button size="sm" onClick={() => setDialogoAberto(true)}>
@@ -255,7 +255,7 @@ export default function PainelMetas() {
               </Button>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-1">
               Um administrador da empresa precisa definir sua meta do mês para o painel
               calcular projeção e alertas.
             </p>
@@ -267,9 +267,9 @@ export default function PainelMetas() {
           {analise.severidade !== 'nenhum' && (
             <div className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${ESTILO_ALERTA[analise.severidade].classe}`}>
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <div className="text-sm">
+              <div className="text-base">
                 <p className="font-semibold">{ESTILO_ALERTA[analise.severidade].titulo}</p>
-                <p className="text-xs opacity-90 mt-0.5">
+                <p className="opacity-90 mt-0.5">
                   {formatPercent(analise.projecao.percentualRealizado, 0)} da meta com{' '}
                   {analise.projecao.diasUteisRestantes} dia(s) útil(eis) restante(s).
                   Abaixo do mínimo de {Number(config?.alerta_percentual_minimo ?? 70)}% configurado.
@@ -448,11 +448,11 @@ export default function PainelMetas() {
               )}
 
               {analise.projecao.premissas.motivosBaixaConfianca.length > 0 && (
-                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">
+                <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5">
+                  <p className="text-sm font-medium text-warning mb-1">
                     O que puxou a confiança para baixo
                   </p>
-                  <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                  <ul className="text-base text-muted-foreground space-y-0.5 list-disc list-inside">
                     {analise.projecao.premissas.motivosBaixaConfianca.map((m) => (
                       <li key={m}>{m}</li>
                     ))}
