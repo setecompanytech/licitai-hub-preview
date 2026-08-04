@@ -45,6 +45,15 @@ Toda alteração de schema entra em **dois lugares**, sempre com o mesmo SQL:
    escreva também o passo de backfill no mesmo bloco e avise explicitamente no resumo.
 7. Avisar o usuário: o SQL **não é aplicado automaticamente** — precisa ser colado no
    **Supabase SQL Editor** do projeto `uwtyuwktxalnpgrcbbgk` (ver `supabase/config.toml`).
+8. Se houver bloco de conferência com **testes que devem falhar** (provocar erro de
+   constraint de propósito), ele vai em **arquivo separado** da migration — NUNCA no
+   mesmo. O SQL Editor roda o script inteiro numa transação: o primeiro erro
+   proposital aborta e **desfaz a migration inteira em silêncio** (aconteceu em
+   2026-08-04 com a praça por colaborador). Estrutura que funcionou:
+   `<mudança>-migration.sql` (rodar inteiro) + `<mudança>-conferencia.sql` com
+   Parte A (consultas seguras, rodam juntas) e Parte B (blocos de erro proposital,
+   delimitados, com instrução de **selecionar e executar um por vez** e o erro
+   esperado no comentário).
 
 ## Regras
 
