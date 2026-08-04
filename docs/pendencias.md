@@ -6,24 +6,12 @@ adiadas de propósito.
 
 ---
 
-## [2026-08-03] 2 testes falhando em `concorrentes-document-analysis.test.ts`
+## ~~[2026-08-03] 2 testes falhando em `concorrentes-document-analysis.test.ts`~~ — RESOLVIDO em 2026-08-04
 
-**Situação:** `src/test/concorrentes-document-analysis.test.ts` tem 2 dos 5 testes falhando
-(a falha aponta para a linha 79). Verificado que já falhavam **antes** do módulo de Metas do
-Comercial — não é regressão dele.
-
-**Como reproduzir:**
-
-```sh
-npx vitest run src/test/concorrentes-document-analysis.test.ts
-# Tests  2 failed | 3 passed (5)
-```
-
-**Decisão:** deixado como está, fora do escopo do módulo de metas. Revisar depois da Fase C.
-
-**Efeito colateral a considerar:** enquanto isso, `npm run test` (suíte inteira) sai com
-código diferente de zero. Se algum dia entrar verificação de testes em CI ou em hook de
-commit, isso vai barrar — então convém resolver antes disso.
+**Causa raiz:** o `Blob` do jsdom não implementa `arrayBuffer()`/`text()` — lacuna do
+ambiente de teste, não do app. **Correção:** polyfill via `FileReader` em
+`src/test/setup.ts`. A suíte inteira passou a sair com código zero (155/155), então
+`npm run test` agora serve como verificação de CI ou hook de commit.
 
 ---
 
