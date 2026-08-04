@@ -232,7 +232,7 @@ export default function PainelLicitacoes() {
           </div>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-9 text-xs">
+            <SelectTrigger className="w-[140px] h-9 text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -244,7 +244,7 @@ export default function PainelLicitacoes() {
           </Select>
 
           <Select value={modalidadeFilter} onValueChange={setModalidadeFilter}>
-            <SelectTrigger className="w-[160px] h-9 text-xs">
+            <SelectTrigger className="w-[160px] h-9 text-sm">
               <SelectValue placeholder="Modalidade" />
             </SelectTrigger>
             <SelectContent>
@@ -256,7 +256,7 @@ export default function PainelLicitacoes() {
           </Select>
 
           <Select value={ufFilter} onValueChange={setUfFilter}>
-            <SelectTrigger className="w-[100px] h-9 text-xs">
+            <SelectTrigger className="w-[100px] h-9 text-sm">
               <SelectValue placeholder="UF" />
             </SelectTrigger>
             <SelectContent>
@@ -334,9 +334,9 @@ export default function PainelLicitacoes() {
                         )}
                       >
                         <td className="p-3">
-                          <span className="text-[11px] font-mono text-muted-foreground block">{lic.numero}</span>
-                          <p className="font-medium truncate max-w-[300px]">{lic.objeto}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                          <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                          <p className="text-base font-medium truncate max-w-[300px]">{lic.objeto}</p>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             {lic.modalidade && <span>{lic.modalidade}</span>}
                             {lic.data_encerramento && (
                               <span className={cn('flex items-center gap-0.5', isUrgent && 'text-destructive font-semibold')}>
@@ -346,8 +346,8 @@ export default function PainelLicitacoes() {
                             )}
                           </div>
                         </td>
-                        <td className="p-3 text-xs text-muted-foreground hidden md:table-cell max-w-[200px] truncate">{lic.orgao}</td>
-                        <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">
+                        <td className="p-3 text-sm text-muted-foreground hidden md:table-cell max-w-[200px] truncate">{lic.orgao}</td>
+                        <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">
                           {lic.municipio && lic.uf ? (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
@@ -355,7 +355,7 @@ export default function PainelLicitacoes() {
                             </span>
                           ) : lic.uf || '—'}
                         </td>
-                        <td className="p-3 text-right font-semibold text-xs">
+                        <td className="p-3 text-right font-semibold text-sm">
                           {lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '—'}
                         </td>
                         <td className="p-3 text-center">
@@ -363,8 +363,8 @@ export default function PainelLicitacoes() {
                             value={lic.status}
                             onValueChange={(val) => handleStatusChange(lic.id, val)}
                           >
-                            <SelectTrigger className="h-7 w-[120px] mx-auto text-[11px] border-0 bg-transparent p-0 justify-center">
-                              <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>
+                            <SelectTrigger className="h-7 w-[120px] mx-auto text-xs border-0 bg-transparent p-0 justify-center">
+                              <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>
                                 {st.label}
                               </Badge>
                             </SelectTrigger>

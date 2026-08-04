@@ -33,7 +33,7 @@ const groups: QuickGroup[] = [
     ],
   },
   {
-    title: 'Gestão de Processos',
+    title: 'Gestão de processos',
     items: [
       { icon: ListChecks, label: 'Compromissos', path: '/meus-compromissos' },
       { icon: CalendarDays, label: 'Calendário', path: '/calendario' },
@@ -42,7 +42,7 @@ const groups: QuickGroup[] = [
     ],
   },
   {
-    title: 'Inteligência & Preços',
+    title: 'Inteligência & preços',
     accent: true,
     items: [
       { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
@@ -52,7 +52,7 @@ const groups: QuickGroup[] = [
     ],
   },
   {
-    title: 'Jurídico & Contábil',
+    title: 'Jurídico & contábil',
     items: [
       { icon: Scale, label: 'Apoio Jurídico', path: '/apoio-juridico' },
       { icon: Calculator, label: 'Apoio Contábil', path: '/apoio-contabil' },
@@ -95,8 +95,8 @@ export default function QuickAccessGrid() {
               : 'border-border/60 bg-card/50'
           )}
         >
-          {/* Piso de metadados da auditoria: 12px + tracking 0.05em (opção A) */}
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {/* Rótulo de categoria — opção B da auditoria: 14px, sem caixa alta */}
+          <h3 className="text-sm font-semibold text-muted-foreground">
             {group.title}
           </h3>
           <div className="space-y-0.5">
@@ -113,7 +113,7 @@ export default function QuickAccessGrid() {
                       <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0" />
                       <span className="break-words leading-tight line-clamp-2">{item.label}</span>
                       {item.badge && (
-                        <span className="ml-auto text-[7px] sm:text-[8px] font-bold bg-accent text-accent-foreground px-1 sm:px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
+                        <span className="ml-auto text-xs font-bold bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
                           Novo
                         </span>
                       )}

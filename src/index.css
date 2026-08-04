@@ -25,17 +25,21 @@
     --muted-foreground: 215 22% 28%;
 
     /* Laranja de ação ÚNICO (marca #F97316). No light, escurecido para
-       25 90% 42% — o tom cheio com texto branco dá 3.5:1 e reprova AA. */
-    --accent: 25 90% 42%;
+       25 95% 36% — validado nas DUAS direções: 4.8:1 como texto sobre o
+       fundo claro e 5.3:1 com branco por cima. O tom cheio dava 3.8/2.8. */
+    --accent: 25 95% 36%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 46%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 36%;
+    /* Semânticas do claro escurecidas pela mesma régua dupla — os valores
+       antigos reprovavam como TEXTO sobre fundo claro (success 3.7, warning
+       2.5 — o "lavado" visível na tabela de processos). */
+    --success: 152 60% 30%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 85% 45%;
+    --warning: 35 85% 32%;
     --warning-foreground: 0 0% 100%;
 
     /* Info deixou de ser azul: sob a regra de contenção, azul não é estado.
@@ -60,7 +64,9 @@
 
     --nav-bg: 215 50% 14%;
     --nav-fg: 215 10% 82%;
-    --nav-active: 25 90% 42%;
+    /* A nav é navy escura mesmo no tema claro: o ativo usa o laranja CLARO
+       (6.8:1 sobre o navy), não o laranja escurecido do restante do tema. */
+    --nav-active: 25 95% 53%;
     --nav-hover: 215 42% 20%;
     --nav-border: 215 40% 22%;
 

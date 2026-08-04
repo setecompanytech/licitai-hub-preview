@@ -19,26 +19,8 @@ import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 export default function PilotoPainel() {
   return (
     <div className="min-h-screen bg-background text-foreground p-6 space-y-10" data-piloto>
-      <style>{`
-        /* Opção B: 14px sentence case — só existe neste piloto */
-        .piloto-opcao-b h3 {
-          text-transform: none !important;
-          letter-spacing: 0 !important;
-          font-size: 0.875rem !important;
-          line-height: 1.25rem !important;
-          font-weight: 600 !important;
-        }
-      `}</style>
-
-      <section data-bloco="opcao-a">
-        <h2 className="text-lg font-bold tracking-tight mb-1">Rótulos — Opção A</h2>
-        <p className="text-base text-muted-foreground mb-4">12px · caixa alta · tracking 0.05em</p>
-        <QuickAccessGrid />
-      </section>
-
-      <section data-bloco="opcao-b" className="piloto-opcao-b">
-        <h2 className="text-lg font-bold tracking-tight mb-1">Rótulos — Opção B</h2>
-        <p className="text-base text-muted-foreground mb-4">14px · sem caixa alta · peso 600</p>
+      <section data-bloco="ferramentas">
+        <h2 className="text-lg font-bold tracking-tight mb-4">Nossas Ferramentas</h2>
         <QuickAccessGrid />
       </section>
 
