@@ -29,8 +29,8 @@ interface IrregularidadesExtractorProps {
 
 const GRAVIDADE_COLORS: Record<string, string> = {
   alta: 'bg-destructive/10 text-destructive border-destructive/30',
-  media: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
-  baixa: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30',
+  media: 'bg-warning/10 text-warning border-warning/30',
+  baixa: 'bg-info/10 text-info border-info/30',
 };
 
 const GRAVIDADE_LABELS: Record<string, string> = {

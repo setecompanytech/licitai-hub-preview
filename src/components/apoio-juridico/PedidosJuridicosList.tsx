@@ -26,14 +26,14 @@ import {
 
 const STATUS_CORES: Record<JuridicoPedidoStatus, string> = {
   rascunho: 'bg-muted text-muted-foreground border-border',
-  em_revisao: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
-  gerado: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
-  assinado: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30',
-  protocolado: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
-  em_analise: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
-  deferido: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
+  em_revisao: 'bg-warning/10 text-warning border-warning/30',
+  gerado: 'bg-info/10 text-info border-info/30',
+  assinado: 'bg-info/10 text-info border-info/30',
+  protocolado: 'bg-info/10 text-info border-info/30',
+  em_analise: 'bg-warning/10 text-warning border-warning/30',
+  deferido: 'bg-success/10 text-success border-success/30',
   indeferido: 'bg-destructive/10 text-destructive border-destructive/30',
-  parcialmente_deferido: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30',
+  parcialmente_deferido: 'bg-warning/10 text-warning border-warning/30',
 };
 
 interface Props {
@@ -163,7 +163,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-purple-600 hover:bg-purple-500/10 disabled:text-muted-foreground"
+                className="h-7 px-2 text-info hover:bg-info/10 disabled:text-muted-foreground"
                 disabled={!podeEnviar(p)}
                 title={podeEnviar(p) ? 'Registrar protocolo / envio ao órgão' : 'Gere uma versão e avance o status para enviar'}
                 onClick={() => acaoEnviar(p)}
@@ -172,7 +172,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-emerald-600 hover:bg-emerald-500/10 disabled:text-muted-foreground"
+                className="h-7 px-2 text-success hover:bg-success/10 disabled:text-muted-foreground"
                 disabled={!podeRegistrarResultado(p)}
                 title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
                 onClick={() => acaoResultado(p, 'deferido')}
@@ -190,7 +190,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-yellow-600 hover:bg-yellow-500/10 disabled:text-muted-foreground"
+                className="h-7 px-2 text-warning hover:bg-warning/10 disabled:text-muted-foreground"
                 disabled={!podeRegistrarResultado(p)}
                 title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
                 onClick={() => acaoResultado(p, 'parcialmente_deferido')}
@@ -406,9 +406,9 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {retornoTipo === 'deferido' && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              {retornoTipo === 'deferido' && <CheckCircle2 className="w-4 h-4 text-success" />}
               {retornoTipo === 'indeferido' && <XCircle className="w-4 h-4 text-destructive" />}
-              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
+              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-warning" />}
               Resultado do órgão
             </DialogTitle>
             <DialogDescription>

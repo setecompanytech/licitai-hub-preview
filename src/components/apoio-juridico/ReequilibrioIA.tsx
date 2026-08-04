@@ -101,7 +101,7 @@ const MECANISMOS: Record<Mecanismo, {
     icone: TrendingUp,
     fundamento: 'Art. 92, §3º e Art. 135, I da Lei 14.133/2021. Anualidade: 1 ano da proposta ou último reajuste.',
     periodicidade: 'Anual (após 12 meses da proposta)',
-    cor: 'text-emerald-600',
+    cor: 'text-success',
   },
   repactuacao: {
     titulo: 'Repactuação (Custos de MO)',
@@ -511,10 +511,10 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <p className="text-xs text-muted-foreground">{indice.nome}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-xs font-medium">Valor: {indice.valor}</span>
-                  <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                  <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-success'}`}>
                     Mensal: {fmtPerc(indice.variacao_mensal)}
                   </span>
-                  <span className={`text-xs font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                  <span className={`text-xs font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive' : 'text-success'}`}>
                     12m: {fmtPerc(indice.acumulado_12m)}
                   </span>
                 </div>
@@ -789,12 +789,12 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                   <div className="flex items-center gap-2 text-xs">
                     {enquadramentoValidado ? (
                       <>
-                        <Scale className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Enquadramento jurídico validado</span>
+                        <Scale className="w-3.5 h-3.5 text-success shrink-0" />
+                        <span className="text-success font-medium">Enquadramento jurídico validado</span>
                       </>
                     ) : (
                       <>
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
                         <span className="text-muted-foreground">Valide o enquadramento antes de aceitar a classificação</span>
                       </>
                     )}
@@ -1020,7 +1020,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                         <td className="p-1"><Input className="h-7 text-xs w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
                         <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
                         <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                        <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-success'}`}>
                           {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
                         </td>
                         <td className="p-1"><Input className="h-7 text-xs" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>

@@ -37,11 +37,11 @@ interface ItemEdital {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pendente_precificacao: { label: 'Pendente', color: 'text-muted-foreground', icon: Package },
-  aprovado_automaticamente: { label: 'Auto ✓', color: 'text-emerald-400', icon: CheckCircle2 },
-  aguardando_aprovacao_preco: { label: 'Revisar', color: 'text-yellow-400', icon: AlertTriangle },
-  aprovado_manualmente: { label: 'Manual ✓', color: 'text-emerald-400', icon: CheckCircle2 },
+  aprovado_automaticamente: { label: 'Auto ✓', color: 'text-success', icon: CheckCircle2 },
+  aguardando_aprovacao_preco: { label: 'Revisar', color: 'text-warning', icon: AlertTriangle },
+  aprovado_manualmente: { label: 'Manual ✓', color: 'text-success', icon: CheckCircle2 },
   rejeitado: { label: 'Rejeitado', color: 'text-destructive', icon: AlertTriangle },
-  proposta_enviada: { label: 'Enviado', color: 'text-blue-400', icon: Shield },
+  proposta_enviada: { label: 'Enviado', color: 'text-info', icon: Shield },
 };
 
 export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: string }) {
@@ -283,8 +283,8 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
                       <div className="col-span-1 text-center">
                         <p className="text-xs text-muted-foreground">Margem</p>
                         <p className={`font-medium ${
-                          (item.margem_bruta_perc ?? 0) >= 15 ? 'text-emerald-400' :
-                          (item.margem_bruta_perc ?? 0) >= 8 ? 'text-yellow-400' : 'text-destructive'
+                          (item.margem_bruta_perc ?? 0) >= 15 ? 'text-success' :
+                          (item.margem_bruta_perc ?? 0) >= 8 ? 'text-warning' : 'text-destructive'
                         }`}>
                           {item.margem_bruta_perc?.toFixed(1) ?? '0'}%
                         </p>
@@ -331,7 +331,7 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
 
                     {/* Motivo */}
                     {item.motivo_status && item.status === 'aguardando_aprovacao_preco' && (
-                      <p className="text-xs text-yellow-400/80 mt-2 pl-8">
+                      <p className="text-xs text-warning/80 mt-2 pl-8">
                         ⚠ {item.motivo_status}
                       </p>
                     )}

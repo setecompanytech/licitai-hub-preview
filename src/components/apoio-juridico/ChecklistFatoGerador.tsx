@@ -185,13 +185,13 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
         <div className="flex items-center gap-2 text-xs">
           {podeAceitar ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Enquadramento jurídico validado ({score}%)</span>
+              <CheckCircle2 className="w-4 h-4 text-success" />
+              <span className="text-success font-medium">Enquadramento jurídico validado ({score}%)</span>
             </>
           ) : (
             <>
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <span className="text-amber-600 dark:text-amber-400">Marque todos os requisitos obrigatórios para aceitar</span>
+              <AlertTriangle className="w-4 h-4 text-warning" />
+              <span className="text-warning">Marque todos os requisitos obrigatórios para aceitar</span>
             </>
           )}
         </div>

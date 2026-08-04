@@ -15,19 +15,19 @@ import {
 } from 'lucide-react';
 
 const FONTES_CONFIG: Record<string, { nome: string; cor: string; tipo: string }> = {
-  pncp_ata: { nome: 'PNCP — Atas', cor: 'bg-blue-500/20 text-blue-400', tipo: 'oficial' },
-  pncp_contratacao: { nome: 'PNCP — Contratos', cor: 'bg-indigo-500/20 text-indigo-400', tipo: 'oficial' },
-  painel_mpog: { nome: 'Painel MPOG', cor: 'bg-violet-500/20 text-violet-400', tipo: 'oficial' },
-  bps: { nome: 'BPS Saúde', cor: 'bg-pink-500/20 text-pink-400', tipo: 'oficial' },
-  mercadolivre: { nome: 'Mercado Livre', cor: 'bg-yellow-500/20 text-yellow-400', tipo: 'marketplace' },
-  amazon: { nome: 'Amazon', cor: 'bg-orange-500/20 text-orange-400', tipo: 'marketplace' },
-  americanas: { nome: 'Americanas', cor: 'bg-red-500/20 text-red-400', tipo: 'marketplace' },
-  magalu: { nome: 'Magazine Luiza', cor: 'bg-blue-500/20 text-blue-400', tipo: 'marketplace' },
-  dental_cremer: { nome: 'Dental Cremer', cor: 'bg-emerald-500/20 text-emerald-400', tipo: 'nicho_saude' },
-  cirurgica_fernandes: { nome: 'Cirúrgica Fernandes', cor: 'bg-teal-500/20 text-teal-400', tipo: 'nicho_saude' },
-  kabum: { nome: 'KaBuM!', cor: 'bg-orange-500/20 text-orange-400', tipo: 'nicho_ti' },
-  pichau: { nome: 'Pichau', cor: 'bg-violet-500/20 text-violet-400', tipo: 'nicho_ti' },
-  leroy_merlin: { nome: 'Leroy Merlin', cor: 'bg-green-500/20 text-green-400', tipo: 'nicho_construcao' },
+  pncp_ata: { nome: 'PNCP — Atas', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
+  pncp_contratacao: { nome: 'PNCP — Contratos', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
+  painel_mpog: { nome: 'Painel MPOG', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
+  bps: { nome: 'BPS Saúde', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
+  mercadolivre: { nome: 'Mercado Livre', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
+  amazon: { nome: 'Amazon', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
+  americanas: { nome: 'Americanas', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
+  magalu: { nome: 'Magazine Luiza', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
+  dental_cremer: { nome: 'Dental Cremer', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_saude' },
+  cirurgica_fernandes: { nome: 'Cirúrgica Fernandes', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_saude' },
+  kabum: { nome: 'KaBuM!', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_ti' },
+  pichau: { nome: 'Pichau', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_ti' },
+  leroy_merlin: { nome: 'Leroy Merlin', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_construcao' },
   marketplace: { nome: 'Marketplace', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
   historico_proprio: { nome: 'Histórico Próprio', cor: 'bg-primary/20 text-primary', tipo: 'interno' },
 };
@@ -159,7 +159,7 @@ export default function PesquisaPrecos({
             <Card className="bg-card border-border">
               <CardContent className="p-3 text-center">
                 <p className="text-xs text-muted-foreground">Mínimo</p>
-                <p className="text-lg font-bold text-emerald-400">
+                <p className="text-lg font-bold text-success">
                   {formatCurrency(resultados.estatisticas.minimo)}
                 </p>
               </CardContent>
@@ -175,7 +175,7 @@ export default function PesquisaPrecos({
             <Card className="bg-card border-border">
               <CardContent className="p-3 text-center">
                 <p className="text-xs text-muted-foreground">Máximo</p>
-                <p className="text-lg font-bold text-red-400">
+                <p className="text-lg font-bold text-destructive">
                   {formatCurrency(resultados.estatisticas.maximo)}
                 </p>
               </CardContent>
@@ -339,9 +339,9 @@ export default function PesquisaPrecos({
                           <span className="text-xs text-muted-foreground">{count as number} resultados</span>
                         </div>
                         <div className="flex gap-4 text-xs">
-                          <span className="text-muted-foreground">Mín: <strong className="text-emerald-400">{formatCurrency(min)}</strong></span>
+                          <span className="text-muted-foreground">Mín: <strong className="text-success">{formatCurrency(min)}</strong></span>
                           <span className="text-muted-foreground">Méd: <strong className="text-foreground">{formatCurrency(media)}</strong></span>
-                          <span className="text-muted-foreground">Máx: <strong className="text-red-400">{formatCurrency(max)}</strong></span>
+                          <span className="text-muted-foreground">Máx: <strong className="text-destructive">{formatCurrency(max)}</strong></span>
                         </div>
                       </div>
                     </CardContent>
@@ -429,7 +429,7 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-foreground">Histórico de Variação</h4>
         <span className={`text-sm font-medium ${
-          variacaoTotal > 5 ? 'text-red-400' : variacaoTotal < -5 ? 'text-emerald-400' : 'text-muted-foreground'
+          variacaoTotal > 5 ? 'text-destructive' : variacaoTotal < -5 ? 'text-success' : 'text-muted-foreground'
         }`}>
           {variacaoTotal > 0 ? '+' : ''}{variacaoTotal.toFixed(1)}% no período
           {variacaoTotal > 5 ? <TrendingUp className="h-3 w-3 inline ml-1" /> :
@@ -449,8 +449,8 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
                 <TooltipTrigger asChild>
                   <div
                     className={`flex-1 min-w-1 rounded-t transition-colors ${
-                      h.tendencia === 'alta' ? 'bg-red-400/60' :
-                      h.tendencia === 'queda' ? 'bg-emerald-400/60' : 'bg-primary/40'
+                      h.tendencia === 'alta' ? 'bg-destructive/60' :
+                      h.tendencia === 'queda' ? 'bg-success/60' : 'bg-primary/40'
                     } hover:opacity-80`}
                     style={{ height: `${altura}%` }}
                   />
@@ -486,19 +486,19 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
             {[...historico].reverse().map((h, i) => (
               <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
                 <td className="p-2 text-foreground">{formatDate(h.data_coleta)}</td>
-                <td className="p-2 text-right text-emerald-400">{formatCurrency(h.preco_minimo)}</td>
+                <td className="p-2 text-right text-success">{formatCurrency(h.preco_minimo)}</td>
                 <td className="p-2 text-right font-medium text-foreground">{formatCurrency(h.preco_mediana)}</td>
-                <td className="p-2 text-right text-red-400">{formatCurrency(h.preco_maximo)}</td>
+                <td className="p-2 text-right text-destructive">{formatCurrency(h.preco_maximo)}</td>
                 <td className="p-2 text-right">
                   {h.variacao_pct ? (
-                    <span className={Number(h.variacao_pct) > 0 ? 'text-red-400' : 'text-emerald-400'}>
+                    <span className={Number(h.variacao_pct) > 0 ? 'text-destructive' : 'text-success'}>
                       {Number(h.variacao_pct) > 0 ? '+' : ''}{Number(h.variacao_pct).toFixed(1)}%
                     </span>
                   ) : '—'}
                 </td>
                 <td className="p-2 text-center">
-                  {h.tendencia === 'alta' && <TrendingUp className="h-3 w-3 text-red-400 inline" />}
-                  {h.tendencia === 'queda' && <TrendingDown className="h-3 w-3 text-emerald-400 inline" />}
+                  {h.tendencia === 'alta' && <TrendingUp className="h-3 w-3 text-destructive inline" />}
+                  {h.tendencia === 'queda' && <TrendingDown className="h-3 w-3 text-success inline" />}
                   {h.tendencia === 'estavel' && <Minus className="h-3 w-3 text-muted-foreground inline" />}
                   {!h.tendencia && '—'}
                 </td>

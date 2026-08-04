@@ -216,10 +216,10 @@ export default function AgenteDashboard() {
   }
 
   const kpis = [
-    { label: 'Monitoradas', value: metricas?.total_monitoradas ?? 0, icon: Eye, color: 'text-blue-400' },
-    { label: 'Em Andamento', value: metricas?.em_andamento ?? 0, icon: Activity, color: 'text-emerald-400' },
-    { label: 'Em Disputa', value: metricas?.em_disputa ?? 0, icon: Zap, color: 'text-orange-400' },
-    { label: 'Aguardando', value: metricas?.aguardando_aprovacao ?? 0, icon: Clock, color: 'text-yellow-400' },
+    { label: 'Monitoradas', value: metricas?.total_monitoradas ?? 0, icon: Eye, color: 'text-info' },
+    { label: 'Em Andamento', value: metricas?.em_andamento ?? 0, icon: Activity, color: 'text-success' },
+    { label: 'Em Disputa', value: metricas?.em_disputa ?? 0, icon: Zap, color: 'text-warning' },
+    { label: 'Aguardando', value: metricas?.aguardando_aprovacao ?? 0, icon: Clock, color: 'text-warning' },
     { label: 'Vitórias (30d)', value: metricas?.vitorias_30d ?? 0, icon: Trophy, color: 'text-[hsl(var(--primary))]' },
     { label: 'Taxa Vitória', value: `${metricas?.taxa_vitoria ?? 0}%`, icon: TrendingUp, color: 'text-[hsl(var(--primary))]' },
   ];
@@ -246,7 +246,7 @@ export default function AgenteDashboard() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Agente</span>
             <Switch checked={agenteAtivo} onCheckedChange={toggleAgente} />
-            <Badge variant={agenteAtivo ? 'default' : 'outline'} className={agenteAtivo ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : ''}>
+            <Badge variant={agenteAtivo ? 'default' : 'outline'} className={agenteAtivo ? 'bg-success/20 text-success border-success/30' : ''}>
               {agenteAtivo ? '● Ativo' : '○ Inativo'}
             </Badge>
           </div>
@@ -418,7 +418,7 @@ export default function AgenteDashboard() {
 
               {acoesLog.map((log) => (
                 <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 text-sm">
-                  <div className={`w-2 h-2 rounded-full ${log.status === 'sucesso' ? 'bg-emerald-400' : log.status === 'erro' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                  <div className={`w-2 h-2 rounded-full ${log.status === 'sucesso' ? 'bg-success' : log.status === 'erro' ? 'bg-destructive' : 'bg-warning'}`} />
                   <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{log.agente}</span>
                   <span className="flex-1 truncate text-foreground">{log.acao}</span>
                   {log.duracao_ms && <span className="text-xs text-muted-foreground">{log.duracao_ms}ms</span>}

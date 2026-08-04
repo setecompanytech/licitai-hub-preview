@@ -355,7 +355,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                         <Badge
                           key={irr.id}
                           variant="outline"
-                          className={`text-xs ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          className={`text-xs ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
                         >
                           {idx + 1}. {irr.descricao.slice(0, 50)}{irr.descricao.length > 50 ? '...' : ''}
                           {irr.origem === 'manual' && ' ✏️'}
@@ -409,7 +409,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                         <Badge
                           key={fato.id}
                           variant="outline"
-                          className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
                         >
                           {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
                           {fato.origem === 'manual' && ' ✏️'}

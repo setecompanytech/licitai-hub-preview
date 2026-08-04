@@ -103,7 +103,7 @@ REGRAS:
           <FileSearch className="w-4 h-4 text-accent shrink-0" />
           <h4 className="text-sm font-semibold whitespace-nowrap">Pré-visualização da estrutura</h4>
           {preview && (
-            <Badge className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+            <Badge className="text-xs gap-1 bg-success/10 text-success border-success/30 shrink-0">
               <CheckCircle className="w-2.5 h-2.5" /> Estrutura pronta
             </Badge>
           )}
@@ -169,8 +169,8 @@ REGRAS:
 
 function Bloco({ titulo, itens, accent, warn }: { titulo: string; itens: string[]; accent?: boolean; warn?: boolean }) {
   return (
-    <div className={`rounded p-2 border ${warn ? 'border-amber-500/30 bg-amber-500/5' : accent ? 'border-accent/20 bg-accent/5' : 'border-border/50 bg-muted/20'}`}>
-      <p className={`font-semibold mb-1 ${warn ? 'text-amber-700 dark:text-amber-500' : ''}`}>{titulo}</p>
+    <div className={`rounded p-2 border ${warn ? 'border-warning/30 bg-warning/5' : accent ? 'border-accent/20 bg-accent/5' : 'border-border/50 bg-muted/20'}`}>
+      <p className={`font-semibold mb-1 ${warn ? 'text-warning' : ''}`}>{titulo}</p>
       <ul className="space-y-0.5 list-disc pl-4">
         {itens.map((t, i) => <li key={i} className="text-muted-foreground">{t}</li>)}
       </ul>

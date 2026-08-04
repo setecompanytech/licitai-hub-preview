@@ -840,7 +840,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
           {isFontCapped && (
             <span
-              className="text-xs text-amber-600 dark:text-amber-400 mr-1"
+              className="text-xs text-warning mr-1"
               title="O tamanho foi limitado para caber na tela atual"
             >
               limitado p/ tela
@@ -1246,7 +1246,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                           <Badge
                             key={fato.id}
                             variant="outline"
-                            className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                            className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-warning/40 text-warning' : 'border-info/40 text-info'}`}
                           >
                             {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
                             {fato.origem === 'manual' && ' ✏️'}
@@ -1367,7 +1367,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                         </Badge>
                       )}
                       {!gerando && resultado && (
-                        <Badge className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+                        <Badge className="text-xs gap-1 bg-success/10 text-success border-success/30 shrink-0">
                           <CheckCircle className="w-2.5 h-2.5" /> Pronto
                         </Badge>
                       )}

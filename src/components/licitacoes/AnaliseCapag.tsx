@@ -41,24 +41,24 @@ type CapagData = {
 };
 
 const notaConfig = {
-  A: { color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', icon: ShieldCheck, label: 'Excelente' },
-  B: { color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', icon: Shield, label: 'Boa' },
-  C: { color: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', icon: ShieldAlert, label: 'Fraca' },
-  D: { color: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', icon: ShieldX, label: 'Muito Fraca' },
+  A: { color: 'bg-success', fg: 'text-success-foreground', text: 'text-success', bg: 'bg-success/10', border: 'border-success/30', icon: ShieldCheck, label: 'Excelente' },
+  B: { color: 'bg-info', fg: 'text-info-foreground', text: 'text-info', bg: 'bg-info/10', border: 'border-info/30', icon: Shield, label: 'Boa' },
+  C: { color: 'bg-warning', fg: 'text-warning-foreground', text: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/30', icon: ShieldAlert, label: 'Fraca' },
+  D: { color: 'bg-destructive', fg: 'text-destructive-foreground', text: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30', icon: ShieldX, label: 'Muito Fraca' },
 };
 
 const statusConfig = {
-  regular: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: 'Regular' },
-  atencao: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30', label: 'Atenção' },
-  critico: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30', label: 'Crítico' },
+  regular: { icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10', label: 'Regular' },
+  atencao: { icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10', label: 'Atenção' },
+  critico: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Crítico' },
   indisponivel: { icon: HelpCircle, color: 'text-muted-foreground', bg: 'bg-muted', label: 'Indisponível' },
 };
 
 const riscoConfig: Record<string, { color: string; bg: string }> = {
-  baixo: { color: 'text-emerald-700', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  moderado: { color: 'text-amber-700', bg: 'bg-amber-100 dark:bg-amber-900/30' },
-  elevado: { color: 'text-orange-700', bg: 'bg-orange-100 dark:bg-orange-900/30' },
-  critico: { color: 'text-red-700', bg: 'bg-red-100 dark:bg-red-900/30' },
+  baixo: { color: 'text-success', bg: 'bg-success/10' },
+  moderado: { color: 'text-warning', bg: 'bg-warning/10' },
+  elevado: { color: 'text-warning', bg: 'bg-warning/20' },
+  critico: { color: 'text-destructive', bg: 'bg-destructive/10' },
 };
 
 type Props = {
@@ -123,11 +123,11 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           {data.fonte_dados && (
             <div className="flex items-center justify-between mb-3">
               {data.fonte_dados.tipo === 'oficial' ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs">
+                <Badge className="bg-success/10 text-success border-success/30 text-xs">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Dados Oficiais — Tesouro Nacional
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                <Badge variant="outline" className="text-xs text-warning border-warning/30">
                   <Brain className="w-3 h-3 mr-1" /> Estimativa por IA
                 </Badge>
               )}
@@ -141,7 +141,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl ${nota.color} flex items-center justify-center shadow-lg`}>
-                <span className="text-white text-3xl font-black">{data.capag.nota}</span>
+                <span className={`${nota.fg} text-3xl font-black`}>{data.capag.nota}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           { key: 'liquidez', label: 'Liquidez', icon: Scale, data: data.capag.liquidez },
         ].map(ind => {
           const isIndisponivel = !ind.data.classificacao || ind.data.classificacao.toLowerCase().includes('indispon');
-          const classColor = isIndisponivel ? 'text-muted-foreground' : ind.data.classificacao === 'A' ? 'text-emerald-600' : ind.data.classificacao === 'B' ? 'text-blue-600' : 'text-red-600';
+          const classColor = isIndisponivel ? 'text-muted-foreground' : ind.data.classificacao === 'A' ? 'text-success' : ind.data.classificacao === 'B' ? 'text-info' : 'text-destructive';
           const percentual = typeof ind.data.percentual_estimado === 'number' ? ind.data.percentual_estimado : null;
           return (
             <Card key={ind.key} className="p-4">
