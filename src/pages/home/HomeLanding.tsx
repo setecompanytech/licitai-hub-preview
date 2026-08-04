@@ -249,7 +249,7 @@ function Footer() {
         <div className="lp-footer__grid">
           <div className="lp-footer__col">
             <a href="/" className="lp-header__brand">PRAEFECTUS</a>
-            <p className="lp-small" style={{ maxWidth: '32ch' }}>
+            <p className="lp-body lp-body--compacto" style={{ maxWidth: '32ch' }}>
               Gestão de licitações com inteligência artificial, do monitoramento
               do edital ao faturamento do contrato.
             </p>

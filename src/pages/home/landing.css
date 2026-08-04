@@ -119,7 +119,10 @@
 
 .lp-destaque { color: var(--lp-accent); }
 .lp-lead { font-size: var(--lp-fs-md); line-height: var(--lp-lh-md); color: var(--lp-text-2); margin: 0; }
-.lp-body { font-size: var(--lp-fs-base); line-height: var(--lp-lh-base); color: var(--lp-text-2); margin: 0; }
+/* Corpo de leitura da landing: 18px (auditoria de tipografia).
+   A variante compacta (16px) é o piso — usada em contextos densos como o footer. */
+.lp-body { font-size: var(--lp-fs-md); line-height: var(--lp-lh-md); color: var(--lp-text-2); margin: 0; }
+.lp-body--compacto { font-size: var(--lp-fs-base); line-height: var(--lp-lh-base); }
 .lp-small { font-size: var(--lp-fs-sm); line-height: var(--lp-lh-sm); color: var(--lp-text-3); margin: 0; }
 .lp-tag {
   display: inline-block;
@@ -284,8 +287,9 @@
   display: flex;
   align-items: center;
   gap: var(--lp-sp-3);
-  font-size: var(--lp-fs-sm);
-  line-height: var(--lp-lh-sm);
+  /* 16px: são copy de leitura, não UI — 14px reprovou na auditoria */
+  font-size: var(--lp-fs-base);
+  line-height: var(--lp-lh-base);
   color: var(--lp-text-2);
 }
 .lp-hero__bullets svg { color: var(--lp-success); flex-shrink: 0; }
@@ -401,7 +405,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(2 * var(--lp-lh-base));
+  min-height: calc(2 * var(--lp-lh-md));
 }
 .lp-feature__link {
   margin-top: auto;
@@ -554,7 +558,7 @@
 }
 .lp-faq__resposta[data-aberta='true'] { grid-template-rows: 1fr; visibility: visible; }
 .lp-faq__resposta > div { overflow: hidden; }
-.lp-faq__resposta p { margin: 0; padding: 0 var(--lp-sp-5) var(--lp-sp-5); color: var(--lp-text-2); font-size: var(--lp-fs-base); line-height: var(--lp-lh-base); }
+.lp-faq__resposta p { margin: 0; padding: 0 var(--lp-sp-5) var(--lp-sp-5); color: var(--lp-text-2); font-size: var(--lp-fs-md); line-height: var(--lp-lh-md); }
 
 /* ── CTA final ── */
 .lp-cta-final { text-align: center; display: grid; gap: var(--lp-sp-5); justify-items: center; }
