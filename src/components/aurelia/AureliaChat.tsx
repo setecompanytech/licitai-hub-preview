@@ -6,6 +6,7 @@ import { streamAIChat, ChatMessage, ToolEvent } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
+import { useFabArrastavel } from '@/hooks/useFabArrastavel';
 
 export default function AureliaChat() {
   const [open, setOpen] = useState(false);
@@ -18,6 +19,7 @@ export default function AureliaChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const fab = useFabArrastavel();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,15 +101,24 @@ export default function AureliaChat() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
-            onClick={() => setOpen(true)}
+            {...fab.handlers}
+            style={fab.estilo}
+            // Um arraste termina em clique no navegador; sem isto o chat abriria
+            // toda vez que o botão fosse reposicionado.
+            onClick={() => {
+              if (fab.consumirArraste()) return;
+              setOpen(true);
+            }}
             className={cn(
-              "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all",
-              "bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white",
+              "fixed z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-shadow touch-none select-none",
+              fab.arrastando ? "cursor-grabbing scale-105" : "cursor-grab",
+              "bg-accent hover:bg-accent/90 text-accent-foreground",
               hasNotification && "aurelia-glow"
             )}
-            title="Consultar AURÉLIA"
+            title="Consultar AURÉLIA — arraste para reposicionar"
+            aria-label="Consultar AURÉLIA. Arraste para reposicionar o botão."
           >
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center pointer-events-none">
               <Shield className="w-5 h-5 mr-[-2px]" />
               <span className="text-xs font-bold">A</span>
             </div>
@@ -125,14 +136,20 @@ export default function AureliaChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-xl overflow-hidden shadow-2xl border border-[hsl(215,20%,20%)] flex flex-col"
-            style={{ background: 'hsl(215, 50%, 7%)' }}
+            className="fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-xl overflow-hidden shadow-2xl border border-[hsl(215,20%,20%)] flex flex-col"
+            // Abre do mesmo lado em que o botão está encostado.
+            style={{
+              background: 'hsl(215, 50%, 7%)',
+              ...(fab.lado === 'esquerda'
+                ? { left: 16, right: 'auto' }
+                : { right: 16, left: 'auto' }),
+            }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[hsl(43,60%,54%)] flex items-center justify-center border border-[hsl(43,60%,44%)]">
-                  <span className="text-xs font-bold text-white">AU</span>
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center border border-accent/80">
+                  <span className="text-xs font-bold text-accent-foreground">AU</span>
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-[hsl(215,14%,92%)] tracking-wide">AURÉLIA</h3>
@@ -140,7 +157,7 @@ export default function AureliaChat() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-[hsl(43,60%,54%)]" title="Nova consulta">
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-accent" title="Nova consulta">
                   <Minimize2 className="w-3.5 h-3.5" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-red-400">
@@ -167,8 +184,8 @@ export default function AureliaChat() {
               ))}
               {activeTool && (
                 <div className="flex justify-start">
-                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,82%)] flex items-center gap-2 border border-[hsl(43,60%,54%)]/30">
-                    <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,82%)] flex items-center gap-2 border border-accent/30">
+                    <Loader2 className="w-3 h-3 animate-spin text-accent" />
                     <span>
                       {activeTool.name === 'buscar_edital' && '🔎 Buscando edital no cache PNCP…'}
                       {activeTool.name === 'buscar_diario' && '📰 Consultando Diários Oficiais…'}
@@ -181,7 +198,7 @@ export default function AureliaChat() {
               {isLoading && !activeTool && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
                   <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,12%,55%)] flex items-center gap-1.5">
-                    <Loader2 className="w-3 h-3 animate-spin text-[hsl(43,60%,54%)]" />
+                    <Loader2 className="w-3 h-3 animate-spin text-accent" />
                     AURÉLIA está analisando…
                   </div>
                 </div>
@@ -198,14 +215,14 @@ export default function AureliaChat() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   placeholder="Pergunte sobre editais, habilitação, propostas…"
-                  className="flex-1 bg-[hsl(215,25%,15%)] border border-[hsl(215,20%,22%)] rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)] focus:outline-none focus:border-[hsl(43,60%,54%)] transition-colors"
+                  className="flex-1 bg-[hsl(215,25%,15%)] border border-[hsl(215,20%,22%)] rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)] focus:outline-none focus:border-accent transition-colors"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
                   size="icon"
-                  className="h-8 w-8 bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white shrink-0"
+                  className="h-8 w-8 bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </Button>

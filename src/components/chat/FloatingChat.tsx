@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFabArrastavel, FAB_MARGEM } from '@/hooks/useFabArrastavel';
 
 interface FloatingChatProps {
   /** If true, shows a more branded version for the landing page */
@@ -19,6 +20,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
   const [hasGreeted, setHasGreeted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fab = useFabArrastavel();
 
   // Auto-scroll
   useEffect(() => {
@@ -99,18 +101,28 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-6 right-6 z-50"
+            className="fixed z-50"
+            style={fab.estilo}
           >
             <Button
-              onClick={() => setOpen(true)}
+              {...fab.handlers}
+              // Um arraste termina em clique no navegador; sem isto o chat abriria
+              // toda vez que o botão fosse reposicionado.
+              onClick={() => {
+                if (fab.consumirArraste()) return;
+                setOpen(true);
+              }}
+              title="Abrir o chat — arraste para reposicionar"
+              aria-label="Abrir o chat com a Lia. Arraste para reposicionar o botão."
               className={cn(
-                'rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-all',
+                'rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow touch-none select-none',
+                fab.arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab',
                 isLanding
                   ? 'bg-accent hover:bg-accent/90 text-accent-foreground'
                   : 'bg-primary hover:bg-primary/90 text-primary-foreground'
               )}
             >
-              <MessageCircle className="w-6 h-6" />
+              <MessageCircle className="w-6 h-6 pointer-events-none" />
             </Button>
             {/* Pulse indicator */}
             <span className="absolute -top-1 -right-1 flex h-4 w-4">
@@ -129,7 +141,12 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-4rem)] flex flex-col rounded-2xl shadow-2xl border border-border/50 overflow-hidden bg-background"
+            // Abre do mesmo lado em que o botão está encostado; abrir sempre à
+            // direita deixaria a janela longe de onde o usuário clicou.
+            style={fab.lado === 'esquerda'
+              ? { left: FAB_MARGEM, right: 'auto' }
+              : { right: FAB_MARGEM, left: 'auto' }}
+            className="fixed bottom-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-4rem)] flex flex-col rounded-2xl shadow-2xl border border-border/50 overflow-hidden bg-background"
           >
             {/* Header */}
             <div className={cn(
