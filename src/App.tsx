@@ -30,6 +30,7 @@ import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 const lazyPage = (loader: () => Promise<any>) => lazy(() => lazyImportWithRecovery(loader));
 
 const KanbanPage = lazyPage(() => import("./pages/KanbanPage"));
+const PilotoPainel = lazyPage(() => import("./pages/dev/PilotoPainel"));
 const MetasComercial = lazyPage(() => import("./pages/MetasComercial"));
 const RoboLances = lazyPage(() => import("./pages/RoboLances"));
 const Concorrentes = lazyPage(() => import("./pages/Concorrentes"));
@@ -140,6 +141,10 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<HomeLanding />} />
+              {/* Piloto da auditoria de tipo/cor — só existe no dev server */}
+              {import.meta.env.DEV && (
+                <Route path="/dev/piloto-painel" element={<PilotoPainel />} />
+              )}
               <Route path="/landing" element={<Navigate to="/" replace />} />
               <Route path="/index" element={<Navigate to="/dashboard" replace />} />
               <Route path="/faq" element={<FaqPage />} />

@@ -212,7 +212,7 @@ export default function PainelLicitacoes() {
           { label: 'Urgentes (≤3d)', value: stats.urgentes.toString(), color: stats.urgentes > 0 ? 'text-destructive' : 'text-muted-foreground' },
         ].map((s) => (
           <div key={s.label} className="bg-card rounded-xl border border-border/50 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{s.label}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{s.label}</p>
             <p className={cn('text-lg font-bold mt-0.5', s.color)}>{s.value}</p>
           </div>
         ))}

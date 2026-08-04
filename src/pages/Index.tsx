@@ -31,7 +31,7 @@ export default function Index() {
       <div className="mb-3 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Painel de Gestão</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 truncate">
+          <p className="text-base text-muted-foreground mt-0.5 sm:mt-1 truncate">
             Resultados de: <span className="font-medium text-foreground">{empresaLabel}</span>
           </p>
         </div>
@@ -53,16 +53,18 @@ export default function Index() {
       <section className="mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4">Visão Geral</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
-          <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} />
-          <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="hsl(38, 92%, 50%)" />
-          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="hsl(142, 71%, 45%)" />
-          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="hsl(0, 72%, 51%)" />
-          <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} accentColor="hsl(210, 100%, 40%)" />
+          {/* Regra de cor da auditoria: semântica só onde o ícone comunica estado
+              real (andamento/ganho/perda). Azul e teal decorativos viram neutro. */}
+          <StatCard label="Monitoradas" value={kpis.licitacoesMonitoradas.toString()} icon={Eye} tone="neutral" />
+          <StatCard label="Em Andamento" value={analyticsKpis.emAndamento.toString()} icon={Clock} accentColor="var(--warning)" />
+          <StatCard label="Ganhas" value={analyticsKpis.ganhas.toString()} icon={Trophy} accentColor="var(--success)" />
+          <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="var(--destructive)" />
+          <StatCard label="Valor Ganho" value={formatCurrency(kpis.valorTotalGanho)} icon={DollarSign} tone="neutral" />
           <StatCard
             label="Editais PNCP"
             value={kpis.editaisAbertos.toLocaleString('pt-BR')}
             icon={Database}
-            accentColor="hsl(174, 72%, 40%)"
+            tone="neutral"
             change={kpis.ultimaSincronizacao ? `Sync: ${new Date(kpis.ultimaSincronizacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Aguardando sync'}
             changeType="neutral"
           />

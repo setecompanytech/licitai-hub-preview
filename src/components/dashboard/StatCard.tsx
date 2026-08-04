@@ -7,10 +7,16 @@ type Props = {
   change?: string;
   changeType?: 'positive' | 'negative' | 'neutral';
   icon: LucideIcon;
+  /** Token de cor semântica SEM hsl(), ex.: 'var(--success)' — SÓ quando o ícone comunica estado real. */
   accentColor?: string;
+  /** 'neutral' = ícone no cinza de texto secundário (padrão da auditoria para ícones sem estado). */
+  tone?: 'accent' | 'neutral';
 };
 
-export default function StatCard({ label, value, change, changeType = 'neutral', icon: Icon, accentColor }: Props) {
+export default function StatCard({ label, value, change, changeType = 'neutral', icon: Icon, accentColor, tone = 'accent' }: Props) {
+  const base = accentColor ?? (tone === 'neutral' ? 'var(--muted-foreground)' : 'var(--accent)');
+  const corIcone = `hsl(${base})`;
+  const corFundo = tone === 'neutral' && !accentColor ? 'hsl(var(--muted))' : `hsl(${base} / 0.12)`;
   return (
     <div className="stat-card group animate-fade-in">
       <div className="flex items-start justify-between gap-2">
@@ -32,11 +38,11 @@ export default function StatCard({ label, value, change, changeType = 'neutral',
         </div>
         <div
           className="p-1.5 sm:p-2.5 rounded-lg flex-shrink-0"
-          style={{ background: accentColor ? `${accentColor}15` : 'hsl(var(--accent) / 0.1)' }}
+          style={{ background: corFundo }}
         >
           <Icon
             className="w-4 h-4 sm:w-5 sm:h-5"
-            style={{ color: accentColor || 'hsl(var(--accent))' }}
+            style={{ color: corIcone }}
           />
         </div>
       </div>

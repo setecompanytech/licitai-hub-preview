@@ -19,6 +19,20 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
 
+    <!-- O badge "Edit with Lovable" não vem deste repositório: é injetado pela
+         hospedagem do Lovable no site publicado. Esta regra o esconde em
+         qualquer variação conhecida; o desligamento definitivo é a opção
+         "Show Lovable badge" nas configurações do projeto no Lovable. -->
+    <style>
+      #lovable-badge,
+      [id*="lovable-badge"],
+      a[href*="lovable.dev/projects"],
+      a[href*="lovable.app"][target="_blank"][style*="fixed"] {
+        display: none !important;
+        visibility: hidden !important;
+      }
+    </style>
+
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';

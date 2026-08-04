@@ -95,7 +95,8 @@ export default function QuickAccessGrid() {
               : 'border-border/60 bg-card/50'
           )}
         >
-          <h3 className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {/* Piso de metadados da auditoria: 12px + tracking 0.05em (opção A) */}
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {group.title}
           </h3>
           <div className="space-y-0.5">
@@ -106,9 +107,10 @@ export default function QuickAccessGrid() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate(item.path)}
-                      className="flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
+                      className="group flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
                     >
-                      <Icon className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                      {/* Regra de ícone da auditoria: neutro por padrão, laranja só no hover */}
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0" />
                       <span className="break-words leading-tight line-clamp-2">{item.label}</span>
                       {item.badge && (
                         <span className="ml-auto text-[7px] sm:text-[8px] font-bold bg-accent text-accent-foreground px-1 sm:px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
