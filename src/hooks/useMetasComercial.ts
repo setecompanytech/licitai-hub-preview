@@ -6,10 +6,9 @@ import { toast } from 'sonner';
 /**
  * Acesso às tabelas do módulo de Metas do Comercial.
  *
- * As tabelas `comercial_*` são novas e ainda não estão em
- * `src/integrations/supabase/types.ts` (arquivo gerado). Até a próxima geração
- * de tipos, as chamadas usam `as never`/`as any` — mesmo recurso já adotado em
- * `MeusCompromissos.tsx` para `processos_exclusao_log`.
+ * `types.ts` foi regenerado em 2026-08-04 com o schema completo (tabelas
+ * `comercial_*`, praça e a view) — as chamadas são tipadas de ponta a ponta,
+ * sem os `as never` da fase de transição.
  */
 
 export function useEmpresaId() {
@@ -58,7 +57,7 @@ export function useMetasConfig() {
     enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('comercial_metas_config' as never)
+        .from('comercial_metas_config')
         .select('*')
         .eq('empresa_id', empresaId!)
         .maybeSingle();
@@ -75,8 +74,8 @@ export function useSalvarMetasConfig() {
     mutationFn: async (patch: Partial<Omit<MetasConfig, 'id' | 'empresa_id'>>) => {
       if (!empresaId) throw new Error('Selecione uma empresa ativa.');
       const { error } = await supabase
-        .from('comercial_metas_config' as never)
-        .upsert({ empresa_id: empresaId, ...patch } as never, { onConflict: 'empresa_id' });
+        .from('comercial_metas_config')
+        .upsert({ empresa_id: empresaId, ...patch }, { onConflict: 'empresa_id' });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -96,7 +95,7 @@ export function useValoresAlvo() {
     enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('comercial_valores_alvo' as never)
+        .from('comercial_valores_alvo')
         .select('*')
         .eq('empresa_id', empresaId!)
         .order('modalidade_codigo', { ascending: true })
@@ -129,8 +128,8 @@ export function useSalvarValorAlvo() {
         user_id: input.user_id ?? null,
       };
       const q = input.id
-        ? supabase.from('comercial_valores_alvo' as never).update(payload as never).eq('id', input.id)
-        : supabase.from('comercial_valores_alvo' as never).insert(payload as never);
+        ? supabase.from('comercial_valores_alvo').update(payload).eq('id', input.id)
+        : supabase.from('comercial_valores_alvo').insert(payload);
       const { error } = await q;
       if (error) throw error;
     },
@@ -146,7 +145,7 @@ export function useExcluirValorAlvo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('comercial_valores_alvo' as never).delete().eq('id', id);
+      const { error } = await supabase.from('comercial_valores_alvo').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -166,7 +165,7 @@ export function useMotivosPerda(apenasAtivos = false) {
     enabled: !!empresaId,
     queryFn: async () => {
       let q = supabase
-        .from('comercial_motivos_perda' as never)
+        .from('comercial_motivos_perda')
         .select('*')
         .eq('empresa_id', empresaId!)
         .order('ordem', { ascending: true });
@@ -192,8 +191,8 @@ export function useSalvarMotivoPerda() {
         ordem: input.ordem,
       };
       const q = input.id
-        ? supabase.from('comercial_motivos_perda' as never).update(payload as never).eq('id', input.id)
-        : supabase.from('comercial_motivos_perda' as never).insert(payload as never);
+        ? supabase.from('comercial_motivos_perda').update(payload).eq('id', input.id)
+        : supabase.from('comercial_motivos_perda').insert(payload);
       const { error } = await q;
       if (error) throw error;
     },
@@ -214,9 +213,9 @@ export function useRestaurarPadroes() {
   return useMutation({
     mutationFn: async () => {
       if (!empresaId) throw new Error('Selecione uma empresa ativa.');
-      const { error } = await supabase.rpc('comercial_seed_padroes' as never, {
+      const { error } = await supabase.rpc('comercial_seed_padroes', {
         p_empresa_id: empresaId,
-      } as never);
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -260,7 +259,7 @@ export function useRealizadoMensal(params: { ano?: number; userId?: string } = {
     enabled: !!empresaId,
     queryFn: async () => {
       let q = supabase
-        .from('vw_comercial_realizado_mensal' as never)
+        .from('vw_comercial_realizado_mensal')
         .select('*')
         .eq('empresa_id', empresaId!)
         .order('ano', { ascending: false })
@@ -297,7 +296,7 @@ export function useMetas(params: { ano: number; mes?: number }) {
     enabled: !!empresaId,
     queryFn: async () => {
       let q = supabase
-        .from('comercial_metas' as never)
+        .from('comercial_metas')
         .select('*')
         .eq('empresa_id', empresaId!)
         .eq('ano', ano);
@@ -325,7 +324,7 @@ export function useSalvarMeta() {
     }) => {
       if (!empresaId) throw new Error('Selecione uma empresa ativa.');
       const { error } = await supabase
-        .from('comercial_metas' as never)
+        .from('comercial_metas')
         .upsert(
           {
             empresa_id: empresaId,
@@ -337,7 +336,7 @@ export function useSalvarMeta() {
             meta_participacoes: input.meta_participacoes ?? null,
             base_meta: input.base_meta ?? 'faturamento',
             observacao: input.observacao ?? null,
-          } as never,
+          },
           { onConflict: 'empresa_id,user_id,ano,mes' },
         );
       if (error) throw error;
@@ -371,7 +370,7 @@ export function useFeriados(ano: number) {
     enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('comercial_feriados' as never)
+        .from('comercial_feriados')
         .select('*')
         .eq('empresa_id', empresaId!)
         .gte('data', `${ano}-01-01`)
@@ -402,7 +401,7 @@ export function useColaboradores() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresa_membros')
-        .select('user_id, nome, email, praca_uf, praca_municipio' as '*')
+        .select('user_id, nome, email, praca_uf, praca_municipio')
         .eq('empresa_id', empresaId!)
         .order('nome', { ascending: true });
       if (error) throw error;

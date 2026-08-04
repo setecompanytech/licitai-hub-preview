@@ -260,7 +260,7 @@ export function useLicitacaoIntegration() {
     if (!user) return false;
 
     const { data: perda, error: erroPerda } = await supabase
-      .from('comercial_perdas' as never)
+      .from('comercial_perdas')
       .insert({
         empresa_id: params.empresaId,
         licitacao_id: params.licitacaoId,
@@ -270,7 +270,7 @@ export function useLicitacaoIntegration() {
         valor_estimado: params.valorEstimado ?? null,
         modalidade_codigo: normalizarModalidade(params.modalidade),
         registrado_por: user.id,
-      } as never)
+      })
       .select('id')
       .single();
 
@@ -292,7 +292,7 @@ export function useLicitacaoIntegration() {
 
     if (erroStatus) {
       // Desfaz para não deixar os dois módulos discordando entre si
-      await supabase.from('comercial_perdas' as never).delete().eq('id', (perda as { id: string }).id);
+      await supabase.from('comercial_perdas').delete().eq('id', (perda as { id: string }).id);
       console.error('[registrarPerda] status', erroStatus);
       toast.error('Motivo registrado, mas não foi possível atualizar o processo. Nada foi salvo.');
       return false;
@@ -378,7 +378,7 @@ export function useLicitacaoIntegration() {
     // exceção do trigger apareceria como erro cru para o usuário.
     if (resultado === 'perdeu') {
       const { data: perda } = await supabase
-        .from('comercial_perdas' as never)
+        .from('comercial_perdas')
         .select('id')
         .eq('licitacao_id', licitacaoId)
         .maybeSingle();

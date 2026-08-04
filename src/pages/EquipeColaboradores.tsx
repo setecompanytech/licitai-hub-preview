@@ -265,7 +265,7 @@ export default function EquipeColaboradores() {
     const municipio = uf ? pracaMunicipio.trim() || null : null;
     const { error } = await supabase
       .from('empresa_membros')
-      .update({ praca_uf: uf, praca_municipio: municipio } as never)
+      .update({ praca_uf: uf, praca_municipio: municipio })
       .eq('id', pracaDialog.id);
     setSalvandoPraca(false);
     if (error) {
