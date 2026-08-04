@@ -78,7 +78,7 @@ export default function TreinamentosSection() {
                 <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
                   <c.icon className="w-5 h-5 text-accent" />
                 </div>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${c.badgeColor}`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${c.badgeColor}`}>
                   {c.badge}
                 </span>
               </div>

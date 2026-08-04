@@ -78,15 +78,15 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
                     <span className="text-xs font-bold">Nível {n.nivel}</span>
                     {isActive && <CheckCircle2 className="w-3.5 h-3.5 text-success" />}
                   </div>
-                  <p className="text-[11px] font-semibold">{n.titulo}</p>
+                  <p className="text-xs font-semibold">{n.titulo}</p>
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground mb-2">{n.descricao}</p>
+              <p className="text-xs text-muted-foreground mb-2">{n.descricao}</p>
 
               <div className="space-y-1">
                 {n.requisitos.map((req, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     {n.nivel >= 3 ? (
                       <AlertTriangle className="w-2.5 h-2.5 text-destructive shrink-0" />
                     ) : (
@@ -97,7 +97,7 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
                 ))}
               </div>
 
-              <Badge variant="outline" className={`mt-3 text-[9px] ${n.badge}`}>
+              <Badge variant="outline" className={`mt-3 text-xs ${n.badge}`}>
                 {n.subtitulo}
               </Badge>
             </button>

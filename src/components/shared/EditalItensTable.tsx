@@ -221,7 +221,7 @@ export default function EditalItensTable({
                       </Tooltip>
                     </div>
                     {top.justificativa_ia && (
-                      <p className="text-[10px] text-muted-foreground line-clamp-2 leading-snug">
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
                         {top.justificativa_ia}
                       </p>
                     )}
@@ -237,7 +237,7 @@ export default function EditalItensTable({
         </TableCell>
         {showOrigin && (
           <TableCell className="w-20">
-            <Badge variant="outline" className={`text-[9px] ${origemBadge[item.origem]?.className || ''}`}>
+            <Badge variant="outline" className={`text-xs ${origemBadge[item.origem]?.className || ''}`}>
               {origemBadge[item.origem]?.label || item.origem}
             </Badge>
           </TableCell>
@@ -304,15 +304,15 @@ export default function EditalItensTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="w-10 text-center text-[10px]">#</TableHead>
-              <TableHead className="text-[10px]">Descrição</TableHead>
-              <TableHead className="w-16 text-center text-[10px]">Qtd</TableHead>
-              <TableHead className="w-14 text-center text-[10px]">Und</TableHead>
-              <TableHead className="w-28 text-right text-[10px]">Vlr Unit.</TableHead>
-              <TableHead className="w-28 text-right text-[10px]">Vlr Total</TableHead>
-              <TableHead className="min-w-[140px] text-[10px]">Avaliação</TableHead>
-              {showOrigin && <TableHead className="w-20 text-[10px]">Origem</TableHead>}
-              {!readOnly && <TableHead className="w-20 text-[10px]">Ações</TableHead>}
+              <TableHead className="w-10 text-center text-xs">#</TableHead>
+              <TableHead className="text-xs">Descrição</TableHead>
+              <TableHead className="w-16 text-center text-xs">Qtd</TableHead>
+              <TableHead className="w-14 text-center text-xs">Und</TableHead>
+              <TableHead className="w-28 text-right text-xs">Vlr Unit.</TableHead>
+              <TableHead className="w-28 text-right text-xs">Vlr Total</TableHead>
+              <TableHead className="min-w-[140px] text-xs">Avaliação</TableHead>
+              {showOrigin && <TableHead className="w-20 text-xs">Origem</TableHead>}
+              {!readOnly && <TableHead className="w-20 text-xs">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>

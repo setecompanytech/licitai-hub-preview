@@ -148,7 +148,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-accent" />
           <h4 className="text-xs sm:text-sm font-semibold">Evolução Mensal</h4>
-          <Badge variant="outline" className="text-[10px]">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
+          <Badge variant="outline" className="text-xs">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Select value={periodo} onValueChange={(v: Periodo) => setPeriodo(v)}>
@@ -180,39 +180,39 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       {/* KPIs do período */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="rounded-lg border border-border p-2.5 bg-muted/30">
-          <p className="text-[10px] text-muted-foreground">Faturamento</p>
+          <p className="text-xs text-muted-foreground">Faturamento</p>
           <p className="text-sm font-bold">{fmtBRL(totais.faturamento)}</p>
-          <p className="text-[9px] text-muted-foreground">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
+          <p className="text-xs text-muted-foreground">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
         </div>
         <div className="rounded-lg border border-border p-2.5 bg-muted/30">
-          <p className="text-[10px] text-muted-foreground">Pedidos</p>
+          <p className="text-xs text-muted-foreground">Pedidos</p>
           <p className="text-sm font-bold">{fmtNum(totais.pedidos)}</p>
-          <p className="text-[9px] text-muted-foreground">Ticket: {fmtBRL(totais.ticketMedio)}</p>
+          <p className="text-xs text-muted-foreground">Ticket: {fmtBRL(totais.ticketMedio)}</p>
         </div>
         {podeVerCustos ? (
           <>
             <div className="rounded-lg border border-border p-2.5 bg-muted/30">
-              <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+              <p className="text-xs text-muted-foreground">Lucro Bruto</p>
               <p className={`text-sm font-bold ${totais.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtBRL(totais.lucro)}</p>
-              <p className="text-[9px] text-muted-foreground">Margem: {totais.margem.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground">Margem: {totais.margem.toFixed(1)}%</p>
             </div>
             <div className="rounded-lg border border-border p-2.5 bg-muted/30">
-              <p className="text-[10px] text-muted-foreground">Variação MoM</p>
+              <p className="text-xs text-muted-foreground">Variação MoM</p>
               <p className={`text-sm font-bold flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                 {totais.variacao.toFixed(1)}%
               </p>
-              <p className="text-[9px] text-muted-foreground">vs mês anterior</p>
+              <p className="text-xs text-muted-foreground">vs mês anterior</p>
             </div>
           </>
         ) : (
           <div className="rounded-lg border border-border p-2.5 bg-muted/30 col-span-2">
-            <p className="text-[10px] text-muted-foreground">Variação MoM</p>
+            <p className="text-xs text-muted-foreground">Variação MoM</p>
             <p className={`text-sm font-bold flex items-center gap-1 ${totais.variacao >= 0 ? 'text-success' : 'text-destructive'}`}>
               {totais.variacao >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {totais.variacao.toFixed(1)}%
             </p>
-            <p className="text-[9px] text-muted-foreground">Faturamento vs mês anterior</p>
+            <p className="text-xs text-muted-foreground">Faturamento vs mês anterior</p>
           </div>
         )}
       </div>
@@ -276,7 +276,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
         </ResponsiveContainer>
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic">
+      <p className="text-xs text-muted-foreground italic">
         Considera apenas pedidos não cancelados. {!podeVerCustos && 'Custos e lucro disponíveis apenas para o setor Financeiro.'}
       </p>
     </Card>

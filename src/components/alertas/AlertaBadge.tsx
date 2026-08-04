@@ -20,7 +20,7 @@ export default function AlertaBadge() {
         <button className="relative p-2 rounded-lg hover:bg-muted/50 transition-colors">
           <Bell className="w-4 h-4 text-muted-foreground" />
           {naoLidos > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-destructive text-[9px] font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-destructive text-xs font-bold text-white">
               {naoLidos > 9 ? '9+' : naoLidos}
             </span>
           )}
@@ -43,7 +43,7 @@ export default function AlertaBadge() {
                     {a.urgente && <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />}
                     <p className={`text-xs truncate ${!a.lido ? 'font-bold' : ''}`}>{a.titulo}</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
                 </div>

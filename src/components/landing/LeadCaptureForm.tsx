@@ -87,7 +87,7 @@ export default function LeadCaptureForm() {
       >
         <div className="max-w-2xl mx-auto bg-card rounded-2xl border border-accent/20 p-8 md:p-12 shadow-xl">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[11px] font-bold uppercase tracking-wider mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold uppercase tracking-wider mb-4">
               <Zap className="w-3 h-3" /> Acesso imediato e seguro
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-3">

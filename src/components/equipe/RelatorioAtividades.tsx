@@ -164,11 +164,11 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
                   <span className="text-sm font-medium">{membros[a.user_id] || 'Usuário'}</span>
                   <span className="text-sm text-muted-foreground">—</span>
                   <span className="text-sm">{a.acao}</span>
-                  <Badge className={`text-[10px] ${getModuloBadgeColor(a.modulo)}`}>{a.modulo}</Badge>
+                  <Badge className={`text-xs ${getModuloBadgeColor(a.modulo)}`}>{a.modulo}</Badge>
                 </div>
                 {a.descricao && <p className="text-xs text-muted-foreground truncate">{a.descricao}</p>}
               </div>
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                 {format(new Date(a.created_at), "dd/MM HH:mm", { locale: ptBR })}
               </span>
             </div>

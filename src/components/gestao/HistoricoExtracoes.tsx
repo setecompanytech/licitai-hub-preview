@@ -219,19 +219,19 @@ export default function HistoricoExtracoes() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-mono text-muted-foreground">{p.numero || '—'}</span>
                       {p.possivel_inconsistencia && (
-                        <Badge variant="destructive" className="text-[9px] gap-1">
+                        <Badge variant="destructive" className="text-xs gap-1">
                           <AlertTriangle className="w-2.5 h-2.5" /> Possível incoerência
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-[9px]">{p.status}</Badge>
+                      <Badge variant="outline" className="text-xs">{p.status}</Badge>
                     </div>
                     <p className="text-xs font-medium mt-1 line-clamp-1">{p.objeto || '(sem objeto)'}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{p.orgao}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.orgao}</p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {p.total_itens > 0 && <Badge variant="outline" className="text-[9px]">Edital: {p.total_itens}</Badge>}
-                    {p.total_precificados > 0 && <Badge variant="outline" className="text-[9px]">Precif.: {p.total_precificados}</Badge>}
-                    {p.total_composicoes > 0 && <Badge variant="outline" className="text-[9px]">Prop.: {p.total_composicoes}</Badge>}
+                    {p.total_itens > 0 && <Badge variant="outline" className="text-xs">Edital: {p.total_itens}</Badge>}
+                    {p.total_precificados > 0 && <Badge variant="outline" className="text-xs">Precif.: {p.total_precificados}</Badge>}
+                    {p.total_composicoes > 0 && <Badge variant="outline" className="text-xs">Prop.: {p.total_composicoes}</Badge>}
                   </div>
                 </div>
               </AccordionTrigger>
@@ -245,7 +245,7 @@ export default function HistoricoExtracoes() {
                         O <strong>objeto</strong> da licitação não compartilha palavras-chave com a primeira descrição extraída.
                         Considere limpar e reextrair.
                       </p>
-                      <p className="mt-1.5 text-[10px]">
+                      <p className="mt-1.5 text-xs">
                         <strong>Objeto:</strong> {p.objeto?.slice(0, 160)}<br />
                         <strong>1º item:</strong> {p.primeira_descricao?.slice(0, 160)}
                       </p>

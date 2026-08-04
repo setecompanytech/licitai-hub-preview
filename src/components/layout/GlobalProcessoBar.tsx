@@ -33,7 +33,7 @@ export default function GlobalProcessoBar() {
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-2">
         <div className="flex items-center gap-2 flex-wrap">
           <FolderOpen className="w-4 h-4 text-accent shrink-0" />
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hidden sm:inline">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground hidden sm:inline">
             Processo Ativo
           </span>
 
@@ -60,11 +60,11 @@ export default function GlobalProcessoBar() {
 
           {processo && (
             <>
-              <Badge variant="outline" className={`text-[10px] ${statusColor(processo.status)}`}>
+              <Badge variant="outline" className={`text-xs ${statusColor(processo.status)}`}>
                 {processo.status || 'sem status'}
               </Badge>
               {processo.valor_estimado != null && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   R$ {Number(processo.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </Badge>
               )}

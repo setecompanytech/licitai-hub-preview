@@ -932,16 +932,16 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
             <div className="min-w-0">
               <h3 className="font-semibold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                 <span className="whitespace-nowrap">Busca Inteligente</span>
-                <Badge className="bg-accent text-accent-foreground text-[10px]">IA + Portais</Badge>
+                <Badge className="bg-accent text-accent-foreground text-xs">IA + Portais</Badge>
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+              <p className="text-xs sm:text-xs text-muted-foreground">
                 Pesquisa simultânea em {portaisSelecionados.length} portal{portaisSelecionados.length !== 1 ? 'is' : ''} com análise inteligente
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {modoResultados === 'busca' && (
-              <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] cursor-pointer gap-1 whitespace-nowrap" onClick={handleVoltarLocal}>
+              <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs cursor-pointer gap-1 whitespace-nowrap" onClick={handleVoltarLocal}>
                 <X className="w-3 h-3" /> Limpar resultados
               </Badge>
             )}
@@ -1055,10 +1055,10 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-medium">Portais de busca</label>
                 <div className="flex gap-2">
-                  <Button variant="link" size="sm" className="text-[10px] h-auto p-0" onClick={() => setPortaisSelecionados(PORTAIS.map(p => p.id))}>
+                  <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setPortaisSelecionados(PORTAIS.map(p => p.id))}>
                     Marcar todos
                   </Button>
-                  <Button variant="link" size="sm" className="text-[10px] h-auto p-0 text-muted-foreground" onClick={() => setPortaisSelecionados([])}>
+                  <Button variant="link" size="sm" className="text-xs h-auto p-0 text-muted-foreground" onClick={() => setPortaisSelecionados([])}>
                     Desmarcar
                   </Button>
                 </div>
@@ -1176,10 +1176,10 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
           <div className="flex items-center gap-2 mb-1">
             <Zap className="w-4 h-4 text-success" />
             <span className="text-sm font-semibold">Editais automáticos por CNAE</span>
-            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
               {cnaeResults.length} encontrados
             </Badge>
-            <Badge variant="outline" className="text-[10px]">Últimos 30 dias</Badge>
+            <Badge variant="outline" className="text-xs">Últimos 30 dias</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
             Licitações compatíveis com o CNAE {empresaAtiva?.cnae_principal || ''} da empresa {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || ''}, publicadas nos últimos 30 dias.
@@ -1202,7 +1202,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
           >
             <Brain className="w-4 h-4 text-accent" />
             <span className="text-sm font-semibold flex-1">Análise da IA</span>
-            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">Inteligência Artificial</Badge>
+            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">Inteligência Artificial</Badge>
             {showAnalise ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
           {showAnalise && (
@@ -1220,12 +1220,12 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         </p>
         <div className="flex items-center gap-2">
           {filtroDiariosPublicadosDownload && (
-            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">
+            <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
               Diários oficiais publicados
             </Badge>
           )}
           {modoResultados === 'busca' && (
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-xs">
               Resultados da busca
             </Badge>
           )}
@@ -1303,7 +1303,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                           </Tooltip>
                           <button
                             onClick={e => { e.stopPropagation(); handleExpandSummary(lic); }}
-                            className="text-[10px] text-accent hover:underline flex items-center gap-1 mt-1"
+                            className="text-xs text-accent hover:underline flex items-center gap-1 mt-1"
                           >
                             <Brain className="w-3 h-3" />
                             {isExpanded ? 'Ocultar resumo IA' : 'Resumo IA do Edital'}
@@ -1336,7 +1336,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
 
                         {/* Portal */}
                         <td className="px-2 py-3 text-center">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{lic.portal || '-'}</Badge>
+                          <Badge variant="outline" className="text-xs px-1.5 py-0.5">{lic.portal || '-'}</Badge>
                         </td>
 
                         {/* Valor — com tooltip */}
@@ -1372,7 +1372,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
 
                         {/* Status */}
                         <td className="px-2 py-3 text-center">
-                          <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5 whitespace-nowrap', st.className)}>{st.label}</Badge>
+                          <Badge variant="outline" className={cn('text-xs px-2 py-0.5 whitespace-nowrap', st.className)}>{st.label}</Badge>
                         </td>
 
                         {/* Ações */}
@@ -1383,7 +1383,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 px-2 text-[10px] gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
+                                  className="h-7 px-2 text-xs gap-1 bg-success/10 text-success border-success/30 hover:bg-success/20"
                                   onClick={() => {
                                     setEditalInteresse(lic);
                                     setShowInteresseDialog(true);
@@ -1399,7 +1399,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 px-2 text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                                  className="h-7 px-2 text-xs gap-1 bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
                                   onClick={() => handleIniciarProcesso(lic)}
                                   disabled={iniciandoProcesso === lic.id}
                                 >
@@ -1419,7 +1419,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                         <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1">
                                 <Download className="w-3 h-3" /> Baixar
                               </Button>
                             </DropdownMenuTrigger>
@@ -1459,7 +1459,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                               <div className="flex items-center gap-2 mb-2">
                                 <Brain className="w-4 h-4 text-accent" />
                                 <span className="text-xs font-semibold">Resumo Executivo por IA</span>
-                                <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">Inteligência Artificial</Badge>
+                                <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">Inteligência Artificial</Badge>
                               </div>
                               {summaryContent[lic.id] ? (
                                 <div className="prose prose-sm dark:prose-invert max-w-none text-xs">

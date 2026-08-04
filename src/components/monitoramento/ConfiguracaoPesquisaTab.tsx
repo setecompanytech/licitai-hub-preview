@@ -296,7 +296,7 @@ export default function ConfiguracaoPesquisaTab() {
               {seg} <X className="w-3 h-3 ml-1 text-destructive" />
             </Badge>
           ))}
-          {segmentos.length === 0 && <p className="text-[10px] text-muted-foreground italic">Nenhum segmento cadastrado</p>}
+          {segmentos.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum segmento cadastrado</p>}
         </div>
         <div className="flex gap-2">
           <Input value={segmentoInput} onChange={e => setSegmentoInput(e.target.value)} placeholder="Ex: Material Hospitalar, TI, Construção Civil"
@@ -307,7 +307,7 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
         <div className="flex flex-wrap gap-1.5">
           {SEGMENTOS_SUGERIDOS.filter(s => !segmentos.includes(s)).slice(0, 10).map(s => (
-            <Badge key={s} variant="outline" className="bg-muted/30 text-muted-foreground border-border/50 text-[10px] cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+            <Badge key={s} variant="outline" className="bg-muted/30 text-muted-foreground border-border/50 text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
               onClick={() => addSegmento(s)}>
               + {s}
             </Badge>
@@ -329,7 +329,7 @@ export default function ConfiguracaoPesquisaTab() {
             <Bell className="w-5 h-5 text-primary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">Sistema</Label>
-              <p className="text-[10px] text-muted-foreground">Notificações no app</p>
+              <p className="text-xs text-muted-foreground">Notificações no app</p>
             </div>
             <Switch checked={alertaSistema} onCheckedChange={setAlertaSistema} />
           </div>
@@ -337,7 +337,7 @@ export default function ConfiguracaoPesquisaTab() {
             <Mail className="w-5 h-5 text-accent flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">E-mail</Label>
-              <p className="text-[10px] text-muted-foreground">Alertas por e-mail</p>
+              <p className="text-xs text-muted-foreground">Alertas por e-mail</p>
             </div>
             <Switch checked={alertaEmail} onCheckedChange={setAlertaEmail} />
           </div>
@@ -345,7 +345,7 @@ export default function ConfiguracaoPesquisaTab() {
             <MessageCircle className="w-5 h-5 text-success flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">WhatsApp</Label>
-              <p className="text-[10px] text-muted-foreground">Alertas via WhatsApp</p>
+              <p className="text-xs text-muted-foreground">Alertas via WhatsApp</p>
             </div>
             <Switch checked={alertaWhatsapp} onCheckedChange={setAlertaWhatsapp} />
           </div>
@@ -365,7 +365,7 @@ export default function ConfiguracaoPesquisaTab() {
             </Button>
           </div>
           {empresaAtiva && (
-            <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 break-all">
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 break-all">
               <Building2 className="w-3 h-3 flex-shrink-0" /> {empresaAtiva.razao_social} – CNPJ: {empresaAtiva.cnpj}
             </p>
           )}
@@ -374,11 +374,11 @@ export default function ConfiguracaoPesquisaTab() {
           <label className="text-xs text-muted-foreground">CNAEs Secundários ({cnaesSecundarios.length})</label>
           <div className="mt-1 p-2 rounded-lg border border-border/50 min-h-[38px] max-h-32 overflow-y-auto flex flex-wrap gap-1">
             {cnaesSecundarios.length > 0 ? cnaesSecundarios.map((cnae, idx) => (
-              <Badge key={idx} variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] pr-1 cursor-pointer hover:bg-destructive/10"
+              <Badge key={idx} variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs pr-1 cursor-pointer hover:bg-destructive/10"
                 onClick={() => removeCnae(idx)} title="Remover">
                 {cnae.length > 40 ? cnae.slice(0, 40) + '…' : cnae} <span className="ml-1 text-destructive">×</span>
               </Badge>
-            )) : <p className="text-[10px] text-muted-foreground italic">Clique em "Sincronizar CNPJ"</p>}
+            )) : <p className="text-xs text-muted-foreground italic">Clique em "Sincronizar CNPJ"</p>}
           </div>
         </div>
       </div>
@@ -393,11 +393,11 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
         <div className="p-2 rounded-lg border border-border/50 min-h-[38px] max-h-28 overflow-y-auto flex flex-wrap gap-1.5 mb-2">
           {palavrasChave.length > 0 ? palavrasChave.map(word => (
-            <Badge key={word} variant="outline" className="bg-accent/10 text-accent border-accent/20 text-[10px] pr-1 cursor-pointer hover:bg-destructive/10"
+            <Badge key={word} variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs pr-1 cursor-pointer hover:bg-destructive/10"
               onClick={() => removePalavra(word)} title="Remover">
               {word} <span className="ml-1 text-destructive">×</span>
             </Badge>
-          )) : <p className="text-[10px] text-muted-foreground italic">Extraia dos CNAEs ou adicione manualmente</p>}
+          )) : <p className="text-xs text-muted-foreground italic">Extraia dos CNAEs ou adicione manualmente</p>}
         </div>
         <div className="flex gap-2">
           <Input value={palavraManual} onChange={e => setPalavraManual(e.target.value)}
@@ -412,13 +412,13 @@ export default function ConfiguracaoPesquisaTab() {
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs text-muted-foreground">UFs monitoradas ({selectedUfs.size}/{ALL_UFS.length})</label>
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={selectAllUfs} className="h-6 text-[10px] px-2">Selecionar todas</Button>
-            <Button size="sm" variant="ghost" onClick={deselectAllUfs} className="h-6 text-[10px] px-2">Limpar</Button>
+            <Button size="sm" variant="ghost" onClick={selectAllUfs} className="h-6 text-xs px-2">Selecionar todas</Button>
+            <Button size="sm" variant="ghost" onClick={deselectAllUfs} className="h-6 text-xs px-2">Limpar</Button>
           </div>
         </div>
         <div className="grid grid-cols-5 sm:grid-cols-9 gap-1 sm:gap-1.5 p-2 sm:p-3 rounded-lg border border-border/50 bg-muted/20">
           {ALL_UFS.map(uf => (
-            <label key={uf.sigla} className={`flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-md cursor-pointer transition-colors text-[10px] sm:text-xs
+            <label key={uf.sigla} className={`flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-md cursor-pointer transition-colors text-xs sm:text-xs
               ${selectedUfs.has(uf.sigla)
                 ? 'bg-accent/15 text-accent border border-accent/30'
                 : 'bg-card border border-border/30 text-muted-foreground hover:border-accent/50'}`} title={uf.nome}>
@@ -448,7 +448,7 @@ export default function ConfiguracaoPesquisaTab() {
         <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Tipos de documento para buscar</h4>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {Object.keys(tipoLabels).map(tipo => (
-            <Badge key={tipo} variant="outline" className={(tipoColors[tipo] || '') + ' cursor-pointer text-[10px] sm:text-xs'}>
+            <Badge key={tipo} variant="outline" className={(tipoColors[tipo] || '') + ' cursor-pointer text-xs sm:text-xs'}>
               <CheckCircle2 className="w-3 h-3 mr-1" /> {tipoLabels[tipo]}
             </Badge>
           ))}

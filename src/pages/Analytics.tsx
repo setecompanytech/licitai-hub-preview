@@ -91,7 +91,7 @@ export default function Analytics() {
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {statusBreakdown.map(s => (
-                  <Badge key={s.status} variant="outline" className="text-[10px] gap-1" style={{ borderColor: s.color, color: s.color }}>
+                  <Badge key={s.status} variant="outline" className="text-xs gap-1" style={{ borderColor: s.color, color: s.color }}>
                     <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
                     {s.status} ({s.count})
                   </Badge>
@@ -176,7 +176,7 @@ export default function Analytics() {
       </div>
 
       {/* Legal note */}
-      <div className="bg-muted/30 rounded-lg border border-border/30 p-3 text-[10px] text-muted-foreground">
+      <div className="bg-muted/30 rounded-lg border border-border/30 p-3 text-xs text-muted-foreground">
         <strong>Base Legal:</strong> Lei nº 14.133/2021 (Nova Lei de Licitações) · Decreto nº 12.807/2025 (Limites de Dispensa Eletrônica vigentes a partir de 01/01/2026) · IN SEGES nº 67/2021 (Dispensa Eletrônica). Dados atualizados em tempo real via Realtime.
       </div>
     </AppLayout>

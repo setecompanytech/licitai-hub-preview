@@ -81,7 +81,7 @@ export default function CountdownTimer({ targetDate, className, compact = false 
           )}
         >
           <span className="text-sm font-bold font-mono leading-none">{String(unit.value).padStart(2, '0')}</span>
-          <span className="text-[8px] uppercase opacity-70">{unit.label}</span>
+          <span className="text-xs uppercase opacity-70">{unit.label}</span>
         </div>
       ))}
     </div>

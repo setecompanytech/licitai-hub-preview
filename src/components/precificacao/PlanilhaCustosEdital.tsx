@@ -682,7 +682,7 @@ export default function PlanilhaCustosEdital({
             <div className="flex items-center justify-between gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
               <div>
                 <p className="text-xs font-medium text-foreground">Processo vinculado pronto para uso</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Use o edital já associado ao processo para extrair itens sem novo upload.
                 </p>
               </div>
@@ -723,7 +723,7 @@ export default function PlanilhaCustosEdital({
             <span className="text-xs text-muted-foreground">
               A IA extrairá itens com descrição, quantidade, unidade e valores de referência
             </span>
-            <span className="text-[10px] text-muted-foreground/70">
+            <span className="text-xs text-muted-foreground">
               PDF, Word, Excel, Imagens (JPG/PNG), TXT — Máx. 20MB
             </span>
           </button>
@@ -768,18 +768,18 @@ export default function PlanilhaCustosEdital({
               <FileSpreadsheet className="w-5 h-5 text-accent" />
               <span className="text-sm font-semibold">{itens.length} itens</span>
             {sourceLabel && (
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-xs">
                 {sourceLabel}
               </Badge>
             )}
               {totalRef > 0 && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   Ref: {formatCurrency(totalRef)}
                 </Badge>
               )}
               {totalGeral > 0 && (
                 <Badge
-                  className={`text-[10px] border-0 flex items-center gap-0.5 ${
+                  className={`text-xs border-0 flex items-center gap-0.5 ${
                     totalRef > 0 && totalGeral > totalRef
                       ? 'bg-destructive/20 text-destructive'
                       : 'bg-success/20 text-success'
@@ -791,7 +791,7 @@ export default function PlanilhaCustosEdital({
                 </Badge>
               )}
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
@@ -841,13 +841,13 @@ export default function PlanilhaCustosEdital({
             <div className="bg-muted/20 border border-border/30 rounded-lg p-3 max-h-40 overflow-y-auto space-y-0.5">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-foreground">Resultado da Cotação</span>
-                <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px]" onClick={() => setCotacaoMsgs([])}>
+                <Button variant="ghost" size="sm" className="h-5 px-2 text-xs" onClick={() => setCotacaoMsgs([])}>
                   Limpar
                 </Button>
               </div>
               {cotacaoMsgs.map((msg, i) => (
                 <div key={i} className="space-y-0.5">
-                  <p className="text-[11px] text-muted-foreground">{msg.text}</p>
+                  <p className="text-xs text-muted-foreground">{msg.text}</p>
                   {msg.fontes && msg.fontes.length > 0 && (
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 pl-3">
                       {msg.fontes.map((f, fi) => (
@@ -857,7 +857,7 @@ export default function PlanilhaCustosEdital({
                             href={f.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
+                            className="text-xs text-primary/70 hover:text-primary flex items-center gap-0.5 underline-offset-2 hover:underline"
                             title={f.titulo}
                           >
                             <ExternalLink className="w-2.5 h-2.5 shrink-0" />
@@ -866,7 +866,7 @@ export default function PlanilhaCustosEdital({
                         ) : (
                           <span
                             key={fi}
-                            className="text-[10px] text-muted-foreground flex items-center gap-0.5"
+                            className="text-xs text-muted-foreground flex items-center gap-0.5"
                             title={f.titulo}
                           >
                             {FONTE_LABELS[f.fonte] ?? f.fonte} — {formatCurrency(f.preco)}
@@ -958,7 +958,7 @@ export default function PlanilhaCustosEdital({
                           placeholder="Digitar..."
                         />
                         {!it.marca && (
-                          <span className="text-[9px] text-amber-500/80 italic whitespace-nowrap">
+                          <span className="text-xs text-amber-500/80 italic whitespace-nowrap">
                             Edital não informa
                           </span>
                         )}
@@ -980,7 +980,7 @@ export default function PlanilhaCustosEdital({
                             const isLower = diff < -1;
                             const isHigher = diff > 1;
                             return (
-                              <span className={`text-[10px] flex items-center gap-0.5 ${isLower ? 'text-green-600' : isHigher ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              <span className={`text-xs flex items-center gap-0.5 ${isLower ? 'text-green-600' : isHigher ? 'text-red-500' : 'text-muted-foreground'}`}>
                                 {isLower ? <TrendingDown className="w-3 h-3" /> : isHigher ? <TrendingUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                                 {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
                               </span>
@@ -990,7 +990,7 @@ export default function PlanilhaCustosEdital({
                       ) : it.cotacaoFalhou ? (
                         <div
                           title="Não foi possível encontrar preço em fontes verificáveis. Para itens controlados, consulte CMED/ANVISA manualmente."
-                          className="text-[10px] text-amber-500/80 flex items-center gap-0.5 justify-end cursor-help"
+                          className="text-xs text-amber-500/80 flex items-center gap-0.5 justify-end cursor-help"
                         >
                           <AlertCircle className="w-3 h-3" />
                           Não encontrado
@@ -1008,19 +1008,19 @@ export default function PlanilhaCustosEdital({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title={f.titulo}
-                                  className="block text-[11px] font-medium text-primary hover:text-primary/80 hover:underline"
+                                  className="block text-xs font-medium text-primary hover:text-primary/80 hover:underline"
                                 >
                                   {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
                                 </a>
                               ) : (
-                                <span className="block text-[11px] font-medium text-muted-foreground">
+                                <span className="block text-xs font-medium text-muted-foreground">
                                   {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
                                 </span>
                               )}
                               {f.nota != null && (
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-[10px] text-amber-400">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
-                                  <span className="text-[9px] text-muted-foreground">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
+                                  <span className="text-xs text-amber-400">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
+                                  <span className="text-xs text-muted-foreground">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
                                 </div>
                               )}
                             </div>
@@ -1084,7 +1084,7 @@ export default function PlanilhaCustosEdital({
                       <div className="flex flex-col items-end leading-tight">
                         <span>{formatCurrency(totalGeral)}</span>
                         {totalRef > 0 && totalGeral > totalRef && (
-                          <span className="text-[9px] font-normal text-destructive/80">acima do contrato</span>
+                          <span className="text-xs font-normal text-destructive/80">acima do contrato</span>
                         )}
                       </div>
                     ) : '—'}
@@ -1122,7 +1122,7 @@ export default function PlanilhaCustosEdital({
                         <tr key={`${it.item}-${fi}`} className="hover:bg-muted/10">
                           <td className="px-3 py-1.5 text-center font-medium text-muted-foreground">{fi === 0 ? it.item : ''}</td>
                           <td className="px-3 py-1.5">
-                            <Badge variant="outline" className="text-[9px] py-0">
+                            <Badge variant="outline" className="text-xs py-0">
                               {f.vendedor || FONTE_LABELS[f.fonte] || f.fonte}
                             </Badge>
                           </td>
@@ -1143,7 +1143,7 @@ export default function PlanilhaCustosEdital({
                               return (
                                 <Popover>
                                   <PopoverTrigger asChild>
-                                    <Badge className={`text-[9px] py-0 cursor-pointer ${scoreColorCls}`}>
+                                    <Badge className={`text-xs py-0 cursor-pointer ${scoreColorCls}`}>
                                       {av.score}%
                                     </Badge>
                                   </PopoverTrigger>
@@ -1173,7 +1173,7 @@ export default function PlanilhaCustosEdital({
           )}
 
           {/* Instructions */}
-          <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-[11px] text-muted-foreground space-y-1">
+          <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground text-xs mb-1">📋 Instruções</p>
             <p>• Use <strong className="text-primary">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
             <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>

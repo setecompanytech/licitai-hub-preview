@@ -115,9 +115,9 @@ export default function FinAprovacoes() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{l.descricao}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className={`text-[10px] ${alc.cor}`}>{alc.papel}</Badge>
+                      <Badge variant="outline" className={`text-xs ${alc.cor}`}>{alc.papel}</Badge>
                       {l.data_vencimento && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           Vence {format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy")}
                         </span>
                       )}

@@ -237,8 +237,8 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <div>
                   <p className="font-semibold text-sm">{r.nome || r.email}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    {r.cfg && <Badge className="text-[10px] bg-accent/15 text-accent">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
-                    {r.cfg && <span className="text-[11px] text-muted-foreground">
+                    {r.cfg && <Badge className="text-xs bg-accent/15 text-accent">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
+                    {r.cfg && <span className="text-xs text-muted-foreground">
                       {r.cfg.tipo_comissao === 'valor_fixo' ? fmt(r.cfg.valor_fixo) : `${r.cfg.percentual}%`}
                     </span>}
                     {r.cfg?.visibilidade_publica ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground" />}
@@ -247,7 +247,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Total comissões</p>
                   <p className="font-bold text-accent">{fmt(r.total)}</p>
-                  <div className="flex gap-2 text-[10px] mt-0.5">
+                  <div className="flex gap-2 text-xs mt-0.5">
                     <span className="text-amber-600">P: {fmt(r.totalPendente)}</span>
                     <span className="text-emerald-600">Pg: {fmt(r.totalPago)}</span>
                   </div>
@@ -273,22 +273,22 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{getMembroNome(l.user_id)}</span>
-                    <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
-                    {l.nota_fiscal && <Badge variant="outline" className="text-[10px]">NF: {l.nota_fiscal}</Badge>}
+                    <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
+                    {l.nota_fiscal && <Badge variant="outline" className="text-xs">NF: {l.nota_fiscal}</Badge>}
                   </div>
-                  <div className="flex gap-3 text-[11px] text-muted-foreground mt-1">
+                  <div className="flex gap-3 text-xs text-muted-foreground mt-1">
                     <span>Base: {fmt(l.valor_base)}</span>
                     {l.desconto_percentual > 0 && <span>Desc: {l.desconto_percentual}%</span>}
                     <span>{l.percentual_comissao}%</span>
                     <span>{new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
-                  {l.observacoes && <p className="text-[11px] text-muted-foreground mt-0.5">{l.observacoes}</p>}
+                  {l.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{l.observacoes}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-bold text-accent">{fmt(l.valor_comissao)}</span>
                   {isAdmin && l.status !== 'pago' && (
                     <Select value={l.status} onValueChange={v => handleUpdateLancStatus(l.id, v)}>
-                      <SelectTrigger className="w-[100px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(STATUS_LANCAMENTO).map(([k, v]) => (
                           <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -315,7 +315,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             <div key={c.id} className="bg-card rounded-lg border border-border/50 p-4 flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm">{getMembroNome(c.user_id)}</p>
-                <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <span>{TIPO_COMISSAO[c.tipo_comissao]?.label}</span>
                   <span>•</span>
                   <span>{c.tipo_comissao === 'valor_fixo' ? fmt(c.valor_fixo) : `${c.percentual}%`}</span>
@@ -366,7 +366,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">{TIPO_COMISSAO[cfgTipo]?.desc}</p>
+              <p className="text-xs text-muted-foreground mt-1">{TIPO_COMISSAO[cfgTipo]?.desc}</p>
             </div>
             {cfgTipo === 'valor_fixo' ? (
               <div>
@@ -384,12 +384,12 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               <Textarea value={cfgRegraDesconto} onChange={e => setCfgRegraDesconto(e.target.value)}
                 placeholder="Ex: Desconto até 10% = comissão cheia. Desconto 10-30% = comissão -20%. Desconto >30% = comissão -50%."
                 rows={3} />
-              <p className="text-[11px] text-muted-foreground mt-1">Descreva como a comissão varia com os descontos nas ofertas/lances.</p>
+              <p className="text-xs text-muted-foreground mt-1">Descreva como a comissão varia com os descontos nas ofertas/lances.</p>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <Label>Visibilidade para equipe</Label>
-                <p className="text-[11px] text-muted-foreground">Outros membros poderão ver as comissões deste colaborador</p>
+                <p className="text-xs text-muted-foreground">Outros membros poderão ver as comissões deste colaborador</p>
               </div>
               <Switch checked={cfgVisibilidade} onCheckedChange={setCfgVisibilidade} />
             </div>

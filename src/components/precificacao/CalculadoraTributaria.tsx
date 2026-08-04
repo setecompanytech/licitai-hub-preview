@@ -208,7 +208,7 @@ export default function CalculadoraTributaria() {
             <TooltipProvider key={t.nome}>
               <Tooltip>
                 <TooltipTrigger>
-                  <Badge variant="outline" className="text-[10px] cursor-help">
+                  <Badge variant="outline" className="text-xs cursor-help">
                     {t.nome} {t.aliquota > 0 ? `${t.aliquota}%` : ''}
                   </Badge>
                 </TooltipTrigger>
@@ -291,15 +291,15 @@ export default function CalculadoraTributaria() {
 
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Receita Bruta</p>
+              <p className="text-xs text-muted-foreground">Receita Bruta</p>
               <p className="text-sm font-bold">{formatCurrency(resultado.receita)}</p>
             </div>
             <div className="bg-destructive/10 rounded-lg p-3 text-center border border-destructive/20">
-              <p className="text-[10px] text-muted-foreground">Total Tributos</p>
+              <p className="text-xs text-muted-foreground">Total Tributos</p>
               <p className="text-sm font-bold text-destructive">{formatCurrency(resultado.totalTributos)}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Carga Efetiva</p>
+              <p className="text-xs text-muted-foreground">Carga Efetiva</p>
               <p className="text-sm font-bold text-accent">
                 {regime === 'simples_nacional'
                   ? `${resultado.aliquotaEfetiva.toFixed(2)}%`
@@ -311,22 +311,22 @@ export default function CalculadoraTributaria() {
           {/* Lucro KPIs */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
-              <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+              <p className="text-xs text-muted-foreground">Lucro Bruto</p>
               <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
-              <p className="text-[9px] text-muted-foreground">Receita − Tributos</p>
+              <p className="text-xs text-muted-foreground">Receita − Tributos</p>
             </div>
             <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-[10px] text-muted-foreground">Lucro Líquido</p>
+              <p className="text-xs text-muted-foreground">Lucro Líquido</p>
               <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
                 {formatCurrency(resultado.lucroLiquido)}
               </p>
             </div>
             <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-[10px] text-muted-foreground">Margem Líquida</p>
+              <p className="text-xs text-muted-foreground">Margem Líquida</p>
               <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
                 {resultado.margemLiquidaPct.toFixed(2)}%
               </p>
-              <p className="text-[9px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 ? '⚠ Risco' : resultado.margemLiquidaPct < 0 ? '🚫 Prejuízo' : '✓ Saudável'}
               </p>
             </div>
@@ -361,7 +361,7 @@ export default function CalculadoraTributaria() {
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold">{formatCurrency(t.valor)}</span>
-                  <span className="text-[10px] text-muted-foreground ml-2">({t.aliquota.toFixed(2)}%)</span>
+                  <span className="text-xs text-muted-foreground ml-2">({t.aliquota.toFixed(2)}%)</span>
                 </div>
               </div>
             ))}
@@ -383,13 +383,13 @@ export default function CalculadoraTributaria() {
               <span>= Lucro Líquido</span>
               <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
             </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>Margem Líquida</span>
               <span className="font-mono">{resultado.margemLiquidaPct.toFixed(2)}%</span>
             </div>
           </div>
 
-          <p className="text-[10px] text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground text-center">
             Simulação baseada nas alíquotas vigentes. Para cálculos oficiais CBS/IBS, consulte a{' '}
             <a
               href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral"

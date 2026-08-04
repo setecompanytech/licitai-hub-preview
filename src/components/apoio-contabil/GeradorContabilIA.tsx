@@ -182,13 +182,13 @@ export default function GeradorContabilIA() {
           {extracting && (
             <div className="space-y-1">
               <Progress value={extractProgress} className="h-2" />
-              <p className="text-[10px] text-muted-foreground">Extraindo texto... {extractProgress}%</p>
+              <p className="text-xs text-muted-foreground">Extraindo texto... {extractProgress}%</p>
             </div>
           )}
           {uploadedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {uploadedFiles.map((f, i) => (
-                <Badge key={i} variant="secondary" className="text-[10px] gap-1">
+                <Badge key={i} variant="secondary" className="text-xs gap-1">
                   {f.name.endsWith('.zip') ? <Archive className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
                   {f.name.slice(0, 30)}
                   <button onClick={() => removeFile(i)} className="ml-1 text-destructive hover:text-destructive/80">×</button>
@@ -214,7 +214,7 @@ export default function GeradorContabilIA() {
             <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 rounded-md bg-muted/30">
               {docsBase.map(doc => (
                 <Badge key={doc.id} variant={selectedDocs.includes(doc.id) ? 'default' : 'outline'}
-                  className="cursor-pointer text-[11px] transition-colors" onClick={() => toggleDoc(doc.id)}>
+                  className="cursor-pointer text-xs transition-colors" onClick={() => toggleDoc(doc.id)}>
                   {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}
                 </Badge>
               ))}

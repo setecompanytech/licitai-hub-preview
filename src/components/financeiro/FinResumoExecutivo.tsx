@@ -152,7 +152,7 @@ export default function FinResumoExecutivo() {
             <div className="text-right text-xs text-muted-foreground">
               <p>Posição em</p>
               <p className="font-medium">{format(new Date(), "dd/MM/yyyy", { locale: ptBR })}</p>
-              <p className="text-[10px]">{format(new Date(), "HH:mm:ss")}</p>
+              <p className="text-xs">{format(new Date(), "HH:mm:ss")}</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
@@ -186,21 +186,21 @@ export default function FinResumoExecutivo() {
         {/* 3. Detalhe Contas a Pagar */}
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas a Pagar</h2>
-          <p className="text-[11px] text-muted-foreground mb-2">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
+          <p className="text-xs text-muted-foreground mb-2">Todas as contas a pagar atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCP} tipo="pagar" total={data.totalCP} />
         </section>
 
         {/* 4. Detalhe Contas a Receber */}
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas a Receber</h2>
-          <p className="text-[11px] text-muted-foreground mb-2">Todas as contas a receber atrasadas ou a vencer na data atual</p>
+          <p className="text-xs text-muted-foreground mb-2">Todas as contas a receber atrasadas ou a vencer na data atual</p>
           <TabelaLancamentos lancs={data.detalheCR} tipo="receber" total={data.totalCR} />
         </section>
 
         {/* 5. Contas Correntes */}
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo das Contas Correntes</h2>
-          <p className="text-[11px] text-muted-foreground mb-2">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
+          <p className="text-xs text-muted-foreground mb-2">Saldo atual das contas correntes (consideradas no Resumo Financeiro)</p>
           <table className="w-full text-xs border">
             <thead className="bg-muted/40">
               <tr>
@@ -222,7 +222,7 @@ export default function FinResumoExecutivo() {
                     <td className="px-2 py-1.5">
                       <div className="font-medium">{c.nome}</div>
                       {(c.banco || c.agencia || c.conta) && (
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {[c.banco, c.agencia ? `Ag: ${c.agencia}` : null, c.conta ? `Conta: ${c.conta}` : null].filter(Boolean).join(" · ")}
                         </div>
                       )}
@@ -255,7 +255,7 @@ export default function FinResumoExecutivo() {
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground">Inadimplência (em atraso)</p>
                 <p className="text-lg font-semibold tabular-nums">{formatBRL(data.inadimplencia)}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {data.totalCR > 0 ? ((data.inadimplencia / data.totalCR) * 100).toFixed(1) : 0}% do total a receber
                 </p>
               </CardContent>
@@ -266,13 +266,13 @@ export default function FinResumoExecutivo() {
                 <p className="text-lg font-semibold tabular-nums">
                   {data.receitaMes > 0 ? ((data.resultadoMes / data.receitaMes) * 100).toFixed(1) : 0}%
                 </p>
-                <p className="text-[11px] text-muted-foreground">Resultado / Receita realizada</p>
+                <p className="text-xs text-muted-foreground">Resultado / Receita realizada</p>
               </CardContent>
             </Card>
           </div>
         </section>
 
-        <footer className="border-t pt-4 text-[10px] text-muted-foreground flex items-center gap-1.5">
+        <footer className="border-t pt-4 text-xs text-muted-foreground flex items-center gap-1.5">
           <Sparkles className="w-3 h-3" />
           Documento gerado automaticamente pelo PRAEFECTUS · Confidencial · Uso restrito à diretoria
         </footer>
@@ -317,15 +317,15 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
           <tr key={l.id} className="border-t">
             <td className="px-2 py-1.5">
               {l.status === "em_atraso" ? (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Atrasado</Badge>
+                <Badge variant="destructive" className="text-xs px-1.5 py-0 h-4">Atrasado</Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">A vencer</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">A vencer</Badge>
               )}
-              {l.diasAtraso > 0 && <span className="ml-1 text-[10px] text-muted-foreground">{l.diasAtraso}d</span>}
+              {l.diasAtraso > 0 && <span className="ml-1 text-xs text-muted-foreground">{l.diasAtraso}d</span>}
             </td>
             <td className="px-2 py-1.5">
               <div className="font-medium truncate max-w-md">{l.pessoa}</div>
-              {l.descricao && <div className="text-[10px] text-muted-foreground truncate max-w-md">{l.descricao}</div>}
+              {l.descricao && <div className="text-xs text-muted-foreground truncate max-w-md">{l.descricao}</div>}
             </td>
             <td className="px-2 py-1.5 tabular-nums">
               {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
@@ -335,7 +335,7 @@ function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo:
         ))}
         {lancs.length > 30 && (
           <tr className="border-t bg-muted/20">
-            <td colSpan={4} className="px-2 py-1.5 text-center text-[11px] text-muted-foreground italic">
+            <td colSpan={4} className="px-2 py-1.5 text-center text-xs text-muted-foreground italic">
               +{lancs.length - 30} lançamento(s) adicional(is) — exibindo os 30 com vencimento mais próximo
             </td>
           </tr>

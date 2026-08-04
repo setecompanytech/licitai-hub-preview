@@ -341,7 +341,7 @@ export default function FinContas() {
           <RefreshCw className={cn("w-4 h-4 mr-1", sincronizando && "animate-spin")} />
           {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
           {candidatasSync > 0 && !sincronizando && (
-            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
               {candidatasSync}
             </span>
           )}
@@ -530,7 +530,7 @@ export default function FinContas() {
                   <Switch checked={naoConsiderar} onCheckedChange={setNaoConsiderar} />
                   <span className="text-sm leading-tight">
                     Não considerar esta conta no “Resumo”, “Fluxo de Caixa” e “Orçamento de Caixa”
-                    <span className="block text-[11px] text-muted-foreground mt-0.5">
+                    <span className="block text-xs text-muted-foreground mt-0.5">
                       Use para contas auxiliares (caixinha, garantias, etc.) que não devem entrar nas projeções financeiras.
                     </span>
                   </span>

@@ -204,7 +204,7 @@ export default function DiariosOficiais() {
           {!loading && resultados.map((d) => (
             <Card key={d.id} className="hover:border-primary/50 transition-colors">
               <CardContent className="p-3 space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
                   <Badge variant="secondary">{d.fonte}</Badge>
                   {d.tipo_publicacao && <Badge variant="outline">{d.tipo_publicacao.replace(/_/g, ' ')}</Badge>}
                   {d.uf && <Badge variant="outline" className="gap-1"><MapPin className="w-3 h-3" />{d.uf}</Badge>}

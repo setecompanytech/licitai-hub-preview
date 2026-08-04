@@ -172,7 +172,7 @@ export default function Investidores() {
                 <div key={p.plano} className="text-center p-4 rounded-xl bg-muted/30">
                   <p className="text-xs font-semibold text-muted-foreground mb-1">{p.plano}</p>
                   <p className="text-xl font-bold">{p.preco}<span className="text-xs text-muted-foreground">/mês</span></p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{p.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{p.desc}</p>
                 </div>
               ))}
             </div>

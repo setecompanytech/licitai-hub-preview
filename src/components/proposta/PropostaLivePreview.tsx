@@ -86,7 +86,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
       <div className="flex flex-col items-center justify-center h-full py-20 text-center">
         <Eye className="w-12 h-12 text-muted-foreground/20 mb-3" />
         <p className="text-sm text-muted-foreground font-medium">Pré-visualização em Tempo Real</p>
-        <p className="text-xs text-muted-foreground/70 mt-1 max-w-[200px]">
+        <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
           Preencha os campos ao lado para visualizar a proposta sendo montada
         </p>
       </div>
@@ -133,7 +133,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         ) : empresa?.razao_social ? (
           <div className="border-b-2 border-black pb-3 mb-3 text-center">
             <p className="font-black text-sm uppercase tracking-widest">{empresa.razao_social}</p>
-            <p className="text-[10px] text-gray-500 mt-1">CNPJ: {empresa.cnpj}</p>
+            <p className="text-xs text-gray-500 mt-1">CNPJ: {empresa.cnpj}</p>
           </div>
         ) : null}
 
@@ -141,7 +141,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         {orgao && (
           <div className="mb-3" style={{ lineHeight: '1.8' }}>
             <span className="text-lg italic block mb-1">A</span>
-            <p className="font-bold text-[10px]">{orgao}</p>
+            <p className="font-bold text-xs">{orgao}</p>
           </div>
         )}
 
@@ -151,7 +151,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
             PROPOSTA COMERCIAL
           </span>
           {numeroLicitacao && (
-            <p className="text-[10px] mt-1.5">
+            <p className="text-xs mt-1.5">
               Ref.: {numeroLicitacao}{modalidade ? ` - ${modalidade}` : ''}
             </p>
           )}
@@ -159,7 +159,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
         {/* ── APRESENTAÇÃO ── */}
         {empresa?.razao_social && (
-          <div className="text-[9px] text-justify mb-4">
+          <div className="text-xs text-justify mb-4">
             A empresa <strong>{empresa.razao_social}</strong>, devidamente inscrita no Ministério da Fazenda sob o
             CNPJ nº. <strong>{empresa.cnpj}</strong>{enderecoCompleto ? `, com sede na ${enderecoCompleto}` : ''},
             por intermédio de seu representante legal, infra-assinado, apresenta a seguinte
@@ -175,7 +175,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
                 <TableHeader>
                   <TableRow className="bg-gray-800">
                     {['ITEM', 'UNID', 'QTDE', 'ESPECIFICAÇÃO TÉCNICA', 'MARCA', 'VL. UNIT.', 'EXTENSO', 'VL. TOTAL', 'EXTENSO'].map(h => (
-                      <TableHead key={h} className="font-bold text-white text-[7px] py-1 px-1 text-center whitespace-nowrap border border-black">
+                      <TableHead key={h} className="font-bold text-white text-xs py-1 px-1 text-center whitespace-nowrap border border-black">
                         {h}
                       </TableHead>
                     ))}
@@ -187,17 +187,17 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
                     const vlTotal = parseFloat(item.valorTotal?.replace(',', '.') || '0') || 0;
                     return (
                       <TableRow key={idx}>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center font-bold border border-black">{item.item}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.unidade}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.quantidade}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 border border-black" style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '120px' }}>{item.descricao}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center border border-black">{item.marca || '-'}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-right border border-black">R$ {item.valorUnitario}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-gray-600 border border-black">
+                        <TableCell className="text-xs py-0.5 px-1 text-center font-bold border border-black">{item.item}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-center border border-black">{item.unidade}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-center border border-black">{item.quantidade}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 border border-black" style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '120px' }}>{item.descricao}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-center border border-black">{item.marca || '-'}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-right border border-black">R$ {item.valorUnitario}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-center italic text-gray-600 border border-black">
                           {vlUnit > 0 ? valorPorExtenso(vlUnit) : '-'}
                         </TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-right font-bold border border-black">R$ {item.valorTotal}</TableCell>
-                        <TableCell className="text-[7px] py-0.5 px-1 text-center italic text-gray-600 border border-black">
+                        <TableCell className="text-xs py-0.5 px-1 text-right font-bold border border-black">R$ {item.valorTotal}</TableCell>
+                        <TableCell className="text-xs py-0.5 px-1 text-center italic text-gray-600 border border-black">
                           {vlTotal > 0 ? valorPorExtenso(vlTotal) : '-'}
                         </TableCell>
                       </TableRow>
@@ -205,10 +205,10 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
                   })}
                   {/* Total row */}
                   <TableRow className="bg-gray-100">
-                    <TableCell colSpan={7} className="text-[8px] py-1 px-2 text-right font-bold border-2 border-black italic">
+                    <TableCell colSpan={7} className="text-xs py-1 px-2 text-right font-bold border-2 border-black italic">
                       {valorGlobal > 0 ? valorPorExtenso(valorGlobal) : '...'}
                     </TableCell>
-                    <TableCell colSpan={2} className="text-[9px] py-1 px-2 text-center font-bold border-2 border-black">
+                    <TableCell colSpan={2} className="text-xs py-1 px-2 text-center font-bold border-2 border-black">
                       {formatCurrency(valorGlobal)}
                     </TableCell>
                   </TableRow>
@@ -220,71 +220,71 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
         {/* ── ENCARGOS ── */}
         {itensValidos.length > 0 && (
-          <p className="text-[9px] text-justify">
+          <p className="text-xs text-justify">
             Nos valores propostos acima, estão inclusos todos e quaisquer encargos inerentes ao fornecimento do objeto desta proposta, tais como: tributos, taxas, transportes, carregamento, descarregamento, encargos sociais, trabalhistas, frete, seguro, e outros que, direta e indiretamente, incidam sobre o perfeito e integral cumprimento da proposta apresentada.
           </p>
         )}
 
         {/* ── CONDIÇÕES DE PAGAMENTO ── */}
         {prazoPagamento && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições de Pagamento:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Condições de Pagamento:</p>
             <p className="text-justify">{prazoPagamento}</p>
           </div>
         )}
 
         {/* ── CONDIÇÕES DE ENTREGA ── */}
         {prazoEntrega && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições de Entrega:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Condições de Entrega:</p>
             <p className="text-justify">{prazoEntrega}</p>
           </div>
         )}
 
         {/* ── LOCAL DE ENTREGA ── */}
         {localEntrega && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Local de Entrega:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Local de Entrega:</p>
             <p className="text-justify">{localEntrega}</p>
           </div>
         )}
 
         {/* ── CONDIÇÕES ESPECIAIS ── */}
         {condicoesEntrega && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Condições Especiais:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Condições Especiais:</p>
             <p className="text-justify">{condicoesEntrega}</p>
           </div>
         )}
 
         {/* ── LIQUIDAÇÃO/NFe ── */}
         {liquidacaoNfe && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Liquidação / Nota Fiscal:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Liquidação / Nota Fiscal:</p>
             <p className="text-justify">{liquidacaoNfe}</p>
           </div>
         )}
 
         {/* ── GARANTIA ── */}
         {garantia && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Garantia:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Garantia:</p>
             <p className="text-justify">{garantia}</p>
           </div>
         )}
 
         {/* ── VALIDADE ── */}
         {prazoValidade && (
-          <div className="text-[9px]">
-            <p className="font-black underline uppercase text-[10px] mb-0.5">Prazo de Validade desta Proposta:</p>
+          <div className="text-xs">
+            <p className="font-black underline uppercase text-xs mb-0.5">Prazo de Validade desta Proposta:</p>
             <p>O prazo de validade da proposta não será inferior a <strong>{prazoValidade}</strong>, a contar da data de sua apresentação.</p>
           </div>
         )}
 
         {/* ── DECLARAÇÕES LEGAIS ── */}
         <div className="space-y-1.5">
-          <p className="font-black underline uppercase text-[10px] mb-1">DECLARAMOS AINDA, SOB AS PENAS DA LEI:</p>
-          <div className="text-[9px] space-y-1">
+          <p className="font-black underline uppercase text-xs mb-1">DECLARAMOS AINDA, SOB AS PENAS DA LEI:</p>
+          <div className="text-xs space-y-1">
             {[
               'Nos comprometemos a fornecer os produtos e serviços deste Edital, nas condições e exigências estabelecidas no Edital;',
               'Declaramos que o(s) objeto(s) será(ão) entregue(s) estritamente de acordo com as especificações, condições, exigências constantes no Edital;',
@@ -300,7 +300,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
               </div>
             ))}
           </div>
-          <p className="text-[9px] text-justify mt-2">
+          <p className="text-xs text-justify mt-2">
             Caso nos seja adjudicado o objeto da licitação, comprometemos a assinar o contrato no prazo
             determinado no documento de convocação, e para esse fim fornecemos os seguintes dados:
           </p>
@@ -308,7 +308,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
         {/* ── IDENTIFICAÇÃO DA EMPRESA ── */}
         {empresa?.razao_social && (
-          <div className="border-t border-gray-400 pt-3 mt-3 text-[9px] space-y-0.5" style={{ lineHeight: '1.8' }}>
+          <div className="border-t border-gray-400 pt-3 mt-3 text-xs space-y-0.5" style={{ lineHeight: '1.8' }}>
             <p><strong>Razão Social:</strong> {empresa.razao_social}. <strong>CNPJ/MF:</strong> {empresa.cnpj}.</p>
             {enderecoCompleto && <p><strong>Endereço:</strong> {enderecoCompleto}.</p>}
             {telefone && <p><strong>Telefone/WhatsApp:</strong> {telefone}</p>}
@@ -328,8 +328,8 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
         {/* ── RESPONSÁVEL ── */}
         {repNome && (
-          <div className="text-[9px] mt-3">
-            <p className="font-black underline uppercase text-[10px] mb-1">
+          <div className="text-xs mt-3">
+            <p className="font-black underline uppercase text-xs mb-1">
               Responsável pela Assinatura do Contrato:
             </p>
             <p><strong>Nome:</strong> {repNome}</p>
@@ -352,15 +352,15 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
 
         {/* ── ASSINATURA ── */}
         <div className="pt-6 text-right space-y-2">
-          <p className="text-[9px] mb-8">
+          <p className="text-xs mb-8">
             {empresa?.municipio || '________'}/{empresa?.uf || '__'}, {dataAtual}.
           </p>
           <div className="inline-block text-center border-t border-black pt-1.5 min-w-[200px]">
-            <p className="text-[9px] font-bold">{empresa?.razao_social || '(Razão Social)'}</p>
-            <p className="text-[8px] text-gray-500">CNPJ: {empresa?.cnpj || ''}</p>
-            {repNome && <p className="text-[9px] font-bold mt-1">{repNome}</p>}
-            {repCpf && <p className="text-[8px] text-gray-500">CPF: {repCpf}</p>}
-            {repCargo && <p className="text-[8px] text-gray-500">{repCargo}</p>}
+            <p className="text-xs font-bold">{empresa?.razao_social || '(Razão Social)'}</p>
+            <p className="text-xs text-gray-500">CNPJ: {empresa?.cnpj || ''}</p>
+            {repNome && <p className="text-xs font-bold mt-1">{repNome}</p>}
+            {repCpf && <p className="text-xs text-gray-500">CPF: {repCpf}</p>}
+            {repCargo && <p className="text-xs text-gray-500">{repCargo}</p>}
           </div>
         </div>
       </div>

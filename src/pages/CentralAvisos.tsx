@@ -88,15 +88,15 @@ export default function CentralAvisos() {
         <div className="grid grid-cols-3 gap-3">
           <div className="stat-card text-center">
             <p className="text-lg font-bold">{total}</p>
-            <p className="text-[10px] text-muted-foreground">Total</p>
+            <p className="text-xs text-muted-foreground">Total</p>
           </div>
           <div className="stat-card text-center">
             <p className="text-lg font-bold text-info">{naoLidos}</p>
-            <p className="text-[10px] text-muted-foreground">Não lidos</p>
+            <p className="text-xs text-muted-foreground">Não lidos</p>
           </div>
           <div className="stat-card text-center">
             <p className="text-lg font-bold text-destructive">{urgentes}</p>
-            <p className="text-[10px] text-muted-foreground">Urgentes</p>
+            <p className="text-xs text-muted-foreground">Urgentes</p>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export default function CentralAvisos() {
             <button
               key={tipo}
               onClick={() => toggleTipo(tipo as TipoAlerta)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium border transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors ${
                 filtroTipos.includes(tipo as TipoAlerta)
                   ? cfg.color
                   : 'bg-muted/30 text-muted-foreground border-border/50'
@@ -125,13 +125,13 @@ export default function CentralAvisos() {
             <TabsList>
               <TabsTrigger value="todos">Todos</TabsTrigger>
               <TabsTrigger value="nao_lidos">
-                Não lidos {naoLidos > 0 && <Badge className="ml-1 text-[9px] h-4 px-1.5">{naoLidos}</Badge>}
+                Não lidos {naoLidos > 0 && <Badge className="ml-1 text-xs h-4 px-1.5">{naoLidos}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="urgentes">Urgentes</TabsTrigger>
               <TabsTrigger value="arquivados">Arquivados</TabsTrigger>
             </TabsList>
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm" className="text-[10px] h-7" onClick={marcarTodosLidos}>
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={marcarTodosLidos}>
                 <Eye className="w-3 h-3 mr-1" /> Marcar todos como lidos
               </Button>
             </div>
@@ -176,19 +176,19 @@ export default function CentralAvisos() {
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{alerta.descricao}</p>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {alerta.uf && <Badge variant="outline" className="text-[9px] h-4">{alerta.uf}</Badge>}
-                        {alerta.orgao && <Badge variant="outline" className="text-[9px] h-4 max-w-[150px] truncate">{alerta.orgao}</Badge>}
-                        <Badge className={`text-[9px] h-4 border-0 ${FONTE_COLORS[alerta.fonte] || ''}`}>{alerta.fonte}</Badge>
+                        {alerta.uf && <Badge variant="outline" className="text-xs h-4">{alerta.uf}</Badge>}
+                        {alerta.orgao && <Badge variant="outline" className="text-xs h-4 max-w-[150px] truncate">{alerta.orgao}</Badge>}
+                        <Badge className={`text-xs h-4 border-0 ${FONTE_COLORS[alerta.fonte] || ''}`}>{alerta.fonte}</Badge>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(alerta.created_at), { addSuffix: true, locale: ptBR })}
                       </p>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-[10px] h-6 px-2"
+                        className="text-xs h-6 px-2"
                         onClick={e => { e.stopPropagation(); arquivar(alerta.id); }}
                       >
                         <Archive className="w-3 h-3" />
@@ -227,7 +227,7 @@ export default function CentralAvisos() {
                         {cfg.emoji} {cfg.label}
                       </Badge>
                       {selectedAlerta.urgente && (
-                        <Badge variant="destructive" className="text-[10px]">URGENTE</Badge>
+                        <Badge variant="destructive" className="text-xs">URGENTE</Badge>
                       )}
                     </div>
                     <SheetTitle className="text-left text-base mt-2">{selectedAlerta.titulo}</SheetTitle>
@@ -274,7 +274,7 @@ export default function CentralAvisos() {
                       )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">📡 Fonte</span>
-                        <Badge className={`${FONTE_COLORS[selectedAlerta.fonte]} border-0 text-[10px]`}>{selectedAlerta.fonte}</Badge>
+                        <Badge className={`${FONTE_COLORS[selectedAlerta.fonte]} border-0 text-xs`}>{selectedAlerta.fonte}</Badge>
                       </div>
                     </div>
 

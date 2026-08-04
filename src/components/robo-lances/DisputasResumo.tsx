@@ -40,7 +40,7 @@ export default function DisputasResumo({ lances, onSelect, selectedId }: Props) 
         <span className="text-xs font-semibold">
           {ativas.length} disputa(s) simultânea(s)
         </span>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Total em referência: {formatCurrency(totalValor)}
         </span>
       </div>
@@ -59,7 +59,7 @@ export default function DisputasResumo({ lances, onSelect, selectedId }: Props) 
             >
               <Icon className="w-3 h-3" />
               <span className="font-medium">{lance.edital}</span>
-              <Badge variant="outline" className={`text-[9px] scale-90 ${statusColor[lance.status]}`}>
+              <Badge variant="outline" className={`text-xs scale-90 ${statusColor[lance.status]}`}>
                 {lance.status === 'ativo' && <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />}
                 {lance.status}
               </Badge>

@@ -63,7 +63,7 @@ function KpiCard({
               {valor}
               {sufixo && <span className="text-base ml-1 text-muted-foreground">{sufixo}</span>}
             </p>
-            {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
+            {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
           </div>
           <Icon className={`w-5 h-5 ${cor} opacity-70`} />
         </div>
@@ -314,7 +314,7 @@ export default function FinCFODashboard() {
               />
             </LineChart>
           </ResponsiveContainer>
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Considera saldo atual + recebíveis e pagáveis previstos por vencimento, descontado o burn médio dos
             últimos 3 meses.
           </p>
@@ -384,10 +384,10 @@ export default function FinCFODashboard() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{a.titulo}</p>
                         <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             Impacto: {a.impacto}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             Prazo: {a.prazo}
                           </Badge>
                         </div>

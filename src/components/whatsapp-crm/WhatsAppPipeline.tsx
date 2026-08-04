@@ -158,7 +158,7 @@ export default function WhatsAppPipeline() {
                       </div>
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {ETAPAS.filter(e => e.key !== etapa.key).map(e => (
-                          <Button key={e.key} variant="ghost" size="sm" className="text-[10px] h-6 px-1.5" onClick={() => moveEtapa(lead.id, e.key)}>
+                          <Button key={e.key} variant="ghost" size="sm" className="text-xs h-6 px-1.5" onClick={() => moveEtapa(lead.id, e.key)}>
                             → {e.label}
                           </Button>
                         ))}

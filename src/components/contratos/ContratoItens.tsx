@@ -372,7 +372,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Package className="w-4 h-4 text-accent" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
             {meta?.tipo_estrutura && (
-              <Badge variant="outline" className="text-[10px] font-normal">
+              <Badge variant="outline" className="text-xs font-normal">
                 Estrutura: {meta.tipo_estrutura === 'lotes' ? 'Lotes' : 'Itens'}
               </Badge>
             )}
@@ -384,7 +384,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             )}
           </p>
           {isContratoComATA && (
-            <p className="text-[11px] text-warning mt-1 flex items-center gap-1">
+            <p className="text-xs text-warning mt-1 flex items-center gap-1">
               <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
             </p>
           )}
@@ -419,7 +419,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <div className="col-span-2">
                   <Label className="flex items-center gap-1.5">
                     <Search className="w-3.5 h-3.5 text-accent" /> Buscar Produto do Catálogo
-                    {form.produto_id && <span className="text-[10px] text-success font-normal">(vinculado)</span>}
+                    {form.produto_id && <span className="text-xs text-success font-normal">(vinculado)</span>}
                   </Label>
                   <div className="relative mt-1">
                     <Input
@@ -440,7 +440,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                               className="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 flex items-center gap-2"
                               onMouseDown={() => onSelectProduto(p)}
                             >
-                              {p.codigo && <span className="font-mono text-muted-foreground text-[10px] shrink-0">[{p.codigo}]</span>}
+                              {p.codigo && <span className="font-mono text-muted-foreground text-xs shrink-0">[{p.codigo}]</span>}
                               <span className="flex-1 truncate">{p.descricao}</span>
                               <span className="shrink-0 text-muted-foreground">{p.unidade}{p.preco_venda ? ` · ${fmt(p.preco_venda)}` : ''}</span>
                             </button>
@@ -453,7 +453,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Selecione um produto existente ou digite para criar um novo automaticamente.
                   </p>
                 </div>
@@ -474,7 +474,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         })}
                       </SelectContent>
                     </Select>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Ao selecionar, descrição/unidade/valor são preenchidos automaticamente.
                     </p>
                   </div>
@@ -520,7 +520,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 {podeVerCustos && (
                   <div className="col-span-2">
-                    <Label>Custo Unitário (R$) <span className="text-[10px] text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
+                    <Label>Custo Unitário (R$) <span className="text-xs text-muted-foreground">(opcional — apenas Financeiro/Admin)</span></Label>
                     <MoneyInput value={Number(form.custo_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, custo_unitario: String(v) }))} placeholder="R$ 0,00" />
                   </div>
                 )}
@@ -629,7 +629,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {tooltipContent ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className={`text-[10px] font-normal cursor-help ${badgeColor}`}>
+                            <Badge variant="outline" className={`text-xs font-normal cursor-help ${badgeColor}`}>
                               {origemLabel}
                             </Badge>
                           </TooltipTrigger>
@@ -638,7 +638,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Badge variant="outline" className={`text-[10px] font-normal ${badgeColor}`}>
+                        <Badge variant="outline" className={`text-xs font-normal ${badgeColor}`}>
                           {origemLabel}
                         </Badge>
                       )}
@@ -646,14 +646,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     {meta?.tipo_estrutura === 'lotes' && (
                       <TableCell className="text-xs whitespace-nowrap">
                         {item.numero_lote
-                          ? <Badge variant="secondary" className="text-[10px] font-normal">Lote {item.numero_lote}</Badge>
+                          ? <Badge variant="secondary" className="text-xs font-normal">Lote {item.numero_lote}</Badge>
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
                     {isContratoComATA && (
                       <TableCell className="text-xs whitespace-nowrap">
                         {item.ata_item_id ? (
-                          <Badge variant="outline" className="text-[10px] font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
+                          <Badge variant="outline" className="text-xs font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
@@ -661,7 +661,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     <TableCell className="text-xs max-w-[200px]">
                       <span className="truncate block">{item.descricao}</span>
                       {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
-                        <span className="text-[10px] text-muted-foreground line-through">
+                        <span className="text-xs text-muted-foreground line-through">
                           {fmt(original.valor_unitario)}/un (original)
                         </span>
                       )}

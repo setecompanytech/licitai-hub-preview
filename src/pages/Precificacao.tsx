@@ -577,7 +577,7 @@ export default function Precificacao() {
             <div className="flex items-center gap-2 mb-3">
               <Globe className="w-5 h-5 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Plataformas e Marketplaces Integrados</h3>
-              <Badge variant="outline" className="text-[10px] ml-auto">+30 fontes</Badge>
+              <Badge variant="outline" className="text-xs ml-auto">+30 fontes</Badge>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
               Pesquisa em tempo real nos principais marketplaces e plataformas de e-commerce do Brasil.
@@ -592,11 +592,11 @@ export default function Precificacao() {
                 <div key={group.title} className="bg-card/80 rounded-lg border border-border/30 p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <group.icon className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-[11px] font-semibold text-foreground">{group.title}</span>
+                    <span className="text-xs font-semibold text-foreground">{group.title}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {group.items.map((item) => (
-                      <Badge key={item} variant="secondary" className="text-[9px] px-1.5 py-0.5 font-normal">
+                      <Badge key={item} variant="secondary" className="text-xs px-1.5 py-0.5 font-normal">
                         {item}
                       </Badge>
                     ))}
@@ -604,7 +604,7 @@ export default function Precificacao() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="w-3.5 h-3.5 text-success" />
               <span>Preços reais extraídos via scraping • Cadastro unificado • Estoque sincronizado • Conformidade Lei 14.133/2021</span>
             </div>
@@ -649,7 +649,7 @@ export default function Precificacao() {
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-accent" />
             <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
-            <Badge variant="outline" className="text-[10px] ml-auto">Upload + Extração + Cotação</Badge>
+            <Badge variant="outline" className="text-xs ml-auto">Upload + Extração + Cotação</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
             Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
@@ -717,7 +717,7 @@ export default function Precificacao() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.termo_busca}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.categoria !== 'todos' && <Badge variant="outline" className="mr-2 text-[10px]">{item.categoria}</Badge>}
+                        {item.categoria !== 'todos' && <Badge variant="outline" className="mr-2 text-xs">{item.categoria}</Badge>}
                         {new Date(item.created_at).toLocaleString('pt-BR')}
                       </p>
                     </div>
@@ -746,15 +746,15 @@ export default function Precificacao() {
                   {/* Active filters summary */}
                   {hasActiveFilters && (
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
-                      <span className="text-[11px] text-primary font-medium">Filtros ativos</span>
-                      <button onClick={resetAllFilters} className="text-[10px] text-primary hover:underline">Limpar todos</button>
+                      <span className="text-xs text-primary font-medium">Filtros ativos</span>
+                      <button onClick={resetAllFilters} className="text-xs text-primary hover:underline">Limpar todos</button>
                     </div>
                   )}
 
                   {/* Categories */}
                   {categoryTree.subs.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
-                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Tag className="w-3 h-3 text-primary" />
                         {categoryTree.main || 'Categorias'}
                       </h4>
@@ -770,7 +770,7 @@ export default function Precificacao() {
                             )}
                           >
                             <span>Todas</span>
-                            <span className="text-[10px] text-muted-foreground">({categoryTree.total})</span>
+                            <span className="text-xs text-muted-foreground">({categoryTree.total})</span>
                           </button>
                         </li>
                         {categoryTree.subs.map((sub) => (
@@ -785,7 +785,7 @@ export default function Precificacao() {
                               )}
                             >
                               <span className="truncate">{sub.name}</span>
-                              <span className="text-[10px] text-muted-foreground ml-1">({sub.count})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({sub.count})</span>
                             </button>
                           </li>
                         ))}
@@ -795,7 +795,7 @@ export default function Precificacao() {
 
                   {/* Price Range */}
                   <div className="bg-card border border-border/40 rounded-lg p-3">
-                    <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <DollarSign className="w-3 h-3 text-primary" />
                       Faixa de preço
                     </h4>
@@ -817,7 +817,7 @@ export default function Precificacao() {
                       />
                     </div>
                     {(filterPrecoMin || filterPrecoMax) && (
-                      <button onClick={() => { setFilterPrecoMin(''); setFilterPrecoMax(''); }} className="text-[10px] text-primary hover:underline mt-1.5">
+                      <button onClick={() => { setFilterPrecoMin(''); setFilterPrecoMax(''); }} className="text-xs text-primary hover:underline mt-1.5">
                         Limpar preço
                       </button>
                     )}
@@ -826,7 +826,7 @@ export default function Precificacao() {
                   {/* Condição */}
                   {availableConditions.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
-                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Package className="w-3 h-3 text-primary" />
                         Condição
                       </h4>
@@ -867,7 +867,7 @@ export default function Precificacao() {
 
                   {/* Frete Grátis */}
                   <div className="bg-card border border-border/40 rounded-lg p-3">
-                    <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <Truck className="w-3 h-3 text-primary" />
                       Envio
                     </h4>
@@ -888,7 +888,7 @@ export default function Precificacao() {
                   {/* Lojas */}
                   {availableLojas.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
-                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Store className="w-3 h-3 text-primary" />
                         Lojas
                       </h4>
@@ -906,13 +906,13 @@ export default function Precificacao() {
                             >
                               {filterLojas.includes(loja.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                               <span className="truncate flex-1 text-left">{loja.name}</span>
-                              <span className="text-[10px] text-muted-foreground ml-1">({loja.count})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({loja.count})</span>
                             </button>
                           </li>
                         ))}
                       </ul>
                       {filterLojas.length > 0 && (
-                        <button onClick={() => setFilterLojas([])} className="text-[10px] text-primary hover:underline mt-1.5">
+                        <button onClick={() => setFilterLojas([])} className="text-xs text-primary hover:underline mt-1.5">
                           Limpar lojas
                         </button>
                       )}
@@ -922,7 +922,7 @@ export default function Precificacao() {
                   {/* Marcas */}
                   {availableMarcas.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
-                      <h4 className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Award className="w-3 h-3 text-primary" />
                         Marcas
                       </h4>
@@ -940,13 +940,13 @@ export default function Precificacao() {
                             >
                               {filterMarcas.includes(marca.name) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3 text-muted-foreground" />}
                               <span className="truncate flex-1 text-left">{marca.name}</span>
-                              <span className="text-[10px] text-muted-foreground ml-1">({marca.count})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({marca.count})</span>
                             </button>
                           </li>
                         ))}
                       </ul>
                       {filterMarcas.length > 0 && (
-                        <button onClick={() => setFilterMarcas([])} className="text-[10px] text-primary hover:underline mt-1.5">
+                        <button onClick={() => setFilterMarcas([])} className="text-xs text-primary hover:underline mt-1.5">
                           Limpar marcas
                         </button>
                       )}
@@ -1048,7 +1048,7 @@ export default function Precificacao() {
                         {new Date(f.atualizado).toLocaleDateString('pt-BR')}
                       </span>
                       {f.preco === item.precoMin && (
-                        <Badge className="bg-success/15 text-success border-success/30 text-[10px]">
+                        <Badge className="bg-success/15 text-success border-success/30 text-xs">
                           Menor preço
                         </Badge>
                       )}

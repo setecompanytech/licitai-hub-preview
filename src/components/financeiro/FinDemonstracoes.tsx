@@ -351,7 +351,7 @@ export default function FinDemonstracoes() {
                   </div>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 Estrutura conforme Lei nº 6.404/76 atualizada pela Lei 11.638/07. Versão simplificada — para escrituração formal,
                 cadastre Imobilizado, Estoques e Fornecedores nas próximas atualizações.
               </p>
@@ -384,7 +384,7 @@ export default function FinDemonstracoes() {
                   <Linha label="Saldo Final de Caixa" valor={calc.dfc.saldoFinalCaixa} bold />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 Conforme NBC TG 03 (R3) – Demonstração dos Fluxos de Caixa. Método indireto (a partir do lucro líquido).
               </p>
             </CardContent>
@@ -416,7 +416,7 @@ export default function FinDemonstracoes() {
                   <Linha label="Saldo Final" valor={calc.dmpl.saldoFinal} bold />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 Conforme NBC TG 26 (R5) – Apresentação das Demonstrações Contábeis.
               </p>
             </CardContent>

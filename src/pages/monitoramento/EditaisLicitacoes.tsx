@@ -129,17 +129,17 @@ const CardEdital = ({
             : edital.uf || "Brasil"}
         </span>
         {urgente && (
-          <span className="bg-destructive text-white text-[11px] font-bold px-2.5 py-0.5 rounded tracking-wide">
+          <span className="bg-destructive text-white text-xs font-bold px-2.5 py-0.5 rounded tracking-wide">
             ⚡ MENOS DE 24H
           </span>
         )}
         {edital.srp && (
-          <span className="bg-purple-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded">
+          <span className="bg-purple-600 text-white text-xs font-bold px-2.5 py-0.5 rounded">
             SRP
           </span>
         )}
         {encerrado && (
-          <span className="bg-muted-foreground text-white text-[11px] px-2.5 py-0.5 rounded">
+          <span className="bg-muted-foreground text-white text-xs px-2.5 py-0.5 rounded">
             ENCERRADO
           </span>
         )}
@@ -158,7 +158,7 @@ const CardEdital = ({
             </div>
           )}
           {edital.numero_controle_pncp && (
-            <div className="text-[11px] text-muted-foreground/60 mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               Código de Controle PNCP: {edital.numero_controle_pncp}
             </div>
           )}
@@ -174,7 +174,7 @@ const CardEdital = ({
             {edital.numero_compra}/{edital.ano_compra}
           </span>
           {edital.url_pncp && (
-            <span className="text-[11px] text-muted-foreground ml-2">
+            <span className="text-xs text-muted-foreground ml-2">
               (Lei nº 14.133/2021)
             </span>
           )}
@@ -262,7 +262,7 @@ const CardEdital = ({
             </a>
           )}
 
-          <span className="text-[11px] text-muted-foreground/60 ml-1">
+          <span className="text-xs text-muted-foreground ml-1">
             Histórico de eventos publicados...
           </span>
         </div>
@@ -406,7 +406,7 @@ const ModalItensDownload = ({
             </div>
           </div>
 
-          <div className="text-[11px] text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center">
             Os arquivos do edital estão disponíveis no portal oficial.
             Clique nos botões acima para acessar diretamente.
           </div>
@@ -608,7 +608,7 @@ export default function EditaisLicitacoes() {
             <Search size={14} />
             FILTROS DE PESQUISA
             {chipsFiltros.length > 0 && (
-              <span className="bg-[hsl(var(--sidebar-background))] text-white rounded-full px-2 py-px text-[11px]">
+              <span className="bg-[hsl(var(--sidebar-background))] text-white rounded-full px-2 py-px text-xs">
                 {chipsFiltros.length} ativo{chipsFiltros.length > 1 ? "s" : ""}
               </span>
             )}
@@ -777,7 +777,7 @@ export default function EditaisLicitacoes() {
             : "Nenhuma licitação encontrada para os filtros selecionados."}
         </span>
         {total > 0 && !loading && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Página {filtros.pagina} de {totalPaginas}
           </span>
         )}
@@ -821,7 +821,7 @@ export default function EditaisLicitacoes() {
           <div className="text-sm text-muted-foreground mb-2">
             Nenhuma licitação encontrada para os filtros selecionados.
           </div>
-          <div className="text-xs text-muted-foreground/60">
+          <div className="text-xs text-muted-foreground">
             Tente ajustar a UF, modalidade ou termo de pesquisa.
           </div>
           {chipsFiltros.length > 0 && (

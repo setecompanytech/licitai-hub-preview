@@ -115,7 +115,7 @@ export default function AgenteTemplateDownload() {
               <step.icon className="w-5 h-5 text-accent" />
             </div>
             <p className="text-xs font-semibold">{i + 1}. {step.title}</p>
-            <p className="text-[11px] text-muted-foreground">{step.desc}</p>
+            <p className="text-xs text-muted-foreground">{step.desc}</p>
           </div>
         ))}
       </div>
@@ -130,8 +130,8 @@ export default function AgenteTemplateDownload() {
           {fileTree.map((f) => (
             <div key={f.name} className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-muted/50">
               <FileCode className="w-3 h-3 text-muted-foreground shrink-0" />
-              <code className="text-[11px] font-mono text-foreground">{f.name}</code>
-              <span className="text-[10px] text-muted-foreground ml-auto">{f.desc}</span>
+              <code className="text-xs font-mono text-foreground">{f.name}</code>
+              <span className="text-xs text-muted-foreground ml-auto">{f.desc}</span>
             </div>
           ))}
         </div>
@@ -144,7 +144,7 @@ export default function AgenteTemplateDownload() {
           Configure esta URL no arquivo <code className="bg-muted px-1 rounded">.env</code> do agente como <code className="bg-muted px-1 rounded">CALLBACK_URL</code>:
         </p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-[11px] bg-muted p-3 rounded-lg font-mono break-all">
+          <code className="flex-1 text-xs bg-muted p-3 rounded-lg font-mono break-all">
             {callbackUrl}
           </code>
           <Button size="sm" variant="outline" onClick={() => copyToClipboard(callbackUrl)}>
@@ -167,8 +167,8 @@ export default function AgenteTemplateDownload() {
             { label: 'Testar health', cmd: 'curl http://localhost:3500/health' },
           ].map((c) => (
             <div key={c.label} className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] w-28 justify-center shrink-0">{c.label}</Badge>
-              <code className="flex-1 text-[11px] bg-muted p-2 rounded font-mono break-all">{c.cmd}</code>
+              <Badge variant="outline" className="text-xs w-28 justify-center shrink-0">{c.label}</Badge>
+              <code className="flex-1 text-xs bg-muted p-2 rounded font-mono break-all">{c.cmd}</code>
               <Button size="sm" variant="ghost" onClick={() => copyToClipboard(c.cmd)}>
                 <Copy className="w-3 h-3" />
               </Button>
@@ -207,7 +207,7 @@ export default function AgenteTemplateDownload() {
                   <td className="py-2 px-3 text-muted-foreground">{e.desc}</td>
                   <td className="py-2 px-3">
                     {e.auth ? (
-                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[10px]">
+                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                         X-Agent-Key
                       </Badge>
                     ) : (
@@ -233,10 +233,10 @@ export default function AgenteTemplateDownload() {
             { tipo: 'heartbeat', desc: 'Sinal de vida periódico (30s)', payload: '{}' },
           ].map((c) => (
             <div key={c.tipo} className="flex items-start gap-3 py-2 px-3 rounded-lg bg-muted/30">
-              <code className="text-[11px] font-mono text-accent shrink-0 pt-0.5">{c.tipo}</code>
+              <code className="text-xs font-mono text-accent shrink-0 pt-0.5">{c.tipo}</code>
               <div className="flex-1">
-                <p className="text-[11px] text-foreground">{c.desc}</p>
-                <code className="text-[10px] text-muted-foreground">{c.payload}</code>
+                <p className="text-xs text-foreground">{c.desc}</p>
+                <code className="text-xs text-muted-foreground">{c.payload}</code>
               </div>
             </div>
           ))}

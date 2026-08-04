@@ -399,29 +399,29 @@ export default function PerfisAlerta() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-sm">{p.nome}</h3>
-                        <p className="text-[10px] text-muted-foreground">{p.frequencia}</p>
+                        <p className="text-xs text-muted-foreground">{p.frequencia}</p>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1 mb-3">
                       {p.palavras_chave?.slice(0, 3).map(kw => (
-                        <Badge key={kw} variant="secondary" className="text-[10px]">{kw}</Badge>
+                        <Badge key={kw} variant="secondary" className="text-xs">{kw}</Badge>
                       ))}
                       {(p.palavras_chave?.length || 0) > 3 && (
-                        <Badge variant="outline" className="text-[10px]">+{p.palavras_chave.length - 3}</Badge>
+                        <Badge variant="outline" className="text-xs">+{p.palavras_chave.length - 3}</Badge>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-1 mb-3 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap gap-1 mb-3 text-xs text-muted-foreground">
                       {p.ufs?.length > 0 && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{p.ufs.slice(0, 3).join(', ')}</span>}
                       {p.modalidades?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Shield className="w-3 h-3" />{p.modalidades.length} mod.</span>}
                       {p.cnaes?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Tag className="w-3 h-3" />{p.cnaes.length} CNAEs</span>}
                     </div>
 
                     <div className="flex items-center gap-1 mb-3">
-                      {p.canal_email && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="w-3 h-3" />E-mail</Badge>}
-                      {p.canal_whatsapp && <Badge variant="outline" className="text-[10px] gap-0.5"><MessageSquare className="w-3 h-3" />WhatsApp</Badge>}
-                      {p.canal_sistema && <Badge variant="outline" className="text-[10px] gap-0.5"><Bell className="w-3 h-3" />Sistema</Badge>}
+                      {p.canal_email && <Badge variant="outline" className="text-xs gap-0.5"><Mail className="w-3 h-3" />E-mail</Badge>}
+                      {p.canal_whatsapp && <Badge variant="outline" className="text-xs gap-0.5"><MessageSquare className="w-3 h-3" />WhatsApp</Badge>}
+                      {p.canal_sistema && <Badge variant="outline" className="text-xs gap-0.5"><Bell className="w-3 h-3" />Sistema</Badge>}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -451,7 +451,7 @@ export default function PerfisAlerta() {
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 🔥 Quente: Score ≥80% + Urgência ≥80% · ⚡ Urgente: Abertura ≤3 dias · ⭐ Premium: Score ≥70% · 📍 Regional: Match geográfico + Score ≥50%
               </p>
             </Card>
@@ -476,28 +476,28 @@ export default function PerfisAlerta() {
                   <Card className="p-4 text-center">
                     <Target className="w-5 h-5 mx-auto mb-1 text-accent" />
                     <div className="text-2xl font-bold">{perfis.length}</div>
-                    <div className="text-[11px] text-muted-foreground">Perfis Ativos</div>
+                    <div className="text-xs text-muted-foreground">Perfis Ativos</div>
                   </Card>
                   <Card className="p-4 text-center">
                     <Send className="w-5 h-5 mx-auto mb-1 text-accent" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.total, 0)}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">Alertas Totais</div>
+                    <div className="text-xs text-muted-foreground">Alertas Totais</div>
                   </Card>
                   <Card className="p-4 text-center">
                     <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-green-500" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.enviado, 0)}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">Enviados</div>
+                    <div className="text-xs text-muted-foreground">Enviados</div>
                   </Card>
                   <Card className="p-4 text-center">
                     <Flame className="w-5 h-5 mx-auto mb-1 text-red-500" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.quente, 0)}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">Oport. Quentes</div>
+                    <div className="text-xs text-muted-foreground">Oport. Quentes</div>
                   </Card>
                 </div>
 
@@ -516,36 +516,36 @@ export default function PerfisAlerta() {
                             <Target className="w-3 h-3" style={{ color: p.cor }} />
                           </div>
                           <span className="font-semibold text-sm">{p.nome}</span>
-                          {!p.ativo && <Badge variant="outline" className="text-[10px]">Inativo</Badge>}
+                          {!p.ativo && <Badge variant="outline" className="text-xs">Inativo</Badge>}
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
                           <div>
                             <div className="text-lg font-bold">{stats.total}</div>
-                            <div className="text-[10px] text-muted-foreground">Alertas</div>
+                            <div className="text-xs text-muted-foreground">Alertas</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold text-green-600">{stats.enviado}</div>
-                            <div className="text-[10px] text-muted-foreground">Enviados</div>
+                            <div className="text-xs text-muted-foreground">Enviados</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold text-yellow-600">{stats.pendente}</div>
-                            <div className="text-[10px] text-muted-foreground">Pendentes</div>
+                            <div className="text-xs text-muted-foreground">Pendentes</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold text-destructive">{stats.falhou}</div>
-                            <div className="text-[10px] text-muted-foreground">Falhas</div>
+                            <div className="text-xs text-muted-foreground">Falhas</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold">🔥 {stats.quente}</div>
-                            <div className="text-[10px] text-muted-foreground">Quentes</div>
+                            <div className="text-xs text-muted-foreground">Quentes</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold">⚡ {stats.urgente}</div>
-                            <div className="text-[10px] text-muted-foreground">Urgentes</div>
+                            <div className="text-xs text-muted-foreground">Urgentes</div>
                           </div>
                           <div>
                             <div className="text-lg font-bold">⭐ {stats.premium}</div>
-                            <div className="text-[10px] text-muted-foreground">Premium</div>
+                            <div className="text-xs text-muted-foreground">Premium</div>
                           </div>
                         </div>
                         {stats.total > 0 && (
@@ -665,7 +665,7 @@ export default function PerfisAlerta() {
                   <div className="flex flex-wrap gap-1 mt-1">
                     {MODALIDADES.map(mod => (
                       <Badge key={mod} variant={editando.modalidades?.includes(mod) ? 'default' : 'outline'}
-                        className="text-[10px] cursor-pointer transition-colors"
+                        className="text-xs cursor-pointer transition-colors"
                         onClick={() => toggleInArray('modalidades', mod)}>
                         {mod}
                       </Badge>

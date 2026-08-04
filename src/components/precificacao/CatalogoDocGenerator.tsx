@@ -743,7 +743,7 @@ Responda APENAS em JSON válido, sem markdown:
       >
         {selected && (
           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-            <span className="text-accent-foreground text-[10px] font-bold">✓</span>
+            <span className="text-accent-foreground text-xs font-bold">✓</span>
           </div>
         )}
         <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${selected ? 'bg-accent/20' : 'bg-muted/50'}`}>
@@ -751,7 +751,7 @@ Responda APENAS em JSON válido, sem markdown:
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold">{info.label}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{info.desc}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{info.desc}</p>
         </div>
       </button>
     );
@@ -836,11 +836,11 @@ Responda APENAS em JSON válido, sem markdown:
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {items.slice(0, 8).map((item, i) => (
-                      <Badge key={item.id} variant="outline" className="text-[9px] max-w-[200px] truncate">
+                      <Badge key={item.id} variant="outline" className="text-xs max-w-[200px] truncate">
                         {i + 1}. {item.descricao.substring(0, 35)}
                       </Badge>
                     ))}
-                    {items.length > 8 && <Badge variant="secondary" className="text-[9px]">+{items.length - 8} mais</Badge>}
+                    {items.length > 8 && <Badge variant="secondary" className="text-xs">+{items.length - 8} mais</Badge>}
                   </div>
                 </div>
 
@@ -853,10 +853,10 @@ Responda APENAS em JSON válido, sem markdown:
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {fontesFabricantes.slice(0, 10).map(f => (
-                        <Badge key={f.id} variant="outline" className="text-[8px]">{f.nome}</Badge>
+                        <Badge key={f.id} variant="outline" className="text-xs">{f.nome}</Badge>
                       ))}
                       {fontesFabricantes.length > 10 && (
-                        <Badge variant="secondary" className="text-[8px]">+{fontesFabricantes.length - 10}</Badge>
+                        <Badge variant="secondary" className="text-xs">+{fontesFabricantes.length - 10}</Badge>
                       )}
                     </div>
                     <p className="text-muted-foreground">A IA priorizará buscas nos sites oficiais destes fabricantes.</p>
@@ -911,8 +911,8 @@ Responda APENAS em JSON válido, sem markdown:
                       <p className="text-white text-sm font-bold text-center leading-tight">
                         {docTitle || DOC_TYPES[docType].label}
                       </p>
-                      {docSubtitle && <p className="text-white/70 text-[8px] text-center mt-1">{docSubtitle}</p>}
-                      <p className="text-white/50 text-[7px] mt-2">{companyName || 'Documento Técnico'}</p>
+                      {docSubtitle && <p className="text-white/70 text-xs text-center mt-1">{docSubtitle}</p>}
+                      <p className="text-white/50 text-xs mt-2">{companyName || 'Documento Técnico'}</p>
                     </div>
                     <div className="h-[2%]" style={{ background: COLOR_THEMES[colorTheme].accent }} />
                     <div className="h-[63%] bg-white p-3 flex flex-col justify-between">
@@ -923,7 +923,7 @@ Responda APENAS em JSON válido, sem markdown:
                           `Tipo: ${DOC_TYPES[docType].label}`,
                           `Norma: ABNT NBR 14724`,
                         ].map((l, i) => (
-                          <p key={i} className="text-[7px] text-gray-500">{l}</p>
+                          <p key={i} className="text-xs text-gray-500">{l}</p>
                         ))}
                       </div>
                       <p className="text-[5px] text-gray-300 text-center">Conforme ABNT NBR 14724:2011</p>
@@ -1024,25 +1024,25 @@ Responda APENAS em JSON válido, sem markdown:
                           {spec.imagens.length === 0 && (
                             <div className="w-full h-14 rounded-lg border border-border/30 flex items-center justify-center bg-muted/20 mb-3">
                               <Package className="w-5 h-5 text-muted-foreground/30" />
-                              <span className="text-[9px] text-muted-foreground/50 ml-1.5">Sem imagens</span>
+                              <span className="text-xs text-muted-foreground ml-1.5">Sem imagens</span>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{spec.nome}</p>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              {spec.marca && <Badge variant="outline" className="text-[8px]">{spec.marca}</Badge>}
-                              {spec.modelo && <Badge variant="outline" className="text-[8px]">{spec.modelo}</Badge>}
-                              <Badge variant="secondary" className="text-[8px]">{spec.categoria}</Badge>
+                              {spec.marca && <Badge variant="outline" className="text-xs">{spec.marca}</Badge>}
+                              {spec.modelo && <Badge variant="outline" className="text-xs">{spec.modelo}</Badge>}
+                              <Badge variant="secondary" className="text-xs">{spec.categoria}</Badge>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{spec.descricao_detalhada}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{spec.descricao_detalhada}</p>
                             <div className="flex items-center gap-3 mt-1.5">
                               {spec.especificacoes.length > 0 && (
-                                <span className="text-[9px] text-accent font-medium">
+                                <span className="text-xs text-accent font-medium">
                                   {spec.especificacoes.length} especificações
                                 </span>
                               )}
                               {spec.imagens.length > 0 && (
-                                <span className="text-[9px] text-primary font-medium">
+                                <span className="text-xs text-primary font-medium">
                                   📷 {spec.imagens.length} imagens
                                 </span>
                               )}
@@ -1051,7 +1051,7 @@ Responda APENAS em JSON válido, sem markdown:
                                   href={spec.site_fabricante}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-[9px] text-accent underline hover:no-underline"
+                                  className="text-xs text-accent underline hover:no-underline"
                                 >
                                   🌐 Fabricante
                                 </a>

@@ -261,14 +261,14 @@ export default function EventoAuditoriaDetalheDialog({
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate">{c.numero_contrato || '(sem número)'}</div>
                           <div className="text-muted-foreground truncate">{c.objeto || '—'}</div>
-                          <div className="text-muted-foreground text-[11px] mt-0.5">
+                          <div className="text-muted-foreground text-xs mt-0.5">
                             {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'} →{' '}
                             {c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="font-mono">{fmtBRL(c.valor_global)}</div>
-                          {c.status && <Badge variant="outline" className="text-[10px] mt-0.5">{c.status}</Badge>}
+                          {c.status && <Badge variant="outline" className="text-xs mt-0.5">{c.status}</Badge>}
                         </div>
                       </li>
                     ))}
@@ -288,11 +288,11 @@ export default function EventoAuditoriaDetalheDialog({
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div className="font-medium">
                             Aditivo nº {a.numero_aditivo || '?'}
-                            {a.tipo && <Badge variant="outline" className="text-[10px] ml-2">{a.tipo}</Badge>}
+                            {a.tipo && <Badge variant="outline" className="text-xs ml-2">{a.tipo}</Badge>}
                           </div>
-                          <span className="text-muted-foreground text-[11px]">{fmtDate(a.created_at)}</span>
+                          <span className="text-muted-foreground text-xs">{fmtDate(a.created_at)}</span>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                           {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="font-mono text-primary">{fmtBRL(a.valor_acrescimo)}</span></div>}
                           {Number(a.valor_supressao) > 0 && <div><span className="text-muted-foreground">− Valor: </span><span className="font-mono text-destructive">{fmtBRL(a.valor_supressao)}</span></div>}
                           {Number(a.quantidade_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Qtd: </span><span className="font-mono">{fmtNum(a.quantidade_acrescimo)}</span></div>}

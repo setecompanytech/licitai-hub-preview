@@ -219,10 +219,10 @@ export default function IndicesRepactuacao() {
                           </div>
                           <div>
                             <p className="font-bold text-sm">{idx.sigla}</p>
-                            <p className="text-[10px] text-muted-foreground">{idx.fonte}</p>
+                            <p className="text-xs text-muted-foreground">{idx.fonte}</p>
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-[10px]">{idx.periodo}</Badge>
+                        <Badge variant="outline" className="text-xs">{idx.periodo}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{idx.nome}</p>
                       <div className="flex items-end justify-between">
@@ -239,7 +239,7 @@ export default function IndicesRepactuacao() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-3 mt-2 text-[10px] text-muted-foreground">
+                      <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                         {idx.variacao_anual != null && <span>Ano: {fmtPerc(idx.variacao_anual)}</span>}
                         {idx.acumulado_12m != null && <span>12m: {fmtPerc(idx.acumulado_12m)}</span>}
                       </div>
@@ -347,8 +347,8 @@ export default function IndicesRepactuacao() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={cct.status === 'vigente' ? 'default' : 'secondary'} className="text-[10px]">{cct.status}</Badge>
-                        {cct.abrangencia_uf && <Badge variant="outline" className="text-[10px]">{cct.abrangencia_uf}</Badge>}
+                        <Badge variant={cct.status === 'vigente' ? 'default' : 'secondary'} className="text-xs">{cct.status}</Badge>
+                        {cct.abrangencia_uf && <Badge variant="outline" className="text-xs">{cct.abrangencia_uf}</Badge>}
                       </div>
                     </div>
                     <div className="flex gap-4 mt-3 text-xs text-muted-foreground">

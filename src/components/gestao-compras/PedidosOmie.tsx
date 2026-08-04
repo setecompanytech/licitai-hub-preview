@@ -220,7 +220,7 @@ function PessoaCombobox({ pessoas, value, onChange }: {
             <button key={p.id} className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
               onClick={() => { onChange(p.id); setInputVal(p.nome); setQ(''); setOpen(false); }}>
               <div className="font-medium text-xs">{p.nome}</div>
-              {p.documento && <div className="text-[10px] text-muted-foreground">{p.documento}</div>}
+              {p.documento && <div className="text-xs text-muted-foreground">{p.documento}</div>}
             </button>
           ))}
         </div>
@@ -1170,7 +1170,7 @@ export default function PedidosOmie() {
             <ShoppingBag className="w-9 h-9 text-amber-600" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Compra</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Vincular fornecedor</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Vincular fornecedor</p>
             </div>
           </button>
           <button
@@ -1180,7 +1180,7 @@ export default function PedidosOmie() {
             <ShoppingCart className="w-9 h-9 text-amber-600" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Venda</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Vincular cliente</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Vincular cliente</p>
             </div>
           </button>
         </div>
@@ -1435,11 +1435,11 @@ export default function PedidosOmie() {
                       <td className="py-2 px-3 font-medium text-xs">#{p.numero}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
+                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
                             {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                           </Badge>
                           {p.contrato_id && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-400/50 text-violet-600">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 border-violet-400/50 text-violet-600">
                               Contrato
                             </Badge>
                           )}
@@ -1447,13 +1447,13 @@ export default function PedidosOmie() {
                       </td>
                       <td className="py-2 px-3 text-xs font-medium">{pessoaNome ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="py-2 px-3">
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0 capitalize">
                           {STATUS_MSG[p.status]}
                         </Badge>
                       </td>
                       <td className={`py-2 px-3 text-xs ${isHoje ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
                         {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
-                        {isHoje && <span className="ml-1 text-[10px]">• hoje</span>}
+                        {isHoje && <span className="ml-1 text-xs">• hoje</span>}
                       </td>
                       <td className="py-2 px-3 text-xs text-right font-semibold">R$ {fmtM(p.valor_total)}</td>
                       <td className="py-2 px-3">
@@ -1534,11 +1534,11 @@ export default function PedidosOmie() {
                               <span className="text-xs font-semibold text-muted-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className={`text-[9px] px-1 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
+                              <Badge variant="outline" className={`text-xs px-1 py-0 ${p.tipo === 'venda' ? 'border-blue-400/50 text-blue-600' : 'border-amber-400/50 text-amber-700'}`}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 border-violet-400/50 text-violet-600">
+                                <Badge variant="outline" className="text-xs px-1 py-0 border-violet-400/50 text-violet-600">
                                   Contrato
                                 </Badge>
                               )}
@@ -1546,7 +1546,7 @@ export default function PedidosOmie() {
                             {pessoaNome && (
                               <p className="text-xs font-medium mt-0.5 leading-tight truncate">{pessoaNome}</p>
                             )}
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{statusMsg}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{statusMsg}</p>
                             <p className="text-xs font-semibold mt-1 text-foreground">
                               $ {fmtM(p.valor_total)}
                               {p.numero_parcelas && p.numero_parcelas !== 'A Vista' && (
@@ -1683,7 +1683,7 @@ export default function PedidosOmie() {
         {editingId && (
           <div className="flex items-center gap-2 shrink-0 text-xs">
             <span className="text-muted-foreground whitespace-nowrap">Coluna atual:</span>
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${STATUS_BADGE[editingStatus]}`}>
+            <Badge variant="outline" className={`text-xs px-1.5 py-0 whitespace-nowrap ${STATUS_BADGE[editingStatus]}`}>
               {STATUS_MSG[editingStatus]}
             </Badge>
             <span className="text-muted-foreground">→</span>
@@ -1701,7 +1701,7 @@ export default function PedidosOmie() {
                       setEditingStatus(s.key);
                     }
                   }}
-                  className={`px-2 py-0.5 rounded border text-[10px] transition-colors hover:bg-muted/60 whitespace-nowrap ${STATUS_BADGE[s.key]}`}
+                  className={`px-2 py-0.5 rounded border text-xs transition-colors hover:bg-muted/60 whitespace-nowrap ${STATUS_BADGE[s.key]}`}
                 >
                   {s.label}
                 </button>
@@ -1799,7 +1799,7 @@ export default function PedidosOmie() {
                 { label: 'Valor Total do Pedido',   val: fmtM(valorTotal),  editable: false },
               ] as const).map(t => (
                 <div key={t.label}>
-                  <Label className="text-[10px] text-muted-foreground leading-tight">{t.label}</Label>
+                  <Label className="text-xs text-muted-foreground leading-tight">{t.label}</Label>
                   {t.editable ? (
                     <Input
                       value={form.valor_desconto}
@@ -1904,7 +1904,7 @@ export default function PedidosOmie() {
                           <td className="py-1.5 px-2 text-amber-700 font-medium">{item.codigo_produto || '—'}</td>
                           <td className="py-1.5 px-2">{item.descricao}</td>
                           <td className="py-1.5 px-2 text-center">{item.quantidade} {item.unidade}</td>
-                          <td className="py-1.5 px-2 text-muted-foreground text-[10px]">{item.local_estoque}</td>
+                          <td className="py-1.5 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
                           <td className="py-1.5 px-2 text-right">{item.preco_unitario}</td>
                           <td className="py-1.5 px-2 text-right font-medium">{fmtM(vt)}</td>
                         </tr>

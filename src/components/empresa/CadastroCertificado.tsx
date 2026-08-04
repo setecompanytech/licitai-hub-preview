@@ -193,7 +193,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
               {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {buscandoSintegra ? 'Consultando SINTEGRA...' : 'Clique na lupa para preencher automaticamente'}
           </p>
         </div>
@@ -220,7 +220,7 @@ export default function CadastroCertificado({ onSuccess, mode = 'cadastro' }: Pr
             placeholder="Ex: e-CNPJ A1 - Certisign 2025"
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Apenas identificação — o certificado permanece no seu computador/VPS
           </p>
         </div>

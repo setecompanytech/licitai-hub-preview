@@ -204,7 +204,7 @@ export default function BoletimConfig() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               Boletim Inteligente AURÉLIA
-              <Badge variant="secondary" className="text-[9px] uppercase">Novo</Badge>
+              <Badge variant="secondary" className="text-xs uppercase">Novo</Badge>
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
               Resumo personalizado gerado por IA das oportunidades das últimas 24h, com score de
@@ -280,7 +280,7 @@ export default function BoletimConfig() {
               <ShoppingBag className="w-4 h-4 text-accent" />
               <h3 className="text-sm font-semibold">Segmentos de Interesse</h3>
               {config.segmentos.length > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   {config.segmentos.length} selecionado(s)
                 </Badge>
               )}
@@ -299,7 +299,7 @@ export default function BoletimConfig() {
                     <Badge
                       key={id}
                       variant="secondary"
-                      className="text-[10px] pr-1 cursor-pointer hover:bg-destructive/10"
+                      className="text-xs pr-1 cursor-pointer hover:bg-destructive/10"
                       onClick={() => toggleSegmento(id)}
                     >
                       {seg?.label || id}
@@ -326,13 +326,13 @@ export default function BoletimConfig() {
                   />
                   <div className="min-w-0">
                     <p className="text-xs font-medium leading-tight">{seg.label}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{seg.desc}</p>
+                    <p className="text-xs text-muted-foreground leading-tight mt-0.5">{seg.desc}</p>
                   </div>
                 </label>
               ))}
             </div>
             {config.segmentos.length === 0 && (
-              <p className="text-[10px] text-warning mt-2">
+              <p className="text-xs text-warning mt-2">
                 ⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro de segmento.
               </p>
             )}
@@ -348,7 +348,7 @@ export default function BoletimConfig() {
               <MapPin className="w-4 h-4 text-accent" />
               <h3 className="text-sm font-semibold">Estados de Interesse</h3>
               {config.ufs_interesse.length > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   {config.ufs_interesse.length} UF(s)
                 </Badge>
               )}
@@ -365,7 +365,7 @@ export default function BoletimConfig() {
                   <Badge
                     key={uf}
                     variant="secondary"
-                    className="text-[10px] pr-1 cursor-pointer hover:bg-destructive/10"
+                    className="text-xs pr-1 cursor-pointer hover:bg-destructive/10"
                     onClick={() => toggleUf(uf)}
                   >
                     {uf}
@@ -391,7 +391,7 @@ export default function BoletimConfig() {
               ))}
             </div>
             {config.ufs_interesse.length === 0 && (
-              <p className="text-[10px] text-warning mt-2">
+              <p className="text-xs text-warning mt-2">
                 ⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.
               </p>
             )}

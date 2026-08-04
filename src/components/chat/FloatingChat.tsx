@@ -159,7 +159,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold leading-none">Lia — Assistente PRAEFECTUS</p>
-                  <p className="text-[10px] opacity-80 mt-0.5">Online • Resposta instantânea</p>
+                  <p className="text-xs opacity-80 mt-0.5">Online • Resposta instantânea</p>
                 </div>
               </div>
               <button
@@ -224,7 +224,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                   <button
                     key={q}
                     onClick={() => setInput(q)}
-                    className="text-[11px] px-2.5 py-1 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    className="text-xs px-2.5 py-1 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                   >
                     {q}
                   </button>
@@ -240,7 +240,7 @@ export default function FloatingChat({ isLanding = false }: FloatingChatProps) {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua dúvida..."
-                className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground/50"
+                className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
                 disabled={isLoading}
               />
               <Button

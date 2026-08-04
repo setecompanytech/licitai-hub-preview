@@ -162,7 +162,7 @@ export default function FinSaldosAbertura() {
                       <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{c.codigo}</td>
                       <td className="px-3 py-1.5">{c.nome}</td>
                       <td className="px-3 py-1.5 text-center">
-                        <Badge variant="outline" className="text-[10px]">{c.natureza_saldo === "D" ? "Devedora" : "Credora"}</Badge>
+                        <Badge variant="outline" className="text-xs">{c.natureza_saldo === "D" ? "Devedora" : "Credora"}</Badge>
                       </td>
                       <td className="px-3 py-1.5 text-right">
                         <Input type="number" step="0.01" min="0" value={valor || ""}

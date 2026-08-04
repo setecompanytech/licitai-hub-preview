@@ -127,7 +127,7 @@ export default function WhatsAppTemplates() {
               <div>
                 <Label className="text-xs">Conteúdo</Label>
                 <Textarea value={newTemplate.conteudo} onChange={e => setNewTemplate(p => ({ ...p, conteudo: e.target.value }))} rows={5} className="mt-1" placeholder="Olá {{nome}}, sua proposta para {{orgao}} foi atualizada..." />
-                <p className="text-[10px] text-muted-foreground mt-1">Use {'{{variavel}}'} para campos dinâmicos</p>
+                <p className="text-xs text-muted-foreground mt-1">Use {'{{variavel}}'} para campos dinâmicos</p>
               </div>
               {newTemplate.conteudo && extractVars(newTemplate.conteudo).length > 0 && (
                 <div className="flex gap-1 flex-wrap">
@@ -169,11 +169,11 @@ export default function WhatsAppTemplates() {
               )}
               {t.variaveis.length > 0 && (
                 <div className="flex gap-1 flex-wrap mb-2">
-                  {t.variaveis.map(v => <Badge key={v} variant="secondary" className="text-[10px]">{`{{${v}}}`}</Badge>)}
+                  {t.variaveis.map(v => <Badge key={v} variant="secondary" className="text-xs">{`{{${v}}}`}</Badge>)}
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">Usado {t.uso_count}x</span>
+                <span className="text-xs text-muted-foreground">Usado {t.uso_count}x</span>
                 <div className="flex gap-1">
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopy(t.conteudo)}><Copy className="w-3.5 h-3.5" /></Button>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingId(t.id); setEditConteudo(t.conteudo); }}><Edit2 className="w-3.5 h-3.5" /></Button>

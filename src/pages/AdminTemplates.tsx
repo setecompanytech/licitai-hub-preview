@@ -197,8 +197,8 @@ export default function AdminTemplates() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-semibold">{t.nome}</span>
-                  <Badge variant="outline" className="text-[10px]">{categoriaLabels[t.categoria] || t.categoria}</Badge>
-                  {!t.ativo && <Badge variant="secondary" className="text-[10px]">Inativo</Badge>}
+                  <Badge variant="outline" className="text-xs">{categoriaLabels[t.categoria] || t.categoria}</Badge>
+                  {!t.ativo && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
                 </div>
                 {t.descricao && <p className="text-xs text-muted-foreground">{t.descricao}</p>}
                 {t.legislacao_base && <p className="text-xs text-muted-foreground mt-1">📜 {t.legislacao_base}</p>}

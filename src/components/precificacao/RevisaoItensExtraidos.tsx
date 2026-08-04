@@ -403,7 +403,7 @@ export default function RevisaoItensExtraidos({
                       className="w-full bg-transparent text-foreground border-b border-transparent hover:border-border focus:border-accent outline-none px-0 py-0.5 text-xs"
                     />
                     {item.codigo_catmat && (
-                      <span className="text-muted-foreground font-mono text-[10px]">
+                      <span className="text-muted-foreground font-mono text-xs">
                         CATMAT: {item.codigo_catmat}
                       </span>
                     )}
@@ -467,13 +467,13 @@ export default function RevisaoItensExtraidos({
 
                   <td className="px-3 py-2 text-center">
                     {item._editado ? (
-                      <Badge variant="outline" className="text-blue-600 dark:text-blue-400 text-[9px]">editado</Badge>
+                      <Badge variant="outline" className="text-blue-600 dark:text-blue-400 text-xs">editado</Badge>
                     ) : item.erros.length > 0 ? (
-                      <Badge variant="outline" className="text-red-600 dark:text-red-400 text-[9px]">erro</Badge>
+                      <Badge variant="outline" className="text-red-600 dark:text-red-400 text-xs">erro</Badge>
                     ) : item.requer_revisao ? (
-                      <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400 text-[9px]">revisar</Badge>
+                      <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400 text-xs">revisar</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-green-600 dark:text-green-400 text-[9px]">ok</Badge>
+                      <Badge variant="outline" className="text-green-600 dark:text-green-400 text-xs">ok</Badge>
                     )}
                   </td>
 

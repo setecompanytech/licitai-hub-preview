@@ -157,8 +157,8 @@ export default function CredenciaisPortalForm() {
                       <SelectItem key={p.id} value={p.id} disabled={portalJaCadastrado(p.id)}>
                         <span className="flex items-center gap-2">
                           {p.nome}
-                          {p.auth === 'certificado' && <Badge variant="outline" className="text-[9px] scale-75 bg-warning/10 text-warning border-warning/30">Cert. Digital</Badge>}
-                          {p.auth === 'login+cert' && <Badge variant="outline" className="text-[9px] scale-75 bg-info/10 text-info border-info/30">Login+Cert</Badge>}
+                          {p.auth === 'certificado' && <Badge variant="outline" className="text-xs scale-75 bg-warning/10 text-warning border-warning/30">Cert. Digital</Badge>}
+                          {p.auth === 'login+cert' && <Badge variant="outline" className="text-xs scale-75 bg-info/10 text-info border-info/30">Login+Cert</Badge>}
                           {portalJaCadastrado(p.id) && <span className="text-muted-foreground">(já cadastrado)</span>}
                         </span>
                       </SelectItem>
@@ -173,7 +173,7 @@ export default function CredenciaisPortalForm() {
                     <Building2 className="w-3.5 h-3.5" />
                     Licitações-e — Banco do Brasil
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Suas credenciais são criptografadas com AES-256-GCM e nunca armazenadas em texto simples.
                   </p>
                   <div>
@@ -186,7 +186,7 @@ export default function CredenciaisPortalForm() {
                         className={`text-xs flex-1 ${versaoPortal === 'v2' ? 'bg-accent text-accent-foreground' : ''}`}
                         onClick={() => setVersaoPortal('v2')}
                       >
-                        Novo (licitacoes-e2) <Badge variant="outline" className="ml-1 text-[8px] scale-75">recomendado</Badge>
+                        Novo (licitacoes-e2) <Badge variant="outline" className="ml-1 text-xs scale-75">recomendado</Badge>
                       </Button>
                       <Button
                         type="button"
@@ -207,7 +207,7 @@ export default function CredenciaisPortalForm() {
                       placeholder="Ex: 1234567"
                       className="mt-1"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1">Chave de acesso usada para login no licitacoes-e.com.br</p>
+                    <p className="text-xs text-muted-foreground mt-1">Chave de acesso usada para login no licitacoes-e.com.br</p>
                   </div>
                   <div>
                     <Label className="text-xs">Senha</Label>

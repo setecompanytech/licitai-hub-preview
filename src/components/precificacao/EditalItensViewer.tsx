@@ -42,7 +42,7 @@ export default function EditalItensViewer({ licitacaoId }: Props) {
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Package className="w-10 h-10 text-muted-foreground/40 mb-3" />
         <p className="text-sm text-muted-foreground">Nenhum processo selecionado.</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">Abra esta página a partir de um processo ativo.</p>
+        <p className="text-xs text-muted-foreground mt-1">Abra esta página a partir de um processo ativo.</p>
       </div>
     );
   }

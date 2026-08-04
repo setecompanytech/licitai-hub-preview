@@ -173,7 +173,7 @@ function KPI({
     <div className="rounded-md border p-3 space-y-1">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`text-lg font-semibold tabular-nums ${muted ? "text-muted-foreground" : accentClass}`}>{value}</div>
-      {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
 }

@@ -80,8 +80,8 @@ export default function CertificadoModoSeguranca() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="font-semibold text-sm">{modo.nome}</h4>
-                  <Badge variant="outline" className="text-[10px]">{modo.badge}</Badge>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">{modo.badge}</Badge>
+                  <Badge variant="secondary" className="text-xs">
                     Segurança: {modo.seguranca}
                   </Badge>
                 </div>

@@ -152,7 +152,7 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
         >
           <Upload className="w-6 h-6 text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">Upload de documento para extração por IA</span>
-          <span className="text-[10px] text-muted-foreground">Contrato social, procuração, RG/CPF, CNH — PDF, Word, TXT ou imagem (máx. 10MB)</span>
+          <span className="text-xs text-muted-foreground">Contrato social, procuração, RG/CPF, CNH — PDF, Word, TXT ou imagem (máx. 10MB)</span>
         </button>
       )}
       <input

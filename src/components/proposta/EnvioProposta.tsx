@@ -324,7 +324,7 @@ export default function EnvioProposta() {
             <label className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors">
               <Upload className="w-8 h-8 text-muted-foreground mb-2" />
               <span className="text-sm text-muted-foreground">Arraste documentos ou clique para selecionar</span>
-              <span className="text-xs text-muted-foreground/60 mt-1">Proposta comercial (PDF), planilhas, atestados, certidões</span>
+              <span className="text-xs text-muted-foreground mt-1">Proposta comercial (PDF), planilhas, atestados, certidões</span>
               <input 
                 type="file" 
                 multiple 

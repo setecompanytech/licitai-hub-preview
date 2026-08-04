@@ -128,7 +128,7 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
         <MessageSquare className="w-4 h-4 text-accent" />
         <span className="text-sm font-semibold">Mural do Processo</span>
         {licitacaoNumero && (
-          <Badge variant="outline" className="text-[10px]">{licitacaoNumero}</Badge>
+          <Badge variant="outline" className="text-xs">{licitacaoNumero}</Badge>
         )}
         <button
           onClick={() => { const next = !soundOn; setSoundOn(next); setSoundEnabled(next); }}
@@ -137,7 +137,7 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
         >
           {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
         </button>
-        <Badge variant="outline" className="text-[10px] ml-auto bg-success/10 text-success border-success/30">
+        <Badge variant="outline" className="text-xs ml-auto bg-success/10 text-success border-success/30">
           <span className="w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse" />
           Tempo real
         </Badge>
@@ -189,8 +189,8 @@ export default function LicitacaoChat({ licitacaoId, licitacaoNumero }: Props) {
                   )}>
                     <p className="whitespace-pre-wrap">{msg.conteudo}</p>
                     <span className={cn(
-                      'text-[9px] mt-1 block',
-                      isMine ? 'text-primary-foreground/60' : 'text-muted-foreground/60'
+                      'text-xs mt-1 block',
+                      isMine ? 'text-primary-foreground/60' : 'text-muted-foreground'
                     )}>
                       {format(new Date(msg.created_at), "dd/MM HH:mm", { locale: ptBR })}
                     </span>

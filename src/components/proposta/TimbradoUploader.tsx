@@ -433,7 +433,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
   const renderMarginInput = (label: string, field: keyof PageSetup, unit = 'cm') => (
     <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
       <div className="relative">
         <Input
           type="number"
@@ -444,7 +444,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           onChange={(e) => setPageSetup(prev => ({ ...prev, [field]: parseFloat(e.target.value) || 0 }))}
           className="h-8 text-xs pr-8"
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">{unit}</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{unit}</span>
       </div>
     </div>
   );
@@ -469,7 +469,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="absolute top-0 left-0 right-0 bg-accent/15 border-b-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${headerSplit}%` }}
           >
-            <div className="absolute bottom-1 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute bottom-1 left-2 bg-accent text-white text-xs font-bold px-1.5 py-0.5 rounded">
               Cabeçalho ({headerSplit}%)
             </div>
           </div>
@@ -477,12 +477,12 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="absolute bottom-0 left-0 right-0 bg-accent/15 border-t-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${footerSplit}%` }}
           >
-            <div className="absolute top-1 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute top-1 left-2 bg-accent text-white text-xs font-bold px-1.5 py-0.5 rounded">
               Rodapé ({footerSplit}%)
             </div>
           </div>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="bg-muted/80 text-muted-foreground text-[10px] px-2 py-1 rounded-full backdrop-blur-sm">
+            <span className="bg-muted/80 text-muted-foreground text-xs px-2 py-1 rounded-full backdrop-blur-sm">
               Área de conteúdo
             </span>
           </div>
@@ -664,15 +664,15 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       <div className="space-y-2">
         <Label className="text-xs font-semibold">Predefinições Rápidas</Label>
         <div className="flex flex-wrap gap-1.5">
-          <Button variant="outline" size="sm" className="text-[11px] h-7"
+          <Button variant="outline" size="sm" className="text-xs h-7"
             onClick={() => setPageSetup({ ...DEFAULT_SETUP, orientation: pageSetup.orientation, paperSize: pageSetup.paperSize })}>
             NBR 14724 (ABNT)
           </Button>
-          <Button variant="outline" size="sm" className="text-[11px] h-7"
+          <Button variant="outline" size="sm" className="text-xs h-7"
             onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 2.54, marginBottom: 2.54, marginLeft: 2.54, marginRight: 2.54, headerHeight: 1.27, footerHeight: 1.27 }))}>
             Padrão Office
           </Button>
-          <Button variant="outline" size="sm" className="text-[11px] h-7"
+          <Button variant="outline" size="sm" className="text-xs h-7"
             onClick={() => setPageSetup(prev => ({ ...prev, marginTop: 1.5, marginBottom: 1.5, marginLeft: 1.5, marginRight: 1.5, headerHeight: 1, footerHeight: 1 }))}>
             Margens Estreitas
           </Button>
@@ -680,7 +680,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       </div>
 
       <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           <strong className="text-foreground">Dimensões finais:</strong>{' '}
           {pageW} × {pageH} mm ({pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'})
           <br />
@@ -745,13 +745,13 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             )}
           </div>
 
-          <span className="absolute text-[8px] text-accent/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
-          <span className="absolute text-[8px] text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
-          <span className="absolute text-[8px] text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
+          <span className="absolute text-xs text-accent/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
+          <span className="absolute text-xs text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
+          <span className="absolute text-xs text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
           <span className="absolute text-muted-foreground/40 select-none" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground bg-muted/20 rounded-md px-3 py-1.5">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/20 rounded-md px-3 py-1.5">
           <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
           <span>•</span>
           <span>{pageSetup.orientation === 'portrait' ? 'Retrato' : 'Paisagem'}</span>
@@ -845,11 +845,11 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
               <span className="text-sm font-semibold text-foreground">Configurar Página</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Button variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'} size="sm" className="h-7 text-[11px] gap-1"
+              <Button variant={pageSetup.orientation === 'portrait' ? 'default' : 'outline'} size="sm" className="h-7 text-xs gap-1"
                 onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'portrait' }))}>
                 <div className="w-3 h-4 border border-current rounded-[1px]" />Retrato
               </Button>
-              <Button variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'} size="sm" className="h-7 text-[11px] gap-1"
+              <Button variant={pageSetup.orientation === 'landscape' ? 'default' : 'outline'} size="sm" className="h-7 text-xs gap-1"
                 onClick={() => setPageSetup(prev => ({ ...prev, orientation: 'landscape' }))}>
                 <div className="w-4 h-3 border border-current rounded-[1px]" />Paisagem
               </Button>

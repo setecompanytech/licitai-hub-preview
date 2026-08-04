@@ -135,7 +135,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                         >
                           <ChevronRight className="w-4 h-4" />
                         </button>
-                        <span className="absolute bottom-2 right-2 text-[10px] bg-background/80 rounded px-1.5 py-0.5">
+                        <span className="absolute bottom-2 right-2 text-xs bg-background/80 rounded px-1.5 py-0.5">
                           {imgIndex + 1}/{images.length}
                         </span>
                       </>
@@ -164,13 +164,13 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                   {/* Price + badges */}
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Badge variant="outline" className="text-[10px]">{produto.condicao || 'Novo'}</Badge>
+                      <Badge variant="outline" className="text-xs">{produto.condicao || 'Novo'}</Badge>
                       <div className="flex items-center gap-1">
                         <Store className="w-3 h-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">{produto.loja}</span>
                       </div>
                       {produto.vendedor_qualificado && (
-                        <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
                           <ShieldCheck className="w-3 h-3 mr-0.5" /> Vendedor Qualificado
                         </Badge>
                       )}

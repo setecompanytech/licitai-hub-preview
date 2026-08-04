@@ -171,7 +171,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
           Regime: {regimeLabel}
         </Badge>
         {!regime && (
-          <Badge variant="destructive" className="text-[10px]">
+          <Badge variant="destructive" className="text-xs">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Configure o regime tributário na empresa
           </Badge>
@@ -181,29 +181,29 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
       {/* Financial KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><DollarSign className="w-3 h-3" /> Faturamento</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><DollarSign className="w-3 h-3" /> Faturamento</div>
           <p className="text-sm font-bold text-foreground">{fmt(valorFaturado)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Receipt className="w-3 h-3" /> Custos Totais</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Receipt className="w-3 h-3" /> Custos Totais</div>
           <p className="text-sm font-bold text-destructive">{fmt(totalCustos)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><TrendingUp className="w-3 h-3" /> Lucro Bruto</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3 h-3" /> Lucro Bruto</div>
           <p className={`text-sm font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
-          <p className="text-[9px] text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><TrendingDown className="w-3 h-3" /> Lucro Líquido</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingDown className="w-3 h-3" /> Lucro Líquido</div>
           <p className={`text-sm font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
-          <p className="text-[9px] text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Percent className="w-3 h-3" /> Tributos</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Percent className="w-3 h-3" /> Tributos</div>
           <p className="text-sm font-bold text-warning">{fmt(tributos)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
           <p className="text-sm font-bold text-accent">{fmt(custosPorTipo['frete_logistica'] || 0)}</p>
         </Card>
       </div>
@@ -220,11 +220,11 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
               onClick={() => openCalculator(t.value)}
             >
               <t.Icon className="w-5 h-5 text-muted-foreground mx-auto" />
-              <p className="text-[10px] font-medium mt-1">{t.label}</p>
+              <p className="text-xs font-medium mt-1">{t.label}</p>
               <p className="text-xs font-bold">{fmt(val)}</p>
-              <p className="text-[9px] text-muted-foreground">{pct.toFixed(0)}%</p>
+              <p className="text-xs text-muted-foreground">{pct.toFixed(0)}%</p>
               <div className="mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Badge variant="secondary" className="text-[9px]">
+                <Badge variant="secondary" className="text-xs">
                   <Calculator className="w-2.5 h-2.5 mr-0.5" /> Calcular
                 </Badge>
               </div>
@@ -250,7 +250,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Receipt className="w-4 h-4 text-accent" /> Lançamentos de Custos
           {filtroTipo !== 'all' && (
-            <Badge variant="outline" className="text-[10px] cursor-pointer" onClick={() => setFiltroTipo('all')}>
+            <Badge variant="outline" className="text-xs cursor-pointer" onClick={() => setFiltroTipo('all')}>
               {tiposCusto.find(t => t.value === filtroTipo)?.label} ✕
             </Badge>
           )}
@@ -292,7 +292,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="text-xs">
-                      <Badge variant="outline" className="text-[10px] flex items-center gap-1 w-fit">
+                      <Badge variant="outline" className="text-xs flex items-center gap-1 w-fit">
                         {tipoCfg && <tipoCfg.Icon className="w-3 h-3" />} {tipoCfg?.label || c.tipo}
                       </Badge>
                     </TableCell>
@@ -427,7 +427,7 @@ function TributoCalculator({ contratoId, userId, regime, valorFaturado, onSaved,
     <div className="space-y-4 mt-2">
       <div className="p-3 rounded-lg bg-muted/50 border">
         <p className="text-xs font-medium flex items-center gap-2">
-          <Building2 className="w-3.5 h-3.5" /> Regime: <Badge variant="secondary" className="text-[10px]">{regimeConfig.label}</Badge>
+          <Building2 className="w-3.5 h-3.5" /> Regime: <Badge variant="secondary" className="text-xs">{regimeConfig.label}</Badge>
         </p>
       </div>
 
@@ -440,7 +440,7 @@ function TributoCalculator({ contratoId, userId, regime, valorFaturado, onSaved,
             onChange={e => setBaseCalculo(parseBRLInput(e.target.value))}
             placeholder="Valor do faturamento"
           />
-          <p className="text-[10px] text-muted-foreground mt-1">Faturamento do contrato: {fmt(valorFaturado)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Faturamento do contrato: {fmt(valorFaturado)}</p>
         </div>
         {regime === 'simples_nacional' && (
           <div>
@@ -451,7 +451,7 @@ function TributoCalculator({ contratoId, userId, regime, valorFaturado, onSaved,
               onChange={e => setRbt12(parseBRLInput(e.target.value))}
               placeholder="Faturamento acumulado 12 meses"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">Alíquota efetiva: {fmtPct(simplesAliquota)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Alíquota efetiva: {fmtPct(simplesAliquota)}</p>
           </div>
         )}
       </div>
@@ -609,7 +609,7 @@ function MaoDeObraCalculator({ contratoId, userId, regime, onSaved, onClose }: {
             <p className="text-xs font-semibold mb-2">Encargos Sociais (35,8%)</p>
             <div className="grid grid-cols-2 gap-1.5">
               {Object.entries(ENCARGOS_SOCIAIS).map(([key, enc]) => (
-                <div key={key} className="flex justify-between text-[11px] px-2 py-1 rounded bg-muted/50">
+                <div key={key} className="flex justify-between text-xs px-2 py-1 rounded bg-muted/50">
                   <span className="text-muted-foreground">{enc.label}</span>
                   <span className="font-medium">{fmtPct(enc.aliquota)} = {fmt(salario * enc.aliquota / 100)}</span>
                 </div>
@@ -631,13 +631,13 @@ function MaoDeObraCalculator({ contratoId, userId, regime, onSaved, onClose }: {
       <div>
         <p className="text-xs font-semibold mb-2">Benefícios (por funcionário/mês)</p>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label className="text-[11px]">Vale Transporte (R$)</Label>
+          <div><Label className="text-xs">Vale Transporte (R$)</Label>
             <Input inputMode="decimal" value={formatInputBRL(beneficios.vt)} onChange={e => setBeneficios(b => ({ ...b, vt: parseBRLInput(e.target.value) }))} className="h-8" /></div>
-          <div><Label className="text-[11px]">Vale Alimentação/Refeição (R$)</Label>
+          <div><Label className="text-xs">Vale Alimentação/Refeição (R$)</Label>
             <Input inputMode="decimal" value={formatInputBRL(beneficios.va)} onChange={e => setBeneficios(b => ({ ...b, va: parseBRLInput(e.target.value) }))} className="h-8" /></div>
-          <div><Label className="text-[11px]">Plano de Saúde (R$)</Label>
+          <div><Label className="text-xs">Plano de Saúde (R$)</Label>
             <Input inputMode="decimal" value={formatInputBRL(beneficios.plano_saude)} onChange={e => setBeneficios(b => ({ ...b, plano_saude: parseBRLInput(e.target.value) }))} className="h-8" /></div>
-          <div><Label className="text-[11px]">Seguro de Vida (R$)</Label>
+          <div><Label className="text-xs">Seguro de Vida (R$)</Label>
             <Input inputMode="decimal" value={formatInputBRL(beneficios.seguro_vida)} onChange={e => setBeneficios(b => ({ ...b, seguro_vida: parseBRLInput(e.target.value) }))} className="h-8" /></div>
         </div>
       </div>
@@ -803,7 +803,7 @@ function GenericCostCalculator({ contratoId, userId, tipo, onSaved, onClose }: {
         {lines.map((line, idx) => (
           <Card key={line.key} className="p-3 space-y-2 relative">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-muted-foreground">Item {idx + 1}</span>
+              <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
               {lines.length > 1 && (
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeLine(line.key)}>
                   <Trash2 className="w-3 h-3 text-destructive" />

@@ -276,9 +276,9 @@ export default function KanbanPage() {
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
                       <h3 className="text-xs font-semibold truncate">{col.title}</h3>
-                      <Badge variant="outline" className="text-[10px] ml-auto px-1.5 py-0">{colItems.length}</Badge>
+                      <Badge variant="outline" className="text-xs ml-auto px-1.5 py-0">{colItems.length}</Badge>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{col.description}</p>
+                    <p className="text-xs text-muted-foreground mb-3 leading-tight">{col.description}</p>
 
                     <div className="space-y-2 min-h-[120px]">
                       {colItems.length === 0 && (
@@ -286,7 +286,7 @@ export default function KanbanPage() {
                           'border-2 border-dashed border-border/30 rounded-lg py-8 text-center transition-colors',
                           isOver && isDragging && 'border-accent/40 bg-accent/5'
                         )}>
-                          <p className="text-[10px] text-muted-foreground/60">
+                          <p className="text-xs text-muted-foreground">
                             {isOver && isDragging ? 'Solte aqui' : 'Vazio'}
                           </p>
                         </div>
@@ -304,7 +304,7 @@ export default function KanbanPage() {
                             <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1 min-w-0">
-                                <span className="text-[10px] font-mono text-muted-foreground truncate">{lic.numero}</span>
+                                <span className="text-xs tabular-nums text-muted-foreground truncate">{lic.numero}</span>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -338,7 +338,7 @@ export default function KanbanPage() {
                               <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
                                 {lic.objeto}
                               </p>
-                              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
+                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
                                 {lic.municipio && lic.uf && (
                                   <span className="flex items-center gap-0.5">
                                     <MapPin className="w-2.5 h-2.5" />
@@ -378,10 +378,10 @@ export default function KanbanPage() {
           style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY, width: 240 }}
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
-            <p className="text-[10px] font-mono text-muted-foreground truncate">{draggedItem.numero}</p>
+            <p className="text-xs tabular-nums text-muted-foreground truncate">{draggedItem.numero}</p>
             <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
             {draggedItem.municipio && draggedItem.uf && (
-              <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
                 <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}
               </p>
             )}

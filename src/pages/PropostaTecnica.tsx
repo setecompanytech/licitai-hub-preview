@@ -751,7 +751,7 @@ export default function PropostaTecnica() {
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
               Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
               {lastSaved && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                   <Clock className="w-3 h-3" />
                   {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
                 </span>
@@ -802,7 +802,7 @@ export default function PropostaTecnica() {
                   </div>
                   <div className="text-left hidden md:block">
                     <div className="leading-tight">{step.label}</div>
-                    <div className="text-[9px] opacity-60 leading-tight">{step.desc}</div>
+                    <div className="text-xs opacity-60 leading-tight">{step.desc}</div>
                   </div>
                   {idx < STEPS.length - 1 && <ChevronRight className="w-3 h-3 ml-0.5 opacity-20" />}
                 </button>
@@ -858,7 +858,7 @@ export default function PropostaTecnica() {
                         <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
                           <div className="flex items-center gap-1.5 mb-1">
                             <Icon className="w-3.5 h-3.5 text-accent" />
-                            <span className="text-[10px] text-muted-foreground font-medium">{s.label}</span>
+                            <span className="text-xs text-muted-foreground font-medium">{s.label}</span>
                           </div>
                           <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
                         </div>
@@ -1413,7 +1413,7 @@ export default function PropostaTecnica() {
                   return (
                     <div key={i} className="bg-muted/30 rounded-lg p-3 text-center border border-border/30">
                       <Icon className={`w-4 h-4 mx-auto mb-1 ${s.color}`} />
-                      <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
                       <p className="text-xs font-semibold truncate">{s.value}</p>
                     </div>
                   );

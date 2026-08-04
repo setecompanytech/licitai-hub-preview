@@ -141,7 +141,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           >
             <Bell className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-muted-foreground" />
             {unreadCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-destructive text-destructive-foreground text-xs sm:text-xs font-bold flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -150,7 +150,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[10px] sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >

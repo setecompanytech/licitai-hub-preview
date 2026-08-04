@@ -177,7 +177,7 @@ export default function FinCalendarioFinanceiro() {
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="min-w-[200px] text-center">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Calendário Financeiro</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Calendário Financeiro</p>
                 <p className="text-lg font-semibold capitalize">
                   {format(refDate, "MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
@@ -280,7 +280,7 @@ export default function FinCalendarioFinanceiro() {
             <>
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {NOMES_DIAS.map((d) => (
-                  <div key={d} className="text-[11px] uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
+                  <div key={d} className="text-xs uppercase tracking-wide text-muted-foreground text-center font-medium py-1">
                     {d}
                   </div>
                 ))}
@@ -356,7 +356,7 @@ export default function FinCalendarioFinanceiro() {
                           <button
                             key={l.id}
                             onClick={() => { setEditing(l); setDialogOpen(true); }}
-                            className={`w-full text-left rounded px-1 py-0.5 text-[10px] border truncate flex items-center gap-1 ${corItem(l)}`}
+                            className={`w-full text-left rounded px-1 py-0.5 text-xs border truncate flex items-center gap-1 ${corItem(l)}`}
                             title={`${l.descricao} — ${formatBRL(Number(l.valor))}`}
                           >
                             {l.tipo === "a_pagar" ? (
@@ -373,7 +373,7 @@ export default function FinCalendarioFinanceiro() {
                         {items.length > 3 && (
                           <Popover>
                             <PopoverTrigger asChild>
-                              <button className="w-full text-left text-[10px] text-muted-foreground hover:text-foreground px-1">
+                              <button className="w-full text-left text-xs text-muted-foreground hover:text-foreground px-1">
                                 +{items.length - 3} mais…
                               </button>
                             </PopoverTrigger>
@@ -411,9 +411,9 @@ export default function FinCalendarioFinanceiro() {
                                         </span>
                                       </div>
                                       {l.pessoa?.nome && (
-                                        <p className="text-[10px] text-muted-foreground truncate">{l.pessoa.nome}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{l.pessoa.nome}</p>
                                       )}
-                                      <Badge variant="outline" className={`text-[9px] mt-0.5 ${corItem(l)}`}>
+                                      <Badge variant="outline" className={`text-xs mt-0.5 ${corItem(l)}`}>
                                         {l.status}
                                       </Badge>
                                     </button>
@@ -427,7 +427,7 @@ export default function FinCalendarioFinanceiro() {
 
                       {/* Saldo do dia */}
                       {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
-                        <div className={`text-[10px] tabular-nums text-right border-t pt-0.5 font-medium ${
+                        <div className={`text-xs tabular-nums text-right border-t pt-0.5 font-medium ${
                           saldoDia >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                         }`}>
                           {saldoDia >= 0 ? "+" : ""}{formatBRL(saldoDia)}
@@ -439,7 +439,7 @@ export default function FinCalendarioFinanceiro() {
               </div>
 
               {/* Legenda */}
-              <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/15 border border-emerald-500/40" />
                   <ArrowDownCircle className="w-3 h-3 text-emerald-600" />A receber (entrada)
@@ -492,7 +492,7 @@ function KpiMini({
   return (
     <div className="rounded-lg border bg-card p-3 flex items-start justify-between gap-2">
       <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className={`text-base font-semibold tabular-nums truncate ${cor}`}>{value}</p>
       </div>
       <Icon className={`w-4 h-4 shrink-0 ${cor}`} />

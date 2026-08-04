@@ -261,7 +261,7 @@ export default function ComparativoDashboard() {
         ].map(s => (
           <div key={s.label} className="bg-card border border-border/40 rounded-lg p-3">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</span>
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">{s.label}</span>
               <div className={`p-1.5 rounded-md ${s.bg}`}>
                 <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
               </div>
@@ -391,7 +391,7 @@ export default function ComparativoDashboard() {
                       {item.melhorFonte ? (
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${
+                          className={`text-xs ${
                             item.melhorFonte === 'Marketplace' ? 'bg-warning/10 text-warning border-warning/20' :
                             item.melhorFonte === 'Gov.br' ? 'bg-info/10 text-info border-info/20' :
                             'bg-accent/10 text-accent border-accent/20'

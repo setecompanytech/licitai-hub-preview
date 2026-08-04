@@ -366,7 +366,7 @@ export default function BancoSelectorLogos({
                     <BancoLogo codigo={b.codigo} nome={b.nome} size={28} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm truncate">{b.nome}</div>
-                      <div className="text-[11px] text-muted-foreground tabular-nums">
+                      <div className="text-xs text-muted-foreground tabular-nums">
                         Código {b.codigo}
                       </div>
                     </div>

@@ -171,7 +171,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         {label}
         {info && (
           <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-          <TooltipContent><p className="text-[10px] max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipContent><p className="text-xs max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
         )}
       </Label>
       <div className="relative mt-1">
@@ -187,7 +187,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         {label}
         {info && (
           <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
-          <TooltipContent><p className="text-[10px] max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipContent><p className="text-xs max-w-xs">{info}</p></TooltipContent></Tooltip></TooltipProvider>
         )}
       </Label>
       <Input value={value} onChange={e => onChange(fmtInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
@@ -197,14 +197,14 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   const renderLineItems = (items: LineItem[]) => (
     <div className="space-y-0.5">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between text-[11px] py-0.5 hover:bg-muted/20 px-1 rounded group">
+        <div key={i} className="flex items-center justify-between text-xs py-0.5 hover:bg-muted/20 px-1 rounded group">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            {item.id && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 font-mono">{item.id}</Badge>}
+            {item.id && <Badge variant="outline" className="text-xs px-1 py-0 shrink-0 font-mono">{item.id}</Badge>}
             <span className="text-muted-foreground truncate">{item.descricao}</span>
-            {item.percentual != null && item.percentual !== 0 && <span className="text-accent text-[9px]">({item.percentual}%)</span>}
+            {item.percentual != null && item.percentual !== 0 && <span className="text-accent text-xs">({item.percentual}%)</span>}
             {item.formula && (
               <TooltipProvider><Tooltip><TooltipTrigger><Eye className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" /></TooltipTrigger>
-              <TooltipContent side="right"><p className="text-[10px] font-mono">{item.formula}</p></TooltipContent></Tooltip></TooltipProvider>
+              <TooltipContent side="right"><p className="text-xs font-mono">{item.formula}</p></TooltipContent></Tooltip></TooltipProvider>
             )}
           </div>
           <span className="font-medium ml-2 shrink-0 tabular-nums">{fmtCur(item.valor)}</span>
@@ -215,13 +215,13 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
 
   const renderSubmodulo = (sub: SubModuloResult) => (
     <div className="bg-muted/10 rounded-lg p-2.5 space-y-1 ml-2">
-      <h6 className="text-[11px] font-semibold text-foreground">{sub.titulo}</h6>
+      <h6 className="text-xs font-semibold text-foreground">{sub.titulo}</h6>
       {renderLineItems(sub.itens)}
-      <div className="flex items-center justify-between text-[11px] font-bold border-t border-border/20 pt-0.5 px-1">
+      <div className="flex items-center justify-between text-xs font-bold border-t border-border/20 pt-0.5 px-1">
         <span>Subtotal</span>
         <span className="tabular-nums">{fmtCur(sub.subtotal)}</span>
       </div>
-      {sub.nota && <p className="text-[8px] text-muted-foreground italic">{sub.nota}</p>}
+      {sub.nota && <p className="text-xs text-muted-foreground italic">{sub.nota}</p>}
     </div>
   );
 
@@ -243,11 +243,11 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <ShieldCheck className="w-4 h-4 text-accent" />
             <span className="text-xs font-semibold">Motor de Cálculo Determinístico — Portal de Compras</span>
           </div>
-          <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download className="inline-flex items-center gap-1 text-[10px] text-accent hover:underline bg-accent/10 px-2 py-1 rounded">
+          <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download className="inline-flex items-center gap-1 text-xs text-accent hover:underline bg-accent/10 px-2 py-1 rounded">
             <Download className="w-3 h-3" /> Modelo XLSX
           </a>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Cálculo 100% determinístico baseado no modelo oficial do <strong>Portal de Compras</strong>. Conforme <strong>Lei 14.133/2021</strong>, <strong>IN SEGES/ME nº 5/2017 (Anexo VII-D)</strong> e <strong>Acórdãos TCU 1.753/2008 e 786/2006</strong>.
           Resultados recalculam automaticamente a cada alteração de parâmetro.
         </p>
@@ -265,7 +265,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           ))}
         </div>
         {result && (
-          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <span>Valor mensal/empregado:</span>
             <Badge className="bg-accent/10 text-accent border-accent/20 text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
             <span>×{cargo.quantidadePostos} =</span>
@@ -288,7 +288,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <div><Label className="text-xs">Município/UF</Label><Input value={contrato.municipioUf} onChange={e => updContrato('municipioUf', e.target.value)} className="mt-1" /></div>
           </div>
           <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] text-muted-foreground mb-2 font-medium">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Convenção Coletiva de Trabalho (Art. 63, §1º, Lei 14.133/21)</p>
             <div className="grid grid-cols-3 gap-3">
               <div><Label className="text-xs">Sindicato/Convenção</Label><Input value={contrato.convencaoColetiva} onChange={e => updContrato('convencaoColetiva', e.target.value)} className="mt-1" /></div>
               <div><Label className="text-xs">Nº Registro MTE</Label><Input value={contrato.nrRegistroCCT} onChange={e => updContrato('nrRegistroCCT', e.target.value)} className="mt-1" /></div>
@@ -303,7 +303,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {step === 'cargos' && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">1</span>
+            <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
             Módulo 1 — Cargo/Posto e Remuneração Base
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -332,7 +332,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           </div>
 
           <div className="border-t border-border/30 pt-3">
-            <p className="text-[10px] text-muted-foreground mb-2 font-medium">Adicionais (CLT e NRs)</p>
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Adicionais (CLT e NRs)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <PercInput label="Gratificação (%)" value={mod1.gratificacaoPerc} onChange={v => updMod1('gratificacaoPerc', v)} info="Gratificação de função sobre salário-base" />
               <PercInput label="Periculosidade (%)" value={mod1.adicPericulosidadePerc} onChange={v => updMod1('adicPericulosidadePerc', v)} info="30% sobre salário-base (Art. 193, CLT / NR-16)" step="1" />
@@ -344,12 +344,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                 <div>
                   <Label className="text-xs">Proporção Noturna</Label>
                   <Input type="number" value={mod1.proporcaoNoturna || ''} onChange={e => updMod1('proporcaoNoturna', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
-                  <p className="text-[8px] text-muted-foreground mt-0.5">Ex: 7/12 = 0,5833</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Ex: 7/12 = 0,5833</p>
                 </div>
                 <div>
                   <Label className="text-xs">Proporção Hora Reduzida</Label>
                   <Input type="number" value={mod1.horaNReduzidaProporcao || ''} onChange={e => updMod1('horaNReduzidaProporcao', parseFloat(e.target.value) || 0)} step="0.0001" className="mt-1" />
-                  <p className="text-[8px] text-muted-foreground mt-0.5">Ex: 1/12 = 0,0833</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Ex: 1/12 = 0,0833</p>
                 </div>
               </div>
             )}
@@ -386,7 +386,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Submódulo 2.1 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">2.1</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.1</span>
               13º Salário, Férias e Adicional de Férias
             </h4>
             <div className="grid grid-cols-3 gap-3">
@@ -399,10 +399,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Submódulo 2.2 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">2.2</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.2</span>
               Encargos Previdenciários, FGTS e Contribuições
             </h4>
-            <p className="text-[9px] text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
+            <p className="text-xs text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <PercInput label="INSS Patronal" value={mod2_2.inssPatronal} onChange={v => updMod2_2('inssPatronal', v)} info="Art. 22, Lei 8.212/91" step="1" />
               <PercInput label="Salário-Educação" value={mod2_2.salarioEducacao} onChange={v => updMod2_2('salarioEducacao', v)} info="Art. 3º, Lei 9.424/96" />
@@ -418,10 +418,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Módulo 3 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">3</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
               Provisão para Rescisão
             </h4>
-            <p className="text-[9px] text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
+            <p className="text-xs text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
             <div className="grid grid-cols-3 gap-3">
               <PercInput label="Aviso Prévio Indenizado" value={mod3.avisoPrevioIndenizadoPerc} onChange={v => updMod3('avisoPrevioIndenizadoPerc', v)} info="Art. 7º, XXI, CF" />
               <PercInput label="Aviso Prévio Trabalhado" value={mod3.avisoPrevioTrabalhadoPerc} onChange={v => updMod3('avisoPrevioTrabalhadoPerc', v)} info="Art. 487, CLT" />
@@ -432,7 +432,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Módulo 4 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">4</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
               Custo de Reposição do Profissional Ausente
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -446,14 +446,14 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <div>
               <Label className="text-xs">Valor Intrajornada (R$/mês)</Label>
               <MoneyInput value={Number(mod4.intrajornadaValor) || 0} onValueChange={v => updMod4('intrajornadaValor', v)} className="mt-1 max-w-xs" />
-              <p className="text-[8px] text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Substituto na cobertura de intervalo p/ repouso</p>
             </div>
           </div>
 
           {/* Módulo 6 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">6</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">6</span>
               Custos Indiretos, Tributos e Lucro
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -461,9 +461,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <PercInput label="Lucro" value={mod6.lucroPerc} onChange={v => updMod6('lucroPerc', v)} step="1" />
             </div>
             <div className="border-t border-border/30 pt-3">
-              <p className="text-[10px] font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
+              <p className="text-xs font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
               {regime === 'simples_nacional' && (
-                <p className="text-[10px] text-amber-600 mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
+                <p className="text-xs text-amber-600 mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
               )}
               <div className="grid grid-cols-3 gap-3">
                 <PercInput label="PIS" value={mod6.pisPerc} onChange={v => updMod6('pisPerc', v)} />
@@ -485,25 +485,25 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         <div className="space-y-4">
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">2.3</span>
+              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.3</span>
               Benefícios Mensais e Diários
             </h4>
             <div className="space-y-3">
               {beneficios.map((b, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
-                    <Label className="text-[10px]">{b.descricao}</Label>
+                    <Label className="text-xs">{b.descricao}</Label>
                     <Input value={b.valorBruto ? fmtInput(String(Math.round(b.valorBruto * 100))) : ''} onChange={e => updateBeneficio(i, 'valorBruto', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
                   </div>
                   <div className="col-span-4">
-                    <Label className="text-[10px]">Desc. Empregado (R$)</Label>
+                    <Label className="text-xs">Desc. Empregado (R$)</Label>
                     <Input value={b.descontoEmpregado ? fmtInput(String(Math.round(b.descontoEmpregado * 100))) : ''} onChange={e => updateBeneficio(i, 'descontoEmpregado', parseInput(fmtInput(e.target.value)))} placeholder="R$ 0,00" className="mt-0.5" />
                   </div>
                   <div className="col-span-3">
-                    <Label className="text-[10px]">Líquido</Label>
+                    <Label className="text-xs">Líquido</Label>
                     <div className="mt-0.5 h-10 flex items-center text-xs font-medium">{fmtCur(Math.max(0, b.valorBruto - b.descontoEmpregado))}</div>
                   </div>
-                  <div className="col-span-1 text-[8px] text-muted-foreground">{b.referencia}</div>
+                  <div className="col-span-1 text-xs text-muted-foreground">{b.referencia}</div>
                 </div>
               ))}
             </div>
@@ -512,7 +512,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">5</span>
+                <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">5</span>
                 Insumos Diversos
               </h4>
               <Button variant="outline" size="sm" onClick={addInsumo}><Plus className="w-3 h-3 mr-1" /> Insumo</Button>
@@ -550,7 +550,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-semibold text-accent">{result.modulo1.titulo}</h5>
-                  <Badge variant="outline" className="text-[9px] tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
+                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo1.itens!)}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
@@ -573,10 +573,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-semibold text-accent">{result.modulo3.titulo}</h5>
-                  <Badge variant="outline" className="text-[9px] tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
+                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo3.itens!)}
-                {result.modulo3.nota && <p className="text-[8px] text-muted-foreground italic">{result.modulo3.nota}</p>}
+                {result.modulo3.nota && <p className="text-xs text-muted-foreground italic">{result.modulo3.nota}</p>}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
                   <span>Total Módulo 3</span><span className="text-accent tabular-nums">{fmtCur(result.modulo3.subtotal)}</span>
                 </div>
@@ -589,7 +589,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 {result.modulo4.itens && renderLineItems(result.modulo4.itens)}
-                {result.modulo4.nota && <p className="text-[8px] text-muted-foreground italic">{result.modulo4.nota}</p>}
+                {result.modulo4.nota && <p className="text-xs text-muted-foreground italic">{result.modulo4.nota}</p>}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
                   <span>Total Módulo 4</span><span className="text-accent tabular-nums">{fmtCur(result.modulo4.subtotal)}</span>
                 </div>
@@ -599,7 +599,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-semibold text-accent">{result.modulo5.titulo}</h5>
-                  <Badge variant="outline" className="text-[9px] tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
+                  <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo5.itens!)}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
@@ -631,26 +631,26 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                     { label: 'Subtotal 1-5', val: result.quadroResumo.subtotalMod1a5 },
                   ].map(m => (
                     <div key={m.label} className="text-center bg-background/50 rounded-lg p-2">
-                      <p className="text-[9px] text-muted-foreground">{m.label}</p>
+                      <p className="text-xs text-muted-foreground">{m.label}</p>
                       <p className="text-xs font-bold tabular-nums">{fmtCur(m.val)}</p>
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-accent/20 pt-3">
                   <div className="text-center">
-                    <p className="text-[9px] text-muted-foreground">Módulo 6</p>
+                    <p className="text-xs text-muted-foreground">Módulo 6</p>
                     <p className="text-sm font-bold tabular-nums">{fmtCur(result.quadroResumo.modulo6)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-muted-foreground">Mensal/Empregado</p>
+                    <p className="text-xs text-muted-foreground">Mensal/Empregado</p>
                     <p className="text-sm font-bold text-accent tabular-nums">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-muted-foreground">Mensal Total ({result.quadroResumo.qtdProfissionais} postos)</p>
+                    <p className="text-xs text-muted-foreground">Mensal Total ({result.quadroResumo.qtdProfissionais} postos)</p>
                     <p className="text-lg font-bold text-accent tabular-nums">{fmtCur(result.quadroResumo.valorMensalTotal)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-muted-foreground">Contrato ({result.quadroResumo.vigenciaMeses}m)</p>
+                    <p className="text-xs text-muted-foreground">Contrato ({result.quadroResumo.vigenciaMeses}m)</p>
                     <p className="text-sm font-bold tabular-nums">{fmtCur(result.quadroResumo.valorContratoTotal)}</p>
                   </div>
                 </div>
@@ -661,10 +661,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                 <div className="flex items-center gap-2">
                   <span className="font-bold">{result.parecer.viabilidade}</span>
                   <span className="text-muted-foreground">— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>
-                  {result.parecer.alertaInexequibilidade && <Badge variant="destructive" className="text-[8px]">⚠ Risco de Inexequibilidade</Badge>}
+                  {result.parecer.alertaInexequibilidade && <Badge variant="destructive" className="text-xs">⚠ Risco de Inexequibilidade</Badge>}
                 </div>
                 <p>{result.parecer.observacoes}</p>
-                <p className="text-[9px] text-muted-foreground">Fundamento: {result.parecer.fundamentacaoLegal.join(' • ')}</p>
+                <p className="text-xs text-muted-foreground">Fundamento: {result.parecer.fundamentacaoLegal.join(' • ')}</p>
               </div>
 
               <div className="flex gap-2">
@@ -685,12 +685,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-16 flex-col gap-1">
               <FileText className="w-5 h-5 text-green-600" />
               <span className="text-xs font-medium">Exportar XLSX</span>
-              <span className="text-[9px] text-muted-foreground">2 abas: Custo + Consolidação</span>
+              <span className="text-xs text-muted-foreground">2 abas: Custo + Consolidação</span>
             </Button>
             <Button variant="outline" onClick={() => { exportMDOPDF(result, inputs); toast.success('PDF exportado!'); }} className="h-16 flex-col gap-1">
               <FileText className="w-5 h-5 text-red-600" />
               <span className="text-xs font-medium">Exportar PDF</span>
-              <span className="text-[9px] text-muted-foreground">Layout oficial ABNT</span>
+              <span className="text-xs text-muted-foreground">Layout oficial ABNT</span>
             </Button>
           </div>
           <Button variant="outline" size="sm" onClick={salvarCatalogo} disabled={savingCatalogo} className="w-full">

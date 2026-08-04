@@ -25,7 +25,7 @@ export default function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 pt-32 pb-28 lg:pt-28 lg:pb-24 w-full relative z-10">
         <div className="max-w-3xl">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-[11px] font-bold mb-8 tracking-wider uppercase">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs font-bold mb-8 tracking-wider uppercase">
               <Lock className="w-3.5 h-3.5" />
               Plataforma SaaS de Inteligência Licitatória
             </div>
@@ -77,7 +77,7 @@ export default function HeroSection() {
 
       {/* Bottom trust bar */}
       <div className="absolute bottom-0 inset-x-0 bg-white/[0.04] backdrop-blur-sm border-t border-white/8">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-8 md:gap-12 text-[11px] text-white/35 font-medium tracking-wide">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-center gap-8 md:gap-12 text-xs text-white/35 font-medium tracking-wide">
           <div className="flex items-center gap-2"><Shield className="w-4 h-4" /> Criptografia AES-256-GCM</div>
           <div className="flex items-center gap-2"><Award className="w-4 h-4" /> Conforme Lei 14.133/2021</div>
           <div className="flex items-center gap-2"><Database className="w-4 h-4" /> Multi-tenant com RLS</div>

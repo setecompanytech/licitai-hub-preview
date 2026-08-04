@@ -292,7 +292,7 @@ export default function HistoricoLicitacoes() {
                   return (
                     <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                        <span className="text-xs tabular-nums text-muted-foreground block">{lic.numero}</span>
                         <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
                       </td>
                       <td className="px-4 py-3">
@@ -307,11 +307,11 @@ export default function HistoricoLicitacoes() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5 whitespace-nowrap inline-flex', st.className)}>{st.label}</Badge>
+                        <Badge variant="outline" className={cn('text-xs px-2 py-0.5 whitespace-nowrap inline-flex', st.className)}>{st.label}</Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {lic.vencedor === true ? (
-                          <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+                          <Badge className="bg-success/10 text-success border-success/20 text-xs">
                             <Trophy className="w-3 h-3 mr-1" /> Vencida
                           </Badge>
                         ) : lic.resultado ? (
@@ -353,7 +353,7 @@ export default function HistoricoLicitacoes() {
               const st = statusConfig[s];
               return (
                 <div key={s} className="flex items-center gap-1">
-                  <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                  <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>{st.label}</Badge>
                   {i < STATUS_FLOW.length - 1 && i < 3 && <span className="text-muted-foreground text-xs">→</span>}
                   {i === 3 && <span className="text-muted-foreground text-xs ml-2">|</span>}
                 </div>

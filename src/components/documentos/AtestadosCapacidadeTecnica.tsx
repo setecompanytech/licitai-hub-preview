@@ -454,7 +454,7 @@ export default function AtestadosCapacidadeTecnica() {
             <button
               onClick={() => setFilterSegmento('todos')}
               className={cn(
-                'px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border',
+                'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border',
                 filterSegmento === 'todos'
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
@@ -470,7 +470,7 @@ export default function AtestadosCapacidadeTecnica() {
                   key={seg.value}
                   onClick={() => setFilterSegmento(seg.value)}
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border flex items-center gap-1',
+                    'px-2.5 py-1 rounded-full text-xs font-medium transition-colors border flex items-center gap-1',
                     filterSegmento === seg.value
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-muted/50 text-muted-foreground border-border/50 hover:bg-muted'
@@ -513,9 +513,9 @@ export default function AtestadosCapacidadeTecnica() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-[10px]">{seg?.label || doc.segmento}</Badge>
+                      <Badge variant="outline" className="text-xs">{seg?.label || doc.segmento}</Badge>
                       <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                      <span className="text-[10px] text-success font-medium">Cadastrado</span>
+                      <span className="text-xs text-success font-medium">Cadastrado</span>
                     </div>
                     {/* Key fields: Objeto, Cliente/Órgão, Ano */}
                     {doc.dados_extraidos?.objeto && (
@@ -526,19 +526,19 @@ export default function AtestadosCapacidadeTecnica() {
                     )}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                       {doc.dados_extraidos?.orgao_emissor && (
-                        <span className="text-xs text-foreground/80">
+                        <span className="text-xs text-foreground">
                           <span className="text-muted-foreground">Cliente/Órgão: </span>
                           <strong>{doc.dados_extraidos.orgao_emissor}</strong>
                         </span>
                       )}
                       {doc.dados_extraidos?.ano_fornecimento && (
-                        <span className="text-xs text-foreground/80">
+                        <span className="text-xs text-foreground">
                           <span className="text-muted-foreground">Ano: </span>
                           <strong>{doc.dados_extraidos.ano_fornecimento}</strong>
                         </span>
                       )}
                       {doc.dados_extraidos?.valor && (
-                        <Badge variant="outline" className="text-[10px]">R$ {doc.dados_extraidos.valor}</Badge>
+                        <Badge variant="outline" className="text-xs">R$ {doc.dados_extraidos.valor}</Badge>
                       )}
                     </div>
                   </div>
@@ -593,7 +593,7 @@ export default function AtestadosCapacidadeTecnica() {
                           <Icon className="w-4 h-4 text-muted-foreground" />
                           <div>
                             <span className="text-sm">{seg.label}</span>
-                            <span className="text-[10px] text-muted-foreground ml-1.5">– {seg.sublabel}</span>
+                            <span className="text-xs text-muted-foreground ml-1.5">– {seg.sublabel}</span>
                           </div>
                         </div>
                       </SelectItem>
@@ -619,11 +619,11 @@ export default function AtestadosCapacidadeTecnica() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-foreground truncate">{pendingFile.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {pendingFile.type === 'application/pdf' ? 'PDF' : 'Imagem'} • {formatFileSize(pendingFile.size)}
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-[10px] whitespace-nowrap">Arquivo selecionado</Badge>
+                    <Badge variant="outline" className="text-xs whitespace-nowrap">Arquivo selecionado</Badge>
                   </div>
                 </div>
               )}
@@ -662,7 +662,7 @@ export default function AtestadosCapacidadeTecnica() {
                   <Bot className="w-3 h-3" /> Dados Extraídos pela IA
                 </p>
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">Objeto</Label>
+                  <Label className="text-xs text-muted-foreground">Objeto</Label>
                   <Textarea
                     value={extractedData.objeto || ''}
                     onChange={e => setExtractedData(prev => ({ ...prev, objeto: e.target.value }))}
@@ -671,7 +671,7 @@ export default function AtestadosCapacidadeTecnica() {
                   />
                 </div>
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">Cliente / Órgão Contratante</Label>
+                  <Label className="text-xs text-muted-foreground">Cliente / Órgão Contratante</Label>
                   <Input
                     value={extractedData.orgao_emissor || ''}
                     onChange={e => setExtractedData(prev => ({ ...prev, orgao_emissor: e.target.value }))}
@@ -681,7 +681,7 @@ export default function AtestadosCapacidadeTecnica() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Ano do Fornecimento</Label>
+                    <Label className="text-xs text-muted-foreground">Ano do Fornecimento</Label>
                     <Input
                       value={extractedData.ano_fornecimento || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, ano_fornecimento: e.target.value }))}
@@ -690,7 +690,7 @@ export default function AtestadosCapacidadeTecnica() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Valor</Label>
+                    <Label className="text-xs text-muted-foreground">Valor</Label>
                     <Input
                       value={extractedData.valor || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, valor: e.target.value }))}
@@ -699,7 +699,7 @@ export default function AtestadosCapacidadeTecnica() {
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">CNPJ Contratante</Label>
+                    <Label className="text-xs text-muted-foreground">CNPJ Contratante</Label>
                     <Input
                       value={extractedData.cnpj_contratante || ''}
                       onChange={e => setExtractedData(prev => ({ ...prev, cnpj_contratante: e.target.value }))}
@@ -712,7 +712,7 @@ export default function AtestadosCapacidadeTecnica() {
             )}
 
             {/* Info about validity */}
-            <p className="text-[11px] text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground italic">
               ℹ️ Atestados de capacidade técnica para fornecimento não possuem validade e permanecem válidos permanentemente.
             </p>
           </div>

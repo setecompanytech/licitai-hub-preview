@@ -42,7 +42,7 @@ export default function DiferenciaisSection() {
           {/* Rows */}
           {comparativos.map((c, i) => (
             <div key={c.feature} className={`grid grid-cols-[1fr_120px_120px] ${i < comparativos.length - 1 ? 'border-b border-border/30' : ''}`}>
-              <div className="px-5 py-3.5 text-sm text-foreground/80">{c.feature}</div>
+              <div className="px-5 py-3.5 text-sm text-foreground">{c.feature}</div>
               <div className="px-5 py-3.5 flex items-center justify-center">
                 <CheckCircle2 className="w-4 h-4 text-accent" />
               </div>

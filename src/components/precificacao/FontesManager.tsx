@@ -104,7 +104,7 @@ export default function FontesManager() {
         ].map(s => (
           <div key={s.label} className="bg-muted/30 border border-border/30 rounded-lg p-3 text-center">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
@@ -174,12 +174,12 @@ export default function FontesManager() {
                       <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium">{s.nome}</p>
-                        <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">{s.url_base}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{s.url_base}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       {TIPO_LABELS[s.tipo] || s.tipo}
                     </Badge>
                   </TableCell>
@@ -189,7 +189,7 @@ export default function FontesManager() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-xs">
                       {METODO_LABELS[s.metodo_ingestao] || s.metodo_ingestao}
                     </Badge>
                   </TableCell>

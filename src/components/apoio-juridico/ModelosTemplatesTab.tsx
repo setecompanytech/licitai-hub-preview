@@ -737,7 +737,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-semibold leading-tight">Apoio Jurídico</p>
-            <p className="text-[10px] text-muted-foreground leading-tight truncate">
+            <p className="text-xs text-muted-foreground leading-tight truncate">
               {modelos.length} modelos · {pedidos.length} documentos · Lei 14.133/2021
             </p>
           </div>
@@ -745,7 +745,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {processo?.numero && (
-            <Badge variant="outline" className="text-[10px] gap-1 shrink-0 h-6 px-2">
+            <Badge variant="outline" className="text-xs gap-1 shrink-0 h-6 px-2">
               <FileText className="w-2.5 h-2.5" /> Processo {processo.numero}
             </Badge>
           )}
@@ -779,7 +779,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold truncate">{editalUploadFile.name}</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {(editalUploadFile.size / 1024).toFixed(0)} KB
               {editalExtracted && (
                 <span className="ml-2 inline-flex items-center gap-0.5 text-accent">
@@ -811,7 +811,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         <div className="bg-card rounded-lg border border-border/60 shadow-sm p-3 space-y-2">
           {pedidos.length === 0 ? (
             <div className="flex items-center gap-3 py-3 px-2">
-              <FileText className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
               <p className="text-xs text-muted-foreground">
                 Nenhum documento gerado ainda. Selecione um modelo abaixo para começar — cada documento recebe numeração híbrida e versionamento automático.
               </p>
@@ -837,10 +837,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
       >
         {/* Controle de tamanho da fonte dos filtros */}
         <div className="flex items-center justify-end gap-1 -mb-1 flex-wrap">
-          <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
+          <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Tamanho da fonte</span>
           {isFontCapped && (
             <span
-              className="text-[10px] text-amber-600 dark:text-amber-400 mr-1"
+              className="text-xs text-amber-600 dark:text-amber-400 mr-1"
               title="O tamanho foi limitado para caber na tela atual"
             >
               limitado p/ tela
@@ -857,7 +857,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           >
             <AArrowDown className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-center">
+          <span className="text-xs tabular-nums text-muted-foreground w-9 text-center">
             {Math.round(filterFontScale * 100)}%
           </span>
           <Button
@@ -958,7 +958,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               >
                 {cat} · {count}
                 {docCount > 0 && (
-                  <span className={`inline-block px-1.5 rounded text-[11px] font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-accent/15 text-accent'}`}>{docCount}</span>
+                  <span className={`inline-block px-1.5 rounded text-xs font-semibold ${catFilter === cat ? 'bg-primary-foreground/20' : 'bg-accent/15 text-accent'}`}>{docCount}</span>
                 )}
               </Badge>
             );
@@ -989,7 +989,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             <div>
               <p className="font-semibold text-foreground">{modalidade.nome}</p>
               <p className="text-muted-foreground mt-1">{modalidade.descricao}</p>
-              <Badge variant="outline" className="text-[10px] mt-1">{modalidade.fundamentacao}</Badge>
+              <Badge variant="outline" className="text-xs mt-1">{modalidade.fundamentacao}</Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -997,10 +997,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 <div className="space-y-1">
                   {modalidade.etapas.map(e => (
                     <div key={e.ordem} className={`flex items-start gap-2 p-1.5 rounded ${etapaFiltro === e.nome ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                      <span className="w-4 h-4 rounded-full bg-accent/20 text-accent flex items-center justify-center flex-shrink-0 text-[9px] font-bold">{e.ordem}</span>
+                      <span className="w-4 h-4 rounded-full bg-accent/20 text-accent flex items-center justify-center flex-shrink-0 text-xs font-bold">{e.ordem}</span>
                       <div>
-                        <p className="font-medium text-[11px]">{e.nome}</p>
-                        <p className="text-muted-foreground text-[10px]">{e.descricao}</p>
+                        <p className="font-medium text-xs">{e.nome}</p>
+                        <p className="text-muted-foreground text-xs">{e.descricao}</p>
                       </div>
                     </div>
                   ))}
@@ -1011,9 +1011,9 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   <p className="font-semibold flex items-center gap-1"><Target className="w-3 h-3 text-accent" /> Critérios de Julgamento</p>
                   {modalidade.criteriosJulgamento.map(c => (
                     <div key={c.id} className={`p-1.5 rounded ${criterioFiltro === c.id ? 'bg-accent/10 border border-accent/30' : ''}`}>
-                      <p className="font-medium text-[11px]">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
-                      <p className="text-muted-foreground text-[10px]">{c.descricao}</p>
-                      {c.obrigatorio && <Badge variant="default" className="text-[9px] mt-0.5">Obrigatório</Badge>}
+                      <p className="font-medium text-xs">{c.nome} <span className="text-muted-foreground">({c.fundamentacao})</span></p>
+                      <p className="text-muted-foreground text-xs">{c.descricao}</p>
+                      {c.obrigatorio && <Badge variant="default" className="text-xs mt-0.5">Obrigatório</Badge>}
                     </div>
                   ))}
                 </div>
@@ -1021,15 +1021,15 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   <p className="font-semibold flex items-center gap-1"><Award className="w-3 h-3 text-accent" /> Modos de Disputa</p>
                   {modalidade.modosDisputa.map(m => (
                     <div key={m.id} className="p-1.5 rounded">
-                      <p className="font-medium text-[11px]">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
-                      <p className="text-muted-foreground text-[10px]">{m.descricao}</p>
-                      {m.padrao && <Badge variant="secondary" className="text-[9px] mt-0.5">Padrão</Badge>}
+                      <p className="font-medium text-xs">{m.nome} <span className="text-muted-foreground">({m.fundamentacao})</span></p>
+                      <p className="text-muted-foreground text-xs">{m.descricao}</p>
+                      {m.padrao && <Badge variant="secondary" className="text-xs mt-0.5">Padrão</Badge>}
                     </div>
                   ))}
                 </div>
                 <div className="space-y-1.5">
                   <p className="font-semibold flex items-center gap-1"><Shield className="w-3 h-3 text-accent" /> Preferência ME/EPP</p>
-                  <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-[10px]">
+                  <Badge variant={modalidade.preferenciaMeEpp.aplicavel ? 'default' : 'secondary'} className="text-xs">
                     {modalidade.preferenciaMeEpp.aplicavel ? 'Aplicável' : 'Não aplicável'}
                   </Badge>
                   <p className="text-muted-foreground">{modalidade.preferenciaMeEpp.descricao}</p>
@@ -1077,16 +1077,16 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       {activeModelo.descricao}
                     </p>
                     <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                      <Badge variant="outline" className="text-[10px] shrink-0">{activeModelo.fundamentacao}</Badge>
-                      {modalidade && <Badge variant="secondary" className="text-[10px] shrink-0">{modalidade.nome}</Badge>}
-                      {etapaFiltro && <Badge variant="secondary" className="text-[10px] shrink-0">{etapaFiltro}</Badge>}
+                      <Badge variant="outline" className="text-xs shrink-0">{activeModelo.fundamentacao}</Badge>
+                      {modalidade && <Badge variant="secondary" className="text-xs shrink-0">{modalidade.nome}</Badge>}
+                      {etapaFiltro && <Badge variant="secondary" className="text-xs shrink-0">{etapaFiltro}</Badge>}
                       {selectedEmpresa && (
-                        <Badge variant="secondary" className="text-[10px] shrink-0 max-w-[200px] truncate">
+                        <Badge variant="secondary" className="text-xs shrink-0 max-w-[200px] truncate">
                           {selectedEmpresa.razao_social}
                         </Badge>
                       )}
                       {pedidoAtivo && (
-                        <Badge className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20 shrink-0">
+                        <Badge className="text-xs gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20 shrink-0">
                           <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
                         </Badge>
                       )}
@@ -1104,13 +1104,13 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             <div className="flex items-center gap-2 flex-wrap">
               <Sparkles className="w-5 h-5 text-accent" />
               <h3 className="text-sm font-semibold">Gerar: {activeModelo.titulo}</h3>
-              <Badge variant="outline" className="text-[10px]">{activeModelo.fundamentacao}</Badge>
-              {modalidade && <Badge variant="secondary" className="text-[10px]">{modalidade.nome}</Badge>}
-              {etapaFiltro && <Badge variant="secondary" className="text-[10px]">{etapaFiltro}</Badge>}
-              {criterioFiltro && <Badge variant="secondary" className="text-[10px]">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
-              {selectedEmpresa && <Badge variant="secondary" className="text-[10px]">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
+              <Badge variant="outline" className="text-xs">{activeModelo.fundamentacao}</Badge>
+              {modalidade && <Badge variant="secondary" className="text-xs">{modalidade.nome}</Badge>}
+              {etapaFiltro && <Badge variant="secondary" className="text-xs">{etapaFiltro}</Badge>}
+              {criterioFiltro && <Badge variant="secondary" className="text-xs">{modalidade?.criteriosJulgamento.find(c => c.id === criterioFiltro)?.nome}</Badge>}
+              {selectedEmpresa && <Badge variant="secondary" className="text-xs">{selectedEmpresa.razao_social.slice(0, 30)}</Badge>}
               {pedidoAtivo && (
-                <Badge variant="default" className="text-[10px] gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
+                <Badge variant="default" className="text-xs gap-1 bg-accent/15 text-accent border-accent/30 hover:bg-accent/20">
                   <Hash className="w-2.5 h-2.5" /> {pedidoAtivo.numero_formatado} · v{pedidoAtivo.versoes_count}
                 </Badge>
               )}
@@ -1174,7 +1174,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </div>
 
                 {selectedEmpresa && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-muted-foreground bg-background/50 rounded-md p-3 border border-border/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground bg-background/50 rounded-md p-3 border border-border/30">
                     {incluirDadosEmpresa && (
                       <div className="space-y-0.5">
                         <p className="font-semibold text-foreground text-xs flex items-center gap-1"><Building2 className="w-3 h-3 text-accent" /> Empresa</p>
@@ -1246,7 +1246,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                           <Badge
                             key={fato.id}
                             variant="outline"
-                            className={`text-[10px] ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                            className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
                           >
                             {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
                             {fato.origem === 'manual' && ' ✏️'}
@@ -1362,12 +1362,12 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       <Eye className="w-4 h-4 text-accent shrink-0" />
                       <h4 className="text-xs font-semibold whitespace-nowrap">Preview ABNT em tempo real</h4>
                       {gerando && (
-                        <Badge className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
+                        <Badge className="text-xs gap-1 bg-accent/10 text-accent border-accent/30 shrink-0">
                           <Loader2 className="w-2.5 h-2.5 animate-spin" /> Gerando…
                         </Badge>
                       )}
                       {!gerando && resultado && (
-                        <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+                        <Badge className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
                           <CheckCircle className="w-2.5 h-2.5" /> Pronto
                         </Badge>
                       )}
@@ -1467,7 +1467,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
                   <div className="flex items-center gap-2 px-6 py-2 border-t border-border/50 bg-muted/10 shrink-0">
                     <Info className="w-3 h-3 text-accent shrink-0" />
-                    <p className="text-[10px] text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       ABNT NBR 14724 · Times New Roman 12pt · Entrelinhas 1,5 · Citações recuadas 4cm · Margens 3cm/2cm
                     </p>
                   </div>
@@ -1523,14 +1523,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           <div className="px-4 py-3 border-b-2 border-primary/30 bg-gradient-to-b from-primary/[0.04] to-transparent">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold">
                   Praefectus · Acervo Jurídico
                 </p>
                 <h2 className="text-base font-bold text-foreground leading-tight mt-0.5 tracking-tight">
                   Compêndio de Modelos Processuais e Administrativos
                 </h2>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular-nums shrink-0">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums shrink-0">
                 <span className="px-1.5 py-0.5 border border-border/60 rounded-sm bg-background/60">
                   Lei nº 14.133/2021
                 </span>
@@ -1570,7 +1570,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </span>
                     </div>
                     {catCount > 0 && (
-                      <Badge className="text-[11px] gap-1 bg-background text-foreground border-border shrink-0 h-5 px-2 tabular-nums">
+                      <Badge className="text-xs gap-1 bg-background text-foreground border-border shrink-0 h-5 px-2 tabular-nums">
                         <FileText className="w-3 h-3" /> {catCount} emitida{catCount === 1 ? '' : 's'}
                       </Badge>
                     )}
@@ -1604,10 +1604,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
 
           {/* Rodapé institucional */}
           <div className="px-4 py-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Documento gerado em conformidade com a NBR 14.724 · ABNT
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Fundamentação: Lei 14.133/2021, LC 123/2006, CF/88 art. 37
             </p>
           </div>
@@ -1659,7 +1659,7 @@ function DataSelector<T>({
               <Badge
                 key={id}
                 variant={selected.includes(id) ? 'default' : 'outline'}
-                className="cursor-pointer text-[11px] transition-colors"
+                className="cursor-pointer text-xs transition-colors"
                 onClick={() => onToggle(id)}
               >
                 {renderItem(item)}

@@ -180,13 +180,13 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
           {extracting && (
             <div className="space-y-1">
               <Progress value={extractProgress} className="h-2" />
-              <p className="text-[10px] text-muted-foreground">Extraindo texto dos arquivos... {extractProgress}%</p>
+              <p className="text-xs text-muted-foreground">Extraindo texto dos arquivos... {extractProgress}%</p>
             </div>
           )}
           {uploadedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {uploadedFiles.map((f, i) => (
-                <Badge key={i} variant="secondary" className="text-[10px] gap-1">
+                <Badge key={i} variant="secondary" className="text-xs gap-1">
                   {f.name.endsWith('.zip') ? <Archive className="w-2.5 h-2.5" /> : <FileText className="w-2.5 h-2.5" />}
                   {f.name.slice(0, 30)}
                   <button onClick={() => removeFile(i)} className="ml-1 text-destructive hover:text-destructive/80">×</button>
@@ -194,7 +194,7 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
               ))}
             </div>
           )}
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             O conteúdo extraído será adicionado automaticamente ao campo de dados abaixo. Para PDFs complexos, use a Base Contábil com extração via IA.
           </p>
         </div>
@@ -207,11 +207,11 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="text-[10px]">NBC TSP</Badge>
-          <Badge variant="outline" className="text-[10px]">Lei 4.320/64</Badge>
-          <Badge variant="outline" className="text-[10px]">LRF - LC 101/2000</Badge>
-          <Badge variant="outline" className="text-[10px]">Lei 14.133/2021</Badge>
-          <Badge variant="outline" className="text-[10px]">CFC/CRC</Badge>
+          <Badge variant="outline" className="text-xs">NBC TSP</Badge>
+          <Badge variant="outline" className="text-xs">Lei 4.320/64</Badge>
+          <Badge variant="outline" className="text-xs">LRF - LC 101/2000</Badge>
+          <Badge variant="outline" className="text-xs">Lei 14.133/2021</Badge>
+          <Badge variant="outline" className="text-xs">CFC/CRC</Badge>
         </div>
 
         <Button onClick={handleAnalisar} disabled={analisando} className="bg-accent hover:bg-accent/90 text-accent-foreground">

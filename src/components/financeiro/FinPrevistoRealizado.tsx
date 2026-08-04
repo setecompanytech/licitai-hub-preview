@@ -97,7 +97,7 @@ export default function FinPrevistoRealizado() {
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Receita realizada</p>
           <p className="text-lg font-semibold tabular-nums text-success">R$ {totalRecReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-          <p className="text-[10px] text-muted-foreground">{totalRecPrev ? ((totalRecReal/totalRecPrev)*100).toFixed(1) : 0}% da meta</p>
+          <p className="text-xs text-muted-foreground">{totalRecPrev ? ((totalRecReal/totalRecPrev)*100).toFixed(1) : 0}% da meta</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Despesa prevista</p>
@@ -106,7 +106,7 @@ export default function FinPrevistoRealizado() {
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Despesa realizada</p>
           <p className="text-lg font-semibold tabular-nums text-destructive">R$ {totalDespReal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
-          <p className="text-[10px] text-muted-foreground">{totalDespPrev ? ((totalDespReal/totalDespPrev)*100).toFixed(1) : 0}% do orçado</p>
+          <p className="text-xs text-muted-foreground">{totalDespPrev ? ((totalDespReal/totalDespPrev)*100).toFixed(1) : 0}% do orçado</p>
         </CardContent></Card>
       </div>
     </div>

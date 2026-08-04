@@ -80,7 +80,7 @@ export default function MunicipiosByUFSelect({
         {label}
       </Label>
       <div className="md:col-span-10 space-y-2">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {ufsVazias
             ? "Selecione uma ou mais UFs acima para listar municípios"
             : `${municipios.length.toLocaleString("pt-BR")} municípios disponíveis (IBGE) para ${ufs.join(", ")}`}
@@ -119,7 +119,7 @@ export default function MunicipiosByUFSelect({
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
-                className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive"
+                className="h-6 text-xs px-2 text-muted-foreground hover:text-destructive"
                 type="button"
               >
                 Excluir
@@ -131,7 +131,7 @@ export default function MunicipiosByUFSelect({
               onClick={(e) => { e.stopPropagation(); if (!ufsVazias) setOpen((o) => !o); }}
               disabled={ufsVazias}
               type="button"
-              className="h-6 text-[11px] px-2"
+              className="h-6 text-xs px-2"
             >
               {open ? (
                 <ChevronUp className="w-3 h-3 mr-1" />
@@ -183,7 +183,7 @@ export default function MunicipiosByUFSelect({
                               type="button"
                               onClick={() => onToggle(valor)}
                               className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors ${
-                                ativo ? "text-accent font-medium" : "text-foreground/80"
+                                ativo ? "text-accent font-medium" : "text-foreground"
                               }`}
                             >
                               <span>
@@ -201,7 +201,7 @@ export default function MunicipiosByUFSelect({
                   )}
                 </div>
                 {municipios.length > filtrados.length && !busca && (
-                  <p className="text-[10px] text-muted-foreground text-center">
+                  <p className="text-xs text-muted-foreground text-center">
                     Exibindo 300 de {municipios.length.toLocaleString("pt-BR")} —
                     use a busca para refinar.
                   </p>

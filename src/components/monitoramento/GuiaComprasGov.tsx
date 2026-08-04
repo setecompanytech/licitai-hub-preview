@@ -110,7 +110,7 @@ export default function GuiaComprasGov() {
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold">Integração Compras.gov.br — Passo a Passo</h3>
-          <Badge variant="outline" className="text-[10px]">Tier 1</Badge>
+          <Badge variant="outline" className="text-xs">Tier 1</Badge>
         </div>
         <Button
           size="sm"
@@ -179,11 +179,11 @@ export default function GuiaComprasGov() {
       <div className="mt-4 grid grid-cols-2 gap-3 text-center">
         <div className="bg-muted/30 rounded-lg p-3">
           <p className="text-lg font-bold text-accent">7</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Passos</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Passos</p>
         </div>
         <div className="bg-muted/30 rounded-lg p-3">
           <p className="text-lg font-bold text-accent">~100%</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cobertura Federal</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Cobertura Federal</p>
         </div>
       </div>
     </div>

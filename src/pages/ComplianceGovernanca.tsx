@@ -60,7 +60,7 @@ export default function ComplianceGovernanca() {
           <div className="max-w-4xl mx-auto">
             {/* Hero */}
             <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-wider mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-4">
                 <Scale className="w-3.5 h-3.5" /> Compliance
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Governança e Compliance</h1>
@@ -248,17 +248,17 @@ export default function ComplianceGovernanca() {
               <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <FileText className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Tratamento de dados pessoais</p>
+                <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
               </Link>
               <Link to="/seguranca-informacao" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <Lock className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Segurança da Informação</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Trust Center e controles técnicos</p>
+                <p className="text-xs text-muted-foreground mt-1">Trust Center e controles técnicos</p>
               </Link>
               <Link to="/termos-de-uso" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <Scale className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Termos de Uso</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Condições contratuais</p>
+                <p className="text-xs text-muted-foreground mt-1">Condições contratuais</p>
               </Link>
             </div>
 

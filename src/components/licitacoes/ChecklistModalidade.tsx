@@ -159,7 +159,7 @@ export default function ChecklistModalidade() {
                   {item.texto}
                 </span>
                 {item.obrigatorio && (
-                  <Badge variant="outline" className="text-[10px] text-warning border-warning/30">Obrigatório</Badge>
+                  <Badge variant="outline" className="text-xs text-warning border-warning/30">Obrigatório</Badge>
                 )}
               </button>
             ))}

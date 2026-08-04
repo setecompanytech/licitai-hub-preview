@@ -301,7 +301,7 @@ export default function TransparenciaPA({ portal }: Props) {
 
       {dados.length === 0 ? (
         <Card className="p-8 text-center">
-          <Building2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+          <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Clique em <strong>"Extrair do Portal"</strong> para tentar coletar automaticamente do portal de {portal.nome},
@@ -379,9 +379,9 @@ export default function TransparenciaPA({ portal }: Props) {
                     <div>
                       <p className="text-sm font-medium">{d.orgao}</p>
                       <div className="flex gap-2">
-                        <Badge variant="outline" className="text-[10px]">{d.ano}</Badge>
-                        {d.categoria && <Badge variant="secondary" className="text-[10px]">{d.categoria}</Badge>}
-                        <span className="text-[10px] text-muted-foreground">{d.quantidade_empenhos} empenhos</span>
+                        <Badge variant="outline" className="text-xs">{d.ano}</Badge>
+                        {d.categoria && <Badge variant="secondary" className="text-xs">{d.categoria}</Badge>}
+                        <span className="text-xs text-muted-foreground">{d.quantidade_empenhos} empenhos</span>
                       </div>
                     </div>
                   </div>

@@ -155,7 +155,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
                 <div key={f.label} className="bg-muted/50 rounded-lg p-3 text-center">
                   <f.icon className="w-5 h-5 mx-auto text-accent mb-1" />
                   <p className="text-xs font-semibold">{f.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{f.desc}</p>
+                  <p className="text-xs text-muted-foreground">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -192,7 +192,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
                 className="mt-1"
               />
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {empresas.length > 0
                 ? 'Se o CNPJ já existir na sua conta, o sistema atualizará a empresa existente em vez de duplicar.'
                 : 'Você pode pular esta etapa e cadastrar depois em Configurações → Empresas.'}
@@ -219,7 +219,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Selecione os portais que você deseja monitorar. Você pode alterar depois.
             </p>
           </div>
@@ -240,11 +240,11 @@ export default function OnboardingWizard({ open, onClose }: Props) {
             {palavras && (
               <div className="flex flex-wrap gap-1.5">
                 {palavras.split(',').map(p => p.trim()).filter(Boolean).map(p => (
-                  <Badge key={p} variant="outline" className="text-[10px]">{p}</Badge>
+                  <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               O sistema buscará editais automaticamente com base nessas palavras-chave e nos CNAEs da sua empresa.
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function OnboardingWizard({ open, onClose }: Props) {
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             Etapa {step + 1} de {steps.length}
           </div>
           <div className="flex gap-2">

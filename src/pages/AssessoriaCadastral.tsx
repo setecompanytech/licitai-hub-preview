@@ -74,22 +74,22 @@ export default function AssessoriaCadastral() {
           <div className="stat-card text-center">
             <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
             <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'ativo').length}</p>
-            <p className="text-[10px] text-muted-foreground">Ativos</p>
+            <p className="text-xs text-muted-foreground">Ativos</p>
           </div>
           <div className="stat-card text-center">
             <Clock className="w-5 h-5 mx-auto mb-1 text-warning" />
             <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'pendente').length}</p>
-            <p className="text-[10px] text-muted-foreground">Pendentes</p>
+            <p className="text-xs text-muted-foreground">Pendentes</p>
           </div>
           <div className="stat-card text-center">
             <AlertTriangle className="w-5 h-5 mx-auto mb-1 text-destructive" />
             <p className="text-lg font-bold">{cadastros.filter(c => c.status === 'expirado').length}</p>
-            <p className="text-[10px] text-muted-foreground">Expirados</p>
+            <p className="text-xs text-muted-foreground">Expirados</p>
           </div>
           <div className="stat-card text-center">
             <FileText className="w-5 h-5 mx-auto mb-1 text-info" />
             <p className="text-lg font-bold">{cadastros.reduce((a, c) => a + c.documentosPendentes, 0)}</p>
-            <p className="text-[10px] text-muted-foreground">Docs Pendentes</p>
+            <p className="text-xs text-muted-foreground">Docs Pendentes</p>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export default function AssessoriaCadastral() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-bold text-sm">{c.sigla}</span>
-                        <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                        <Badge variant="outline" className={cfg.color + ' text-xs'}>
                           <Icon className="w-3 h-3 mr-1" /> {cfg.label}
                         </Badge>
                       </div>
@@ -151,7 +151,7 @@ export default function AssessoriaCadastral() {
                         </Button>
                       )}
                       {c.documentosPendentes > 0 && (
-                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px] justify-center">
+                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs justify-center">
                           {c.documentosPendentes} docs pendentes
                         </Badge>
                       )}
@@ -177,7 +177,7 @@ export default function AssessoriaCadastral() {
                           <p className="text-xs text-muted-foreground">{doc.portal}{doc.validade ? ` • Validade: ${new Date(doc.validade).toLocaleDateString('pt-BR')}` : ''}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className={cfg.color + ' text-[10px]'}>{cfg.label}</Badge>
+                      <Badge variant="outline" className={cfg.color + ' text-xs'}>{cfg.label}</Badge>
                     </div>
                   );
                 })}

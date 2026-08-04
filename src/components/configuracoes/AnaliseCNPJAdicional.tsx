@@ -161,20 +161,20 @@ export default function AnaliseCNPJAdicional() {
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-foreground">{b.nome}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{b.modelo}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{b.modelo}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-1.5">
                     {b.planos.filter(p => p.mensal > 0).map((p) => (
-                      <span key={p.nome} className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
+                      <span key={p.nome} className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                         {p.nome}: {fmt(p.mensal)}/mês ({p.ciclo})
                       </span>
                     ))}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     <strong>CNPJ adicional:</strong> {b.cnpjAdicional}
                   </p>
-                  <p className="text-[10px] text-muted-foreground/70 italic mt-0.5">{b.obs}</p>
+                  <p className="text-xs text-muted-foreground italic mt-0.5">{b.obs}</p>
                 </div>
               ))}
             </div>
@@ -221,21 +221,21 @@ export default function AnaliseCNPJAdicional() {
                       <span className="text-sm font-bold text-foreground">{p.nome}</span>
                       <span className="text-xs text-muted-foreground ml-2">{fmt(p.mensal)}/mês</span>
                     </div>
-                    <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-bold', i === 1 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground')}>
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-bold', i === 1 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground')}>
                       {p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''} incluso{p.cnpjsInclusos > 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="p-2 rounded bg-background/60">
-                      <p className="text-[10px] text-muted-foreground">Inclusos</p>
+                      <p className="text-xs text-muted-foreground">Inclusos</p>
                       <p className="text-xs font-bold">{p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''}</p>
                     </div>
                     <div className="p-2 rounded bg-background/60">
-                      <p className="text-[10px] text-muted-foreground">Máximo</p>
+                      <p className="text-xs text-muted-foreground">Máximo</p>
                       <p className="text-xs font-bold">{p.maxCnpjs} CNPJs</p>
                     </div>
                     <div className="p-2 rounded bg-background/60">
-                      <p className="text-[10px] text-muted-foreground">Custo c/ máximo</p>
+                      <p className="text-xs text-muted-foreground">Custo c/ máximo</p>
                       <p className="text-xs font-bold text-accent">
                         {fmt(p.mensal + (p.maxCnpjs - p.cnpjsInclusos) * CNPJ_ADDON_PRICE)}/mês
                       </p>
@@ -243,7 +243,7 @@ export default function AnaliseCNPJAdicional() {
                   </div>
                   {/* Comparativo vs. mercado */}
                   <div className="mt-2 p-2 rounded bg-success/5 border border-success/20">
-                    <p className="text-[10px] text-success">
+                    <p className="text-xs text-success">
                       <strong>vs. mercado:</strong> Com {p.maxCnpjs} CNPJs na PRAEFECTUS = {fmt(p.mensal + (p.maxCnpjs - p.cnpjsInclusos) * CNPJ_ADDON_PRICE)}/mês. 
                       Na ConLicitação = {fmt(p.maxCnpjs * 335)}/mês ({p.maxCnpjs} planos Premium).
                       <strong> Economia de {((1 - (p.mensal + (p.maxCnpjs - p.cnpjsInclusos) * CNPJ_ADDON_PRICE) / (p.maxCnpjs * 335)) * 100).toFixed(0)}%.</strong>
@@ -262,7 +262,7 @@ export default function AnaliseCNPJAdicional() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
               {Object.entries(COST_PER_CNPJ).filter(([k]) => k !== 'total').map(([key, val]) => (
                 <div key={key} className="p-2 rounded bg-background/60 text-center">
-                  <p className="text-[10px] text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
                   <p className="text-xs font-bold">{fmt(val)}</p>
                 </div>
               ))}
@@ -271,7 +271,7 @@ export default function AnaliseCNPJAdicional() {
               <span className="text-xs font-bold text-warning">Custo real por CNPJ adicional</span>
               <span className="text-sm font-extrabold text-warning">{fmt(COST_PER_CNPJ.total)}/mês</span>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               <strong>Margem líquida por CNPJ adicional:</strong> {fmt(CNPJ_ADDON_PRICE)} - {fmt(COST_PER_CNPJ.total)} = <strong className="text-success">{fmt(CNPJ_ADDON_PRICE - COST_PER_CNPJ.total)} de lucro por CNPJ/mês</strong> ({((1 - COST_PER_CNPJ.total / CNPJ_ADDON_PRICE) * 100).toFixed(0)}% de margem).
             </p>
           </div>
@@ -288,7 +288,7 @@ export default function AnaliseCNPJAdicional() {
                   key={i}
                   onClick={() => setSelectedScenario(i)}
                   className={cn(
-                    'text-[10px] px-3 py-1.5 rounded-full font-medium transition-colors',
+                    'text-xs px-3 py-1.5 rounded-full font-medium transition-colors',
                     selectedScenario === i ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}
                 >
@@ -302,14 +302,14 @@ export default function AnaliseCNPJAdicional() {
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {sc.clients.map(({ plan, count, extraCnpjs }) => (
                   <div key={plan} className="p-2.5 rounded bg-background/60 text-center">
-                    <p className="text-[10px] text-muted-foreground">{PLANS[plan].nome}</p>
+                    <p className="text-xs text-muted-foreground">{PLANS[plan].nome}</p>
                     <p className="text-xs font-bold">{count} clientes</p>
-                    <p className="text-[10px] text-muted-foreground">+{extraCnpjs} CNPJs extras/cada</p>
+                    <p className="text-xs text-muted-foreground">+{extraCnpjs} CNPJs extras/cada</p>
                     <div className="mt-1 border-t border-border/30 pt-1">
-                      <p className="text-[10px] text-accent font-medium">
+                      <p className="text-xs text-accent font-medium">
                         {fmt(PLANS[plan].mensal * count)} base
                       </p>
-                      <p className="text-[10px] text-success font-medium">
+                      <p className="text-xs text-success font-medium">
                         +{fmt(CNPJ_ADDON_PRICE * extraCnpjs * count)} add-ons
                       </p>
                     </div>
@@ -320,19 +320,19 @@ export default function AnaliseCNPJAdicional() {
               {/* Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 <div className="p-2 rounded bg-background/60 text-center">
-                  <p className="text-[10px] text-muted-foreground">Receita Base</p>
+                  <p className="text-xs text-muted-foreground">Receita Base</p>
                   <p className="text-xs font-bold">{fmt(sc.revBase)}</p>
                 </div>
                 <div className="p-2 rounded bg-success/10 text-center">
-                  <p className="text-[10px] text-success">Receita CNPJs</p>
+                  <p className="text-xs text-success">Receita CNPJs</p>
                   <p className="text-xs font-bold text-success">{fmt(sc.revAddon)}</p>
                 </div>
                 <div className="p-2 rounded bg-accent/10 text-center">
-                  <p className="text-[10px] text-accent">Total Receita</p>
+                  <p className="text-xs text-accent">Total Receita</p>
                   <p className="text-xs font-bold text-accent">{fmt(sc.totalRev)}</p>
                 </div>
                 <div className="p-2 rounded bg-background/60 text-center">
-                  <p className="text-[10px] text-muted-foreground">CNPJs Ativos</p>
+                  <p className="text-xs text-muted-foreground">CNPJs Ativos</p>
                   <p className="text-xs font-bold">{sc.totalCnpjs}</p>
                 </div>
               </div>
@@ -340,25 +340,25 @@ export default function AnaliseCNPJAdicional() {
               <div className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/30">
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Receita Total</p>
+                    <p className="text-xs text-muted-foreground">Receita Total</p>
                     <p className="text-xs font-bold text-foreground">{fmt(sc.totalRev)}</p>
                   </div>
                   <span className="text-muted-foreground">−</span>
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Custos Totais</p>
+                    <p className="text-xs text-muted-foreground">Custos Totais</p>
                     <p className="text-xs font-bold text-destructive">{fmt(sc.totalCostAll)}</p>
                   </div>
                   <span className="text-muted-foreground">=</span>
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Lucro</p>
+                    <p className="text-xs text-muted-foreground">Lucro</p>
                     <p className="text-xs font-bold text-success">{fmt(sc.profit)}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-success/15 text-success">
+                  <div className="px-2.5 py-1 rounded-full text-xs font-bold bg-success/15 text-success">
                     Margem {sc.margin.toFixed(0)}%
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Add-ons = {sc.addonShare.toFixed(0)}% da receita
                   </p>
                 </div>

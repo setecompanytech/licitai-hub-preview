@@ -426,7 +426,7 @@ export default function FinKanban({ tipo }: Props) {
               <Filter className="w-4 h-4 mr-1" />
               Filtros
               {filtrosAtivos > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
+                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
                   {filtrosAtivos}
                 </Badge>
               )}
@@ -690,13 +690,13 @@ export default function FinKanban({ tipo }: Props) {
 
                               <div className="flex items-center gap-2 flex-wrap">
                                 {isParcelado && (
-                                  <Badge variant="secondary" className="text-[10px] gap-1">
+                                  <Badge variant="secondary" className="text-xs gap-1">
                                     <Layers className="w-3 h-3" />
                                     {num}/{total}
                                   </Badge>
                                 )}
                                 {vendedor && (
-                                  <Badge variant="outline" className="text-[10px] gap-1 max-w-full truncate">
+                                  <Badge variant="outline" className="text-xs gap-1 max-w-full truncate">
                                     <User2 className="w-3 h-3 shrink-0" />
                                     <span className="truncate">{vendedor}</span>
                                   </Badge>

@@ -37,7 +37,7 @@ type DadosSintegra = {
 function InfoField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
       <p className={`text-sm ${highlight ? 'font-semibold text-accent' : 'text-foreground'}`}>{value || '—'}</p>
     </div>
   );

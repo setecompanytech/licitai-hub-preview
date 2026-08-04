@@ -962,7 +962,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
               </SelectContent>
             </Select>
             {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
-              <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+              <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
               </p>
@@ -990,7 +990,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         {/* Aditivo detail fields - shown when aditivo type selected */}
         {showAditivoFields && (
           <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-            <p className="text-xs font-semibold text-muted-foreground">Dados do Aditivo {pendingFile && <Badge variant="outline" className="ml-2 text-[9px]">Arquivo: {pendingFile.name}</Badge>}</p>
+            <p className="text-xs font-semibold text-muted-foreground">Dados do Aditivo {pendingFile && <Badge variant="outline" className="ml-2 text-xs">Arquivo: {pendingFile.name}</Badge>}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Nº/Identificação</Label>
@@ -1006,21 +1006,21 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                   {/* Calculator for reequilíbrio types */}
                   {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
                     <div className="sm:col-span-2 rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-2">
-                      <p className="text-[10px] font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1">
+                      <p className="text-xs font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1">
                         <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
                       </p>
                       {precificacaoMargem !== null && (
-                        <p className="text-[10px] text-orange-600 dark:text-orange-400">
+                        <p className="text-xs text-orange-600 dark:text-orange-400">
                           Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
                         </p>
                       )}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label className="text-[10px] text-muted-foreground">Custo atual (R$/un)</Label>
+                          <Label className="text-xs text-muted-foreground">Custo atual (R$/un)</Label>
                           <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-muted-foreground">Novo custo (R$/un)</Label>
+                          <Label className="text-xs text-muted-foreground">Novo custo (R$/un)</Label>
                           <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
                         </div>
                       </div>
@@ -1031,7 +1031,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                         const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
                         const diferenca = precoNovo - precoAtual;
                         return (
-                          <div className="flex items-center gap-3 text-[10px] flex-wrap">
+                          <div className="flex items-center gap-3 text-xs flex-wrap">
                             <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
                             <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
                             <span className={diferenca >= 0 ? 'text-success font-semibold' : 'text-destructive font-semibold'}>
@@ -1041,7 +1041,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="text-[10px] h-6 px-2 border-orange-300 text-orange-700"
+                              className="text-xs h-6 px-2 border-orange-300 text-orange-700"
                               onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
                             >
                               Aplicar
@@ -1095,7 +1095,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
             {/* Live preview */}
             {(showValueFields(uploadTipo) || showQtyFields(uploadTipo)) && (
               <Card className="p-3 bg-muted/50">
-                <p className="text-[10px] text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
                 <div className="flex flex-wrap gap-4 text-xs">
                   {showValueFields(uploadTipo) && (
                     <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -1150,9 +1150,9 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-sm font-medium truncate">{arq.nome_arquivo}</span>
-                    <Badge className={`text-[9px] ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
+                    <Badge className={`text-xs ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{formatBytes(arq.tamanho_bytes)}</span>
                     <span>{new Date(arq.created_at).toLocaleDateString('pt-BR')}</span>
                     {arq.descricao && <span className="truncate">{arq.descricao}</span>}
@@ -1184,27 +1184,27 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
           <h3 className="text-sm font-semibold text-muted-foreground">Aditivos Registrados</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Acréscimos (R$)</div>
+              <div className="text-xs text-muted-foreground mb-1">Acréscimos (R$)</div>
               <p className="text-sm font-bold text-success">{fmt(totalAcrescimo)}</p>
             </Card>
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Supressões (R$)</div>
+              <div className="text-xs text-muted-foreground mb-1">Supressões (R$)</div>
               <p className="text-sm font-bold text-destructive">{fmt(totalSupressao)}</p>
             </Card>
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Saldo Valor</div>
+              <div className="text-xs text-muted-foreground mb-1">Saldo Valor</div>
               <p className={`text-sm font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
             </Card>
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Acrésc. Qtde</div>
+              <div className="text-xs text-muted-foreground mb-1">Acrésc. Qtde</div>
               <p className="text-sm font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
             </Card>
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Supr. Qtde</div>
+              <div className="text-xs text-muted-foreground mb-1">Supr. Qtde</div>
               <p className="text-sm font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
             </Card>
             <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground mb-1">Saldo Qtde</div>
+              <div className="text-xs text-muted-foreground mb-1">Saldo Qtde</div>
               <p className={`text-sm font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
             </Card>
           </div>
@@ -1223,7 +1223,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-semibold">{a.numero_aditivo}</span>
-                      <Badge variant="outline" className="text-[9px]">{tipoLabel}</Badge>
+                      <Badge variant="outline" className="text-xs">{tipoLabel}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {(a.valor_acrescimo || 0) > 0 && <span className="text-success">+{fmt(a.valor_acrescimo)}</span>}
@@ -1242,27 +1242,27 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Acréscimos (R$)</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
                     <p className="text-xs font-bold text-success">{fmt(a.valor_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Supressões (R$)</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
                     <p className="text-xs font-bold text-destructive">{fmt(a.valor_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Valor</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
                     <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoValor)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Acrésc. Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
                     <p className="text-xs font-bold text-success">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Supr. Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
                     <p className="text-xs font-bold text-destructive">-{fmtQty(a.quantidade_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
                     <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQtyItem)}</p>
                   </div>
                 </div>
@@ -1293,7 +1293,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
               {TIPOS_ARQUIVO[editTipo]?.semLimite && (
-                <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>
@@ -1364,7 +1364,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 {/* Preview */}
                 {(showValueFields(editTipo) || showQtyFields(editTipo)) && (
                   <Card className="p-3 bg-muted/50">
-                    <p className="text-[10px] text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
                     <div className="flex flex-wrap gap-4 text-xs">
                       {showValueFields(editTipo) && (
                         <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -1391,7 +1391,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                   {editFile ? editFile.name : 'Selecionar novo arquivo'}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Deixe em branco para manter o arquivo atual.</p>
+              <p className="text-xs text-muted-foreground mt-1">Deixe em branco para manter o arquivo atual.</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditDialog({ open: false, arquivo: null })}>Cancelar</Button>

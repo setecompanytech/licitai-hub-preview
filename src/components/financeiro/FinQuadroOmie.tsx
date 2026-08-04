@@ -137,11 +137,11 @@ export default function FinQuadroOmie() {
           <div className="grid grid-cols-2 gap-2 text-center">
             <div className="rounded-md bg-muted/40 p-3">
               <div className="text-2xl font-semibold tabular-nums">{data.clientes}</div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Clientes</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Clientes</div>
             </div>
             <div className="rounded-md bg-muted/40 p-3">
               <div className="text-2xl font-semibold tabular-nums">{data.fornecedores}</div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Fornecedores</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Fornecedores</div>
             </div>
           </div>
         </CardOmie>
@@ -152,7 +152,7 @@ export default function FinQuadroOmie() {
             <div className="text-2xl font-semibold tabular-nums text-rose-600 dark:text-rose-400">{formatBRL(data.cp.total)}</div>
             <div className="text-xs text-muted-foreground">{data.cp.qtd} conta(s) em aberto</div>
             {data.cp.atraso > 0 && (
-              <Badge variant="destructive" className="text-[10px] mt-1">Em atraso: {formatBRL(data.cp.atraso)}</Badge>
+              <Badge variant="destructive" className="text-xs mt-1">Em atraso: {formatBRL(data.cp.atraso)}</Badge>
             )}
           </div>
         </CardOmie>
@@ -163,7 +163,7 @@ export default function FinQuadroOmie() {
             <div className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatBRL(data.cr.total)}</div>
             <div className="text-xs text-muted-foreground">{data.cr.qtd} conta(s) em aberto</div>
             {data.cr.atraso > 0 && (
-              <Badge variant="outline" className="text-[10px] mt-1 border-amber-500 text-amber-700 dark:text-amber-400">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
+              <Badge variant="outline" className="text-xs mt-1 border-amber-500 text-amber-700 dark:text-amber-400">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
             )}
           </div>
         </CardOmie>
@@ -174,7 +174,7 @@ export default function FinQuadroOmie() {
             <div className="text-2xl font-semibold tabular-nums">{formatBRL(data.contas.saldo)}</div>
             <div className="text-xs text-muted-foreground">{data.contas.qtd} conta(s) ativas</div>
             {data.contas.lista.length > 0 && (
-              <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+              <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                 {data.contas.lista.map((c: any) => (
                   <li key={c.id} className="flex justify-between gap-2">
                     <span className="truncate">{c.nome}</span>
@@ -201,7 +201,7 @@ export default function FinQuadroOmie() {
           <div className="space-y-1">
             <div className="text-2xl font-semibold tabular-nums">{data.atividadesHoje}</div>
             <div className="text-xs text-muted-foreground">eventos registrados hoje</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Inclusões, alterações e exclusões em lançamentos, contas e cadastros.</div>
+            <div className="text-xs text-muted-foreground mt-1">Inclusões, alterações e exclusões em lançamentos, contas e cadastros.</div>
           </div>
         </CardOmie>
 
@@ -210,7 +210,7 @@ export default function FinQuadroOmie() {
           <div className="space-y-1">
             <div className="text-2xl font-semibold tabular-nums">{formatBRL(data.comissoesAbertas)}</div>
             <div className="text-xs text-muted-foreground">a pagar a vendedores</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Quitação automática via NF-e Financeiro.</div>
+            <div className="text-xs text-muted-foreground mt-1">Quitação automática via NF-e Financeiro.</div>
           </div>
         </CardOmie>
 
@@ -268,13 +268,13 @@ function CardOmie({
             <Icon className={`w-4 h-4 shrink-0 ${accent}`} />
             <h3 className="text-sm font-semibold truncate">{title}</h3>
           </div>
-          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[11px] opacity-0 group-hover:opacity-100 transition-opacity" onClick={onOpen}>
+          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={onOpen}>
             <ChevronRight className="w-3 h-3" />
           </Button>
         </div>
         <div className="flex-1">{children}</div>
         <div className="mt-3 pt-2 border-t flex items-center justify-between gap-2">
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onOpen}>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onOpen}>
             {cta === "Incluir" ? <><Plus className="w-3 h-3 mr-1" /> Incluir</> : <>Abrir <ChevronRight className="w-3 h-3 ml-0.5" /></>}
           </Button>
         </div>

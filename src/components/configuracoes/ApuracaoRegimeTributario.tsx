@@ -270,30 +270,30 @@ export default function ApuracaoRegimeTributario() {
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                 <DollarSign className="w-3 h-3" /> RBT12
               </div>
               <p className="text-sm font-bold">{formatBRL(rbt12)}</p>
             </Card>
             <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                 <TrendingUp className="w-3 h-3" /> Média Mensal
               </div>
               <p className="text-sm font-bold">{formatBRL(mediaMensal)}</p>
             </Card>
             <Card className="p-3">
-              <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                 <BarChart3 className="w-3 h-3" /> Meses Informados
               </div>
               <p className="text-sm font-bold">{mesesPreenchidos}/12</p>
             </Card>
             {regimeRecomendado && (
               <Card className="p-3 border-accent/30 bg-accent/5">
-                <div className="flex items-center gap-1 text-accent text-[10px] mb-1">
+                <div className="flex items-center gap-1 text-accent text-xs mb-1">
                   <Lightbulb className="w-3 h-3" /> Regime Sugerido
                 </div>
                 <p className="text-sm font-bold text-accent">{regimeRecomendado.label}</p>
-                <p className="text-[10px] text-muted-foreground">~{regimeRecomendado.carga.toFixed(2)}% carga</p>
+                <p className="text-xs text-muted-foreground">~{regimeRecomendado.carga.toFixed(2)}% carga</p>
               </Card>
             )}
           </div>
@@ -335,9 +335,9 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'simples_nacional' && <Badge className="text-[9px] bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'simples_nacional' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'simples_nacional' && regimeAtual !== 'simples_nacional' && (
-                        <Badge className="text-[9px] bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -357,9 +357,9 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_presumido' && <Badge className="text-[9px] bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'lucro_presumido' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_presumido' && regimeAtual !== 'lucro_presumido' && (
-                        <Badge className="text-[9px] bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -377,9 +377,9 @@ export default function ApuracaoRegimeTributario() {
                       <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_real' && <Badge className="text-[9px] bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'lucro_real' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_real' && regimeAtual !== 'lucro_real' && (
-                        <Badge className="text-[9px] bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>

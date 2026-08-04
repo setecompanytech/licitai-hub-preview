@@ -293,14 +293,14 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
       {/* Discount badge */}
       {desconto > 0 && (
         <div className="absolute top-2 left-2 z-10">
-          <Badge className="bg-destructive/90 text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5">
+          <Badge className="bg-destructive/90 text-destructive-foreground text-xs font-bold px-1.5 py-0.5">
             {desconto}% OFF
           </Badge>
         </div>
       )}
       {isCheapest && (
         <div className="absolute top-2 right-2 z-10">
-          <Badge className="bg-success/90 text-success-foreground text-[10px] font-bold px-1.5 py-0.5">
+          <Badge className="bg-success/90 text-success-foreground text-xs font-bold px-1.5 py-0.5">
             <TrendingDown className="w-3 h-3 mr-0.5" /> Menor
           </Badge>
         </div>
@@ -337,7 +337,7 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
 
         <div className="mt-auto">
           {item.preco_original && item.preco_original > item.preco && (
-            <p className="text-[11px] text-muted-foreground line-through leading-none">
+            <p className="text-xs text-muted-foreground line-through leading-none">
               {formatCurrency(item.preco_original)}
             </p>
           )}
@@ -345,15 +345,15 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
             {formatCurrency(item.preco)}
           </p>
           {item.parcelas && (
-            <p className="text-[10px] text-success font-medium mt-0.5">
+            <p className="text-xs text-success font-medium mt-0.5">
               em {item.parcelas}
             </p>
           )}
         </div>
 
         <div className="flex items-center gap-1 mt-1">
-          <Store className="w-3 h-3 text-muted-foreground/60" />
-          <span className="text-[10px] text-muted-foreground truncate">{item.loja}</span>
+          <Store className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground truncate">{item.loja}</span>
           {item.vendedor_qualificado && (
             <ShieldCheck className="w-3 h-3 text-primary ml-auto flex-shrink-0" />
           )}
@@ -362,10 +362,10 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
         {isFreteGratis(item.frete) ? (
           <div className="flex items-center gap-1 text-success">
             <Truck className="w-3 h-3" />
-            <span className="text-[10px] font-semibold">Frete grátis</span>
+            <span className="text-xs font-semibold">Frete grátis</span>
           </div>
         ) : item.frete ? (
-          <span className="text-[10px] text-muted-foreground">Frete: {item.frete}</span>
+          <span className="text-xs text-muted-foreground">Frete: {item.frete}</span>
         ) : null}
       </div>
 
@@ -444,7 +444,7 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
               <span className="text-xs text-muted-foreground line-through">
                 {formatCurrency(item.preco_original)}
               </span>
-              <Badge className="bg-success/10 text-success border-success/20 text-[10px] px-1.5">
+              <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5">
                 {desconto}% OFF
               </Badge>
             </div>
@@ -477,11 +477,11 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
           {item.vendedor_qualificado && (
             <div className="flex items-center gap-1 text-primary">
               <ShieldCheck className="w-3 h-3" />
-              <span className="text-[10px] font-medium">MercadoLíder</span>
+              <span className="text-xs font-medium">MercadoLíder</span>
             </div>
           )}
           {isCheapest && (
-            <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+            <Badge className="bg-success/10 text-success border-success/20 text-xs">
               <TrendingDown className="w-3 h-3 mr-0.5" /> Menor preço
             </Badge>
           )}
@@ -490,7 +490,7 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
 
       {/* Right actions */}
       <div className="flex flex-col items-end justify-between flex-shrink-0">
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {item.condicao || 'Novo'}
         </Badge>
         <div className="flex flex-col gap-1">
@@ -535,21 +535,21 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
       </h4>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Menor Preço</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Menor Preço</p>
           <p className="text-lg font-bold text-success">{formatCurrency(resumo.menor_preco)}</p>
-          <p className="text-[10px] text-muted-foreground">{resumo.fornecedor_menor}</p>
+          <p className="text-xs text-muted-foreground">{resumo.fornecedor_menor}</p>
         </div>
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Maior Preço</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Maior Preço</p>
           <p className="text-lg font-bold text-destructive">{formatCurrency(resumo.maior_preco)}</p>
-          <p className="text-[10px] text-muted-foreground">{resumo.fornecedor_maior}</p>
+          <p className="text-xs text-muted-foreground">{resumo.fornecedor_maior}</p>
         </div>
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preço Médio</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Preço Médio</p>
           <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.preco_medio)}</p>
         </div>
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Variação</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Variação</p>
           <p className="text-lg font-bold text-primary">{resumo.variacao}</p>
         </div>
       </div>

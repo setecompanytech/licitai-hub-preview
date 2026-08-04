@@ -299,7 +299,7 @@ ${truncated}`
                       {new Date(cotacao.data_cotacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </span>
                   )}
-                  <Badge variant="outline" className="text-[10px]">{cotacao.itens.length} itens</Badge>
+                  <Badge variant="outline" className="text-xs">{cotacao.itens.length} itens</Badge>
                 </div>
               </div>
             </div>

@@ -235,7 +235,7 @@ export default function AssistenteEspecializado() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight">Assistente IA Especializada</h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                <p className="text-xs sm:text-xs text-muted-foreground truncate">
                   Jurídica, Contábil e Econômico-Financeira — com busca em fontes oficiais
                 </p>
               </div>
@@ -263,12 +263,12 @@ export default function AssistenteEspecializado() {
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 mt-3">
-            <Badge variant="outline" className="text-[10px]">Lei 14.133/2021</Badge>
-            <Badge variant="outline" className="text-[10px]">NBC TSP</Badge>
-            <Badge variant="outline" className="text-[10px]">TCU</Badge>
-            <Badge variant="outline" className="text-[10px]">LRF</Badge>
-            <Badge variant="outline" className="text-[10px]">CFC/CRC</Badge>
-            <Badge variant="outline" className="text-[10px]">IPCA/IGP-M</Badge>
+            <Badge variant="outline" className="text-xs">Lei 14.133/2021</Badge>
+            <Badge variant="outline" className="text-xs">NBC TSP</Badge>
+            <Badge variant="outline" className="text-xs">TCU</Badge>
+            <Badge variant="outline" className="text-xs">LRF</Badge>
+            <Badge variant="outline" className="text-xs">CFC/CRC</Badge>
+            <Badge variant="outline" className="text-xs">IPCA/IGP-M</Badge>
           </div>
         </div>
 
@@ -318,7 +318,7 @@ export default function AssistenteEspecializado() {
 
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30">
-                    <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Fontes consultadas:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Fontes consultadas:</p>
                     <div className="flex flex-wrap gap-1">
                       {msg.sources.map((s, i) => (
                         <a
@@ -326,7 +326,7 @@ export default function AssistenteEspecializado() {
                           href={s.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                         >
                           <ExternalLink className="w-2.5 h-2.5" />
                           {s.title?.slice(0, 40) || new URL(s.url).hostname}
@@ -372,7 +372,7 @@ export default function AssistenteEspecializado() {
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5">
+          <p className="text-xs text-muted-foreground mt-1.5">
             {buscaWeb
               ? 'A IA consultará fontes oficiais (Planalto, TCU, IBGE, Banco Central) em tempo real para fundamentar a resposta.'
               : 'Busca web desativada. A IA responderá com base no conhecimento interno.'

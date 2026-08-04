@@ -195,12 +195,12 @@ export default function CertidoesNegativas() {
         </div>
         {portaisRegionais.length > 0 && (
           <div className="mt-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
-            <p className="text-[10px] font-medium text-accent mb-1 flex items-center gap-1">
+            <p className="text-xs font-medium text-accent mb-1 flex items-center gap-1">
               <MapPin className="w-3 h-3" /> Portais regionais identificados ({portaisRegionais.length}):
             </p>
             <div className="flex flex-wrap gap-1">
               {portaisRegionais.map((p, i) => (
-                <Badge key={i} variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">
+                <Badge key={i} variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
                   {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
                   {p.requerLogin && ' 🔒'}
                 </Badge>
@@ -219,9 +219,9 @@ export default function CertidoesNegativas() {
           </Button>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
-          <Badge variant="outline" className="text-[10px] gap-1 bg-success/10 text-success border-success/30"><Wifi className="w-3 h-3" /> APIs Públicas</Badge>
-          <Badge variant="outline" className="text-[10px] gap-1 bg-accent/10 text-accent border-accent/30"><Globe className="w-3 h-3" /> Firecrawl (Scraping)</Badge>
-          <Badge variant="outline" className="text-[10px] gap-1 bg-muted text-muted-foreground"><Bot className="w-3 h-3" /> IA (Extração)</Badge>
+          <Badge variant="outline" className="text-xs gap-1 bg-success/10 text-success border-success/30"><Wifi className="w-3 h-3" /> APIs Públicas</Badge>
+          <Badge variant="outline" className="text-xs gap-1 bg-accent/10 text-accent border-accent/30"><Globe className="w-3 h-3" /> Firecrawl (Scraping)</Badge>
+          <Badge variant="outline" className="text-xs gap-1 bg-muted text-muted-foreground"><Bot className="w-3 h-3" /> IA (Extração)</Badge>
         </div>
         {erro && <div className="flex items-center gap-2 mt-3 text-sm text-destructive"><AlertTriangle className="w-4 h-4" /> {erro}</div>}
       </div>
@@ -233,7 +233,7 @@ export default function CertidoesNegativas() {
           <p className="text-sm text-muted-foreground">Consultando APIs públicas em tempo real...</p>
           <div className="flex justify-center gap-3 mt-3">
             {['CEIS', 'CNEP', 'CEPIM', 'Receita', 'TST', 'FGTS'].map(f => (
-              <Badge key={f} variant="outline" className="text-[10px] animate-pulse">{f}</Badge>
+              <Badge key={f} variant="outline" className="text-xs animate-pulse">{f}</Badge>
             ))}
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function CertidoesNegativas() {
           <p className="text-xs text-muted-foreground mt-1">Preenchendo formulários e extraindo resultados via scraping</p>
           <div className="flex justify-center gap-3 mt-3">
             {['Receita Federal', 'TST', 'Caixa/FGTS', 'Transparência'].map(f => (
-              <Badge key={f} variant="outline" className="text-[10px] animate-pulse bg-accent/10 text-accent border-accent/30">{f}</Badge>
+              <Badge key={f} variant="outline" className="text-xs animate-pulse bg-accent/10 text-accent border-accent/30">{f}</Badge>
             ))}
           </div>
         </div>
@@ -267,19 +267,19 @@ export default function CertidoesNegativas() {
               <div className="grid grid-cols-4 gap-3">
                 <div className="bg-card rounded-xl border border-border/50 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-foreground">{emissaoResult.resumo.total}</p>
-                  <p className="text-[10px] text-muted-foreground">Total</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
                 </div>
                 <div className="bg-success/5 rounded-xl border border-success/30 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-success">{emissaoResult.resumo.emitidas}</p>
-                  <p className="text-[10px] text-success">Emitidas</p>
+                  <p className="text-xs text-success">Emitidas</p>
                 </div>
                 <div className="bg-muted/30 rounded-xl border border-border/50 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-muted-foreground">{emissaoResult.resumo.captcha}</p>
-                  <p className="text-[10px] text-muted-foreground">CAPTCHA</p>
+                  <p className="text-xs text-muted-foreground">CAPTCHA</p>
                 </div>
                 <div className="bg-destructive/5 rounded-xl border border-destructive/30 p-3 text-center shadow-sm">
                   <p className="text-lg font-bold text-destructive">{emissaoResult.resumo.erros}</p>
-                  <p className="text-[10px] text-destructive">Irregulares</p>
+                  <p className="text-xs text-destructive">Irregulares</p>
                 </div>
               </div>
 
@@ -342,31 +342,31 @@ export default function CertidoesNegativas() {
                   return (
                     <div key={i} className={`bg-card rounded-xl border-2 ${cfg.bg} p-4 shadow-sm hover:shadow-md transition-shadow relative`}>
                       <div className="absolute top-2 right-2">
-                        <Badge variant="outline" className={`text-[8px] gap-0.5 ${cfg.color}`}>
+                        <Badge variant="outline" className={`text-xs gap-0.5 ${cfg.color}`}>
                           <Icon className="w-2.5 h-2.5" /> {cfg.label}
                         </Badge>
                       </div>
                       <h4 className="text-xs font-semibold leading-tight pr-16 mb-2">{r.certidao}</h4>
-                      <p className="text-[11px] text-muted-foreground mb-2 line-clamp-3">{r.detalhes}</p>
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-3">{r.detalhes}</p>
                       {r.codigo && (
-                        <p className="text-[10px] text-foreground mb-1">
+                        <p className="text-xs text-foreground mb-1">
                           Código: <span className="font-mono font-medium">{r.codigo}</span>
                         </p>
                       )}
                       {r.validade && (
-                        <p className="text-[10px] text-muted-foreground mb-1">
+                        <p className="text-xs text-muted-foreground mb-1">
                           Válida até: <span className="font-medium text-foreground">{new Date(r.validade).toLocaleDateString('pt-BR')}</span>
                         </p>
                       )}
                       {r.dataEmissao && (
-                        <p className="text-[10px] text-accent">
+                        <p className="text-xs text-accent">
                           <Clock className="w-3 h-3 inline mr-0.5" />
                           Emitida: {new Date(r.dataEmissao).toLocaleString('pt-BR')}
                         </p>
                       )}
                       {r.url && (
                         <a href={r.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 mt-2 text-[10px] text-accent hover:underline">
+                          className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
                           <ExternalLink className="w-3 h-3" /> {r.status === 'captcha' ? 'Emitir manualmente' : 'Acessar portal'}
                         </a>
                       )}
@@ -384,7 +384,7 @@ export default function CertidoesNegativas() {
                 <div className="bg-card rounded-xl border border-accent/30 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
                     <Wifi className="w-4 h-4 text-accent" /> Verificações em Tempo Real
-                    <Badge variant="outline" className="text-[10px] ml-auto bg-accent/10 text-accent">
+                    <Badge variant="outline" className="text-xs ml-auto bg-accent/10 text-accent">
                       <Clock className="w-3 h-3 mr-0.5" />{new Date().toLocaleTimeString('pt-BR')}
                     </Badge>
                   </h3>
@@ -399,13 +399,13 @@ export default function CertidoesNegativas() {
                             v.status === 'irregular' ? 'border-destructive/30 bg-destructive/5' : 'border-border/50 bg-muted/30'
                           }`}>
                             <Icon className={`w-5 h-5 mx-auto mb-1 ${cfg.color} ${v.status === 'verificando' ? 'animate-spin' : ''}`} />
-                            <p className="text-[10px] font-semibold truncate">{v.fonte}</p>
-                            <p className={`text-[9px] font-medium ${cfg.color}`}>{cfg.label}</p>
+                            <p className="text-xs font-semibold truncate">{v.fonte}</p>
+                            <p className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</p>
                           </div>
                         </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs">
                           <p className="text-xs font-semibold">{v.fonte}</p>
                           <p className="text-xs text-muted-foreground mt-1">{v.detalhes}</p>
-                          {v.url && <p className="text-[10px] text-accent mt-1">🔗 {v.url}</p>}
+                          {v.url && <p className="text-xs text-accent mt-1">🔗 {v.url}</p>}
                         </TooltipContent></Tooltip></TooltipProvider>
                       );
                     })}
@@ -476,18 +476,18 @@ export default function CertidoesNegativas() {
                       return (
                         <div key={i} className="bg-card rounded-xl border-2 border-accent/20 p-4 shadow-sm hover:shadow-md transition-shadow relative">
                           <div className="absolute top-2 right-2">
-                            <Badge className="text-[8px] bg-accent/15 text-accent border-accent/30 gap-0.5"><Wifi className="w-2.5 h-2.5" /> REAL</Badge>
+                            <Badge className="text-xs bg-accent/15 text-accent border-accent/30 gap-0.5"><Wifi className="w-2.5 h-2.5" /> REAL</Badge>
                           </div>
                           <h4 className="text-xs font-semibold leading-tight pr-14 mb-2">{cert.nome}</h4>
-                          <Badge variant="outline" className={`${st.className} text-[10px] mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
-                          <p className="text-[11px] text-muted-foreground mb-2">{cert.orgao}</p>
-                          <div className="text-[10px] text-muted-foreground space-y-1">
+                          <Badge variant="outline" className={`${st.className} text-xs mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
+                          <p className="text-xs text-muted-foreground mb-2">{cert.orgao}</p>
+                          <div className="text-xs text-muted-foreground space-y-1">
                             {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
                             <p className="line-clamp-3">{cert.observacoes}</p>
                             {cert.dataVerificacao && <p className="text-accent"><Clock className="w-3 h-3 inline mr-0.5" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}</p>}
                           </div>
                           {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-[10px] text-accent hover:underline">
+                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
                               <ExternalLink className="w-3 h-3" /> Acessar portal
                             </a>
                           )}
@@ -509,16 +509,16 @@ export default function CertidoesNegativas() {
                       const Icon = st.icon;
                       return (
                         <div key={i} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow relative opacity-90">
-                          <div className="absolute top-2 right-2"><Badge variant="outline" className="text-[8px] gap-0.5"><Bot className="w-2.5 h-2.5" /> IA</Badge></div>
+                          <div className="absolute top-2 right-2"><Badge variant="outline" className="text-xs gap-0.5"><Bot className="w-2.5 h-2.5" /> IA</Badge></div>
                           <h4 className="text-xs font-semibold leading-tight pr-10 mb-2">{cert.nome}</h4>
-                          <Badge variant="outline" className={`${st.className} text-[10px] mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
-                          <p className="text-[11px] text-muted-foreground mb-2">{cert.orgao}</p>
-                          <div className="text-[10px] text-muted-foreground space-y-1">
+                          <Badge variant="outline" className={`${st.className} text-xs mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
+                          <p className="text-xs text-muted-foreground mb-2">{cert.orgao}</p>
+                          <div className="text-xs text-muted-foreground space-y-1">
                             {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
                             <p className="line-clamp-2">{cert.observacoes}</p>
                           </div>
                           {cert.url && cert.url !== '#' && (
-                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-[10px] text-accent hover:underline">
+                            <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">
                               <ExternalLink className="w-3 h-3" /> Emitir certidão
                             </a>
                           )}

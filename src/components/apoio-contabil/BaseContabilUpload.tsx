@@ -307,20 +307,20 @@ export default function BaseContabilUpload() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{doc.titulo}</p>
                     <div className="flex flex-wrap items-center gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px]">{tipoLabel(doc.tipo)}</Badge>
-                      {doc.orgao_emissor && <Badge variant="secondary" className="text-[10px]">{doc.orgao_emissor}</Badge>}
+                      <Badge variant="outline" className="text-xs">{tipoLabel(doc.tipo)}</Badge>
+                      {doc.orgao_emissor && <Badge variant="secondary" className="text-xs">{doc.orgao_emissor}</Badge>}
                     </div>
                     {doc.ementa && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.ementa}</p>}
                     {doc.tags && doc.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {doc.tags.map((tag, i) => (
-                          <span key={i} className="inline-flex items-center gap-0.5 text-[10px] text-accent">
+                          <span key={i} className="inline-flex items-center gap-0.5 text-xs text-accent">
                             <Tag className="w-2.5 h-2.5" />{tag}
                           </span>
                         ))}
                       </div>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {doc.arquivo_nome} · {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                       {doc.texto_integral ? ` · ${(doc.texto_integral.length / 1000).toFixed(0)}k chars indexados` : ''}
                     </p>

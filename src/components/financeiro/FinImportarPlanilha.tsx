@@ -179,7 +179,7 @@ export default function FinImportarPlanilha() {
         <CardContent className="space-y-4">
           <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
             <p className="font-medium">Formato esperado:</p>
-            <code className="block bg-background rounded p-2 text-[11px] overflow-x-auto">
+            <code className="block bg-background rounded p-2 text-xs overflow-x-auto">
               {HEADER_TEMPLATE}
             </code>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
@@ -232,7 +232,7 @@ export default function FinImportarPlanilha() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="truncate">{l.descricao || <em className="text-muted-foreground">vazia</em>}</p>
-                        {l._erro && <Badge variant="destructive" className="text-[10px] mt-0.5">{l._erro}</Badge>}
+                        {l._erro && <Badge variant="destructive" className="text-xs mt-0.5">{l._erro}</Badge>}
                       </div>
                       <span className="w-24 text-right text-xs text-muted-foreground">{l.data_vencimento || "—"}</span>
                       <span className="w-28 text-right tabular-nums">

@@ -635,7 +635,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
           <div className="flex items-center gap-2">
             <Newspaper className="w-5 h-5 text-accent" />
             <h3 className="font-semibold text-sm">Busca nos Diários Oficiais</h3>
-            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
+            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">
               {naoLidos > 0 ? `${naoLidos} novos` : `${atosOrdenados.length} registros`}
             </Badge>
           </div>
@@ -777,7 +777,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium truncate">{fonte.label}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{fonte.url}</p>
+                  <p className="text-xs text-muted-foreground truncate">{fonte.url}</p>
                 </div>
                 <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent shrink-0" />
               </a>
@@ -894,21 +894,21 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <Badge variant="outline" className={cn(cfg.color, "text-[10px]")}>
+                      <Badge variant="outline" className={cn(cfg.color, "text-xs")}>
                         {cfg.label}
                       </Badge>
                       {ato.portal && (
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Globe className="w-3 h-3" /> {ato.portal}
                         </span>
                       )}
                       {ato.relevancia_score && ato.relevancia_score >= 80 && (
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px]">
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">
                           Alta relevância
                         </Badge>
                       )}
                       {!ato.lido && (
-                        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-[10px]">
+                        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">
                           Novo
                         </Badge>
                       )}
@@ -924,7 +924,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                             if (next.has(ato.id)) next.delete(ato.id); else next.add(ato.id);
                             return next;
                           })}
-                          className="text-[10px] text-accent hover:underline flex items-center gap-1"
+                          className="text-xs text-accent hover:underline flex items-center gap-1"
                         >
                           <FileText className="w-3 h-3" />
                           {expandedIds.has(ato.id) ? 'Ocultar texto integral' : 'Ver texto integral (formato DO)'}
@@ -932,7 +932,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                         </button>
                         {expandedIds.has(ato.id) && (
                           <div className="mt-1.5 p-3 rounded-lg bg-muted/50 border border-border/40">
-                            <p className="text-xs font-mono leading-relaxed whitespace-pre-wrap text-foreground/90">
+                            <p className="text-xs font-mono leading-relaxed whitespace-pre-wrap text-foreground">
                               {ato.texto_integral}
                             </p>
                           </div>
@@ -959,7 +959,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                     {ato.palavras_chave && ato.palavras_chave.length > 0 && (
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {ato.palavras_chave.slice(0, 4).map((kw, i) => (
-                          <span key={i} className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{kw}</span>
+                          <span key={i} className="text-xs bg-muted px-1.5 py-0.5 rounded">{kw}</span>
                         ))}
                       </div>
                     )}
@@ -979,13 +979,13 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                     title="Exportar publicação em PDF (formato DO)"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    <span className="text-[10px] hidden sm:inline">PDF</span>
+                    <span className="text-xs hidden sm:inline">PDF</span>
                   </Button>
                   {ato.url && (
                     <Button size="sm" variant="outline" className="h-7 px-2 gap-1" asChild>
                       <a href={ato.url} target="_blank" rel="noopener noreferrer" title="Ver no portal">
                         <Globe className="w-3.5 h-3.5" />
-                        <span className="text-[10px] hidden sm:inline">Portal</span>
+                        <span className="text-xs hidden sm:inline">Portal</span>
                       </a>
                     </Button>
                   )}
@@ -1003,11 +1003,11 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                       ) : (
                         <Download className="w-3.5 h-3.5" />
                       )}
-                      <span className="text-[10px] hidden sm:inline">Baixar</span>
+                      <span className="text-xs hidden sm:inline">Baixar</span>
                     </Button>
                   )}
                   {!ato.url && (
-                    <span className="text-[10px] text-muted-foreground italic">Sem link</span>
+                    <span className="text-xs text-muted-foreground italic">Sem link</span>
                   )}
                 </div>
               </div>

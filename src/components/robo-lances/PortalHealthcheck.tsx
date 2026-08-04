@@ -70,11 +70,11 @@ export default function PortalHealthcheck() {
           Healthcheck de Seletores — Portais
         </h3>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[10px]">
+          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
             {okCount} OK
           </Badge>
           {failCount > 0 && (
-            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[10px]">
+            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-xs">
               {failCount} falhas
             </Badge>
           )}
@@ -99,7 +99,7 @@ export default function PortalHealthcheck() {
         <div className="text-center py-6">
           <Globe className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
           <p className="text-xs text-muted-foreground">Nenhum portal verificado ainda.</p>
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Clique em "Verificar Agora" para executar o healthcheck em todos os portais.
           </p>
         </div>
@@ -120,18 +120,18 @@ export default function PortalHealthcheck() {
                 <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${config.cor}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold">{entry.portal_nome}</p>
-                  <Badge variant="outline" className={`text-[9px] mt-1 ${config.cor}`}>
+                  <Badge variant="outline" className={`text-xs mt-1 ${config.cor}`}>
                     {config.label}
                   </Badge>
                   {entry.seletores_falhos.length > 0 && (
                     <div className="mt-1.5 space-y-0.5">
                       {entry.seletores_falhos.map((s, i) => (
-                        <p key={i} className="text-[10px] text-destructive truncate">⚠️ {s}</p>
+                        <p key={i} className="text-xs text-destructive truncate">⚠️ {s}</p>
                       ))}
                     </div>
                   )}
                   {entry.ultima_verificacao && (
-                    <p className="text-[9px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Último check: {new Date(entry.ultima_verificacao).toLocaleString('pt-BR')}
                     </p>
                   )}

@@ -68,7 +68,7 @@ export default function TestimonialsSection() {
             >
               <div className="flex items-center justify-between mb-4">
                 <Quote className="w-8 h-8 text-accent/15" />
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
                   {t.result}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default function TestimonialsSection() {
                 ))}
               </div>
 
-              <p className="text-[14px] text-foreground/75 leading-relaxed mb-6">"{t.text}"</p>
+              <p className="text-[14px] text-foreground leading-relaxed mb-6">"{t.text}"</p>
 
               <div className="flex items-center gap-3 pt-4 border-t border-border/30">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">

@@ -532,7 +532,7 @@ export default function FinEmissorNFe() {
           <TabsTrigger value="faturas">
             <Package className="w-4 h-4 mr-1.5" />Faturas de pedido
             {pedidosFatura.filter(p => p.status === 'faturar').length > 0 && (
-              <Badge className="ml-1.5 h-4 px-1 text-[10px] bg-amber-500 text-white border-0">
+              <Badge className="ml-1.5 h-4 px-1 text-xs bg-amber-500 text-white border-0">
                 {pedidosFatura.filter(p => p.status === 'faturar').length}
               </Badge>
             )}
@@ -608,11 +608,11 @@ export default function FinEmissorNFe() {
                             {p.nfe_numero ? (
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-xs font-medium">NF-e #{p.nfe_numero}</span>
-                                <Badge variant={STATUS_VARIANT[p.nfe_status || ''] || 'outline'} className="text-[10px] w-fit">
+                                <Badge variant={STATUS_VARIANT[p.nfe_status || ''] || 'outline'} className="text-xs w-fit">
                                   {p.nfe_status || '—'}
                                 </Badge>
                                 {p.nfe_chave && (
-                                  <span className="text-[10px] text-muted-foreground font-mono">{p.nfe_chave.slice(0, 8)}…{p.nfe_chave.slice(-4)}</span>
+                                  <span className="text-xs text-muted-foreground font-mono">{p.nfe_chave.slice(0, 8)}…{p.nfe_chave.slice(-4)}</span>
                                 )}
                               </div>
                             ) : (
@@ -751,7 +751,7 @@ export default function FinEmissorNFe() {
                         <SelectItem value="3">3 — Exterior</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-[10px] text-muted-foreground mt-1">Calculado automaticamente pela UF emitente × destinatário.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Calculado automaticamente pela UF emitente × destinatário.</p>
                   </div>
                   <div>
                     <Label>Tipo de emissão (tpEmis)</Label>
@@ -781,7 +781,7 @@ export default function FinEmissorNFe() {
                       className="font-mono"
                       maxLength={44}
                     />
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Obrigatório (Rejeição 539). Cole a chave da NF-e original que está sendo devolvida.
                     </p>
                   </div>
@@ -798,14 +798,14 @@ export default function FinEmissorNFe() {
                       onChange={e => setFiscais({ ...fiscais, numero_manual: e.target.value })}
                       placeholder="Deixe vazio para autonumeração"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1">Use para migrar de outro emissor mantendo a sequência.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Use para migrar de outro emissor mantendo a sequência.</p>
                   </div>
                 </div>
 
                 {/* CNPJs autorizados (autXML) — Sprint 3 */}
                 <div className="rounded-md border p-3 space-y-2">
                   <Label className="text-xs font-semibold uppercase">CNPJs autorizados a baixar XML (autXML)</Label>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Até 10 CNPJs (ex.: contador, transportadora). Aparecem no XML autorizado pela SEFAZ.
                   </p>
                   <div className="flex gap-2">

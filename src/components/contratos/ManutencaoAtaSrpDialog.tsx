@@ -364,7 +364,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                               <span className="truncate" title={i.sugestao.ata_descricao}>
                                 {i.sugestao.ata_descricao}
                               </span>
-                              <Badge variant="outline" className="text-[10px]">
+                              <Badge variant="outline" className="text-xs">
                                 {Math.round(i.sugestao.similaridade * 100)}%
                               </Badge>
                             </div>

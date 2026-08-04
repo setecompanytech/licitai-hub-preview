@@ -582,11 +582,11 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </div>
           <div className="flex items-center gap-2">
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-xs">
               <ShieldCheck className="w-3 h-3 mr-1" /> IA Contábil
             </Badge>
           </div>
@@ -616,12 +616,12 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <Lightbulb className="w-4 h-4 text-accent mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-xs text-foreground font-medium">Sugestão automática com base no CNAE da empresa</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{deteccao.motivo}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{deteccao.motivo}</p>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 text-[10px] h-7 gap-1 border-accent/30 text-accent hover:bg-accent/10"
+              className="shrink-0 text-xs h-7 gap-1 border-accent/30 text-accent hover:bg-accent/10"
               onClick={() => { setCalcTab(deteccao.tipo); setUsouSugestao(true); }}
             >
               Aplicar <ArrowRight className="w-3 h-3" />
@@ -631,7 +631,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         {deteccao && calcTab === deteccao.tipo && usouSugestao && (
           <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-2 flex items-center gap-2">
             <ShieldCheck className="w-3.5 h-3.5 text-accent shrink-0" />
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Tipo selecionado automaticamente: <strong className="text-foreground">{deteccao.motivo}</strong>
             </p>
           </div>
@@ -656,7 +656,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </Badge>
           )}
           {empresaAtiva && (
-            <Badge variant="outline" className="text-[10px]">{empresaAtiva.razao_social}</Badge>
+            <Badge variant="outline" className="text-xs">{empresaAtiva.razao_social}</Badge>
           )}
         </div>
 
@@ -720,7 +720,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-accent" /> Anexo do Simples Nacional
             </h4>
-            <Badge variant="outline" className="text-[10px]">Resolução CGSN nº 140/2018</Badge>
+            <Badge variant="outline" className="text-xs">Resolução CGSN nº 140/2018</Badge>
           </div>
           <Select value={anexoSelecionado} onValueChange={setAnexoSelecionado}>
             <SelectTrigger><SelectValue placeholder="Selecione o Anexo" /></SelectTrigger>
@@ -730,7 +730,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[10px] text-muted-foreground">{anexoAtual.descricao}</p>
+          <p className="text-xs text-muted-foreground">{anexoAtual.descricao}</p>
           <div className="flex items-center gap-3">
             <Switch checked={showTabelaPartilha} onCheckedChange={setShowTabelaPartilha} />
             <span className="text-xs text-muted-foreground">Exibir tabela oficial de faixas e partilha</span>
@@ -740,10 +740,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="text-[10px] font-semibold h-8">Faixa</TableHead>
-                    <TableHead className="text-[10px] font-semibold h-8 text-right">Alíquota</TableHead>
-                    <TableHead className="text-[10px] font-semibold h-8 text-right">Dedução</TableHead>
-                    <TableHead className="text-[10px] font-semibold h-8">RBT12</TableHead>
+                    <TableHead className="text-xs font-semibold h-8">Faixa</TableHead>
+                    <TableHead className="text-xs font-semibold h-8 text-right">Alíquota</TableHead>
+                    <TableHead className="text-xs font-semibold h-8 text-right">Dedução</TableHead>
+                    <TableHead className="text-xs font-semibold h-8">RBT12</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -752,10 +752,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                     const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
                     return (
                       <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
-                        <TableCell className="text-[10px] py-1.5">{f.faixaNum}ª Faixa</TableCell>
-                        <TableCell className="text-[10px] py-1.5 text-right">{f.aliquota.toFixed(2)}%</TableCell>
-                        <TableCell className="text-[10px] py-1.5 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
-                        <TableCell className="text-[10px] py-1.5">{f.min === 0 ? 'Até' : `De ${formatCurrency(f.min)} a`} {formatCurrency(f.max)}</TableCell>
+                        <TableCell className="text-xs py-1.5">{f.faixaNum}ª Faixa</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right">{f.aliquota.toFixed(2)}%</TableCell>
+                        <TableCell className="text-xs py-1.5 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
+                        <TableCell className="text-xs py-1.5">{f.min === 0 ? 'Até' : `De ${formatCurrency(f.min)} a`} {formatCurrency(f.max)}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -792,7 +792,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
               <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
               {rbt12Auto && rbt12Auto > 0 && (
-                <p className="text-[10px] text-accent mt-1 flex items-center gap-1">
+                <p className="text-xs text-accent mt-1 flex items-center gap-1">
                   <Lightbulb className="w-3 h-3" />
                   Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
                 </p>
@@ -853,15 +853,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           {/* KPI Cards - Row 1: Receita, Tributos, Carga */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Receita Bruta</p>
+              <p className="text-xs text-muted-foreground">Receita Bruta</p>
               <p className="text-sm font-bold">{formatCurrency(resultado.receita)}</p>
             </div>
             <div className="bg-destructive/10 rounded-lg p-3 text-center border border-destructive/20">
-              <p className="text-[10px] text-muted-foreground">Total Tributos</p>
+              <p className="text-xs text-muted-foreground">Total Tributos</p>
               <p className="text-sm font-bold text-destructive">{formatCurrency(resultado.totalTributos)}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Carga Efetiva</p>
+              <p className="text-xs text-muted-foreground">Carga Efetiva</p>
               <p className="text-sm font-bold text-accent">
                 {regime === 'simples_nacional' ? `${resultado.aliquotaEfetiva.toFixed(2)}%` : `${resultado.cargaEfetiva.toFixed(2)}%`}
               </p>
@@ -871,28 +871,28 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           {/* KPI Cards - Row 2: Lucro */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
-              <p className="text-[10px] text-muted-foreground">Lucro Bruto</p>
+              <p className="text-xs text-muted-foreground">Lucro Bruto</p>
               <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
-              <p className="text-[9px] text-muted-foreground">Receita − Tributos</p>
+              <p className="text-xs text-muted-foreground">Receita − Tributos</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Custos Operacionais</p>
+              <p className="text-xs text-muted-foreground">Custos Operacionais</p>
               <p className="text-sm font-bold">{formatCurrency(resultado.totalCustosOp)}</p>
-              <p className="text-[9px] text-muted-foreground">Frete + Desp. Adm.</p>
+              <p className="text-xs text-muted-foreground">Frete + Desp. Adm.</p>
             </div>
             <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-[10px] text-muted-foreground">Lucro Líquido</p>
+              <p className="text-xs text-muted-foreground">Lucro Líquido</p>
               <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
                 {formatCurrency(resultado.lucroLiquido)}
               </p>
-              <p className="text-[9px] text-muted-foreground">L. Bruto − Custos Op.</p>
+              <p className="text-xs text-muted-foreground">L. Bruto − Custos Op.</p>
             </div>
             <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
-              <p className="text-[10px] text-muted-foreground">Margem Líquida</p>
+              <p className="text-xs text-muted-foreground">Margem Líquida</p>
               <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
                 {resultado.margemLiquidaPct.toFixed(2)}%
               </p>
-              <p className="text-[9px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 ? '⚠ Risco inexequibilidade' : resultado.margemLiquidaPct < 0 ? '🚫 Prejuízo' : '✓ Saudável'}
               </p>
             </div>
@@ -957,7 +957,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <span>= Lucro Líquido</span>
               <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
             </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>Margem Líquida</span>
               <span className="font-mono">{resultado.margemLiquidaPct.toFixed(2)}%</span>
             </div>
@@ -969,7 +969,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs font-semibold text-primary">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Margem líquida abaixo de 5% pode configurar proposta inexequível. Revise os custos ou aumente a margem de lucro.
                 </p>
               </div>
@@ -980,7 +980,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Info className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs font-semibold text-destructive">⚠ Operação com Prejuízo</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Os tributos e custos operacionais excedem a receita. Essa operação gera prejuízo de {formatCurrency(Math.abs(resultado.lucroLiquido))}.
                 </p>
               </div>
@@ -1000,7 +1000,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Switch checked={usarBDI} onCheckedChange={setUsarBDI} />
               <div>
                 <p className="text-sm font-medium">Ativar Composição BDI (Lei 14.133/2021)</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Gera planilha detalhada de composição de custos com BDI, encargos, frete e despesas administrativas via IA.
                 </p>
               </div>
@@ -1032,19 +1032,19 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             {itens.map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-4">
-                  <Label className="text-[10px]">Descrição *</Label>
+                  <Label className="text-xs">Descrição *</Label>
                   <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-[10px]">NCM</Label>
+                  <Label className="text-xs">NCM</Label>
                   <Input value={item.ncm} onChange={e => updateItem(idx, 'ncm', e.target.value)} placeholder="0000.00.00" className="mt-0.5" />
                 </div>
                 <div className="col-span-1">
-                  <Label className="text-[10px]">Qtd</Label>
+                  <Label className="text-xs">Qtd</Label>
                   <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-[10px]">Unidade</Label>
+                  <Label className="text-xs">Unidade</Label>
                   <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
                     <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1055,7 +1055,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                   </Select>
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-[10px]">Custo Unit. (R$) *</Label>
+                  <Label className="text-xs">Custo Unit. (R$) *</Label>
                   <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
                 </div>
                 <div className="col-span-1">
@@ -1074,7 +1074,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                 <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
                 <div>
                   <p className="text-sm font-medium">Integrar à Proposta Comercial</p>
-                  <p className="text-[10px] text-muted-foreground">Enviar preços formados à proposta</p>
+                  <p className="text-xs text-muted-foreground">Enviar preços formados à proposta</p>
                 </div>
               </div>
               {enviarProposta && (

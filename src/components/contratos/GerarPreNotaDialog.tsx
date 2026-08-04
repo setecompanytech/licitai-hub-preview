@@ -179,7 +179,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           <h4 className="text-xs font-semibold flex items-center gap-2">
             <Package className="w-3.5 h-3.5 text-primary" />
             Selecionar Pedidos para Faturar
-            <Badge variant="outline" className="text-[10px]">{selected.length} selecionados</Badge>
+            <Badge variant="outline" className="text-xs">{selected.length} selecionados</Badge>
           </h4>
 
           {eligiblePedidos.length === 0 ? (
@@ -202,10 +202,10 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                           <span className="text-xs font-mono font-medium">{p.numero_pedido}</span>
                           <span className="text-xs font-medium">{fmt(p.valor_total)}</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground truncate">{p.descricao || item?.descricao || '—'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{p.descricao || item?.descricao || '—'}</p>
                         {sel?.selected && (
                           <div className="mt-2 flex items-center gap-2">
-                            <Label className="text-[10px] whitespace-nowrap">Qtd a faturar:</Label>
+                            <Label className="text-xs whitespace-nowrap">Qtd a faturar:</Label>
                             <Input
                               type="number"
                               step="0.001"
@@ -215,7 +215,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                               onChange={e => updateQtd(p.id, e.target.value)}
                               className="h-7 w-24 text-xs"
                             />
-                            <span className="text-[10px] text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
+                            <span className="text-xs text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
                           </div>
                         )}
                       </div>

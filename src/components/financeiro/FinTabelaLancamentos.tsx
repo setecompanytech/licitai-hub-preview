@@ -345,7 +345,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       <TableCell className="max-w-xs">
                         <p className="font-medium line-clamp-1">{l.descricao}</p>
                         {l.categoria?.nome && (
-                          <p className="text-[11px] text-muted-foreground">{l.categoria.nome}</p>
+                          <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
                         )}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate">
@@ -361,7 +361,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       </TableCell>
                       <TableCell>
                         {total > 1 ? (
-                          <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Badge variant="secondary" className="text-xs gap-1">
                             <Layers className="w-3 h-3" />{num}/{total}
                           </Badge>
                         ) : <span className="text-muted-foreground text-xs">—</span>}
@@ -370,7 +370,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                         {vendedor ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cor}`}>
+                        <Badge variant="outline" className={`text-xs gap-1 ${meta.cor}`}>
                           <Icone className="w-3 h-3" />{meta.label}
                         </Badge>
                       </TableCell>

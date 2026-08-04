@@ -142,7 +142,7 @@ export default function ContratosTransparencia() {
         )}
 
         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30">
+          <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
             API Pública
           </Badge>
           <span>Dados dos últimos 6 meses</span>
@@ -214,7 +214,7 @@ export default function ContratosTransparencia() {
                           <p className="text-sm font-bold text-accent">{formatCurrency(item.valorInicial)}</p>
                         )}
                         {item.dataInicioVigencia && (
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 justify-end">
+                          <p className="text-xs text-muted-foreground flex items-center gap-0.5 justify-end">
                             <Calendar className="w-3 h-3" />
                             {item.dataInicioVigencia}
                           </p>
@@ -232,7 +232,7 @@ export default function ContratosTransparencia() {
                             <Building2 className="w-3 h-3" /> {item.unidadeGestora?.nome || 'N/I'}
                           </span>
                           {item.modalidadeLicitacao?.descricao && (
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-xs">
                               {item.modalidadeLicitacao.descricao}
                             </Badge>
                           )}
@@ -243,7 +243,7 @@ export default function ContratosTransparencia() {
                           <p className="text-sm font-bold text-accent">{formatCurrency(item.valorEstimado)}</p>
                         )}
                         {item.dataAbertura && (
-                          <p className="text-[10px] text-muted-foreground">{item.dataAbertura}</p>
+                          <p className="text-xs text-muted-foreground">{item.dataAbertura}</p>
                         )}
                       </div>
                     </div>

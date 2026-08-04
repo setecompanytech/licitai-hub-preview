@@ -138,7 +138,7 @@ export default function PlanosSection() {
               >
                 {/* Popular badge */}
                 {isPopular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full text-[11px] font-extrabold tracking-wider flex items-center gap-1.5 bg-accent text-accent-foreground shadow-lg"
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full text-xs font-extrabold tracking-wider flex items-center gap-1.5 bg-accent text-accent-foreground shadow-lg"
                     style={{ boxShadow: 'var(--shadow-glow-sm)' }}>
                     <Sparkles className="w-3 h-3" /> MAIS POPULAR
                   </div>
@@ -169,7 +169,7 @@ export default function PlanosSection() {
                         }`}>
                           <Check className={`w-3 h-3 ${isPopular ? 'text-accent' : 'text-foreground'}`} />
                         </div>
-                        <span className="text-foreground/80">{r}</span>
+                        <span className="text-foreground">{r}</span>
                       </li>
                     ))}
                   </ul>
@@ -242,7 +242,7 @@ export default function PlanosSection() {
                           fIdx < cat.features.length - 1 ? 'border-b border-border/30' : ''
                         } ${catIdx < FEATURE_CATEGORIES.length - 1 && fIdx === cat.features.length - 1 ? 'border-b border-border/50' : ''}`}
                       >
-                        <div className="px-6 py-3.5 text-sm text-foreground/70">{feature}</div>
+                        <div className="px-6 py-3.5 text-sm text-foreground">{feature}</div>
                         {[0, 1, 2].map((tierIdx) => {
                           const included = tierIdx >= minTier;
                           const isPopularCol = planos[tierIdx]?.destaque;

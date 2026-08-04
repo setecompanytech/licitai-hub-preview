@@ -182,7 +182,7 @@ export default function SegurancaConta() {
             {recentLogins.map((log) => (
               <div key={log.id} className="flex items-center justify-between text-xs py-2 border-b border-border/10">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">{log.evento}</Badge>
+                  <Badge variant="outline" className="text-xs">{log.evento}</Badge>
                   {log.ip_address && <span className="text-muted-foreground">IP: {log.ip_address}</span>}
                 </div>
                 <span className="text-muted-foreground">{new Date(log.created_at).toLocaleString('pt-BR')}</span>

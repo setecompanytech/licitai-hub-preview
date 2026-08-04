@@ -135,7 +135,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
                 <TableHeader>
                   <TableRow className="bg-foreground/90">
                     {table.headers.map((h, hi) => (
-                      <TableHead key={hi} className="font-bold text-background text-[10px] whitespace-nowrap py-2 px-2 text-center border border-border/30">
+                      <TableHead key={hi} className="font-bold text-background text-xs whitespace-nowrap py-2 px-2 text-center border border-border/30">
                         {h.replace(/\*\*/g, '')}
                       </TableHead>
                     ))}
@@ -145,7 +145,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
                   {table.rows.map((row, ri) => (
                     <TableRow key={ri} className={ri % 2 === 0 ? 'bg-muted/20' : ''}>
                       {row.map((cell, ci) => (
-                        <TableCell key={ci} className="py-2 px-2 text-[10px] text-center border border-border/20 whitespace-nowrap">
+                        <TableCell key={ci} className="py-2 px-2 text-xs text-center border border-border/20 whitespace-nowrap">
                           {cell.replace(/\*\*/g, '') || '—'}
                         </TableCell>
                       ))}
@@ -174,7 +174,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
               return (
                 <div key={li} className="flex gap-2 pl-2">
                   <span className="text-foreground font-bold mt-0.5">•</span>
-                  <p className="text-sm text-foreground/90 leading-relaxed flex-1 text-justify">
+                  <p className="text-sm text-foreground leading-relaxed flex-1 text-justify">
                     {renderInlineFormatting(trimmed.slice(2))}
                   </p>
                 </div>
@@ -190,7 +190,7 @@ function RenderSection({ title, content }: { title: string; content: string }) {
             }
 
             return (
-              <p key={li} className="text-sm text-foreground/90 leading-relaxed text-justify">
+              <p key={li} className="text-sm text-foreground leading-relaxed text-justify">
                 {renderInlineFormatting(trimmed)}
               </p>
             );
@@ -247,7 +247,7 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
           <ShieldCheck className="w-4 h-4 text-accent" />
           <div>
             <p className="text-xs font-semibold text-foreground">Assinatura Digital (Certificado e-CNPJ/A1)</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Assine a proposta com o certificado digital cadastrado no sistema
             </p>
           </div>
@@ -255,12 +255,12 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
 
         {hasCertificado ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold">
+            <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold">
               <ShieldCheck className="w-3 h-3 mr-1" />
               {empresaData?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — {empresaData?.certificado_nome}
             </span>
             {assinado ? (
-              <span className="inline-flex items-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400 border border-green-600/30 px-2.5 py-0.5 text-[10px] font-semibold">
+              <span className="inline-flex items-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400 border border-green-600/30 px-2.5 py-0.5 text-xs font-semibold">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
                 Assinado digitalmente
               </span>
@@ -275,7 +275,7 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
             )}
           </div>
         ) : (
-          <p className="text-[10px] text-muted-foreground italic">
+          <p className="text-xs text-muted-foreground italic">
             Nenhum certificado digital cadastrado. Cadastre em <strong>Configurações &gt; Empresas</strong> para habilitar.
           </p>
         )}

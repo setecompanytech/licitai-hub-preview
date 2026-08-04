@@ -144,7 +144,7 @@ export default function MergeDocumentos() {
         <div className="flex items-center gap-2">
           <FileArchive className="w-5 h-5 text-accent" />
           <h3 className="font-semibold text-sm">Juntar Documentos</h3>
-          <Badge variant="outline" className="text-[10px]">{arquivos.length} arquivo(s)</Badge>
+          <Badge variant="outline" className="text-xs">{arquivos.length} arquivo(s)</Badge>
         </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-lg border border-border overflow-hidden">
@@ -179,7 +179,7 @@ export default function MergeDocumentos() {
       <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-border/60 rounded-xl cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors">
         <FilePlus className="w-8 h-8 text-muted-foreground mb-2" />
         <span className="text-sm text-muted-foreground">Clique ou arraste arquivos aqui</span>
-        <span className="text-xs text-muted-foreground/60 mt-1">PDF, imagens, documentos</span>
+        <span className="text-xs text-muted-foreground mt-1">PDF, imagens, documentos</span>
         <input type="file" multiple className="hidden" onChange={handleAddFiles} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
       </label>
 

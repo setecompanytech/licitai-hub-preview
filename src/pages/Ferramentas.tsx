@@ -107,7 +107,7 @@ function ToolCard({ item, navigate }: { item: ToolItem; navigate: (p: string) =>
       {item.badge && (
         <span
           className={cn(
-            'absolute -top-2 right-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full leading-none',
+            'absolute -top-2 right-2 text-xs font-bold px-2.5 py-0.5 rounded-full leading-none',
             item.badge === 'novo'
               ? 'bg-accent text-accent-foreground'
               : 'bg-primary text-primary-foreground'

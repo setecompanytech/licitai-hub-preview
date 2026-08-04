@@ -569,7 +569,7 @@ ${truncated}`
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{arq.nome}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatSize(arq.tamanho)}</p>
+                    <p className="text-xs text-muted-foreground">{formatSize(arq.tamanho)}</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(arq.id)}>
                     <X className="w-3 h-3" />
@@ -587,10 +587,10 @@ ${truncated}`
             <Upload className="w-6 h-6 text-accent" />
             <span className="text-xs font-medium">Anexar documentos</span>
             <div className="flex gap-1">
-              <Badge variant="outline" className="text-[9px]">PDF</Badge>
-              <Badge variant="outline" className="text-[9px]">DOC</Badge>
-              <Badge variant="outline" className="text-[9px]">TXT</Badge>
-              <Badge variant="outline" className="text-[9px]">ZIP</Badge>
+              <Badge variant="outline" className="text-xs">PDF</Badge>
+              <Badge variant="outline" className="text-xs">DOC</Badge>
+              <Badge variant="outline" className="text-xs">TXT</Badge>
+              <Badge variant="outline" className="text-xs">ZIP</Badge>
             </div>
           </button>
           <input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" onChange={handleAddFiles} />
@@ -599,7 +599,7 @@ ${truncated}`
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-            <span className="bg-card px-2 text-[10px] text-muted-foreground">ou cole o texto</span>
+            <span className="bg-card px-2 text-xs text-muted-foreground">ou cole o texto</span>
           </div>
           <div className="border-t border-border/40 my-3" />
         </div>
@@ -617,9 +617,9 @@ ${truncated}`
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-accent" />
             <span className="text-xs font-semibold">Dados da Inteligência de Concorrentes</span>
-            <Badge variant="outline" className="text-[9px]">Opcional</Badge>
+            <Badge variant="outline" className="text-xs">Opcional</Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Selecione um concorrente da base para enriquecer a análise com dados já coletados (CNPJ, situação cadastral, etc.).
           </p>
           {loadingConcorrentes ? (
@@ -644,7 +644,7 @@ ${truncated}`
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-[11px] text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground italic">
               Nenhum concorrente cadastrado. Acesse Inteligência → Concorrentes para adicionar.
             </p>
           )}
@@ -703,17 +703,17 @@ ${truncated}`
               <Checkbox checked={item.selecionado} onCheckedChange={() => toggleFato(item.id)} className="mt-0.5" />
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`text-[9px] border ${GRAVIDADE_COLORS[item.gravidade]}`}>
+                  <Badge className={`text-xs border ${GRAVIDADE_COLORS[item.gravidade]}`}>
                     <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
                     {GRAVIDADE_LABELS[item.gravidade]}
                   </Badge>
-                  <Badge variant="outline" className="text-[9px]">
+                  <Badge variant="outline" className="text-xs">
                     {item.origem === 'ia' ? '🤖 IA' : item.origem === 'concorrente' ? '🏢 Concorrente' : '✏️ Manual'}
                   </Badge>
-                  <Badge variant="outline" className="text-[9px] bg-primary/5">{item.categoria}</Badge>
+                  <Badge variant="outline" className="text-xs bg-primary/5">{item.categoria}</Badge>
                 </div>
                 <p className="text-xs text-foreground leading-relaxed">{item.descricao}</p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed italic">📖 {item.fundamentacao}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed italic">📖 {item.fundamentacao}</p>
               </div>
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeFato(item.id)}>
                 <Trash2 className="w-3 h-3" />
@@ -742,7 +742,7 @@ ${truncated}`
             </Button>
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Descrição do fato *</label>
+            <label className="text-xs text-muted-foreground">Descrição do fato *</label>
             <Textarea
               value={manualDesc}
               onChange={e => setManualDesc(e.target.value)}
@@ -751,7 +751,7 @@ ${truncated}`
             />
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Fundamentação jurídica</label>
+            <label className="text-xs text-muted-foreground">Fundamentação jurídica</label>
             <Textarea
               value={manualFund}
               onChange={e => setManualFund(e.target.value)}
@@ -760,7 +760,7 @@ ${truncated}`
             />
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Gravidade</label>
+            <label className="text-xs text-muted-foreground">Gravidade</label>
             <select
               value={manualGrav}
               onChange={e => setManualGrav(e.target.value as 'alta' | 'media' | 'baixa')}

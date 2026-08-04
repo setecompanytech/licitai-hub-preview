@@ -114,7 +114,7 @@ export default function CertificadoDigital() {
               >
                 {file
                   ? <p className="text-sm font-medium text-amber-600">{file.name}</p>
-                  : <><Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground/50" /><p className="text-xs text-muted-foreground">Clique para selecionar</p></>
+                  : <><Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground" /><p className="text-xs text-muted-foreground">Clique para selecionar</p></>
                 }
               </div>
               <input ref={fileRef} type="file" accept=".pfx,.p12" className="hidden"
@@ -136,7 +136,7 @@ export default function CertificadoDigital() {
                   {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">A senha não é armazenada — é usada apenas no momento da assinatura.</p>
+              <p className="text-xs text-muted-foreground mt-1">A senha não é armazenada — é usada apenas no momento da assinatura.</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -203,11 +203,11 @@ export default function CertificadoDigital() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold">{cert.nome_titular ?? 'Certificado A1'}</span>
-                    <Badge variant="outline" className="text-[9px] px-1 py-0">Tipo {cert.tipo}</Badge>
-                    {vencido && <Badge variant="outline" className="text-[9px] px-1 py-0 border-red-400/60 text-red-500">Vencido</Badge>}
+                    <Badge variant="outline" className="text-xs px-1 py-0">Tipo {cert.tipo}</Badge>
+                    {vencido && <Badge variant="outline" className="text-xs px-1 py-0 border-red-400/60 text-red-500">Vencido</Badge>}
                   </div>
-                  {cert.cnpj_titular && <p className="text-[10px] text-muted-foreground">{cert.cnpj_titular}</p>}
-                  {cert.validade && <p className="text-[10px] text-muted-foreground">Válido até {new Date(cert.validade).toLocaleDateString('pt-BR')}</p>}
+                  {cert.cnpj_titular && <p className="text-xs text-muted-foreground">{cert.cnpj_titular}</p>}
+                  {cert.validade && <p className="text-xs text-muted-foreground">Válido até {new Date(cert.validade).toLocaleDateString('pt-BR')}</p>}
                 </div>
               </div>
               <button onClick={() => handleDelete(cert)}
@@ -222,7 +222,7 @@ export default function CertificadoDigital() {
       {/* Belém integration info */}
       <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
         <p className="font-medium">Integração com Prefeitura de Belém (ISSNET/ABRASFv2)</p>
-        <p>Endpoint: <code className="text-[10px] bg-amber-100 dark:bg-amber-900/30 px-1 rounded">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
+        <p>Endpoint: <code className="text-xs bg-amber-100 dark:bg-amber-900/30 px-1 rounded">https://www.issdigital.com.br/WsNFe2/LoteRps.jws</code></p>
         <p className="text-amber-700 dark:text-amber-400">O certificado é usado para assinar o XML RPS antes do envio ao webservice municipal.</p>
       </div>
     </div>

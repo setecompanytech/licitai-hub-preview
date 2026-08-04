@@ -158,7 +158,7 @@ export default function ParametrizacaoMetas() {
                       {v.vigencia_fim && ` → ${new Date(`${v.vigencia_fim}T12:00:00`).toLocaleDateString('pt-BR')}`}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={v.user_id ? 'default' : 'outline'} className="text-[10px]">
+                      <Badge variant={v.user_id ? 'default' : 'outline'} className="text-xs">
                         {v.user_id ? 'Colaborador' : 'Empresa'}
                       </Badge>
                     </TableCell>
@@ -198,7 +198,7 @@ export default function ParametrizacaoMetas() {
                 value={campo('janela_historica_meses', 6)}
                 onChange={(e) => setForm((f) => ({ ...f, janela_historica_meses: e.target.value }))}
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Base da taxa de conversão e do ticket médio.</p>
+              <p className="text-xs text-muted-foreground mt-1">Base da taxa de conversão e do ticket médio.</p>
             </div>
             <div>
               <Label className="text-sm text-muted-foreground mb-1 block">Alertar faltando (dias úteis)</Label>
@@ -215,7 +215,7 @@ export default function ParametrizacaoMetas() {
                 value={campo('alerta_percentual_minimo', 70)}
                 onChange={(e) => setForm((f) => ({ ...f, alerta_percentual_minimo: e.target.value }))}
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Abaixo disso, dispara alerta de risco.</p>
+              <p className="text-xs text-muted-foreground mt-1">Abaixo disso, dispara alerta de risco.</p>
             </div>
             <div>
               <Label className="text-sm text-muted-foreground mb-1 block">Amostra mínima (contratos)</Label>
@@ -224,7 +224,7 @@ export default function ParametrizacaoMetas() {
                 value={campo('min_amostra_ticket', 3)}
                 onChange={(e) => setForm((f) => ({ ...f, min_amostra_ticket: e.target.value }))}
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Abaixo disso usa o valor-alvo da modalidade.</p>
+              <p className="text-xs text-muted-foreground mt-1">Abaixo disso usa o valor-alvo da modalidade.</p>
             </div>
           </div>
           <div className="flex justify-end mt-4">

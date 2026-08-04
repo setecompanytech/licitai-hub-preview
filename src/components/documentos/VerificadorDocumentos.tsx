@@ -206,15 +206,15 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center p-2 rounded-lg bg-muted/50">
                 <p className="text-lg font-bold">{result.total_exigidos}</p>
-                <p className="text-[10px] text-muted-foreground">Exigidos</p>
+                <p className="text-xs text-muted-foreground">Exigidos</p>
               </div>
               <div className="text-center p-2 rounded-lg bg-success/10">
                 <p className="text-lg font-bold text-success">{result.total_encontrados}</p>
-                <p className="text-[10px] text-muted-foreground">Encontrados</p>
+                <p className="text-xs text-muted-foreground">Encontrados</p>
               </div>
               <div className="text-center p-2 rounded-lg bg-destructive/10">
                 <p className="text-lg font-bold text-destructive">{result.total_faltantes}</p>
-                <p className="text-[10px] text-muted-foreground">Faltantes</p>
+                <p className="text-xs text-muted-foreground">Faltantes</p>
               </div>
             </div>
 
@@ -255,7 +255,7 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
                 </h4>
                 {Object.entries(groupBy(encontrados)).map(([cat, docs]) => (
                   <div key={cat} className="space-y-1">
-                    <Badge variant="outline" className={`text-[10px] ${categoriaCor[cat] || categoriaCor['Outros']}`}>
+                    <Badge variant="outline" className={`text-xs ${categoriaCor[cat] || categoriaCor['Outros']}`}>
                       {cat}
                     </Badge>
                     {docs.map((doc, i) => (
@@ -264,7 +264,7 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
                         <div className="min-w-0">
                           <p className="font-medium truncate">{doc.nome}</p>
                           {doc.artigo_referencia && (
-                            <p className="text-muted-foreground text-[10px]">{doc.artigo_referencia}</p>
+                            <p className="text-muted-foreground text-xs">{doc.artigo_referencia}</p>
                           )}
                         </div>
                       </div>
@@ -283,7 +283,7 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
                     <p className="text-xs font-semibold text-destructive">
                       {faltantes.length} documento(s) não encontrado(s)
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Anexe esses documentos antes de submeter a habilitação
                     </p>
                   </div>
@@ -291,7 +291,7 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
 
                 {Object.entries(groupBy(faltantes)).map(([cat, docs]) => (
                   <div key={cat} className="space-y-1">
-                    <Badge variant="outline" className={`text-[10px] ${categoriaCor[cat] || categoriaCor['Outros']}`}>
+                    <Badge variant="outline" className={`text-xs ${categoriaCor[cat] || categoriaCor['Outros']}`}>
                       {cat}
                     </Badge>
                     {docs.map((doc, i) => (
@@ -300,14 +300,14 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
                         <div className="min-w-0">
                           <p className="font-medium truncate">{doc.nome}</p>
                           {doc.observacao && (
-                            <p className="text-muted-foreground text-[10px]">{doc.observacao}</p>
+                            <p className="text-muted-foreground text-xs">{doc.observacao}</p>
                           )}
                           {doc.artigo_referencia && (
-                            <p className="text-muted-foreground text-[10px]">{doc.artigo_referencia}</p>
+                            <p className="text-muted-foreground text-xs">{doc.artigo_referencia}</p>
                           )}
                         </div>
                         {doc.obrigatorio && (
-                          <Badge variant="destructive" className="text-[9px] px-1 h-4 ml-auto flex-shrink-0">
+                          <Badge variant="destructive" className="text-xs px-1 h-4 ml-auto flex-shrink-0">
                             Obrigatório
                           </Badge>
                         )}

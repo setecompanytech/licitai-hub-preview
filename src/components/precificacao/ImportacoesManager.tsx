@@ -156,7 +156,7 @@ export default function ImportacoesManager() {
           <div className="text-sm space-y-1">
             <p className="font-medium">Formato aceito: XLSX ou CSV</p>
             <p className="text-muted-foreground text-xs">
-              Colunas esperadas: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">source_name, supplier_name, product_title, brand, sku, price, freight, total_price, stock, delivery_days, uf, product_url, collected_at</code>
+              Colunas esperadas: <code className="bg-muted px-1 py-0.5 rounded text-xs">source_name, supplier_name, product_title, brand, sku, price, freight, total_price, stock, delivery_days, uf, product_url, collected_at</code>
             </p>
             <p className="text-muted-foreground text-xs">Campos obrigatórios: <strong>product_title</strong> e <strong>price</strong> (ou total_price).</p>
           </div>
@@ -186,15 +186,15 @@ export default function ImportacoesManager() {
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-card border border-border/40 rounded-lg p-3 text-center">
               <p className="text-lg font-bold">{result.total}</p>
-              <p className="text-[11px] text-muted-foreground">Total de registros</p>
+              <p className="text-xs text-muted-foreground">Total de registros</p>
             </div>
             <div className="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
               <p className="text-lg font-bold text-success">{result.importados}</p>
-              <p className="text-[11px] text-muted-foreground">Importados</p>
+              <p className="text-xs text-muted-foreground">Importados</p>
             </div>
             <div className={`${result.erros.length > 0 ? 'bg-destructive/5 border-destructive/20' : 'bg-muted/30 border-border/40'} border rounded-lg p-3 text-center`}>
               <p className={`text-lg font-bold ${result.erros.length > 0 ? 'text-destructive' : ''}`}>{result.erros.length}</p>
-              <p className="text-[11px] text-muted-foreground">Erros</p>
+              <p className="text-xs text-muted-foreground">Erros</p>
             </div>
           </div>
 

@@ -126,7 +126,7 @@ export default function FinCNAB() {
 
           <TabsContent value="historico" className="space-y-3 mt-4">
             <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-              <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+              <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
               Nenhuma transmissão registrada ainda. As remessas geradas e os retornos processados aparecerão aqui.
             </div>
           </TabsContent>

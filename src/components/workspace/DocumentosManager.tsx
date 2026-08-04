@@ -177,10 +177,10 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm">{m.titulo}</div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{m.descricao}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
                         <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                          <Badge variant="outline" className="text-[10px]">{m.categoria}</Badge>
-                          <span className="text-[10px] text-muted-foreground">{m.fundamento}</span>
+                          <Badge variant="outline" className="text-xs">{m.categoria}</Badge>
+                          <span className="text-xs text-muted-foreground">{m.fundamento}</span>
                         </div>
                       </div>
                     </div>
@@ -234,10 +234,10 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                 <FileText className="w-5 h-5 text-accent shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{d.titulo}</div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">{tipo?.label || d.tipo}</Badge>
-                    <Badge variant="outline" className="text-[10px]">v{d.versao}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{d.status}</Badge>
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{tipo?.label || d.tipo}</Badge>
+                    <Badge variant="outline" className="text-xs">v{d.versao}</Badge>
+                    <Badge variant="outline" className="text-xs">{d.status}</Badge>
                     <span>· atualizado em {new Date(d.updated_at).toLocaleString('pt-BR')}</span>
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
                   <Label htmlFor="assinar" className="font-semibold text-sm cursor-pointer">Assinatura eletrônica</Label>
                   <Switch id="assinar" checked={assinar} onCheckedChange={setAssinar} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Adiciona selo de autenticação ao final do documento com identificação do signatário, data, hash de integridade e fundamento legal (MP 2.200-2/2001 e Lei 14.063/2020).
                 </p>
               </div>
@@ -294,7 +294,7 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
               <div className="text-xs p-2 bg-muted/50 rounded space-y-0.5">
                 <div><strong>Signatário:</strong> {representante.nome || <span className="text-destructive">— não cadastrado —</span>}</div>
                 <div><strong>Empresa:</strong> {empresa.razao_social || <span className="text-destructive">— não cadastrada —</span>}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">
+                <div className="text-xs text-muted-foreground mt-1">
                   Cadastre estes dados em <strong>Configurações → Empresa</strong> para que o selo seja completo.
                 </div>
               </div>

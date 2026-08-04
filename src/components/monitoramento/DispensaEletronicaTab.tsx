@@ -34,12 +34,12 @@ function PortalCard({ portal }: { portal: PortalCompras }) {
         </div>
         <div className="flex gap-1 shrink-0">
           {portal.dispensaEletronica && (
-            <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[9px] px-1.5">
+            <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs px-1.5">
               Dispensa
             </Badge>
           )}
           {portal.licitacao && (
-            <Badge variant="outline" className="bg-info/10 text-info border-info/30 text-[9px] px-1.5">
+            <Badge variant="outline" className="bg-info/10 text-info border-info/30 text-xs px-1.5">
               Licitação
             </Badge>
           )}
@@ -47,16 +47,16 @@ function PortalCard({ portal }: { portal: PortalCompras }) {
       </div>
 
       <div className="flex items-center gap-2 mb-2">
-        <Badge variant="outline" className={`${catCfg.className} text-[9px]`}>
+        <Badge variant="outline" className={`${catCfg.className} text-xs`}>
           {catCfg.label}
         </Badge>
         {portal.uf && (
-          <Badge variant="outline" className="text-[9px]">
+          <Badge variant="outline" className="text-xs">
             {portal.uf}
           </Badge>
         )}
         {portal.apiDisponivel && (
-          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[9px]">
+          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
             <Zap className="w-2.5 h-2.5 mr-0.5" /> API
           </Badge>
         )}
@@ -163,27 +163,27 @@ export default function DispensaEletronicaTab() {
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-accent">{stats.total}</p>
-          <p className="text-[10px] text-muted-foreground">Portais com Dispensa</p>
+          <p className="text-xs text-muted-foreground">Portais com Dispensa</p>
         </div>
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-info">{stats.federais}</p>
-          <p className="text-[10px] text-muted-foreground">Federais</p>
+          <p className="text-xs text-muted-foreground">Federais</p>
         </div>
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-primary">{stats.estaduais}</p>
-          <p className="text-[10px] text-muted-foreground">Estaduais</p>
+          <p className="text-xs text-muted-foreground">Estaduais</p>
         </div>
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-warning">{stats.plataformas}</p>
-          <p className="text-[10px] text-muted-foreground">Plataformas</p>
+          <p className="text-xs text-muted-foreground">Plataformas</p>
         </div>
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-success">{stats.comApi}</p>
-          <p className="text-[10px] text-muted-foreground">Com API</p>
+          <p className="text-xs text-muted-foreground">Com API</p>
         </div>
         <div className="stat-card text-center">
           <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.ufsCobertas}/27</p>
-          <p className="text-[10px] text-muted-foreground">UFs Cobertas</p>
+          <p className="text-xs text-muted-foreground">UFs Cobertas</p>
         </div>
       </div>
 
@@ -279,7 +279,7 @@ export default function DispensaEletronicaTab() {
                       )}
                       <span className="font-medium">{uf}</span>
                       {temPortal && (
-                        <span className="text-[9px] text-muted-foreground">({portaisUF.length})</span>
+                        <span className="text-xs text-muted-foreground">({portaisUF.length})</span>
                       )}
                     </div>
                   );
@@ -288,7 +288,7 @@ export default function DispensaEletronicaTab() {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-4">
+        <p className="text-xs text-muted-foreground mt-4">
           UFs sem portal estadual próprio utilizam PNCP + plataformas homologadas (BLL, BNC, Licitações-e, etc.) para dispensas eletrônicas.
         </p>
       </div>

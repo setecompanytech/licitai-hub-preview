@@ -116,7 +116,7 @@ export default function NotificationCenter({
           <Bell className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold">Notificações</h3>
           {unreadCount > 0 && (
-            <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0">
+            <Badge className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0">
               {unreadCount}
             </Badge>
           )}
@@ -137,7 +137,7 @@ export default function NotificationCenter({
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${
+            className={`text-xs px-2.5 py-1 rounded-full whitespace-nowrap transition-colors ${
               filter === f
                 ? 'bg-accent text-accent-foreground'
                 : 'bg-muted/50 text-muted-foreground hover:bg-muted'
@@ -189,7 +189,7 @@ export default function NotificationCenter({
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
-                      <span className="text-[10px] text-muted-foreground mt-1 block">
+                      <span className="text-xs text-muted-foreground mt-1 block">
                         {new Date(notif.timestamp).toLocaleString('pt-BR', {
                           day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                         })}

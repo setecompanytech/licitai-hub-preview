@@ -171,7 +171,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
               <span className="text-xs font-semibold">Política de Uso do Robô de Lances</span>
             </div>
             <ScrollArea className="h-40 border border-border rounded-lg p-3">
-              <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
+              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
                 {POLITICA_USO}
               </pre>
             </ScrollArea>
@@ -188,7 +188,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
               onValueChange={(v) => setLimiteFinanceiro(String(v))}
               className="font-mono"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Valor máximo total que o sistema poderá comprometer em lances. Nenhuma operação excederá este limite.
             </p>
           </div>
@@ -200,7 +200,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
                 <Key className="w-4 h-4 text-destructive" />
                 <span className="text-xs font-semibold text-destructive">Dupla Autenticação Obrigatória</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 O Nível 3 exige verificação adicional. Um código será enviado ao e-mail {user?.email}.
               </p>
               <div className="flex gap-2">
@@ -253,7 +253,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           {nivel >= 2 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 rounded-lg border border-warning/20">
               <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-              <p className="text-[10px] text-warning">
+              <p className="text-xs text-warning">
                 {nivel === 2
                   ? 'No modo semiautomático, cada lance requer sua autorização prévia. O sistema não agirá sem confirmação.'
                   : 'A automação controlada enviará lances dentro dos limites definidos. Use o botão de parada emergencial se necessário.'

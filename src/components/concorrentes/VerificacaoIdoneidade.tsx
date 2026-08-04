@@ -182,15 +182,15 @@ export default function VerificacaoIdoneidade() {
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-semibold">{cadastro.nome}</h4>
                   {cadastro.erro ? (
-                    <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px]">
+                    <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
                       Erro
                     </Badge>
                   ) : cadastro.status === 'limpo' ? (
-                    <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px]">
+                    <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
                       <CheckCircle2 className="w-3 h-3 mr-0.5" /> Limpo
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-[10px]">
+                    <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs">
                       <XCircle className="w-3 h-3 mr-0.5" /> {cadastro.total} registro(s)
                     </Badge>
                   )}

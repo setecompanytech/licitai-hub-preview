@@ -89,7 +89,7 @@ export default function WhatsAppDashboard() {
               <span className="text-xs text-muted-foreground">{k.label}</span>
             </div>
             <p className="text-xl font-bold">{k.value}</p>
-            <p className="text-[10px] text-muted-foreground">{k.sub}</p>
+            <p className="text-xs text-muted-foreground">{k.sub}</p>
           </Card>
         ))}
       </div>

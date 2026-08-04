@@ -206,7 +206,7 @@ export default function FinAtividadeUsuarios() {
               <h1 className="text-lg font-bold flex items-center gap-2"><Activity className="w-4 h-4" />Atividade dos Usuários</h1>
               <p className="text-xs text-muted-foreground">{empresaAtiva?.razao_social}</p>
             </div>
-            <div className="text-right text-[11px] text-muted-foreground">
+            <div className="text-right text-xs text-muted-foreground">
               <div>Emitido em</div>
               <div className="font-medium">{format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</div>
             </div>
@@ -234,7 +234,7 @@ export default function FinAtividadeUsuarios() {
                           </div>
                           {Array.from(tipos.entries()).map(([tipo, evs]) => (
                             <div key={tipo} className="ml-3 mb-2">
-                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground border-b border-dotted pb-0.5 mb-1">
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground border-b border-dotted pb-0.5 mb-1">
                                 Tipo: {tipo}
                               </div>
                               <table className="w-full">
@@ -244,7 +244,7 @@ export default function FinAtividadeUsuarios() {
                                       <td className="py-0.5 pr-3 w-24">
                                         <Badge
                                           variant={ev.operacao === "DELETE" ? "destructive" : "outline"}
-                                          className="text-[10px] px-1.5 py-0 h-4"
+                                          className="text-xs px-1.5 py-0 h-4"
                                         >
                                           {OPERACAO_LABEL[ev.operacao]}
                                         </Badge>
@@ -259,18 +259,18 @@ export default function FinAtividadeUsuarios() {
                                   ))}
                                 </tbody>
                               </table>
-                              <div className="text-[10px] text-muted-foreground italic ml-1 mt-0.5">
+                              <div className="text-xs text-muted-foreground italic ml-1 mt-0.5">
                                 atividades({evs.length})
                               </div>
                             </div>
                           ))}
-                          <div className="text-[10px] text-muted-foreground italic ml-1">
+                          <div className="text-xs text-muted-foreground italic ml-1">
                             atividades por data ({totalData})
                           </div>
                         </div>
                       );
                     })}
-                    <div className="text-[10px] text-muted-foreground italic ml-3">
+                    <div className="text-xs text-muted-foreground italic ml-3">
                       atividades por usuário ({totalUsuario})
                     </div>
                   </section>
@@ -279,7 +279,7 @@ export default function FinAtividadeUsuarios() {
             </div>
           )}
 
-          <footer className="border-t pt-2 mt-6 text-[10px] text-muted-foreground text-center">
+          <footer className="border-t pt-2 mt-6 text-xs text-muted-foreground text-center">
             DELETE indica que houve exclusão do registro · Gerado pelo PRAEFECTUS · Página 1
           </footer>
         </CardContent>
@@ -296,7 +296,7 @@ function KpiCard({ label, value, tone }: { label: string; value: number; tone?: 
   return (
     <Card>
       <CardContent className="p-3">
-        <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
         <div className={`text-xl font-semibold tabular-nums ${cor}`}>{value}</div>
       </CardContent>
     </Card>

@@ -260,7 +260,7 @@ export default function BuscaInteligenteIA() {
             <span className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5" />
               Filtros e portais ({portaisSelecionados.length} selecionados)
-              {uf && <Badge variant="outline" className="text-[10px] ml-1">{uf}</Badge>}
+              {uf && <Badge variant="outline" className="text-xs ml-1">{uf}</Badge>}
             </span>
             {showFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>
@@ -308,7 +308,7 @@ export default function BuscaInteligenteIA() {
                 <Button
                   variant="link"
                   size="sm"
-                  className="text-[10px] mt-1 h-auto p-0"
+                  className="text-xs mt-1 h-auto p-0"
                   onClick={() => setPortaisSelecionados(PORTAIS_OPCOES.map(p => p.id))}
                 >
                   Selecionar todos
@@ -382,7 +382,7 @@ export default function BuscaInteligenteIA() {
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium line-clamp-2">{r.titulo}</p>
-                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[10px] text-muted-foreground">
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1">
                                       <Building2 className="w-3 h-3" /> {r.orgao}
                                     </span>
@@ -403,10 +403,10 @@ export default function BuscaInteligenteIA() {
                                     )}
                                   </div>
                                   <div className="flex gap-1.5 mt-1.5">
-                                    <Badge variant="outline" className="text-[9px] h-4">
+                                    <Badge variant="outline" className="text-xs h-4">
                                       {r.portal}
                                     </Badge>
-                                    <Badge variant="outline" className="text-[9px] h-4">
+                                    <Badge variant="outline" className="text-xs h-4">
                                       {r.modalidade}
                                     </Badge>
                                   </div>
@@ -415,7 +415,7 @@ export default function BuscaInteligenteIA() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-[10px] px-2"
+                                    className="h-7 text-xs px-2"
                                     onClick={() => handleDownload(r)}
                                     disabled={downloadingUrl === r.url}
                                   >
@@ -429,7 +429,7 @@ export default function BuscaInteligenteIA() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 text-[10px] px-2"
+                                      className="h-7 text-xs px-2"
                                       onClick={() => window.open(r.url, '_blank')}
                                     >
                                       <ExternalLink className="w-3 h-3 mr-1" /> Portal

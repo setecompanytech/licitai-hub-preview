@@ -198,7 +198,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                   <SelectItem value="lotes">Lotes (grupos de itens)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {tipoEstrutura === 'lotes'
                   ? 'A IA tentará identificar o nº de cada lote e agrupar os itens correspondentes para gestão de pedidos por lote.'
                   : 'Os itens serão importados individualmente, sem agrupamento por lote.'}
@@ -208,7 +208,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
               htmlFor="pdf-upload"
               className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 cursor-pointer hover:border-primary/50 transition-colors"
             >
-              <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
+              <Upload className="w-10 h-10 text-muted-foreground mb-3" />
               <p className="text-sm font-medium">Clique ou arraste o documento do contrato</p>
               <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX ou TXT até 20MB</p>
             </label>
@@ -275,12 +275,12 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
               <div className="flex gap-2 pt-1 flex-wrap">
-                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                <Badge variant="outline" className="text-xs border-primary/30 text-primary">
                   Estrutura: {tipoEstrutura === 'lotes' ? 'Lotes' : 'Itens'}
                 </Badge>
-                <Badge variant="secondary" className="text-[10px]">{filledFields} campos extraídos</Badge>
-                {totalItens > 0 && <Badge variant="secondary" className="text-[10px]">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
-                {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-[10px]">{extracted.vigencia_meses} meses</Badge>}
+                <Badge variant="secondary" className="text-xs">{filledFields} campos extraídos</Badge>
+                {totalItens > 0 && <Badge variant="secondary" className="text-xs">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
+                {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-xs">{extracted.vigencia_meses} meses</Badge>}
               </div>
             </div>
 

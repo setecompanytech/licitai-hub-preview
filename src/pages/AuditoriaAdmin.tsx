@@ -278,7 +278,7 @@ export default function AuditoriaAdmin() {
                 { label: 'Últimas 24h', value: stats.ultimas24h },
               ].map((s) => (
                 <div key={s.label} className="bg-card border border-border rounded-lg p-3">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</p>
                   <p className="text-xl font-bold mt-0.5">{s.value}</p>
                 </div>
               ))}
@@ -313,7 +313,7 @@ export default function AuditoriaAdmin() {
                           {new Date(r.data).toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px] whitespace-nowrap">{r.acao}</Badge>
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{r.acao}</Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.modulo || '—'}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
@@ -328,7 +328,7 @@ export default function AuditoriaAdmin() {
                   </TableBody>
                 </Table>
                 {filtered.length > 200 && (
-                  <div className="text-[10px] text-muted-foreground text-center py-2 bg-muted/30 border-t border-border">
+                  <div className="text-xs text-muted-foreground text-center py-2 bg-muted/30 border-t border-border">
                     Exibindo 200 de {filtered.length} registros — exporte para visualizar todos.
                   </div>
                 )}

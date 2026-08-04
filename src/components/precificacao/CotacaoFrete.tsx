@@ -107,7 +107,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
           <div className="text-left">
             <h4 className="text-sm font-semibold text-foreground">Cotação de Frete</h4>
             {resultado && !expanded && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {resultado.origem.cidade}/{resultado.origem.uf} → {resultado.destino.cidade}/{resultado.destino.uf}
                 {selectedFrete && (
                   <span className="ml-1 text-primary font-medium">
@@ -126,7 +126,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
           {/* CEP Inputs */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> CEP Origem
               </label>
               <Input
@@ -138,7 +138,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> CEP Destino
               </label>
               <Input
@@ -154,7 +154,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
           {/* Weight + Calculate */}
           <div className="flex gap-3 items-end">
             <div className="w-[120px]">
-              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
                 <Package className="w-3 h-3" /> Peso (kg)
               </label>
               <Input
@@ -188,7 +188,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
                 <span className="font-medium text-foreground">{resultado.origem.cidade}/{resultado.origem.uf}</span>
                 <span>→</span>
                 <span className="font-medium text-foreground">{resultado.destino.cidade}/{resultado.destino.uf}</span>
-                <span className="ml-auto text-[10px]">~{resultado.distancia_estimada_km} km</span>
+                <span className="ml-auto text-xs">~{resultado.distancia_estimada_km} km</span>
               </div>
 
               {/* Freight options */}
@@ -218,9 +218,9 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-foreground">{opcao.modalidade}</span>
-                          <span className="text-[10px] text-muted-foreground">· {opcao.transportadora}</span>
+                          <span className="text-xs text-muted-foreground">· {opcao.transportadora}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">{opcao.descricao}</p>
+                        <p className="text-xs text-muted-foreground">{opcao.descricao}</p>
                       </div>
 
                       {/* Prazo */}
@@ -247,7 +247,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
                 <div className="bg-gradient-to-r from-primary/5 to-success/5 border border-primary/20 rounded-lg p-3 mt-2">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Custo Total (Produto + Frete)</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo Total (Produto + Frete)</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatCurrency(precoProduto)}</span>
                         <span>+</span>
@@ -258,7 +258,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
                       <p className="text-xl font-bold text-foreground">
                         {formatCurrency(precoProduto + selectedFrete.valor)}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Entrega em até {selectedFrete.prazo_dias} dias úteis
                       </p>
                     </div>
@@ -287,8 +287,8 @@ export function FreteInlineDisplay({ frete }: { frete: FreteOpcao | null }) {
           Frete: <span className="font-medium text-foreground">{formatCurrency(frete.valor)}</span>
         </span>
       )}
-      <span className="text-muted-foreground/60">·</span>
-      <Clock className="w-3 h-3 text-muted-foreground/60" />
+      <span className="text-muted-foreground">·</span>
+      <Clock className="w-3 h-3 text-muted-foreground" />
       <span className="text-muted-foreground">{frete.prazo_dias} dias</span>
     </div>
   );

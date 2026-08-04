@@ -227,7 +227,7 @@ export default function CotacaoEditalAutoIA() {
             <span className="text-xs text-muted-foreground block mt-1">
               A IA extrairá todos os itens e cotará automaticamente nos marketplaces integrados
             </span>
-            <span className="text-[10px] text-muted-foreground/70 block mt-1">
+            <span className="text-xs text-muted-foreground block mt-1">
               PDF, DOC, DOCX, TXT — Máx. 15MB
             </span>
           </div>
@@ -308,17 +308,17 @@ export default function CotacaoEditalAutoIA() {
               <div className="bg-success/10 border border-success/20 rounded-lg p-3 text-center">
                 <TrendingDown className="w-5 h-5 text-success mx-auto mb-1" />
                 <p className="text-lg font-bold text-success">{formatCurrency(totalMenor)}</p>
-                <p className="text-[10px] text-muted-foreground">Total (Menor Preço)</p>
+                <p className="text-xs text-muted-foreground">Total (Menor Preço)</p>
               </div>
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
                 <ShoppingCart className="w-5 h-5 text-primary mx-auto mb-1" />
                 <p className="text-lg font-bold text-primary">{formatCurrency(totalMedio)}</p>
-                <p className="text-[10px] text-muted-foreground">Total (Preço Médio)</p>
+                <p className="text-xs text-muted-foreground">Total (Preço Médio)</p>
               </div>
               <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-center">
                 <Package className="w-5 h-5 text-accent mx-auto mb-1" />
                 <p className="text-lg font-bold text-accent">{cotados.length}/{itens.length}</p>
-                <p className="text-[10px] text-muted-foreground">Itens Cotados</p>
+                <p className="text-xs text-muted-foreground">Itens Cotados</p>
               </div>
             </div>
           )}
@@ -328,7 +328,7 @@ export default function CotacaoEditalAutoIA() {
             {itens.map((item, idx) => (
               <div key={idx} className="bg-card border border-border/40 rounded-lg overflow-hidden">
                 <div className="flex items-center gap-3 p-3">
-                  <Badge variant="outline" className="text-[10px] shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                  <Badge variant="outline" className="text-xs shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold">
                     {item.item}
                   </Badge>
                   <div className="flex-1 min-w-0">
@@ -344,16 +344,16 @@ export default function CotacaoEditalAutoIA() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {item.status === 'pendente' && (
-                      <Badge variant="secondary" className="text-[10px]">Pendente</Badge>
+                      <Badge variant="secondary" className="text-xs">Pendente</Badge>
                     )}
                     {item.status === 'cotando' && (
-                      <Badge className="text-[10px] bg-accent/20 text-accent">
+                      <Badge className="text-xs bg-accent/20 text-accent">
                         <Loader2 className="w-3 h-3 animate-spin mr-1" /> Cotando
                       </Badge>
                     )}
                     {item.status === 'cotado' && (
                       <>
-                        <Badge className="text-[10px] bg-success/20 text-success">
+                        <Badge className="text-xs bg-success/20 text-success">
                           <CheckCircle className="w-3 h-3 mr-1" /> {item.fornecedores.length} fontes
                         </Badge>
                         {item.menorPreco && (
@@ -370,7 +370,7 @@ export default function CotacaoEditalAutoIA() {
                       </>
                     )}
                     {item.status === 'erro' && (
-                      <Badge variant="destructive" className="text-[10px]">
+                      <Badge variant="destructive" className="text-xs">
                         <AlertCircle className="w-3 h-3 mr-1" /> {item.erro}
                       </Badge>
                     )}
@@ -393,7 +393,7 @@ export default function CotacaoEditalAutoIA() {
                           )}
                           <div className="min-w-0">
                             <p className="text-xs font-medium truncate">{f.titulo}</p>
-                            <p className="text-[10px] text-muted-foreground">{f.loja}</p>
+                            <p className="text-xs text-muted-foreground">{f.loja}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">

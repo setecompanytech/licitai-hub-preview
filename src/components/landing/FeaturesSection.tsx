@@ -129,7 +129,7 @@ export default function FeaturesSection() {
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-muted group-hover:bg-accent/15 transition-colors">
                     <f.icon className="w-5 h-5 text-accent/70 group-hover:text-accent transition-colors" />
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${tagColors[f.tag] || 'bg-muted text-muted-foreground border-border'}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${tagColors[f.tag] || 'bg-muted text-muted-foreground border-border'}`}>
                     {f.tag}
                   </span>
                 </div>
@@ -158,7 +158,7 @@ export default function FeaturesSection() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg">{selectedFeature.title}</DialogTitle>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${tagColors[selectedFeature.tag] || ''}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${tagColors[selectedFeature.tag] || ''}`}>
                       {selectedFeature.tag}
                     </span>
                   </div>

@@ -259,7 +259,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
           ) : (
             <div className="max-h-[250px] overflow-y-auto space-y-1">
               {filteredItems.some(i => i._fonte === 'edital') && (
-                <p className="text-[10px] text-amber-500/80 px-1 pb-1">
+                <p className="text-xs text-amber-500/80 px-1 pb-1">
                   Itens extraídos do edital (valores de referência). Preencha seu preço após importar.
                 </p>
               )}
@@ -280,10 +280,10 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                   <span className="text-muted-foreground">{item.quantidade} {item.unidade}</span>
                   {item.preco_unitario > 0
                     ? <span className="font-medium">{formatCurrency(item.preco_unitario)}</span>
-                    : <span className="text-muted-foreground/50 text-[10px]">sem preço</span>
+                    : <span className="text-muted-foreground text-xs">sem preço</span>
                   }
                   {item._fonte === 'edital'
-                    ? <Badge variant="outline" className="text-[8px] shrink-0 border-amber-500/40 text-amber-500">Edital</Badge>
+                    ? <Badge variant="outline" className="text-xs shrink-0 border-amber-500/40 text-amber-500">Edital</Badge>
                     : <span className="font-semibold text-accent">{formatCurrency(item.preco_total)}</span>
                   }
                 </label>

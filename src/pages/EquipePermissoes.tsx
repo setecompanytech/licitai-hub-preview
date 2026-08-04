@@ -293,7 +293,7 @@ export default function EquipePermissoes() {
               ))}
             </SelectContent>
           </Select>
-          <Badge variant="outline" className="text-[11px] ml-auto">
+          <Badge variant="outline" className="text-xs ml-auto">
             <Users className="w-3 h-3 mr-1" /> {filteredMembros.length} membro(s)
           </Badge>
         </div>
@@ -337,10 +337,10 @@ export default function EquipePermissoes() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm truncate">{m.nome || m.email || 'Colaborador'}</span>
-                            {isMe && <Badge variant="outline" className="text-[10px]">Você</Badge>}
-                            {isDirty && <Badge className="text-[10px] bg-accent text-accent-foreground">Alterado</Badge>}
+                            {isMe && <Badge variant="outline" className="text-xs">Você</Badge>}
+                            {isDirty && <Badge className="text-xs bg-accent text-accent-foreground">Alterado</Badge>}
                           </div>
-                          {m.email && <p className="text-[11px] text-muted-foreground truncate">{m.email}</p>}
+                          {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
                         </div>
                       </div>
                       <Button
@@ -357,7 +357,7 @@ export default function EquipePermissoes() {
                     {/* Papel + Setor */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       <div>
-                        <label className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                           Papel
                         </label>
                         <Select value={d.papel} onValueChange={(v) => updateDraft(m.id, { papel: v })}>
@@ -372,7 +372,7 @@ export default function EquipePermissoes() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                           Setor / Equipe
                         </label>
                         <Select
@@ -393,7 +393,7 @@ export default function EquipePermissoes() {
 
                     {/* Permissões granulares */}
                     <div>
-                      <label className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                         Permissões de Módulos ({d.permissoes.length}/{MODULOS_SISTEMA.length})
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -418,7 +418,7 @@ export default function EquipePermissoes() {
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="text-xs font-medium leading-tight">{mod.label}</div>
-                                <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
                                   {mod.setores.join(', ')}
                                 </div>
                               </div>
@@ -427,7 +427,7 @@ export default function EquipePermissoes() {
                         })}
                       </div>
                       {moduloMismatch.length > 0 && (
-                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           {moduloMismatch.length} módulo(s) fora do escopo do setor "{d.equipe}".
                         </p>
@@ -465,10 +465,10 @@ export default function EquipePermissoes() {
                           {m.nome || m.email || '—'}
                         </td>
                         <td className="p-2 whitespace-nowrap">
-                          <Badge variant="outline" className="text-[10px]">{d.equipe}</Badge>
+                          <Badge variant="outline" className="text-xs">{d.equipe}</Badge>
                         </td>
                         <td className="p-2 whitespace-nowrap">
-                          <Badge variant="secondary" className="text-[10px]">{d.papel}</Badge>
+                          <Badge variant="secondary" className="text-xs">{d.papel}</Badge>
                         </td>
                         {MODULOS_SISTEMA.map((mod) => {
                           const checked = d.permissoes.includes(mod.value);
@@ -487,7 +487,7 @@ export default function EquipePermissoes() {
                 </tbody>
               </table>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               Marque/desmarque diretamente na matriz. As alterações ficam pendentes até clicar em "Salvar".
             </p>
           </TabsContent>

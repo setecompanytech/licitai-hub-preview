@@ -448,7 +448,7 @@ export default function FinImportarOFX() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-foreground/80">
+            <Label className="text-[12px] font-medium text-foreground">
               Conta de destino
             </Label>
             <Select value={contaId} onValueChange={setContaId}>
@@ -474,7 +474,7 @@ export default function FinImportarOFX() {
                         <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
                           {nomeExibido}
                         </div>
-                        <div className="text-[11px] font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
+                        <div className="text-xs font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
                           {sel.agencia ? `Ag. ${sel.agencia}` : "Ag. —"}
                           <span className="mx-1.5 opacity-50">•</span>
                           {sel.conta ? `C/C ${sel.conta}` : "C/C —"}
@@ -508,7 +508,7 @@ export default function FinImportarOFX() {
                             <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
                               {nomeExibido}
                             </div>
-                            <div className="text-[11px] font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
+                            <div className="text-xs font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
                               {c.agencia ? `Ag. ${c.agencia}` : "Ag. —"}
                               <span className="mx-1.5 opacity-50">•</span>
                               {c.conta ? `C/C ${c.conta}` : "C/C —"}
@@ -526,7 +526,7 @@ export default function FinImportarOFX() {
               const erros = validarConta(sel);
               if (erros.length === 0) return null;
               return (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive space-y-0.5">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive space-y-0.5">
                   <div className="font-medium">Cadastro da conta incompleto:</div>
                   <ul className="list-disc list-inside">
                     {erros.map((e, i) => (
@@ -580,31 +580,31 @@ export default function FinImportarOFX() {
                     <div className="flex-1 min-w-0">
                       <p className="truncate">{m.memo}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                        <span className="text-xs text-muted-foreground tabular-nums">
                           {format(
                             new Date(m.data + "T00:00:00"),
                             "dd/MM/yyyy"
                           )}
                         </span>
                         {m._sugestao && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs">
                             ✨ Conciliar: {m._sugestao.descricao.slice(0, 40)}
                           </Badge>
                         )}
                         {!m._sugestao && cat && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {cat.nome}
                           </Badge>
                         )}
                         {!m._sugestao && pes && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {pes.nome}
                           </Badge>
                         )}
                         {m._editado && !m._sugestao && (
                           <Badge
                             variant="default"
-                            className="text-[10px] gap-1"
+                            className="text-xs gap-1"
                           >
                             <CheckCircle2 className="w-2.5 h-2.5" /> editado
                           </Badge>
@@ -626,7 +626,7 @@ export default function FinImportarOFX() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                        className="h-7 px-2 text-xs gap-1 shrink-0"
                         onClick={() => setEditIdx(i)}
                       >
                         <Pencil className="w-3 h-3" />
@@ -686,7 +686,7 @@ export default function FinImportarOFX() {
                     );
                   })()}
                   <div>
-                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">
+                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
                       Conta Corrente
                     </div>
                     <div className="text-[13px] font-semibold truncate">
@@ -696,7 +696,7 @@ export default function FinImportarOFX() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">
+                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
                       Data do Movimento
                     </div>
                     <div className="text-[13px] font-medium tabular-nums">
@@ -707,7 +707,7 @@ export default function FinImportarOFX() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">
+                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
                       Valor do Lançamento
                     </div>
                     <div
@@ -836,9 +836,9 @@ export default function FinImportarOFX() {
                     </Select>
                     {movimentoEdit._detalhes.favorecido_texto &&
                       !movimentoEdit._detalhes.pessoa_id && (
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Detectado no extrato:{" "}
-                          <span className="font-medium text-foreground/80">
+                          <span className="font-medium text-foreground">
                             {movimentoEdit._detalhes.favorecido_texto}
                           </span>
                         </p>

@@ -359,13 +359,13 @@ Responda APENAS em JSON válido:
               <Brain className="w-5 h-5 text-primary flex-shrink-0" />
               Inteligência de Preços com IA
             </h3>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+            <p className="text-xs sm:text-xs text-muted-foreground mt-1">
               Monitora preços da concorrência e identifica oportunidades para aumentar margens sem perder competitividade
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {lastUpdate && (
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap">Atualizado: {lastUpdate}</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Atualizado: {lastUpdate}</span>
             )}
             <Button
               onClick={handleAnalyze}
@@ -388,7 +388,7 @@ Responda APENAS em JSON válido:
             <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
               <button
                 onClick={() => setMode('catalog')}
-                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                   mode === 'catalog' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -396,14 +396,14 @@ Responda APENAS em JSON válido:
               </button>
               <button
                 onClick={() => setMode('manual')}
-                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                   mode === 'manual' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Busca Manual
               </button>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Mercado Livre (API)</span>
               <span className="flex items-center gap-1 whitespace-nowrap"><ShoppingCart className="w-3 h-3" /> Marketplaces</span>
               <span className="flex items-center gap-1 whitespace-nowrap"><Building2 className="w-3 h-3" /> Gov.br (PNCP)</span>
@@ -440,7 +440,7 @@ Responda APENAS em JSON válido:
               <div key={card.label} className="stat-card">
                 <div className="flex items-start justify-between gap-1">
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">{card.label}</p>
+                    <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
                     <p className="text-lg font-bold mt-0.5">{card.value}</p>
                   </div>
                   <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: `${card.color}15` }}>
@@ -519,7 +519,7 @@ Responda APENAS em JSON válido:
                     <Badge variant={
                       rec.prioridade === 'alta' ? 'destructive' :
                       rec.prioridade === 'media' ? 'default' : 'secondary'
-                    } className="text-[10px]">
+                    } className="text-xs">
                       {rec.prioridade}
                     </Badge>
                     <span className="text-xs font-semibold text-primary whitespace-nowrap">{rec.impacto}</span>
@@ -591,9 +591,9 @@ Responda APENAS em JSON válido:
                      <Minus className="w-4 h-4" />}
                     {item.diferenca > 0 ? '+' : ''}{item.diferenca}%
                   </div>
-                  <p className="text-[10px] text-muted-foreground">vs. mercado</p>
+                  <p className="text-xs text-muted-foreground">vs. mercado</p>
                 </div>
-                <Badge className={`text-[10px] ${
+                <Badge className={`text-xs ${
                   item.oportunidade === 'aumentar' ? 'bg-success/10 text-success border-success/20' :
                   item.oportunidade === 'reduzir' ? 'bg-destructive/10 text-destructive border-destructive/20' :
                   'bg-accent/10 text-accent border-accent/20'

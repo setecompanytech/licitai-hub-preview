@@ -796,7 +796,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" onClick={openNewDialog} className="gap-1">
               <Plus className="w-3.5 h-3.5" /> Novo Pedido
-              <Badge variant="outline" className="text-[9px] px-1 py-0 border-muted-foreground/40 text-muted-foreground ml-0.5">Legada</Badge>
+              <Badge variant="outline" className="text-xs px-1 py-0 border-muted-foreground/40 text-muted-foreground ml-0.5">Legada</Badge>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -913,18 +913,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         {extractedItens.map((ei, idx) => (
                           <Card key={ei.key} className="p-3 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-semibold text-muted-foreground">Item {idx + 1}</span>
+                              <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
                               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExtractedItem(ei.key)}>
                                 <Trash2 className="w-3 h-3 text-destructive" />
                               </Button>
                             </div>
                             <div>
-                              <Label className="text-[11px]">Descrição</Label>
+                              <Label className="text-xs">Descrição</Label>
                               <Input value={ei.descricao} onChange={e => updateExtractedItem(ei.key, 'descricao', e.target.value)} className="h-8 text-xs" />
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               <div>
-                                <Label className="text-[11px]">Item do Contrato</Label>
+                                <Label className="text-xs">Item do Contrato</Label>
                                 <Select value={ei.contrato_item_id} onValueChange={v => {
                                   const item = itens.find(i => i.id === v);
                                   updateExtractedItem(ei.key, 'contrato_item_id', v);
@@ -934,7 +934,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   <SelectContent>
                                     {itens.map(i => (
                                       <SelectItem key={i.id} value={i.id} className="text-xs">
-                                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
                                         {i.descricao}
                                       </SelectItem>
                                     ))}
@@ -942,11 +942,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 </Select>
                               </div>
                               <div>
-                                <Label className="text-[11px]">Quantidade</Label>
+                                <Label className="text-xs">Quantidade</Label>
                                 <Input type="number" value={ei.quantidade} onChange={e => updateExtractedItem(ei.key, 'quantidade', e.target.value)} className="h-8 text-xs" />
                               </div>
                               <div>
-                                <Label className="text-[11px]">Valor Unit. (R$)</Label>
+                                <Label className="text-xs">Valor Unit. (R$)</Label>
                                 <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 text-xs" />
                               </div>
                             </div>
@@ -1042,7 +1042,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <SelectContent>
                             {itensFiltrados.map(i => (
                               <SelectItem key={i.id} value={i.id}>
-                                <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
                                 {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
                               </SelectItem>
                             ))}
@@ -1106,7 +1106,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-xs whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
                   <div className="flex items-center gap-1">
                     N.º Pedido
-                    {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground" />}
                   </div>
                 </TableHead>
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
@@ -1150,7 +1150,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-center whitespace-nowrap">
-                      <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
+                      <Badge className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       {p.pedido_id ? (
@@ -1161,7 +1161,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
                             onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
                           >
-                            <SelectTrigger className={`h-6 text-[10px] border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                            <SelectTrigger className={`h-6 text-xs border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1178,7 +1178,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs">
                       <div className="space-y-1">
                         {p.nota_fiscal && (
-                          <Badge variant="outline" className="text-[10px] block w-fit border-primary/30 text-primary">
+                          <Badge variant="outline" className="text-xs block w-fit border-primary/30 text-primary">
                             <FileText className="w-3 h-3 mr-1 inline" />
                             {p.nota_fiscal}
                             {p.nf_quitada && p.data_quitacao && (
@@ -1187,7 +1187,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           </Badge>
                         )}
                         {linkedNfs.map(nf => (
-                          <Badge key={nf.id} variant="outline" className={`text-[10px] block w-fit ${
+                          <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
                             nf.status === 'autorizada' ? 'border-success/30 text-success' :
                             nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
                             'border-muted-foreground/30 text-muted-foreground'
@@ -1197,21 +1197,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           </Badge>
                         ))}
                         {!p.nota_fiscal && linkedNfs.length === 0 && (
-                          <span className="text-muted-foreground/50">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {p.nf_quitada ? (
-                          <Badge className="text-[10px] bg-success/10 text-success border border-success/30 whitespace-nowrap">
+                          <Badge className="text-xs bg-success/10 text-success border border-success/30 whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> NF Quitada
                           </Badge>
                         ) : (
                           p.status === 'entregue' && (isFinanceiro || isAdmin) && (
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 px-2 text-[10px] text-success border-success/30 hover:bg-success/5"
+                              className="h-7 px-2 text-xs text-success border-success/30 hover:bg-success/5"
                               onClick={() => openNfDialog(p)}
                               title="Registrar pagamento da NF-e e gerar comissão"
                             >
@@ -1249,29 +1249,29 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
               <FileText className="w-4 h-4 text-accent" />
               Notas Fiscais Sincronizadas do Financeiro
-              <Badge variant="outline" className="text-[10px]">{nfsSync.length} NFs</Badge>
+              <Badge variant="outline" className="text-xs">{nfsSync.length} NFs</Badge>
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
               <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-[10px] text-muted-foreground">NFs Saída</p>
+                <p className="text-xs text-muted-foreground">NFs Saída</p>
                 <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
-                <p className="text-[10px] text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+                <p className="text-xs text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
               </div>
               <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-[10px] text-muted-foreground">NFs Entrada</p>
+                <p className="text-xs text-muted-foreground">NFs Entrada</p>
                 <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
-                <p className="text-[10px] text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+                <p className="text-xs text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
               </div>
               <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-[10px] text-muted-foreground">Autorizadas</p>
+                <p className="text-xs text-muted-foreground">Autorizadas</p>
                 <p className="text-sm font-bold text-success">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
               </div>
               <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-[10px] text-muted-foreground">Pendentes</p>
+                <p className="text-xs text-muted-foreground">Pendentes</p>
                 <p className="text-sm font-bold text-warning">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground italic">
               As notas fiscais são emitidas e controladas pelo setor Financeiro. Acesse o módulo Financeiro para emitir ou editar NFs.
             </p>
           </Card>
@@ -1341,7 +1341,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
             <Receipt className="w-4 h-4 text-primary" />
             Pré-Notas Fiscais Solicitadas
-            <Badge variant="outline" className="text-[10px]">{preNotas.length}</Badge>
+            <Badge variant="outline" className="text-xs">{preNotas.length}</Badge>
           </h4>
           <div className="space-y-2">
             {preNotas.map((pn: any) => {
@@ -1356,19 +1356,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               return (
                 <div key={pn.id} className="flex items-center justify-between p-2 rounded border bg-muted/30 text-xs">
                   <div className="flex items-center gap-2">
-                    <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                    <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
                     <span>{pn.natureza_operacao}</span>
                     <span className="font-medium">{fmt(pn.valor_total)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
                     {pn.motivo_devolucao && (
-                      <Badge variant="outline" className="text-[10px] text-warning" title={pn.motivo_devolucao}>
+                      <Badge variant="outline" className="text-xs text-warning" title={pn.motivo_devolucao}>
                         <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
                       </Badge>
                     )}
                     {pn.motivo_rejeicao && (
-                      <Badge variant="outline" className="text-[10px] text-destructive" title={pn.motivo_rejeicao}>
+                      <Badge variant="outline" className="text-xs text-destructive" title={pn.motivo_rejeicao}>
                         <XCircle className="w-3 h-3 mr-1" /> Rejeitada
                       </Badge>
                     )}
@@ -1404,7 +1404,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   rows={3}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Registrado por: <strong>{user?.email}</strong>
               </p>
               <div className="flex gap-2 justify-end">
@@ -1477,7 +1477,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   <SelectContent>
                     {itens.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        <span className="text-muted-foreground text-[10px] mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
                         {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
                       </SelectItem>
                     ))}

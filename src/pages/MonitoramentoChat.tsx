@@ -194,8 +194,8 @@ export default function MonitoramentoChat() {
                   {mensagens.slice(0, 10).map(msg => (
                     <Card key={msg.id} className="p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-[10px]">{msg.role === 'user' ? 'Você' : 'Assistente'}</Badge>
-                        <span className="text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="text-xs">{msg.role === 'user' ? 'Você' : 'Assistente'}</Badge>
+                        <span className="text-xs text-muted-foreground">
                           {new Date(msg.created_at).toLocaleString('pt-BR')}
                         </span>
                       </div>

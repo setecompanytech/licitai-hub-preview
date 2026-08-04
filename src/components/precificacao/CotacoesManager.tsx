@@ -243,9 +243,9 @@ export default function CotacoesManager() {
                     <Trash2 className="w-3.5 h-3.5 text-destructive" />
                   </Button>
                 </div>
-                {q.orgao && <p className="text-[11px] text-muted-foreground mt-0.5">{q.orgao}</p>}
+                {q.orgao && <p className="text-xs text-muted-foreground mt-0.5">{q.orgao}</p>}
                 <div className="flex items-center justify-between mt-1">
-                  <Badge variant="secondary" className="text-[10px]">{q.status}</Badge>
+                  <Badge variant="secondary" className="text-xs">{q.status}</Badge>
                   <span className="text-xs font-medium">{formatCurrency(q.valor_total)}</span>
                 </div>
               </button>

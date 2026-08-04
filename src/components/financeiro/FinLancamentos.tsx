@@ -413,7 +413,7 @@ export default function FinLancamentos() {
                               {isAtrasado && " ⚠"}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground/50">—</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
 
@@ -423,17 +423,17 @@ export default function FinLancamentos() {
                             {l.descricao}
                           </span>
                           {isIgnorado && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30 mt-0.5">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30 mt-0.5">
                               ignorado no somatório
                             </Badge>
                           )}
                           {isTransferencia && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-700 mt-0.5">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-700 mt-0.5">
                               transferência entre contas
                             </Badge>
                           )}
                           {(l as any).parcela_numero && (l as any).parcela_total && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               Parcela {(l as any).parcela_numero}/{(l as any).parcela_total}
                             </span>
                           )}
@@ -460,7 +460,7 @@ export default function FinLancamentos() {
 
                         {/* Tipo */}
                         <td className="px-3 py-2.5 whitespace-nowrap">
-                          <Badge variant="outline" className="text-[11px] px-1.5 py-0 h-5 font-normal whitespace-nowrap">
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 font-normal whitespace-nowrap">
                             {tipoLabel[l.tipo] ?? l.tipo}
                           </Badge>
                         </td>
@@ -469,7 +469,7 @@ export default function FinLancamentos() {
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <Badge
                             variant="outline"
-                            className={`text-[11px] px-1.5 py-0 h-5 font-medium whitespace-nowrap ring-1 ${statusColor[l.status] ?? ""}`}
+                            className={`text-xs px-1.5 py-0 h-5 font-medium whitespace-nowrap ring-1 ${statusColor[l.status] ?? ""}`}
                           >
                             {statusLabel[l.status] ?? l.status}
                           </Badge>
@@ -601,7 +601,7 @@ function StatCard({
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium truncate">{label}</p>
             <p className={`text-xl font-semibold tabular-nums mt-1 ${cls.text}`}>{value}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
           </div>
           <div className={`p-2 rounded-lg shrink-0 ${cls.bg}`}>
             <Icon className={`w-4 h-4 ${cls.icon}`} />

@@ -118,7 +118,7 @@ function CarouselLogo({ portal }: { portal: PortalEntry }) {
           draggable={false}
         />
       </div>
-      <span className={`text-[10px] md:text-[11px] font-medium text-center leading-tight transition-colors duration-200 ${
+      <span className={`text-xs md:text-xs font-medium text-center leading-tight transition-colors duration-200 ${
         hovered ? 'text-foreground' : 'text-muted-foreground'
       }`}>
         {portal.name}

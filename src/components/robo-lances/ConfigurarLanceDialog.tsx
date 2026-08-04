@@ -693,7 +693,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">Cadastro Manual</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
                 </div>
               </button>
               <button
@@ -705,7 +705,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">Importar do Kanban</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Importe dados + itens precificados.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Importe dados + itens precificados.</p>
                 </div>
               </button>
               <button
@@ -717,7 +717,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">Extrair do Edital (IA)</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
                 </div>
               </button>
             </div>
@@ -729,7 +729,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   <Sparkles className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground">Extração Inteligente do Edital</h4>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Envie o Edital ou Termo de Referência. A IA extrairá automaticamente: Nº do item, Descrição, Quantidade, Unidade, Valor Unitário e Valor Total de referência.
                 </p>
 
@@ -741,14 +741,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   >
                     <Upload className="w-6 h-6 text-primary/60" />
                     <span className="text-xs font-medium text-foreground">Clique para enviar o arquivo</span>
-                    <span className="text-[10px] text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
+                    <span className="text-xs text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
                   </button>
                 ) : (
                   <div className="bg-card rounded-lg p-3 border border-border/50 flex items-center gap-3">
                     <FileText className="w-6 h-6 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{editalFile.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
+                      <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -793,7 +793,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     <FileSearch className="w-4 h-4 text-accent" />
                     Seus Processos Licitatórios
                   </h4>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     {filteredLicitacoes.length} {filteredLicitacoes.length === 1 ? 'processo' : 'processos'}
                   </Badge>
                 </div>
@@ -856,13 +856,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-foreground">{lic.numero}</span>
-                                <Badge variant="outline" className={`text-[9px] ${statusColor(lic.status)}`}>
+                                <Badge variant="outline" className={`text-xs ${statusColor(lic.status)}`}>
                                   {lic.status}
                                 </Badge>
                               </div>
-                              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{lic.orgao}</p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
-                              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">{lic.orgao}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
+                              <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                                 {lic.portal && <span>{lic.portal}</span>}
                                 {lic.valor_estimado && (
                                   <span className="font-mono font-medium text-foreground">
@@ -903,7 +903,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     }
                   </p>
                   {licitacaoIdRef && (
-                    <p className="text-[10px] text-success/80 font-normal">
+                    <p className="text-xs text-success/80 font-normal">
                       🔗 Fonte única: estes mesmos itens estão sincronizados com a <strong>Proposta Comercial</strong> e a <strong>Precificação</strong>.
                     </p>
                   )}
@@ -978,7 +978,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
                   {(licitacaoIdRef || editalFile) && (
-                    <Badge variant="outline" className="text-[9px] bg-info/10 text-info border-info/30 ml-1">
+                    <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 ml-1">
                       Detectado automaticamente
                     </Badge>
                   )}
@@ -1010,7 +1010,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                   <Layers className="w-4 h-4" /> Por Lote
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {tipoDisputa === 'item'
                   ? 'Cada item será disputado individualmente. Os lances são enviados item a item.'
                   : 'Os itens são agrupados em lotes. O lance é enviado para o lote como um todo. Remova lotes ou itens que não deseja disputar.'}
@@ -1024,29 +1024,29 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </h4>
               <div className="grid grid-cols-12 gap-2">
                 <div className="col-span-5">
-                  <label className="text-[10px] text-muted-foreground">Descrição *</label>
+                  <label className="text-xs text-muted-foreground">Descrição *</label>
                   <Input value={novoDesc} onChange={(e) => setNovoDesc(e.target.value)} placeholder="Ex: Toner HP 26A" className="mt-0.5 h-8 text-xs" />
                 </div>
                 <div className="col-span-1">
-                  <label className="text-[10px] text-muted-foreground">Qtd</label>
+                  <label className="text-xs text-muted-foreground">Qtd</label>
                   <Input type="number" min="1" value={novoQtd} onChange={(e) => setNovoQtd(e.target.value)} className="mt-0.5 h-8 text-xs" />
                 </div>
                 <div className="col-span-1">
-                  <label className="text-[10px] text-muted-foreground">Unid.</label>
+                  <label className="text-xs text-muted-foreground">Unid.</label>
                   <Input value={novoUnidade} onChange={(e) => setNovoUnidade(e.target.value)} placeholder="UN" className="mt-0.5 h-8 text-xs" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-[10px] text-muted-foreground">Valor Unit. (R$)</label>
+                  <label className="text-xs text-muted-foreground">Valor Unit. (R$)</label>
                   <MoneyInput value={Number(novoValorRef) || 0} onValueChange={(v) => setNovoValorRef(String(v))} placeholder="R$ 0,00" className="mt-0.5 h-8 text-xs" />
                 </div>
                 {tipoDisputa === 'lote' && (
                   <div className="col-span-2">
-                    <label className="text-[10px] text-muted-foreground">Lote</label>
+                    <label className="text-xs text-muted-foreground">Lote</label>
                     <Input value={novoLote} onChange={(e) => setNovoLote(e.target.value)} placeholder="Lote 1" className="mt-0.5 h-8 text-xs" />
                   </div>
                 )}
                 <div className={tipoDisputa === 'lote' ? 'col-span-1' : 'col-span-3'}>
-                  <label className="text-[10px] text-muted-foreground invisible">+</label>
+                  <label className="text-xs text-muted-foreground invisible">+</label>
                   <Button onClick={handleAddItem} size="sm" disabled={!novoDesc.trim()} className="mt-0.5 h-8 w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
@@ -1065,7 +1065,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     )}
                   </h4>
                   {licitacaoIdRef && (
-                    <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">
+                    <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
                       Importados do Kanban
                     </Badge>
                   )}
@@ -1083,13 +1083,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                             <div className="flex items-center gap-2">
                               <Layers className="w-3.5 h-3.5 text-accent" />
                               <span className="text-xs font-bold text-foreground">{lote}</span>
-                              <Badge variant="outline" className="text-[9px]">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
-                              <span className="text-[10px] font-mono text-muted-foreground">{formatCurrency(loteTotal)}</span>
+                              <Badge variant="outline" className="text-xs">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
+                              <span className="text-xs font-mono text-muted-foreground">{formatCurrency(loteTotal)}</span>
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-6 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => handleRemoveLote(lote)}
                             >
                               <Trash2 className="w-3 h-3 mr-1" /> Remover Lote
@@ -1098,13 +1098,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                           <Table>
                             <TableHeader>
                               <TableRow className="bg-muted/30">
-                                <TableHead className="text-[10px] w-10 text-center">Nº</TableHead>
-                                <TableHead className="text-[10px]">Descrição</TableHead>
-                                <TableHead className="text-[10px] text-center">Qtd</TableHead>
-                                <TableHead className="text-[10px] text-center">Unid.</TableHead>
-                                <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
-                                <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
-                                <TableHead className="text-[10px] w-10" />
+                                <TableHead className="text-xs w-10 text-center">Nº</TableHead>
+                                <TableHead className="text-xs">Descrição</TableHead>
+                                <TableHead className="text-xs text-center">Qtd</TableHead>
+                                <TableHead className="text-xs text-center">Unid.</TableHead>
+                                <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
+                                <TableHead className="text-xs text-right">Vlr Total</TableHead>
+                                <TableHead className="text-xs w-10" />
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1139,13 +1139,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead className="text-[10px] w-10 text-center">Nº</TableHead>
-                          <TableHead className="text-[10px]">Descrição</TableHead>
-                          <TableHead className="text-[10px] text-center">Qtd</TableHead>
-                          <TableHead className="text-[10px] text-center">Unid.</TableHead>
-                          <TableHead className="text-[10px] text-right">Vlr Unit.</TableHead>
-                          <TableHead className="text-[10px] text-right">Vlr Total</TableHead>
-                          <TableHead className="text-[10px] w-10" />
+                          <TableHead className="text-xs w-10 text-center">Nº</TableHead>
+                          <TableHead className="text-xs">Descrição</TableHead>
+                          <TableHead className="text-xs text-center">Qtd</TableHead>
+                          <TableHead className="text-xs text-center">Unid.</TableHead>
+                          <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
+                          <TableHead className="text-xs text-right">Vlr Total</TableHead>
+                          <TableHead className="text-xs w-10" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1179,7 +1179,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               <div className="text-center py-6 border border-dashed border-border rounded-lg bg-muted/20 space-y-3">
                 <Package className="w-8 h-8 text-muted-foreground/40 mx-auto" />
                 <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Extraia automaticamente via IA ou preencha o formulário acima.
                 </p>
                 <div className="flex flex-col items-center gap-2">
@@ -1203,7 +1203,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     )}
                   </div>
                   {editalFile && (
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <FileText className="w-3 h-3" />
                       <span className="truncate max-w-[200px]">{editalFile.name}</span>
                       <button onClick={() => { setEditalFile(null); if (editalFileRef.current) editalFileRef.current.value = ''; }} className="text-destructive hover:underline">remover</button>
@@ -1218,7 +1218,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               <div className="text-center py-8 border border-primary/30 rounded-lg bg-primary/5 space-y-3">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
                 <p className="text-sm font-medium text-foreground">Extraindo itens automaticamente...</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
                 </p>
               </div>
@@ -1230,25 +1230,25 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Calculator className="w-4 h-4 text-accent" />
                   Valores da Disputa
-                  <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30 ml-auto">
+                  <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30 ml-auto">
                     Desconto calculado automaticamente
                   </Badge>
                 </h4>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Edite os valores em R$ abaixo. O percentual de desconto é calculado automaticamente com base no Valor de Referência.
                 </p>
 
                 <div className="grid grid-cols-3 gap-3">
                   {/* Valor de Referência – read-only sum */}
                   <div className="bg-card rounded-lg border border-border p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor de Referência</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor de Referência</p>
                     <p className="text-lg font-bold text-foreground mt-1 font-mono">{formatCurrency(somaReferencia)}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Σ (Qtd × Vlr Unit.)</p>
                   </div>
 
                   {/* Valor Inicial – editable R$ */}
                   <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor Inicial (1º lance)</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
                       <MoneyInput
                         value={Number(valorInicialInput) || 0}
@@ -1257,17 +1257,17 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
-                    <p className={`text-[10px] font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-accent'}`}>
+                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-accent'}`}>
                       {pctDescontoInicial >= 0 ? `↓ ${pctDescontoInicial.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoInicial).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeInicial && (
-                      <p className="text-[9px] text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                      <p className="text-xs text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
                     )}
                   </div>
 
                   {/* Valor Mínimo – editable R$ */}
                   <div className={`bg-card rounded-lg border p-3 text-center ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive/30'}`}>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor Mínimo (piso)</p>
                     <div className="flex items-center justify-center gap-1 mt-1.5">
                       <MoneyInput
                         value={Number(valorMinimoInput) || 0}
@@ -1276,11 +1276,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
-                    <p className={`text-[10px] font-semibold mt-1.5 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive/80'}`}>
+                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeMinimo ? 'text-destructive' : 'text-destructive/80'}`}>
                       {pctDescontoMinimo >= 0 ? `↓ ${pctDescontoMinimo.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoMinimo).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeMinimo && (
-                      <p className="text-[9px] text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
+                      <p className="text-xs text-destructive font-bold mt-0.5 animate-pulse">⚠️ INEXEQUÍVEL</p>
                     )}
                   </div>
                 </div>
@@ -1299,7 +1299,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 )}
 
                 {valorMinimo > valorInicial && (
-                  <p className="text-[10px] text-destructive flex items-center gap-1">
+                  <p className="text-xs text-destructive flex items-center gap-1">
                     ⚠️ O valor mínimo (piso) está acima do valor inicial. Revise os valores.
                   </p>
                 )}

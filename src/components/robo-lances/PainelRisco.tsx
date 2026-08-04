@@ -109,8 +109,8 @@ export default function PainelRisco({ lance, nivel }: Props) {
         {/* Posição */}
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <Target className="w-3.5 h-3.5 mx-auto text-muted-foreground mb-1" />
-          <p className="text-[10px] text-muted-foreground">Posição</p>
-          <Badge variant="outline" className={`text-[9px] mt-1 ${POSICAO_CORES[posicao.posicao]}`}>
+          <p className="text-xs text-muted-foreground">Posição</p>
+          <Badge variant="outline" className={`text-xs mt-1 ${POSICAO_CORES[posicao.posicao]}`}>
             {posicao.posicao === 'liderando' && '🏆 '}
             {posicao.posicao.charAt(0).toUpperCase() + posicao.posicao.slice(1)}
           </Badge>
@@ -123,7 +123,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
           ) : (
             <TrendingUp className="w-3.5 h-3.5 mx-auto text-destructive mb-1" />
           )}
-          <p className="text-[10px] text-muted-foreground">Desconto</p>
+          <p className="text-xs text-muted-foreground">Desconto</p>
           <p className={`text-xs font-bold ${margem > 50 ? 'text-destructive' : margem > 30 ? 'text-warning' : 'text-success'}`}>
             {margem.toFixed(1)}%
           </p>
@@ -132,11 +132,11 @@ export default function PainelRisco({ lance, nivel }: Props) {
         {/* Faixa ideal */}
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <BarChart3 className="w-3.5 h-3.5 mx-auto text-accent mb-1" />
-          <p className="text-[10px] text-muted-foreground">Faixa Ideal</p>
-          <p className="text-[10px] font-mono font-bold">
+          <p className="text-xs text-muted-foreground">Faixa Ideal</p>
+          <p className="text-xs font-mono font-bold">
             {formatCurrency(faixa.min)}
           </p>
-          <p className="text-[9px] text-muted-foreground">a {formatCurrency(faixa.max)}</p>
+          <p className="text-xs text-muted-foreground">a {formatCurrency(faixa.max)}</p>
         </div>
 
         {/* Status faixa */}
@@ -146,7 +146,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
           ) : (
             <AlertTriangle className="w-3.5 h-3.5 mx-auto text-warning mb-1" />
           )}
-          <p className="text-[10px] text-muted-foreground">Na Faixa?</p>
+          <p className="text-xs text-muted-foreground">Na Faixa?</p>
           <p className={`text-xs font-bold ${dentroFaixa ? 'text-success' : 'text-warning'}`}>
             {dentroFaixa ? 'Sim ✓' : 'Fora'}
           </p>
@@ -155,7 +155,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
 
       {/* Barra de faixa visual */}
       <div>
-        <div className="flex justify-between text-[9px] text-muted-foreground mb-1">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span>Piso: {formatCurrency(lance.valorMinimo)}</span>
           <span className="text-accent font-semibold">Ótimo: {formatCurrency(faixa.otimo)}</span>
           <span>Ref: {formatCurrency(lance.valorReferencia)}</span>
@@ -183,11 +183,11 @@ export default function PainelRisco({ lance, nivel }: Props) {
       {/* Fatores de risco */}
       {risco.fatores.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Fatores de risco
           </p>
           {risco.fatores.map((f, i) => (
-            <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               {risco.nivel === 'baixo' ? (
                 <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
               ) : (
@@ -200,7 +200,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
       )}
 
       {/* Recomendação */}
-      <div className={`px-3 py-2 rounded-lg border text-[10px] ${
+      <div className={`px-3 py-2 rounded-lg border text-xs ${
         dentroFaixa
           ? 'bg-success/5 border-success/20 text-success'
           : 'bg-warning/5 border-warning/20 text-warning'

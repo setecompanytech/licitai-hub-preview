@@ -106,7 +106,7 @@ export default function BoletimList() {
                     </div>
                   </div>
                 </div>
-                <Badge variant="outline" className={cfg.color + ' text-[10px]'}>{cfg.label}</Badge>
+                <Badge variant="outline" className={cfg.color + ' text-xs'}>{cfg.label}</Badge>
               </div>
             </button>
 
@@ -116,7 +116,7 @@ export default function BoletimList() {
                   <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-sm">
                     <div>
                       <p className="font-medium text-xs">{item.titulo}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.orgao}</p>
+                      <p className="text-xs text-muted-foreground">{item.orgao}</p>
                     </div>
                     <span className="text-xs font-medium">{item.valor}</span>
                   </div>

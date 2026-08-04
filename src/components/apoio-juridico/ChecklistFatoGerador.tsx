@@ -120,7 +120,7 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
           <Scale className="w-4 h-4 text-primary shrink-0" />
           <div>
             <h4 className="text-sm font-semibold">Checklist de Validação Jurídica</h4>
-            <p className="text-[11px] text-muted-foreground">Confirme cada requisito antes de aceitar a classificação do fato gerador.</p>
+            <p className="text-xs text-muted-foreground">Confirme cada requisito antes de aceitar a classificação do fato gerador.</p>
           </div>
         </div>
         <Badge variant={podeAceitar ? 'default' : 'secondary'} className="shrink-0">
@@ -129,23 +129,23 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
       </div>
 
       {/* Matriz de enquadramento */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
         <div className="rounded-md border border-border/60 bg-background/50 p-2">
-          <div className="text-muted-foreground font-semibold uppercase text-[10px] mb-0.5">Origem do evento</div>
+          <div className="text-muted-foreground font-semibold uppercase text-xs mb-0.5">Origem do evento</div>
           <div>{matriz.origem}</div>
         </div>
         <div className="rounded-md border border-border/60 bg-background/50 p-2">
-          <div className="text-muted-foreground font-semibold uppercase text-[10px] mb-0.5">Previsibilidade</div>
+          <div className="text-muted-foreground font-semibold uppercase text-xs mb-0.5">Previsibilidade</div>
           <div>{matriz.previsibilidade}</div>
         </div>
         <div className="rounded-md border border-border/60 bg-background/50 p-2">
-          <div className="text-muted-foreground font-semibold uppercase text-[10px] mb-0.5 flex items-center gap-1">
+          <div className="text-muted-foreground font-semibold uppercase text-xs mb-0.5 flex items-center gap-1">
             <BookOpen className="w-3 h-3" /> Dispositivo legal
           </div>
           <div>{matriz.dispositivo}</div>
         </div>
         <div className="rounded-md border border-border/60 bg-background/50 p-2">
-          <div className="text-muted-foreground font-semibold uppercase text-[10px] mb-0.5 flex items-center gap-1">
+          <div className="text-muted-foreground font-semibold uppercase text-xs mb-0.5 flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" /> Lei 14.133/2021
           </div>
           <div>{matriz.enquadramento14133}</div>
@@ -153,8 +153,8 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
       </div>
 
       {/* Exemplos típicos */}
-      <div className="text-[11px]">
-        <span className="text-muted-foreground font-semibold uppercase text-[10px]">Exemplos típicos: </span>
+      <div className="text-xs">
+        <span className="text-muted-foreground font-semibold uppercase text-xs">Exemplos típicos: </span>
         <span>{matriz.exemplos.join(' • ')}</span>
       </div>
 
@@ -174,7 +174,7 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
                 {item.label}
                 {item.obrigatorio && <span className="text-destructive ml-1">*</span>}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{item.hint}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{item.hint}</div>
             </div>
           </label>
         ))}

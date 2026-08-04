@@ -34,7 +34,7 @@ export default function FinNFSe() {
 
             <TabsContent value="emitir" className="mt-4">
               <div className="rounded-md border p-6 text-center">
-                <FileText className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
+                <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm font-medium">Emissor de NFS-e</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
                   A emissão NFS-e requer integração específica por município. Configure o padrão da sua prefeitura na aba "Padrões suportados".

@@ -387,7 +387,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
       {/* CNAE principal (read-only) */}
       <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">CNAE Principal</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">CNAE Principal</p>
         <p className="text-sm font-semibold text-accent">
           {cnaePrincipal ? `${cnaePrincipal} – ${empresaAtiva?.razao_social || ''}` : 'Nenhum CNAE principal cadastrado'}
         </p>
@@ -404,7 +404,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
               className="bg-primary/10 text-primary border-primary/20 pr-1 flex items-center gap-1"
             >
               <span className="font-mono text-xs">{cnae.codigo}</span>
-              <span className="text-[10px]">– {cnae.descricao}</span>
+              <span className="text-xs">– {cnae.descricao}</span>
                <button
                  type="button"
                  onClick={() => void removeCnae(cnae.codigo)}
@@ -425,7 +425,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
       {/* Sugestões IA extras */}
       {sugestoesIA.length > 0 && (
         <div className="mb-4 p-3 rounded-lg bg-accent/5 border border-accent/10">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-accent" /> Sugestões da IA – Clique para adicionar
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -434,7 +434,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
                 key={cnae.codigo}
                   type="button"
                   onClick={() => void addCnae(cnae)}
-                className="text-[11px] px-2 py-1 rounded-md border border-accent/30 hover:border-accent hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors flex items-center gap-1"
+                className="text-xs px-2 py-1 rounded-md border border-accent/30 hover:border-accent hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors flex items-center gap-1"
               >
                 <Plus className="w-2.5 h-2.5" />
                 <span className="font-mono">{cnae.codigo}</span>
@@ -493,7 +493,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
 
       {/* Quick add popular */}
       <div className="mt-4">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
         <div className="flex flex-wrap gap-1.5">
           {cnaesPopulares
             .filter((c) => !cnaes.some((e) => e.codigo === c.codigo))
@@ -503,7 +503,7 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
                  type="button"
                 key={cnae.codigo}
                  onClick={() => void addCnae(cnae)}
-                className="text-[11px] px-2 py-1 rounded-md border border-border/50 hover:border-accent hover:text-accent transition-colors"
+                className="text-xs px-2 py-1 rounded-md border border-border/50 hover:border-accent hover:text-accent transition-colors"
               >
                 <Plus className="w-2.5 h-2.5 inline mr-0.5" />
                 {cnae.codigo}

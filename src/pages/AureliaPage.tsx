@@ -79,7 +79,7 @@ export default function AureliaPage() {
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-1">AURÉLIA</h1>
             <p className="text-sm text-muted-foreground mb-2">Sua consultora sênior em licitações públicas</p>
-            <p className="text-xs text-muted-foreground/60 mb-4">Powered by PRAEFECTUS Intelligence</p>
+            <p className="text-xs text-muted-foreground mb-4">Powered by PRAEFECTUS Intelligence</p>
 
             {processo && (
               <div className="mb-6 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-xs flex items-center gap-2">
@@ -131,7 +131,7 @@ export default function AureliaPage() {
                 <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   {msg.role === 'assistant' && (
                     <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 mt-1">
-                      <span className="text-[10px] font-bold text-white">AU</span>
+                      <span className="text-xs font-bold text-white">AU</span>
                     </div>
                   )}
                   <div className={cn(
@@ -149,7 +149,7 @@ export default function AureliaPage() {
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-bold text-white">AU</span>
+                    <span className="text-xs font-bold text-white">AU</span>
                   </div>
                   <div className="bg-card border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-accent" />

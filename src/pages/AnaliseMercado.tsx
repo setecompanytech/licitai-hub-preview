@@ -243,7 +243,7 @@ export default function AnaliseMercado() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold">{produto.valorMedio}</p>
-                        <p className="text-[10px] text-muted-foreground">valor médio</p>
+                        <p className="text-xs text-muted-foreground">valor médio</p>
                       </div>
                     </div>
                   ))}

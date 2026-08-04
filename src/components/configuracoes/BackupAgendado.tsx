@@ -516,19 +516,19 @@ export default function BackupAgendado() {
                         <p className="text-xs font-medium truncate">
                           {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
-                        <Badge variant={h.status === 'concluido' ? 'default' : 'destructive'} className="text-[10px] px-1.5 py-0">
+                        <Badge variant={h.status === 'concluido' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0">
                           {h.status === 'concluido' ? 'Concluído' : 'Erro'}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
                           {h.tipo === 'manual' ? 'Manual' : 'Automático'}
                         </Badge>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {h.registros_total ?? 0} registros | {formatBytes(h.tamanho_bytes)}
                         {h.tabelas_exportadas ? ` | ${h.tabelas_exportadas.length} tabelas` : ''}
                       </p>
                       {h.erro && (
-                        <p className="text-[10px] text-destructive flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-destructive flex items-center gap-1 mt-0.5">
                           <AlertTriangle className="w-3 h-3" /> {h.erro}
                         </p>
                       )}

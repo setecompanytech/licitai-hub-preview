@@ -779,7 +779,7 @@ export default function FinConciliacao() {
 
                           <div className="w-[130px] text-right">
                             {concluido ? (
-                              <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                              <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />Conciliado
                               </Badge>
                             ) : (
@@ -788,7 +788,7 @@ export default function FinConciliacao() {
                                   {pendentes} pendente{pendentes === 1 ? "" : "s"}
                                 </div>
                                 {!!r?.valor_pendente && (
-                                  <div className="text-[11px] text-muted-foreground tabular-nums">
+                                  <div className="text-xs text-muted-foreground tabular-nums">
                                     {formatBRL(r.valor_pendente)}
                                   </div>
                                 )}
@@ -931,13 +931,13 @@ export default function FinConciliacao() {
               {/* 1. Saldo extrato */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
                   <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
                 <span className={`text-base font-semibold tabular-nums ${saldoExtrato >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                   {formatBRL(saldoExtrato)}
                 </span>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(resumoMovimentos.entradas)}</span>
                   {" / "}
                   <span className="text-rose-600 dark:text-rose-400">-{formatBRL(resumoMovimentos.saidas)}</span>
@@ -947,19 +947,19 @@ export default function FinConciliacao() {
               {/* 2. Saldo sistema */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
                   <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
                 <span className={`text-base font-semibold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400"}`}>
                   {formatBRL(saldoSistema)}
                 </span>
-                <div className="text-[11px] text-muted-foreground">Lançamentos da conta</div>
+                <div className="text-xs text-muted-foreground">Lançamentos da conta</div>
               </div>
 
               {/* 3. Diferença */}
               <div className={`rounded-lg border p-3 space-y-1 ${emEquilibrio ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
                   {emEquilibrio
                     ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                     : <XCircle className="w-3.5 h-3.5 text-amber-500" />}
@@ -967,13 +967,13 @@ export default function FinConciliacao() {
                 <span className={`text-base font-semibold tabular-nums ${emEquilibrio ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                   {emEquilibrio ? "Em dia" : formatBRL(Math.abs(diferenca))}
                 </span>
-                <div className="text-[11px] text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
+                <div className="text-xs text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
               </div>
 
               {/* 4. Conciliados / progresso */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
                 <span className="text-base font-semibold tabular-nums">
@@ -988,25 +988,25 @@ export default function FinConciliacao() {
               {/* 5. Pendentes */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
                   <Clock className="w-3.5 h-3.5 text-amber-500" />
                 </div>
                 <span className="text-base font-semibold tabular-nums text-amber-600 dark:text-amber-400">
                   {resumoGeral.pendentes}
                 </span>
-                <div className="text-[11px] text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
+                <div className="text-xs text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
               </div>
 
               {/* 6. Valor pendente de conciliar */}
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">A conciliar</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">A conciliar</span>
                   <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
                 <span className="text-base font-semibold tabular-nums text-foreground">
                   {formatBRL(valorPendente)}
                 </span>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(entradasPendentes)}</span>
                   {" / "}
                   <span className="text-rose-600 dark:text-rose-400">-{formatBRL(saidasPendentes)}</span>
@@ -1169,7 +1169,7 @@ export default function FinConciliacao() {
                             <div className="space-y-1">
                               <MotivosBadges motivos={s.motivos} />
                               {s.justificativa_ia && (
-                                <p className="text-[11px] italic text-muted-foreground max-w-[240px] leading-snug">
+                                <p className="text-xs italic text-muted-foreground max-w-[240px] leading-snug">
                                   "{s.justificativa_ia}"
                                 </p>
                               )}
@@ -1364,7 +1364,7 @@ export default function FinConciliacao() {
                 {group.debitos > 0 && (
                   <span className="text-rose-600 dark:text-rose-400 tabular-nums">-{formatBRL(group.debitos)}</span>
                 )}
-                <span className="text-muted-foreground/50">{group.movimentos.length} mov.</span>
+                <span className="text-muted-foreground">{group.movimentos.length} mov.</span>
               </div>
 
               {/* Movimentos do grupo */}
@@ -1453,7 +1453,7 @@ export default function FinConciliacao() {
                         </>
                       ) : m.ignorado ? (
                         <>
-                          <Ban className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                          <Ban className="w-4 h-4 text-muted-foreground shrink-0" />
                           <div className="flex-1 min-w-0">
                             <span className="text-xs text-muted-foreground italic">
                               {m.ignorado_motivo || "Ignorado"}
@@ -1478,10 +1478,10 @@ export default function FinConciliacao() {
                                   <div className="flex items-center gap-1.5">
                                     <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
                                     <span className="text-xs font-semibold text-primary">Sugestão IA</span>
-                                    <span className="text-[10px] text-muted-foreground bg-muted px-1 rounded tabular-nums">{aiClassifs[m.id].confianca}%</span>
+                                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded tabular-nums">{aiClassifs[m.id].confianca}%</span>
                                   </div>
                                   <button
-                                    className="text-muted-foreground/50 hover:text-muted-foreground"
+                                    className="text-muted-foreground hover:text-muted-foreground"
                                     onClick={() => setAiClassifs((p) => { const n = { ...p }; delete n[m.id]; return n; })}
                                   >
                                     <XCircle className="w-3.5 h-3.5" />
@@ -1489,26 +1489,26 @@ export default function FinConciliacao() {
                                 </div>
                                 <div className="text-xs space-y-0.5">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <Badge variant="outline" className="text-[10px] px-1.5 h-4">
+                                    <Badge variant="outline" className="text-xs px-1.5 h-4">
                                       {aiClassifs[m.id].tipo === "a_pagar" ? "Conta a Pagar" : aiClassifs[m.id].tipo === "a_receber" ? "Conta a Receber" : "Movimentação"}
                                     </Badge>
                                     {aiClassifs[m.id].categoria_nome && (
-                                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 border-blue-300 text-blue-600 dark:text-blue-400">
+                                      <Badge variant="outline" className="text-xs px-1.5 h-4 border-blue-300 text-blue-600 dark:text-blue-400">
                                         {aiClassifs[m.id].categoria_nome}
                                       </Badge>
                                     )}
                                     {aiClassifs[m.id].pessoa_nome && (
-                                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 border-violet-300 text-violet-600 dark:text-violet-400">
+                                      <Badge variant="outline" className="text-xs px-1.5 h-4 border-violet-300 text-violet-600 dark:text-violet-400">
                                         {aiClassifs[m.id].pessoa_nome}
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-muted-foreground italic text-[10px] leading-snug">{aiClassifs[m.id].justificativa}</p>
+                                  <p className="text-muted-foreground italic text-xs leading-snug">{aiClassifs[m.id].justificativa}</p>
                                 </div>
                                 <div className="flex gap-1.5">
                                   <Button
                                     size="sm"
-                                    className="h-6 text-[10px] px-2 flex-1"
+                                    className="h-6 text-xs px-2 flex-1"
                                     onClick={() => {
                                       const ai = aiClassifs[m.id];
                                       setNovoLanc({
@@ -1529,7 +1529,7 @@ export default function FinConciliacao() {
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-1.5">
+                                      <Button size="sm" variant="outline" className="h-6 text-xs px-1.5">
                                         <ChevronDown className="w-3 h-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
@@ -1709,7 +1709,7 @@ function StatCard({
   return (
     <div className="rounded-lg border bg-card p-3 flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</span>
         <Icon className={`w-3.5 h-3.5 ${cls}`} />
       </div>
       <span className={`text-base font-semibold tabular-nums ${cls}`}>{value}</span>
@@ -1731,7 +1731,7 @@ function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
     <div className="w-[64px] space-y-1">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold tabular-nums">{score}</span>
-        <span className="text-[10px] text-muted-foreground">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div
@@ -1742,7 +1742,7 @@ function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
       {metodo === "ia" && (
         <Badge
           variant="outline"
-          className="text-[9px] px-1 py-0 h-3.5 border-primary/40 text-primary gap-0.5 mt-0.5"
+          className="text-xs px-1 py-0 h-3.5 border-primary/40 text-primary gap-0.5 mt-0.5"
         >
           <Sparkles className="w-2 h-2" /> IA
         </Badge>
@@ -1759,22 +1759,22 @@ function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
   return (
     <div className="flex flex-wrap gap-1">
       {valor && (
-        <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+        <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
           Valor exato
         </Badge>
       )}
       {dias >= 0 && (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {dias === 0 ? "Mesma data" : `±${dias}d`}
         </Badge>
       )}
       {sim > 0 && (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           Texto {Math.round(sim * 100)}%
         </Badge>
       )}
       {mesmaConta && (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           Mesma conta
         </Badge>
       )}

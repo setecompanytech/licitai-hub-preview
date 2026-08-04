@@ -256,7 +256,7 @@ export default function AdminFontesFabricantes() {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Palavras-chave (separadas por vírgula)</Label>
               <Input placeholder="impressora, notebook, monitor, toner, cartucho" value={kwInput} onChange={e => setKwInput(e.target.value)} />
-              <p className="text-[10px] text-muted-foreground">A IA usará estas palavras para priorizar este fabricante em buscas de produtos relacionados.</p>
+              <p className="text-xs text-muted-foreground">A IA usará estas palavras para priorizar este fabricante em buscas de produtos relacionados.</p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(p => ({ ...p, ativo: v }))} />
@@ -294,15 +294,15 @@ export default function AdminFontesFabricantes() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="text-[10px] font-semibold h-8">Status</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Fabricante/Portal</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">URL</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Categoria</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Palavras-chave</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-center">
+                  <TableHead className="text-xs font-semibold h-8">Status</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Fabricante/Portal</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">URL</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Categoria</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Palavras-chave</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-center">
                     <span className="flex items-center gap-1 justify-center"><ArrowUpDown className="w-3 h-3" /> Prior.</span>
                   </TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 w-20">Ações</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 w-20">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -323,15 +323,15 @@ export default function AdminFontesFabricantes() {
                       </a>
                     </TableCell>
                     <TableCell className="py-1.5">
-                      <Badge variant="outline" className="text-[9px]">{CATEGORIA_LABELS[fonte.categoria] || fonte.categoria}</Badge>
+                      <Badge variant="outline" className="text-xs">{CATEGORIA_LABELS[fonte.categoria] || fonte.categoria}</Badge>
                     </TableCell>
-                    <TableCell className="text-[10px] py-1.5 max-w-[200px]">
+                    <TableCell className="text-xs py-1.5 max-w-[200px]">
                       <div className="flex flex-wrap gap-1">
                         {(fonte.palavras_chave || []).slice(0, 4).map((kw, i) => (
-                          <Badge key={i} variant="secondary" className="text-[8px]">{kw}</Badge>
+                          <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
                         ))}
                         {(fonte.palavras_chave || []).length > 4 && (
-                          <Badge variant="secondary" className="text-[8px]">+{fonte.palavras_chave.length - 4}</Badge>
+                          <Badge variant="secondary" className="text-xs">+{fonte.palavras_chave.length - 4}</Badge>
                         )}
                       </div>
                     </TableCell>

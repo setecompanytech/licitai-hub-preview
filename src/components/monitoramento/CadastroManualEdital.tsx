@@ -260,7 +260,7 @@ export default function CadastroManualEdital({ open, onOpenChange, onSuccess }: 
                   {extraindo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Extrair Dados'}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Para links PNCP, os dados serão extraídos automaticamente. Para outros portais, preencha manualmente abaixo.
               </p>
             </div>
@@ -297,7 +297,7 @@ export default function CadastroManualEdital({ open, onOpenChange, onSuccess }: 
                 )}
               </div>
               {arquivo && (
-                <Badge variant="outline" className="mt-1.5 text-[10px]">
+                <Badge variant="outline" className="mt-1.5 text-xs">
                   {(arquivo.size / 1024 / 1024).toFixed(1)} MB
                 </Badge>
               )}

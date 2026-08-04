@@ -316,7 +316,7 @@ Responda APENAS em JSON:
         <div className="flex items-center gap-2 min-w-0">
           <Package className="w-5 h-5 text-accent flex-shrink-0" />
           <h3 className="font-semibold text-xs sm:text-sm whitespace-nowrap">Catálogo de Itens Precificados</h3>
-          <Badge variant="outline" className="text-[10px]">{items.length} itens</Badge>
+          <Badge variant="outline" className="text-xs">{items.length} itens</Badge>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" onClick={() => {
@@ -348,7 +348,7 @@ Responda APENAS em JSON:
           <div className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-accent" />
             <h4 className="font-semibold text-sm">Consulta Inteligente — Extração de Itens do Edital</h4>
-            <Badge variant="outline" className="text-[10px] ml-auto">IA + Pesquisa Real</Badge>
+            <Badge variant="outline" className="text-xs ml-auto">IA + Pesquisa Real</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
             Cole o objeto do edital ou faça upload do documento. A IA extrairá os itens e pesquisará preços reais na internet para montar seu catálogo de referência.
@@ -396,13 +396,13 @@ Responda APENAS em JSON:
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-[10px] font-semibold h-8">Item</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8">Descrição</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8 text-center">Qtd</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Mín.</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Médio</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Máx.</TableHead>
-                      <TableHead className="text-[10px] font-semibold h-8 text-center">Fontes</TableHead>
+                      <TableHead className="text-xs font-semibold h-8">Item</TableHead>
+                      <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
+                      <TableHead className="text-xs font-semibold h-8 text-center">Qtd</TableHead>
+                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Mín.</TableHead>
+                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Médio</TableHead>
+                      <TableHead className="text-xs font-semibold h-8 text-right">Preço Máx.</TableHead>
+                      <TableHead className="text-xs font-semibold h-8 text-center">Fontes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -415,7 +415,7 @@ Responda APENAS em JSON:
                         <TableCell className="text-xs py-1.5 text-right font-medium">{r.found ? formatCurrency(r.preco_medio) : '—'}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right">{r.found ? formatCurrency(r.preco_max) : '—'}</TableCell>
                         <TableCell className="text-xs py-1.5 text-center">
-                          <Badge variant={r.found ? 'default' : 'outline'} className="text-[9px]">
+                          <Badge variant={r.found ? 'default' : 'outline'} className="text-xs">
                             {r.fontes}
                           </Badge>
                         </TableCell>
@@ -494,16 +494,16 @@ Responda APENAS em JSON:
                 <TableHead className="w-10">
                   <input type="checkbox" checked={selectedItems.size === filteredItems.length && filteredItems.length > 0} onChange={selectAll} className="rounded border-border" />
                 </TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Descrição</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 text-center">Qtd</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 text-center">Und</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Marca</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 text-right">Custo Unit.</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Unit.</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 text-right">Total</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Tipo</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Licitação</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 w-10"></TableHead>
+                <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
+                <TableHead className="text-xs font-semibold h-8 text-center">Qtd</TableHead>
+                <TableHead className="text-xs font-semibold h-8 text-center">Und</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Marca</TableHead>
+                <TableHead className="text-xs font-semibold h-8 text-right">Custo Unit.</TableHead>
+                <TableHead className="text-xs font-semibold h-8 text-right">Preço Unit.</TableHead>
+                <TableHead className="text-xs font-semibold h-8 text-right">Total</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Tipo</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Licitação</TableHead>
+                <TableHead className="text-xs font-semibold h-8 w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -532,11 +532,11 @@ Responda APENAS em JSON:
                   <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(item.preco_unitario)}</TableCell>
                   <TableCell className="text-xs py-1.5 text-right font-semibold text-accent">{formatCurrency(item.preco_total)}</TableCell>
                   <TableCell className="py-1.5">
-                    <Badge variant="outline" className="text-[9px]">
+                    <Badge variant="outline" className="text-xs">
                       {TIPO_LABELS[item.tipo_calculo] || item.tipo_calculo}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-[10px] py-1.5 max-w-[120px] truncate text-muted-foreground">
+                  <TableCell className="text-xs py-1.5 max-w-[120px] truncate text-muted-foreground">
                     {item.licitacao_numero || '—'}
                   </TableCell>
                   <TableCell className="py-1.5">

@@ -355,14 +355,14 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                         <Badge
                           key={irr.id}
                           variant="outline"
-                          className={`text-[10px] ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          className={`text-xs ${irr.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : irr.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
                         >
                           {idx + 1}. {irr.descricao.slice(0, 50)}{irr.descricao.length > 50 ? '...' : ''}
                           {irr.origem === 'manual' && ' ✏️'}
                         </Badge>
                       ))}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {irregularidades.length} irregularidade(s) selecionada(s) • Edital: {editalNum || 'N/I'}
                     </p>
                   </div>
@@ -409,7 +409,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                         <Badge
                           key={fato.id}
                           variant="outline"
-                          className={`text-[10px] ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
+                          className={`text-xs ${fato.gravidade === 'alta' ? 'border-destructive/40 text-destructive' : fato.gravidade === 'media' ? 'border-yellow-500/40 text-yellow-700 dark:text-yellow-400' : 'border-blue-500/40 text-blue-700 dark:text-blue-400'}`}
                         >
                           {idx + 1}. {fato.descricao.slice(0, 50)}{fato.descricao.length > 50 ? '...' : ''}
                           {fato.origem === 'manual' && ' ✏️'}
@@ -417,7 +417,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                         </Badge>
                       ))}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {fatosPeticao.length} fato(s) jurídico(s) selecionado(s) • Edital: {editalNum || 'N/I'}
                     </p>
                   </div>
@@ -454,19 +454,19 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <div className="flex flex-wrap gap-1">
                 {indices.slice(0, 6).map(i => (
-                  <Badge key={i.id} variant="outline" className="text-[10px]">
+                  <Badge key={i.id} variant="outline" className="text-xs">
                     {i.sigla}: {fmtPerc(i.acumulado_12m)} (12m)
                   </Badge>
                 ))}
-                {indices.length > 6 && <Badge variant="outline" className="text-[10px]">+{indices.length - 6} índices</Badge>}
+                {indices.length > 6 && <Badge variant="outline" className="text-xs">+{indices.length - 6} índices</Badge>}
                 {ccts.map(c => (
-                  <Badge key={c.id} variant="outline" className="text-[10px]">
+                  <Badge key={c.id} variant="outline" className="text-xs">
                     👷 {c.categoria_profissional}: {c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'}
                   </Badge>
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Estes dados serão injetados automaticamente como contexto para a IA gerar o documento com fundamentação numérica.
             </p>
           </div>
@@ -509,7 +509,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                 <Badge
                   key={doc.id}
                   variant={selectedDocs.includes(doc.id) ? 'default' : 'outline'}
-                  className="cursor-pointer text-[11px] transition-colors"
+                  className="cursor-pointer text-xs transition-colors"
                   onClick={() => toggleDoc(doc.id)}
                 >
                   {doc.titulo.slice(0, 40)}{doc.titulo.length > 40 ? '...' : ''}

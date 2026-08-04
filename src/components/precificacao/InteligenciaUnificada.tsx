@@ -12,7 +12,7 @@ export default function InteligenciaUnificada() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-sm sm:text-lg font-semibold text-foreground">Inteligência de Preços</h2>
-          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs sm:text-xs text-muted-foreground mt-0.5">
             Análise comparativa entre fontes e recomendações de precificação por IA.
           </p>
         </div>

@@ -50,17 +50,17 @@ export default function Boletins() {
           <div className="stat-card text-center">
             <FileText className="w-5 h-5 mx-auto mb-1 text-success" />
             <p className="text-lg font-bold">{enviosRecentes.filter(e => e.tipo === 'manha').length}</p>
-            <p className="text-[10px] text-muted-foreground">Enviados Manhã</p>
+            <p className="text-xs text-muted-foreground">Enviados Manhã</p>
           </div>
           <div className="stat-card text-center">
             <AlertTriangle className="w-5 h-5 mx-auto mb-1 text-warning" />
             <p className="text-lg font-bold">{enviosRecentes.filter(e => e.tipo === 'meiodia').length}</p>
-            <p className="text-[10px] text-muted-foreground">Enviados Meio-dia</p>
+            <p className="text-xs text-muted-foreground">Enviados Meio-dia</p>
           </div>
           <div className="stat-card text-center">
             <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-info" />
             <p className="text-lg font-bold">{enviosRecentes.filter(e => e.tipo === 'tarde').length}</p>
-            <p className="text-[10px] text-muted-foreground">Enviados Tarde</p>
+            <p className="text-xs text-muted-foreground">Enviados Tarde</p>
           </div>
         </div>
 
@@ -94,7 +94,7 @@ export default function Boletins() {
                           {envio.tipo} • {new Date(envio.created_at).toLocaleString('pt-BR')}
                         </p>
                       </div>
-                      <Badge variant={envio.status === 'enviado' ? 'default' : 'destructive'} className="text-[10px]">
+                      <Badge variant={envio.status === 'enviado' ? 'default' : 'destructive'} className="text-xs">
                         {envio.status}
                       </Badge>
                     </div>

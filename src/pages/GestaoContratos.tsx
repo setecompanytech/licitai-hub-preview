@@ -272,10 +272,10 @@ export default function GestaoContratos() {
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                {isAta && <Badge className="bg-accent/15 text-accent border-accent/30 text-[10px]"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
+                {isAta && <Badge className="bg-accent/15 text-accent border-accent/30 text-xs"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
                 <h1 className="text-xl font-bold">{c.numero_contrato}</h1>
-                <Badge className={`${cfg.color} text-[10px]`}>{cfg.label}</Badge>
-                {isAta && c.permite_carona && <Badge variant="outline" className="text-[10px]">Permite carona</Badge>}
+                <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
+                {isAta && c.permite_carona && <Badge variant="outline" className="text-xs">Permite carona</Badge>}
               </div>
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{c.objeto}</p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
@@ -306,7 +306,7 @@ export default function GestaoContratos() {
               <p className="text-xs text-muted-foreground">Valor Global</p>
               <p className="text-lg font-bold">{formatCurrency(c.valor_global)}</p>
               <Progress value={Math.min(pct, 100)} className="h-1.5 w-40 mt-1" />
-              <p className="text-[10px] text-muted-foreground">{pct.toFixed(1)}% consumido</p>
+              <p className="text-xs text-muted-foreground">{pct.toFixed(1)}% consumido</p>
             </div>
           </div>
         </div>
@@ -389,7 +389,7 @@ export default function GestaoContratos() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-[11px] text-muted-foreground md:col-span-2">
+              <p className="text-xs text-muted-foreground md:col-span-2">
                 {isAtaForm
                   ? 'A ATA SRP funciona como base de preços/quantidades. Contratos derivados (incluindo carona) consumirão seu saldo automaticamente.'
                   : 'Contrato administrativo. Pode opcionalmente vincular-se a uma ATA SRP cadastrada.'}
@@ -429,7 +429,7 @@ export default function GestaoContratos() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">Os itens deste contrato poderão consumir o saldo da ATA selecionada.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Os itens deste contrato poderão consumir o saldo da ATA selecionada.</p>
                 </div>
               )}
 
@@ -477,7 +477,7 @@ export default function GestaoContratos() {
                     ) : null;
                   })()}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Vincula este contrato ao processo licitatório original para rastreabilidade e sincronização com a precificação.</p>
+                <p className="text-xs text-muted-foreground mt-1">Vincula este contrato ao processo licitatório original para rastreabilidade e sincronização com a precificação.</p>
               </div>
 
               <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
@@ -584,10 +584,10 @@ export default function GestaoContratos() {
                       {isAta
                         ? <span className="text-xs font-medium text-accent">ATA SRP n. {c.numero_ata || c.numero_contrato}</span>
                         : <span className="text-xs font-medium text-accent">Contrato n. {c.numero_contrato}</span>}
-                      <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                      {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-[10px] text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
-                      {!isAta && pct >= 80 && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Saldo baixo</Badge>}
-                      {c.ata_srp_id && <Badge variant="outline" className="text-[10px] text-accent border-accent/30">Origem: ATA</Badge>}
+                      <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                      {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
+                      {!isAta && pct >= 80 && <Badge variant="outline" className="text-xs text-destructive border-destructive/30">Saldo baixo</Badge>}
+                      {c.ata_srp_id && <Badge variant="outline" className="text-xs text-accent border-accent/30">Origem: ATA</Badge>}
                     </div>
                     {/* 3º — Objeto */}
                     <p className="text-xs text-muted-foreground line-clamp-1">{c.objeto}</p>
@@ -654,7 +654,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-accent">{c.numero_contrato}</span>
-                  <Badge variant="outline" className="text-[10px]">{c.status}</Badge>
+                  <Badge variant="outline" className="text-xs">{c.status}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.objeto}</p>
               </div>

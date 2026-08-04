@@ -106,7 +106,7 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
               <Mail className="w-3.5 h-3.5 text-muted-foreground" /> E-mail
             </Label>
             <Input value={email} readOnly className="bg-muted/40 cursor-default select-all" />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Para alterar o e-mail acesse Configurações → Segurança.
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
             </div>
             <div className="flex items-start gap-1.5 rounded-lg bg-muted/50 px-3 py-2">
               <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Você pode usar <strong>@{username || 'seu.usuario'}</strong> ou seu e-mail para entrar no sistema.
                 Apenas letras minúsculas, números, <code>_</code>, <code>.</code> e <code>-</code> são permitidos.
               </p>

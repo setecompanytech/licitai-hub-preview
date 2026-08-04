@@ -166,7 +166,7 @@ function ColHeader({ label, className = '' }: { label: string; className?: strin
 function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={`relative ${className}`}>
-      <span className="absolute -top-2 left-2 text-[10px] text-muted-foreground bg-background px-1 z-10">{label}</span>
+      <span className="absolute -top-2 left-2 text-xs text-muted-foreground bg-background px-1 z-10">{label}</span>
       {children}
     </div>
   );
@@ -208,7 +208,7 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
         <div className="absolute z-50 top-full left-0 mt-1 w-56 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto text-sm">
           {topFiltered.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Mais Utilizadas</div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mais Utilizadas</div>
               {topFiltered.map(u => (
                 <button key={u.value} className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 transition-colors ${value === u.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
                   onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
@@ -220,7 +220,7 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
           )}
           {todasFiltered.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Todas as Unidades</div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Todas as Unidades</div>
               {todasFiltered.map(u => (
                 <button key={u.value} className={`w-full text-left px-3 py-1.5 hover:bg-muted/60 transition-colors ${value === u.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
                   onClick={() => { onChange(u.value); setSearch(u.value); setOpen(false); }}>
@@ -572,7 +572,7 @@ export default function ProdutosOmie() {
               <button className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700">
                 <Pencil className="w-3 h-3" /> Alterar
               </button>
-              <span className="text-[10px] text-muted-foreground">1 imagem</span>
+              <span className="text-xs text-muted-foreground">1 imagem</span>
             </div>
 
             {/* Main fields */}
@@ -628,7 +628,7 @@ export default function ProdutosOmie() {
                     <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="pt-1 pr-7" placeholder="Opcional" />
                     <button className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-600"><Pencil className="w-3 h-3" /></button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Opcional (mas importante para os seus relatórios de estoque e de faturamento)</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Opcional (mas importante para os seus relatórios de estoque e de faturamento)</p>
                 </Field>
               </div>
             </div>
@@ -971,7 +971,7 @@ export default function ProdutosOmie() {
                       <td className="py-2 px-2">
                         <div className="flex items-center gap-1.5">
                           <span className={`w-2 h-2 rounded-full ${p.ativo ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${p.ativo ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-muted text-muted-foreground'}`}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.ativo ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-muted text-muted-foreground'}`}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
                         </div>
                       </td>
                       <td className="py-2 px-2 font-medium">{p.descricao}</td>

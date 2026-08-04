@@ -97,7 +97,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           <Brain className="w-4 h-4 text-accent" />
           Estratégia Preditiva IA
         </h3>
-        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 text-[10px]">
+        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 text-xs">
           <Sparkles className="w-3 h-3 mr-1" /> Gemini AI
         </Badge>
       </div>
@@ -105,7 +105,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
       {/* Input fields */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[11px] text-muted-foreground font-medium">Órgão contratante</label>
+          <label className="text-xs text-muted-foreground font-medium">Órgão contratante</label>
           <Input
             value={orgao}
             onChange={(e) => setOrgao(e.target.value)}
@@ -114,7 +114,7 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           />
         </div>
         <div>
-          <label className="text-[11px] text-muted-foreground font-medium">Objeto / Descrição</label>
+          <label className="text-xs text-muted-foreground font-medium">Objeto / Descrição</label>
           <Input
             value={objeto}
             onChange={(e) => setObjeto(e.target.value)}
@@ -144,29 +144,29 @@ Responda em português, com dados numéricos claros e recomendações práticas.
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
               <TrendingDown className="w-3 h-3 mx-auto text-success mb-1" />
-              <p className="text-[10px] text-muted-foreground">Desconto Médio</p>
+              <p className="text-xs text-muted-foreground">Desconto Médio</p>
               <p className="text-xs font-bold text-success">{result.desconto_medio}%</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
               <DollarSign className="w-3 h-3 mx-auto text-accent mb-1" />
-              <p className="text-[10px] text-muted-foreground">Decremento</p>
+              <p className="text-xs text-muted-foreground">Decremento</p>
               <p className="text-xs font-bold text-accent">{formatCurrency(result.decremento_sugerido)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
               <Target className="w-3 h-3 mx-auto text-warning mb-1" />
-              <p className="text-[10px] text-muted-foreground">Piso Seguro</p>
+              <p className="text-xs text-muted-foreground">Piso Seguro</p>
               <p className="text-xs font-bold text-warning">{formatCurrency(result.valor_minimo_sugerido)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
               <BarChart3 className="w-3 h-3 mx-auto text-info mb-1" />
-              <p className="text-[10px] text-muted-foreground">Confiança</p>
+              <p className="text-xs text-muted-foreground">Confiança</p>
               <p className="text-xs font-bold text-info">{result.confianca}%</p>
             </div>
           </div>
 
           {/* AI Analysis */}
           <div className="bg-muted/30 rounded-lg p-3 max-h-48 overflow-y-auto">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Briefing Estratégico
             </p>
             <div className="prose prose-sm dark:prose-invert max-w-none text-xs [&>p]:mb-1.5 [&>ul]:pl-4 [&>ul]:mb-1.5">

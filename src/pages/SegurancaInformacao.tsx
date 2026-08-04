@@ -37,7 +37,7 @@ export default function SegurancaInformacao() {
           <div className="max-w-4xl mx-auto">
             {/* Hero */}
             <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-wider mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-4">
                 <Shield className="w-3.5 h-3.5" /> Trust Center
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Segurança da Informação</h1>
@@ -247,17 +247,17 @@ export default function SegurancaInformacao() {
               <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <FileCheck className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Tratamento de dados pessoais</p>
+                <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
               </Link>
               <Link to="/lgpd" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <Lock className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Conformidade LGPD</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Bases legais e direitos do titular</p>
+                <p className="text-xs text-muted-foreground mt-1">Bases legais e direitos do titular</p>
               </Link>
               <Link to="/status" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
                 <Server className="w-5 h-5 text-primary mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Status da Plataforma</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Disponibilidade em tempo real</p>
+                <p className="text-xs text-muted-foreground mt-1">Disponibilidade em tempo real</p>
               </Link>
             </div>
 

@@ -57,10 +57,10 @@ export default function ApoioJuridico() {
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Badge variant="outline" className="text-[10px] gap-1">
+            <Badge variant="outline" className="text-xs gap-1">
               <Shield className="w-3 h-3" /> Lei 14.133/2021
             </Badge>
-            <Badge variant="outline" className="text-[10px] gap-1">
+            <Badge variant="outline" className="text-xs gap-1">
               <Sparkles className="w-3 h-3" /> IA Jurídica
             </Badge>
           </div>
@@ -163,10 +163,10 @@ export default function ApoioJuridico() {
                     { num: '285', desc: 'Margem de preferência para bens e serviços nacionais' },
                   ].map((s) => (
                     <div key={s.num} className="flex items-start gap-2 p-2 rounded-lg bg-accent/5 border border-accent/10">
-                      <Badge variant="outline" className="text-[10px] shrink-0 mt-0.5">
+                      <Badge variant="outline" className="text-xs shrink-0 mt-0.5">
                         Súm. {s.num}
                       </Badge>
-                      <p className="text-[11px] text-muted-foreground">{s.desc}</p>
+                      <p className="text-xs text-muted-foreground">{s.desc}</p>
                     </div>
                   ))}
                 </div>

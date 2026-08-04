@@ -121,10 +121,10 @@ export default function MetricasSaaS() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
-                <Badge variant="outline" className="text-[9px]">{kpi.label}</Badge>
+                <Badge variant="outline" className="text-xs">{kpi.label}</Badge>
               </div>
               <p className="text-xl font-bold tracking-tight">{kpi.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{kpi.desc}</p>
+              <p className="text-xs text-muted-foreground mt-1">{kpi.desc}</p>
             </CardContent>
           </Card>
         ))}
@@ -225,7 +225,7 @@ export default function MetricasSaaS() {
               <div key={item.label} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                 <div>
                   <p className="text-sm font-medium">{item.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </div>
                 <p className="text-sm font-bold">{item.value}</p>
               </div>

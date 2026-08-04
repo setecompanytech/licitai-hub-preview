@@ -132,7 +132,7 @@ export default function AdminFinanceiro() {
             <TabsTrigger value="assinaturas"><DollarSign className="w-4 h-4 mr-1.5" /> Assinaturas</TabsTrigger>
             <TabsTrigger value="tickets">
               <MessageCircle className="w-4 h-4 mr-1.5" /> Tickets
-              {ticketsAbertos > 0 && <Badge className="ml-2 bg-destructive text-destructive-foreground text-[10px] px-1.5">{ticketsAbertos}</Badge>}
+              {ticketsAbertos > 0 && <Badge className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5">{ticketsAbertos}</Badge>}
             </TabsTrigger>
           </TabsList>
 

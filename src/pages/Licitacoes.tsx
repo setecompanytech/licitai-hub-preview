@@ -234,7 +234,7 @@ export default function Licitacoes() {
                         ) : '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', st.className)}>{st.label}</Badge>
+                        <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>{st.label}</Badge>
                       </td>
                     </tr>
                   );

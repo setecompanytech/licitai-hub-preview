@@ -343,8 +343,8 @@ export default function RoboLances() {
                 {filteredLances.length === 0 && (
                   <div className="text-center py-8 px-3">
                     <Bot className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p className="text-[11px] text-muted-foreground">Nenhuma disputa adicionada.</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Clique em "Nova disputa" para começar.</p>
+                    <p className="text-xs text-muted-foreground">Nenhuma disputa adicionada.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Clique em "Nova disputa" para começar.</p>
                   </div>
                 )}
                 {filteredLances.map((lance) => (
@@ -361,7 +361,7 @@ export default function RoboLances() {
                       <span className="font-semibold truncate">{lance.edital}</span>
                       <Badge
                         variant="outline"
-                        className={`text-[9px] scale-90 ${
+                        className={`text-xs scale-90 ${
                           selectedId === lance.id
                             ? 'border-accent-foreground/30 text-accent-foreground'
                             : statusColors[lance.status]
@@ -371,13 +371,13 @@ export default function RoboLances() {
                         {lance.status.charAt(0).toUpperCase() + lance.status.slice(1)}
                       </Badge>
                     </div>
-                    <p className={`text-[10px] mt-0.5 truncate ${
+                    <p className={`text-xs mt-0.5 truncate ${
                       selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
                     }`}>
                       {lance.portal}
                     </p>
                     {lance.horario && (
-                      <div className={`flex items-center gap-1 text-[10px] mt-1 ${
+                      <div className={`flex items-center gap-1 text-xs mt-1 ${
                         selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
                       }`}>
                         <CalendarDays className="w-3 h-3" />
@@ -385,7 +385,7 @@ export default function RoboLances() {
                       </div>
                     )}
                     {lance.licitacaoId && (
-                      <div className={`flex items-center gap-1 text-[10px] mt-0.5 ${
+                      <div className={`flex items-center gap-1 text-xs mt-0.5 ${
                         selectedId === lance.id ? 'text-accent-foreground/70' : 'text-muted-foreground'
                       }`}>
                         <MessageSquare className="w-3 h-3" />
@@ -434,12 +434,12 @@ export default function RoboLances() {
                           </span>
                         )}
                       </h2>
-                      <p className="text-[11px] text-muted-foreground">{selectedLance.portal}</p>
+                      <p className="text-xs text-muted-foreground">{selectedLance.portal}</p>
                     </div>
                     <Badge variant="outline" className={statusColors[selectedLance.status]}>
                       {selectedLance.status.charAt(0).toUpperCase() + selectedLance.status.slice(1)}
                     </Badge>
-                    <Badge variant="outline" className={`text-[9px] ${
+                    <Badge variant="outline" className={`text-xs ${
                       nivelAutomacao === 1 ? 'bg-info/15 text-info border-info/30' :
                       nivelAutomacao === 2 ? 'bg-warning/15 text-warning border-warning/30' :
                       'bg-destructive/15 text-destructive border-destructive/30'
@@ -470,7 +470,7 @@ export default function RoboLances() {
                       </Button>
                     )}
                     {estrategiaAutorizada && (
-                      <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[9px]">
+                      <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
                         ✓ Estratégia Autorizada
                       </Badge>
                     )}
@@ -529,7 +529,7 @@ export default function RoboLances() {
                       <div className="text-center space-y-2">
                         <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto" />
                         <p className="text-xs text-muted-foreground">Nenhum item cadastrado nesta disputa.</p>
-                        <p className="text-[10px] text-muted-foreground">Edite a disputa para adicionar itens e lotes.</p>
+                        <p className="text-xs text-muted-foreground">Edite a disputa para adicionar itens e lotes.</p>
                       </div>
                     </div>
                   ) : (
@@ -567,7 +567,7 @@ export default function RoboLances() {
                           <TableCell>
                             <Badge
                               variant="outline"
-                              className={`text-[10px] ${
+                              className={`text-xs ${
                                 item.situacao === 'disputando'
                                   ? 'bg-info/10 text-info border-info/30'
                                   : item.situacao === 'encerrado'
@@ -592,11 +592,11 @@ export default function RoboLances() {
                           </TableCell>
                           <TableCell className="text-center">
                             {item.disputando ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-success font-medium">
+                              <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
                                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Sim
                               </span>
                             ) : (
-                              <span className="text-[10px] text-muted-foreground">—</span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
@@ -673,7 +673,7 @@ export default function RoboLances() {
                             <p className="text-xs text-muted-foreground">
                               Esta disputa não está vinculada a um processo do Kanban.
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Importe do Kanban ao criar a disputa para ativar o Mural em tempo real.
                             </p>
                           </div>
@@ -699,7 +699,7 @@ export default function RoboLances() {
                           <div className="text-center py-8">
                             <ListChecks className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
                             <p className="text-xs text-muted-foreground">Nenhuma operação registrada.</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">Inicie uma disputa para ver o log de operações.</p>
+                            <p className="text-xs text-muted-foreground mt-1">Inicie uma disputa para ver o log de operações.</p>
                           </div>
                         ) : (
                           operations.map((op) => (
@@ -709,7 +709,7 @@ export default function RoboLances() {
                               </span>
                               <Badge
                                 variant="outline"
-                                className={`text-[9px] ${
+                                className={`text-xs ${
                                   op.resultado === 'sucesso' ? 'bg-success/10 text-success border-success/30' :
                                   op.resultado === 'erro' ? 'bg-destructive/10 text-destructive border-destructive/30' :
                                   'bg-info/10 text-info border-info/30'

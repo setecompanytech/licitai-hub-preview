@@ -281,7 +281,7 @@ function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.E
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
           <p className={`text-xl font-semibold tabular-nums mt-1 ${cor}`}>{value}</p>
-          {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
+          {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
         </div>
         <Icon className={`w-5 h-5 ${cor}`} />
       </CardContent>
@@ -315,8 +315,8 @@ function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{it.pessoa}</div>
                     <div className="text-xs text-muted-foreground truncate">{it.descricao}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Venc. {formatDataCurta(it.vencimento)} · <Badge variant="outline" className="ml-1 px-1.5 py-0 text-[10px]">{it.diasAtraso}d em atraso</Badge>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Venc. {formatDataCurta(it.vencimento)} · <Badge variant="outline" className="ml-1 px-1.5 py-0 text-xs">{it.diasAtraso}d em atraso</Badge>
                     </div>
                   </div>
                   <div className={`text-sm font-semibold tabular-nums whitespace-nowrap ${cor}`}>
@@ -354,7 +354,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
         <CardTitle className="text-base flex items-center gap-2">
           <Wallet className="w-4 h-4 text-primary" />
           Saldos por conta
-          <Badge variant="secondary" className="ml-1 text-[10px]">{ativas.length} ativas</Badge>
+          <Badge variant="secondary" className="ml-1 text-xs">{ativas.length} ativas</Badge>
         </CardTitle>
         <Button size="sm" variant="ghost" onClick={() => navegarFinanceiro("contas")}>Gerenciar</Button>
       </CardHeader>
@@ -385,7 +385,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{c.nome}</div>
-                    {subtitulo && <div className="text-[11px] text-muted-foreground truncate">{subtitulo}</div>}
+                    {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
                     <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
                       <div
                         className={negativo ? "h-full bg-rose-500" : "h-full bg-primary"}
@@ -398,7 +398,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
                       {formatBRL(c.saldoAtual)}
                     </div>
                     {saldoTotal > 0 && !negativo && (
-                      <div className="text-[10px] text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</div>
                     )}
                   </div>
                 </li>

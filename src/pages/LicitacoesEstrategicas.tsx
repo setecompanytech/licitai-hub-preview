@@ -161,11 +161,11 @@ export default function LicitacoesEstrategicas() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-bold text-sm truncate">{lic.numero}</span>
-                            <Badge variant="outline" className={cfg.color + ' text-[10px]'}>
+                            <Badge variant="outline" className={cfg.color + ' text-xs'}>
                               <cfg.icon className="w-3 h-3 mr-1" /> {cfg.label}
                             </Badge>
                             {lic.modalidade && (
-                              <Badge variant="secondary" className="text-[10px]">{lic.modalidade}</Badge>
+                              <Badge variant="secondary" className="text-xs">{lic.modalidade}</Badge>
                             )}
                             {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
                           </div>
@@ -182,7 +182,7 @@ export default function LicitacoesEstrategicas() {
                         <div className="flex items-center gap-3 ml-2 flex-shrink-0">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
-                            <p className="text-[10px] text-muted-foreground">Score</p>
+                            <p className="text-xs text-muted-foreground">Score</p>
                           </div>
                           <div className="flex flex-col gap-1">
                             <Button size="sm" variant="outline" onClick={() => setExpandido(isExpanded ? null : lic.id)}>
@@ -294,9 +294,9 @@ export default function LicitacoesEstrategicas() {
               </div>
               {licitacoes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
-                  <span className="text-[10px] text-muted-foreground mr-1 self-center">Atalhos:</span>
+                  <span className="text-xs text-muted-foreground mr-1 self-center">Atalhos:</span>
                   {[...new Set(licitacoes.map(l => l.orgao))].slice(0, 5).map(org => (
-                    <Button key={org} variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                    <Button key={org} variant="ghost" size="sm" className="h-6 text-xs px-2"
                       onClick={() => { setCapagOrgaoInput(org); setCapagOrgao({ orgao: org, uf: capagUf || undefined, municipio: capagMunicipio || undefined }); }}>
                       {org.length > 40 ? org.slice(0, 40) + '…' : org}
                     </Button>

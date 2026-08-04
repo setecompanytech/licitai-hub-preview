@@ -223,7 +223,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           {/* Saldo destaque */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -349,11 +349,11 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           className="pl-11 pr-28 h-12 text-sm bg-card border-border/60 shadow-sm focus-visible:ring-primary/30"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1.5">
-          <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
+          <kbd className="inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-xs font-mono text-muted-foreground">
             <Command className="w-2.5 h-2.5" />K
           </kbd>
-          <span className="text-[10px] text-muted-foreground">ou</span>
-          <kbd className="inline-flex h-5 items-center justify-center rounded border border-border bg-muted px-1.5 text-[10px] font-mono text-muted-foreground">
+          <span className="text-xs text-muted-foreground">ou</span>
+          <kbd className="inline-flex h-5 items-center justify-center rounded border border-border bg-muted px-1.5 text-xs font-mono text-muted-foreground">
             /
           </kbd>
         </div>
@@ -363,7 +363,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
       <div className="grid lg:grid-cols-[220px_1fr] gap-5">
         {/* Sidebar de categorias */}
         <aside className="lg:sticky lg:top-4 lg:self-start space-y-1">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
             Categorias
           </div>
           <NavChip
@@ -388,10 +388,10 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
           {/* Stats lateral */}
           <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
               Resumo
             </div>
-            <div className="px-2 space-y-1.5 text-[11px]">
+            <div className="px-2 space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Favoritos</span>
                 <span className="font-medium tabular-nums">{favorites.length}</span>
@@ -496,7 +496,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
           {filtered.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center text-sm text-muted-foreground space-y-2">
-                <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                <Search className="w-8 h-8 mx-auto text-muted-foreground" />
                 <p>Nenhuma funcionalidade encontrada para "{search}".</p>
                 <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
                   Limpar filtros
@@ -545,7 +545,7 @@ function NavChip({
       </span>
       <span className="flex-1 text-left truncate">{label}</span>
       <span className={cn(
-        "shrink-0 text-[10px] tabular-nums px-1.5 py-0.5 rounded",
+        "shrink-0 text-xs tabular-nums px-1.5 py-0.5 rounded",
         active ? "bg-background text-foreground" : "bg-muted text-muted-foreground",
       )}>
         {count}
@@ -573,7 +573,7 @@ function SectionBlock({
         <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
         {subtitle && <span className="text-xs text-muted-foreground hidden sm:inline">— {subtitle}</span>}
         {typeof count === "number" && (
-          <Badge variant="outline" className="ml-auto text-[10px] h-5 px-1.5 bg-card">
+          <Badge variant="outline" className="ml-auto text-xs h-5 px-1.5 bg-card">
             {count}
           </Badge>
         )}
@@ -627,7 +627,7 @@ function ModuleRow({
             <Badge
               variant="secondary"
               className={cn(
-                "text-[9px] px-1.5 py-0 h-4 shrink-0 font-medium",
+                "text-xs px-1.5 py-0 h-4 shrink-0 font-medium",
                 (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
                   "bg-primary/10 text-primary border-primary/20",
               )}
@@ -636,7 +636,7 @@ function ModuleRow({
             </Badge>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
       </div>
 
       <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -707,7 +707,7 @@ function MiniMetric({
       )}
     >
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
           {label}
         </span>
         <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-md", toneBg)}>

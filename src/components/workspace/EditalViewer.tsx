@@ -211,11 +211,11 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
                       <p className="text-xs font-medium truncate">{a.titulo}</p>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {a.extensao && (
-                          <Badge variant="outline" className="text-[9px] uppercase">{a.extensao}</Badge>
+                          <Badge variant="outline" className="text-xs uppercase">{a.extensao}</Badge>
                         )}
-                        <span className="text-[10px] text-muted-foreground truncate">{a.tipo}</span>
+                        <span className="text-xs text-muted-foreground truncate">{a.tipo}</span>
                         {a.data_publicacao && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {new Date(a.data_publicacao).toLocaleDateString('pt-BR')}
                           </span>
                         )}

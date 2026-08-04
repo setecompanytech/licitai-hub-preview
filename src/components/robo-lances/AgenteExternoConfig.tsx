@@ -156,7 +156,7 @@ export default function AgenteExternoConfig() {
           Agente Cloud de Lances
         </h3>
         {planConfig && (
-          <Badge variant="outline" className="text-[10px] gap-1">
+          <Badge variant="outline" className="text-xs gap-1">
             <ShieldCheck className="w-3 h-3" />
             Plano {planConfig.label} — até {planConfig.sessions} sessão(ões)
           </Badge>
@@ -185,10 +185,10 @@ export default function AgenteExternoConfig() {
           {planConfig ? (
             <div className="space-y-3">
               <div className="bg-muted/30 rounded-lg p-3 max-w-sm mx-auto text-left space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   O que será configurado:
                 </p>
-                <ul className="text-[11px] text-muted-foreground space-y-1">
+                <ul className="text-xs text-muted-foreground space-y-1">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-3 h-3 text-success shrink-0" />
                     Servidor dedicado em nuvem
@@ -245,13 +245,13 @@ export default function AgenteExternoConfig() {
                     <div>
                       <p className="text-sm font-medium">{agente.nome}</p>
                       {agente.versao_agente && (
-                        <p className="text-[10px] text-muted-foreground">v{agente.versao_agente}</p>
+                        <p className="text-xs text-muted-foreground">v{agente.versao_agente}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {agente.ultimo_heartbeat && (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {new Date(agente.ultimo_heartbeat).toLocaleTimeString('pt-BR')}
                       </span>
@@ -264,7 +264,7 @@ export default function AgenteExternoConfig() {
 
                 {/* Capacidade de sessões paralelas */}
                 <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       <Layers className="w-3.5 h-3.5" />
                       Sessões Paralelas
@@ -274,7 +274,7 @@ export default function AgenteExternoConfig() {
                     </span>
                   </div>
                   <Progress value={usagePercent} className="h-1.5" />
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Cpu className="w-3 h-3" />
                       {maxSess - ativas} slot{maxSess - ativas !== 1 ? 's' : ''} disponíve{maxSess - ativas !== 1 ? 'is' : 'l'}
@@ -289,7 +289,7 @@ export default function AgenteExternoConfig() {
                 </div>
 
                 {/* Gerenciado pela plataforma badge */}
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <ShieldCheck className="w-3.5 h-3.5 text-success" />
                   <span>Gerenciado automaticamente pela plataforma — sem configuração técnica necessária</span>
                 </div>
@@ -317,7 +317,7 @@ export default function AgenteExternoConfig() {
                     <Copy className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-success">
+                <div className="flex items-center gap-2 text-xs text-success">
                   <CheckCircle2 className="w-3 h-3" />
                   <span>Link enviado por e-mail e WhatsApp. Válido por 24 horas.</span>
                 </div>

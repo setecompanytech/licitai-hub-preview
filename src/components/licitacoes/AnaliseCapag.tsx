@@ -123,16 +123,16 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           {data.fonte_dados && (
             <div className="flex items-center justify-between mb-3">
               {data.fonte_dados.tipo === 'oficial' ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]">
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Dados Oficiais — Tesouro Nacional
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
                   <Brain className="w-3 h-3 mr-1" /> Estimativa por IA
                 </Badge>
               )}
               {data.fonte_dados.url && (
-                <a href={data.fonte_dados.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1">
+                <a href={data.fonte_dados.url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" /> Fonte oficial
                 </a>
               )}
@@ -149,7 +149,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
                   <NotaIcon className={`w-5 h-5 ${nota.text}`} />
                 </div>
                 <p className="text-sm text-muted-foreground">{orgao}</p>
-                <Badge variant="outline" className="mt-1 text-[10px]">
+                <Badge variant="outline" className="mt-1 text-xs">
                   Confiança: {data.capag.confianca}
                 </Badge>
               </div>
@@ -194,7 +194,7 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
               {percentual !== null && (
                 <Progress value={Math.min(percentual, 100)} className="h-1.5 mb-2" />
               )}
-              <p className="text-[11px] text-muted-foreground leading-tight">{ind.data.descricao}</p>
+              <p className="text-xs text-muted-foreground leading-tight">{ind.data.descricao}</p>
             </Card>
           );
         })}
@@ -218,10 +218,10 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold">{ind.indicador}</span>
-                    <Badge variant="outline" className={`text-[9px] ${cfg.color} border-current`}>{cfg.label}</Badge>
+                    <Badge variant="outline" className={`text-xs ${cfg.color} border-current`}>{cfg.label}</Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{ind.descricao}</p>
-                  <span className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{ind.descricao}</p>
+                  <span className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <Search className="w-3 h-3" /> {ind.fonte}
                   </span>
                 </div>
@@ -271,12 +271,12 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.fontes_consulta.map((f, i) => (
-              <Badge key={i} variant="outline" className="text-[10px] font-normal">
+              <Badge key={i} variant="outline" className="text-xs font-normal">
                 <ExternalLink className="w-2.5 h-2.5 mr-1" /> {f}
               </Badge>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground/60 mt-2 italic">
+          <p className="text-xs text-muted-foreground mt-2 italic">
             ⚠️ O CAPAG é apenas um indício, não uma garantia absoluta. Utilize esta análise como ferramenta estratégica complementar.
           </p>
         </CardContent>

@@ -254,7 +254,7 @@ export default function PlanoAssinatura() {
                 {cfg.label}
                 {cfg.discount > 0 && (
                   <span className={cn(
-                    'absolute -top-2 -right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full',
+                    'absolute -top-2 -right-2 text-xs font-bold px-1.5 py-0.5 rounded-full',
                     active ? 'bg-success text-success-foreground' : 'bg-success/20 text-success'
                   )}>
                     -{cfg.discount * 100}%
@@ -287,12 +287,12 @@ export default function PlanoAssinatura() {
               )}
             >
               {isActive && (
-                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-success text-success-foreground text-[10px] gap-1">
+                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-success text-success-foreground text-xs gap-1">
                   <Check className="w-3 h-3" /> Seu Plano
                 </Badge>
               )}
               {!isActive && isHighlight && (
-                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-[10px] gap-1">
+                <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs gap-1">
                   <Star className="w-3 h-3" /> Mais popular
                 </Badge>
               )}
@@ -310,7 +310,7 @@ export default function PlanoAssinatura() {
                     <p className="text-xs text-muted-foreground">
                       Total: <span className="font-semibold text-foreground">{formatCurrency(price.total)}</span> / {cycleConfig[cycle].label.toLowerCase()}
                     </p>
-                    <p className="text-[11px] text-success font-medium flex items-center gap-1">
+                    <p className="text-xs text-success font-medium flex items-center gap-1">
                       <Zap className="w-3 h-3" />
                       Economia de {formatCurrency(price.saved)}
                     </p>
@@ -321,7 +321,7 @@ export default function PlanoAssinatura() {
                 )}
               </div>
 
-              <div className="flex gap-3 mb-4 text-[11px] text-muted-foreground">
+              <div className="flex gap-3 mb-4 text-xs text-muted-foreground">
                 <span>{plano.limite_licitacoes === -1 ? '∞' : plano.limite_licitacoes} licitações</span>
                 <span>•</span>
                 <span>{plano.limite_usuarios === -1 ? '∞' : plano.limite_usuarios} {(plano.limite_usuarios ?? 1) === 1 ? 'usuário' : 'usuários'}</span>
@@ -360,10 +360,10 @@ export default function PlanoAssinatura() {
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground text-center">
           Pagamento seguro via <strong>Cartão de Crédito</strong> ou <strong>Boleto Bancário</strong> processado pelo Stripe.
         </p>
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground text-center">
           Cancele a qualquer momento pelo portal de gerenciamento.
         </p>
       </div>

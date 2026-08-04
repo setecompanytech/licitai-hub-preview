@@ -206,7 +206,7 @@ export default function PreferenciasAlertas() {
                   {form.segmentos.map(cod => {
                     const s = segmentos.find(sg => sg.codigo === cod);
                     return (
-                      <Badge key={cod} variant="secondary" className="text-[10px] pr-1 cursor-pointer hover:bg-destructive/10" onClick={() => toggleSeg(cod)}>
+                      <Badge key={cod} variant="secondary" className="text-xs pr-1 cursor-pointer hover:bg-destructive/10" onClick={() => toggleSeg(cod)}>
                         {s?.nome || cod} <X className="w-3 h-3 ml-1" />
                       </Badge>
                     );
@@ -220,7 +220,7 @@ export default function PreferenciasAlertas() {
                   if (segs.length === 0) return null;
                   return (
                     <div key={cat}>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{cat}</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{cat}</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {segs.map(seg => (
                           <label
@@ -238,7 +238,7 @@ export default function PreferenciasAlertas() {
                             />
                             <div className="min-w-0">
                               <p className="text-xs font-medium leading-tight">{seg.nome}</p>
-                              <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{seg.descricao}</p>
+                              <p className="text-xs text-muted-foreground leading-tight mt-0.5">{seg.descricao}</p>
                             </div>
                           </label>
                         ))}
@@ -249,7 +249,7 @@ export default function PreferenciasAlertas() {
               </div>
 
               {form.segmentos.length === 0 && (
-                <p className="text-[10px] text-warning">⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro.</p>
+                <p className="text-xs text-warning">⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro.</p>
               )}
             </Card>
 
@@ -262,10 +262,10 @@ export default function PreferenciasAlertas() {
                   </h3>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" className="text-[10px] h-6" onClick={() => setForm(f => ({ ...f, ufs: [...UFS] }))}>
+                  <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => setForm(f => ({ ...f, ufs: [...UFS] }))}>
                     Selecionar todos
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-[10px] h-6" onClick={() => setForm(f => ({ ...f, ufs: [] }))}>
+                  <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => setForm(f => ({ ...f, ufs: [] }))}>
                     Limpar
                   </Button>
                 </div>
@@ -289,7 +289,7 @@ export default function PreferenciasAlertas() {
               </div>
 
               {form.ufs.length === 0 && (
-                <p className="text-[10px] text-warning">⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.</p>
+                <p className="text-xs text-warning">⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.</p>
               )}
             </Card>
           </TabsContent>

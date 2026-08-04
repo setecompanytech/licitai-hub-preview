@@ -344,7 +344,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
       <div className="flex items-center gap-2">
         <Scale className="w-5 h-5 text-accent" />
         <h3 className="font-semibold text-sm">Análise Jurídico-Contábil de Concorrente</h3>
-        <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/20">
+        <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/20">
           Lei 14.133/2021
         </Badge>
       </div>
@@ -374,7 +374,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           </SelectContent>
         </Select>
         {licitacaoSelecionada && licitacaoSelecionada !== 'none' && (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {licitacoes.find(l => l.id === licitacaoSelecionada)?.objeto}
           </p>
         )}
@@ -411,7 +411,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
             <Upload className="w-5 h-5 text-accent" />
             <div className="text-left">
               <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF/DOCX)</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 A IA cruzará cada exigência do edital com os documentos do concorrente
               </span>
             </div>

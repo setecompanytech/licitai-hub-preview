@@ -211,12 +211,12 @@ export default function TutorialPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className="text-[10px] px-1.5 py-0 font-mono"
+                            className="text-xs px-1.5 py-0 font-mono"
                             style={{ color: step.color, borderColor: `${step.color}40`, background: `${step.color}10` }}
                           >
                             Passo {step.number}
                           </Badge>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                             {step.subtitle}
                           </span>
                         </div>
@@ -248,7 +248,7 @@ export default function TutorialPage() {
 
                     {/* Arrow to next */}
                     {!isLast && (
-                      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/30 text-[10px] text-muted-foreground/60">
+                      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/30 text-xs text-muted-foreground">
                         <ArrowRight className="w-3 h-3" />
                         Próximo: {steps[idx + 1].title}
                       </div>

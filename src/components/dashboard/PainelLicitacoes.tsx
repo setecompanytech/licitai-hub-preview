@@ -334,7 +334,7 @@ export default function PainelLicitacoes() {
                         )}
                       >
                         <td className="p-3">
-                          <span className="text-xs font-mono text-muted-foreground block">{lic.numero}</span>
+                          <span className="text-xs tabular-nums text-muted-foreground block">{lic.numero}</span>
                           <p className="text-base font-medium truncate max-w-[300px]">{lic.objeto}</p>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             {lic.modalidade && <span>{lic.modalidade}</span>}

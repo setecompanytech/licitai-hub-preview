@@ -271,7 +271,7 @@ export default function ProcessoWorkspace() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                       {pncpDetalhe.numeroControlePncp && (
                         <div><p className="text-xs text-muted-foreground">ID PNCP</p>
-                          <p className="font-medium font-mono text-xs break-all">{pncpDetalhe.numeroControlePncp}</p></div>
+                          <p className="font-medium tabular-nums text-xs break-all">{pncpDetalhe.numeroControlePncp}</p></div>
                       )}
                       {pncpDetalhe.situacaoCompraNome && (
                         <div><p className="text-xs text-muted-foreground">Situação PNCP</p>
@@ -279,7 +279,7 @@ export default function ProcessoWorkspace() {
                       )}
                       {pncpDetalhe.cnpjOrgao && (
                         <div><p className="text-xs text-muted-foreground">CNPJ do órgão</p>
-                          <p className="font-medium font-mono text-xs">{pncpDetalhe.cnpjOrgao}</p></div>
+                          <p className="font-medium tabular-nums text-xs">{pncpDetalhe.cnpjOrgao}</p></div>
                       )}
                       {(pncpDetalhe.codigoUnidadeOrgao || pncpDetalhe.nomeUnidadeOrgao) && (
                         <div><p className="text-xs text-muted-foreground">Unidade compradora</p>
@@ -336,7 +336,7 @@ export default function ProcessoWorkspace() {
                     {pncpDetalhe.informacaoComplementar && (
                       <div className="pt-3 border-t border-border/40">
                         <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
-                        <p className="text-base text-foreground/80 leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
+                        <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
                       </div>
                     )}
 
@@ -366,10 +366,10 @@ export default function ProcessoWorkspace() {
                                 return (
                                   <tr key={item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
                                     <td className="px-3 py-2 text-muted-foreground">{item.numeroItem ?? i + 1}</td>
-                                    <td className="px-3 py-2 text-foreground/80">
+                                    <td className="px-3 py-2 text-foreground">
                                       {item.descricao || item.descricaoItem || '—'}
                                       {item.unidadeMedida && (
-                                        <span className="ml-1.5 text-[10px] text-muted-foreground border border-border/60 px-1 rounded">
+                                        <span className="ml-1.5 text-xs text-muted-foreground border border-border/60 px-1 rounded">
                                           {item.unidadeMedida}
                                         </span>
                                       )}
@@ -401,7 +401,7 @@ export default function ProcessoWorkspace() {
                                 <div className="min-w-0">
                                   <p className="text-xs font-medium truncate">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
                                   {arq.dataPublicacao && (
-                                    <p className="text-[10px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                       {new Date(arq.dataPublicacao).toLocaleDateString('pt-BR')}
                                     </p>
                                   )}
@@ -521,7 +521,7 @@ export default function ProcessoWorkspace() {
                                 </tbody>
                               </table>
                               {itens.length > 10 && (
-                                <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t">
+                                <p className="text-xs text-muted-foreground px-3 py-1.5 border-t">
                                   + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
                                 </p>
                               )}
@@ -565,7 +565,7 @@ export default function ProcessoWorkspace() {
                         </tbody>
                       </table>
                       {precItems.length > 15 && (
-                        <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t">
+                        <p className="text-xs text-muted-foreground px-3 py-1.5 border-t">
                           + {precItems.length - 15} itens adicionais
                         </p>
                       )}

@@ -419,10 +419,10 @@ export default function Configuracoes() {
                     {loadingSintegra ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                     Consultar SINTEGRA
                   </Button>
-                  <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
+                  <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
                     <ExternalLink className="w-3 h-3" /> Receita Federal
                   </a>
-                  <a href="http://www.sintegra.gov.br/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
+                  <a href="http://www.sintegra.gov.br/" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
                     <ExternalLink className="w-3 h-3" /> SINTEGRA
                   </a>
                 </div>
@@ -489,7 +489,7 @@ export default function Configuracoes() {
                     <Label className="text-xs">Inscrição Estadual</Label>
                     <Input value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" className="mt-1" />
                     {inscricaoEstadual && (
-                      <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/20">
+                      <Badge variant="outline" className="mt-1 text-xs bg-success/10 text-success border-success/20">
                         <CheckCircle2 className="w-3 h-3 mr-1" /> Preenchido
                       </Badge>
                     )}
@@ -696,7 +696,7 @@ export default function Configuracoes() {
                 })}
               </div>
 
-              <p className="text-[11px] text-muted-foreground mt-4">
+              <p className="text-xs text-muted-foreground mt-4">
                 {ufsInteresse.length > 0
                   ? `Prioridade ativa para: ${ufsInteresse.join(', ')}`
                   : 'Nenhuma UF específica selecionada.'}
@@ -770,7 +770,7 @@ export default function Configuracoes() {
                 </Button>
               </div>
               {username && (
-                <p className="text-[11px] text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   Você pode fazer login com <span className="font-mono font-medium text-foreground">{username}</span> ou com seu e-mail.
                 </p>
               )}

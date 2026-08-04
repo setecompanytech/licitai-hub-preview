@@ -538,7 +538,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     Transferência entre contas
                   </label>
                   {isTransferencia && (
-                    <span className="ml-auto text-[11px] text-muted-foreground">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       Não soma nos totais de receita/despesa
                     </span>
                   )}

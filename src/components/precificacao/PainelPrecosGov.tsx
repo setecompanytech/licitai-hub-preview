@@ -290,7 +290,7 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
 
         {(uf !== TODOS || municipio !== TODOS) && (
           <>
-            <Badge variant="outline" className="text-[10px] font-normal">
+            <Badge variant="outline" className="text-xs font-normal">
               Filtrando por {escopoLabel}
             </Badge>
             <Button
@@ -314,27 +314,27 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Menor Preço</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Menor Preço</p>
               <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(resumo.menor_preco)}</p>
             </div>
             <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Maior Preço</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Maior Preço</p>
               <p className="text-lg font-bold text-destructive">{formatCurrency(resumo.maior_preco)}</p>
             </div>
             <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preço Médio</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Preço Médio</p>
               <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.preco_medio)}</p>
             </div>
             {resumo.mediana != null && (
               <div className="text-center p-2 bg-card rounded-md border border-border/30">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Mediana</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Mediana</p>
                 <p className="text-lg font-bold text-primary">{formatCurrency(resumo.mediana)}</p>
               </div>
             )}
             <div className="text-center p-2 bg-card rounded-md border border-border/30">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Registros</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Registros</p>
               <p className="text-lg font-bold text-primary">{resumo.total_registros}</p>
-              <p className="text-[10px] text-muted-foreground">PNCP Oficial</p>
+              <p className="text-xs text-muted-foreground">PNCP Oficial</p>
             </div>
           </div>
         </div>
@@ -359,8 +359,8 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                         variant="outline"
                         className={
                           r.tipo_registro === 'ATA/SRP'
-                            ? 'text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20'
-                            : 'text-[10px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
+                            ? 'text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20'
+                            : 'text-xs bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
                         }
                       >
                         {r.tipo_registro}
@@ -370,8 +370,8 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                       variant="outline"
                       className={
                         isHomologado
-                          ? 'text-[10px] bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20'
-                          : 'text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20'
+                          ? 'text-xs bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20'
+                          : 'text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20'
                       }
                     >
                       {isHomologado ? (
@@ -409,7 +409,7 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                     <p className="text-xs text-muted-foreground">Preço unit.</p>
                     <p className="text-lg font-semibold text-foreground">{formatCurrency(r.preco_unitario)}</p>
                     {isCheapest && (
-                      <Badge className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 text-[10px]">
+                      <Badge className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20 text-xs">
                         <TrendingDown className="w-3 h-3 mr-0.5" /> Menor
                       </Badge>
                     )}

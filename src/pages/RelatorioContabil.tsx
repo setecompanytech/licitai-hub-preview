@@ -41,7 +41,7 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground font-medium truncate">{label}</p>
           <p className="text-xl font-bold mt-0.5 tracking-tight">{value}</p>
-          {sub && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
+          {sub && <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
         </div>
         <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${color}15` }}>
           <Icon className="w-4 h-4" style={{ color }} />

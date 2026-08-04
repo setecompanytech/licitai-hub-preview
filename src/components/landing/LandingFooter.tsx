@@ -55,10 +55,10 @@ export default function LandingFooter() {
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-3">
             Plataforma de inteligência operacional para licitações públicas. Monitoramento, precificação, propostas e automação de lances com cobertura nacional.
           </p>
-          <p className="text-[11px] text-muted-foreground/50 mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Conforme Lei 14.133/2021 — Não substitui assessoria jurídica profissional.
           </p>
-          <p className="text-[11px] text-muted-foreground/40">
+          <p className="text-xs text-muted-foreground/40">
             CNPJ: Em processo de registro · contato@praefectus.com.br
           </p>
         </div>
@@ -93,7 +93,7 @@ export default function LandingFooter() {
 
       <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-border/20 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
         <span>© {new Date().getFullYear()} PRAEFECTUS. Todos os direitos reservados.</span>
-        <div className="flex items-center gap-6 text-xs text-muted-foreground/50">
+        <div className="flex items-center gap-6 text-xs text-muted-foreground">
           <span>Criptografia AES-256</span>
           <span>Multi-tenant com RLS</span>
           <span>Conforme LGPD</span>

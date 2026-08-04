@@ -415,7 +415,7 @@ export default function Auth() {
                       placeholder="00.000.000/0001-00"
                       className="mt-1.5"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1">Opcional no cadastro. Você poderá cadastrar empresas depois.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Opcional no cadastro. Você poderá cadastrar empresas depois.</p>
                   </div>
                   <div>
                     <Label className="text-xs font-medium">Escolha uma senha *</Label>
@@ -716,7 +716,7 @@ export default function Auth() {
               </div>
 
               <div className="mt-5 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Certificados aceitos:</strong> e-CNPJ A1, e-CNPJ A3, e-CPF A1, e-CPF A3 nos formatos .pfx, .p12, .cer, .crt e .pem.
                 </p>
               </div>

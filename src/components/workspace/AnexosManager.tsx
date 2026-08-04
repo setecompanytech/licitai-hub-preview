@@ -78,7 +78,7 @@ export default function AnexosManager({ licitacaoId }: { licitacaoId: string }) 
         >
           <Folder className="w-4 h-4 mb-1 text-accent" />
           <div className="text-xs font-semibold">Todas</div>
-          <div className="text-[10px] text-muted-foreground">{anexos.length} arquivos</div>
+          <div className="text-xs text-muted-foreground">{anexos.length} arquivos</div>
         </button>
         {grupos.map(g => (
           <button
@@ -88,7 +88,7 @@ export default function AnexosManager({ licitacaoId }: { licitacaoId: string }) 
           >
             <Folder className="w-4 h-4 mb-1 text-accent" />
             <div className="text-xs font-semibold">{g.label}</div>
-            <div className="text-[10px] text-muted-foreground">{g.count} arquivos</div>
+            <div className="text-xs text-muted-foreground">{g.count} arquivos</div>
           </button>
         ))}
       </div>
@@ -109,12 +109,12 @@ export default function AnexosManager({ licitacaoId }: { licitacaoId: string }) 
               <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{a.nome_arquivo}</div>
-                <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] ${cat?.color}`}>{cat?.label}</Badge>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Badge variant="outline" className={`text-xs ${cat?.color}`}>{cat?.label}</Badge>
                   <span>{formatBytes(a.tamanho_bytes)}</span>
                   <span>·</span>
                   <span>{new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
-                  {a.origem !== 'upload' && <Badge variant="outline" className="text-[10px]">Gerado</Badge>}
+                  {a.origem !== 'upload' && <Badge variant="outline" className="text-xs">Gerado</Badge>}
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">

@@ -213,7 +213,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
             <Button key={s} variant={filtroStatus === s ? 'default' : 'outline'} size="sm"
               onClick={() => setFiltroStatus(s)} className="text-xs">
               {s === 'todas' ? 'Todas' : STATUS_CONFIG[s]?.label}
-              {s !== 'todas' && <Badge variant="secondary" className="ml-1.5 text-[10px]">
+              {s !== 'todas' && <Badge variant="secondary" className="ml-1.5 text-xs">
                 {tarefas.filter(t => t.status === s).length}
               </Badge>}
             </Button>
@@ -266,18 +266,18 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                           </button>
                         )}
                         <span className="font-semibold text-sm">{t.titulo}</span>
-                        <Badge className={`text-[10px] ${prio.color}`}>{prio.label}</Badge>
-                        <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
-                        {t.licitacao_id && <Badge variant="outline" className="text-[10px]"><Link2 className="w-3 h-3 mr-1" />Licitação</Badge>}
-                        {vencida && <Badge className="text-[10px] bg-destructive/15 text-destructive">Vencida</Badge>}
+                        <Badge className={`text-xs ${prio.color}`}>{prio.label}</Badge>
+                        <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
+                        {t.licitacao_id && <Badge variant="outline" className="text-xs"><Link2 className="w-3 h-3 mr-1" />Licitação</Badge>}
+                        {vencida && <Badge className="text-xs bg-destructive/15 text-destructive">Vencida</Badge>}
                         {subs.length > 0 && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             <ListPlus className="w-3 h-3 mr-1" />{subsCompleted}/{subs.length}
                           </Badge>
                         )}
                       </div>
                       {t.descricao && <p className="text-xs text-muted-foreground line-clamp-2">{t.descricao}</p>}
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <span>→ {getMembroNome(t.atribuido_a)}</span>
                         {t.prazo && <span>Prazo: {new Date(t.prazo).toLocaleDateString('pt-BR')}</span>}
                       </div>
@@ -285,7 +285,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {t.status !== 'concluida' && (
                         <Select value={t.status} onValueChange={v => handleUpdateStatus(t.id, v)}>
-                          <SelectTrigger className="w-[120px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-[120px] h-7 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                               <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -320,7 +320,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                         <span className={`text-xs flex-1 ${sub.status === 'concluida' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                           {sub.titulo}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">{getMembroNome(sub.criado_por)}</span>
+                        <span className="text-xs text-muted-foreground">{getMembroNome(sub.criado_por)}</span>
                         <Button
                           variant="ghost" size="icon"
                           className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive/60"
@@ -355,7 +355,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                 {!isExpanded && subs.length > 0 && (
                   <button
                     onClick={() => toggleExpand(t.id)}
-                    className="w-full border-t border-border/30 px-4 py-1.5 text-[10px] text-muted-foreground hover:bg-muted/30 transition-colors text-left"
+                    className="w-full border-t border-border/30 px-4 py-1.5 text-xs text-muted-foreground hover:bg-muted/30 transition-colors text-left"
                   >
                     {subs.length} sub-tarefa(s) • {subsCompleted} concluída(s)
                   </button>

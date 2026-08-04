@@ -84,7 +84,7 @@ export default function AutorizacaoLanceDialog({
             <p className="text-xs text-warning font-semibold mb-2">
               Revise a estratégia antes de autorizar
             </p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               No modo semiautomático, o sistema executará lances dentro dos parâmetros abaixo.
               Você está autorizando esta estratégia de forma expressa.
             </p>
@@ -105,7 +105,7 @@ export default function AutorizacaoLanceDialog({
                 <div key={item.label} className="bg-muted/50 rounded-lg p-2 flex items-center gap-2">
                   <item.icon className="w-3 h-3 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-[9px] text-muted-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
                     <p className="text-xs font-semibold font-mono">{item.value}</p>
                   </div>
                 </div>
@@ -121,14 +121,14 @@ export default function AutorizacaoLanceDialog({
                 {excedeLimite ? (
                   <>
                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <p className="text-[10px] text-destructive">
+                    <p className="text-xs text-destructive">
                       ⚠️ Valor inicial ({formatCurrency(estrategia.valorInicial)}) excede o limite financeiro ({formatCurrency(limiteFinanceiro)}).
                     </p>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <p className="text-[10px] text-success">
+                    <p className="text-xs text-success">
                       ✅ Dentro do limite financeiro ({formatCurrency(limiteFinanceiro)}).
                     </p>
                   </>
@@ -139,7 +139,7 @@ export default function AutorizacaoLanceDialog({
 
           <div className="border-t border-border pt-3">
             <label className="text-xs font-semibold block mb-1">
-              Digite <Badge variant="outline" className="text-[10px] mx-1">AUTORIZO</Badge> para confirmar
+              Digite <Badge variant="outline" className="text-xs mx-1">AUTORIZO</Badge> para confirmar
             </label>
             <Input
               value={confirmText}

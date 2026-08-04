@@ -260,27 +260,27 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         <>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Acréscimos (R$)</div>
+            <div className="text-xs text-muted-foreground mb-1">Acréscimos (R$)</div>
             <p className="text-sm font-bold text-success">{fmt(totalAcrescimo)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Supressões (R$)</div>
+            <div className="text-xs text-muted-foreground mb-1">Supressões (R$)</div>
             <p className="text-sm font-bold text-destructive">{fmt(totalSupressao)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Saldo Valor</div>
+            <div className="text-xs text-muted-foreground mb-1">Saldo Valor</div>
             <p className={`text-sm font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Acrésc. Qtde</div>
+            <div className="text-xs text-muted-foreground mb-1">Acrésc. Qtde</div>
             <p className="text-sm font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Supr. Qtde</div>
+            <div className="text-xs text-muted-foreground mb-1">Supr. Qtde</div>
             <p className="text-sm font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
           </Card>
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Saldo Qtde</div>
+            <div className="text-xs text-muted-foreground mb-1">Saldo Qtde</div>
             <p className={`text-sm font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
           </Card>
         </div>
@@ -298,7 +298,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
               <span className="text-xs font-semibold">
                 Limite Legal — Art. 125 Lei 14.133/21{isObra ? ' §1º (obra/reforma)' : ''}
               </span>
-              <Badge className={`text-[9px] ml-auto ${excedeuAcrescimo ? 'bg-destructive/10 text-destructive border-destructive/30' : proximoAcrescimo ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}`} variant="outline">
+              <Badge className={`text-xs ml-auto ${excedeuAcrescimo ? 'bg-destructive/10 text-destructive border-destructive/30' : proximoAcrescimo ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}`} variant="outline">
                 {excedeuAcrescimo ? `EXCEDIDO ${pctAcrescimo.toFixed(2)}%` : proximoAcrescimo ? `ATENÇÃO ${pctAcrescimo.toFixed(2)}%` : `OK ${pctAcrescimo.toFixed(2)}%`}
               </Badge>
             </div>
@@ -322,7 +322,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 </div>
               )}
               {aditivos.some(a => TIPOS_SEM_LIMITE.includes(a.tipo)) && (
-                <p className="text-[10px] text-muted-foreground pt-1 border-t border-muted/30">
+                <p className="text-xs text-muted-foreground pt-1 border-t border-muted/30">
                   Aditivos de reequilíbrio/revisão/repactuação/reajuste são isentos do limite e não entram neste cálculo.
                 </p>
               )}
@@ -366,15 +366,15 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-sm font-semibold">{a.numero_aditivo}</span>
-                      <Badge className={`text-[9px] ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
+                      <Badge className={`text-xs ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
                       {a.isSujeito && pctThisItem !== null && (
-                        <Badge variant="outline" className={`text-[9px] ${itemExcedeu ? 'border-destructive/40 text-destructive' : itemProximo ? 'border-warning/40 text-warning' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                        <Badge variant="outline" className={`text-xs ${itemExcedeu ? 'border-destructive/40 text-destructive' : itemProximo ? 'border-warning/40 text-warning' : 'border-muted-foreground/30 text-muted-foreground'}`}>
                           {itemExcedeu ? <ShieldAlert className="w-2.5 h-2.5 mr-1 inline" /> : itemProximo ? <AlertTriangle className="w-2.5 h-2.5 mr-1 inline" /> : null}
                           {pctThisItem.toFixed(2)}% acum. / {limiteArt125}%
                         </Badge>
                       )}
                       {!a.isSujeito && (
-                        <Badge variant="outline" className="text-[9px] border-orange-400/40 text-orange-500">
+                        <Badge variant="outline" className="text-xs border-orange-400/40 text-orange-500">
                           Isento art. 125
                         </Badge>
                       )}
@@ -416,27 +416,27 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 {/* Per-aditivo summary cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Acréscimos (R$)</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
                     <p className="text-xs font-bold text-success">{fmt(a.valor_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Supressões (R$)</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
                     <p className="text-xs font-bold text-destructive">{fmt(a.valor_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Valor</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
                     <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoValor)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Acrésc. Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
                     <p className="text-xs font-bold text-success">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Supr. Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
                     <p className="text-xs font-bold text-destructive">-{fmtQty(a.quantidade_supressao || 0)}</p>
                   </div>
                   <div className="rounded-lg border p-2">
-                    <div className="text-[10px] text-muted-foreground mb-0.5">Saldo Qtde</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
                     <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQtyItem)}</p>
                   </div>
                 </div>
@@ -463,7 +463,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Os saldos e valores serão recalculados no documento selecionado.
               </p>
             </div>
@@ -488,7 +488,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
               {TIPOS_SEM_LIMITE.includes(form.tipo) && (
-                <p className="text-[10px] text-orange-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>
@@ -543,7 +543,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
           {/* Live preview */}
           {(showValueFields(form.tipo) || showQtyFields(form.tipo)) && (
             <Card className="p-3 mt-2 bg-muted/50">
-              <p className="text-[10px] text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
               <div className="flex flex-wrap gap-4 text-xs">
                 {showValueFields(form.tipo) && (
                   <span className={`font-semibold ${(parseFloat(form.valor_acrescimo) || 0) - (parseFloat(form.valor_supressao) || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>

@@ -706,7 +706,7 @@ export default function Documentos() {
                                   </p>
                                 )}
                                 {doc.arquivo && (
-                                  <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                                     <FileText className="w-3 h-3" /> {doc.arquivo}
                                   </p>
                                 )}

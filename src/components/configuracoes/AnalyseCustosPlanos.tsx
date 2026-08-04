@@ -179,7 +179,7 @@ export default function AnalyseCustosPlanos() {
                       <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-medium truncate">{c.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{c.detail}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.detail}</p>
                       </div>
                     </div>
                     <span className={cn('text-xs font-bold tabular-nums ml-3 shrink-0', c.monthly === 0 ? 'text-success' : 'text-foreground')}>
@@ -201,7 +201,7 @@ export default function AnalyseCustosPlanos() {
               <Layers className="w-3.5 h-3.5" /> 2. Planos — Preço, Custo Variável, Lucro Bruto por Cliente
             </h3>
             <div className="overflow-x-auto -mx-5 px-5">
-              <table className="w-full text-[11px] min-w-[600px]">
+              <table className="w-full text-xs min-w-[600px]">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-2.5 font-bold text-muted-foreground">Plano</th>
@@ -248,8 +248,8 @@ export default function AnalyseCustosPlanos() {
 
             {/* Detalhamento do custo variável */}
             <div className="mt-3 p-3 rounded-lg bg-muted/20 border border-border/30">
-              <p className="text-[10px] font-bold text-muted-foreground mb-1.5">Composição do custo variável:</p>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground">
+              <p className="text-xs font-bold text-muted-foreground mb-1.5">Composição do custo variável:</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                 <span>• Sessão Chromium: <strong className="text-foreground">{R$(COST_PER_SESSION)}/mês</strong> (~1 GB RAM)</span>
                 <span>• CNPJ (scraping + monit.): <strong className="text-foreground">{R$(COST_PER_CNPJ)}/mês</strong></span>
                 <span>• Usuário (auth + storage): <strong className="text-foreground">{R$(COST_PER_USER)}/mês</strong></span>
@@ -269,7 +269,7 @@ export default function AnalyseCustosPlanos() {
                     <p className={cn('text-xs font-bold', p.color)}>{p.name}</p>
                     <span className="text-xs font-extrabold text-success tabular-nums">{R$(p.monthly)}/mês</span>
                   </div>
-                  <div className="flex gap-3 mb-3 text-[10px] text-muted-foreground">
+                  <div className="flex gap-3 mb-3 text-xs text-muted-foreground">
                     <span>{p.cnpjs} CNPJ{p.cnpjs > 1 ? 's' : ''}</span>
                     <span>•</span>
                     <span>{p.sessions > 0 ? `${p.sessions} sessões` : 'Sem robô'}</span>
@@ -281,7 +281,7 @@ export default function AnalyseCustosPlanos() {
                       const Icon = iconForIndex(i);
                       const isHeader = s.startsWith('Tudo do');
                       return (
-                        <li key={i} className={cn('flex items-start gap-1.5 text-[11px]', isHeader && 'text-accent font-semibold mt-1')}>
+                        <li key={i} className={cn('flex items-start gap-1.5 text-xs', isHeader && 'text-accent font-semibold mt-1')}>
                           {!isHeader && <Icon className="w-3 h-3 text-accent mt-0.5 shrink-0" />}
                           {isHeader && <Zap className="w-3 h-3 text-accent mt-0.5 shrink-0" />}
                           <span>{s}</span>
@@ -314,8 +314,8 @@ export default function AnalyseCustosPlanos() {
                 return (
                   <div key={p.slug} className="flex items-center gap-3 p-3 rounded-lg bg-background/60">
                     <div className="flex-1 min-w-0">
-                      <p className={cn('text-[11px] font-bold', p.color)}>{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{p.sessions} base + {extra} extras = {totalSessions} sessões</p>
+                      <p className={cn('text-xs font-bold', p.color)}>{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.sessions} base + {extra} extras = {totalSessions} sessões</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -329,13 +329,13 @@ export default function AnalyseCustosPlanos() {
                       >+</button>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[11px] font-bold text-success tabular-nums">{R$(totalRevenue)}</p>
-                      <p className="text-[10px] text-muted-foreground">custo {R$(totalCostVal)} · lucro <span className={cn('font-semibold', profit > 0 ? 'text-success' : 'text-destructive')}>{R$(profit)}</span> · margem {margin.toFixed(0)}%</p>
+                      <p className="text-xs font-bold text-success tabular-nums">{R$(totalRevenue)}</p>
+                      <p className="text-xs text-muted-foreground">custo {R$(totalCostVal)} · lucro <span className={cn('font-semibold', profit > 0 ? 'text-success' : 'text-destructive')}>{R$(profit)}</span> · margem {margin.toFixed(0)}%</p>
                     </div>
                   </div>
                 );
               })}
-              <p className="text-[10px] text-muted-foreground text-center pt-1">
+              <p className="text-xs text-muted-foreground text-center pt-1">
                 Sessão adicional: <strong className="text-accent">{R$(ADDITIONAL_SESSION_PRICE)}/mês</strong> (custo {R$(COST_PER_SESSION)} · lucro {R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)} · margem {(((ADDITIONAL_SESSION_PRICE - COST_PER_SESSION) / ADDITIONAL_SESSION_PRICE) * 100).toFixed(0)}%)
               </p>
             </div>
@@ -366,7 +366,7 @@ export default function AnalyseCustosPlanos() {
                         if (count === 0) return null;
                         return (
                           <div key={p.slug} className="text-center px-3 py-1.5 rounded-lg bg-background/60 border border-border/30">
-                            <p className="text-[10px] text-muted-foreground">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">{p.name}</p>
                             <p className="text-xs font-bold">{count}× {R$(p.monthly)}</p>
                           </div>
                         );
@@ -376,20 +376,20 @@ export default function AnalyseCustosPlanos() {
                     {/* Resultado */}
                     <div className="grid grid-cols-4 gap-2">
                       <div className="p-2 rounded-lg bg-background/40 text-center">
-                        <p className="text-[9px] text-muted-foreground uppercase">Receita</p>
+                        <p className="text-xs text-muted-foreground uppercase">Receita</p>
                         <p className="text-xs font-extrabold text-foreground tabular-nums">{R$(revenue)}</p>
                       </div>
                       <div className="p-2 rounded-lg bg-background/40 text-center">
-                        <p className="text-[9px] text-muted-foreground uppercase">Fixo + Var.</p>
+                        <p className="text-xs text-muted-foreground uppercase">Fixo + Var.</p>
                         <p className="text-xs font-extrabold text-destructive tabular-nums">{R$(totalCostScenario)}</p>
-                        <p className="text-[9px] text-muted-foreground">{R$(totalFixed)} + {R$(totalVar)}</p>
+                        <p className="text-xs text-muted-foreground">{R$(totalFixed)} + {R$(totalVar)}</p>
                       </div>
                       <div className="p-2 rounded-lg bg-background/40 text-center">
-                        <p className="text-[9px] text-muted-foreground uppercase">Lucro</p>
+                        <p className="text-xs text-muted-foreground uppercase">Lucro</p>
                         <p className={cn('text-xs font-extrabold tabular-nums', ok ? 'text-success' : 'text-destructive')}>{R$(profit)}</p>
                       </div>
                       <div className={cn('p-2 rounded-lg text-center', ok ? 'bg-success/10' : 'bg-destructive/10')}>
-                        <p className="text-[9px] text-muted-foreground uppercase">Margem</p>
+                        <p className="text-xs text-muted-foreground uppercase">Margem</p>
                         <p className={cn('text-sm font-extrabold', ok ? 'text-success' : 'text-destructive')}>{margin.toFixed(0)}%</p>
                       </div>
                     </div>

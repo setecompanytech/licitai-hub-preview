@@ -26,7 +26,7 @@ export default function StatCard({ label, value, change, changeType = 'neutral',
           {change && (
             <p
               className={cn(
-                'text-[10px] sm:text-xs font-medium mt-0.5 sm:mt-1 break-words leading-snug',
+                'text-xs sm:text-xs font-medium mt-0.5 sm:mt-1 break-words leading-snug',
                 changeType === 'positive' && 'text-success',
                 changeType === 'negative' && 'text-destructive',
                 changeType === 'neutral' && 'text-muted-foreground'

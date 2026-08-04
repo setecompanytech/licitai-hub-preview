@@ -253,7 +253,7 @@ export default function FinPedidosAFaturar() {
                     </TableCell>
                     <TableCell className="text-center">
                       {kCfg ? (
-                        <Badge className={`text-[10px] border ${kCfg.color}`}>{kCfg.label}</Badge>
+                        <Badge className={`text-xs border ${kCfg.color}`}>{kCfg.label}</Badge>
                       ) : (
                         <span className="text-muted-foreground/40 text-xs">—</span>
                       )}
@@ -325,7 +325,7 @@ export default function FinPedidosAFaturar() {
                   onChange={e => setParcelas(e.target.value)}
                 />
                 {parseInt(parcelas) > 1 && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {parseInt(parcelas)} parcelas de {fmt(faturando.valor_total / parseInt(parcelas))}
                   </p>
                 )}

@@ -153,7 +153,7 @@ export default function AureliaChat() {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-[hsl(215,14%,92%)] tracking-wide">AURÉLIA</h3>
-                  <p className="text-[10px] text-[hsl(215,12%,55%)]">Consultora de Licitações</p>
+                  <p className="text-xs text-[hsl(215,12%,55%)]">Consultora de Licitações</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">

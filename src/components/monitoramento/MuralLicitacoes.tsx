@@ -1140,7 +1140,7 @@ export default function MuralLicitacoes() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                  <p className="text-xs sm:text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                     <ShieldCheck className="w-3.5 h-3.5 text-success flex-shrink-0" />
                     <span>
                       {lic.fonte === 'comprasnet'
@@ -1148,9 +1148,9 @@ export default function MuralLicitacoes() {
                         : 'Dados extraídos em tempo real da API oficial do PNCP'}
                     </span>
                     {lic.fonte === 'comprasnet' && (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[9px] ml-1">Compras.gov ✓</Badge>
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs ml-1">Compras.gov ✓</Badge>
                     )}
-                    {d && lic.fonte !== 'comprasnet' && <Badge className="bg-success/10 text-success border-success/30 text-[9px] ml-1">Verificado ✓</Badge>}
+                    {d && lic.fonte !== 'comprasnet' && <Badge className="bg-success/10 text-success border-success/30 text-xs ml-1">Verificado ✓</Badge>}
                   </p>
                 </div>
               </div>
@@ -1217,7 +1217,7 @@ export default function MuralLicitacoes() {
               {/* Data de divulgação e Situação */}
               <div className="flex flex-wrap gap-x-8 gap-y-1">
                 <div><span className="font-bold">Data de divulgação no PNCP:</span> {formatDate(d?.data_publicacao_pncp || lic.data_publicacao)}</div>
-                <div><span className="font-bold">Situação:</span> <Badge className={`${statusColor(d?.situacao || lic.status)} text-[10px] px-2`}>{d?.situacao || lic.status}</Badge></div>
+                <div><span className="font-bold">Situação:</span> <Badge className={`${statusColor(d?.situacao || lic.status)} text-xs px-2`}>{d?.situacao || lic.status}</Badge></div>
               </div>
 
               {/* Datas de recebimento de propostas */}
@@ -1276,7 +1276,7 @@ export default function MuralLicitacoes() {
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Package className="w-4 h-4 text-accent" />
                   Itens da Licitação ({d.total_itens} {d.total_itens === 1 ? 'item' : 'itens'})
-                  <Badge className="bg-success/10 text-success border-success/30 text-[9px]">Dados reais PNCP</Badge>
+                  <Badge className="bg-success/10 text-success border-success/30 text-xs">Dados reais PNCP</Badge>
                 </h3>
                 <div className="border border-border/50 rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
@@ -1308,7 +1308,7 @@ export default function MuralLicitacoes() {
                               {item.valor_total > 0 ? formatCurrency(item.valor_total) : '-'}
                             </td>
                             <td className="px-3 py-2">
-                              <Badge variant="outline" className="text-[9px]">{item.situacao || '-'}</Badge>
+                              <Badge variant="outline" className="text-xs">{item.situacao || '-'}</Badge>
                             </td>
                           </tr>
                         ))}
@@ -1350,7 +1350,7 @@ export default function MuralLicitacoes() {
 
             {/* Fonte e timestamp */}
             {d && (
-              <div className="text-[10px] text-muted-foreground/60 flex items-center gap-2 pt-2">
+              <div className="text-xs text-muted-foreground flex items-center gap-2 pt-2">
                 <ShieldCheck className="w-3 h-3" />
                 Fonte: {d.fonte} • Consultado em: {new Date(d.consultado_em).toLocaleString('pt-BR')}
               </div>
@@ -1438,13 +1438,13 @@ export default function MuralLicitacoes() {
             <div className="min-w-0">
               <h3 className="font-bold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                 <span className="whitespace-nowrap">Mural de Licitações — Tempo Real</span>
-                <Badge className="bg-success text-success-foreground text-[10px]">PNCP Oficial</Badge>
+                <Badge className="bg-success text-success-foreground text-xs">PNCP Oficial</Badge>
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+              <p className="text-xs sm:text-xs text-muted-foreground">
                 Dados em tempo real da API oficial do Portal Nacional de Contratações Públicas
               </p>
               {totalCacheGlobal > 0 && (
-                <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                   <CheckCircle2 className="w-3 h-3 text-success" />
                   {totalCacheGlobal.toLocaleString('pt-BR')} editais indexados
                   {ultimaSync && (() => {
@@ -1476,7 +1476,7 @@ export default function MuralLicitacoes() {
             </Button>
             <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
               <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
-              <label htmlFor="toggle-externos" className="text-[11px] sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
+              <label htmlFor="toggle-externos" className="text-xs sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
                 Incluir portais externos
               </label>
               <Switch
@@ -1527,10 +1527,10 @@ export default function MuralLicitacoes() {
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4 text-accent" />
               <h4 className="text-sm font-bold">Busca Direta por Edital</h4>
-              <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">PNCP</Badge>
+              <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">PNCP</Badge>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              Cole a URL do PNCP ou informe o número no formato <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">CNPJ/ANO/SEQUENCIAL</code> para localizar qualquer edital publicado.
+              Cole a URL do PNCP ou informe o número no formato <code className="bg-muted px-1.5 py-0.5 rounded text-xs">CNPJ/ANO/SEQUENCIAL</code> para localizar qualquer edital publicado.
             </p>
             <div className="flex gap-2">
               <Input
@@ -1567,7 +1567,7 @@ export default function MuralLicitacoes() {
               FILTROS
               {(() => {
                 const count = [tipoInstrumentoFiltro !== 'all', modalidadeFiltro !== 'all', orgaoFiltro, unidadeFiltro, ufFiltro !== 'all', municipioFiltro, esferaFiltro !== 'all', portalFiltro !== 'all', segmentoFiltro !== 'all', !!dataInicio, !!dataFim, searchSubmitted, uasgSubmitted].filter(Boolean).length;
-                return count > 0 ? <Badge className="bg-accent/10 text-accent border-accent/20 text-[9px]">{count} Ativo{count > 1 ? 's' : ''}</Badge> : null;
+                return count > 0 ? <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">{count} Ativo{count > 1 ? 's' : ''}</Badge> : null;
               })()}
             </div>
             {filtrosAbertos ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1792,7 +1792,7 @@ export default function MuralLicitacoes() {
                       </Tooltip>
                     </div>
                   </div>
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <DirecaoOrdenacaoAtualIcon className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{rotuloOrdenacaoAtual}</span>
                   </p>
@@ -1994,11 +1994,11 @@ export default function MuralLicitacoes() {
             `${totalResultados} licitações encontradas${totalFontesFiltradas > 0 ? ` (${totaisFiltradosPorFonte.pncp} PNCP${totaisFiltradosPorFonte.comprasGov > 0 ? ` + ${totaisFiltradosPorFonte.comprasGov} Compras.gov` : ''}${totaisFiltradosPorFonte.externos > 0 ? ` + ${totaisFiltradosPorFonte.externos} externos` : ''})` : ''}`}
         </p>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30 gap-1 whitespace-nowrap">
+          <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30 gap-1 whitespace-nowrap">
             <Globe className="w-3 h-3" /> PNCP Oficial
           </Badge>
           {incluirExternos && licitacoesExternas.length > 0 && (
-            <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30 gap-1 whitespace-nowrap">
+            <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30 gap-1 whitespace-nowrap">
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
@@ -2007,7 +2007,7 @@ export default function MuralLicitacoes() {
             const totalPncp = totaisFiltradosPorFonte.pncp;
             if (totalComprasnet > 0 || totalPncp > 0) {
               return (
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   PNCP: {totalPncp} · Compras.gov: {totalComprasnet}
                 </span>
               );
@@ -2072,7 +2072,7 @@ export default function MuralLicitacoes() {
           <div className="flex flex-col items-center gap-3">
             <FileText className="w-10 h-10 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">Nenhuma licitação encontrada para os filtros selecionados.</p>
-            <p className="text-xs text-muted-foreground/60">Tente ajustar os filtros ou ampliar os critérios de busca.</p>
+            <p className="text-xs text-muted-foreground">Tente ajustar os filtros ou ampliar os critérios de busca.</p>
           </div>
         </Card>
       )}
@@ -2095,16 +2095,16 @@ export default function MuralLicitacoes() {
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-1 flex-wrap">
-                    <Badge className={cn('text-[10px] px-2 py-0.5', statusColor(lic.status))}>{lic.status}</Badge>
+                    <Badge className={cn('text-xs px-2 py-0.5', statusColor(lic.status))}>{lic.status}</Badge>
                     {scoreInfo && scoreInfo.classificacao !== 'normal' && (
-                      <Badge className={cn('text-[10px] px-1.5 py-0.5 border', classCor[scoreInfo.classificacao] || '')}>
+                      <Badge className={cn('text-xs px-1.5 py-0.5 border', classCor[scoreInfo.classificacao] || '')}>
                         {classEmoji[scoreInfo.classificacao] || ''} {scoreInfo.classificacao}
                       </Badge>
                     )}
                     {scoreInfo && scoreInfo.score_total > 0 && (
                       <Tooltip delayDuration={200}>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono">
+                          <Badge variant="outline" className="text-xs px-1 py-0 font-mono">
                             {scoreInfo.score_total}%
                           </Badge>
                         </TooltipTrigger>
@@ -2119,7 +2119,7 @@ export default function MuralLicitacoes() {
                     >
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
-                    <Badge variant="outline" className={cn('text-[9px]',
+                    <Badge variant="outline" className={cn('text-xs',
                       lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' :
                       lic.fonte === 'comprasnet' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
                       ''
@@ -2127,7 +2127,7 @@ export default function MuralLicitacoes() {
                       {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.fonte === 'comprasnet' ? '🏛 Compras.gov' : lic.portal}
                     </Badge>
                     {lic.leiBase && lic.leiBase !== '14133' && (
-                      <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
                         Lei 8.666
                       </Badge>
                     )}
@@ -2136,9 +2136,9 @@ export default function MuralLicitacoes() {
 
                 {/* Número + Modalidade */}
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="text-[10px] font-mono text-muted-foreground">{lic.numero}</p>
+                  <p className="text-xs font-mono text-muted-foreground">{lic.numero}</p>
                   {lic.modalidade && lic.modalidade !== 'Não informada' && (
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium bg-primary/5 text-primary border-primary/20">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0 font-medium bg-primary/5 text-primary border-primary/20">
                       <Gavel className="w-2.5 h-2.5 mr-0.5" />
                       {lic.modalidade}
                     </Badge>
@@ -2174,7 +2174,7 @@ export default function MuralLicitacoes() {
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     <span>{lic.municipio ? `${lic.municipio}/${lic.uf}` : lic.uf}</span>
                     {ufSede && lic.uf && lic.uf.toUpperCase() === ufSede && (
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 ml-1 bg-accent/10 text-accent border-accent/30 font-semibold">
+                      <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 ml-1 bg-accent/10 text-accent border-accent/30 font-semibold">
                         Sua UF
                       </Badge>
                     )}
@@ -2182,32 +2182,32 @@ export default function MuralLicitacoes() {
                 )}
 
                 {/* Datas e Situação — Terminologia oficial PNCP / Lei 14.133/2021 */}
-                <div className="mt-2 space-y-1 text-[10px] text-muted-foreground border-t border-border/20 pt-2">
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground border-t border-border/20 pt-2">
                   <div className="flex items-start gap-1">
                     <CalendarDays className="w-3 h-3 flex-shrink-0 text-info mt-0.5" />
                     <div>
-                      <span className="font-medium text-foreground/70">Divulgação no PNCP:</span>{' '}
+                      <span className="font-medium text-foreground">Divulgação no PNCP:</span>{' '}
                       <span>{formatDateBrasilia(lic.data_publicacao)}</span>
                     </div>
                   </div>
                   <div className="flex items-start gap-1">
                     <Clock className="w-3 h-3 flex-shrink-0 text-success mt-0.5" />
                     <div>
-                      <span className="font-medium text-foreground/70">Início de recebimento de propostas:</span>{' '}
+                      <span className="font-medium text-foreground">Início de recebimento de propostas:</span>{' '}
                       <span>{lic.data_abertura ? formatDateBrasilia(lic.data_abertura) + ' (horário de Brasília)' : 'N/I'}</span>
                     </div>
                   </div>
                   <div className="flex items-start gap-1">
                     <Clock className="w-3 h-3 flex-shrink-0 text-destructive mt-0.5" />
                     <div>
-                      <span className="font-medium text-foreground/70">Fim de recebimento de propostas:</span>{' '}
+                      <span className="font-medium text-foreground">Fim de recebimento de propostas:</span>{' '}
                       <span>{lic.data_encerramento ? formatDateBrasilia(lic.data_encerramento) + ' (horário de Brasília)' : 'Consultar edital'}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Info className="w-3 h-3 flex-shrink-0" />
-                    <span className="font-medium text-foreground/70">Situação:</span>
-                    <Badge className={`${statusColor(lic.status)} text-[9px] px-1.5 py-0`}>{lic.status}</Badge>
+                    <span className="font-medium text-foreground">Situação:</span>
+                    <Badge className={`${statusColor(lic.status)} text-xs px-1.5 py-0`}>{lic.status}</Badge>
                   </div>
                 </div>
 
@@ -2315,7 +2315,7 @@ function InfoField({ icon, label, value, highlight }: { icon: React.ReactNode; l
     <div className="bg-muted/30 rounded-lg p-3">
       <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
         {icon}
-        <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
       </div>
       <p className={cn('text-sm', highlight && 'font-bold text-success')}>{value}</p>
     </div>

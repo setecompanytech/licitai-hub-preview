@@ -180,7 +180,7 @@ export default function SolicitacaoLgpd() {
       )}
 
       <div className="mt-4 pt-3 border-t border-border/30">
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Contato do DPO: <a href="mailto:dpo@praefectus.com.br" className="text-accent hover:underline">dpo@praefectus.com.br</a> | 
           Prazo legal de resposta: 15 dias (Art. 18, §5º da LGPD)
         </p>

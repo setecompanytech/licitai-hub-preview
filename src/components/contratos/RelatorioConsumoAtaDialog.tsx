@@ -214,7 +214,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
               <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="h-9" />
             </div>
           </div>
-          <div className="bg-muted/40 rounded-md p-3 text-[11px] text-muted-foreground space-y-1">
+          <div className="bg-muted/40 rounded-md p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">O relatório inclui:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li>Resumo por contrato derivado (qtd itens e valor consumido)</li>
@@ -222,7 +222,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
               <li>Similaridade do match e motivo do vínculo</li>
               <li>Saldos atuais (quantitativo e financeiro) da ATA</li>
             </ul>
-            <p className="text-[10px] mt-1 italic">Otimizado: agregação no banco + paginação ({PAGE_SIZE}/req) + índices.</p>
+            <p className="text-xs mt-1 italic">Otimizado: agregação no banco + paginação ({PAGE_SIZE}/req) + índices.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={() => exportar('pdf')} disabled={loading} variant="default" className="gap-1.5">
@@ -234,7 +234,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
               CSV
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">
+          <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
             <Download className="w-3 h-3" /> Os arquivos são baixados automaticamente
           </p>
         </div>

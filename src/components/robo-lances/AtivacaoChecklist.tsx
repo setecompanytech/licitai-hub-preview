@@ -232,11 +232,11 @@ export default function AtivacaoChecklist() {
           </h3>
           <div className="flex items-center gap-2">
             {pronto ? (
-              <Badge className="bg-success/15 text-success border-success/30 text-[10px]">
+              <Badge className="bg-success/15 text-success border-success/30 text-xs">
                 Pronto
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-xs">
                 {okCount}/{total} etapas
               </Badge>
             )}
@@ -275,10 +275,10 @@ export default function AtivacaoChecklist() {
                     <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                     <p className="text-xs font-semibold">{item.label}</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{item.descricao}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
                 </div>
                 {item.acao && (
-                  <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={item.acao}>
+                  <Button size="sm" variant="outline" className="text-xs h-6" onClick={item.acao}>
                     {item.acaoLabel || 'Configurar'}
                   </Button>
                 )}

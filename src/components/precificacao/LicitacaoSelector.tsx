@@ -357,21 +357,21 @@ export default function LicitacaoSelector({
         )}
       </div>
 
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Selecione uma licitação marcada no sistema para preencher automaticamente os itens (descrição, quantidade, unidade e valores de referência).
       </p>
 
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
         {licitacaoId && (
-          <Badge className="text-[10px] bg-accent/15 text-accent border-0">
+          <Badge className="text-xs bg-accent/15 text-accent border-0">
             Processo vinculado sincronizado
           </Badge>
         )}
         {favoritosKeys.size > 0 && (
-          <span className="text-[10px] text-muted-foreground">Editais marcados aparecem primeiro na lista.</span>
+          <span className="text-xs text-muted-foreground">Editais marcados aparecem primeiro na lista.</span>
         )}
       </div>
 
@@ -443,21 +443,21 @@ export default function LicitacaoSelector({
                   <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
                     {l.numero || 'Sem número'}
                   </p>
-                  <p className="text-[10px] text-muted-foreground truncate">{l.orgao}</p>
+                  <p className="text-xs text-muted-foreground truncate">{l.orgao}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {l.modalidade && (
-                    <Badge variant="outline" className="text-[9px] h-5">{l.modalidade}</Badge>
+                    <Badge variant="outline" className="text-xs h-5">{l.modalidade}</Badge>
                   )}
                   {l.valor_estimado && l.valor_estimado > 0 && (
-                    <span className="text-[10px] font-medium text-accent">
+                    <span className="text-xs font-medium text-accent">
                       R$ {l.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   )}
                   <Download className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{l.objeto}</p>
             </button>
           ))}
         </div>
@@ -479,7 +479,7 @@ export default function LicitacaoSelector({
               <p className="text-xs font-semibold text-foreground truncate">
                 {licitacaoNumero} — {licitacaoOrgao}
               </p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {licitacoesMarcadas.find(l => l.id === selectedId)?.objeto?.slice(0, 100)}
               </p>
             </div>
@@ -494,17 +494,17 @@ export default function LicitacaoSelector({
             )}
           </div>
           {extracting && (
-            <p className="text-[10px] text-accent">
+            <p className="text-xs text-accent">
               🤖 A IA está extraindo os itens do edital automaticamente. Aguarde...
             </p>
           )}
           {!extracting && itensCount > 0 && (
-            <p className="text-[10px] text-accent">
+            <p className="text-xs text-accent">
               ✓ Itens preenchidos automaticamente. Você pode editar, adicionar ou excluir itens livremente.
             </p>
           )}
           {!extracting && itensCount === 0 && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Nenhum item extraído. Adicione manualmente na planilha abaixo.
             </p>
           )}
@@ -513,7 +513,7 @@ export default function LicitacaoSelector({
 
       {/* Manual fallback */}
       <div className="border-t border-border/30 pt-3">
-        <p className="text-[10px] text-muted-foreground mb-2">Ou preencha manualmente:</p>
+        <p className="text-xs text-muted-foreground mb-2">Ou preencha manualmente:</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs">Nº da Licitação</Label>

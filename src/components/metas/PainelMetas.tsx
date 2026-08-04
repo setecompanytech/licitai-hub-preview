@@ -65,10 +65,10 @@ function Indicador({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <span className="text-xs text-muted-foreground">{rotulo}</span>
-          <Icone className={`w-4 h-4 shrink-0 ${destaque ? 'text-primary' : 'text-muted-foreground/50'}`} />
+          <Icone className={`w-4 h-4 shrink-0 ${destaque ? 'text-primary' : 'text-muted-foreground'}`} />
         </div>
         <p className="text-xl font-bold tabular-nums mt-1">{valor}</p>
-        {detalhe && <p className="text-[11px] text-muted-foreground mt-0.5">{detalhe}</p>}
+        {detalhe && <p className="text-xs text-muted-foreground mt-0.5">{detalhe}</p>}
       </CardContent>
     </Card>
   );
@@ -230,7 +230,7 @@ export default function PainelMetas() {
 
       {carregando ? (
         <Card className="p-12 text-center">
-          <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground/50" />
+          <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
         </Card>
       ) : !selecionado ? (
         <Card className="p-12 text-center">
@@ -336,7 +336,7 @@ export default function PainelMetas() {
                   <p className="text-2xl font-bold tabular-nums mt-1">
                     {analise.projecao.participacoesNecessarias}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">propostas a enviar</p>
+                  <p className="text-xs text-muted-foreground">propostas a enviar</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -345,21 +345,21 @@ export default function PainelMetas() {
                   <p className="text-2xl font-bold tabular-nums mt-1">
                     {analise.projecao.contratosNecessarios}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">a ganhar</p>
+                  <p className="text-xs text-muted-foreground">a ganhar</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Ritmo necessário</p>
                   <p className="text-2xl font-bold tabular-nums mt-1">
                     {formatBRL(paraReais(analise.projecao.runRateNecessarioCent))}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">por dia útil restante</p>
+                  <p className="text-xs text-muted-foreground">por dia útil restante</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Ritmo atual</p>
                   <p className="text-2xl font-bold tabular-nums mt-1">
                     {formatBRL(paraReais(analise.projecao.ritmoDiarioCent))}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {analise.projecao.gapRitmo === null
                       ? 'sem ritmo apurado ainda'
                       : analise.projecao.gapRitmo <= 0
@@ -376,7 +376,7 @@ export default function PainelMetas() {
                 </span>
                 <Badge
                   variant={analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent ? 'default' : 'outline'}
-                  className="text-[10px]"
+                  className="text-xs"
                 >
                   {analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent
                     ? 'Bate a meta no ritmo atual'
@@ -394,7 +394,7 @@ export default function PainelMetas() {
                 Premissas do cálculo
                 <Badge
                   variant={analise.projecao.premissas.confianca === 'alta' ? 'default' : 'outline'}
-                  className="text-[10px] ml-1"
+                  className="text-xs ml-1"
                 >
                   confiança {analise.projecao.premissas.confianca}
                 </Badge>
@@ -438,7 +438,7 @@ export default function PainelMetas() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {analise.tickets.map((t) => (
-                      <Badge key={t.modalidade} variant="outline" className="text-[10px] font-normal">
+                      <Badge key={t.modalidade} variant="outline" className="text-xs font-normal">
                         {rotuloModalidade(t.modalidade)} · {formatPercent(t.mix, 0)} ·{' '}
                         {formatBRL(paraReais(t.ticketCent))} ({t.amostra})
                       </Badge>

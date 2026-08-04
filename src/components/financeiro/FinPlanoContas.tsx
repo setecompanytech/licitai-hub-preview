@@ -148,19 +148,19 @@ export default function FinPlanoContas() {
           )}
           <code className="text-xs font-mono text-muted-foreground min-w-[68px]">{conta.codigo}</code>
           <span className={conta.tipo_conta === "sintetica" ? "font-medium" : ""}>{conta.nome}</span>
-          <Badge variant="outline" className={`text-[10px] ${NATUREZA_COLOR[conta.natureza] || ""}`}>
+          <Badge variant="outline" className={`text-xs ${NATUREZA_COLOR[conta.natureza] || ""}`}>
             {NATUREZA_LABEL[conta.natureza] || conta.natureza}
           </Badge>
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             {conta.natureza_saldo === "D" ? "Devedora" : "Credora"}
           </Badge>
           {conta.aceita_lancamento && (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-xs">
               Analítica
             </Badge>
           )}
           {conta.conta_referencial_sped && (
-            <span className="text-[10px] text-muted-foreground ml-auto font-mono">SPED {conta.conta_referencial_sped}</span>
+            <span className="text-xs text-muted-foreground ml-auto font-mono">SPED {conta.conta_referencial_sped}</span>
           )}
         </div>
         {aberto && tem && <div>{filhos.map((f) => renderNo(f, depth + 1))}</div>}
@@ -232,7 +232,7 @@ export default function FinPlanoContas() {
                   <div key={c.id} className="flex items-center gap-2 py-1.5 px-3 text-sm">
                     <code className="text-xs font-mono text-muted-foreground min-w-[68px]">{c.codigo}</code>
                     <span className={c.tipo_conta === "sintetica" ? "font-medium" : ""}>{c.nome}</span>
-                    <Badge variant="outline" className={`text-[10px] ${NATUREZA_COLOR[c.natureza] || ""}`}>
+                    <Badge variant="outline" className={`text-xs ${NATUREZA_COLOR[c.natureza] || ""}`}>
                       {NATUREZA_LABEL[c.natureza]}
                     </Badge>
                   </div>

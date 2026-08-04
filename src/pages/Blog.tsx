@@ -108,17 +108,17 @@ export default function Blog() {
           <div>
             <div className="flex gap-2 mb-3">
               {artigoAberto.caso_fortuito && (
-                <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-[10px]">
+                <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" /> Caso Fortuito
                 </Badge>
               )}
               {artigoAberto.forca_maior && (
-                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-[10px]">
+                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" /> Força Maior
                 </Badge>
               )}
               {artigoAberto.tcu_referencia && (
-                <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-[10px]">
+                <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs">
                   <Gavel className="w-3 h-3 mr-1" /> TCU: {artigoAberto.tcu_referencia}
                 </Badge>
               )}
@@ -143,7 +143,7 @@ export default function Blog() {
           </Card>
           <div className="flex gap-1 flex-wrap">
             {artigoAberto.tags?.map(tag => (
-              <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0">{tag}</Badge>
+              <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
             ))}
           </div>
         </div>
@@ -177,16 +177,16 @@ export default function Blog() {
               <Card key={artigo.id} className="p-5 hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() => setArtigoAberto(artigo)}>
                 <div className="flex gap-2 mb-2">
-                  <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-[10px]">
+                  <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">
                     ⭐ Destaque
                   </Badge>
                   {artigo.caso_fortuito && (
-                    <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-[10px]">
+                    <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs">
                       Caso Fortuito
                     </Badge>
                   )}
                   {artigo.forca_maior && (
-                    <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-[10px]">
+                    <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs">
                       Força Maior
                     </Badge>
                   )}
@@ -252,24 +252,24 @@ export default function Blog() {
                   <div className="flex-1">
                     <div className="flex gap-1 mb-1">
                       {artigo.caso_fortuito && (
-                        <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-[9px] px-1.5 py-0">
+                        <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs px-1.5 py-0">
                           Caso Fortuito
                         </Badge>
                       )}
                       {artigo.forca_maior && (
-                        <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-[9px] px-1.5 py-0">
+                        <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs px-1.5 py-0">
                           Força Maior
                         </Badge>
                       )}
                       {artigo.tcu_referencia && (
-                        <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-[9px] px-1.5 py-0">
+                        <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs px-1.5 py-0">
                           TCU
                         </Badge>
                       )}
                     </div>
                     <h3 className="font-semibold text-sm group-hover:text-accent transition-colors mb-1">{artigo.titulo}</h3>
                     <p className="text-xs text-muted-foreground mb-2">{artigo.resumo}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><User className="w-3 h-3" /> {artigo.autor}</span>
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {artigo.tempo_leitura}</span>
                       <span>{new Date(artigo.data_publicacao).toLocaleDateString('pt-BR')}</span>
@@ -279,7 +279,7 @@ export default function Blog() {
                     </div>
                     <div className="flex gap-1 mt-2">
                       {artigo.tags?.slice(0, 5).map(tag => (
-                        <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0">{tag}</Badge>
+                        <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
                       ))}
                     </div>
                   </div>

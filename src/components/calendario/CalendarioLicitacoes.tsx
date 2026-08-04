@@ -426,7 +426,7 @@ export default function CalendarioLicitacoes() {
             modifiersStyles={modifiersStyles}
             className="rounded-md border pointer-events-auto"
           />
-          <div className="flex flex-wrap gap-3 mt-3 text-[10px]">
+          <div className="flex flex-wrap gap-3 mt-3 text-xs">
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full bg-accent/20 border border-accent/40" /> Licitação
             </span>
@@ -489,11 +489,11 @@ export default function CalendarioLicitacoes() {
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{l.numero}</p>
                           <p className="text-xs text-muted-foreground truncate">{l.orgao}</p>
-                          <p className="text-xs text-muted-foreground/70 truncate">{l.objeto}</p>
+                          <p className="text-xs text-muted-foreground truncate">{l.objeto}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-xs">
                           {l.status}
                         </Badge>
                         {l.valor_estimado && (
@@ -533,7 +533,7 @@ export default function CalendarioLicitacoes() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          'text-[10px]',
+                          'text-xs',
                           doc.status === 'vencido' ? 'text-destructive' : 'text-warning'
                         )}
                       >
@@ -552,7 +552,7 @@ export default function CalendarioLicitacoes() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[10px] text-info border-info/30">
+                      <Badge variant="outline" className="text-xs text-info border-info/30">
                         Agendado
                       </Badge>
                     </div>
@@ -586,7 +586,7 @@ export default function CalendarioLicitacoes() {
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="text-center flex-shrink-0 w-12">
                             <p className="text-lg font-bold leading-none">{format(d, 'dd')}</p>
-                            <p className="text-[10px] uppercase text-muted-foreground">
+                            <p className="text-xs uppercase text-muted-foreground">
                               {format(d, 'MMM', { locale: ptBR })}
                             </p>
                           </div>
@@ -599,11 +599,11 @@ export default function CalendarioLicitacoes() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {isUrgent && (
-                            <Badge variant="destructive" className="text-[10px]">
+                            <Badge variant="destructive" className="text-xs">
                               {diffDias === 0 ? 'Hoje' : `${diffDias}d`}
                             </Badge>
                           )}
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {l.modalidade}
                           </Badge>
                         </div>
@@ -663,7 +663,7 @@ export default function CalendarioLicitacoes() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              'text-[10px] flex-shrink-0',
+                              'text-xs flex-shrink-0',
                               doc.status === 'vencido'
                                 ? 'text-destructive border-destructive/30'
                                 : doc.status === 'vencendo'
@@ -691,21 +691,21 @@ export default function CalendarioLicitacoes() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-accent">{licitacoes.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase">Total Processos</p>
+          <p className="text-xs text-muted-foreground uppercase">Total Processos</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-warning">{urgentes.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase">Urgentes (3d)</p>
+          <p className="text-xs text-muted-foreground uppercase">Urgentes (3d)</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-foreground">{upcoming.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase">Próximos 30d</p>
+          <p className="text-xs text-muted-foreground uppercase">Próximos 30d</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-success">
             {licitacoes.filter((l) => l.status === 'Vencida' || l.status === 'Homologada').length}
           </p>
-          <p className="text-[10px] text-muted-foreground uppercase">Ganhas</p>
+          <p className="text-xs text-muted-foreground uppercase">Ganhas</p>
         </Card>
         <Card className="p-3 text-center">
           <p
@@ -720,7 +720,7 @@ export default function CalendarioLicitacoes() {
           >
             {docsAlerta.length}
           </p>
-          <p className="text-[10px] text-muted-foreground uppercase">Docs Alerta</p>
+          <p className="text-xs text-muted-foreground uppercase">Docs Alerta</p>
         </Card>
       </div>
     </div>

@@ -184,7 +184,7 @@ function Resumo({
           : "text-foreground";
   return (
     <div className="rounded-lg border border-border/40 bg-card p-3">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{titulo}</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{titulo}</div>
       <div className={`text-2xl font-bold tabular-nums ${cor}`}>{valor}</div>
     </div>
   );
@@ -204,7 +204,7 @@ function StatusBadge({
         ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
         : "bg-red-500/10 text-red-500 border-red-500/30";
   return (
-    <Badge variant="outline" className={`${cls} text-[10px] font-medium`}>
+    <Badge variant="outline" className={`${cls} text-xs font-medium`}>
       {children}
     </Badge>
   );

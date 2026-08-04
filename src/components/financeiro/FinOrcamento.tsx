@@ -258,7 +258,7 @@ export default function FinOrcamento() {
                       return (
                         <tr key={c.id} className="border-b hover:bg-muted/30">
                           <td className="p-2 sticky left-0 bg-background">
-                            <div className="font-mono text-[10px] text-muted-foreground">{c.codigo}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => {
@@ -310,7 +310,7 @@ export default function FinOrcamento() {
                       return (
                         <tr key={c.id} className="border-b">
                           <td className="p-2">
-                            <div className="font-mono text-[10px] text-muted-foreground">{c.codigo}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => (
@@ -343,7 +343,7 @@ export default function FinOrcamento() {
                       return (
                         <tr key={c.id} className="border-b">
                           <td className="p-2">
-                            <div className="font-mono text-[10px] text-muted-foreground">{c.codigo}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => {
@@ -385,7 +385,7 @@ export default function FinOrcamento() {
                       return (
                         <tr key={c.id} className="border-b">
                           <td className="p-2">
-                            <div className="font-mono text-[10px] text-muted-foreground">{c.codigo}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{c.codigo}</div>
                             <div>{c.nome}</div>
                           </td>
                           {MESES.map((_, idx) => {

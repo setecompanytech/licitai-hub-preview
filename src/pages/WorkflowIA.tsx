@@ -179,8 +179,8 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm">{step.label}</h3>
-                      {isDone && <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px]">Concluído</Badge>}
-                      {isActive && <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-[10px]">Em execução</Badge>}
+                      {isDone && <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">Concluído</Badge>}
+                      {isActive && <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">Em execução</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
 

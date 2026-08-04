@@ -331,7 +331,7 @@ ${truncated}`
               <p className="text-xs text-muted-foreground">
                 {(editalFile.size / 1024).toFixed(0)} KB
                 {extracted && (
-                  <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-[10px]">
+                  <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-xs">
                     <CheckCircle className="w-3 h-3 mr-1" /> Dados extraídos
                   </Badge>
                 )}
@@ -441,11 +441,11 @@ ${truncated}`
               </span>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-[10px]">PDF</Badge>
-              <Badge variant="outline" className="text-[10px]">DOC</Badge>
-              <Badge variant="outline" className="text-[10px]">DOCX</Badge>
-              <Badge variant="outline" className="text-[10px]">TXT</Badge>
-              <span className="text-[10px] text-muted-foreground">Máx. 10MB</span>
+              <Badge variant="outline" className="text-xs">PDF</Badge>
+              <Badge variant="outline" className="text-xs">DOC</Badge>
+              <Badge variant="outline" className="text-xs">DOCX</Badge>
+              <Badge variant="outline" className="text-xs">TXT</Badge>
+              <span className="text-xs text-muted-foreground">Máx. 10MB</span>
             </div>
           </button>
         </div>

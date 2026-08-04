@@ -207,13 +207,13 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
         <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="bg-muted/60 border-b border-border/60">
-              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10">#</th>
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Descrição</th>
-              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14">Qtd</th>
-              <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14">Und</th>
-              <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Marca / Fab. / Mod.</th>
-              <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Unitário</th>
-              <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Total</th>
+              <th className="px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">#</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Descrição</th>
+              <th className="px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-14">Qtd</th>
+              <th className="px-2 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-14">Und</th>
+              <th className="px-2 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">Marca / Fab. / Mod.</th>
+              <th className="px-2 py-2.5 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Unitário</th>
+              <th className="px-2 py-2.5 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">Vlr Total</th>
               <th className="px-2 py-2.5 w-8"></th>
             </tr>
           </thead>
@@ -267,19 +267,19 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                   <td className="px-2 py-2">
                     <div className="space-y-1">
                       <Input
-                        className="h-6 text-[11px] px-2"
+                        className="h-6 text-xs px-2"
                         value={item.marca}
                         onChange={e => updateItem(i, 'marca', e.target.value)}
                         placeholder="Marca"
                       />
                       <Input
-                        className="h-6 text-[11px] px-2"
+                        className="h-6 text-xs px-2"
                         value={item.fabricante}
                         onChange={e => updateItem(i, 'fabricante', e.target.value)}
                         placeholder="Fabricante"
                       />
                       <Input
-                        className="h-6 text-[11px] px-2"
+                        className="h-6 text-xs px-2"
                         value={item.modelo}
                         onChange={e => updateItem(i, 'modelo', e.target.value)}
                         placeholder="Modelo"
@@ -297,7 +297,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                         placeholder="0,00"
                       />
                       {item.valorUnitarioExtenso && (
-                        <p className="text-[9px] text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorUnitarioExtenso}>
+                        <p className="text-xs text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorUnitarioExtenso}>
                           {item.valorUnitarioExtenso}
                         </p>
                       )}
@@ -307,7 +307,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => aplicarSugestao(i)}
-                                className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 transition-colors ml-auto"
+                                className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors ml-auto"
                               >
                                 <Sparkles className="w-2.5 h-2.5 shrink-0" />
                                 <span className="font-medium">R$ {precoSug.toFixed(2).replace('.', ',')}</span>
@@ -337,11 +337,11 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                       <div className="h-7 flex items-center justify-end px-2 rounded-md bg-muted/40 border border-border/40 font-mono text-xs font-semibold text-foreground">
                         {item.valorTotal
                           ? `R$ ${parseFloat(item.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                          : <span className="text-muted-foreground/50">—</span>
+                          : <span className="text-muted-foreground">—</span>
                         }
                       </div>
                       {item.valorTotalExtenso && (
-                        <p className="text-[9px] text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorTotalExtenso}>
+                        <p className="text-xs text-muted-foreground italic leading-tight text-right truncate max-w-[128px] ml-auto" title={item.valorTotalExtenso}>
                           {item.valorTotalExtenso}
                         </p>
                       )}

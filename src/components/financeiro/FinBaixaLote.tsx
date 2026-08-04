@@ -161,7 +161,7 @@ export default function FinBaixaLote() {
                       <Checkbox checked={checked} onCheckedChange={() => toggle(l.id)} />
                       <div className="flex-1 min-w-0">
                         <p className="truncate">{l.descricao}</p>
-                        {atrasado && <Badge variant="destructive" className="text-[10px] mt-0.5">Em atraso</Badge>}
+                        {atrasado && <Badge variant="destructive" className="text-xs mt-0.5">Em atraso</Badge>}
                       </div>
                       <span className="w-24 text-right text-xs text-muted-foreground">
                         {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}

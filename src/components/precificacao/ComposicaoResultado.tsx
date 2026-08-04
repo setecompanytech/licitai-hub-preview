@@ -92,7 +92,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
           </div>
           <div className="flex gap-2">
-            <Badge className="bg-accent/10 text-accent text-[10px]">{regimeLabel} • {ufCalculo}</Badge>
+            <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
             <Button variant="outline" size="sm" onClick={copyResult}>
               <Download className="w-3.5 h-3.5 mr-1" /> Copiar
             </Button>
@@ -131,7 +131,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             <h4 className="font-semibold text-sm">Planilha de Composição de Custo — IA Contábil</h4>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-accent/10 text-accent text-[10px]">{regimeLabel} • {ufCalculo}</Badge>
+            <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
             <Button variant="outline" size="sm" onClick={copyResult}>
               <Download className="w-3.5 h-3.5 mr-1" /> Copiar
             </Button>
@@ -159,7 +159,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
         {itens.map((item, idx) => (
           <div key={idx} className="mb-6 last:mb-0">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-[10px] font-mono">Item {idx + 1}</Badge>
+              <Badge variant="outline" className="text-xs font-mono">Item {idx + 1}</Badge>
               <span className="text-sm font-semibold">{item.descricao}</span>
               <span className="text-xs text-muted-foreground ml-auto">
                 {item.quantidade} {item.unidade}
@@ -170,23 +170,23 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60">
-                    <TableHead className="text-[11px] font-bold h-9 w-[40%]">Componente</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[20%]">Base de Cálculo</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[15%]">Alíquota (%)</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[25%]">Valor (R$)</TableHead>
+                    <TableHead className="text-xs font-bold h-9 w-[40%]">Componente</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[20%]">Base de Cálculo</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[15%]">Alíquota (%)</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[25%]">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(item.componentes || []).map((comp, ci) => (
                     <TableRow key={ci} className="hover:bg-muted/30">
-                      <TableCell className="text-[11px] py-2 font-medium">{comp.componente}</TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">
+                      <TableCell className="text-xs py-2 font-medium">{comp.componente}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-mono">
                         {comp.baseCalculo != null ? fmt(comp.baseCalculo) : '—'}
                       </TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">
+                      <TableCell className="text-xs py-2 text-right font-mono">
                         {fmtPct(comp.aliquota)}
                       </TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono font-semibold">
+                      <TableCell className="text-xs py-2 text-right font-mono font-semibold">
                         {fmt(comp.valor)}
                       </TableCell>
                     </TableRow>
@@ -194,18 +194,18 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                 </TableBody>
                 <TableFooter>
                   <TableRow className="bg-accent/5 border-t-2 border-accent/20">
-                    <TableCell colSpan={3} className="text-[11px] py-2 font-bold">
+                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Unitário Formado
                     </TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
                       {fmt(item.precoUnitarioFormado)}
                     </TableCell>
                   </TableRow>
                   <TableRow className="bg-accent/10">
-                    <TableCell colSpan={3} className="text-[11px] py-2 font-bold">
+                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Total ({item.quantidade} {item.unidade})
                     </TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
                       {fmt(item.precoTotal)}
                     </TableCell>
                   </TableRow>
@@ -226,34 +226,34 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/60">
-                  <TableHead className="text-[11px] font-bold h-9">Componente</TableHead>
-                  <TableHead className="text-[11px] font-bold h-9 text-right">Valor (R$)</TableHead>
+                  <TableHead className="text-xs font-bold h-9">Componente</TableHead>
+                  <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Custo Total dos Materiais/Serviços</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.custoTotalMateriais)}</TableCell>
+                  <TableCell className="text-xs py-2">Custo Total dos Materiais/Serviços</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.custoTotalMateriais)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Frete e Logística</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.freteTotal)}</TableCell>
+                  <TableCell className="text-xs py-2">Frete e Logística</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.freteTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Despesas Administrativas</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.despesasAdm)}</TableCell>
+                  <TableCell className="text-xs py-2">Despesas Administrativas</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.despesasAdm)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Total de Tributos</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
+                  <TableCell className="text-xs py-2">Total de Tributos</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">BDI ({(resumo.bdiPercentual ?? 0).toFixed(2).replace('.', ',')}%)</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
+                  <TableCell className="text-xs py-2">BDI ({(resumo.bdiPercentual ?? 0).toFixed(2).replace('.', ',')}%)</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Margem de Lucro</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.margemLucro)}</TableCell>
+                  <TableCell className="text-xs py-2">Margem de Lucro</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.margemLucro)}</TableCell>
                 </TableRow>
               </TableBody>
               <TableFooter>
@@ -265,7 +265,7 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             </Table>
             {resumo.precoExtenso && (
               <div className="px-3 py-2 bg-muted/30 border-t border-border">
-                <p className="text-[10px] text-muted-foreground italic">
+                <p className="text-xs text-muted-foreground italic">
                   Por extenso: {resumo.precoExtenso}
                 </p>
               </div>
@@ -278,24 +278,24 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60">
-                    <TableHead className="text-[11px] font-bold h-9">Tributo</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right">Alíquota</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right">Valor (R$)</TableHead>
+                    <TableHead className="text-xs font-bold h-9">Tributo</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right">Alíquota</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(resumo.tributosPorImposto || []).map((t, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-[11px] py-2 font-medium">{t.imposto}</TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(t.valor)}</TableCell>
+                      <TableCell className="text-xs py-2 font-medium">{t.imposto}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-mono">{fmt(t.valor)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                 <TableFooter>
                   <TableRow className="bg-destructive/5">
-                    <TableCell colSpan={2} className="text-[11px] py-2 font-bold">Total Tributos</TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono font-bold text-destructive">{fmt(resumo.totalTributos)}</TableCell>
+                    <TableCell colSpan={2} className="text-xs py-2 font-bold">Total Tributos</TableCell>
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-destructive">{fmt(resumo.totalTributos)}</TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -306,22 +306,22 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
               <div className="flex items-center gap-2 mb-1.5">
                 {viabilidadeIcon}
                 <span className="text-xs font-bold">Parecer: {parecer.viabilidade}</span>
-                <span className="text-[10px] ml-auto font-mono">
+                <span className="text-xs ml-auto font-mono">
                   Margem Líquida: {Number(parecer.margemLiquida || 0).toFixed(2).replace('.', ',')}%
                 </span>
               </div>
               {parecer.alertaInexequibilidade && (
-                <p className="text-[10px] font-semibold mb-1">
+                <p className="text-xs font-semibold mb-1">
                   ⚠ ALERTA — Art. 59, Lei 14.133/2021: Proposta com indícios de inexequibilidade.
                 </p>
               )}
-              <p className="text-[10px] leading-relaxed">{parecer.observacoes}</p>
+              <p className="text-xs leading-relaxed">{parecer.observacoes}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Composição gerada por IA Contábil com alíquotas reais para {ufCalculo} ({ufNome}). Consulta oficial:{' '}
         <a href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
           Calculadora da Receita Federal

@@ -73,7 +73,7 @@ export default function RecentLicitacoes({ data, loading }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-mono text-muted-foreground">{lic.numero}</span>
-                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', st.className)}>
+                  <Badge variant="outline" className={cn('text-xs px-1.5 py-0', st.className)}>
                     {st.label}
                   </Badge>
                 </div>

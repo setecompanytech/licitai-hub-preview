@@ -43,7 +43,7 @@ export default function VncWebViewer() {
         <div className="flex items-center gap-2">
           <Monitor className="w-4 h-4 text-accent" />
           <h4 className="text-sm font-semibold">Acesso Remoto — VNC Web</h4>
-          <Badge variant="outline" className="text-[9px] ml-1">noVNC</Badge>
+          <Badge variant="outline" className="text-xs ml-1">noVNC</Badge>
         </div>
         <div className="flex items-center gap-1.5">
           {showViewer && (
@@ -112,7 +112,7 @@ export default function VncWebViewer() {
           <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <div className="text-[11px] text-muted-foreground space-y-1">
+              <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">Quando usar o VNC?</p>
                 <ul className="list-disc list-inside space-y-0.5">
                   <li>O robô solicitou código de verificação por SMS/e-mail</li>
@@ -142,7 +142,7 @@ export default function VncWebViewer() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground justify-center">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
             <ShieldCheck className="w-3.5 h-3.5 text-success" />
             <span>Conexão segura via HTTPS — sem necessidade de instalar software</span>
           </div>

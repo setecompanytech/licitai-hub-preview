@@ -134,13 +134,13 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
           className="bg-card border border-border/50 rounded-lg p-3 hover:border-accent/40 transition-colors"
         >
           <div className="flex items-center gap-3 flex-wrap">
-            <Badge variant="outline" className="text-[10px] gap-1 whitespace-nowrap">
+            <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
               <Hash className="w-3 h-3" /> {p.numero_formatado || `${p.tipo}-${p.sequencial}`}
             </Badge>
-            <Badge className={`text-[10px] border whitespace-nowrap ${STATUS_CORES[p.status]}`}>
+            <Badge className={`text-xs border whitespace-nowrap ${STATUS_CORES[p.status]}`}>
               {STATUS_LABELS[p.status]}
             </Badge>
-            <Badge variant="secondary" className="text-[10px] whitespace-nowrap">
+            <Badge variant="secondary" className="text-xs whitespace-nowrap">
               {TIPO_LABELS[p.tipo]}
             </Badge>
             <span className="text-xs text-muted-foreground truncate flex-1 min-w-[120px]">
@@ -148,7 +148,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
               {p.contrato_numero && ` · CT ${p.contrato_numero}`}
               {p.ata_numero && ` · ATA ${p.ata_numero}`}
             </span>
-            <Badge variant="outline" className="text-[10px] gap-1 whitespace-nowrap">
+            <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
               <History className="w-3 h-3" /> v{p.versoes_count || 0}
             </Badge>
             <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
@@ -220,10 +220,10 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 <DialogTitle className="flex items-center gap-2 flex-wrap">
                   <Hash className="w-4 h-4 text-accent" />
                   {detalhe.numero_formatado}
-                  <Badge className={`text-[10px] border ${STATUS_CORES[detalhe.status]}`}>
+                  <Badge className={`text-xs border ${STATUS_CORES[detalhe.status]}`}>
                     {STATUS_LABELS[detalhe.status]}
                   </Badge>
-                  <Badge variant="secondary" className="text-[10px]">{TIPO_LABELS[detalhe.tipo]}</Badge>
+                  <Badge variant="secondary" className="text-xs">{TIPO_LABELS[detalhe.tipo]}</Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs">
                   {detalhe.orgao_contratante || 'Sem órgão'} · Criado em {new Date(detalhe.created_at).toLocaleString('pt-BR')}
@@ -252,7 +252,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                   </SelectContent>
                 </Select>
                 {detalhe.numero_protocolo && (
-                  <Badge variant="outline" className="text-[10px] gap-1 whitespace-nowrap">
+                  <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
                     Protocolo: {detalhe.numero_protocolo}
                     {detalhe.data_protocolo && ` (${new Date(detalhe.data_protocolo).toLocaleDateString('pt-BR')})`}
                   </Badge>
@@ -290,7 +290,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                   ) : versaoSel ? (
                     <div className="bg-card border border-border/50 rounded-lg p-5">
                       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-xs">
                           v{versaoSel.versao} · {new Date(versaoSel.gerado_em).toLocaleString('pt-BR')}
                         </Badge>
                       </div>
@@ -315,11 +315,11 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                       onClick={() => setVersaoSel(v)}
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-[10px]">v{v.versao}</Badge>
+                        <Badge variant="outline" className="text-xs">v{v.versao}</Badge>
                         <span className="text-xs text-muted-foreground">
                           {new Date(v.gerado_em).toLocaleString('pt-BR')}
                         </span>
-                        {v.modelo_ia && <Badge variant="secondary" className="text-[10px]">{v.modelo_ia}</Badge>}
+                        {v.modelo_ia && <Badge variant="secondary" className="text-xs">{v.modelo_ia}</Badge>}
                       </div>
                       {v.resumo_alteracao && <p className="text-xs mt-1">{v.resumo_alteracao}</p>}
                     </div>
@@ -330,12 +330,12 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                   {historico.map(h => (
                     <div key={h.id} className="p-3 border border-border/50 rounded-lg">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-[10px]">{h.evento}</Badge>
+                        <Badge variant="outline" className="text-xs">{h.evento}</Badge>
                         <span className="text-xs text-muted-foreground">
                           {new Date(h.criado_em).toLocaleString('pt-BR')}
                         </span>
                         {h.status_anterior && h.status_novo && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {STATUS_LABELS[h.status_anterior]} → {STATUS_LABELS[h.status_novo]}
                           </span>
                         )}

@@ -103,20 +103,20 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><FileText className="w-3 h-3" /> Total NFs</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><FileText className="w-3 h-3" /> Total NFs</div>
           <p className="text-lg font-bold">{notas.length}</p>
-          <p className="text-[9px] text-muted-foreground">{nfsSaida.length} saída · {nfsEntrada.length} entrada</p>
+          <p className="text-xs text-muted-foreground">{nfsSaida.length} saída · {nfsEntrada.length} entrada</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><ArrowUpCircle className="w-3 h-3" /> Faturado (Saída)</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><ArrowUpCircle className="w-3 h-3" /> Faturado (Saída)</div>
           <p className="text-lg font-bold text-success">{fmt(totalAutorizado)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><Clock className="w-3 h-3" /> Pendentes</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Clock className="w-3 h-3" /> Pendentes</div>
           <p className="text-lg font-bold text-warning">{fmt(totalPendente)}</p>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-1 text-muted-foreground text-[10px] mb-1"><ArrowDownCircle className="w-3 h-3" /> NFs Entrada</div>
+          <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><ArrowDownCircle className="w-3 h-3" /> NFs Entrada</div>
           <p className="text-lg font-bold text-accent">{fmt(totalEntrada)}</p>
         </Card>
       </div>
@@ -161,17 +161,17 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
                       <span className="text-sm font-bold text-accent">
                         {nf.tipo === 'nfse' ? 'NFS-e' : 'NF-e'} {nf.numero_nf || '(sem número)'}
                       </span>
-                      <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                      {nf.serie && <Badge variant="outline" className="text-[10px]">Série {nf.serie}</Badge>}
+                      <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                      {nf.serie && <Badge variant="outline" className="text-xs">Série {nf.serie}</Badge>}
                     </div>
                     {nf.destinatario_razao_social && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Building2 className="w-3 h-3" /> {nf.destinatario_razao_social}
-                        {nf.destinatario_cnpj && <span className="text-[10px]">({nf.destinatario_cnpj})</span>}
+                        {nf.destinatario_cnpj && <span className="text-xs">({nf.destinatario_cnpj})</span>}
                       </p>
                     )}
                     {nf.chave_acesso && (
-                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5 truncate">
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">
                         Chave: {nf.chave_acesso}
                       </p>
                     )}
@@ -179,16 +179,16 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
                       {nf.data_emissao && <span>{new Date(nf.data_emissao).toLocaleDateString('pt-BR')}</span>}
                       <span className="font-medium text-foreground">{fmt(nf.valor_total)}</span>
                       {nf.natureza_operacao && <span>{nf.natureza_operacao}</span>}
-                      {nf.cfop && <Badge variant="outline" className="text-[9px]">CFOP {nf.cfop}</Badge>}
+                      {nf.cfop && <Badge variant="outline" className="text-xs">CFOP {nf.cfop}</Badge>}
                     </div>
                     {nf.motivo_rejeicao && (
-                      <p className="text-[10px] text-destructive mt-1 flex items-center gap-1">
+                      <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" /> {nf.motivo_rejeicao}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="text-[9px]">
+                    <Badge variant="outline" className="text-xs">
                       <Eye className="w-3 h-3 mr-0.5" /> Somente leitura
                     </Badge>
                   </div>

@@ -115,7 +115,7 @@ function Field({ label, value, highlight, mono }: { label: string; value: any; h
   if (value == null || value === "") return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-muted-foreground/50 italic">não detectado</div>
+      <div className="text-muted-foreground italic">não detectado</div>
     </div>
   );
   return (

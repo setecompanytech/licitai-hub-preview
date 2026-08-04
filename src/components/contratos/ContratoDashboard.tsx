@@ -152,7 +152,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-[10px]"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
+            <div className="flex items-center gap-1.5 text-muted-foreground text-xs"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
             {podeVerCustos && !editingGlobal && (
               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingGlobal(true); setGlobalInput(String(c.valor_global || 0)); }}>
                 <Pencil className="w-3 h-3" />
@@ -183,24 +183,24 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <>
               <p className="text-lg font-bold">{fmt(valorGlobalEfetivo)}</p>
               {totalAditivoValorAcrescimo > 0 && (
-                <p className="text-[9px] text-muted-foreground">Original: {fmt(c.valor_global_original || 0)} + Aditivos: {fmt(totalAditivoValorAcrescimo)}</p>
+                <p className="text-xs text-muted-foreground">Original: {fmt(c.valor_global_original || 0)} + Aditivos: {fmt(totalAditivoValorAcrescimo)}</p>
               )}
               <Progress value={Math.min(pctConsumo, 100)} className="h-1.5 mt-2" />
-              <p className="text-[9px] text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
+              <p className="text-xs text-muted-foreground mt-1">{pctConsumo.toFixed(1)}% consumido</p>
             </>
           )}
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><TrendingUp className="w-3.5 h-3.5" /> Saldo</div>
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3.5 h-3.5" /> Saldo</div>
           <p className={`text-lg font-bold ${(c.saldo_remanescente || 0) > 0 ? 'text-success' : 'text-destructive'}`}>{fmt(c.saldo_remanescente || 0)}</p>
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><Package className="w-3.5 h-3.5" /> Itens</div>
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><Package className="w-3.5 h-3.5" /> Itens</div>
           <p className="text-lg font-bold">{data!.itens.length}</p>
-          {itensAlertaSaldo.length > 0 && <Badge className="text-[9px] bg-warning/10 text-warning mt-1">{itensAlertaSaldo.length} em alerta</Badge>}
+          {itensAlertaSaldo.length > 0 && <Badge className="text-xs bg-warning/10 text-warning mt-1">{itensAlertaSaldo.length} em alerta</Badge>}
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-1"><ShoppingCart className="w-3.5 h-3.5" /> Pedidos</div>
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-3.5 h-3.5" /> Pedidos</div>
           <p className="text-lg font-bold">{pedidosAtivos.length}</p>
         </Card>
       </div>
@@ -209,25 +209,25 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {podeVerCustos && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="p-4 border-l-4 border-l-accent">
-            <div className="text-[10px] text-muted-foreground mb-1">Faturamento</div>
+            <div className="text-xs text-muted-foreground mb-1">Faturamento</div>
             <p className="text-lg font-bold">{fmt(faturamento)}</p>
           </Card>
           <Card className="p-4 border-l-4 border-l-destructive">
-            <div className="text-[10px] text-muted-foreground mb-1">Custos Totais</div>
+            <div className="text-xs text-muted-foreground mb-1">Custos Totais</div>
             <p className="text-lg font-bold text-destructive">{fmt(totalCustos)}</p>
             {custoPedidos > 0 && (
-              <p className="text-[9px] text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
+              <p className="text-xs text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
             )}
           </Card>
           <Card className={`p-4 border-l-4 ${lucroBruto >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-            <div className="text-[10px] text-muted-foreground mb-1">Lucro Bruto</div>
+            <div className="text-xs text-muted-foreground mb-1">Lucro Bruto</div>
             <p className={`text-lg font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
-            <p className="text-[9px] text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
           </Card>
           <Card className={`p-4 border-l-4 ${lucroLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
-            <div className="text-[10px] text-muted-foreground mb-1">Lucro Líquido</div>
+            <div className="text-xs text-muted-foreground mb-1">Lucro Líquido</div>
             <p className={`text-lg font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
-            <p className="text-[9px] text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
           </Card>
         </div>
       )}
@@ -253,7 +253,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                     <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-xs font-medium w-28 text-right">{fmt(item.valor)}</span>
-                  <span className="text-[10px] text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                  <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
                 </div>
               );
             })}

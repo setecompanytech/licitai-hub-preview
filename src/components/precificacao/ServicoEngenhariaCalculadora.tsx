@@ -411,7 +411,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
         <div className="flex items-center gap-2 mb-1">
           <HardHat className="w-5 h-5 text-accent" />
           <h3 className="font-semibold text-sm">Serviços de Engenharia — Composição BDI</h3>
-          <Badge variant="outline" className="text-[10px] ml-auto">{bdiConfig.ref}</Badge>
+          <Badge variant="outline" className="text-xs ml-auto">{bdiConfig.ref}</Badge>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -440,11 +440,11 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-[10px] font-semibold h-8">Componente</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 w-24 text-right">% Adotado</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 w-20 text-right">Mín. TCU</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 w-20 text-right">Máx. TCU</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Descrição</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Componente</TableHead>
+                <TableHead className="text-xs font-semibold h-8 w-24 text-right">% Adotado</TableHead>
+                <TableHead className="text-xs font-semibold h-8 w-20 text-right">Mín. TCU</TableHead>
+                <TableHead className="text-xs font-semibold h-8 w-20 text-right">Máx. TCU</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -464,9 +464,9 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                       min={0}
                     />
                   </TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground text-right py-1.5">{fmtPerc(c.min)}</TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground text-right py-1.5">{fmtPerc(c.max)}</TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground py-1.5">{c.info}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground text-right py-1.5">{fmtPerc(c.min)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground text-right py-1.5">{fmtPerc(c.max)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground py-1.5">{c.info}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -478,13 +478,13 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold">Tributos "Por Dentro" — {regimeLabel}</h4>
-          <Badge variant="outline" className="text-[10px]">Total: {fmtPerc(bdiCalc.totalTributosPerc)}</Badge>
+          <Badge variant="outline" className="text-xs">Total: {fmtPerc(bdiCalc.totalTributosPerc)}</Badge>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {tributosPadrao.map(t => (
             <div key={t.id} className="space-y-1">
               <div className="flex items-center gap-1">
-                <Label className="text-[10px]">{t.nome}</Label>
+                <Label className="text-xs">{t.nome}</Label>
                 <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger><TooltipContent className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
               </div>
               <Input
@@ -508,15 +508,15 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold">Encargos Sociais e Trabalhistas</h4>
-          <Badge variant="outline" className="text-[10px]">Total: {fmtPerc(bdiCalc.totalEncargosPerc)}</Badge>
+          <Badge variant="outline" className="text-xs">Total: {fmtPerc(bdiCalc.totalEncargosPerc)}</Badge>
         </div>
         <div className="overflow-x-auto rounded-lg border border-border/50">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-[10px] font-semibold h-8">Componente</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8 w-24 text-right">% Adotado</TableHead>
-                <TableHead className="text-[10px] font-semibold h-8">Fundamentação</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Componente</TableHead>
+                <TableHead className="text-xs font-semibold h-8 w-24 text-right">% Adotado</TableHead>
+                <TableHead className="text-xs font-semibold h-8">Fundamentação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -535,7 +535,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                       step="0.01"
                     />
                   </TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground py-1.5">{e.info}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground py-1.5">{e.info}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -556,15 +556,15 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
         {itens.map((item, idx) => (
           <div key={idx} className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-5">
-              <Label className="text-[10px]">Descrição *</Label>
+              <Label className="text-xs">Descrição *</Label>
               <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Concreto fck 30 MPa" className="mt-0.5" />
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Qtd</Label>
+              <Label className="text-xs">Qtd</Label>
               <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Unidade</Label>
+              <Label className="text-xs">Unidade</Label>
               <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
                 <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -575,7 +575,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
               </Select>
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Custo Unit. (R$) *</Label>
+              <Label className="text-xs">Custo Unit. (R$) *</Label>
               <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
             </div>
             <div className="col-span-1">
@@ -612,19 +612,19 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
           {/* Summary cards */}
           <div className="grid grid-cols-4 gap-3">
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Custo Direto</p>
+              <p className="text-xs text-muted-foreground">Custo Direto</p>
               <p className="text-sm font-bold">{fmtCur(resultado.totalCusto)}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">Encargos ({fmtPerc(resultado.encargosPerc)})</p>
+              <p className="text-xs text-muted-foreground">Encargos ({fmtPerc(resultado.encargosPerc)})</p>
               <p className="text-sm font-bold text-blue-600">{fmtCur(resultado.totalEncargos)}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
+              <p className="text-xs text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
               <p className="text-sm font-bold text-amber-600">{fmtCur(resultado.totalBDI)}</p>
             </div>
             <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
-              <p className="text-[10px] text-accent font-medium">PREÇO TOTAL</p>
+              <p className="text-xs text-accent font-medium">PREÇO TOTAL</p>
               <p className="text-sm font-bold text-accent">{fmtCur(resultado.totalPreco)}</p>
             </div>
           </div>
@@ -634,15 +634,15 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="text-[10px] font-semibold h-8">Item</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Descrição</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Qtd</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8">Und</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Custo Unit.</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Encargos</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">BDI</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Unit.</TableHead>
-                  <TableHead className="text-[10px] font-semibold h-8 text-right">Preço Total</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Item</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Descrição</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">Qtd</TableHead>
+                  <TableHead className="text-xs font-semibold h-8">Und</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">Custo Unit.</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">Encargos</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">BDI</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">Preço Unit.</TableHead>
+                  <TableHead className="text-xs font-semibold h-8 text-right">Preço Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -678,11 +678,11 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
 
           {/* BDI formula explanation */}
           <div className="bg-muted/20 rounded-lg p-3 space-y-1">
-            <p className="text-[10px] font-semibold text-muted-foreground">MEMÓRIA DE CÁLCULO DO BDI</p>
-            <p className="text-[10px] text-muted-foreground font-mono">
+            <p className="text-xs font-semibold text-muted-foreground">MEMÓRIA DE CÁLCULO DO BDI</p>
+            <p className="text-xs text-muted-foreground font-mono">
               BDI = [(1 + {fmtPerc(bdiCalc.ac)} + {fmtPerc(bdiCalc.sg)} + {fmtPerc(bdiCalc.risco)}) × (1 + {fmtPerc(bdiCalc.df)}) × (1 + {fmtPerc(bdiCalc.lucro)})] / (1 - {fmtPerc(bdiCalc.totalTributosPerc)}) - 1
             </p>
-            <p className="text-[10px] text-accent font-bold">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
+            <p className="text-xs text-accent font-bold">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
           </div>
         </div>
       )}

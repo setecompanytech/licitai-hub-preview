@@ -1079,7 +1079,7 @@ export default function MonitoramentoEditais() {
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Caso não seja informado o número da licitação, será obrigatório informar o Período de Publicação e Modalidade.
             </p>
           </div>
@@ -1102,7 +1102,7 @@ export default function MonitoramentoEditais() {
                   onChange={e => setFiltros(p => ({ ...p, ano: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                   className="h-9 max-w-[90px]"
                 />
-                <span className="text-[11px] text-muted-foreground">(número e ano)</span>
+                <span className="text-xs text-muted-foreground">(número e ano)</span>
               </div>
 
               <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Período de Publicação</Label>
@@ -1140,7 +1140,7 @@ export default function MonitoramentoEditais() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
               <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
                 Modalidades
-                <span className="block text-[10px] text-muted-foreground/70 font-normal mt-0.5">
+                <span className="block text-xs text-muted-foreground font-normal mt-0.5">
                   Lei 14.133/2021
                 </span>
               </Label>
@@ -1219,7 +1219,7 @@ export default function MonitoramentoEditais() {
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <p className="text-xs font-semibold text-foreground mb-2">
                     Contratações Diretas
-                    <span className="text-[10px] text-muted-foreground font-normal ml-1.5">
+                    <span className="text-xs text-muted-foreground font-normal ml-1.5">
                       (Arts. 74–79 — Lei 14.133/2021)
                     </span>
                   </p>
@@ -1443,11 +1443,11 @@ export default function MonitoramentoEditais() {
                     <p className="font-semibold text-amber-400">Fonte Orçamentária</p>
                     <p>Indica de onde vêm os recursos da licitação — ex: <span className="font-medium">Tesouro Nacional</span>, <span className="font-medium">Recursos Próprios</span>, <span className="font-medium">Convênio</span>.</p>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-amber-400/80 text-[11px] uppercase tracking-wide">Por que está vazio?</p>
+                      <p className="font-medium text-amber-400/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual de cada edital.</p>
                     </div>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-green-400/80 text-[11px] uppercase tracking-wide">Como preencher?</p>
+                      <p className="font-medium text-green-400/80 text-xs uppercase tracking-wide">Como preencher?</p>
                       <p>Nesta página, faça uma busca e clique em <span className="font-semibold">"Ver detalhes"</span> em qualquer edital dos resultados. O sistema consultará o PNCP e salvará a fonte automaticamente. Repita para alguns editais — as opções começarão a aparecer aqui.</p>
                     </div>
                   </div>
@@ -1465,11 +1465,11 @@ export default function MonitoramentoEditais() {
                     <p className="font-semibold text-amber-400">Margem de Preferência</p>
                     <p>Indica se a licitação aplica vantagem de preço para produtos ou serviços nacionais — ex: <span className="font-medium">Normal</span>, <span className="font-medium">Ampliada</span>.</p>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-amber-400/80 text-[11px] uppercase tracking-wide">Por que está vazio?</p>
+                      <p className="font-medium text-amber-400/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais. Dependendo da versão da API, ele pode aparecer só no detalhe individual.</p>
                     </div>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-green-400/80 text-[11px] uppercase tracking-wide">Como preencher?</p>
+                      <p className="font-medium text-green-400/80 text-xs uppercase tracking-wide">Como preencher?</p>
                       <p>O sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. As opções aparecerão aqui assim que estiverem disponíveis na próxima atualização.</p>
                     </div>
                   </div>
@@ -1689,7 +1689,7 @@ function ChipMultiSelect({
       <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">
         {label}
         {labelSub && (
-          <span className="block text-[10px] text-muted-foreground/70 font-normal mt-0.5">{labelSub}</span>
+          <span className="block text-xs text-muted-foreground font-normal mt-0.5">{labelSub}</span>
         )}
       </Label>
       <div className="md:col-span-10 space-y-2">
@@ -1704,7 +1704,7 @@ function ChipMultiSelect({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-bold cursor-help shrink-0"
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-xs font-bold cursor-help shrink-0"
                         onClick={e => e.stopPropagation()}
                       >
                         !
@@ -1730,11 +1730,11 @@ function ChipMultiSelect({
           )}
           <div className="ml-auto flex items-center gap-1">
             {valores.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} className="h-6 text-xs px-2 text-muted-foreground hover:text-destructive">
                 Excluir
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} className="h-6 text-[11px] px-2">
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} className="h-6 text-xs px-2">
               {open ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               Selecionar
             </Button>
@@ -1785,7 +1785,7 @@ function ChipFreeInput({
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
       <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">{label}</Label>
       <div className="md:col-span-10 space-y-2">
-        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         <div className="flex items-center gap-2">
           <Input
             value={tempValue}
@@ -1934,7 +1934,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center flex-wrap gap-2 mb-1">
-                  <span className="text-xs text-muted-foreground font-mono">{edital.numeroCompra}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{edital.numeroCompra}</span>
                   <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                     {edital.modalidade}
                   </span>
@@ -1988,7 +1988,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Valor estimado</p>
                   <p className={`text-sm font-semibold ${
-                    edital.valorEstimado ? 'text-success' : 'text-muted-foreground/50'
+                    edital.valorEstimado ? 'text-success' : 'text-muted-foreground'
                   }`}>
                     {formatMoeda(edital.valorEstimado)}
                   </p>
@@ -2012,7 +2012,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
               {edital.dataAbertura && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CalendarIcon className="w-3 h-3" />
-                  Abertura: <span className="text-foreground/70">{formatData(edital.dataAbertura)}</span>
+                  Abertura: <span className="text-foreground">{formatData(edital.dataAbertura)}</span>
                 </span>
               )}
               {edital.dataEncerramento && (
@@ -2021,7 +2021,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                   Encerramento: <span className={`${
                     edital.status === 'aberto' && (calcularDiasRestantes(edital.dataEncerramento) ?? 99) <= 3
                       ? 'text-warning font-medium'
-                      : 'text-foreground/70'
+                      : 'text-foreground'
                   }`}>{formatData(edital.dataEncerramento)}</span>
                 </span>
               )}
@@ -2173,7 +2173,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
               {(detalhe?.objetoCompra || edital.objeto) && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Objeto</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">
+                  <p className="text-sm text-foreground leading-relaxed">
                     {detalhe?.objetoCompra || edital.objeto}
                   </p>
                 </div>
@@ -2215,7 +2215,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                     >
                       {label}
                       {count > 0 && (
-                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-normal">
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-muted text-xs font-normal">
                           {count}
                         </span>
                       )}
@@ -2256,16 +2256,16 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                             return (
                               <tr key={item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
                                 <td className="px-3 py-2 text-muted-foreground">{item.numeroItem ?? i + 1}</td>
-                                <td className="px-3 py-2 text-foreground/80">
+                                <td className="px-3 py-2 text-foreground">
                                   {item.descricao || item.descricaoItem || '—'}
                                   {item.unidadeMedida && (
-                                    <span className="ml-1.5 text-[10px] text-muted-foreground border border-border/60 px-1 rounded">
+                                    <span className="ml-1.5 text-xs text-muted-foreground border border-border/60 px-1 rounded">
                                       {item.unidadeMedida}
                                     </span>
                                   )}
                                 </td>
                                 <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
-                                <td className="px-3 py-2 text-right text-foreground/70">
+                                <td className="px-3 py-2 text-right text-foreground">
                                   {vUnit != null ? formatMoeda(vUnit) : '—'}
                                 </td>
                                 <td className="px-3 py-2 text-right font-medium text-success">
@@ -2300,11 +2300,11 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                           <div className="flex items-center gap-2 min-w-0">
                             <FileText className="w-4 h-4 text-accent shrink-0" />
                             <div className="min-w-0">
-                              <p className="text-xs font-medium text-foreground/80 truncate">
+                              <p className="text-xs font-medium text-foreground truncate">
                                 {arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}
                               </p>
                               {arq.dataPublicacao && (
-                                <p className="text-[10px] text-muted-foreground">{formatData(arq.dataPublicacao)}</p>
+                                <p className="text-xs text-muted-foreground">{formatData(arq.dataPublicacao)}</p>
                               )}
                             </div>
                           </div>
@@ -2356,7 +2356,7 @@ function DetalheItem({
   return (
     <div>
       <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-      <p className={`text-sm ${mono ? 'font-mono' : ''} ${destaque ? 'text-success font-semibold' : 'text-foreground/80'}`}>
+      <p className={`text-sm ${mono ? 'font-mono' : ''} ${destaque ? 'text-success font-semibold' : 'text-foreground'}`}>
         {valor}
       </p>
     </div>

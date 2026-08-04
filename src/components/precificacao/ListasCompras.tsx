@@ -172,8 +172,8 @@ export default function ListasCompras() {
                     </Button>
                   </div>
                 </div>
-                {list.descricao && <p className="text-[11px] text-muted-foreground mt-1 truncate">{list.descricao}</p>}
-                <p className="text-[10px] text-muted-foreground mt-1">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
+                {list.descricao && <p className="text-xs text-muted-foreground mt-1 truncate">{list.descricao}</p>}
+                <p className="text-xs text-muted-foreground mt-1">{new Date(list.created_at).toLocaleDateString('pt-BR')}</p>
               </button>
             ))
           )}

@@ -230,7 +230,7 @@ export default function FinOpenFinance() {
                           {conta && ` · ${conta.nome}`}
                         </p>
                       </div>
-                      <Badge variant="outline" className={`text-[10px] ${st.cls}`}>
+                      <Badge variant="outline" className={`text-xs ${st.cls}`}>
                         <Icon className="w-3 h-3 mr-1" /> {st.label}
                       </Badge>
                     </div>
@@ -239,7 +239,7 @@ export default function FinOpenFinance() {
                         {c.erro_mensagem}
                       </p>
                     )}
-                    <div className="text-[11px] text-muted-foreground space-y-0.5">
+                    <div className="text-xs text-muted-foreground space-y-0.5">
                       <p>Frequência: cada {c.frequencia_horas}h</p>
                       <p>
                         Última sync:{" "}
@@ -297,11 +297,11 @@ export default function FinOpenFinance() {
                     <div key={l.id} className="flex items-center justify-between gap-3 p-2 border-b text-sm">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{conexao?.banco_nome ?? "—"}</p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {format(new Date(l.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                           {l.duracao_ms != null && ` · ${l.duracao_ms}ms`}
                         </p>
-                        {l.erro && <p className="text-[10px] text-destructive truncate">{l.erro}</p>}
+                        {l.erro && <p className="text-xs text-destructive truncate">{l.erro}</p>}
                       </div>
                       <Badge
                         variant="outline"

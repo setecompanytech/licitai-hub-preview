@@ -92,7 +92,7 @@ export default function ApoioContabil() {
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm">{m.titulo}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">{m.descricao}</p>
-                            <Badge variant="outline" className="mt-2 text-[10px]">{m.fundamentacao}</Badge>
+                            <Badge variant="outline" className="mt-2 text-xs">{m.fundamentacao}</Badge>
                           </div>
                         </div>
                         <div className="flex gap-2 mt-3">

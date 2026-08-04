@@ -58,7 +58,7 @@ export default function DemoAmbiente() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-2xl font-bold">Dashboard Executivo</h1>
-                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-[10px]">
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                     <AlertTriangle className="w-3 h-3 mr-1" /> DEMO
                   </Badge>
                 </div>
@@ -102,17 +102,17 @@ export default function DemoAmbiente() {
                         </div>
                         <h3 className="font-semibold text-sm mb-2">{op.objeto}</h3>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-[10px]">{op.modalidade}</Badge>
-                          <Badge variant="outline" className="text-[10px]"><MapPin className="w-3 h-3 mr-1" />{op.uf}</Badge>
-                          <Badge variant="outline" className="text-[10px]"><Clock className="w-3 h-3 mr-1" />{op.prazo}</Badge>
-                          <Badge variant="outline" className="text-[10px]"><Calculator className="w-3 h-3 mr-1" />R$ {(op.valor / 1000).toFixed(0)}k</Badge>
+                          <Badge variant="outline" className="text-xs">{op.modalidade}</Badge>
+                          <Badge variant="outline" className="text-xs"><MapPin className="w-3 h-3 mr-1" />{op.uf}</Badge>
+                          <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />{op.prazo}</Badge>
+                          <Badge variant="outline" className="text-xs"><Calculator className="w-3 h-3 mr-1" />R$ {(op.valor / 1000).toFixed(0)}k</Badge>
                         </div>
                       </div>
                       <div className="text-center">
                         <div className={`text-lg font-bold ${op.score >= 80 ? 'text-success' : op.score >= 60 ? 'text-warning' : 'text-muted-foreground'}`}>
                           {op.score}%
                         </div>
-                        <p className="text-[10px] text-muted-foreground">Aderência</p>
+                        <p className="text-xs text-muted-foreground">Aderência</p>
                       </div>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export default function DemoAmbiente() {
                     <div key={f.label} className="bg-card border border-border rounded-xl p-5">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold text-sm">{f.label}</h3>
-                        <Badge variant="outline" className="text-[10px]">{f.count} ativos</Badge>
+                        <Badge variant="outline" className="text-xs">{f.count} ativos</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">{f.value}</p>
                     </div>

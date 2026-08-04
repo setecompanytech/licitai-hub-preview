@@ -327,7 +327,7 @@ export default function WhatsAppRoutingConfig() {
             onChange={e => setTelefoneGlobal(e.target.value.replace(/\D/g, ''))}
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-1">Usado quando o setor não tem número próprio</p>
+          <p className="text-xs text-muted-foreground mt-1">Usado quando o setor não tem número próprio</p>
         </div>
 
         <div className="grid gap-3">
@@ -343,7 +343,7 @@ export default function WhatsAppRoutingConfig() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">{setor.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{setor.desc}</p>
+                      <p className="text-xs text-muted-foreground">{setor.desc}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export default function WhatsAppRoutingConfig() {
                         onChange={e => setTelefonesSetor(p => ({ ...p, [setor.telefoneKey]: e.target.value.replace(/\D/g, '') }))}
                         className="flex-1 text-xs"
                       />
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {telSetor ? '✅ Próprio' : '📋 Padrão'}
                       </span>
                     </div>
@@ -408,7 +408,7 @@ export default function WhatsAppRoutingConfig() {
                 <div>
                   <Label className="text-xs">Mensagem de boas-vindas</Label>
                   <Textarea value={config.mensagem_boas_vindas} onChange={e => setConfig(p => ({ ...p, mensagem_boas_vindas: e.target.value }))} className="mt-1 text-xs" rows={3} />
-                  <p className="text-[10px] text-muted-foreground mt-1">💡 No horário, a IA gera respostas personalizadas. Esta é o fallback.</p>
+                  <p className="text-xs text-muted-foreground mt-1">💡 No horário, a IA gera respostas personalizadas. Esta é o fallback.</p>
                 </div>
                 <div>
                   <Label className="text-xs">Mensagem fora do horário</Label>
@@ -479,7 +479,7 @@ export default function WhatsAppRoutingConfig() {
               </div>
 
               <div className="mt-3 p-2 rounded bg-muted/50 border border-border">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="w-3 h-3 flex-shrink-0" />
                   Sem provedor configurado, o sistema opera em modo simulado.
                 </p>
@@ -514,7 +514,7 @@ export default function WhatsAppRoutingConfig() {
               {logs.map(log => (
                 <div key={log.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 text-xs">
                   <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <Badge className={`text-[10px] ${setorColorMap[log.setor_destino] || 'bg-muted'}`}>{log.setor_destino}</Badge>
+                  <Badge className={`text-xs ${setorColorMap[log.setor_destino] || 'bg-muted'}`}>{log.setor_destino}</Badge>
                   <span className="text-muted-foreground truncate flex-1">{log.motivo}</span>
                   <span className="text-muted-foreground whitespace-nowrap">{log.confianca ? `${(log.confianca * 100).toFixed(0)}%` : '—'}</span>
                   <span className="text-muted-foreground whitespace-nowrap">

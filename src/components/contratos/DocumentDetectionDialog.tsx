@@ -159,7 +159,7 @@ export default function DocumentDetectionDialog({
                 </p>
               </div>
             </div>
-            <div className="text-[11px] text-muted-foreground border-t pt-2 space-y-0.5">
+            <div className="text-xs text-muted-foreground border-t pt-2 space-y-0.5">
               {detection.numero_contrato && <div>📄 Nº Contrato: <strong>{detection.numero_contrato}</strong></div>}
               {detection.numero_ata && <div>📋 Nº ATA: <strong>{detection.numero_ata}</strong></div>}
               {detection.valor_global && <div>💰 Valor Global: <strong>{fmt(detection.valor_global)}</strong></div>}
@@ -169,18 +169,18 @@ export default function DocumentDetectionDialog({
               {detection.tipo_estrutura_detectado && (
                 <div className="flex items-center gap-1.5 pt-1">
                   🧩 Estrutura detectada:
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     {detection.tipo_estrutura_detectado === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
                   </Badge>
                   {typeof detection.tipo_estrutura_confianca === 'number' && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       ({Math.round((detection.tipo_estrutura_confianca || 0) * 100)}% confiança)
                     </span>
                   )}
                 </div>
               )}
               {detection.tipo_estrutura_justificativa && (
-                <div className="text-[10px] text-muted-foreground italic">{detection.tipo_estrutura_justificativa}</div>
+                <div className="text-xs text-muted-foreground italic">{detection.tipo_estrutura_justificativa}</div>
               )}
               {Array.isArray(detection.itens) && detection.itens.length > 0 && (
                 <div>📦 Itens extraídos: <strong>{detection.itens.length}</strong></div>
@@ -240,9 +240,9 @@ export default function DocumentDetectionDialog({
                 <Textarea rows={2} value={adForm.justificativa} onChange={e => setAdForm(f => ({ ...f, justificativa: e.target.value }))} />
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Este aditivo será registrado como pertencente ao{' '}
-              <Badge variant="outline" className="text-[9px]">
+              <Badge variant="outline" className="text-xs">
                 {parentTipoDocumento === 'ata_srp' ? 'ATA SRP' : 'Contrato'} atual
               </Badge>{' '}
               e atualizará os saldos.

@@ -261,7 +261,7 @@ export default function ContratosGov() {
 
       {dados.length === 0 ? (
         <Card className="p-8 text-center">
-          <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Clique em <strong>"Extrair via IA"</strong> para obter estimativas de contratos e atas de registro de preços do Governo Federal via inteligência artificial.
@@ -323,17 +323,17 @@ export default function ContratosGov() {
                     <div>
                       <p className="text-sm font-medium">{d.orgao}</p>
                       <div className="flex flex-wrap gap-1.5 mt-0.5">
-                        <Badge variant="outline" className="text-[10px]">{d.ano}</Badge>
-                        <Badge variant="secondary" className="text-[10px]">{TIPOS.find(t => t.value === d.tipo)?.label || d.tipo}</Badge>
-                        {d.modalidade && <Badge variant="outline" className="text-[10px]">{d.modalidade}</Badge>}
-                        <span className="text-[10px] text-muted-foreground">{d.quantidade_itens} itens</span>
+                        <Badge variant="outline" className="text-xs">{d.ano}</Badge>
+                        <Badge variant="secondary" className="text-xs">{TIPOS.find(t => t.value === d.tipo)?.label || d.tipo}</Badge>
+                        {d.modalidade && <Badge variant="outline" className="text-xs">{d.modalidade}</Badge>}
+                        <span className="text-xs text-muted-foreground">{d.quantidade_itens} itens</span>
                       </div>
-                      {d.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{d.descricao}</p>}
+                      {d.descricao && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{d.descricao}</p>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-semibold">{formatCurrency(d.valor_total)}</p>
-                    <Badge variant={d.situacao === 'vigente' ? 'default' : 'secondary'} className="text-[10px]">
+                    <Badge variant={d.situacao === 'vigente' ? 'default' : 'secondary'} className="text-xs">
                       {d.situacao}
                     </Badge>
                   </div>

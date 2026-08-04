@@ -688,9 +688,9 @@ export default function GestaoCompras() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold">{p.descricao}</h1>
-                {p.codigo && <Badge variant="outline" className="text-[10px]">{p.codigo}</Badge>}
-                {!p.ativo && <Badge className="text-[10px] bg-muted text-muted-foreground">Inativo</Badge>}
-                {emAlerta && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
+                {p.codigo && <Badge variant="outline" className="text-xs">{p.codigo}</Badge>}
+                {!p.ativo && <Badge className="text-xs bg-muted text-muted-foreground">Inativo</Badge>}
+                {emAlerta && <Badge variant="outline" className="text-xs text-destructive border-destructive/40"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
               </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                 {p.categoria && <span>{p.categoria}</span>}
@@ -739,9 +739,9 @@ export default function GestaoCompras() {
                         <span className={`text-sm font-semibold ${cfg.color}`}>
                           {sign}{absQty.toLocaleString('pt-BR')} {p.unidade}
                         </span>
-                        <Badge variant="outline" className="text-[10px]">{cfg.label}</Badge>
+                        <Badge variant="outline" className="text-xs">{cfg.label}</Badge>
                         {m.origem && m.origem !== 'manual' && (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
+                          <Badge variant="outline" className="text-xs text-muted-foreground capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
                         )}
                       </div>
                       {m.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{m.observacoes}</p>}
@@ -784,8 +784,8 @@ export default function GestaoCompras() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold">{p.observacoes || 'Pedido de Compra'}</h1>
-                <Badge className={`${cfg.color} text-[10px]`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
-                {isAtrasado && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
+                <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                {isAtrasado && <Badge variant="outline" className="text-xs text-destructive border-destructive/30"><AlertTriangle className="w-3 h-3 mr-1" />Atrasado</Badge>}
               </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                 {forn && <span className="flex items-center gap-1"><Truck className="w-3 h-3" />{forn.razao_social}</span>}
@@ -966,7 +966,7 @@ export default function GestaoCompras() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{f.nome}</span>
                           {f.nome_fantasia && <span className="text-xs text-muted-foreground">({f.nome_fantasia})</span>}
-                          {f.tipo === 'ambos' && <Badge variant="outline" className="text-[10px]">Cliente e Fornecedor</Badge>}
+                          {f.tipo === 'ambos' && <Badge variant="outline" className="text-xs">Cliente e Fornecedor</Badge>}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           {f.documento && <span>{f.documento}</span>}
@@ -1008,9 +1008,9 @@ export default function GestaoCompras() {
                         <div className="min-w-0">
                           <p className="text-sm font-semibold truncate">{p.descricao}</p>
                           <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                            {p.codigo && <span className="text-[10px] text-muted-foreground">{p.codigo}</span>}
-                            {p.categoria && <Badge variant="outline" className="text-[10px]">{p.categoria}</Badge>}
-                            {!p.ativo && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inativo</Badge>}
+                            {p.codigo && <span className="text-xs text-muted-foreground">{p.codigo}</span>}
+                            {p.categoria && <Badge variant="outline" className="text-xs">{p.categoria}</Badge>}
+                            {!p.ativo && <Badge variant="outline" className="text-xs text-muted-foreground">Inativo</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
@@ -1072,7 +1072,7 @@ export default function GestaoCompras() {
                           </td>
                           <td className="py-3 px-2 text-right font-medium">{fmtCurrency(n.valor_total)}</td>
                           <td className="py-3 px-2 hidden sm:table-cell">
-                            {ped ? <Badge variant="outline" className="text-[10px]">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                            {ped ? <Badge variant="outline" className="text-xs">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
                           <td className="py-3 pl-2">
@@ -1364,7 +1364,7 @@ export default function GestaoCompras() {
                           {m.produtoId && m.produtoId !== '__new__' && <span className="text-success ml-1">· Auto-vinculado</span>}
                         </p>
                         {(m.item.ncm || m.item.cfop || m.item.cst_icms || m.item.csosn) && (
-                          <p className="text-[10px] text-muted-foreground/70">
+                          <p className="text-xs text-muted-foreground">
                             {[m.item.ncm && `NCM ${m.item.ncm}`, m.item.cfop && `CFOP ${m.item.cfop}`, (m.item.cst_icms || m.item.csosn) && `CST ${m.item.cst_icms || m.item.csosn}`].filter(Boolean).join(' · ')}
                           </p>
                         )}
@@ -1429,7 +1429,7 @@ function ProdutoDialog({ open, onOpenChange, editing, form, setForm, saving, onS
               onChange={e => { if (editing) setForm(f => ({ ...f, codigo: e.target.value })); }}
               className={!editing ? 'bg-muted/50 cursor-default select-none' : ''}
             />
-            {!editing && <p className="text-[11px] text-muted-foreground mt-1">Gerado automaticamente pelo sistema</p>}
+            {!editing && <p className="text-xs text-muted-foreground mt-1">Gerado automaticamente pelo sistema</p>}
           </div>
           <div><Label>Unidade</Label><Input value={form.unidade} onChange={e => setForm(f => ({ ...f, unidade: e.target.value }))} placeholder="UN, KG, M², L..." /></div>
           <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="ex: Material, EPI..." /></div>

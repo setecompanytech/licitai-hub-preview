@@ -225,7 +225,7 @@ export default function CertificadoUpload() {
                           <p className="text-sm text-muted-foreground">
                             Clique para selecionar o arquivo
                           </p>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Apenas .pfx ou .p12 — máximo 10MB
                           </p>
                         </div>
@@ -252,7 +252,7 @@ export default function CertificadoUpload() {
                       {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     A senha é necessária para que o agente autentique nos portais
                   </p>
                 </div>
@@ -264,7 +264,7 @@ export default function CertificadoUpload() {
                   <Lock className="w-3.5 h-3.5" />
                   Garantias de segurança
                 </p>
-                <ul className="text-[11px] text-success/80 space-y-1 ml-5">
+                <ul className="text-xs text-success/80 space-y-1 ml-5">
                   <li>• Armazenamento em container Docker isolado e criptografado</li>
                   <li>• Acesso exclusivo ao agente da sua empresa</li>
                   <li>• Certificado deletado permanentemente ao cancelar o plano</li>
@@ -306,7 +306,7 @@ export default function CertificadoUpload() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[10px] text-muted-foreground mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           Conexão segura via HTTPS • Armazenamento protegido • Em conformidade com a LGPD
         </p>
       </div>

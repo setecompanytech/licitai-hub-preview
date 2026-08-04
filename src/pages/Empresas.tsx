@@ -76,15 +76,15 @@ export default function Empresas() {
                         <h3 className="font-semibold text-sm">
                           {m.empresa.nome_fantasia || m.empresa.razao_social}
                         </h3>
-                        <Badge variant="outline" className="text-[10px]">{m.papel}</Badge>
+                        <Badge variant="outline" className="text-xs">{m.papel}</Badge>
                         {m.empresa.regime_tributario && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs">
                             {m.empresa.regime_tributario === 'simples_nacional' ? 'Simples Nacional' :
                              m.empresa.regime_tributario === 'lucro_presumido' ? 'Lucro Presumido' : 'Lucro Real'}
                           </Badge>
                         )}
                         {!todasSelecionadas && empresaAtiva?.id === m.empresa_id && (
-                          <Badge className="bg-accent/15 text-accent text-[10px]">Ativa</Badge>
+                          <Badge className="bg-accent/15 text-accent text-xs">Ativa</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{m.empresa.cnpj}</p>
@@ -95,7 +95,7 @@ export default function Empresas() {
                   </div>
                   <div className="flex items-center gap-2">
                     {m.empresa.certificado_nome && (
-                      <Badge variant="secondary" className="text-[10px] gap-1">
+                      <Badge variant="secondary" className="text-xs gap-1">
                         <ShieldCheck className="w-3 h-3" />
                         {m.empresa.certificado_nome}
                       </Badge>
@@ -124,7 +124,7 @@ export default function Empresas() {
                   </div>
                 </div>
                 {m.empresa.certificado_validade && (
-                  <p className="text-[10px] text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Certificado válido até: {new Date(m.empresa.certificado_validade).toLocaleDateString('pt-BR')}
                   </p>
                 )}

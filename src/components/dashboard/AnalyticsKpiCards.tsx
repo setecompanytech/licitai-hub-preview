@@ -27,10 +27,10 @@ export default function AnalyticsKpiCards({ kpis }: Props) {
           <div key={card.label} className="stat-card group animate-fade-in">
             <div className="flex items-start justify-between gap-1">
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground font-medium truncate">{card.label}</p>
+                <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
                 <p className="text-lg font-bold mt-0.5 tracking-tight">{card.value}</p>
                 {card.sub && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{card.sub}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{card.sub}</p>
                 )}
               </div>
               <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: `${card.color}15` }}>

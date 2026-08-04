@@ -103,7 +103,7 @@ REGRAS:
           <FileSearch className="w-4 h-4 text-accent shrink-0" />
           <h4 className="text-sm font-semibold whitespace-nowrap">Pré-visualização da estrutura</h4>
           {preview && (
-            <Badge className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+            <Badge className="text-xs gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
               <CheckCircle className="w-2.5 h-2.5" /> Estrutura pronta
             </Badge>
           )}
@@ -135,7 +135,7 @@ REGRAS:
       )}
 
       {!preview && !loading && !erro && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Clique em <strong>Pré-visualizar</strong> para gerar um resumo e o esqueleto do documento (seções,
           fundamentos, pedidos e riscos) antes de produzir a redação completa. Isso evita gerações desperdiçadas.
         </p>
@@ -147,7 +147,7 @@ REGRAS:
             <p className="font-semibold text-foreground mb-1">Resumo executivo</p>
             <p className="text-muted-foreground leading-relaxed">{preview.resumo}</p>
             {preview.paginasEstimadas != null && (
-              <Badge variant="outline" className="text-[10px] mt-1.5">
+              <Badge variant="outline" className="text-xs mt-1.5">
                 Estimativa: {preview.paginasEstimadas} {preview.paginasEstimadas === 1 ? 'página' : 'páginas'}
               </Badge>
             )}

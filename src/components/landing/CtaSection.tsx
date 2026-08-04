@@ -28,7 +28,7 @@ export default function CtaSection() {
 
           <div className="relative">
             {/* Welcome badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-[11px] font-bold mb-6 uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-xs font-bold mb-6 uppercase tracking-wider">
               <Zap className="w-3.5 h-3.5" /> Comece agora
             </div>
 

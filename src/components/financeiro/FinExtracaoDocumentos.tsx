@@ -505,25 +505,25 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium truncate">{d.file.name}</p>
-                              <Badge variant="outline" className="text-[10px] uppercase">{d.kind}</Badge>
+                              <Badge variant="outline" className="text-xs uppercase">{d.kind}</Badge>
                               {d.status === "ok" && (
-                                <Badge variant="default" className="text-[10px] gap-1">
+                                <Badge variant="default" className="text-xs gap-1">
                                   <CheckCircle2 className="w-3 h-3" />
                                   {d.motor ?? "extraído"}
                                 </Badge>
                               )}
                               {d.status === "erro" && (
-                                <Badge variant="destructive" className="text-[10px] gap-1">
+                                <Badge variant="destructive" className="text-xs gap-1">
                                   <AlertCircle className="w-3 h-3" />erro
                                 </Badge>
                               )}
                               {d.status === "processando" && (
-                                <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Badge variant="secondary" className="text-xs gap-1">
                                   <Loader2 className="w-3 h-3 animate-spin" />processando
                                 </Badge>
                               )}
                               {d.lancamentoId && (
-                                <Badge variant="default" className="text-[10px] gap-1">
+                                <Badge variant="default" className="text-xs gap-1">
                                   <FileCheck2 className="w-3 h-3" />lançado
                                 </Badge>
                               )}

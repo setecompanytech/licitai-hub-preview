@@ -337,7 +337,7 @@ export default function Cadastro() {
 
         {/* Terms */}
         <div className="px-8 pb-5">
-          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+          <p className="text-xs text-muted-foreground text-center leading-relaxed">
             Ao confirmar o cadastro, declara estar ciente e de acordo com nossos{' '}
             <Link to="/termos-de-uso" className="underline text-accent">Termos de uso</Link> e{' '}
             <Link to="/politica-de-privacidade" className="underline text-accent">Política de privacidade</Link>

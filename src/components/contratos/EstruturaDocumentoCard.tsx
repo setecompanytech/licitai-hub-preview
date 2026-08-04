@@ -36,12 +36,12 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
           <div className="space-y-0.5">
             <p className="text-xs font-semibold flex items-center gap-2">
               Estrutura do documento
-              <Badge variant="outline" className="text-[10px] font-normal">
+              <Badge variant="outline" className="text-xs font-normal">
                 Atual: {c.tipo_estrutura === 'lotes' ? 'Lotes (agrupados)' : 'Itens (individuais)'}
               </Badge>
             </p>
             {c.tipo_estrutura_detectado_ia && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 IA detectou: <strong>{c.tipo_estrutura_detectado_ia === 'lotes' ? 'Lotes' : 'Itens'}</strong>
                 {typeof c.tipo_estrutura_confianca === 'number' && (
                   <> · {Math.round((c.tipo_estrutura_confianca || 0) * 100)}% confiança</>

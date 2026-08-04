@@ -84,9 +84,9 @@ function KpiCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
             <p className={cn("text-2xl font-semibold tabular-nums mt-1 truncate", t.value)}>{value}</p>
-            {hint && <p className="text-[11px] text-muted-foreground mt-1 truncate">{hint}</p>}
+            {hint && <p className="text-xs text-muted-foreground mt-1 truncate">{hint}</p>}
             {trend && (
               <div className="flex items-center gap-1 mt-1">
                 <TrendIcon
@@ -99,7 +99,7 @@ function KpiCard({
                 />
                 <span
                   className={cn(
-                    "text-[11px] tabular-nums font-medium",
+                    "text-xs tabular-nums font-medium",
                     trendGood === null && "text-muted-foreground",
                     trendGood === true && "text-emerald-600",
                     trendGood === false && "text-rose-600"
@@ -300,7 +300,7 @@ export default function FinDashboardExecutivo() {
                     <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
                       <div className="h-full bg-emerald-500" style={{ width: `${Math.min(c.perc, 100)}%` }} />
                     </div>
-                    <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">{c.perc.toFixed(1)}% do total</p>
+                    <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{c.perc.toFixed(1)}% do total</p>
                   </li>
                 ))}
               </ul>
@@ -328,7 +328,7 @@ export default function FinDashboardExecutivo() {
                     <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
                       <div className="h-full bg-rose-500" style={{ width: `${Math.min(f.perc, 100)}%` }} />
                     </div>
-                    <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">{f.perc.toFixed(1)}% do total</p>
+                    <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{f.perc.toFixed(1)}% do total</p>
                   </li>
                 ))}
               </ul>

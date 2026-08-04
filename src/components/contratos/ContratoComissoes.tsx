@@ -222,19 +222,19 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Pendente</p>
+          <p className="text-xs text-muted-foreground">Pendente</p>
           <p className="text-base font-bold text-warning">{fmt(totalPendente)}</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Aprovado</p>
+          <p className="text-xs text-muted-foreground">Aprovado</p>
           <p className="text-base font-bold text-blue-600">{fmt(totalAprovado)}</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Pago</p>
+          <p className="text-xs text-muted-foreground">Pago</p>
           <p className="text-base font-bold text-success">{fmt(totalPago)}</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Minha Comissão</p>
+          <p className="text-xs text-muted-foreground">Minha Comissão</p>
           <p className="text-base font-bold">{minhaCfg ? (minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`) : '—'}</p>
         </Card>
       </div>
@@ -270,7 +270,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                     <TableCell className="whitespace-nowrap text-sm">{fmt(l.valor_base)}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{l.percentual_comissao}%</TableCell>
                     <TableCell className="whitespace-nowrap text-sm font-semibold">{fmt(l.valor_comissao)}</TableCell>
-                    <TableCell><Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge></TableCell>
+                    <TableCell><Badge className={`text-xs ${st.color}`}>{st.label}</Badge></TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString('pt-BR')}</TableCell>
                     {podeGerenciar && (
                       <TableCell>
@@ -285,7 +285,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                           </div>
                         )}
                         {l.status === 'aprovado' && (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => handleUpdateStatus(l.id, 'pago')}>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleUpdateStatus(l.id, 'pago')}>
                             Marcar Pago
                           </Button>
                         )}

@@ -188,7 +188,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
             <Calculator className="w-5 h-5 text-accent" />
             <h4 className="font-semibold text-sm">Planilha de Composição de Custo — Motor Determinístico</h4>
           </div>
-          <Badge className="bg-accent/10 text-accent text-[10px]">{regimeLabel} • {ufCalculo}</Badge>
+          <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
         </div>
 
         {/* Export & Sync Buttons */}
@@ -211,7 +211,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         {/* Info banner about manual editing */}
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2 mb-4">
           <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
           </p>
         </div>
@@ -220,13 +220,13 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         {itens.map((item, idx) => (
           <div key={idx} className="mb-6 last:mb-0">
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-[10px] font-mono">Item {idx + 1}</Badge>
+              <Badge variant="outline" className="text-xs font-mono">Item {idx + 1}</Badge>
               <span className="text-sm font-semibold">{item.descricao}</span>
               <span className="text-xs text-muted-foreground ml-auto">
                 {item.quantidade} {item.unidade}
               </span>
               {item.modoPreco === 'manual' && (
-                <Badge className="bg-primary/10 text-primary text-[9px] border-primary/20">
+                <Badge className="bg-primary/10 text-primary text-xs border-primary/20">
                   <Pencil className="w-2.5 h-2.5 mr-0.5" /> Preço Manual
                 </Badge>
               )}
@@ -236,31 +236,31 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60">
-                    <TableHead className="text-[11px] font-bold h-9 w-[40%]">Componente</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[20%]">Base de Cálculo</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[15%]">Alíquota (%)</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right w-[25%]">Valor (R$)</TableHead>
+                    <TableHead className="text-xs font-bold h-9 w-[40%]">Componente</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[20%]">Base de Cálculo</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[15%]">Alíquota (%)</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right w-[25%]">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {item.componentes.map((comp) => (
                     <TableRow key={comp.id} className={`hover:bg-muted/30 ${comp.editavel && item.modoPreco === 'manual' ? 'bg-primary/5' : ''}`}>
-                      <TableCell className="text-[11px] py-2 font-medium">
+                      <TableCell className="text-xs py-2 font-medium">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger className="text-left">
                               {comp.componente}
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-xs">
-                              <p className="text-[10px] font-mono">{comp.formula}</p>
+                              <p className="text-xs font-mono">{comp.formula}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">
+                      <TableCell className="text-xs py-2 text-right font-mono">
                         {fmt(comp.baseCalculo)}
                       </TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">
+                      <TableCell className="text-xs py-2 text-right font-mono">
                         {comp.editavel ? (
                           <div className="flex items-center justify-end gap-1">
                             {editingMargemIndex === idx ? (
@@ -268,12 +268,12 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                                 <Input
                                   value={editMargemValue}
                                   onChange={e => setEditMargemValue(e.target.value.replace(/[^0-9,.-]/g, ''))}
-                                  className="h-6 w-16 text-right text-[11px] font-mono px-1"
+                                  className="h-6 w-16 text-right text-xs font-mono px-1"
                                   autoFocus
                                   placeholder="10,00"
                                   onKeyDown={e => { if (e.key === 'Enter') confirmEditMargem(idx); if (e.key === 'Escape') setEditingMargemIndex(null); }}
                                 />
-                                <span className="text-[10px]">%</span>
+                                <span className="text-xs">%</span>
                                 <Button variant="ghost" size="sm" onClick={() => confirmEditMargem(idx)} className="h-5 w-5 p-0 text-accent">
                                   <CheckCircle className="w-3 h-3" />
                                 </Button>
@@ -291,7 +291,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                           fmtPct(comp.aliquota)
                         )}
                       </TableCell>
-                      <TableCell className={`text-[11px] py-2 text-right font-mono font-semibold ${comp.editavel && comp.valor < 0 ? 'text-destructive' : ''}`}>
+                      <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${comp.editavel && comp.valor < 0 ? 'text-destructive' : ''}`}>
                         {fmt(comp.valor)}
                       </TableCell>
                     </TableRow>
@@ -301,10 +301,10 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   {/* Preço Sugerido */}
                   {item.modoPreco === 'manual' && (
                     <TableRow className="bg-muted/30 border-t border-border">
-                      <TableCell colSpan={3} className="text-[10px] py-1.5 text-muted-foreground italic">
+                      <TableCell colSpan={3} className="text-xs py-1.5 text-muted-foreground italic">
                         Preço Sugerido (calculado)
                       </TableCell>
-                      <TableCell className="text-[10px] py-1.5 text-right font-mono text-muted-foreground italic">
+                      <TableCell className="text-xs py-1.5 text-right font-mono text-muted-foreground italic">
                         {fmt(item.precoUnitarioSugerido)}
                       </TableCell>
                     </TableRow>
@@ -312,17 +312,17 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
 
                   {/* Preço Unitário Final — EDITABLE */}
                   <TableRow className="bg-accent/5 border-t-2 border-accent/20">
-                    <TableCell colSpan={3} className="text-[11px] py-2 font-bold">
+                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Unitário {item.modoPreco === 'manual' ? '(Manual)' : '(Sugerido)'}
                     </TableCell>
-                    <TableCell className="text-[11px] py-2 text-right">
+                    <TableCell className="text-xs py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {editingIndex === idx ? (
                           <>
                             <Input
                               value={editValue}
                               onChange={e => setEditValue(formatCurrencyInput(e.target.value))}
-                              className="h-7 w-28 text-right text-[11px] font-mono"
+                              className="h-7 w-28 text-right text-xs font-mono"
                               autoFocus
                               onKeyDown={e => { if (e.key === 'Enter') confirmEdit(idx); if (e.key === 'Escape') setEditingIndex(null); }}
                             />
@@ -349,20 +349,20 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
 
                   {/* Preço Total */}
                   <TableRow className="bg-accent/10">
-                    <TableCell colSpan={3} className="text-[11px] py-2 font-bold">
+                    <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Total ({item.quantidade} {item.unidade})
                     </TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
                       {fmt(item.precoTotal)}
                     </TableCell>
                   </TableRow>
 
                   {/* BDI */}
                   <TableRow className="bg-muted/20">
-                    <TableCell colSpan={3} className="text-[10px] py-1.5 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-xs py-1.5 text-muted-foreground">
                       BDI ({item.bdiPercentual.toFixed(2).replace('.', ',')}%)
                     </TableCell>
-                    <TableCell className="text-[10px] py-1.5 text-right font-mono text-muted-foreground">
+                    <TableCell className="text-xs py-1.5 text-right font-mono text-muted-foreground">
                       {fmt(item.bdiValor)}
                     </TableCell>
                   </TableRow>
@@ -395,17 +395,17 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                         <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[10px] font-semibold ${
+                        <p className={`text-xs font-semibold ${
                           al.tipo === 'erro' ? 'text-destructive' : al.tipo === 'atencao' ? 'text-primary' : 'text-muted-foreground'
                         }`}>
                           {al.titulo}
                         </p>
-                        <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{al.mensagem}</p>
-                        <p className="text-[9px] text-muted-foreground/70 italic mt-1">📜 {al.fundamentacao}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{al.mensagem}</p>
+                        <p className="text-xs text-muted-foreground italic mt-1">📜 {al.fundamentacao}</p>
                       </div>
                     </div>
                   ))}
-                  <p className="text-[9px] text-muted-foreground/60 italic pl-1">
+                  <p className="text-xs text-muted-foreground italic pl-1">
                     ℹ Alertas informativos — a decisão final é de responsabilidade exclusiva do usuário.
                   </p>
                 </div>
@@ -425,43 +425,43 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/60">
-                  <TableHead className="text-[11px] font-bold h-9">Componente</TableHead>
-                  <TableHead className="text-[11px] font-bold h-9 text-right">Valor (R$)</TableHead>
+                  <TableHead className="text-xs font-bold h-9">Componente</TableHead>
+                  <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Custo Total dos Materiais</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.custoTotalMateriais)}</TableCell>
+                  <TableCell className="text-xs py-2">Custo Total dos Materiais</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.custoTotalMateriais)}</TableCell>
                 </TableRow>
                 {resumo.freteTotal > 0 && (
                   <TableRow>
-                    <TableCell className="text-[11px] py-2">Frete ({resumo.fretePercentual}%)</TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.freteTotal)}</TableCell>
+                    <TableCell className="text-xs py-2">Frete ({resumo.fretePercentual}%)</TableCell>
+                    <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.freteTotal)}</TableCell>
                   </TableRow>
                 )}
                 {resumo.despesasAdm > 0 && (
                   <TableRow>
-                    <TableCell className="text-[11px] py-2">Despesas Administrativas ({resumo.despesasAdmPercentual}%)</TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.despesasAdm)}</TableCell>
+                    <TableCell className="text-xs py-2">Despesas Administrativas ({resumo.despesasAdmPercentual}%)</TableCell>
+                    <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.despesasAdm)}</TableCell>
                   </TableRow>
                 )}
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">Total de Tributos</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
+                  <TableCell className="text-xs py-2">Total de Tributos</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono text-destructive font-semibold">{fmt(resumo.totalTributos)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
-                  <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
+                  <TableCell className="text-xs py-2">BDI ({resumo.bdiPercentual.toFixed(2).replace('.', ',')}%)</TableCell>
+                  <TableCell className="text-xs py-2 text-right font-mono">{fmt(resumo.bdiTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-[11px] py-2">
+                  <TableCell className="text-xs py-2">
                     Margem de Lucro Resultante ({resumo.margemLucroResultante.toFixed(2).replace('.', ',')}%)
                     {resumo.margemLucroResultante !== resumo.margemLucroSugerida && (
-                      <span className="text-[9px] text-primary ml-1">(sugerido: {resumo.margemLucroSugerida}%)</span>
+                      <span className="text-xs text-primary ml-1">(sugerido: {resumo.margemLucroSugerida}%)</span>
                     )}
                   </TableCell>
-                  <TableCell className={`text-[11px] py-2 text-right font-mono font-semibold ${resumo.margemLucroResultante < 0 ? 'text-destructive' : 'text-accent'}`}>
+                  <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${resumo.margemLucroResultante < 0 ? 'text-destructive' : 'text-accent'}`}>
                     {fmt(resumo.precoTotalFormado - resumo.custoTotalMateriais - resumo.totalTributos - resumo.freteTotal - resumo.despesasAdm)}
                   </TableCell>
                 </TableRow>
@@ -474,7 +474,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               </TableFooter>
             </Table>
             <div className="px-3 py-2 bg-muted/30 border-t border-border">
-              <p className="text-[10px] text-muted-foreground italic">
+              <p className="text-xs text-muted-foreground italic">
                 Por extenso: {valorPorExtenso(resumo.precoTotalFormado)}
               </p>
             </div>
@@ -486,31 +486,31 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/60">
-                    <TableHead className="text-[11px] font-bold h-9">Tributo</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right">Alíquota</TableHead>
-                    <TableHead className="text-[11px] font-bold h-9 text-right">Valor (R$)</TableHead>
+                    <TableHead className="text-xs font-bold h-9">Tributo</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right">Alíquota</TableHead>
+                    <TableHead className="text-xs font-bold h-9 text-right">Valor (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {resumo.tributosPorImposto.map((t, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-[11px] py-2 font-medium">
+                      <TableCell className="text-xs py-2 font-medium">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger className="text-left">{t.imposto}</TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-xs"><p className="text-[10px]">{t.info}</p></TooltipContent>
+                            <TooltipContent side="bottom" className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
-                      <TableCell className="text-[11px] py-2 text-right font-mono">{fmt(t.valor)}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-mono">{fmtPct(t.aliquota)}</TableCell>
+                      <TableCell className="text-xs py-2 text-right font-mono">{fmt(t.valor)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                 <TableFooter>
                   <TableRow className="bg-destructive/5">
-                    <TableCell colSpan={2} className="text-[11px] py-2 font-bold">Total Tributos</TableCell>
-                    <TableCell className="text-[11px] py-2 text-right font-mono font-bold text-destructive">{fmt(resumo.totalTributos)}</TableCell>
+                    <TableCell colSpan={2} className="text-xs py-2 font-bold">Total Tributos</TableCell>
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-destructive">{fmt(resumo.totalTributos)}</TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -536,9 +536,9 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                       <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <p className={`text-[11px] font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-primary'}`}>{al.titulo}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{al.mensagem}</p>
-                      <p className="text-[9px] text-muted-foreground/70 italic mt-1">📜 {al.fundamentacao}</p>
+                      <p className={`text-xs font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-primary'}`}>{al.titulo}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{al.mensagem}</p>
+                      <p className="text-xs text-muted-foreground italic mt-1">📜 {al.fundamentacao}</p>
                     </div>
                   </div>
                 ))}
@@ -550,29 +550,29 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
               <div className="flex items-center gap-2 mb-1.5">
                 {viabilidadeIcon}
                 <span className="text-xs font-bold">Parecer: {parecer.viabilidade}</span>
-                <span className="text-[10px] ml-auto font-mono">
+                <span className="text-xs ml-auto font-mono">
                   Margem Líquida: {parecer.margemLiquida.toFixed(2).replace('.', ',')}%
                 </span>
               </div>
               {parecer.alertaInexequibilidade && (
-                <p className="text-[10px] font-semibold mb-1">
+                <p className="text-xs font-semibold mb-1">
                   ⚠ ALERTA — Art. 59, Lei 14.133/2021: Proposta com indícios de inexequibilidade.
                 </p>
               )}
-              <p className="text-[10px] leading-relaxed">{parecer.observacoes}</p>
+              <p className="text-xs leading-relaxed">{parecer.observacoes}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {parecer.fundamentacaoLegal.map((f, i) => (
-                  <Badge key={i} variant="outline" className="text-[8px] px-1.5 py-0.5">{f}</Badge>
+                  <Badge key={i} variant="outline" className="text-xs px-1.5 py-0.5">{f}</Badge>
                 ))}
               </div>
-              <p className="text-[9px] text-muted-foreground/60 italic mt-2 border-t border-current/10 pt-1.5">
+              <p className="text-xs text-muted-foreground italic mt-2 border-t border-current/10 pt-1.5">
                 ⚖ Os alertas são informativos e baseados na legislação vigente. A decisão final sobre os valores é de responsabilidade exclusiva do usuário.
               </p>
             </div>
 
             {/* Methodology note */}
             <div className="bg-muted/20 rounded-lg p-3 border border-border/30">
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 <strong className="text-foreground">Metodologia:</strong> Mark-up Divisor (cálculo "por dentro"). Fórmula: Preço = Custo ÷ (1 − Σ alíquotas%). Tributos, frete, despesas e margem são calculados sobre o preço final formado.
               </p>
             </div>
@@ -580,7 +580,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Motor determinístico com alíquotas reais para {ufCalculo} ({ufNome}). Consulta oficial:{' '}
         <a href="https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/calculadora/regime-geral" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
           Calculadora da Receita Federal

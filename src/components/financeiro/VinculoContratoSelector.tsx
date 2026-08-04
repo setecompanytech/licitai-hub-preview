@@ -375,7 +375,7 @@ export default function VinculoContratoSelector({
                 {contratoSel ? (
                   <span className="flex items-center gap-1.5 truncate text-left">
                     {contratoSel.tipo_documento === "ata_srp" && (
-                      <Badge variant="outline" className="text-[10px] py-0 px-1 shrink-0">
+                      <Badge variant="outline" className="text-xs py-0 px-1 shrink-0">
                         ATA
                       </Badge>
                     )}
@@ -456,7 +456,7 @@ export default function VinculoContratoSelector({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {c.tipo_documento === "ata_srp" && (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1">
+                                <Badge variant="outline" className="text-xs py-0 px-1">
                                   ATA SRP
                                 </Badge>
                               )}
@@ -467,13 +467,13 @@ export default function VinculoContratoSelector({
                             </div>
                             {c.objeto && (
                               <div
-                                className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2"
+                                className="text-xs text-muted-foreground mt-0.5 line-clamp-2"
                                 title={c.objeto}
                               >
                                 {c.objeto}
                               </div>
                             )}
-                            <div className="text-[11px] mt-0.5 flex gap-3 flex-wrap">
+                            <div className="text-xs mt-0.5 flex gap-3 flex-wrap">
                               <span>
                                 Saldo:{" "}
                                 <b className={saldo > 0 ? "text-success" : "text-destructive"}>
@@ -496,7 +496,7 @@ export default function VinculoContratoSelector({
 
           {contratoSel && (
             <div className="flex items-center justify-between mt-1.5">
-              <p className="text-[11px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 Saldo remanescente:{" "}
                 <b>{fmt(Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global))}</b>
                 {" · "}Global: {fmt(contratoSel.valor_global)}
@@ -505,7 +505,7 @@ export default function VinculoContratoSelector({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive"
+                className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive"
                 onClick={() => setContrato("")}
               >
                 <X className="w-3 h-3 mr-0.5" />
@@ -535,12 +535,12 @@ export default function VinculoContratoSelector({
                   <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">{d.titulo}</div>
-                    <div className="text-[11px] opacity-90">{d.detalhe}</div>
+                    <div className="text-xs opacity-90">{d.detalhe}</div>
                   </div>
                 </div>
               );
             })}
-            <p className="text-[10px] text-muted-foreground italic px-0.5">
+            <p className="text-xs text-muted-foreground italic px-0.5">
               Os alertas são informativos — você pode prosseguir com o lançamento, mas confirme os
               valores antes de impactar o saldo do contrato.
             </p>
@@ -554,7 +554,7 @@ export default function VinculoContratoSelector({
               <Label className="text-xs flex items-center gap-1.5">
                 Itens do contrato (opcional)
                 {itensSelecionados.length > 1 && (
-                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 gap-1">
+                  <Badge variant="secondary" className="text-xs py-0 px-1.5 gap-1">
                     <Layers className="w-2.5 h-2.5" />
                     {itensSelecionados.length} agrupados
                   </Badge>
@@ -565,7 +565,7 @@ export default function VinculoContratoSelector({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive"
+                  className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive"
                   onClick={() =>
                     onChange({ ...value, contrato_item_ids: [], contrato_item_id: null })
                   }
@@ -575,7 +575,7 @@ export default function VinculoContratoSelector({
               )}
             </div>
 
-            <div className="text-[11px] text-muted-foreground mb-1.5">
+            <div className="text-xs text-muted-foreground mb-1.5">
               Marque um ou mais itens. Para contratos com <b>cota principal e cota reservada</b> do
               mesmo objeto (Lei 14.133/21), o sistema soma os saldos e rateia o valor do documento
               proporcionalmente entre os itens marcados.
@@ -616,7 +616,7 @@ export default function VinculoContratoSelector({
                         <div className="line-clamp-2 leading-tight" title={i.descricao}>
                           {i.descricao}
                         </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
                           <span>
                             Saldo financeiro:{" "}
                             <b className={saldoFin > 0 ? "text-success" : "text-destructive"}>
@@ -641,7 +641,7 @@ export default function VinculoContratoSelector({
             )}
 
             {itensSelecionados.length > 1 && (
-              <div className="mt-1.5 rounded-md bg-primary/5 border border-primary/20 p-2 text-[11px]">
+              <div className="mt-1.5 rounded-md bg-primary/5 border border-primary/20 p-2 text-xs">
                 <div className="font-medium text-foreground flex items-center gap-1">
                   <Layers className="w-3 h-3" /> Saldos somados dos itens marcados:
                 </div>
@@ -658,7 +658,7 @@ export default function VinculoContratoSelector({
                     <b className="text-foreground">{fmt(Number(itemSel?.saldo_financeiro ?? 0))}</b>
                   </span>
                 </div>
-                <div className="text-[10px] mt-1 italic text-muted-foreground">
+                <div className="text-xs mt-1 italic text-muted-foreground">
                   O valor do documento será rateado proporcionalmente ao saldo financeiro de cada
                   item ao lançar.
                 </div>
@@ -669,7 +669,7 @@ export default function VinculoContratoSelector({
         {value.contrato_id && itemSel && (
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-[11px]">
+              <Label className="text-xs">
                 Quantidade {itensSelecionados.length > 1 && "(total a ratear)"}
               </Label>
               <Input
@@ -683,7 +683,7 @@ export default function VinculoContratoSelector({
               />
             </div>
             <div>
-              <Label className="text-[11px]">Valor unitário</Label>
+              <Label className="text-xs">Valor unitário</Label>
               <Input
                 type="number"
                 step="0.01"

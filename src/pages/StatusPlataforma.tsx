@@ -136,7 +136,7 @@ export default function StatusPlataforma() {
                           {svc.latency}ms
                         </span>
                       )}
-                      <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>
+                      <Badge variant="outline" className={`text-xs ${cfg.color}`}>
                         {cfg.label}
                       </Badge>
                     </div>

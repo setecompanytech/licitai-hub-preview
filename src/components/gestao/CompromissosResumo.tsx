@@ -197,21 +197,21 @@ export default function CompromissosResumo() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     <ListChecks className="w-3 h-3 mr-1" />{p.status}
                   </Badge>
                   <span className="text-xs font-mono text-muted-foreground">{p.numero}</span>
                   {p.modalidade && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{p.modalidade}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{p.modalidade}</span>
                   )}
                   {dias !== null && dias >= 0 && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${colorMap[urgencia]}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorMap[urgencia]}`}>
                       <Clock className="w-2.5 h-2.5 inline mr-0.5" />
                       {dias === 0 ? 'Encerra hoje' : `${dias}d restantes`}
                     </span>
                   )}
                   {p.ia_score != null && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">
                       <Brain className="w-3 h-3 inline mr-0.5" /> Score {p.ia_score}
                     </span>
                   )}
@@ -222,7 +222,7 @@ export default function CompromissosResumo() {
                     <Building2 className="w-3 h-3" />{p.orgao}
                   </span>
                   {p.uf && <span>{p.municipio ? `${p.municipio}/${p.uf}` : p.uf}</span>}
-                  <span className="font-medium text-foreground/80">{fmtCurrency(p.valor_estimado)}</span>
+                  <span className="font-medium text-foreground">{fmtCurrency(p.valor_estimado)}</span>
                   <span className="flex items-center gap-1">
                     {p.alerta_sistema && <Bell className="w-3 h-3 text-accent" />}
                     {p.alerta_email && <Mail className="w-3 h-3 text-info" />}

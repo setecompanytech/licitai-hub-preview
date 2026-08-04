@@ -169,7 +169,7 @@ export default function FinFluxoCaixa() {
                   ))}
                 </TabsList>
               </Tabs>
-              <p className="text-[11px] text-muted-foreground ml-auto">
+              <p className="text-xs text-muted-foreground ml-auto">
                 Pessimista: −15% receitas, +10% despesas · Otimista: +10% receitas, −5% despesas
               </p>
             </div>
@@ -297,7 +297,7 @@ export default function FinFluxoCaixa() {
                           <td className={`py-1.5 px-2 text-right font-medium ${d.saldo_acumulado < 0 ? "text-destructive" : ""}`}>
                             {formatBRL(d.saldo_acumulado)}
                             {d.saldo_acumulado < 0 && (
-                              <Badge variant="destructive" className="ml-1.5 text-[10px] px-1 py-0">
+                              <Badge variant="destructive" className="ml-1.5 text-xs px-1 py-0">
                                 ⚠
                               </Badge>
                             )}
@@ -341,7 +341,7 @@ export default function FinFluxoCaixa() {
               <p className={`text-xl font-semibold mt-1 ${formatRunway(dfc?.runwayMeses ?? null).cor}`}>
                 {formatRunway(dfc?.runwayMeses ?? null).label}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Saldo ÷ Burn Rate</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Saldo ÷ Burn Rate</p>
             </CardContent>
           </Card>
           <Card>
@@ -469,7 +469,7 @@ export default function FinFluxoCaixa() {
                 </table>
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
               Burn Rate = média do caixa operacional dos últimos 3 meses (somente quando negativo).
               Runway = Saldo de caixa ÷ Burn Rate. Caixa &lt; 3 meses indica risco crítico.
             </p>

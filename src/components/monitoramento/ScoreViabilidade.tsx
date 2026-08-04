@@ -93,7 +93,7 @@ IMPORTANTE: Comece sua resposta SEMPRE com "SCORE: XX" onde XX é a nota de 0 a 
             <div className="flex items-center gap-2 mb-2">
               <ScoreIcon className={`w-5 h-5 ${scoreColor}`} />
               <span className={`text-lg font-bold ${scoreColor}`}>{score}/100</span>
-              <Badge className={`${score >= 70 ? 'bg-success/10 text-success' : score >= 40 ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'} text-[10px]`}>
+              <Badge className={`${score >= 70 ? 'bg-success/10 text-success' : score >= 40 ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'} text-xs`}>
                 {score >= 70 ? 'Alta Viabilidade' : score >= 40 ? 'Média Viabilidade' : 'Baixa Viabilidade'}
               </Badge>
             </div>

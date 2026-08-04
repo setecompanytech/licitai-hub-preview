@@ -116,10 +116,10 @@ export default function DeteccaoPortais() {
           )}
         </h3>
         <div className="flex gap-2">
-          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[10px]">
+          <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
             {comCredencial} com login
           </Badge>
-          <Badge variant="outline" className="bg-info/10 text-info border-info/30 text-[10px]">
+          <Badge variant="outline" className="bg-info/10 text-info border-info/30 text-xs">
             {comCertificado} com certificado
           </Badge>
         </div>
@@ -134,7 +134,7 @@ export default function DeteccaoPortais() {
         const catLabel = cat === 'federal' ? '🏛️ Federais' : cat === 'privado' ? '🏢 Bolsas Eletrônicas' : '🗺️ Estaduais';
         return (
           <div key={cat} className="space-y-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{catLabel}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{catLabel}</p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               {portalsCat.map((p) => (
                 <div
@@ -152,7 +152,7 @@ export default function DeteccaoPortais() {
                   )}
                   <div className="min-w-0">
                     <p className="font-medium truncate">{p.nome}</p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {p.temCredencial
                         ? p.temCertificado
                           ? 'Login + Cert.'

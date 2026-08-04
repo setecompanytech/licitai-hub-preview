@@ -247,7 +247,7 @@ ${truncated}`
               <FileText className="w-5 h-5 text-accent shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{editalFile.name}</p>
-                <p className="text-[10px] text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
+                <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
               </div>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditalFile(null); setEditalText(''); }}>
                 <X className="w-3.5 h-3.5" />
@@ -258,9 +258,9 @@ ${truncated}`
               <Upload className="w-6 h-6 text-accent" />
               <span className="text-xs font-medium">Enviar arquivo do edital</span>
               <div className="flex gap-1">
-                <Badge variant="outline" className="text-[9px]">PDF</Badge>
-                <Badge variant="outline" className="text-[9px]">DOC</Badge>
-                <Badge variant="outline" className="text-[9px]">TXT</Badge>
+                <Badge variant="outline" className="text-xs">PDF</Badge>
+                <Badge variant="outline" className="text-xs">DOC</Badge>
+                <Badge variant="outline" className="text-xs">TXT</Badge>
               </div>
               <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleFileUpload} />
             </label>
@@ -269,7 +269,7 @@ ${truncated}`
 
         <div className="relative">
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-            <span className="bg-card px-2 text-[10px] text-muted-foreground">ou cole o texto</span>
+            <span className="bg-card px-2 text-xs text-muted-foreground">ou cole o texto</span>
           </div>
           <div className="border-t border-border/40 my-3" />
         </div>
@@ -343,21 +343,21 @@ ${truncated}`
               />
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`text-[9px] border ${GRAVIDADE_COLORS[item.gravidade]}`}>
+                  <Badge className={`text-xs border ${GRAVIDADE_COLORS[item.gravidade]}`}>
                     <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
                     {GRAVIDADE_LABELS[item.gravidade]}
                   </Badge>
-                  <Badge variant="outline" className="text-[9px]">
+                  <Badge variant="outline" className="text-xs">
                     {item.origem === 'ia' ? '🤖 IA' : '✏️ Manual'}
                   </Badge>
                   {item.artigos.map((art, i) => (
-                    <Badge key={i} variant="outline" className="text-[9px] bg-primary/5">
+                    <Badge key={i} variant="outline" className="text-xs bg-primary/5">
                       <Scale className="w-2.5 h-2.5 mr-0.5" /> {art}
                     </Badge>
                   ))}
                 </div>
                 <p className="text-xs text-foreground leading-relaxed">{item.descricao}</p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed italic">
+                <p className="text-xs text-muted-foreground leading-relaxed italic">
                   📖 {item.fundamentacao}
                 </p>
               </div>
@@ -393,7 +393,7 @@ ${truncated}`
             </Button>
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Descrição da irregularidade *</label>
+            <label className="text-xs text-muted-foreground">Descrição da irregularidade *</label>
             <Textarea
               value={manualDesc}
               onChange={e => setManualDesc(e.target.value)}
@@ -402,7 +402,7 @@ ${truncated}`
             />
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Fundamentação jurídica</label>
+            <label className="text-xs text-muted-foreground">Fundamentação jurídica</label>
             <Textarea
               value={manualFund}
               onChange={e => setManualFund(e.target.value)}
@@ -411,7 +411,7 @@ ${truncated}`
             />
           </div>
           <div>
-            <label className="text-[11px] text-muted-foreground">Gravidade</label>
+            <label className="text-xs text-muted-foreground">Gravidade</label>
             <select
               value={manualGrav}
               onChange={e => setManualGrav(e.target.value as 'alta' | 'media' | 'baixa')}

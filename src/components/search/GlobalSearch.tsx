@@ -128,7 +128,7 @@ export default function GlobalSearch() {
             >
               <a.icon className="w-4 h-4 text-primary" />
               <span className="flex-1">{a.label}</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{a.hint}</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{a.hint}</span>
             </CommandItem>
           ))}
         </CommandGroup>
@@ -161,7 +161,7 @@ export default function GlobalSearch() {
             >
               <f.icon className="w-4 h-4 text-muted-foreground" />
               <span className="flex-1">{f.label}</span>
-              <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">{f.description}</span>
+              <span className="text-xs text-muted-foreground truncate max-w-[180px]">{f.description}</span>
             </CommandItem>
           ))}
         </CommandGroup>

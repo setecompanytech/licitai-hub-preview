@@ -95,7 +95,7 @@ function Countdown({ targetDate }: { targetDate: string }) {
   };
 
   return (
-    <span className={`font-mono font-bold text-sm ${colors[urgency]}`}>
+    <span className={`tabular-nums font-bold text-sm ${colors[urgency]}`}>
       <Clock className="w-3.5 h-3.5 inline mr-1" />
       {diff}
     </span>
@@ -390,7 +390,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         <span className="font-semibold text-sm">{p.numero}</span>
                         {p.data_encerramento && <Countdown targetDate={p.data_encerramento} />}
                         {p.auto_cadastro && (
-                          <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-[10px]">
+                          <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">
                             <Zap className="w-3 h-3 mr-0.5" /> Auto
                           </Badge>
                         )}

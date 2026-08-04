@@ -105,7 +105,7 @@ export default function ContatoDemo() {
                     <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold">
                       Solicitar Demonstração
                     </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
+                    <p className="text-xs text-muted-foreground text-center">
                       Ao enviar, você concorda com nossa <a href="/politica-de-privacidade" className="underline">Política de Privacidade</a>.
                     </p>
                   </form>

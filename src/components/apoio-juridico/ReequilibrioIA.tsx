@@ -506,19 +506,19 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{indice.sigla}</p>
-                  <Badge variant="outline" className="text-[10px]">{indice.fonte}</Badge>
+                  <Badge variant="outline" className="text-xs">{indice.fonte}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">{indice.nome}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-xs font-medium">Valor: {indice.valor}</span>
-                  <span className={`text-[11px] font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                  <span className={`text-xs font-medium ${(indice.variacao_mensal || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
                     Mensal: {fmtPerc(indice.variacao_mensal)}
                   </span>
-                  <span className={`text-[11px] font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                  <span className={`text-xs font-medium ${(indice.acumulado_12m || 0) >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
                     12m: {fmtPerc(indice.acumulado_12m)}
                   </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">Período: {indice.periodo}</p>
+                <p className="text-xs text-muted-foreground mt-1">Período: {indice.periodo}</p>
               </div>
             </div>
           </div>
@@ -552,18 +552,18 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold truncate">{cct.categoria_profissional}</p>
-                  {vencida && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Vencida</Badge>}
+                  {vencida && <Badge variant="outline" className="text-xs text-destructive border-destructive/30">Vencida</Badge>}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{cct.sindicato_laboral || 'Sindicato não informado'}</p>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
                   {cct.piso_salarial && <span className="text-xs font-medium">Piso: {fmtCur(cct.piso_salarial)}</span>}
                   {cct.reajuste_percentual && (
-                    <span className="text-[11px] font-medium text-accent">Reajuste: +{cct.reajuste_percentual}%</span>
+                    <span className="text-xs font-medium text-accent">Reajuste: +{cct.reajuste_percentual}%</span>
                   )}
-                  {cct.abrangencia_uf && <Badge variant="outline" className="text-[10px]">{cct.abrangencia_uf}</Badge>}
-                  {cct.indice_reajuste && <Badge variant="outline" className="text-[10px]">{cct.indice_reajuste}</Badge>}
+                  {cct.abrangencia_uf && <Badge variant="outline" className="text-xs">{cct.abrangencia_uf}</Badge>}
+                  {cct.indice_reajuste && <Badge variant="outline" className="text-xs">{cct.indice_reajuste}</Badge>}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Vigência: {cct.vigencia_inicio || '?'} a {cct.vigencia_fim || '?'}
                 </p>
               </div>
@@ -617,7 +617,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-3 flex-wrap">
           <Hash className="w-4 h-4 text-accent flex-shrink-0" />
           <span className="text-xs font-semibold whitespace-nowrap">{pedidoAtivo.numero_formatado}</span>
-          <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+          <Badge variant="outline" className="text-xs whitespace-nowrap">
             v{pedidoAtivo.versoes_count} · {pedidoAtivo.status}
           </Badge>
           <span className="text-xs text-muted-foreground truncate flex-1 min-w-[120px]">
@@ -675,8 +675,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             <span className="text-xs font-semibold text-foreground">{info.titulo}</span>
           </div>
           <p className="text-xs text-muted-foreground">{info.descricao}</p>
-          <p className="text-[10px] text-muted-foreground"><strong>Fundamento:</strong> {info.fundamento}</p>
-          <p className="text-[10px] text-muted-foreground"><strong>Periodicidade:</strong> {info.periodicidade}</p>
+          <p className="text-xs text-muted-foreground"><strong>Fundamento:</strong> {info.fundamento}</p>
+          <p className="text-xs text-muted-foreground"><strong>Periodicidade:</strong> {info.periodicidade}</p>
         </div>
 
         {/* Search */}
@@ -709,7 +709,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               Limpar
             </Button>
           )}
-          <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+          <Badge variant="outline" className="text-xs whitespace-nowrap">
             {mecanismo === 'repactuacao'
               ? `${filteredIndices.length} índices · ${filteredCCTs.length} CCTs`
               : mecanismo === 'revisao'
@@ -730,7 +730,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Selecione o índice contratual ({filteredIndices.length})
                 </h4>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Selecione o índice previsto no contrato para cálculo automático do reajuste anual por apostilamento.
                 </p>
                 {renderIndicesGrid()}
@@ -743,7 +743,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                   <Users className="w-3 h-3" /> CCTs / Dissídios Coletivos ({filteredCCTs.length})
                 </h4>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Selecione as convenções coletivas para demonstrar a variação dos custos de mão de obra (planilha antes/depois).
                 </p>
                 {renderCCTsGrid()}
@@ -752,7 +752,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Índices complementares (opcional)
                 </h4>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Índices de insumos podem complementar a repactuação (ex: SINAPI para materiais).
                 </p>
                 {renderIndicesGrid()}
@@ -836,7 +836,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Índices para comprovação do impacto ({filteredIndices.length})
                 </h4>
-                <p className="text-[10px] text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Selecione índices que comprovem numericamente o impacto econômico do fato gerador.
                 </p>
                 {renderIndicesGrid()}
@@ -881,7 +881,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               {selectedIndices.map(id => {
                 const i = indices.find(x => x.id === id);
                 return i ? (
-                  <Badge key={id} className="text-[10px] bg-accent/10 text-accent border-accent/30">
+                  <Badge key={id} className="text-xs bg-accent/10 text-accent border-accent/30">
                     📊 {i.sigla} ({fmtPerc(i.acumulado_12m)} 12m)
                   </Badge>
                 ) : null;
@@ -889,13 +889,13 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               {selectedCCTs.map(id => {
                 const c = ccts.find(x => x.id === id);
                 return c ? (
-                  <Badge key={id} className="text-[10px] bg-accent/10 text-accent border-accent/30">
+                  <Badge key={id} className="text-xs bg-accent/10 text-accent border-accent/30">
                     👷 {c.categoria_profissional} ({c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'})
                   </Badge>
                 ) : null;
               })}
               {mecanismo === 'revisao' && fatoGerador && (
-                <Badge className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                <Badge className="text-xs bg-destructive/10 text-destructive border-destructive/30">
                   ⚠️ {tipoFato.replace('_', ' ')}
                 </Badge>
               )}
@@ -918,8 +918,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">{INSTRUMENTOS[instrumento].desc}</p>
+            <p className="text-xs text-muted-foreground">
               <strong>Fundamento:</strong> {INSTRUMENTOS[instrumento].fundamento}
             </p>
           </div>
@@ -985,18 +985,18 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-accent" />
                 <span className="text-xs font-semibold">Demonstração comparativa de preços</span>
-                <Badge variant="outline" className="text-[10px]">{itensCompValidos.length} válidos</Badge>
+                <Badge variant="outline" className="text-xs">{itensCompValidos.length} válidos</Badge>
               </div>
               <Button size="sm" variant="outline" onClick={addItemComp}>
                 <Plus className="w-3 h-3 mr-1" /> Adicionar item
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Informe NFs de entrada e/ou cotações para comprovar a variação de preço entre a época do certame e o momento atual. Esta tabela será reproduzida no pedido como prova documental do desequilíbrio.
             </p>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px] border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/40 text-muted-foreground">
                     <th className="text-left p-2 font-medium whitespace-nowrap">Descrição</th>
@@ -1015,16 +1015,16 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                     const v = calcVariacao(it.precoAntes, it.precoAtual);
                     return (
                       <tr key={it.id} className="border-b border-border/20">
-                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
-                        <td className="p-1"><Input className="h-7 text-[11px] w-16" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
-                        <td className="p-1"><Input className="h-7 text-[11px] w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
-                        <td className="p-1"><Input className="h-7 text-[11px] w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-xs" value={it.descricao} onChange={e => updItemComp(it.id, { descricao: e.target.value })} placeholder="Ex.: Cimento CP-II" /></td>
+                        <td className="p-1"><Input className="h-7 text-xs w-16" value={it.unidade} onChange={e => updItemComp(it.id, { unidade: e.target.value })} /></td>
+                        <td className="p-1"><Input className="h-7 text-xs w-20 text-right" type="number" value={it.quantidade || ''} onChange={e => updItemComp(it.id, { quantidade: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAntes || ''} onChange={e => updItemComp(it.id, { precoAntes: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="p-1"><Input className="h-7 text-xs w-24 text-right" type="number" step="0.01" value={it.precoAtual || ''} onChange={e => updItemComp(it.id, { precoAtual: parseFloat(e.target.value) || 0 })} /></td>
                         <td className={`p-1 text-right font-semibold whitespace-nowrap ${v >= 0 ? 'text-destructive' : 'text-emerald-600'}`}>
                           {it.precoAntes > 0 ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—'}
                         </td>
-                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
-                        <td className="p-1"><Input className="h-7 text-[11px]" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input className="h-7 text-xs" value={it.fonteAntes} onChange={e => updItemComp(it.id, { fonteAntes: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
+                        <td className="p-1"><Input className="h-7 text-xs" value={it.fonteAtual} onChange={e => updItemComp(it.id, { fonteAtual: e.target.value })} placeholder="NF nº / Fornecedor / data" /></td>
                         <td className="p-1">
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => rmItemComp(it.id)} disabled={itensComp.length === 1}>
                             <Trash2 className="w-3 h-3 text-destructive" />
@@ -1049,7 +1049,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               value={anexos}
               onChange={e => setAnexos(e.target.value)}
             />
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Os arquivos físicos podem ser anexados na aba "Anexos" da Pasta do Processo (workspace).
             </p>
           </div>

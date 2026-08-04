@@ -204,7 +204,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
             Simulação de Disputa
           </h4>
           {running && (
-            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px] animate-pulse">
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs animate-pulse">
               Em andamento
             </Badge>
           )}
@@ -214,7 +214,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
           {lidAtivo && (
             <button
               onClick={() => setMuralSync(!muralSync)}
-              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border transition-colors ${
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
                 muralSync
                   ? 'bg-accent/10 text-accent border-accent/30'
                   : 'bg-muted text-muted-foreground border-border'
@@ -244,7 +244,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
 
       {/* Mural sync indicator */}
       {muralSync && lidAtivo && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/15 text-[10px] text-accent">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/15 text-xs text-accent">
           <Zap className="w-3 h-3" />
           <span>Eventos da simulação serão publicados no Mural do Processo em tempo real</span>
         </div>
@@ -254,34 +254,34 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
       <div className="grid grid-cols-5 gap-3">
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <DollarSign className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
-          <p className="text-[10px] text-muted-foreground">Valor Atual</p>
+          <p className="text-xs text-muted-foreground">Valor Atual</p>
           <p className="text-xs font-bold text-accent">{formatCurrency(valorAtual)}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <TrendingDown className="w-3 h-3 mx-auto text-success mb-1" />
-          <p className="text-[10px] text-muted-foreground">Economia</p>
+          <p className="text-xs text-muted-foreground">Economia</p>
           <p className="text-xs font-bold text-success">{formatCurrency(economia)}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <Hash className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
-          <p className="text-[10px] text-muted-foreground">Rodada</p>
+          <p className="text-xs text-muted-foreground">Rodada</p>
           <p className="text-xs font-bold">{rodada} / {lance.maxLances}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <Clock className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
-          <p className="text-[10px] text-muted-foreground">Próximo em</p>
+          <p className="text-xs text-muted-foreground">Próximo em</p>
           <p className="text-xs font-bold">{running ? `${tempoRestante}s` : '—'}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <DollarSign className="w-3 h-3 mx-auto text-destructive mb-1" />
-          <p className="text-[10px] text-muted-foreground">Piso</p>
+          <p className="text-xs text-muted-foreground">Piso</p>
           <p className="text-xs font-bold text-destructive">{formatCurrency(lance.valorMinimo)}</p>
         </div>
       </div>
 
       {/* Progress bar */}
       <div>
-        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span>Referência: {formatCurrency(lance.valorReferencia)}</span>
           <span>Mínimo: {formatCurrency(lance.valorMinimo)}</span>
         </div>
@@ -291,7 +291,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
       {/* History */}
       {historico.length > 0 && (
         <div className="max-h-32 overflow-y-auto border border-border/30 rounded-lg">
-          <table className="w-full text-[11px]">
+          <table className="w-full text-xs">
             <thead className="sticky top-0 bg-muted/80">
               <tr>
                 <th className="text-left px-2 py-1 font-medium text-muted-foreground">#</th>
@@ -307,7 +307,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
                   <td className="px-2 py-1">
                     <Badge
                       variant="outline"
-                      className={`text-[9px] ${
+                      className={`text-xs ${
                         h.tipo === 'meu'
                           ? 'bg-accent/10 text-accent border-accent/30'
                           : 'bg-warning/10 text-warning border-warning/30'

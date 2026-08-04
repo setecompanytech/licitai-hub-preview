@@ -91,7 +91,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
           Trilha de Auditoria Imutável
         </h3>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[9px] bg-muted">
+          <Badge variant="outline" className="text-xs bg-muted">
             {entries.length} eventos
           </Badge>
           <Button
@@ -129,7 +129,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <Eye className="w-6 h-6 text-muted-foreground/30" />
             <p className="text-xs text-muted-foreground">Nenhum evento registrado.</p>
-            <p className="text-[10px] text-muted-foreground">Os eventos aparecerão aqui à medida que ações forem realizadas.</p>
+            <p className="text-xs text-muted-foreground">Os eventos aparecerão aqui à medida que ações forem realizadas.</p>
           </div>
         ) : (
           <div className="space-y-1 pr-3">
@@ -145,7 +145,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
               return (
                 <div
                   key={entry.id}
-                  className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-all text-[11px] ${
+                  className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-all text-xs ${
                     isHighlighted
                       ? 'bg-accent/10 ring-1 ring-accent/30'
                       : 'hover:bg-muted/30'
@@ -155,7 +155,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{config.label}</span>
-                      <Badge variant="outline" className="text-[8px] scale-90">
+                      <Badge variant="outline" className="text-xs scale-90">
                         N{entry.nivel_automacao}
                       </Badge>
                       {entry.valor_lance && (
@@ -167,18 +167,18 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
                         <span className="text-muted-foreground">R{entry.rodada}</span>
                       )}
                       {entry.hash_registro && (
-                        <span className="font-mono text-[8px] text-muted-foreground/60 truncate max-w-[100px]" title={`Hash: ${entry.hash_registro}\nAnterior: ${entry.hash_anterior}`}>
+                        <span className="font-mono text-xs text-muted-foreground truncate max-w-[100px]" title={`Hash: ${entry.hash_registro}\nAnterior: ${entry.hash_anterior}`}>
                           🔗 #{entry.hash_registro.slice(0, 12)}
                         </span>
                       )}
                     </div>
                     {Object.keys(entry.detalhes).length > 0 && (
-                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
                         {JSON.stringify(entry.detalhes).slice(0, 100)}
                       </p>
                     )}
                   </div>
-                  <span className="text-[9px] text-muted-foreground whitespace-nowrap shrink-0">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                     {new Date(entry.created_at).toLocaleTimeString('pt-BR', {
                       hour: '2-digit', minute: '2-digit', second: '2-digit',
                     })}

@@ -109,7 +109,7 @@ export default function BuscaSemanticaAurelia() {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             Busca Semântica AURÉLIA
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">FASE 4</Badge>
+            <Badge variant="outline" className="text-xs px-1.5 py-0">FASE 4</Badge>
           </h3>
           <p className="text-xs text-muted-foreground">
             Encontre editais por significado, não apenas palavras exatas.
@@ -170,7 +170,7 @@ export default function BuscaSemanticaAurelia() {
             <span className="text-muted-foreground">
               {resultado.total} resultado(s) por similaridade
             </span>
-            <Badge className={`${PROVEDOR_LABEL[resultado.provedor]?.cor} text-[10px]`}>
+            <Badge className={`${PROVEDOR_LABEL[resultado.provedor]?.cor} text-xs`}>
               {PROVEDOR_LABEL[resultado.provedor]?.texto || resultado.provedor}
               {resultado.rerank && ' + Claude'}
             </Badge>
@@ -183,7 +183,7 @@ export default function BuscaSemanticaAurelia() {
                 className="p-3 hover:bg-accent/5 transition-colors border-border/60"
               >
                 <div className="flex items-start gap-2 mb-2">
-                  <div className="w-6 h-6 rounded bg-muted flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0">
+                  <div className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-mono font-bold flex-shrink-0">
                     {idx + 1}
                   </div>
                   <p className="text-sm font-medium leading-snug flex-1 min-w-0">
@@ -192,7 +192,7 @@ export default function BuscaSemanticaAurelia() {
                   {typeof r.similaridade === 'number' && (
                     <Badge
                       variant="outline"
-                      className={`text-[10px] flex-shrink-0 ${
+                      className={`text-xs flex-shrink-0 ${
                         r.similaridade > 0.7
                           ? 'border-success text-success'
                           : r.similaridade > 0.5
@@ -205,7 +205,7 @@ export default function BuscaSemanticaAurelia() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground ml-8">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground ml-8">
                   {r.orgao && (
                     <span className="flex items-center gap-1 truncate max-w-[260px]">
                       <Building2 className="w-3 h-3 flex-shrink-0" /> {r.orgao}
@@ -217,7 +217,7 @@ export default function BuscaSemanticaAurelia() {
                     </span>
                   )}
                   {r.modalidade_nome && (
-                    <Badge variant="secondary" className="text-[10px] py-0 h-4">
+                    <Badge variant="secondary" className="text-xs py-0 h-4">
                       {r.modalidade_nome}
                     </Badge>
                   )}
@@ -229,7 +229,7 @@ export default function BuscaSemanticaAurelia() {
                 </div>
 
                 <div className="flex items-center justify-between mt-2 ml-8">
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Encerra: {formatData(r.data_encerramento_proposta)}
                   </span>
                   {(r.link_sistema_origem || r.url_pncp) && (
@@ -237,7 +237,7 @@ export default function BuscaSemanticaAurelia() {
                       href={r.link_sistema_origem || r.url_pncp}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-accent hover:underline flex items-center gap-1"
+                      className="text-xs text-accent hover:underline flex items-center gap-1"
                     >
                       Abrir <ExternalLink className="w-3 h-3" />
                     </a>

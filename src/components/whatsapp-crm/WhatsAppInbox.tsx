@@ -255,12 +255,12 @@ export default function WhatsAppInbox() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium truncate">{c.contato_nome}</span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(c.ultima_mensagem_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{c.ultima_mensagem || 'Nova conversa'}</p>
-                  <Badge className={`text-[10px] mt-1 ${setorColor[c.setor] || 'bg-muted text-muted-foreground'}`}>{c.setor}</Badge>
+                  <Badge className={`text-xs mt-1 ${setorColor[c.setor] || 'bg-muted text-muted-foreground'}`}>{c.setor}</Badge>
                 </div>
               </button>
             ))
@@ -301,10 +301,10 @@ export default function WhatsAppInbox() {
                       <p className="text-sm whitespace-pre-wrap">{m.conteudo}</p>
                       <div className={`flex items-center gap-1 mt-1 ${m.direcao === 'saida' ? 'text-emerald-200' : 'text-muted-foreground'}`}>
                         <Clock className="w-3 h-3" />
-                        <span className="text-[10px]">
+                        <span className="text-xs">
                           {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        {m.status === 'simulado' && <span className="text-[10px] ml-1">(simulado)</span>}
+                        {m.status === 'simulado' && <span className="text-xs ml-1">(simulado)</span>}
                       </div>
                     </div>
                   </div>

@@ -313,12 +313,12 @@ export default function PlanoVerificacao() {
               <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{t.name}</p>
-                <p className="text-[11px] text-muted-foreground">{t.description}</p>
+                <p className="text-xs text-muted-foreground">{t.description}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <div className="hidden sm:flex gap-1">
                   {t.plans.map(p => (
-                    <Badge key={p} variant="outline" className={cn('text-[9px] px-1.5 py-0', planLabels[p]?.color)}>
+                    <Badge key={p} variant="outline" className={cn('text-xs px-1.5 py-0', planLabels[p]?.color)}>
                       {planLabels[p]?.name}
                     </Badge>
                   ))}

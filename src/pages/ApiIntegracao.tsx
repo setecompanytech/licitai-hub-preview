@@ -98,10 +98,10 @@ export default function ApiIntegracao() {
                 <Badge variant="outline" className={`font-mono text-xs min-w-[60px] justify-center ${methodColors[ep.method]}`}>
                   {ep.method}
                 </Badge>
-                <code className="text-sm font-mono text-foreground/80 min-w-[200px]">{ep.path}</code>
+                <code className="text-sm font-mono text-foreground min-w-[200px]">{ep.path}</code>
                 <span className="text-sm text-muted-foreground flex-1">{ep.desc}</span>
                 {ep.auth && (
-                  <Badge variant="secondary" className="text-[10px]">🔒 Auth</Badge>
+                  <Badge variant="secondary" className="text-xs">🔒 Auth</Badge>
                 )}
               </div>
             ))}

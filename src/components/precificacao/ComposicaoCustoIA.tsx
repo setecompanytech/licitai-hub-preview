@@ -231,7 +231,7 @@ export default function ComposicaoCustoIA() {
               Planilha de Composição de Custo — Lei 14.133/2021
             </h3>
           </div>
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             <ShieldCheck className="w-3 h-3 mr-1" /> Motor Determinístico
           </Badge>
         </div>
@@ -246,7 +246,7 @@ export default function ComposicaoCustoIA() {
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {ufInfo?.icms_interno || 18}%
           </Badge>
           {empresaAtiva && (
-            <Badge variant="outline" className="text-[10px]">{empresaAtiva.razao_social}</Badge>
+            <Badge variant="outline" className="text-xs">{empresaAtiva.razao_social}</Badge>
           )}
         </div>
       </div>
@@ -313,15 +313,15 @@ export default function ComposicaoCustoIA() {
         {itens.map((item, idx) => (
           <div key={idx} className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-5">
-              <Label className="text-[10px]">Descrição *</Label>
+              <Label className="text-xs">Descrição *</Label>
               <Input value={item.descricao} onChange={e => updateItem(idx, 'descricao', e.target.value)} placeholder="Ex: Notebook Dell Inspiron 15" className="mt-0.5" />
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Qtd</Label>
+              <Label className="text-xs">Qtd</Label>
               <Input value={item.quantidade} onChange={e => updateItem(idx, 'quantidade', e.target.value)} placeholder="1" className="mt-0.5" />
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Unidade</Label>
+              <Label className="text-xs">Unidade</Label>
               <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
                 <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -332,7 +332,7 @@ export default function ComposicaoCustoIA() {
               </Select>
             </div>
             <div className="col-span-2">
-              <Label className="text-[10px]">Custo Unit. (R$) *</Label>
+              <Label className="text-xs">Custo Unit. (R$) *</Label>
               <Input value={item.custoUnitario} onChange={e => updateItem(idx, 'custoUnitario', formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-0.5" />
             </div>
             <div className="col-span-1">
@@ -351,7 +351,7 @@ export default function ComposicaoCustoIA() {
             <Switch checked={enviarProposta} onCheckedChange={setEnviarProposta} />
             <div>
               <p className="text-sm font-medium">Integrar à Proposta Comercial</p>
-              <p className="text-[10px] text-muted-foreground">Os itens serão enviados à Planilha de Preços</p>
+              <p className="text-xs text-muted-foreground">Os itens serão enviados à Planilha de Preços</p>
             </div>
           </div>
           {enviarProposta && (

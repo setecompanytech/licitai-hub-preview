@@ -349,9 +349,9 @@ export default function EquipeColaboradores() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-sm truncate">{(m as any).nome || (m as any).email || 'Colaborador'}</span>
-                              {isCurrentUser && <Badge variant="outline" className="text-[10px]">Você</Badge>}
-                              <Badge className={`text-[10px] ${eq.color}`}>{eq.label}</Badge>
-                              <Badge variant="secondary" className="text-[10px]">{m.papel}</Badge>
+                              {isCurrentUser && <Badge variant="outline" className="text-xs">Você</Badge>}
+                              <Badge className={`text-xs ${eq.color}`}>{eq.label}</Badge>
+                              <Badge variant="secondary" className="text-xs">{m.papel}</Badge>
                             </div>
                             {(m as any).email && <p className="text-xs text-muted-foreground truncate">{(m as any).email}</p>}
                           </div>
@@ -472,7 +472,7 @@ export default function EquipeColaboradores() {
                       <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium leading-none mb-0.5">{title}</p>
-                        <p className="text-[10px] text-muted-foreground">{sub}</p>
+                        <p className="text-xs text-muted-foreground">{sub}</p>
                       </div>
                     </label>
                   ))}
@@ -517,7 +517,7 @@ export default function EquipeColaboradores() {
                         );
                       })}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
                     </p>
                   </div>
@@ -543,7 +543,7 @@ export default function EquipeColaboradores() {
                       placeholder="financeiro@empresa.com.br"
                       type="email"
                     />
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       O link de cadastro será enviado para este endereço. Qualquer colaborador que recebê-lo poderá criar um acesso para este setor.
                     </p>
                   </div>
@@ -605,7 +605,7 @@ export default function EquipeColaboradores() {
               </DialogTitle>
             </DialogHeader>
             <p className="text-xs text-muted-foreground mb-2">
-              Setor: <Badge className={`text-[10px] ${getEquipeInfo((permDialog as any)?.equipe || 'geral').color}`}>
+              Setor: <Badge className={`text-xs ${getEquipeInfo((permDialog as any)?.equipe || 'geral').color}`}>
                 {getEquipeInfo((permDialog as any)?.equipe || 'geral').label}
               </Badge>
               — Os módulos padrão do setor são habilitados automaticamente. Selecione módulos adicionais abaixo:
@@ -636,7 +636,7 @@ export default function EquipeColaboradores() {
                       className="accent-[hsl(var(--accent))]"
                     />
                     <span className="text-xs">{mod.label}</span>
-                    {isDefault && <Badge variant="outline" className="text-[8px] ml-auto">Padrão</Badge>}
+                    {isDefault && <Badge variant="outline" className="text-xs ml-auto">Padrão</Badge>}
                   </label>
                 );
               })}
