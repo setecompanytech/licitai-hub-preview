@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { interpretarValorColado } from "@/lib/financeiro/valor-colado";
 
 /**
  * MoneyInput — campo de entrada formatado em padrão monetário pt-BR (R$ 1.234,56).
@@ -40,10 +41,16 @@ export interface MoneyInputProps
   onValueChange: (value: number) => void;
   /** Permite valor negativo. Default: false. */
   allowNegative?: boolean;
+  /**
+   * Máximo de dígitos aceitos (inteiros + 2 decimais). Default 14, que é o
+   * teto de numeric(14,2) — evita tanto o "numeric field overflow" no submit
+   * quanto dígitos mudando sozinhos além da precisão do JS.
+   */
+  maxDigits?: number;
 }
 
 export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
-  ({ value, onValueChange, allowNegative = false, className, onBlur, onFocus, ...props }, ref) => {
+  ({ value, onValueChange, allowNegative = false, maxDigits = 14, className, onBlur, onFocus, onPaste, ...props }, ref) => {
     const [display, setDisplay] = React.useState<string>(() => formatBRL(toCents(value)));
     const [isFocused, setIsFocused] = React.useState(false);
 
@@ -54,11 +61,31 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value;
       const negative = allowNegative && raw.trim().startsWith("-");
-      const digits = raw.replace(/\D/g, "");
+      // O corte em maxDigits descarta a tecla excedente em vez de deixar o
+      // parseInt passar da precisão do JS e "mudar" dígitos já exibidos.
+      const digits = raw.replace(/\D/g, "").slice(0, maxDigits);
       const cents = digits === "" ? 0 : parseInt(digits, 10);
       const signed = negative ? -cents : cents;
       setDisplay(formatBRL(signed));
       onValueChange(signed / 100);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      onPaste?.(e);
+      if (e.defaultPrevented) return;
+
+      const interpretado = interpretarValorColado(e.clipboardData.getData("text"));
+      if (interpretado === null) return; // sem número legível: segue a máscara
+
+      e.preventDefault();
+      const semSinal = allowNegative ? interpretado : Math.abs(interpretado);
+      const cents = Math.round(semSinal * 100);
+      // Valor colado acima do teto: melhor não fazer nada do que truncar em
+      // silêncio um número que o usuário conferiu na origem.
+      if (String(Math.abs(cents)).length > maxDigits) return;
+
+      setDisplay(formatBRL(cents));
+      onValueChange(cents / 100);
     };
 
     return (
@@ -68,6 +95,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
         inputMode="decimal"
         value={display}
         onChange={handleChange}
+        onPaste={handlePaste}
         onFocus={(e) => {
           setIsFocused(true);
           // Posiciona o cursor no final para edição natural

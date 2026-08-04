@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Target } from 'lucide-react';
 import { useSalvarMeta, type Meta } from '@/hooks/useMetasComercial';
-import { parseValorBRL } from '@/lib/metas/dinheiro';
+import { MoneyInput } from '@/components/ui/money-input';
 import type { BaseMeta } from '@/lib/metas/painel';
 
 const NOMES_MES = [
@@ -39,7 +39,7 @@ type Props = {
 export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, mes, metaAtual }: Props) {
   const salvar = useSalvarMeta();
 
-  const [faturamento, setFaturamento] = useState('');
+  const [faturamento, setFaturamento] = useState(0);
   const [base, setBase] = useState<BaseMeta>('faturamento');
   const [contratos, setContratos] = useState('');
   const [participacoes, setParticipacoes] = useState('');
@@ -48,15 +48,14 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
   // Cada abertura reflete a meta do período selecionado, sem herdar a anterior.
   useEffect(() => {
     if (!aberto) return;
-    setFaturamento(metaAtual ? String(Number(metaAtual.meta_faturamento)).replace('.', ',') : '');
+    setFaturamento(metaAtual ? Number(metaAtual.meta_faturamento) : 0);
     setBase(metaAtual?.base_meta ?? 'faturamento');
     setContratos(metaAtual?.meta_contratos != null ? String(metaAtual.meta_contratos) : '');
     setParticipacoes(metaAtual?.meta_participacoes != null ? String(metaAtual.meta_participacoes) : '');
     setObservacao(metaAtual?.observacao ?? '');
   }, [aberto, metaAtual]);
 
-  const valor = parseValorBRL(faturamento);
-  const podeSalvar = valor > 0 && !salvar.isPending;
+  const podeSalvar = faturamento > 0 && !salvar.isPending;
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => !v && onFechar()}>
@@ -74,12 +73,10 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
         <div className="space-y-4">
           <div>
             <Label className="text-xs text-muted-foreground mb-1 block">Meta do mês (R$)</Label>
-            <Input
+            <MoneyInput
               autoFocus
-              inputMode="decimal"
-              placeholder="500.000,00"
               value={faturamento}
-              onChange={(e) => setFaturamento(e.target.value)}
+              onValueChange={setFaturamento}
             />
           </div>
 
@@ -134,7 +131,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
                   user_id: colaborador.user_id,
                   ano,
                   mes,
-                  meta_faturamento: valor,
+                  meta_faturamento: faturamento,
                   meta_contratos: contratos === '' ? null : Number(contratos),
                   meta_participacoes: participacoes === '' ? null : Number(participacoes),
                   base_meta: base,

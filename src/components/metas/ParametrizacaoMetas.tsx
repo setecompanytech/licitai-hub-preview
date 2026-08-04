@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useMetasComercial';
 import { MODALIDADES, rotuloModalidade } from '@/lib/metas/modalidades';
 import { formatBRL } from '@/lib/financeiro/formatters';
-import { parseValorBRL } from '@/lib/metas/dinheiro';
+import { MoneyInput } from '@/components/ui/money-input';
 
 export default function ParametrizacaoMetas() {
   const { data: config } = useMetasConfig();
@@ -31,9 +31,9 @@ export default function ParametrizacaoMetas() {
   const salvarMotivo = useSalvarMotivoPerda();
   const restaurar = useRestaurarPadroes();
 
-  const [novo, setNovo] = useState<{ modalidade: string; valor: string; inicio: string }>({
+  const [novo, setNovo] = useState<{ modalidade: string; valor: number; inicio: string }>({
     modalidade: 'pregao_eletronico',
-    valor: '',
+    valor: 0,
     inicio: new Date().toISOString().slice(0, 10),
   });
 
@@ -79,12 +79,10 @@ export default function ParametrizacaoMetas() {
             </div>
             <div className="w-[160px]">
               <Label className="text-xs text-muted-foreground mb-1 block">Valor-alvo (R$)</Label>
-              <Input
+              <MoneyInput
                 className="h-9 text-sm"
-                inputMode="decimal"
-                placeholder="300.000,00"
                 value={novo.valor}
-                onChange={(e) => setNovo((n) => ({ ...n, valor: e.target.value }))}
+                onValueChange={(v) => setNovo((n) => ({ ...n, valor: v }))}
               />
             </div>
             <div className="w-[150px]">
@@ -99,15 +97,15 @@ export default function ParametrizacaoMetas() {
             <Button
               size="sm"
               className="h-9"
-              disabled={!novo.valor || salvarValor.isPending}
+              disabled={novo.valor <= 0 || salvarValor.isPending}
               onClick={() =>
                 salvarValor.mutate(
                   {
                     modalidade_codigo: novo.modalidade,
-                    valor_alvo: parseValorBRL(novo.valor),
+                    valor_alvo: novo.valor,
                     vigencia_inicio: novo.inicio,
                   },
-                  { onSuccess: () => setNovo((n) => ({ ...n, valor: '' })) },
+                  { onSuccess: () => setNovo((n) => ({ ...n, valor: 0 })) },
                 )
               }
             >
