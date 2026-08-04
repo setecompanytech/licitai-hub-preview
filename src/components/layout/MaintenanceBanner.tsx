@@ -67,9 +67,9 @@ export default function MaintenanceBanner({ showModal = false }: { showModal?: b
       {visibleItems.map((m) => (
         <div
           key={m.id}
-          className="relative flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20 px-4 py-2.5 text-sm text-yellow-800 dark:text-yellow-200 mb-3"
+          className="relative flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning mb-3"
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+          <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
           <div className="flex-1 min-w-0">
             <span className="font-semibold">{m.titulo}</span>
             <span className="mx-1.5">—</span>
@@ -80,7 +80,7 @@ export default function MaintenanceBanner({ showModal = false }: { showModal?: b
           </div>
           <button
             onClick={() => setDismissed((s) => new Set(s).add(m.id))}
-            className="p-1 rounded hover:bg-yellow-200/50 dark:hover:bg-yellow-800/30 transition-colors"
+            className="p-1 rounded hover:bg-warning/20 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -90,7 +90,7 @@ export default function MaintenanceBanner({ showModal = false }: { showModal?: b
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+            <DialogTitle className="flex items-center gap-2 text-warning">
               <AlertTriangle className="w-5 h-5" />
               Manutenção Programada
             </DialogTitle>

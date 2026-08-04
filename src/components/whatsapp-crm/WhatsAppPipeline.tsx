@@ -31,12 +31,12 @@ interface Lead {
 }
 
 const ETAPAS = [
-  { key: 'novo', label: 'Novo', color: 'bg-blue-500' },
-  { key: 'qualificado', label: 'Qualificado', color: 'bg-amber-500' },
-  { key: 'proposta', label: 'Proposta', color: 'bg-purple-500' },
-  { key: 'negociacao', label: 'Negociação', color: 'bg-orange-500' },
-  { key: 'ganho', label: 'Ganho', color: 'bg-emerald-500' },
-  { key: 'perdido', label: 'Perdido', color: 'bg-red-500' },
+  { key: 'novo', label: 'Novo', color: 'bg-info' },
+  { key: 'qualificado', label: 'Qualificado', color: 'bg-warning' },
+  { key: 'proposta', label: 'Proposta', color: 'bg-info' },
+  { key: 'negociacao', label: 'Negociação', color: 'bg-warning' },
+  { key: 'ganho', label: 'Ganho', color: 'bg-success' },
+  { key: 'perdido', label: 'Perdido', color: 'bg-destructive' },
 ];
 
 export default function WhatsAppPipeline() {
@@ -151,7 +151,7 @@ export default function WhatsAppPipeline() {
                         <p className="flex items-center gap-1"><Phone className="w-3 h-3" />{lead.telefone}</p>
                         {lead.empresa && <p className="flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.empresa}</p>}
                         {lead.valor_estimado > 0 && (
-                          <p className="flex items-center gap-1 text-emerald-600 font-medium">
+                          <p className="flex items-center gap-1 text-success font-medium">
                             <DollarSign className="w-3 h-3" />R$ {lead.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         )}

@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search } from 'lucide-react';
 
 const CATEGORIAS: { value: CategoriaAnexo; label: string; color: string }[] = [
-  { value: 'edital', label: 'Edital', color: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
-  { value: 'habilitacao', label: 'Habilitação', color: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
-  { value: 'proposta', label: 'Proposta', color: 'bg-green-500/15 text-green-600 border-green-500/30' },
-  { value: 'declaracoes', label: 'Declarações', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
-  { value: 'recursos', label: 'Recursos', color: 'bg-rose-500/15 text-rose-600 border-rose-500/30' },
-  { value: 'contrato', label: 'Contrato', color: 'bg-cyan-500/15 text-cyan-600 border-cyan-500/30' },
+  { value: 'edital', label: 'Edital', color: 'bg-muted text-muted-foreground border-border' },
+  { value: 'habilitacao', label: 'Habilitação', color: 'bg-muted text-muted-foreground border-border' },
+  { value: 'proposta', label: 'Proposta', color: 'bg-muted text-muted-foreground border-border' },
+  { value: 'declaracoes', label: 'Declarações', color: 'bg-muted text-muted-foreground border-border' },
+  { value: 'recursos', label: 'Recursos', color: 'bg-muted text-muted-foreground border-border' },
+  { value: 'contrato', label: 'Contrato', color: 'bg-muted text-muted-foreground border-border' },
   { value: 'outros', label: 'Outros', color: 'bg-muted text-muted-foreground border-border' },
 ];
 

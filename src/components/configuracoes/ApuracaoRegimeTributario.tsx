@@ -331,13 +331,13 @@ export default function ApuracaoRegimeTributario() {
                     </TableCell>
                     <TableCell className="text-xs text-center">
                       {simplesInfo?.elegivel
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
-                        : <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />}
+                        ? <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
+                        : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
                       {regimeAtual === 'simples_nacional' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'simples_nacional' && regimeAtual !== 'simples_nacional' && (
-                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -353,13 +353,13 @@ export default function ApuracaoRegimeTributario() {
                     </TableCell>
                     <TableCell className="text-xs text-center">
                       {presumidoInfo?.elegivel
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
-                        : <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />}
+                        ? <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
+                        : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
                       {regimeAtual === 'lucro_presumido' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_presumido' && regimeAtual !== 'lucro_presumido' && (
-                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -374,12 +374,12 @@ export default function ApuracaoRegimeTributario() {
                       {lucroRealInfo ? formatBRL(lucroRealInfo.totalMensal) : '—'}
                     </TableCell>
                     <TableCell className="text-xs text-center">
-                      <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
+                      <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
                     </TableCell>
                     <TableCell className="text-center">
                       {regimeAtual === 'lucro_real' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_real' && regimeAtual !== 'lucro_real' && (
-                        <Badge className="text-xs bg-green-500/15 text-green-600">Recomendado</Badge>
+                        <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
                     </TableCell>
                   </TableRow>

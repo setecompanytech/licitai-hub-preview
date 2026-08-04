@@ -15,8 +15,8 @@ export default function ValorChart({ data }: Props) {
         <AreaChart data={data}>
           <defs>
             <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(174, 72%, 40%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(174, 72%, 40%)" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -34,7 +34,7 @@ export default function ValorChart({ data }: Props) {
           <Area
             type="monotone"
             dataKey="valor"
-            stroke="hsl(174, 72%, 40%)"
+            stroke="hsl(var(--chart-1))"
             strokeWidth={2}
             fill="url(#colorValor)"
           />

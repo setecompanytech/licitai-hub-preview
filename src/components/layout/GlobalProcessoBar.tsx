@@ -11,7 +11,7 @@ const HIDDEN_ROUTES = ['/dashboard', '/configuracoes', '/empresas', '/equipe', '
 const statusColor = (s: string | null) => {
   switch (s) {
     case 'proposta': return 'bg-accent/15 text-accent border-accent/30';
-    case 'vencida': case 'homologada': return 'bg-green-500/15 text-green-600 border-green-500/30';
+    case 'vencida': case 'homologada': return 'bg-success/15 text-success border-success/30';
     case 'perdida': return 'bg-destructive/15 text-destructive border-destructive/30';
     case 'em_disputa': return 'bg-warning/15 text-warning border-warning/30';
     default: return 'bg-muted text-muted-foreground border-border';

@@ -17,7 +17,7 @@ interface Stats {
   valorPipeline: number;
 }
 
-const PIE_COLORS = ['hsl(210,80%,55%)', 'hsl(45,90%,55%)', 'hsl(270,60%,55%)', 'hsl(25,85%,55%)', 'hsl(145,65%,45%)', 'hsl(0,70%,55%)'];
+const PIE_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export default function WhatsAppDashboard() {
   const { user } = useAuth();
@@ -71,11 +71,11 @@ export default function WhatsAppDashboard() {
   if (!stats) return null;
 
   const kpis = [
-    { label: 'Conversas', value: stats.totalConversas, sub: `${stats.conversasAbertas} abertas`, icon: MessageSquare, color: 'text-blue-500' },
-    { label: 'Mensagens', value: stats.totalMensagens, sub: 'total trocadas', icon: Send, color: 'text-emerald-500' },
-    { label: 'Leads', value: stats.totalLeads, sub: `${stats.leadsGanhos} ganhos • ${stats.leadsPerdidos} perdidos`, icon: Users, color: 'text-purple-500' },
-    { label: 'Pipeline', value: `R$ ${stats.valorPipeline.toLocaleString('pt-BR')}`, sub: 'em negociação', icon: TrendingUp, color: 'text-amber-500' },
-    { label: 'Campanhas', value: stats.totalCampanhas, sub: `${stats.campanhasExecutadas} executadas`, icon: BarChart3, color: 'text-rose-500' },
+    { label: 'Conversas', value: stats.totalConversas, sub: `${stats.conversasAbertas} abertas`, icon: MessageSquare, color: 'text-muted-foreground' },
+    { label: 'Mensagens', value: stats.totalMensagens, sub: 'total trocadas', icon: Send, color: 'text-muted-foreground' },
+    { label: 'Leads', value: stats.totalLeads, sub: `${stats.leadsGanhos} ganhos • ${stats.leadsPerdidos} perdidos`, icon: Users, color: 'text-muted-foreground' },
+    { label: 'Pipeline', value: `R$ ${stats.valorPipeline.toLocaleString('pt-BR')}`, sub: 'em negociação', icon: TrendingUp, color: 'text-muted-foreground' },
+    { label: 'Campanhas', value: stats.totalCampanhas, sub: `${stats.campanhasExecutadas} executadas`, icon: BarChart3, color: 'text-muted-foreground' },
   ];
 
   return (
@@ -135,12 +135,12 @@ export default function WhatsAppDashboard() {
             <div className="flex-1">
               <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  className="h-full bg-success rounded-full transition-all"
                   style={{ width: `${(stats.leadsGanhos / stats.totalLeads) * 100}%` }}
                 />
               </div>
             </div>
-            <span className="text-lg font-bold text-emerald-600">
+            <span className="text-lg font-bold text-success">
               {((stats.leadsGanhos / stats.totalLeads) * 100).toFixed(1)}%
             </span>
           </div>

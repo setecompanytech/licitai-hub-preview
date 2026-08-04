@@ -42,8 +42,8 @@ export default function MaintenanceGuard({ children }: MaintenanceGuardProps) {
           <PraefectusLogo size="lg" />
         </div>
 
-        <div className="mx-auto w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center">
-          <Wrench className="w-10 h-10 text-amber-500" />
+        <div className="mx-auto w-20 h-20 rounded-2xl bg-warning/10 flex items-center justify-center">
+          <Wrench className="w-10 h-10 text-warning" />
         </div>
 
         <div className="space-y-3">

@@ -1148,7 +1148,7 @@ export default function MuralLicitacoes() {
                         : 'Dados extraídos em tempo real da API oficial do PNCP'}
                     </span>
                     {lic.fonte === 'comprasnet' && (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs ml-1">Compras.gov ✓</Badge>
+                      <Badge className="bg-success/10 text-success border-success/30 text-xs ml-1">Compras.gov ✓</Badge>
                     )}
                     {d && lic.fonte !== 'comprasnet' && <Badge className="bg-success/10 text-success border-success/30 text-xs ml-1">Verificado ✓</Badge>}
                   </p>
@@ -2085,7 +2085,7 @@ export default function MuralLicitacoes() {
             const isDownloading = downloading === lic.id;
             const scoreInfo = scoresMap.get(lic.id);
             const classEmoji: Record<string, string> = { quente: '🔥', urgente: '⚡', premium: '⭐', regional: '📍' };
-            const classCor: Record<string, string> = { quente: 'bg-destructive/10 text-destructive border-destructive/30', urgente: 'bg-warning/10 text-warning border-warning/30', premium: 'bg-yellow-100 text-yellow-800 border-yellow-300', regional: 'bg-info/10 text-info border-info/30' };
+            const classCor: Record<string, string> = { quente: 'bg-destructive/10 text-destructive border-destructive/30', urgente: 'bg-warning/10 text-warning border-warning/30', premium: 'bg-accent/10 text-accent border-accent/30', regional: 'bg-info/10 text-info border-info/30' };
             return (
               <Card
                 key={lic.id}
@@ -2121,13 +2121,13 @@ export default function MuralLicitacoes() {
                     </button>
                     <Badge variant="outline" className={cn('text-xs',
                       lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' :
-                      lic.fonte === 'comprasnet' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                      lic.fonte === 'comprasnet' ? 'bg-success/10 text-success border-success/30' :
                       ''
                     )}>
                       {lic.id.startsWith('ext-') ? '🌐 Externo' : lic.fonte === 'comprasnet' ? '🏛 Compras.gov' : lic.portal}
                     </Badge>
                     {lic.leiBase && lic.leiBase !== '14133' && (
-                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
                         Lei 8.666
                       </Badge>
                     )}

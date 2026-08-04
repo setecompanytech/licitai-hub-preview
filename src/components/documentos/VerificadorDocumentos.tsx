@@ -45,13 +45,13 @@ interface Props {
 }
 
 const categoriaCor: Record<string, string> = {
-  'Habilitação Jurídica': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  'Regularidade Fiscal': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  'Qualificação Técnica': 'bg-violet-500/10 text-violet-600 border-violet-500/20',
-  'Qualif. Econômico-Financeira': 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  'Declarações': 'bg-sky-500/10 text-sky-600 border-sky-500/20',
-  'Proposta': 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-  'Outros': 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+  'Habilitação Jurídica': 'bg-muted text-muted-foreground border-border',
+  'Regularidade Fiscal': 'bg-muted text-muted-foreground border-border',
+  'Qualificação Técnica': 'bg-muted text-muted-foreground border-border',
+  'Qualif. Econômico-Financeira': 'bg-muted text-muted-foreground border-border',
+  'Declarações': 'bg-muted text-muted-foreground border-border',
+  'Proposta': 'bg-muted text-muted-foreground border-border',
+  'Outros': 'bg-muted text-muted-foreground border-border',
 };
 
 export default function VerificadorDocumentos({ editalTexto, licitacaoId, licitacaoNumero }: Props) {

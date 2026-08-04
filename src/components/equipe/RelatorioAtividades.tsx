@@ -106,12 +106,12 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
 
   const getModuloBadgeColor = (modulo: string) => {
     const colors: Record<string, string> = {
-      juridico: 'bg-blue-500/15 text-blue-600',
-      contabil: 'bg-emerald-500/15 text-emerald-600',
-      licitacoes: 'bg-amber-500/15 text-amber-600',
-      documentos: 'bg-purple-500/15 text-purple-600',
-      precificacao: 'bg-orange-500/15 text-orange-600',
-      propostas: 'bg-pink-500/15 text-pink-600',
+      juridico: 'bg-muted text-muted-foreground',
+      contabil: 'bg-muted text-muted-foreground',
+      licitacoes: 'bg-muted text-muted-foreground',
+      documentos: 'bg-muted text-muted-foreground',
+      precificacao: 'bg-muted text-muted-foreground',
+      propostas: 'bg-muted text-muted-foreground',
     };
     return colors[modulo] || 'bg-muted text-muted-foreground';
   };

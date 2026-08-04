@@ -21,9 +21,9 @@ const TIPO_COMISSAO: Record<string, { label: string; desc: string }> = {
 };
 
 const STATUS_LANCAMENTO: Record<string, { label: string; color: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-amber-500/15 text-amber-600' },
-  aprovado: { label: 'Aprovado', color: 'bg-blue-500/15 text-blue-600' },
-  pago: { label: 'Pago', color: 'bg-emerald-500/15 text-emerald-600' },
+  pendente: { label: 'Pendente', color: 'bg-warning/15 text-warning' },
+  aprovado: { label: 'Aprovado', color: 'bg-info/15 text-info' },
+  pago: { label: 'Pago', color: 'bg-success/15 text-success' },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/15 text-destructive' },
   rejeitado: { label: 'Rejeitado', color: 'bg-destructive/15 text-destructive' },
 };
@@ -207,15 +207,15 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card rounded-lg border border-border/50 p-3 text-center">
           <p className="text-xs text-muted-foreground">Pendente</p>
-          <p className="text-lg font-bold text-amber-600">{fmt(lancamentos.filter(l => l.status === 'pendente').reduce((s, l) => s + l.valor_comissao, 0))}</p>
+          <p className="text-lg font-bold text-warning">{fmt(lancamentos.filter(l => l.status === 'pendente').reduce((s, l) => s + l.valor_comissao, 0))}</p>
         </div>
         <div className="bg-card rounded-lg border border-border/50 p-3 text-center">
           <p className="text-xs text-muted-foreground">Aprovado</p>
-          <p className="text-lg font-bold text-blue-600">{fmt(lancamentos.filter(l => l.status === 'aprovado').reduce((s, l) => s + l.valor_comissao, 0))}</p>
+          <p className="text-lg font-bold text-info">{fmt(lancamentos.filter(l => l.status === 'aprovado').reduce((s, l) => s + l.valor_comissao, 0))}</p>
         </div>
         <div className="bg-card rounded-lg border border-border/50 p-3 text-center">
           <p className="text-xs text-muted-foreground">Pago</p>
-          <p className="text-lg font-bold text-emerald-600">{fmt(lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_comissao, 0))}</p>
+          <p className="text-lg font-bold text-success">{fmt(lancamentos.filter(l => l.status === 'pago').reduce((s, l) => s + l.valor_comissao, 0))}</p>
         </div>
         <div className="bg-card rounded-lg border border-border/50 p-3 text-center">
           <p className="text-xs text-muted-foreground">Colaboradores</p>
@@ -248,8 +248,8 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   <p className="text-xs text-muted-foreground">Total comissões</p>
                   <p className="font-bold text-accent">{fmt(r.total)}</p>
                   <div className="flex gap-2 text-xs mt-0.5">
-                    <span className="text-amber-600">P: {fmt(r.totalPendente)}</span>
-                    <span className="text-emerald-600">Pg: {fmt(r.totalPago)}</span>
+                    <span className="text-warning">P: {fmt(r.totalPendente)}</span>
+                    <span className="text-success">Pg: {fmt(r.totalPago)}</span>
                   </div>
                 </div>
               </div>
@@ -323,7 +323,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   <span>{c.visibilidade_publica ? 'Visível p/ equipe' : 'Somente admin'}</span>
                 </div>
               </div>
-              <Badge className={c.ativo ? 'bg-emerald-500/15 text-emerald-600' : 'bg-muted text-muted-foreground'}>
+              <Badge className={c.ativo ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}>
                 {c.ativo ? 'Ativo' : 'Inativo'}
               </Badge>
             </div>

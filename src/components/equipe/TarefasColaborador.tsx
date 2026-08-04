@@ -52,15 +52,15 @@ type Licitacao = {
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   baixa: { label: 'Baixa', color: 'bg-muted text-muted-foreground', icon: Clock },
-  media: { label: 'Média', color: 'bg-blue-500/15 text-blue-600', icon: Clock },
-  alta: { label: 'Alta', color: 'bg-amber-500/15 text-amber-600', icon: AlertTriangle },
+  media: { label: 'Média', color: 'bg-info/15 text-info', icon: Clock },
+  alta: { label: 'Alta', color: 'bg-warning/15 text-warning', icon: AlertTriangle },
   urgente: { label: 'Urgente', color: 'bg-destructive/15 text-destructive', icon: AlertTriangle },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-muted text-muted-foreground' },
-  em_andamento: { label: 'Em andamento', color: 'bg-blue-500/15 text-blue-600' },
-  concluida: { label: 'Concluída', color: 'bg-emerald-500/15 text-emerald-600' },
+  em_andamento: { label: 'Em andamento', color: 'bg-info/15 text-info' },
+  concluida: { label: 'Concluída', color: 'bg-success/15 text-success' },
   cancelada: { label: 'Cancelada', color: 'bg-destructive/15 text-destructive' },
 };
 
@@ -311,7 +311,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                           onClick={() => handleToggleSubTarefa(sub.id, sub.status)}
                           className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
                             sub.status === 'concluida'
-                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                              ? 'bg-success border-success text-success-foreground'
                               : 'border-muted-foreground/40 hover:border-accent'
                           }`}
                         >

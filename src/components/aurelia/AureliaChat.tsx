@@ -123,7 +123,7 @@ export default function AureliaChat() {
               <span className="text-xs font-bold">A</span>
             </div>
             {hasNotification && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
             )}
           </motion.button>
         )}
@@ -160,7 +160,7 @@ export default function AureliaChat() {
                 <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-accent" title="Nova consulta">
                   <Minimize2 className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-red-400">
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-destructive">
                   <X className="w-4 h-4" />
                 </Button>
               </div>

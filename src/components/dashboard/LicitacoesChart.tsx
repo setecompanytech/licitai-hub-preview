@@ -22,9 +22,9 @@ export default function LicitacoesChart({ data }: Props) {
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="vitorias" name="Vitórias" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="derrotas" name="Derrotas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="propostas" name="Propostas" fill="hsl(210, 100%, 40%)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="vitorias" name="Vitórias" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="derrotas" name="Derrotas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="propostas" name="Propostas" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

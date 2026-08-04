@@ -57,10 +57,10 @@ type SetorKey = 'setor_licitacoes' | 'setor_juridico' | 'setor_financeiro' | 'se
 type TelefoneKey = 'telefone_licitacoes' | 'telefone_juridico' | 'telefone_financeiro' | 'telefone_documentos';
 
 const SETORES = [
-  { key: 'setor_licitacoes' as SetorKey, telefoneKey: 'telefone_licitacoes' as TelefoneKey, label: 'Licitações', desc: 'Novos editais, prazos, resultados', icon: Gavel, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-  { key: 'setor_juridico' as SetorKey, telefoneKey: 'telefone_juridico' as TelefoneKey, label: 'Jurídico', desc: 'Impugnações, recursos, pareceres', icon: Scale, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-  { key: 'setor_financeiro' as SetorKey, telefoneKey: 'telefone_financeiro' as TelefoneKey, label: 'Financeiro', desc: 'Empenhos, pagamentos, garantias', icon: DollarSign, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
-  { key: 'setor_documentos' as SetorKey, telefoneKey: 'telefone_documentos' as TelefoneKey, label: 'Documentos', desc: 'Certidões, atestados, habilitação', icon: FileText, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+  { key: 'setor_licitacoes' as SetorKey, telefoneKey: 'telefone_licitacoes' as TelefoneKey, label: 'Licitações', desc: 'Novos editais, prazos, resultados', icon: Gavel, color: 'text-muted-foreground', bgColor: 'bg-muted' },
+  { key: 'setor_juridico' as SetorKey, telefoneKey: 'telefone_juridico' as TelefoneKey, label: 'Jurídico', desc: 'Impugnações, recursos, pareceres', icon: Scale, color: 'text-muted-foreground', bgColor: 'bg-muted' },
+  { key: 'setor_financeiro' as SetorKey, telefoneKey: 'telefone_financeiro' as TelefoneKey, label: 'Financeiro', desc: 'Empenhos, pagamentos, garantias', icon: DollarSign, color: 'text-muted-foreground', bgColor: 'bg-muted' },
+  { key: 'setor_documentos' as SetorKey, telefoneKey: 'telefone_documentos' as TelefoneKey, label: 'Documentos', desc: 'Certidões, atestados, habilitação', icon: FileText, color: 'text-muted-foreground', bgColor: 'bg-muted' },
 ];
 
 const formatPhone = (value: string) => {
@@ -71,10 +71,10 @@ const formatPhone = (value: string) => {
 };
 
 const setorColorMap: Record<string, string> = {
-  'licitações': 'bg-emerald-500/10 text-emerald-600',
-  'jurídico': 'bg-blue-500/10 text-blue-600',
-  'financeiro': 'bg-amber-500/10 text-amber-600',
-  'documentos': 'bg-purple-500/10 text-purple-600',
+  'licitações': 'bg-muted text-muted-foreground',
+  'jurídico': 'bg-muted text-muted-foreground',
+  'financeiro': 'bg-muted text-muted-foreground',
+  'documentos': 'bg-muted text-muted-foreground',
 };
 
 // ── Component ──

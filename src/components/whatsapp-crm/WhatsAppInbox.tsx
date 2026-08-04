@@ -185,10 +185,10 @@ export default function WhatsAppInbox() {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const setorColor: Record<string, string> = {
-    'licitações': 'bg-emerald-500/10 text-emerald-600',
-    'jurídico': 'bg-blue-500/10 text-blue-600',
-    'financeiro': 'bg-amber-500/10 text-amber-600',
-    'documentos': 'bg-purple-500/10 text-purple-600',
+    'licitações': 'bg-muted text-muted-foreground',
+    'jurídico': 'bg-muted text-muted-foreground',
+    'financeiro': 'bg-muted text-muted-foreground',
+    'documentos': 'bg-muted text-muted-foreground',
   };
 
   return (
@@ -295,11 +295,11 @@ export default function WhatsAppInbox() {
                 {mensagens.map(m => (
                   <div key={m.id} className={`flex ${m.direcao === 'saida' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${m.direcao === 'saida'
-                      ? 'bg-emerald-600 text-white rounded-br-md'
+                      ? 'bg-accent text-accent-foreground rounded-br-md'
                       : 'bg-muted rounded-bl-md'
                     }`}>
                       <p className="text-sm whitespace-pre-wrap">{m.conteudo}</p>
-                      <div className={`flex items-center gap-1 mt-1 ${m.direcao === 'saida' ? 'text-emerald-200' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1 mt-1 ${m.direcao === 'saida' ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
                         <Clock className="w-3 h-3" />
                         <span className="text-xs">
                           {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -333,7 +333,7 @@ export default function WhatsAppInbox() {
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   className="flex-1"
                 />
-                <Button size="icon" onClick={handleSend} disabled={sending || !novaMensagem.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 w-9">
+                <Button size="icon" onClick={handleSend} disabled={sending || !novaMensagem.trim()} className="bg-accent hover:bg-accent/90 text-accent-foreground h-9 w-9">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>

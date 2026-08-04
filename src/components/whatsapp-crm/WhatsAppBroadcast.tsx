@@ -216,7 +216,7 @@ export default function WhatsAppBroadcast() {
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" />{c.total_destinatarios} destinatários</span>
                     {c.status === 'executada' && (
                       <>
-                        <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="w-3 h-3" />{c.enviados || c.total_destinatarios} enviados</span>
+                        <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-3 h-3" />{c.enviados || c.total_destinatarios} enviados</span>
                         {c.erros > 0 && <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3 h-3" />{c.erros} erros</span>}
                       </>
                     )}
