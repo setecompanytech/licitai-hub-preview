@@ -289,9 +289,9 @@ export default function FinAtividadeUsuarios() {
 }
 
 function KpiCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "warning" | "danger" }) {
-  const cor = tone === "success" ? "text-emerald-600 dark:text-emerald-400"
-    : tone === "warning" ? "text-amber-600 dark:text-amber-400"
-    : tone === "danger" ? "text-rose-600 dark:text-rose-400"
+  const cor = tone === "success" ? "text-success"
+    : tone === "warning" ? "text-warning"
+    : tone === "danger" ? "text-destructive"
     : "text-foreground";
   return (
     <Card>

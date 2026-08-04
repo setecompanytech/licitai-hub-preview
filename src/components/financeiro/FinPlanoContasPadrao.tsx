@@ -18,10 +18,10 @@ interface PC {
 }
 
 const TIPO_COLOR: Record<string, string> = {
-  receita: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  custo: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  despesa: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-  imposto: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  receita: "bg-success/15 text-success border-success/30",
+  custo: "bg-warning/15 text-warning border-warning/30",
+  despesa: "bg-destructive/15 text-destructive border-destructive/30",
+  imposto: "bg-info/15 text-info border-info/30",
 };
 
 export default function FinPlanoContasPadrao() {

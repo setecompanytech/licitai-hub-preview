@@ -77,7 +77,7 @@ export default function FinOCRDocumentos() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <CheckCircle2 className="w-5 h-5 text-success" />
               Dados extraídos
               {motor && <Badge variant="outline">{motor}</Badge>}
               {resultado.confianca != null && (

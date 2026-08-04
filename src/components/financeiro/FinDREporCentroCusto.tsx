@@ -167,7 +167,7 @@ function KPI({
   label, value, muted, accent, hint,
 }: { label: string; value: string; muted?: boolean; accent?: "positive" | "negative"; hint?: string }) {
   const accentClass =
-    accent === "positive" ? "text-emerald-600 dark:text-emerald-400" :
+    accent === "positive" ? "text-success" :
     accent === "negative" ? "text-destructive" : "";
   return (
     <div className="rounded-md border p-3 space-y-1">

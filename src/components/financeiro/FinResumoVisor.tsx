@@ -237,8 +237,8 @@ export default function FinResumoVisor() {
 function CardHoje({ tipo, qtd, total, atraso }: { tipo: "pagar" | "receber"; qtd: number; total: number; atraso: number }) {
   const isPagar = tipo === "pagar";
   const Icon = isPagar ? ArrowUpCircle : ArrowDownCircle;
-  const cor = isPagar ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400";
-  const bgAccent = isPagar ? "bg-rose-50 dark:bg-rose-950/30" : "bg-emerald-50 dark:bg-emerald-950/30";
+  const cor = isPagar ? "text-destructive" : "text-success";
+  const bgAccent = isPagar ? "bg-destructive/10" : "bg-success/10";
 
   return (
     <Card className={`overflow-hidden ${bgAccent}`}>
@@ -271,9 +271,9 @@ function CardHoje({ tipo, qtd, total, atraso }: { tipo: "pagar" | "receber"; qtd
 function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.ElementType; label: string; value: string; hint?: string; tone: "default" | "success" | "warning" | "danger" }) {
   const cor = {
     default: "text-foreground",
-    success: "text-emerald-600 dark:text-emerald-400",
-    warning: "text-amber-600 dark:text-amber-400",
-    danger: "text-rose-600 dark:text-rose-400",
+    success: "text-success",
+    warning: "text-warning",
+    danger: "text-destructive",
   }[tone];
   return (
     <Card>
@@ -290,8 +290,8 @@ function IndicadorCard({ icon: Icon, label, value, hint, tone }: { icon: React.E
 }
 
 function TopAtrasosCard({ titulo, itens, tipo }: { titulo: string; itens: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>; tipo: "pagar" | "receber" }) {
-  const cor = tipo === "pagar" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400";
-  const bg = tipo === "pagar" ? "bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300" : "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300";
+  const cor = tipo === "pagar" ? "text-destructive" : "text-success";
+  const bg = tipo === "pagar" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success";
 
   return (
     <Card>
@@ -388,13 +388,13 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
                     {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
                     <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
                       <div
-                        className={negativo ? "h-full bg-rose-500" : "h-full bg-primary"}
+                        className={negativo ? "h-full bg-destructive" : "h-full bg-primary"}
                         style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
                       />
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                    <div className={`text-sm font-semibold tabular-nums ${negativo ? "text-destructive" : "text-foreground"}`}>
                       {formatBRL(c.saldoAtual)}
                     </div>
                     {saldoTotal > 0 && !negativo && (
@@ -406,7 +406,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
             })}
             <li className="flex items-center justify-between px-5 py-3 bg-muted/30 font-medium">
               <span className="text-sm">Saldo consolidado</span>
-              <span className={`text-sm tabular-nums ${saldoTotal < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+              <span className={`text-sm tabular-nums ${saldoTotal < 0 ? "text-destructive" : "text-foreground"}`}>
                 {formatBRL(saldoTotal)}
               </span>
             </li>

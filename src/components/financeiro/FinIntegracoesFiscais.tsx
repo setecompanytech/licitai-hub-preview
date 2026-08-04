@@ -162,9 +162,9 @@ export default function FinIntegracoesFiscais() {
                         <TableCell>
                           {a.ultimo_status ? (
                             <Badge variant="outline" className={
-                              a.ultimo_status === "sucesso" ? "bg-emerald-500/15 text-emerald-300" :
-                              a.ultimo_status === "configuracao_pendente" ? "bg-amber-500/15 text-amber-300" :
-                              "bg-rose-500/15 text-rose-300"
+                              a.ultimo_status === "sucesso" ? "bg-success/15 text-success" :
+                              a.ultimo_status === "configuracao_pendente" ? "bg-warning/15 text-warning" :
+                              "bg-destructive/15 text-destructive"
                             }>{a.ultimo_status}</Badge>
                           ) : <span className="text-xs text-muted-foreground">aguardando</span>}
                         </TableCell>
@@ -269,7 +269,7 @@ export default function FinIntegracoesFiscais() {
                           <TableCell className="text-xs uppercase">{ap.tributo}</TableCell>
                           <TableCell className="text-right font-mono text-xs">R$ {Number(ap.valor_devido).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right font-mono text-xs">R$ {Number(ap.valor_pago).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className={`text-right font-mono text-xs ${Math.abs(div) > 0.01 ? "text-rose-400" : "text-emerald-400"}`}>
+                          <TableCell className={`text-right font-mono text-xs ${Math.abs(div) > 0.01 ? "text-destructive" : "text-success"}`}>
                             R$ {div.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell><Badge variant="outline" className="capitalize">{ap.status}</Badge></TableCell>

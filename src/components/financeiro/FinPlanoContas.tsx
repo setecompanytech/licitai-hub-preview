@@ -35,13 +35,13 @@ const NATUREZA_LABEL: Record<string, string> = {
 };
 
 const NATUREZA_COLOR: Record<string, string> = {
-  ativo: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  passivo: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
-  pl: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
-  receita: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  despesa: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  custo: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  apuracao: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
+  ativo: "bg-info/10 text-info",
+  passivo: "bg-warning/10 text-warning",
+  pl: "bg-muted text-muted-foreground",
+  receita: "bg-success/10 text-success",
+  despesa: "bg-destructive/10 text-destructive",
+  custo: "bg-warning/10 text-warning",
+  apuracao: "bg-muted text-muted-foreground",
 };
 
 export default function FinPlanoContas() {

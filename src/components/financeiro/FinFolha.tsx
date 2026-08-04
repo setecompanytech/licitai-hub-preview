@@ -215,7 +215,7 @@ function ProcessamentoTab() {
                   <TableCell className="text-right font-mono">{fmt(c.total_proventos)}</TableCell>
                   <TableCell className="text-right font-mono text-destructive">{fmt(c.total_descontos)}</TableCell>
                   <TableCell className="text-right font-mono font-semibold">{fmt(c.total_liquido)}</TableCell>
-                  <TableCell className="text-right font-mono text-orange-600">{fmt(c.total_encargos)}</TableCell>
+                  <TableCell className="text-right font-mono text-warning">{fmt(c.total_encargos)}</TableCell>
                   <TableCell><Button size="sm" variant="ghost">Ver</Button></TableCell>
                 </TableRow>
               ))}
@@ -248,7 +248,7 @@ function ProcessamentoTab() {
                     <TableCell className="text-right font-mono">{fmt(h.total_proventos)}</TableCell>
                     <TableCell className="text-right font-mono">{fmt(h.valor_inss)}</TableCell>
                     <TableCell className="text-right font-mono">{fmt(h.valor_irrf)}</TableCell>
-                    <TableCell className="text-right font-mono text-blue-600">{fmt(h.valor_fgts)}</TableCell>
+                    <TableCell className="text-right font-mono text-info">{fmt(h.valor_fgts)}</TableCell>
                     <TableCell className="text-right font-mono font-semibold">{fmt(h.total_liquido)}</TableCell>
                   </TableRow>
                 ))}

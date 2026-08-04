@@ -62,14 +62,14 @@ function corItem(l: LancamentoCal): string {
 
   if (l.tipo === "a_receber") {
     // Verde — entradas
-    if (pago) return "bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 font-semibold";
-    if (atrasado) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-600 border-dashed";
-    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40";
+    if (pago) return "bg-success/25 text-success border-success/50 font-semibold";
+    if (atrasado) return "bg-success/10 text-success border-success border-dashed";
+    return "bg-success/15 text-success border-success/40";
   }
   // Vermelho — saídas (a_pagar e demais)
-  if (pago) return "bg-rose-500/25 text-rose-700 dark:text-rose-300 border-rose-500/50 font-semibold";
-  if (atrasado) return "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-600 border-dashed";
-  return "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/40";
+  if (pago) return "bg-destructive/25 text-destructive border-destructive/50 font-semibold";
+  if (atrasado) return "bg-destructive/10 text-destructive border-destructive border-dashed";
+  return "bg-destructive/15 text-destructive border-destructive/40";
 }
 
 export default function FinCalendarioFinanceiro() {
@@ -315,14 +315,14 @@ export default function FinCalendarioFinanceiro() {
                           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => novoNoDia(d, "a_pagar")}
-                              className="text-rose-500 hover:text-rose-700"
+                              className="text-destructive hover:text-destructive/80"
                               title="Novo a pagar"
                             >
                               <ArrowUpCircle className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => novoNoDia(d, "a_receber")}
-                              className="text-emerald-500 hover:text-emerald-700"
+                              className="text-success hover:text-success/80"
                               title="Novo a receber"
                             >
                               <ArrowDownCircle className="w-3.5 h-3.5" />
@@ -336,14 +336,14 @@ export default function FinCalendarioFinanceiro() {
                         <div className="flex h-1 rounded-full overflow-hidden bg-muted">
                           {totalReceber > 0 && (
                             <div
-                              className="bg-emerald-500"
+                              className="bg-success"
                               style={{ width: `${(totalReceber / (totalPagar + totalReceber)) * 100}%` }}
                               title={`Receber: ${formatBRL(totalReceber)}`}
                             />
                           )}
                           {totalPagar > 0 && (
                             <div
-                              className="bg-rose-500"
+                              className="bg-destructive"
                               style={{ width: `${(totalPagar / (totalPagar + totalReceber)) * 100}%` }}
                               title={`Pagar: ${formatBRL(totalPagar)}`}
                             />
@@ -400,9 +400,9 @@ export default function FinCalendarioFinanceiro() {
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-medium truncate flex items-center gap-1">
                                           {l.tipo === "a_pagar" ? (
-                                            <ArrowUpCircle className="w-3 h-3 text-rose-500" />
+                                            <ArrowUpCircle className="w-3 h-3 text-destructive" />
                                           ) : (
-                                            <ArrowDownCircle className="w-3 h-3 text-emerald-500" />
+                                            <ArrowDownCircle className="w-3 h-3 text-success" />
                                           )}
                                           {l.descricao}
                                         </span>
@@ -428,7 +428,7 @@ export default function FinCalendarioFinanceiro() {
                       {/* Saldo do dia */}
                       {!foraMes && (totalPagar > 0 || totalReceber > 0) && (
                         <div className={`text-xs tabular-nums text-right border-t pt-0.5 font-medium ${
-                          saldoDia >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                          saldoDia >= 0 ? "text-success" : "text-destructive"
                         }`}>
                           {saldoDia >= 0 ? "+" : ""}{formatBRL(saldoDia)}
                         </div>
@@ -441,21 +441,21 @@ export default function FinCalendarioFinanceiro() {
               {/* Legenda */}
               <div className="flex flex-wrap items-center gap-3 mt-3 px-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/15 border border-emerald-500/40" />
-                  <ArrowDownCircle className="w-3 h-3 text-emerald-600" />A receber (entrada)
+                  <span className="w-2.5 h-2.5 rounded-sm bg-success/15 border border-success/40" />
+                  <ArrowDownCircle className="w-3 h-3 text-success" />A receber (entrada)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/15 border border-rose-500/40" />
-                  <ArrowUpCircle className="w-3 h-3 text-rose-600" />A pagar (saída)
+                  <span className="w-2.5 h-2.5 rounded-sm bg-destructive/15 border border-destructive/40" />
+                  <ArrowUpCircle className="w-3 h-3 text-destructive" />A pagar (saída)
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/25 border border-emerald-500/50" />Recebido
+                  <span className="w-2.5 h-2.5 rounded-sm bg-success/25 border border-success/50" />Recebido
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/25 border border-rose-500/50" />Pago
+                  <span className="w-2.5 h-2.5 rounded-sm bg-destructive/25 border border-destructive/50" />Pago
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-sm border border-dashed border-rose-600" />Vencido
+                  <span className="w-2.5 h-2.5 rounded-sm border border-dashed border-destructive" />Vencido
                 </span>
               </div>
             </>
@@ -485,8 +485,8 @@ function KpiMini({
   tone: "success" | "danger" | "muted";
 }) {
   const cor = {
-    success: "text-emerald-600 dark:text-emerald-400",
-    danger: "text-rose-600 dark:text-rose-400",
+    success: "text-success",
+    danger: "text-destructive",
     muted: "text-muted-foreground",
   }[tone];
   return (

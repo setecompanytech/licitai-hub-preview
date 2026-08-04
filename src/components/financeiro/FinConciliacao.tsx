@@ -751,7 +751,7 @@ export default function FinConciliacao() {
                         >
                           <div className="min-w-[220px] flex-1">
                             <div className="flex items-center gap-2">
-                              <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-emerald-500" : "text-primary"}`} />
+                              <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-success" : "text-primary"}`} />
                               <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-0.5 pl-6">
@@ -765,13 +765,13 @@ export default function FinConciliacao() {
                               <span className="text-muted-foreground tabular-nums">
                                 {conciliados}/{total}
                               </span>
-                              <span className={`tabular-nums ${concluido ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                              <span className={`tabular-nums ${concluido ? "text-success" : "text-muted-foreground"}`}>
                                 {pct}%
                               </span>
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${concluido ? "bg-emerald-500" : "bg-primary"}`}
+                                className={`h-full rounded-full transition-all ${concluido ? "bg-success" : "bg-primary"}`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
@@ -779,12 +779,12 @@ export default function FinConciliacao() {
 
                           <div className="w-[130px] text-right">
                             {concluido ? (
-                              <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                              <Badge variant="outline" className="text-xs border-success/40 text-success">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />Conciliado
                               </Badge>
                             ) : (
                               <>
-                                <div className="text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                                <div className="text-sm font-semibold tabular-nums text-warning">
                                   {pendentes} pendente{pendentes === 1 ? "" : "s"}
                                 </div>
                                 {!!r?.valor_pendente && (
@@ -934,13 +934,13 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
                   <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${saldoExtrato >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                <span className={`text-base font-semibold tabular-nums ${saldoExtrato >= 0 ? "text-success" : "text-destructive"}`}>
                   {formatBRL(saldoExtrato)}
                 </span>
                 <div className="text-xs text-muted-foreground">
-                  <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(resumoMovimentos.entradas)}</span>
+                  <span className="text-success">+{formatBRL(resumoMovimentos.entradas)}</span>
                   {" / "}
-                  <span className="text-rose-600 dark:text-rose-400">-{formatBRL(resumoMovimentos.saidas)}</span>
+                  <span className="text-destructive">-{formatBRL(resumoMovimentos.saidas)}</span>
                 </div>
               </div>
 
@@ -950,21 +950,21 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
                   <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400"}`}>
+                <span className={`text-base font-semibold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-destructive"}`}>
                   {formatBRL(saldoSistema)}
                 </span>
                 <div className="text-xs text-muted-foreground">Lançamentos da conta</div>
               </div>
 
               {/* 3. Diferença */}
-              <div className={`rounded-lg border p-3 space-y-1 ${emEquilibrio ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}>
+              <div className={`rounded-lg border p-3 space-y-1 ${emEquilibrio ? "bg-success/10 border-success/30" : "bg-warning/10 border-warning/30"}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
                   {emEquilibrio
-                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    : <XCircle className="w-3.5 h-3.5 text-amber-500" />}
+                    ? <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                    : <XCircle className="w-3.5 h-3.5 text-warning" />}
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${emEquilibrio ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                <span className={`text-base font-semibold tabular-nums ${emEquilibrio ? "text-success" : "text-warning"}`}>
                   {emEquilibrio ? "Em dia" : formatBRL(Math.abs(diferenca))}
                 </span>
                 <div className="text-xs text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
@@ -974,14 +974,14 @@ export default function FinConciliacao() {
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                 </div>
                 <span className="text-base font-semibold tabular-nums">
                   {resumoGeral.conciliados}
                   <span className="text-sm text-muted-foreground font-normal"> / {resumoGeral.total}</span>
                 </span>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                  <div className="h-full rounded-full bg-success transition-all" style={{ width: `${pct}%` }} />
                 </div>
               </div>
 
@@ -989,9 +989,9 @@ export default function FinConciliacao() {
               <div className="rounded-lg border bg-card p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                  <Clock className="w-3.5 h-3.5 text-warning" />
                 </div>
-                <span className="text-base font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                <span className="text-base font-semibold tabular-nums text-warning">
                   {resumoGeral.pendentes}
                 </span>
                 <div className="text-xs text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
@@ -1007,9 +1007,9 @@ export default function FinConciliacao() {
                   {formatBRL(valorPendente)}
                 </span>
                 <div className="text-xs text-muted-foreground">
-                  <span className="text-emerald-600 dark:text-emerald-400">+{formatBRL(entradasPendentes)}</span>
+                  <span className="text-success">+{formatBRL(entradasPendentes)}</span>
                   {" / "}
-                  <span className="text-rose-600 dark:text-rose-400">-{formatBRL(saidasPendentes)}</span>
+                  <span className="text-destructive">-{formatBRL(saidasPendentes)}</span>
                 </div>
               </div>
             </div>
@@ -1146,7 +1146,7 @@ export default function FinConciliacao() {
                                 <div className="font-medium truncate max-w-[220px]">{mov.descricao}</div>
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   {formatDate(mov.data_movimento)} ·{" "}
-                                  <span className={Number(mov.valor) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                                  <span className={Number(mov.valor) >= 0 ? "text-success" : "text-destructive"}>
                                     {formatBRL(Number(mov.valor))}
                                   </span>
                                 </div>
@@ -1359,10 +1359,10 @@ export default function FinConciliacao() {
                 <span className="font-semibold text-foreground">{formatDate(group.date)}</span>
                 <div className="flex-1 h-px bg-border/60" />
                 {group.creditos > 0 && (
-                  <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">+{formatBRL(group.creditos)}</span>
+                  <span className="text-success tabular-nums">+{formatBRL(group.creditos)}</span>
                 )}
                 {group.debitos > 0 && (
-                  <span className="text-rose-600 dark:text-rose-400 tabular-nums">-{formatBRL(group.debitos)}</span>
+                  <span className="text-destructive tabular-nums">-{formatBRL(group.debitos)}</span>
                 )}
                 <span className="text-muted-foreground">{group.movimentos.length} mov.</span>
               </div>
@@ -1383,12 +1383,12 @@ export default function FinConciliacao() {
                 };
                 const movSugs = movSugestoesMap.get(m.id) ?? [];
                 const borderColor = m.conciliado
-                  ? "border-l-emerald-400"
+                  ? "border-l-success"
                   : m.ignorado
                   ? "border-l-muted-foreground/20"
                   : movSugs.length > 0
                   ? "border-l-primary"
-                  : "border-l-amber-400";
+                  : "border-l-warning";
 
                 return (
                   <div
@@ -1416,7 +1416,7 @@ export default function FinConciliacao() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium truncate">{m.descricao}</span>
-                          <span className={`text-sm font-semibold tabular-nums shrink-0 ${isCredito ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          <span className={`text-sm font-semibold tabular-nums shrink-0 ${isCredito ? "text-success" : "text-destructive"}`}>
                             {isCredito ? "+" : ""}{formatBRL(Number(m.valor))}
                           </span>
                         </div>
@@ -1434,7 +1434,7 @@ export default function FinConciliacao() {
                     <div className="flex items-center gap-2 px-4 py-3 min-w-0">
                       {m.conciliado && m.lancamento ? (
                         <>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{m.lancamento.descricao}</div>
                             <div className="text-xs text-muted-foreground">
@@ -1493,12 +1493,12 @@ export default function FinConciliacao() {
                                       {aiClassifs[m.id].tipo === "a_pagar" ? "Conta a Pagar" : aiClassifs[m.id].tipo === "a_receber" ? "Conta a Receber" : "Movimentação"}
                                     </Badge>
                                     {aiClassifs[m.id].categoria_nome && (
-                                      <Badge variant="outline" className="text-xs px-1.5 h-4 border-blue-300 text-blue-600 dark:text-blue-400">
+                                      <Badge variant="outline" className="text-xs px-1.5 h-4 text-muted-foreground">
                                         {aiClassifs[m.id].categoria_nome}
                                       </Badge>
                                     )}
                                     {aiClassifs[m.id].pessoa_nome && (
-                                      <Badge variant="outline" className="text-xs px-1.5 h-4 border-violet-300 text-violet-600 dark:text-violet-400">
+                                      <Badge variant="outline" className="text-xs px-1.5 h-4 text-muted-foreground">
                                         {aiClassifs[m.id].pessoa_nome}
                                       </Badge>
                                     )}
@@ -1701,9 +1701,9 @@ function StatCard({
 }) {
   const cls = {
     default: "text-foreground",
-    success: "text-emerald-600 dark:text-emerald-400",
-    warning: "text-amber-600 dark:text-amber-400",
-    danger: "text-rose-600 dark:text-rose-400",
+    success: "text-success",
+    warning: "text-warning",
+    danger: "text-destructive",
     muted: "text-muted-foreground",
   }[tone];
   return (
@@ -1720,12 +1720,12 @@ function StatCard({
 function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
   const barColor =
     score >= 90
-      ? "bg-emerald-500"
+      ? "bg-success"
       : score >= 75
       ? "bg-primary"
       : score >= 60
-      ? "bg-amber-500"
-      : "bg-rose-500";
+      ? "bg-warning"
+      : "bg-destructive";
   const label = score >= 90 ? "Alta" : score >= 75 ? "Boa" : score >= 60 ? "Média" : "Baixa";
   return (
     <div className="w-[64px] space-y-1">
@@ -1759,7 +1759,7 @@ function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
   return (
     <div className="flex flex-wrap gap-1">
       {valor && (
-        <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+        <Badge variant="outline" className="text-xs border-success/50 text-success">
           Valor exato
         </Badge>
       )}

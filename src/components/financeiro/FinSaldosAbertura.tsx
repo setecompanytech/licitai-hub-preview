@@ -129,8 +129,8 @@ export default function FinSaldosAbertura() {
         </div>
 
         {totais.dif === 0 && (totais.d > 0 || totais.c > 0) ? (
-          <Alert className="border-emerald-500/50 bg-emerald-500/5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <Alert className="border-success/50 bg-success/5">
+            <CheckCircle2 className="w-4 h-4 text-success" />
             <AlertDescription>Balancete em equilíbrio: ΣD = ΣC = {fmt(totais.d)}</AlertDescription>
           </Alert>
         ) : totais.dif !== 0 ? (

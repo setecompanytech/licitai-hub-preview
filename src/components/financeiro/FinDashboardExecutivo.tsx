@@ -44,10 +44,10 @@ type KpiTone = "default" | "success" | "danger" | "warning" | "info";
 
 const toneClasses: Record<KpiTone, { value: string; icon: string; bg: string }> = {
   default: { value: "text-foreground", icon: "text-muted-foreground", bg: "bg-muted/50" },
-  success: { value: "text-emerald-600 dark:text-emerald-400", icon: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
-  danger: { value: "text-rose-600 dark:text-rose-400", icon: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10" },
-  warning: { value: "text-amber-600 dark:text-amber-400", icon: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
-  info: { value: "text-sky-600 dark:text-sky-400", icon: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10" },
+  success: { value: "text-success", icon: "text-success", bg: "bg-success/10" },
+  danger: { value: "text-destructive", icon: "text-destructive", bg: "bg-destructive/10" },
+  warning: { value: "text-warning", icon: "text-warning", bg: "bg-warning/10" },
+  info: { value: "text-info", icon: "text-info", bg: "bg-info/10" },
 };
 
 function KpiCard({
@@ -93,16 +93,16 @@ function KpiCard({
                   className={cn(
                     "w-3 h-3",
                     trendGood === null && "text-muted-foreground",
-                    trendGood === true && "text-emerald-600",
-                    trendGood === false && "text-rose-600"
+                    trendGood === true && "text-success",
+                    trendGood === false && "text-destructive"
                   )}
                 />
                 <span
                   className={cn(
                     "text-xs tabular-nums font-medium",
                     trendGood === null && "text-muted-foreground",
-                    trendGood === true && "text-emerald-600",
-                    trendGood === false && "text-rose-600"
+                    trendGood === true && "text-success",
+                    trendGood === false && "text-destructive"
                   )}
                 >
                   {formatPct(trend.value)}
@@ -298,7 +298,7 @@ export default function FinDashboardExecutivo() {
                       <span className="tabular-nums font-medium">{formatBRL(c.total)}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-emerald-500" style={{ width: `${Math.min(c.perc, 100)}%` }} />
+                      <div className="h-full bg-success" style={{ width: `${Math.min(c.perc, 100)}%` }} />
                     </div>
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{c.perc.toFixed(1)}% do total</p>
                   </li>
@@ -326,7 +326,7 @@ export default function FinDashboardExecutivo() {
                       <span className="tabular-nums font-medium">{formatBRL(f.total)}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-rose-500" style={{ width: `${Math.min(f.perc, 100)}%` }} />
+                      <div className="h-full bg-destructive" style={{ width: `${Math.min(f.perc, 100)}%` }} />
                     </div>
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{f.perc.toFixed(1)}% do total</p>
                   </li>

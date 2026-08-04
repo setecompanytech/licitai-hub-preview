@@ -532,7 +532,7 @@ export default function FinEmissorNFe() {
           <TabsTrigger value="faturas">
             <Package className="w-4 h-4 mr-1.5" />Faturas de pedido
             {pedidosFatura.filter(p => p.status === 'faturar').length > 0 && (
-              <Badge className="ml-1.5 h-4 px-1 text-xs bg-amber-500 text-white border-0">
+              <Badge className="ml-1.5 h-4 px-1 text-xs bg-warning text-warning-foreground border-0">
                 {pedidosFatura.filter(p => p.status === 'faturar').length}
               </Badge>
             )}
@@ -599,7 +599,7 @@ export default function FinEmissorNFe() {
                           <TableCell>
                             <Badge
                               variant={p.status === 'faturado' ? 'default' : 'secondary'}
-                              className={p.status === 'faturar' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-300/50' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-300/50'}
+                              className={p.status === 'faturar' ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}
                             >
                               {p.status === 'faturado' ? 'Faturado' : 'A Faturar'}
                             </Badge>

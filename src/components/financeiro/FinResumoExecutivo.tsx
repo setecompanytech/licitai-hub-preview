@@ -176,9 +176,9 @@ export default function FinResumoExecutivo() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Resultado do mês corrente</h2>
           <table className="w-full text-sm">
             <tbody>
-              <tr className="border-b"><td className="py-2">(+) Receitas realizadas</td><td className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">{formatBRL(data.receitaMes)}</td></tr>
-              <tr className="border-b"><td className="py-2">(−) Despesas realizadas</td><td className="text-right tabular-nums text-rose-600 dark:text-rose-400">({formatBRL(data.despesaMes)})</td></tr>
-              <tr className="border-b-2 border-foreground font-semibold"><td className="py-2">(=) Resultado líquido do mês</td><td className={`text-right tabular-nums ${data.resultadoMes >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{formatBRL(data.resultadoMes)}</td></tr>
+              <tr className="border-b"><td className="py-2">(+) Receitas realizadas</td><td className="text-right tabular-nums text-success">{formatBRL(data.receitaMes)}</td></tr>
+              <tr className="border-b"><td className="py-2">(−) Despesas realizadas</td><td className="text-right tabular-nums text-destructive">({formatBRL(data.despesaMes)})</td></tr>
+              <tr className="border-b-2 border-foreground font-semibold"><td className="py-2">(=) Resultado líquido do mês</td><td className={`text-right tabular-nums ${data.resultadoMes >= 0 ? "text-success" : "text-destructive"}`}>{formatBRL(data.resultadoMes)}</td></tr>
             </tbody>
           </table>
         </section>
@@ -228,10 +228,10 @@ export default function FinResumoExecutivo() {
                       )}
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{formatBRL(Number(c.limite ?? 0))}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"}`}>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
                       {formatBRL(Number(c.saldo_atual ?? 0))}
                     </td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"}`}>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${negativo ? "text-destructive" : "text-info"}`}>
                       {formatBRL(Number(c.saldo_atual ?? 0) + Number(c.limite ?? 0))}
                     </td>
                   </tr>
@@ -282,8 +282,8 @@ export default function FinResumoExecutivo() {
 }
 
 function KpiBox({ label, value, tone }: { label: string; value: number; tone?: "success" | "danger" }) {
-  const cor = tone === "success" ? "text-emerald-600 dark:text-emerald-400"
-    : tone === "danger" ? "text-rose-600 dark:text-rose-400"
+  const cor = tone === "success" ? "text-success"
+    : tone === "danger" ? "text-destructive"
     : "text-foreground";
   return (
     <div className="rounded-md border p-3">
@@ -296,7 +296,7 @@ function KpiBox({ label, value, tone }: { label: string; value: number; tone?: "
 function TabelaLancamentos({ lancs, tipo, total }: { lancs: LancDetalhe[]; tipo: "pagar" | "receber"; total: number }) {
   const labelPessoa = tipo === "pagar" ? "Fornecedor" : "Cliente";
   const labelData = tipo === "pagar" ? "Previsão de Pagamento" : "Previsão de Recebimento";
-  const corValor = tipo === "pagar" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400";
+  const corValor = tipo === "pagar" ? "text-destructive" : "text-success";
 
   if (lancs.length === 0) {
     return <p className="text-xs text-muted-foreground italic py-3">Nenhum lançamento em aberto.</p>;

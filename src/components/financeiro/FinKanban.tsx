@@ -402,7 +402,7 @@ export default function FinKanban({ tipo }: Props) {
               <p className="text-sm text-muted-foreground">
                 Saldo atual {filtroConta !== "todos" ? `· ${contas.find((c) => c.id === filtroConta)?.nome ?? ""}` : "· todas as contas"}
               </p>
-              <p className={cn("text-2xl font-bold tabular-nums", saldoContaAtual >= 0 ? "text-emerald-500" : "text-destructive")}>
+              <p className={cn("text-2xl font-bold tabular-nums", saldoContaAtual >= 0 ? "text-success" : "text-destructive")}>
                 {saldoContaAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>

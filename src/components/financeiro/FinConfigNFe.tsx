@@ -125,7 +125,7 @@ export default function FinConfigNFe() {
               onChange={(e) => setConfig({ ...config, api_token_secundario: e.target.value })}
               placeholder="Senha do .pfx"
             />
-            <p className="text-xs text-amber-500 mt-1">
+            <p className="text-xs text-warning mt-1">
               ⚠ Emissão direta SEFAZ requer upload do certificado A1 e está em fase de habilitação. Use FocusNFe enquanto isso.
             </p>
           </div>

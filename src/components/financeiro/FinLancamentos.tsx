@@ -398,7 +398,7 @@ export default function FinLancamentos() {
                     return (
                       <tr
                         key={l.id}
-                        className={`border-l-2 ${isReceita ? "border-l-emerald-400" : "border-l-rose-400"} hover:bg-muted/20 transition-colors`}
+                        className={`border-l-2 ${isReceita ? "border-l-success" : "border-l-destructive"} hover:bg-muted/20 transition-colors`}
                       >
                         {/* Competência */}
                         <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
@@ -408,7 +408,7 @@ export default function FinLancamentos() {
                         {/* Vencimento */}
                         <td className="px-3 py-2.5 whitespace-nowrap text-xs">
                           {vencDiferente ? (
-                            <span className={isAtrasado ? "text-rose-600 dark:text-rose-400 font-medium" : "text-muted-foreground"}>
+                            <span className={isAtrasado ? "text-destructive font-medium" : "text-muted-foreground"}>
                               {formatDate(l.data_vencimento!)}
                               {isAtrasado && " ⚠"}
                             </span>
@@ -428,7 +428,7 @@ export default function FinLancamentos() {
                             </Badge>
                           )}
                           {isTransferencia && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-700 mt-0.5">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-info border-info/30 mt-0.5">
                               transferência entre contas
                             </Badge>
                           )}
@@ -479,8 +479,8 @@ export default function FinLancamentos() {
                         <td
                           className={`px-3 py-2.5 text-right tabular-nums font-semibold text-sm whitespace-nowrap ${
                             isReceita
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400"
+                              ? "text-success"
+                              : "text-destructive"
                           }`}
                         >
                           {isReceita ? "+" : "−"} {formatBRL(Number(l.valor))}
@@ -590,8 +590,8 @@ function StatCard({
 }) {
   const cls = {
     default: { text: "text-foreground", bg: "bg-primary/10", icon: "text-primary" },
-    success: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: "text-emerald-500" },
-    danger: { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10", icon: "text-rose-500" },
+    success: { text: "text-success", bg: "bg-success/10", icon: "text-success" },
+    danger: { text: "text-destructive", bg: "bg-destructive/10", icon: "text-destructive" },
   }[tone];
 
   return (

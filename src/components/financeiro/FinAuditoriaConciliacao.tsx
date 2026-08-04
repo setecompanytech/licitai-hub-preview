@@ -24,10 +24,10 @@ interface LogRow {
 }
 
 const ACAO_LABEL: Record<string, { label: string; tone: string; icon: any }> = {
-  auto_match: { label: "Auto", tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", icon: ShieldCheck },
-  manual_match: { label: "Manual", tone: "bg-blue-500/15 text-blue-300 border-blue-500/30", icon: History },
-  ai_suggestion: { label: "IA", tone: "bg-violet-500/15 text-violet-300 border-violet-500/30", icon: Sparkles },
-  revert: { label: "Revertido", tone: "bg-rose-500/15 text-rose-300 border-rose-500/30", icon: Undo2 },
+  auto_match: { label: "Auto", tone: "bg-success/15 text-success border-success/30", icon: ShieldCheck },
+  manual_match: { label: "Manual", tone: "bg-info/15 text-info border-info/30", icon: History },
+  ai_suggestion: { label: "IA", tone: "bg-muted text-muted-foreground border-border", icon: Sparkles },
+  revert: { label: "Revertido", tone: "bg-destructive/15 text-destructive border-destructive/30", icon: Undo2 },
 };
 
 export default function FinAuditoriaConciliacao() {

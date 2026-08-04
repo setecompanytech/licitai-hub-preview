@@ -528,7 +528,7 @@ export default function VinculoContratoSelector({
                     "flex gap-2 rounded-md border p-2 text-xs",
                     isError
                       ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                      : "border-warning/40 bg-warning/10 text-warning",
                   )}
                   role="alert"
                 >

@@ -49,7 +49,7 @@ function KpiCard({
     status === "good"
       ? "text-success"
       : status === "warn"
-        ? "text-amber-600 dark:text-amber-400"
+        ? "text-warning"
         : status === "bad"
           ? "text-destructive"
           : "text-foreground";
@@ -75,7 +75,7 @@ function KpiCard({
 function nivelBadge(nivel: CFOInsights["saude_nivel"]) {
   const map = {
     critico: { label: "Crítico", cls: "bg-destructive text-destructive-foreground" },
-    atencao: { label: "Atenção", cls: "bg-amber-500 text-white" },
+    atencao: { label: "Atenção", cls: "bg-warning text-warning-foreground" },
     saudavel: { label: "Saudável", cls: "bg-success text-success-foreground" },
     excelente: { label: "Excelente", cls: "bg-primary text-primary-foreground" },
   };
@@ -355,13 +355,13 @@ export default function FinCFODashboard() {
                 </ul>
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase mb-2 flex items-center gap-1">
+                <h4 className="text-xs font-semibold text-warning uppercase mb-2 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> Pontos de Atenção
                 </h4>
                 <ul className="space-y-1.5">
                   {insights.pontos_atencao.map((p, i) => (
                     <li key={i} className="text-sm flex gap-2">
-                      <span className="text-amber-600 dark:text-amber-400 mt-0.5">!</span>
+                      <span className="text-warning mt-0.5">!</span>
                       <span>{p}</span>
                     </li>
                   ))}

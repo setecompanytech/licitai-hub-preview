@@ -94,7 +94,7 @@ function formatRunway(meses: number | null): { label: string; cor: string } {
 type Cenario = "pessimista" | "realista" | "otimista";
 const CENARIOS: { v: Cenario; l: string; entradaMul: number; saidaMul: number; cor: string }[] = [
   { v: "pessimista", l: "Pessimista", entradaMul: 0.85, saidaMul: 1.10, cor: "hsl(var(--destructive))" },
-  { v: "realista", l: "Realista", entradaMul: 1.00, saidaMul: 1.00, cor: "hsl(var(--accent-foreground))" },
+  { v: "realista", l: "Realista", entradaMul: 1.00, saidaMul: 1.00, cor: "hsl(var(--foreground))" },
   { v: "otimista", l: "Otimista", entradaMul: 1.10, saidaMul: 0.95, cor: "hsl(var(--primary))" },
 ];
 
@@ -253,7 +253,7 @@ export default function FinFluxoCaixa() {
                     type="monotone"
                     dataKey="saldo_acumulado"
                     name="Saldo acumulado"
-                    stroke="hsl(var(--accent-foreground))"
+                    stroke="hsl(var(--chart-2))"
                     strokeWidth={2}
                     dot={false}
                   />

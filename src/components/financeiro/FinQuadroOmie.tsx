@@ -149,7 +149,7 @@ export default function FinQuadroOmie() {
         {/* 2. Contas a Pagar */}
         <CardOmie title="Contas a Pagar" icon={ArrowUpCircle} tone="danger" onOpen={() => navegar("a_pagar")} cta="Incluir">
           <div className="space-y-1">
-            <div className="text-2xl font-semibold tabular-nums text-rose-600 dark:text-rose-400">{formatBRL(data.cp.total)}</div>
+            <div className="text-2xl font-semibold tabular-nums text-destructive">{formatBRL(data.cp.total)}</div>
             <div className="text-xs text-muted-foreground">{data.cp.qtd} conta(s) em aberto</div>
             {data.cp.atraso > 0 && (
               <Badge variant="destructive" className="text-xs mt-1">Em atraso: {formatBRL(data.cp.atraso)}</Badge>
@@ -160,10 +160,10 @@ export default function FinQuadroOmie() {
         {/* 3. Contas a Receber */}
         <CardOmie title="Contas a Receber" icon={ArrowDownCircle} tone="success" onOpen={() => navegar("a_receber")} cta="Incluir">
           <div className="space-y-1">
-            <div className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatBRL(data.cr.total)}</div>
+            <div className="text-2xl font-semibold tabular-nums text-success">{formatBRL(data.cr.total)}</div>
             <div className="text-xs text-muted-foreground">{data.cr.qtd} conta(s) em aberto</div>
             {data.cr.atraso > 0 && (
-              <Badge variant="outline" className="text-xs mt-1 border-amber-500 text-amber-700 dark:text-amber-400">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
+              <Badge variant="outline" className="text-xs mt-1 border-warning text-warning">Em atraso: {formatBRL(data.cr.atraso)}</Badge>
             )}
           </div>
         </CardOmie>
@@ -257,8 +257,8 @@ function CardOmie({
   tone?: "success" | "danger";
   className?: string;
 }) {
-  const accent = tone === "success" ? "text-emerald-600 dark:text-emerald-400"
-    : tone === "danger" ? "text-rose-600 dark:text-rose-400"
+  const accent = tone === "success" ? "text-success"
+    : tone === "danger" ? "text-destructive"
     : "text-primary";
   return (
     <Card className={`group hover:shadow-md transition-shadow ${className ?? ""}`}>
@@ -284,8 +284,8 @@ function CardOmie({
 }
 
 function Linha({ label, valor, tone }: { label: string; valor: number; tone?: "success" | "danger" }) {
-  const cor = tone === "success" ? "text-emerald-600 dark:text-emerald-400"
-    : tone === "danger" ? "text-rose-600 dark:text-rose-400"
+  const cor = tone === "success" ? "text-success"
+    : tone === "danger" ? "text-destructive"
     : "text-foreground";
   return (
     <div className="flex justify-between items-baseline gap-2">

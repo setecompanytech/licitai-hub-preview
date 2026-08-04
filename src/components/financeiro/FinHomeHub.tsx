@@ -91,9 +91,9 @@ const GROUPS = [
 
 const ACCENT_MAP: Record<string, { icon: string; bg: string; ring: string; bar: string }> = {
   primary: { icon: "text-primary", bg: "bg-primary/10", ring: "ring-primary/30", bar: "bg-primary" },
-  blue: { icon: "text-blue-500", bg: "bg-blue-500/10", ring: "ring-blue-500/30", bar: "bg-blue-500" },
-  amber: { icon: "text-amber-500", bg: "bg-amber-500/10", ring: "ring-amber-500/30", bar: "bg-amber-500" },
-  emerald: { icon: "text-emerald-500", bg: "bg-emerald-500/10", ring: "ring-emerald-500/30", bar: "bg-emerald-500" },
+  blue: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
+  amber: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
+  emerald: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
   muted: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
 };
 
@@ -217,7 +217,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl"
         />
         <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 p-5 md:p-6">
           {/* Saldo destaque */}
@@ -225,8 +225,8 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                 </span>
                 Saldo consolidado em tempo real
               </div>
@@ -244,13 +244,13 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                   Projetado para hoje:{" "}
                   <span className={cn(
                     "font-medium tabular-nums",
-                    kpis.saldoProjetado >= kpis.saldo ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+                    kpis.saldoProjetado >= kpis.saldo ? "text-success" : "text-destructive",
                   )}>
                     {formatBRL(kpis.saldoProjetado)}
                   </span>
                   {kpis.saldoProjetado >= kpis.saldo
-                    ? <TrendingUp className="inline w-3 h-3 ml-1 text-emerald-500" />
-                    : <TrendingDown className="inline w-3 h-3 ml-1 text-rose-500" />}
+                    ? <TrendingUp className="inline w-3 h-3 ml-1 text-success" />
+                    : <TrendingDown className="inline w-3 h-3 ml-1 text-destructive" />}
                 </p>
               )}
             </div>
@@ -320,13 +320,13 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
       {/* ============ Alerta de atrasos (contextual) ============ */}
       {kpis && kpis.atrasoTotal > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-2.5 animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="shrink-0 w-7 h-7 rounded-full bg-amber-500/15 flex items-center justify-center">
-              <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <div className="shrink-0 w-7 h-7 rounded-full bg-warning/15 flex items-center justify-center">
+              <Bell className="w-3.5 h-3.5 text-warning" />
             </div>
             <div className="text-xs min-w-0">
-              <span className="font-medium text-amber-700 dark:text-amber-300">Há lançamentos em atraso.</span>{" "}
+              <span className="font-medium text-warning">Há lançamentos em atraso.</span>{" "}
               <span className="text-muted-foreground">
                 {formatBRL(kpis.atrasoPagar)} a pagar e {formatBRL(kpis.atrasoReceber)} a receber.
               </span>
@@ -416,7 +416,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
               title="Favoritos"
               subtitle="Pinados por você"
               icon={Star}
-              iconClass="fill-amber-400 text-amber-400"
+              iconClass="fill-accent text-accent"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
                 {favoriteItems.map((item, idx) => (
@@ -649,7 +649,7 @@ function ModuleRow({
           aria-label={isFav ? "Remover dos favoritos" : "Fixar nos favoritos"}
         >
           {isFav
-            ? <Pin className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+            ? <Pin className="w-3.5 h-3.5 fill-accent text-accent" />
             : <Pin className="w-3.5 h-3.5 text-muted-foreground" />}
         </span>
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -658,7 +658,7 @@ function ModuleRow({
       {/* Pin sempre visível se favorito */}
       {isFav && (
         <span className="absolute top-1.5 right-1.5 group-hover:opacity-0 transition-opacity">
-          <Pin className="w-3 h-3 fill-amber-400 text-amber-500" />
+          <Pin className="w-3 h-3 fill-accent text-accent" />
         </span>
       )}
     </button>
@@ -678,21 +678,21 @@ function MiniMetric({
 }) {
   const toneText = {
     neutral: "text-foreground",
-    positive: "text-emerald-600 dark:text-emerald-400",
-    negative: "text-rose-600 dark:text-rose-400",
-    warning: "text-amber-600 dark:text-amber-400",
+    positive: "text-success",
+    negative: "text-destructive",
+    warning: "text-warning",
   }[tone];
   const toneBg = {
     neutral: "bg-muted",
-    positive: "bg-emerald-500/10",
-    negative: "bg-rose-500/10",
-    warning: "bg-amber-500/10",
+    positive: "bg-success/10",
+    negative: "bg-destructive/10",
+    warning: "bg-warning/10",
   }[tone];
   const toneBorder = {
     neutral: "hover:border-primary/40",
-    positive: "hover:border-emerald-500/40",
-    negative: "hover:border-rose-500/40",
-    warning: "border-amber-500/40 hover:border-amber-500/60",
+    positive: "hover:border-success/40",
+    negative: "hover:border-destructive/40",
+    warning: "border-warning/40 hover:border-warning/60",
   }[tone];
 
   return (
@@ -703,7 +703,7 @@ function MiniMetric({
         "group text-left rounded-xl border bg-card/80 backdrop-blur-sm p-3 transition-all duration-200",
         "hover:shadow-sm hover:-translate-y-0.5",
         toneBorder,
-        tone === "warning" ? "border-amber-500/40" : "border-border/60",
+        tone === "warning" ? "border-warning/40" : "border-border/60",
       )}
     >
       <div className="flex items-center justify-between mb-1.5">

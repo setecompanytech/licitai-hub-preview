@@ -78,11 +78,11 @@ const TIPO_OPTIONS = [
 ] as const;
 
 const STATUS_OPTIONS = [
-  { value: "previsto", label: "Previsto", active: "bg-blue-500 text-white border-blue-500" },
-  { value: "realizado", label: "Realizado", active: "bg-emerald-500 text-white border-emerald-500" },
-  { value: "conciliado", label: "Conciliado", active: "bg-teal-600 text-white border-teal-600" },
-  { value: "em_atraso", label: "Em atraso", active: "bg-red-500 text-white border-red-500" },
-  { value: "cancelado", label: "Cancelado", active: "bg-zinc-500 text-white border-zinc-500" },
+  { value: "previsto", label: "Previsto", active: "bg-info text-info-foreground border-info" },
+  { value: "realizado", label: "Realizado", active: "bg-success text-success-foreground border-success" },
+  { value: "conciliado", label: "Conciliado", active: "bg-success text-success-foreground border-success" },
+  { value: "em_atraso", label: "Em atraso", active: "bg-destructive text-destructive-foreground border-destructive" },
+  { value: "cancelado", label: "Cancelado", active: "bg-muted-foreground text-background border-muted-foreground" },
 ] as const;
 
 type Props = {
@@ -386,8 +386,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         {/* Header colorido por tipo */}
         <div className={cn(
           "px-6 pt-5 pb-4 border-b",
-          tipo === "a_pagar" ? "bg-red-50/60 dark:bg-red-950/20" :
-          tipo === "a_receber" ? "bg-emerald-50/60 dark:bg-emerald-950/20" :
+          tipo === "a_pagar" ? "bg-destructive/5" :
+          tipo === "a_receber" ? "bg-success/5" :
           "bg-muted/30"
         )}>
           <DialogHeader>
@@ -913,7 +913,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                               <tr key={i} className="border-t hover:bg-accent/30">
                                 <td className="px-3 py-1.5">
                                   <span className="inline-flex items-center gap-1 text-xs">
-                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                    <span className="w-2 h-2 rounded-full bg-warning" />
                                     A vencer
                                   </span>
                                 </td>
