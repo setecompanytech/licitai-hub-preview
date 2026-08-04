@@ -230,9 +230,9 @@ export default function EditalItensTable({
               );
             }
             const { nivel, motivo } = avaliarItem(isEditing ? { ...item, ...editValues } as LicitacaoItem : item);
-            if (nivel === 'completo') return <CheckCircle2 className="w-4 h-4 text-success" title={motivo} />;
-            if (nivel === 'parcial') return <AlertTriangle className="w-4 h-4 text-warning" title={motivo} />;
-            return <CircleAlert className="w-4 h-4 text-destructive" title={motivo} />;
+            if (nivel === 'completo') return <span title={motivo}><CheckCircle2 className="w-4 h-4 text-success" /></span>;
+            if (nivel === 'parcial') return <span title={motivo}><AlertTriangle className="w-4 h-4 text-warning" /></span>;
+            return <span title={motivo}><CircleAlert className="w-4 h-4 text-destructive" /></span>;
           })()}
         </TableCell>
         {showOrigin && (

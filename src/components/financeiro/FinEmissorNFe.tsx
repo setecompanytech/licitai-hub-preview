@@ -104,6 +104,15 @@ type PedidoFatura = {
   nfe_status: string | null; nfe_chave: string | null;
 };
 
+// Subconjunto de financeiro_nfes_emitidas usado para vincular NF-e ao pedido
+type NfeVinculada = {
+  id: string;
+  numero: number | null;
+  status: string;
+  chave_acesso: string | null;
+  pedido_id: string | null;
+};
+
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   rascunho: "secondary", processando: "default", autorizada: "default",
   rejeitada: "destructive", cancelada: "destructive", denegada: "destructive",
@@ -227,22 +236,30 @@ export default function FinEmissorNFe() {
       const pedidoIds = pedidosData.map((p: any) => p.id);
       const pessoaIds = [...new Set(pedidosData.filter((p: any) => p.pessoa_id).map((p: any) => p.pessoa_id))] as string[];
 
+      // Falha ao buscar NF-es vinculadas não deve derrubar a listagem de pedidos
+      const buscarNfesVinculadas = async (): Promise<{ data: NfeVinculada[] | null }> => {
+        try {
+          const { data } = await supabase
+            .from('financeiro_nfes_emitidas')
+            .select('id, numero, status, chave_acesso, pedido_id')
+            .in('pedido_id', pedidoIds);
+          return { data };
+        } catch {
+          return { data: null };
+        }
+      };
+
       const [pessoasRes, nfesRes] = await Promise.all([
         pessoaIds.length > 0
           ? supabase.from('financeiro_pessoas').select('id, nome, documento').in('id', pessoaIds)
-          : Promise.resolve({ data: [] as any[] }),
-        supabase
-          .from('financeiro_nfes_emitidas')
-          .select('id, numero, status, chave_acesso, pedido_id')
-          .in('pedido_id' as any, pedidoIds)
-          .then(r => r)
-          .catch(() => ({ data: null })),
+          : Promise.resolve({ data: [] as { id: string; nome: string; documento: string }[] }),
+        buscarNfesVinculadas(),
       ]);
 
       const pessoasMap: Record<string, any> = {};
       (pessoasRes.data || []).forEach((p: any) => { pessoasMap[p.id] = p; });
-      const nfesMap: Record<string, any> = {};
-      ((nfesRes as any).data || []).forEach((n: any) => { if (n.pedido_id) nfesMap[n.pedido_id] = n; });
+      const nfesMap: Record<string, NfeVinculada> = {};
+      (nfesRes.data || []).forEach(n => { if (n.pedido_id) nfesMap[n.pedido_id] = n; });
 
       setPedidosFatura(pedidosData.map((p: any) => ({
         id: p.id, numero: p.numero, tipo: p.tipo, status: p.status,

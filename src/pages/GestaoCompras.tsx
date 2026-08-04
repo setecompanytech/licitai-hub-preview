@@ -108,7 +108,7 @@ const movConfig = {
 const defaultPedidoForm  = () => ({ contrato_id: '', fornecedor_id: '', data_pedido: today(), data_entrega_prevista: '', observacoes: '' });
 const defaultFornForm    = () => ({ razao_social: '', cnpj: '', categoria: '', prazo_entrega_dias: '', contato_nome: '', contato_email: '', contato_telefone: '', observacoes: '', ativo: true, inscricao_estadual: '', regime_tributario: '', uf: '', municipio: '', cep: '', logradouro: '', numero_endereco: '', bairro: '' });
 const defaultProdutoForm = () => ({ codigo: '', descricao: '', unidade: 'UN', categoria: '', saldo_minimo: '0', preco_custo_medio: '0', ativo: true, ncm: '', cfop: '', cst_icms: '', csosn: '', cst_pis: '', cst_cofins: '', p_icms: '', p_pis: '', p_cofins: '' });
-const defaultMovForm     = () => ({ produto_id: '', tipo: 'entrada' as const, ajuste_dir: 'mais' as 'mais' | 'menos', quantidade: '', preco_unitario: '', observacoes: '' });
+const defaultMovForm     = () => ({ produto_id: '', tipo: 'entrada' as EstoqueMovimento['tipo'], ajuste_dir: 'mais' as 'mais' | 'menos', quantidade: '', preco_unitario: '', observacoes: '' });
 const defaultNfeForm     = () => ({ numero: '', serie: '1', chave_acesso: '', data_emissao: today(), cnpj_emitente: '', nome_emitente: '', valor_total: '', pedido_id: '' });
 
 type FormItem = { descricao: string; unidade: string; quantidade: string; preco_unitario: string };
@@ -222,7 +222,8 @@ export default function GestaoCompras() {
       setPedidos((p as PedidoCompra[]) || []);
       setFornecedores((f as Fornecedor[]) || []);
       setProdutos((pr as Produto[]) || []);
-      setNfes((n as NfeRecebida[]) || []);
+      // itens é Json no banco, mas o app sempre grava NFeItemData[] (via parseNFeXML) — conversão Json -> domínio
+      setNfes((n as unknown as NfeRecebida[]) || []);
       if (selectedPedido) {
         const upd = ((p as PedidoCompra[]) || []).find(x => x.id === selectedPedido.id);
         if (upd) setSelectedPedido(upd);

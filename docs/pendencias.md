@@ -15,6 +15,14 @@ ambiente de teste, não do app. **Correção:** polyfill via `FileReader` em
 
 ---
 
+## ~~[2026-08-03] 14 erros de tipo fora do módulo de metas~~ — RESOLVIDO em 2026-08-04
+
+**Como:** `types.ts` regenerado pelo CLI oficial autenticado (schema pós-praça), 26 casts
+`as never` removidos dos hooks de metas, e os 15 erros que os tipos novos REVELARAM foram
+corrigidos pela causa raiz em 9 arquivos — incluindo um bug de runtime real
+(`LancamentoDialog` gravava `"movimentacao"`, valor de outro enum). `npx tsc --noEmit`
+sai **zerado** no app inteiro. A entrada original segue abaixo para histórico.
+
 ## [2026-08-03] 14 erros de tipo fora do módulo de metas
 
 **Situação:** `npx tsc --noEmit -p tsconfig.app.json` acusa 14 erros, todos anteriores ao

@@ -349,9 +349,9 @@ export default function Produtos() {
 
     // Sincroniza fornecedores vinculados
     if (produtoId) {
-      await supabase.from('produto_fornecedores' as never).delete().eq('produto_id', produtoId);
+      await supabase.from('produto_fornecedores').delete().eq('produto_id', produtoId);
       if (form.fornecedoresVinculados.length > 0) {
-        await supabase.from('produto_fornecedores' as never).insert(
+        await supabase.from('produto_fornecedores').insert(
           form.fornecedoresVinculados.map(f => ({
             empresa_id: empresaAtiva!.id,
             produto_id: produtoId,
@@ -397,7 +397,7 @@ export default function Produtos() {
     const ncmDescricao = NCM_CODES.find(n => n.codigo === ncmCode)?.descricao ?? '';
 
     const { data: pfData } = await supabase
-      .from('produto_fornecedores' as never)
+      .from('produto_fornecedores')
       .select('pessoa_id, financeiro_pessoas(id, nome, documento)')
       .eq('produto_id', p.id);
 
@@ -469,7 +469,7 @@ export default function Produtos() {
     const ncmDescricao = NCM_CODES.find(n => n.codigo === ncmCode)?.descricao ?? '';
 
     const { data: pfData } = await supabase
-      .from('produto_fornecedores' as never)
+      .from('produto_fornecedores')
       .select('pessoa_id, financeiro_pessoas(id, nome, documento)')
       .eq('produto_id', p.id);
 

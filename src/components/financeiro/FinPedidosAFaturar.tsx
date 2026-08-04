@@ -164,8 +164,8 @@ export default function FinPedidosAFaturar() {
       // Atualiza kanban status para 'faturado' se tiver pedido_id
       if (faturando.pedido_id) {
         await supabase
-          .from('pedidos' as never)
-          .update({ status: 'faturado' } as any)
+          .from('pedidos')
+          .update({ status: 'faturado' })
           .eq('id', faturando.pedido_id);
       }
 

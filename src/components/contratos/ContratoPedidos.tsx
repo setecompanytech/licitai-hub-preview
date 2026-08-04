@@ -39,7 +39,7 @@ function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onS
   );
 }
 
-type ContratoItem = { id: string; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
+type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 
 const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
@@ -166,7 +166,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
@@ -177,7 +177,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Fetch kanban status for linked pedidos
     const linkedIds = pedidosData.map((p: any) => p.pedido_id).filter(Boolean) as string[];
     if (linkedIds.length > 0) {
-      const { data: kRows } = await supabase.from('pedidos' as never).select('id, status').in('id', linkedIds);
+      const { data: kRows } = await supabase.from('pedidos').select('id, status').in('id', linkedIds);
       const kMap: Record<string, string> = {};
       for (const k of (kRows ?? []) as any[]) kMap[k.id] = k.status;
       setKanbanStatuses(kMap);
@@ -198,7 +198,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!ataSrpId) { setItensAta([]); return; }
     supabase
       .from('contrato_itens')
-      .select('id, descricao, unidade, valor_unitario, origem_aditivo_id')
+      .select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id')
       .eq('contrato_id', ataSrpId)
       .then(({ data }) => setItensAta((data as any[]) || []));
   }, [ataSrpId]);
@@ -756,8 +756,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const updateKanbanStatus = async (pedidoId: string, newStatus: string) => {
     setUpdatingKanban(prev => ({ ...prev, [pedidoId]: true }));
     const { error } = await supabase
-      .from('pedidos' as never)
-      .update({ status: newStatus } as any)
+      .from('pedidos')
+      .update({ status: newStatus })
       .eq('id', pedidoId);
     if (error) {
       toast.error('Erro ao atualizar status: ' + error.message);

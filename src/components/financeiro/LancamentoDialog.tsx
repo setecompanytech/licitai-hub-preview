@@ -528,7 +528,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                         setTipo("transferencia");
                         setNatureza("movimentacao");
                       } else {
-                        setTipo("movimentacao");
+                        setTipo("movimento_bancario");
                         setContaDestinoId("");
                       }
                     }}

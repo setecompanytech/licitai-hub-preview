@@ -473,15 +473,15 @@ export default function MonitoramentoEditais() {
       if (filtros.uasgs.length > 0) {
         try {
           const { data: uasgRows } = await supabase
-            .from('pncp_editais_cache' as any)
+            .from('pncp_editais_cache')
             .select('cnpj_orgao, uf')
-            .in('codigo_unidade' as any, filtros.uasgs)
+            .in('codigo_unidade', filtros.uasgs)
             .not('cnpj_orgao', 'is', null)
             .limit(10);
           if (uasgRows && uasgRows.length > 0) {
-            uasgCnpjs = [...new Set((uasgRows as any[]).map(r => r.cnpj_orgao).filter(Boolean))];
-            const ufsFound = [...new Set((uasgRows as any[]).map(r => r.uf).filter(Boolean))];
-            if (ufsFound.length === 1 && filtros.ufs.length === 0) uasgUfDesc = ufsFound[0] as string;
+            uasgCnpjs = [...new Set(uasgRows.map(r => r.cnpj_orgao).filter(Boolean))];
+            const ufsFound = [...new Set(uasgRows.map(r => r.uf).filter(Boolean))];
+            if (ufsFound.length === 1 && filtros.ufs.length === 0) uasgUfDesc = ufsFound[0];
             logCtx({ etapa: 'uasg_lookup', uasgs: filtros.uasgs, cnpjs: uasgCnpjs, uf: uasgUfDesc });
           } else {
             logCtx({ etapa: 'uasg_lookup', uasgs: filtros.uasgs, resultado: 'nao_encontrado_no_cache' });
