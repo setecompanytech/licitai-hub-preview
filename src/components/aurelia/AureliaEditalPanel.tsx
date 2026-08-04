@@ -117,7 +117,7 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
   return (
     <div className="rounded-xl border aurelia-border overflow-hidden" style={{ background: 'hsl(215, 50%, 7%)' }}>
       <div className="px-4 py-3 border-b border-[hsl(215,20%,20%)] flex items-center gap-2" style={{ background: 'hsl(215, 40%, 10%)' }}>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[hsl(43,60%,54%)] text-[10px] font-bold text-white">IA</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-[10px] font-bold text-accent-foreground">IA</span>
         <span className="text-sm font-semibold text-[hsl(215,14%,92%)]">AURÉLIA — Análise Deste Edital</span>
       </div>
 
@@ -162,7 +162,7 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
             className="bg-[hsl(215,25%,15%)] border-[hsl(215,20%,22%)] text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)]"
             disabled={chatLoading}
           />
-          <Button onClick={handleChatSend} disabled={!chatInput.trim() || chatLoading} size="icon" className="h-9 w-9 bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white shrink-0">
+          <Button onClick={handleChatSend} disabled={!chatInput.trim() || chatLoading} size="icon" className="h-9 w-9 bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">
             {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
           </Button>
         </div>

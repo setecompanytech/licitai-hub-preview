@@ -24,7 +24,9 @@
     --muted: 220 12% 93%;
     --muted-foreground: 215 22% 28%;
 
-    --accent: 24 85% 48%;
+    /* Laranja de ação ÚNICO (marca #F97316). No light, escurecido para
+       25 90% 42% — o tom cheio com texto branco dá 3.5:1 e reprova AA. */
+    --accent: 25 90% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 46%;
@@ -36,8 +38,19 @@
     --warning: 38 85% 45%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 210 65% 45%;
+    /* Info deixou de ser azul: sob a regra de contenção, azul não é estado.
+       O token permanece para não quebrar consumidores; o valor é neutro. */
+    --info: 215 15% 45%;
     --info-foreground: 0 0% 100%;
+
+    /* Séries de gráfico — exceção contida à regra de cor. Única fonte:
+       substituem os hsl() crus duplicados em RelatorioContabil, ValorChart,
+       FinFluxoCaixa, EvolucaoMensalDashboard etc. */
+    --chart-1: 25 90% 48%;
+    --chart-2: 210 55% 48%;
+    --chart-3: 152 55% 40%;
+    --chart-4: 270 40% 55%;
+    --chart-5: 38 85% 48%;
 
     --border: 218 16% 87%;
     --input: 218 16% 87%;
@@ -47,11 +60,11 @@
 
     --nav-bg: 215 50% 14%;
     --nav-fg: 215 10% 82%;
-    --nav-active: 24 85% 48%;
+    --nav-active: 25 90% 42%;
     --nav-hover: 215 42% 20%;
     --nav-border: 215 40% 22%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(24 85% 48%), hsl(28 80% 52%));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(28 80% 52%));
     --gradient-hero: linear-gradient(160deg, hsl(215 55% 12%) 0%, hsl(215 50% 18%) 50%, hsl(215 45% 24%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 12% 96%));
     --gradient-dark: linear-gradient(135deg, hsl(215 55% 12%), hsl(215 50% 18%));
@@ -62,8 +75,8 @@
     --shadow-md: 0 4px 12px -2px hsl(215 45% 12% / 0.07), 0 2px 4px -2px hsl(215 45% 12% / 0.04);
     --shadow-lg: 0 10px 30px -4px hsl(215 45% 12% / 0.1), 0 4px 12px -4px hsl(215 45% 12% / 0.04);
     --shadow-xl: 0 24px 48px -12px hsl(215 45% 12% / 0.14);
-    --shadow-glow: 0 0 24px hsl(24 85% 48% / 0.18), 0 0 48px hsl(24 85% 48% / 0.06);
-    --shadow-glow-sm: 0 0 12px hsl(24 85% 48% / 0.1);
+    --shadow-glow: 0 0 24px hsl(var(--accent) / 0.18), 0 0 48px hsl(var(--accent) / 0.06);
+    --shadow-glow-sm: 0 0 12px hsl(var(--accent) / 0.1);
 
     --sidebar-background: 0 0% 99%;
     --sidebar-foreground: 215 45% 15%;
@@ -86,20 +99,41 @@
     --popover: 215 38% 11%;
     --popover-foreground: 215 10% 93%;
 
-    --primary: 24 85% 52%;
-    --primary-foreground: 215 55% 7%;
+    /* Laranja canônico #F97316 no dark; texto escuro em cima (6.45:1 AA —
+       branco daria 2.78:1). */
+    --primary: 25 95% 53%;
+    --primary-foreground: 24 100% 8%;
 
     --secondary: 215 28% 16%;
     --secondary-foreground: 215 10% 88%;
 
     --muted: 215 28% 14%;
-    --muted-foreground: 215 10% 52%;
+    /* 52% dava 4.52:1 sobre superfície — no limite exato do AA. 65% = 6.9:1. */
+    --muted-foreground: 215 12% 65%;
 
-    --accent: 24 85% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 24 100% 8%;
 
-    --destructive: 0 55% 35%;
-    --destructive-foreground: 210 40% 98%;
+    /* Semânticas COM override dark (antes herdavam o light e o --info
+       reprovava AA no escuro com 3.86:1). Valores validados nas duas
+       direções: como texto sobre o fundo e como fundo sob o foreground. */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 58% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 90% 50%;
+    --warning-foreground: 38 100% 10%;
+
+    --info: 215 15% 55%;
+    --info-foreground: 215 42% 7%;
+
+    --chart-1: 25 95% 53%;
+    --chart-2: 210 60% 55%;
+    --chart-3: 152 55% 45%;
+    --chart-4: 270 45% 62%;
+    --chart-5: 38 90% 55%;
 
     --border: 215 28% 18%;
     --input: 215 28% 18%;
@@ -107,14 +141,14 @@
 
     --nav-bg: 215 48% 5%;
     --nav-fg: 215 10% 70%;
-    --nav-active: 24 85% 52%;
+    --nav-active: 25 95% 53%;
     --nav-hover: 215 38% 12%;
     --nav-border: 215 32% 14%;
 
     --sidebar-background: 215 42% 8%;
     --sidebar-foreground: 215 10% 88%;
-    --sidebar-primary: 24 85% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 24 100% 8%;
     --sidebar-accent: 215 28% 14%;
     --sidebar-accent-foreground: 215 10% 88%;
     --sidebar-border: 215 28% 16%;
@@ -128,7 +162,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    /* text-base = 16px/1.6 pela escala do tailwind.config — piso de leitura */
+    @apply bg-background text-foreground text-base antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -191,9 +226,11 @@
     button, a, [role="button"] {
       min-height: 32px;
     }
-    h1 { font-size: 1.25rem; }
-    h2 { font-size: 1.1rem; }
-    h3 { font-size: 0.95rem; }
+    /* Downscale mobile na proporção da nova escala (28/22/18) —
+       os valores antigos (20/17.6/15.2) ficavam abaixo do corpo de 16px. */
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.375rem; }
+    h3 { font-size: 1.125rem; }
   }
 }
 
@@ -228,8 +265,9 @@
 }
 
 @layer utilities {
-  /* AURÉLIA Design System */
-  .aurelia-gold { color: hsl(43 60% 54%); }
+  /* AURÉLIA — o dourado (43 60% 54%) era um segundo laranja de marca;
+     convergido para o laranja de ação único (decisão da auditoria de cor). */
+  .aurelia-gold { color: hsl(var(--accent)); }
   .aurelia-bg { background: hsl(215 50% 7%); }
   .aurelia-surface { background: hsl(215 40% 10%); }
   .aurelia-border { border-color: hsl(215 20% 20%); }
@@ -237,8 +275,8 @@
   .aurelia-bubble-ai { background: hsl(225 25% 14%); }
 
   @keyframes aurelia-pulse {
-    0%, 100% { box-shadow: 0 4px 20px hsl(43 60% 54% / 0.4); }
-    50% { box-shadow: 0 4px 32px hsl(43 60% 54% / 0.8); }
+    0%, 100% { box-shadow: 0 4px 20px hsl(var(--accent) / 0.4); }
+    50% { box-shadow: 0 4px 32px hsl(var(--accent) / 0.8); }
   }
   .aurelia-glow {
     animation: aurelia-pulse 2s ease-in-out infinite;
@@ -330,8 +368,8 @@
   100% { background-position: 200% center; }
 }
 @keyframes pulse-orange {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(24 95% 53% / 0.4); }
-  50% { box-shadow: 0 0 20px 6px hsl(24 95% 53% / 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4); }
+  50% { box-shadow: 0 0 20px 6px hsl(var(--accent) / 0.15); }
 }
 .animate-float {
   animation: float 6s ease-in-out infinite;
@@ -354,7 +392,7 @@
     110deg,
     hsl(var(--foreground)) 0%,
     hsl(var(--foreground)) 40%,
-    hsl(24 95% 53%) 50%,
+    hsl(var(--accent)) 50%,
     hsl(var(--foreground)) 60%,
     hsl(var(--foreground)) 100%
   );

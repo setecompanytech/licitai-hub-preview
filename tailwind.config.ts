@@ -18,6 +18,24 @@ export default {
         mono: ["JetBrains Mono", "monospace"],
         brand: ["Cinzel", "Georgia", "serif"],
       },
+      /**
+       * Escala tipográfica única (auditoria 2026-08).
+       * Disciplina de uso: xs SÓ para metadados/badges/timestamps; sm SÓ para
+       * UI densa (tabelas, sidebar, chips). Texto de leitura — parágrafos,
+       * descrições, labels de conteúdo — começa em base.
+       * xl..4xl são maiores que o default do Tailwind de propósito: headings
+       * do app inteiro crescem por definição, sem caçar classe.
+       */
+      fontSize: {
+        xs: ["0.75rem", { lineHeight: "1rem", letterSpacing: "0.01em" }],
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        base: ["1rem", { lineHeight: "1.625rem" }],
+        lg: ["1.125rem", { lineHeight: "1.8125rem" }],
+        xl: ["1.375rem", { lineHeight: "1.875rem", letterSpacing: "-0.01em" }],
+        "2xl": ["1.75rem", { lineHeight: "2.25rem", letterSpacing: "-0.015em" }],
+        "3xl": ["2.25rem", { lineHeight: "2.75rem", letterSpacing: "-0.02em" }],
+        "4xl": ["3rem", { lineHeight: "3.5rem", letterSpacing: "-0.025em" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -55,6 +73,15 @@ export default {
         info: {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
+        },
+        // Séries de gráfico — única exceção aprovada à regra "cor só para
+        // estado". Definidas aqui para matar os hsl() duplicados nos charts.
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -105,8 +132,8 @@ export default {
           to: { opacity: "1", transform: "translateX(0)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(24 95% 53% / 0.3)" },
-          "50%": { boxShadow: "0 0 20px 4px hsl(24 95% 53% / 0.15)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--accent) / 0.3)" },
+          "50%": { boxShadow: "0 0 20px 4px hsl(var(--accent) / 0.15)" },
         },
         "count-up": {
           from: { opacity: "0", transform: "translateY(10px)" },

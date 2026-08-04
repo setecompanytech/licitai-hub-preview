@@ -15,7 +15,7 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
   return (
     <div className="rounded-lg border aurelia-border aurelia-surface p-4 transition-all hover:scale-[1.02] duration-200">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[hsl(43,60%,54%)]">{icon}</span>
+        <span className="text-accent">{icon}</span>
         <h4 className="text-sm font-semibold text-[hsl(215,14%,92%)]">{title}</h4>
       </div>
 
@@ -35,7 +35,7 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
           <AlertTriangle className="w-5 h-5 text-[hsl(0,72%,51%)]" />
           <p className="text-xs text-[hsl(215,12%,55%)]">Erro na análise</p>
           {onRetry && (
-            <Button variant="ghost" size="sm" onClick={onRetry} className="text-[hsl(43,60%,54%)] hover:text-[hsl(43,60%,64%)] text-xs">
+            <Button variant="ghost" size="sm" onClick={onRetry} className="text-accent hover:text-accent/80 text-xs">
               <RefreshCw className="w-3 h-3 mr-1" /> Tentar novamente
             </Button>
           )}

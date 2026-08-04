@@ -74,7 +74,7 @@ export default function AureliaPage() {
         {showWelcome ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             {/* Logo */}
-            <div className="w-20 h-20 rounded-full bg-[hsl(43,60%,54%)] flex items-center justify-center mb-6 shadow-lg" style={{ boxShadow: '0 4px 24px hsl(43 60% 54% / 0.3)' }}>
+            <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center mb-6 shadow-lg" style={{ boxShadow: '0 4px 24px hsl(var(--accent) / 0.3)' }}>
               <span className="text-2xl font-bold text-white tracking-wider">AU</span>
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-1">AURÉLIA</h1>
@@ -97,7 +97,7 @@ export default function AureliaPage() {
                   onClick={() => handleSend(qa.prompt)}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-card hover:bg-muted transition-all text-center group"
                 >
-                  <qa.icon className="w-5 h-5 text-[hsl(43,60%,54%)] group-hover:scale-110 transition-transform" />
+                  <qa.icon className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
                   <span className="text-xs font-medium text-foreground">{qa.label}</span>
                 </button>
               ))}
@@ -111,12 +111,12 @@ export default function AureliaPage() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Pergunte sobre editais, habilitação, propostas…"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(43,60%,54%)] transition-all"
+                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
                 />
                 <Button
                   onClick={() => handleSend()}
                   disabled={!input.trim()}
-                  className="bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white h-auto px-4 rounded-xl"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-auto px-4 rounded-xl"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -130,7 +130,7 @@ export default function AureliaPage() {
               {messages.map((msg, i) => (
                 <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-[hsl(43,60%,54%)] flex items-center justify-center shrink-0 mt-1">
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 mt-1">
                       <span className="text-[10px] font-bold text-white">AU</span>
                     </div>
                   )}
@@ -148,11 +148,11 @@ export default function AureliaPage() {
               ))}
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[hsl(43,60%,54%)] flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
                     <span className="text-[10px] font-bold text-white">AU</span>
                   </div>
                   <div className="bg-card border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-[hsl(43,60%,54%)]" />
+                    <Loader2 className="w-4 h-4 animate-spin text-accent" />
                     AURÉLIA está analisando…
                   </div>
                 </div>
@@ -168,13 +168,13 @@ export default function AureliaPage() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Continue a conversa…"
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(43,60%,54%)] transition-all"
+                  className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading}
-                  className="bg-[hsl(43,60%,54%)] hover:bg-[hsl(43,60%,48%)] text-white h-auto px-4 rounded-xl"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-auto px-4 rounded-xl"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
