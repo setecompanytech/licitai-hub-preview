@@ -302,7 +302,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                 value={form.valor_estimado}
                 onChange={e => {
                   // Allow only digits, dots (thousand sep) and comma (decimal sep)
-                  let raw = e.target.value.replace(/[^\d]/g, '');
+                  const raw = e.target.value.replace(/[^\d]/g, '');
                   if (!raw) { setForm(f => ({ ...f, valor_estimado: '' })); return; }
                   const cents = parseInt(raw, 10);
                   setForm(f => ({ ...f, valor_estimado: formatBRL(cents) }));
