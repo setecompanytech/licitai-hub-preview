@@ -28,10 +28,10 @@ const fonteLabel: Record<string, string> = {
 };
 
 const scoreColor = (score: number) => {
-  if (score >= 90) return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950';
-  if (score >= 70) return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950';
-  if (score >= 50) return 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950';
-  return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950';
+  if (score >= 90) return 'text-success bg-success/10';
+  if (score >= 70) return 'text-info bg-info/10';
+  if (score >= 50) return 'text-warning bg-warning/10';
+  return 'text-destructive bg-destructive/10';
 };
 
 function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
@@ -45,7 +45,7 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
-      isAceito ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' :
+      isAceito ? 'bg-success/10 border-success/30' :
       isRejeitado ? 'bg-muted/50 border-muted opacity-60' :
       'bg-card border-border hover:border-primary/30'
     }`}>
@@ -81,7 +81,7 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
               R$ {sugestao.preco_historico.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           )}
-          {isAceito && <Badge className="bg-green-600 text-white text-xs">Aceito ✓</Badge>}
+          {isAceito && <Badge className="bg-success text-success-foreground text-xs">Aceito ✓</Badge>}
         </div>
 
         {sugestao.justificativa_ia && (
@@ -110,10 +110,10 @@ function SugestaoCard({ sugestao, onAceitar, onRejeitar, onAplicar }: {
 
       {!isAceito && !isRejeitado && (
         <div className="flex gap-1 shrink-0">
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-600 hover:bg-green-50" onClick={onAplicar} title="Aplicar na proposta">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-success hover:bg-success/10" onClick={onAplicar} title="Aplicar na proposta">
             <Check className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:bg-red-50" onClick={onRejeitar} title="Rejeitar">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={onRejeitar} title="Rejeitar">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -162,14 +162,14 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
+            <Sparkles className="h-5 w-5 text-accent" />
             Sugestão de Marcas & Modelos
           </CardTitle>
           <div className="flex items-center gap-2">
             {sugestoes.length > 0 && (
               <div className="flex gap-1.5 text-xs">
                 <Badge variant="outline">{totalPendentes} pendentes</Badge>
-                <Badge className="bg-green-600 text-white">{totalAceitas} aceitas</Badge>
+                <Badge className="bg-success text-success-foreground">{totalAceitas} aceitas</Badge>
               </div>
             )}
             <Button

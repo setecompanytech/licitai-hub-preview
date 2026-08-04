@@ -347,15 +347,15 @@ export default function RevisaoItensExtraidos({
           <span className="text-muted-foreground">
             Confiança:{' '}
             <span className={
-              confiancaMedia >= 0.85 ? 'text-green-600 dark:text-green-400' :
-              confiancaMedia >= 0.65 ? 'text-yellow-600 dark:text-yellow-400' :
-              'text-red-600 dark:text-red-400'
+              confiancaMedia >= 0.85 ? 'text-success' :
+              confiancaMedia >= 0.65 ? 'text-warning' :
+              'text-destructive'
             }>
               {(confiancaMedia * 100).toFixed(0)}%
             </span>
           </span>
           {itensPendentes > 0 && (
-            <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
+            <Badge variant="outline" className="text-warning border-warning/30">
               <AlertTriangle className="w-3 h-3 mr-1" />
               {itensPendentes} {itensPendentes === 1 ? 'item requer' : 'itens requerem'} revisão
             </Badge>
@@ -388,8 +388,8 @@ export default function RevisaoItensExtraidos({
                 <tr
                   key={idx}
                   className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${
-                    item.erros.length > 0 ? 'bg-red-500/5' :
-                    item.warnings.length > 0 ? 'bg-yellow-500/5' : ''
+                    item.erros.length > 0 ? 'bg-destructive/5' :
+                    item.warnings.length > 0 ? 'bg-warning/5' : ''
                   }`}
                 >
                   <td className="px-3 py-2 text-muted-foreground font-mono">
@@ -408,12 +408,12 @@ export default function RevisaoItensExtraidos({
                       </span>
                     )}
                     {item.erros.map((e, i) => (
-                      <div key={i} className="text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-1">
+                      <div key={i} className="text-destructive mt-0.5 flex items-center gap-1">
                         <XCircle className="w-3 h-3 shrink-0" /> {e}
                       </div>
                     ))}
                     {item.warnings.map((w, i) => (
-                      <div key={i} className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex items-center gap-1">
+                      <div key={i} className="text-warning mt-0.5 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 shrink-0" /> {w}
                       </div>
                     ))}
@@ -457,9 +457,9 @@ export default function RevisaoItensExtraidos({
 
                   <td className="px-3 py-2 text-center">
                     <span className={`font-mono text-xs font-semibold ${
-                      item.confidence_score >= 0.85 ? 'text-green-600 dark:text-green-400' :
-                      item.confidence_score >= 0.65 ? 'text-yellow-600 dark:text-yellow-400' :
-                      'text-red-600 dark:text-red-400'
+                      item.confidence_score >= 0.85 ? 'text-success' :
+                      item.confidence_score >= 0.65 ? 'text-warning' :
+                      'text-destructive'
                     }`}>
                       {(item.confidence_score * 100).toFixed(0)}%
                     </span>
@@ -467,20 +467,20 @@ export default function RevisaoItensExtraidos({
 
                   <td className="px-3 py-2 text-center">
                     {item._editado ? (
-                      <Badge variant="outline" className="text-blue-600 dark:text-blue-400 text-xs">editado</Badge>
+                      <Badge variant="outline" className="text-info text-xs">editado</Badge>
                     ) : item.erros.length > 0 ? (
-                      <Badge variant="outline" className="text-red-600 dark:text-red-400 text-xs">erro</Badge>
+                      <Badge variant="outline" className="text-destructive text-xs">erro</Badge>
                     ) : item.requer_revisao ? (
-                      <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400 text-xs">revisar</Badge>
+                      <Badge variant="outline" className="text-warning text-xs">revisar</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-green-600 dark:text-green-400 text-xs">ok</Badge>
+                      <Badge variant="outline" className="text-success text-xs">ok</Badge>
                     )}
                   </td>
 
                   <td className="px-1 py-2">
                     <button
                       onClick={() => removerItem(idx)}
-                      className="text-muted-foreground hover:text-red-500 transition-colors p-1"
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

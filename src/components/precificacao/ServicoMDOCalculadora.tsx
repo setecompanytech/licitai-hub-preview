@@ -463,7 +463,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
             <div className="border-t border-border/30 pt-3">
               <p className="text-xs font-medium mb-2">Tributos — {regimeLabel} (calculados "por dentro")</p>
               {regime === 'simples_nacional' && (
-                <p className="text-xs text-amber-600 mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
+                <p className="text-xs text-warning mb-2">⚠️ No Simples Nacional, PIS, COFINS e ISS já estão incluídos no DAS. Preencha apenas se houver incidência separada.</p>
               )}
               <div className="grid grid-cols-3 gap-3">
                 <PercInput label="PIS" value={mod6.pisPerc} onChange={v => updMod6('pisPerc', v)} />
@@ -657,7 +657,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               </div>
 
               {/* Parecer */}
-              <div className={`rounded-xl p-4 text-xs space-y-1 ${result.parecer.viabilidade === 'VIÁVEL' ? 'bg-green-500/10 border border-green-500/20' : 'bg-yellow-500/10 border border-yellow-500/20'}`}>
+              <div className={`rounded-xl p-4 text-xs space-y-1 ${result.parecer.viabilidade === 'VIÁVEL' ? 'bg-success/10 border border-success/20' : 'bg-warning/10 border border-warning/20'}`}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold">{result.parecer.viabilidade}</span>
                   <span className="text-muted-foreground">— Margem Líquida: {Number(result.parecer.margemLiquida || 0).toFixed(2)}%</span>

@@ -22,7 +22,7 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-  aprovado: { label: 'Aprovado', color: 'bg-blue-500/15 text-blue-600' },
+  aprovado: { label: 'Aprovado', color: 'bg-info/15 text-info' },
   pago: { label: 'Pago', color: 'bg-success/10 text-success' },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
   rejeitado: { label: 'Rejeitado', color: 'bg-destructive/10 text-destructive' },
@@ -227,7 +227,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Aprovado</p>
-          <p className="text-base font-bold text-blue-600">{fmt(totalAprovado)}</p>
+          <p className="text-base font-bold text-info">{fmt(totalAprovado)}</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Pago</p>

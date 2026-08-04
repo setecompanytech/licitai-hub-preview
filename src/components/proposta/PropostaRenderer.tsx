@@ -260,7 +260,7 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
               {empresaData?.certificado_tipo === 'e-cnpj' ? 'e-CNPJ' : 'e-CPF'} — {empresaData?.certificado_nome}
             </span>
             {assinado ? (
-              <span className="inline-flex items-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400 border border-green-600/30 px-2.5 py-0.5 text-xs font-semibold">
+              <span className="inline-flex items-center rounded-full bg-success/20 text-success border border-success/30 px-2.5 py-0.5 text-xs font-semibold">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
                 Assinado digitalmente
               </span>

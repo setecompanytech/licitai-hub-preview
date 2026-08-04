@@ -22,13 +22,13 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string; semLimite?: boolean }> = {
   valor: { label: 'Valor', icon: DollarSign, color: 'bg-success/10 text-success' },
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-accent/10 text-accent' },
-  valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-blue-500/10 text-blue-600' },
+  valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-primary/10 text-primary' },
-  reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
-  revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
-  repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
-  reajuste: { label: 'Reajuste', icon: TrendingUp, color: 'bg-orange-500/10 text-orange-600', semLimite: true },
+  reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
+  revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
+  repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
+  reajuste: { label: 'Reajuste', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
 };
 
 type Aditivo = {
@@ -374,7 +374,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                         </Badge>
                       )}
                       {!a.isSujeito && (
-                        <Badge variant="outline" className="text-xs border-orange-400/40 text-orange-500">
+                        <Badge variant="outline" className="text-xs border-warning/40 text-warning">
                           Isento art. 125
                         </Badge>
                       )}
@@ -488,7 +488,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
               {TIPOS_SEM_LIMITE.includes(form.tipo) && (
-                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-warning mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>

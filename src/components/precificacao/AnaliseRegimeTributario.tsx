@@ -571,7 +571,7 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Riscos fiscais */}
                     {autoResult.riscos_fiscais && (
                       <div className="flex items-start gap-1.5">
-                        <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" />
+                        <AlertTriangle className="w-3 h-3 text-warning mt-0.5 shrink-0" />
                         <p className="text-xs text-muted-foreground italic">
                           {autoResult.riscos_fiscais}
                         </p>

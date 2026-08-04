@@ -958,7 +958,7 @@ export default function PlanilhaCustosEdital({
                           placeholder="Digitar..."
                         />
                         {!it.marca && (
-                          <span className="text-xs text-amber-500/80 italic whitespace-nowrap">
+                          <span className="text-xs text-warning/80 italic whitespace-nowrap">
                             Edital não informa
                           </span>
                         )}
@@ -980,7 +980,7 @@ export default function PlanilhaCustosEdital({
                             const isLower = diff < -1;
                             const isHigher = diff > 1;
                             return (
-                              <span className={`text-xs flex items-center gap-0.5 ${isLower ? 'text-green-600' : isHigher ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              <span className={`text-xs flex items-center gap-0.5 ${isLower ? 'text-success' : isHigher ? 'text-destructive' : 'text-muted-foreground'}`}>
                                 {isLower ? <TrendingDown className="w-3 h-3" /> : isHigher ? <TrendingUp className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                                 {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
                               </span>
@@ -990,7 +990,7 @@ export default function PlanilhaCustosEdital({
                       ) : it.cotacaoFalhou ? (
                         <div
                           title="Não foi possível encontrar preço em fontes verificáveis. Para itens controlados, consulte CMED/ANVISA manualmente."
-                          className="text-xs text-amber-500/80 flex items-center gap-0.5 justify-end cursor-help"
+                          className="text-xs text-warning/80 flex items-center gap-0.5 justify-end cursor-help"
                         >
                           <AlertCircle className="w-3 h-3" />
                           Não encontrado
@@ -1019,7 +1019,7 @@ export default function PlanilhaCustosEdital({
                               )}
                               {f.nota != null && (
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-xs text-amber-400">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
+                                  <span className="text-xs text-warning">{'★'.repeat(Math.round(f.nota))}{'☆'.repeat(5 - Math.round(f.nota))}</span>
                                   <span className="text-xs text-muted-foreground">{f.nota.toFixed(1)}{f.total_avaliacoes ? ` (${f.total_avaliacoes})` : ''}</span>
                                 </div>
                               )}
@@ -1032,12 +1032,12 @@ export default function PlanilhaCustosEdital({
                       {it.avaliacao ? (() => {
                         const av = it.avaliacao!;
                         const scoreColorCls = av.score >= 80
-                          ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950'
+                          ? 'text-success bg-success/10'
                           : av.score >= 60
-                          ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950'
+                          ? 'text-info bg-info/10'
                           : av.score >= 40
-                          ? 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950'
-                          : 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950';
+                          ? 'text-warning bg-warning/10'
+                          : 'text-destructive bg-destructive/10';
                         return (
                           <Popover>
                             <PopoverTrigger asChild>
@@ -1134,12 +1134,12 @@ export default function PlanilhaCustosEdital({
                             {fi === 0 && it.avaliacao ? (() => {
                               const av = it.avaliacao!;
                               const scoreColorCls = av.score >= 80
-                                ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950'
+                                ? 'text-success bg-success/10'
                                 : av.score >= 60
-                                ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950'
+                                ? 'text-info bg-info/10'
                                 : av.score >= 40
-                                ? 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950'
-                                : 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950';
+                                ? 'text-warning bg-warning/10'
+                                : 'text-destructive bg-destructive/10';
                               return (
                                 <Popover>
                                   <PopoverTrigger asChild>

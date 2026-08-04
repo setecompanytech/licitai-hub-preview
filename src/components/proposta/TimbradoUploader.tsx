@@ -469,7 +469,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="absolute top-0 left-0 right-0 bg-accent/15 border-b-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${headerSplit}%` }}
           >
-            <div className="absolute bottom-1 left-2 bg-accent text-white text-xs font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute bottom-1 left-2 bg-accent text-accent-foreground text-xs font-bold px-1.5 py-0.5 rounded">
               Cabeçalho ({headerSplit}%)
             </div>
           </div>
@@ -477,7 +477,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             className="absolute bottom-0 left-0 right-0 bg-accent/15 border-t-2 border-dashed border-accent transition-all pointer-events-none"
             style={{ height: `${footerSplit}%` }}
           >
-            <div className="absolute top-1 left-2 bg-accent text-white text-xs font-bold px-1.5 py-0.5 rounded">
+            <div className="absolute top-1 left-2 bg-accent text-accent-foreground text-xs font-bold px-1.5 py-0.5 rounded">
               Rodapé ({footerSplit}%)
             </div>
           </div>
@@ -511,7 +511,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
             {splitting ? 'Recortando...' : 'Aplicar Recorte'}
           </Button>
           {splitDone && (
-            <span className="flex items-center gap-1 text-xs text-green-600">
+            <span className="flex items-center gap-1 text-xs text-success">
               <CheckCircle2 className="w-3.5 h-3.5" />
               Recorte aplicado
             </span>

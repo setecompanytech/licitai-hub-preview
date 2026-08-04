@@ -429,10 +429,10 @@ Responda APENAS em JSON válido:
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {[
             { label: 'Itens Analisados', value: kpis.total, icon: BarChart3, color: 'hsl(var(--accent))' },
-            { label: 'Aumentar Margem', value: kpis.aumentar, icon: TrendingUp, color: 'hsl(142, 71%, 45%)' },
+            { label: 'Aumentar Margem', value: kpis.aumentar, icon: TrendingUp, color: 'hsl(var(--success))' },
             { label: 'Manter Preço', value: kpis.manter, icon: Shield, color: 'hsl(var(--info))' },
-            { label: 'Reduzir Preço', value: kpis.reduzir, icon: TrendingDown, color: 'hsl(0, 72%, 51%)' },
-            { label: 'Ganhos Potenciais', value: formatCurrency(kpis.ganhosPotenciais), icon: DollarSign, color: 'hsl(142, 71%, 45%)' },
+            { label: 'Reduzir Preço', value: kpis.reduzir, icon: TrendingDown, color: 'hsl(var(--destructive))' },
+            { label: 'Ganhos Potenciais', value: formatCurrency(kpis.ganhosPotenciais), icon: DollarSign, color: 'hsl(var(--success))' },
             { label: 'Margem Média', value: `${kpis.margemMedia}%`, icon: Target, color: 'hsl(var(--accent))' },
           ].map((card) => {
             const Icon = card.icon;

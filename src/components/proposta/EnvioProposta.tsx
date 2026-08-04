@@ -192,7 +192,7 @@ export default function EnvioProposta() {
           Envio Automatizado via Agente Cloud
         </Badge>
         {agenteOnline === true && (
-          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 text-xs">
+          <Badge className="bg-success/10 text-success border-success/30 gap-1 text-xs">
             <Zap className="w-3 h-3" /> Agente Online
           </Badge>
         )}
@@ -230,7 +230,7 @@ export default function EnvioProposta() {
           </Badge>
         )}
         {temCredencial === true && (
-          <Badge variant="outline" className="text-emerald-600 border-emerald-500/30 gap-1 text-xs">
+          <Badge variant="outline" className="text-success border-success/30 gap-1 text-xs">
             <CheckCircle2 className="w-3 h-3" /> Credencial OK
           </Badge>
         )}
@@ -390,7 +390,7 @@ export default function EnvioProposta() {
               ].map((check, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   {check.ok ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
                   ) : (
                     <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
                   )}
@@ -400,10 +400,10 @@ export default function EnvioProposta() {
             </div>
 
             {/* Aviso */}
-            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm">
+              <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
               <div className="text-xs text-muted-foreground">
-                <p className="font-medium text-amber-700">Atenção</p>
+                <p className="font-medium text-warning">Atenção</p>
                 <p className="mt-0.5">
                   O Agente Cloud acessará o portal <strong>{portalSelecionado?.nome}</strong> com suas credenciais e 
                   preencherá os campos da proposta automaticamente. Você poderá acompanhar o progresso em tempo real 
@@ -416,11 +416,11 @@ export default function EnvioProposta() {
             {envioResult && (
               <div className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${
                 envioResult.ok 
-                  ? 'bg-emerald-500/10 border-emerald-500/30' 
+                  ? 'bg-success/10 border-success/30'
                   : 'bg-destructive/10 border-destructive/30'
               }`}>
                 {envioResult.ok ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                 ) : (
                   <XCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
                 )}

@@ -617,11 +617,11 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Encargos ({fmtPerc(resultado.encargosPerc)})</p>
-              <p className="text-sm font-bold text-blue-600">{fmtCur(resultado.totalEncargos)}</p>
+              <p className="text-sm font-bold text-info">{fmtCur(resultado.totalEncargos)}</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
-              <p className="text-sm font-bold text-amber-600">{fmtCur(resultado.totalBDI)}</p>
+              <p className="text-sm font-bold text-warning">{fmtCur(resultado.totalBDI)}</p>
             </div>
             <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
               <p className="text-xs text-accent font-medium">PREÇO TOTAL</p>
@@ -653,8 +653,8 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                     <TableCell className="text-xs py-1.5 text-right">{item.quantidade}</TableCell>
                     <TableCell className="text-xs py-1.5">{item.unidade}</TableCell>
                     <TableCell className="text-xs py-1.5 text-right">{fmtCur(item.custoUnitario)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right text-blue-600">{fmtCur(item.encargosValor)}</TableCell>
-                    <TableCell className="text-xs py-1.5 text-right text-amber-600">{fmtCur(item.bdiValor)}</TableCell>
+                    <TableCell className="text-xs py-1.5 text-right text-info">{fmtCur(item.encargosValor)}</TableCell>
+                    <TableCell className="text-xs py-1.5 text-right text-warning">{fmtCur(item.bdiValor)}</TableCell>
                     <TableCell className="text-xs py-1.5 text-right font-medium">{fmtCur(item.precoUnitario)}</TableCell>
                     <TableCell className="text-xs py-1.5 text-right font-bold">{fmtCur(item.precoTotal)}</TableCell>
                   </TableRow>
@@ -662,8 +662,8 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                 <TableRow className="bg-accent/5 font-bold">
                   <TableCell colSpan={4} className="text-xs py-2">TOTAL</TableCell>
                   <TableCell className="text-xs py-2 text-right">{fmtCur(resultado.totalCusto)}</TableCell>
-                  <TableCell className="text-xs py-2 text-right text-blue-600">{fmtCur(resultado.totalEncargos)}</TableCell>
-                  <TableCell className="text-xs py-2 text-right text-amber-600">{fmtCur(resultado.totalBDI)}</TableCell>
+                  <TableCell className="text-xs py-2 text-right text-info">{fmtCur(resultado.totalEncargos)}</TableCell>
+                  <TableCell className="text-xs py-2 text-right text-warning">{fmtCur(resultado.totalBDI)}</TableCell>
                   <TableCell className="text-xs py-2 text-right"></TableCell>
                   <TableCell className="text-xs py-2 text-right text-accent">{fmtCur(resultado.totalPreco)}</TableCell>
                 </TableRow>

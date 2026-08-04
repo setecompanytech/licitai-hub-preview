@@ -295,9 +295,9 @@ export default function ComparativoDashboard() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="Marketplace" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} barSize={10} />
-                <Bar dataKey="Gov.br" fill="hsl(210, 100%, 50%)" radius={[0, 4, 4, 0]} barSize={10} />
-                <Bar dataKey="Fornecedor" fill="hsl(174, 72%, 40%)" radius={[0, 4, 4, 0]} barSize={10} />
+                <Bar dataKey="Marketplace" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} barSize={10} />
+                <Bar dataKey="Gov.br" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} barSize={10} />
+                <Bar dataKey="Fornecedor" fill="hsl(var(--chart-3))" radius={[0, 4, 4, 0]} barSize={10} />
               </BarChart>
             </ResponsiveContainer>
           </div>

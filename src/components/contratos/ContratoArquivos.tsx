@@ -49,25 +49,25 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 // Tipos disponíveis para CONTRATOS ADMINISTRATIVOS
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
-  ata_srp: { label: 'ATA SRP (referência)', color: 'bg-amber-500/10 text-amber-600' },
+  ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning/10 text-warning' },
   aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
   aditivo_valor: { label: 'Termo Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
   aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
   aditivo_prazo_valor: { label: 'Termo Aditivo de Prazo e Valor', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
   aditivo_prazo_quantidade: { label: 'Termo Aditivo de Prazo e Quantidade', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
-  aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-blue-500/10 text-blue-600', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
   aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-primary/10 text-primary', isAditivo: true, tipoAditivo: 'escopo' },
-  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
-  aditivo_revisao: { label: 'Revisão Contratual', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
-  aditivo_repactuacao: { label: 'Repactuação', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
-  aditivo_reajuste: { label: 'Reajuste', color: 'bg-orange-500/10 text-orange-600', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
+  aditivo_revisao: { label: 'Revisão Contratual', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  aditivo_repactuacao: { label: 'Repactuação', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
 // Tipos disponíveis para ATAs SRP — sem aditivos (ATA não gera aditivo, gera apostilamento ou contrato derivado)
 const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
-  ata_srp: { label: 'ATA SRP Original', color: 'bg-amber-500/10 text-amber-600' },
-  apostilamento: { label: 'Apostilamento', color: 'bg-amber-500/10 text-amber-600' },
+  ata_srp: { label: 'ATA SRP Original', color: 'bg-warning/10 text-warning' },
+  apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
@@ -962,7 +962,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
               </SelectContent>
             </Select>
             {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
-              <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+              <p className="text-xs text-warning mt-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
               </p>
@@ -1005,12 +1005,12 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 <>
                   {/* Calculator for reequilíbrio types */}
                   {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
-                    <div className="sm:col-span-2 rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1">
+                    <div className="sm:col-span-2 rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-warning flex items-center gap-1">
                         <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
                       </p>
                       {precificacaoMargem !== null && (
-                        <p className="text-xs text-orange-600 dark:text-orange-400">
+                        <p className="text-xs text-warning">
                           Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
                         </p>
                       )}
@@ -1041,7 +1041,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="text-xs h-6 px-2 border-orange-300 text-orange-700"
+                              className="text-xs h-6 px-2 border-accent/40 text-accent"
                               onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
                             >
                               Aplicar
@@ -1293,7 +1293,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                 </SelectContent>
               </Select>
               {TIPOS_ARQUIVO[editTipo]?.semLimite && (
-                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-warning mt-1 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>

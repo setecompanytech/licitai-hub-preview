@@ -76,9 +76,9 @@ const statusCfg: Record<string, { label: string; color: string }> = {
 };
 
 const kanbanCfg: Record<string, { label: string; color: string }> = {
-  pedido:          { label: 'Aguard. Faturamento', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  separar_estoque: { label: 'Separar Estoque',     color: 'bg-yellow-600/10 text-yellow-600 border-yellow-600/20' },
-  faturar:         { label: 'Faturar',             color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
+  pedido:          { label: 'Aguard. Faturamento', color: 'bg-info/10 text-info border-info/20' },
+  separar_estoque: { label: 'Separar Estoque',     color: 'bg-warning/10 text-warning border-warning/20' },
+  faturar:         { label: 'Faturar',             color: 'bg-warning/10 text-warning border-warning/20' },
   faturado:        { label: 'Faturado',            color: 'bg-primary/10 text-primary border-primary/20' },
   entrega:         { label: 'Em Entrega',          color: 'bg-accent/10 text-accent border-accent/20' },
   cancelado:       { label: 'Cancelado',           color: 'bg-destructive/10 text-destructive border-destructive/20' },
