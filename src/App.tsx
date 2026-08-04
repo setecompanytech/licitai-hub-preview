@@ -22,7 +22,7 @@ import { lazyImportWithRecovery } from "@/lib/chunk-recovery";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
-import LandingPage from "./pages/LandingPage";
+import HomeLanding from "./pages/home/HomeLanding";
 import NotFound from "./pages/NotFound";
 import CookieConsentBanner from "./components/shared/CookieConsentBanner";
 
@@ -139,7 +139,7 @@ const App = () => (
             <MaintenanceGuard>
             <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<HomeLanding />} />
               <Route path="/landing" element={<Navigate to="/" replace />} />
               <Route path="/index" element={<Navigate to="/dashboard" replace />} />
               <Route path="/faq" element={<FaqPage />} />
