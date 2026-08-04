@@ -253,7 +253,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         <div className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Número</Label>
+              <Label className="text-sm">Número</Label>
               <Input
                 value={form.numero}
                 onChange={e => setForm(f => ({ ...f, numero: e.target.value }))}
@@ -261,7 +261,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Status</Label>
+              <Label className="text-sm">Status</Label>
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
@@ -276,7 +276,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Órgão</Label>
+            <Label className="text-sm">Órgão</Label>
             <Input
               value={form.orgao}
               onChange={e => setForm(f => ({ ...f, orgao: e.target.value }))}
@@ -285,7 +285,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Objeto</Label>
+            <Label className="text-sm">Objeto</Label>
             <Textarea
               value={form.objeto}
               onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))}
@@ -295,7 +295,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Valor Estimado (R$)</Label>
+              <Label className="text-sm">Valor Estimado (R$)</Label>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -312,7 +312,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">UF</Label>
+              <Label className="text-sm">UF</Label>
               <Select value={form.uf || 'none'} onValueChange={v => setForm(f => ({ ...f, uf: v === 'none' ? '' : v }))}>
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="UF" />
@@ -326,7 +326,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Município</Label>
+              <Label className="text-sm">Município</Label>
               <Input
                 value={form.municipio}
                 onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))}
@@ -336,7 +336,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Data de Encerramento</Label>
+            <Label className="text-sm">Data de Encerramento</Label>
             <Input
               type="date"
               value={form.data_encerramento}
@@ -346,7 +346,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Observações</Label>
+            <Label className="text-sm">Observações</Label>
             <Textarea
               value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}

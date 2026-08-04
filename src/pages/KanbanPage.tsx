@@ -234,7 +234,7 @@ export default function KanbanPage() {
     <AppLayout>
       <div className="mb-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Licitações</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <p className="text-base text-muted-foreground mt-1">
           Kanban e Compromissos sincronizados com o Monitoramento de Editais • {items.length} processos • {formatCurrency(totalValor)} estimados
         </p>
       </div>
@@ -248,12 +248,12 @@ export default function KanbanPage() {
 
         <TabsContent value="kanban">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <p className="text-base text-muted-foreground">Carregando...</p>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Plus className="w-12 h-12 text-muted-foreground/30 mb-4" />
               <h3 className="text-lg font-semibold mb-1">Nenhum processo no Kanban</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
+              <p className="text-base text-muted-foreground max-w-md">
                 Vá até o <strong>Monitoramento de Editais</strong> → aba <strong>Licitações</strong> e clique em <strong>"Iniciar"</strong> para converter um edital em processo gerenciado.
               </p>
             </div>
@@ -333,7 +333,7 @@ export default function KanbanPage() {
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-sm font-medium mt-0.5 leading-tight line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
+                              <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
                                 {lic.objeto}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground flex-wrap">
@@ -377,7 +377,7 @@ export default function KanbanPage() {
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
             <p className="text-[10px] font-mono text-muted-foreground truncate">{draggedItem.numero}</p>
-            <p className="text-sm font-medium mt-0.5 line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
+            <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
             {draggedItem.municipio && draggedItem.uf && (
               <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
                 <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}
