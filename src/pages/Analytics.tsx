@@ -54,11 +54,11 @@ export default function Analytics() {
               <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="pregao_ganhas" name="Pregão Ganho" fill="hsl(142, 71%, 45%)" radius={[3, 3, 0, 0]} stackId="pregao" />
-              <Bar dataKey="pregao_perdidas" name="Pregão Perdido" fill="hsl(0, 72%, 51%)" radius={[3, 3, 0, 0]} stackId="pregao" />
-              <Bar dataKey="dispensa_ganhas" name="Dispensa Ganha" fill="hsl(174, 72%, 40%)" radius={[3, 3, 0, 0]} stackId="dispensa" />
-              <Bar dataKey="dispensa_perdidas" name="Dispensa Perdida" fill="hsl(38, 92%, 50%)" radius={[3, 3, 0, 0]} stackId="dispensa" />
-              <Bar dataKey="emAndamento" name="Em Andamento" fill="hsl(280, 60%, 50%)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="pregao_ganhas" name="Pregão Ganho" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} stackId="pregao" />
+              <Bar dataKey="pregao_perdidas" name="Pregão Perdido" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} stackId="pregao" />
+              <Bar dataKey="dispensa_ganhas" name="Dispensa Ganha" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} stackId="dispensa" />
+              <Bar dataKey="dispensa_perdidas" name="Dispensa Perdida" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} stackId="dispensa" />
+              <Bar dataKey="emAndamento" name="Em Andamento" fill="hsl(var(--info))" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

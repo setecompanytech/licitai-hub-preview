@@ -427,7 +427,7 @@ export default function EquipePermissoes() {
                         })}
                       </div>
                       {moduloMismatch.length > 0 && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                        <p className="text-xs text-warning mt-2 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           {moduloMismatch.length} módulo(s) fora do escopo do setor "{d.equipe}".
                         </p>

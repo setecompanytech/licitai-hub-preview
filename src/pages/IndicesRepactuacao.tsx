@@ -233,7 +233,7 @@ export default function IndicesRepactuacao() {
                           }
                         </p>
                         {idx.variacao_mensal != null && (
-                          <div className={`flex items-center gap-0.5 text-xs font-medium ${isPositive ? 'text-orange-500' : 'text-emerald-500'}`}>
+                          <div className={`flex items-center gap-0.5 text-xs font-medium ${isPositive ? 'text-warning' : 'text-success'}`}>
                             {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                             {fmtPerc(idx.variacao_mensal)}
                           </div>
@@ -443,14 +443,14 @@ export default function IndicesRepactuacao() {
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Diferença</p>
-                    <p className="text-lg font-bold text-emerald-600">{fmtCur(simResult.diferenca)}</p>
+                    <p className="text-lg font-bold text-success">{fmtCur(simResult.diferenca)}</p>
                   </Card>
                 </div>
 
                 {simResult.alertas?.length > 0 && (
-                  <Card className="p-4 border-yellow-500/30 bg-yellow-500/5">
+                  <Card className="p-4 border-warning/30 bg-warning/5">
                     <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-yellow-500" /> Alertas
+                      <AlertTriangle className="w-4 h-4 text-warning" /> Alertas
                     </h4>
                     <ul className="space-y-1">
                       {simResult.alertas.map((a, i) => (

@@ -20,17 +20,17 @@ import { ptBR } from 'date-fns/locale';
 const TIPO_CONFIG: Record<string, { icon: any; label: string; color: string; emoji: string }> = {
   novo_edital: { icon: FileText, label: 'Novo Edital', color: 'bg-info/10 text-info border-info/30', emoji: '🆕' },
   alteracao: { icon: AlertTriangle, label: 'Alteração', color: 'bg-warning/10 text-warning border-warning/30', emoji: '⚠️' },
-  suspensao: { icon: Ban, label: 'Suspensão', color: 'bg-orange-500/10 text-orange-600 border-orange-500/30', emoji: '🚫' },
+  suspensao: { icon: Ban, label: 'Suspensão', color: 'bg-warning/10 text-warning border-warning/30', emoji: '🚫' },
   cancelamento: { icon: XCircle, label: 'Cancelamento', color: 'bg-destructive/10 text-destructive border-destructive/30', emoji: '❌' },
   homologacao: { icon: CheckCircle2, label: 'Homologação', color: 'bg-success/10 text-success border-success/30', emoji: '✅' },
   resultado: { icon: Trophy, label: 'Resultado', color: 'bg-accent/10 text-accent border-accent/30', emoji: '📊' },
 };
 
 const FONTE_COLORS: Record<string, string> = {
-  PNCP: 'bg-blue-500/10 text-blue-600',
-  DOU: 'bg-emerald-500/10 text-emerald-600',
-  DOE: 'bg-purple-500/10 text-purple-600',
-  ComprasNet: 'bg-amber-500/10 text-amber-600',
+  PNCP: 'bg-muted text-muted-foreground',
+  DOU: 'bg-muted text-muted-foreground',
+  DOE: 'bg-muted text-muted-foreground',
+  ComprasNet: 'bg-muted text-muted-foreground',
   sistema: 'bg-muted text-muted-foreground',
 };
 

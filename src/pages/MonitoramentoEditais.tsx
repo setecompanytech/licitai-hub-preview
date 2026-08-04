@@ -1440,14 +1440,14 @@ export default function MonitoramentoEditais() {
                 placeholder={fontesOrcamentariasOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as fontes'}
                 info={
                   <div className="space-y-2">
-                    <p className="font-semibold text-amber-400">Fonte Orçamentária</p>
+                    <p className="font-semibold text-warning">Fonte Orçamentária</p>
                     <p>Indica de onde vêm os recursos da licitação — ex: <span className="font-medium">Tesouro Nacional</span>, <span className="font-medium">Recursos Próprios</span>, <span className="font-medium">Convênio</span>.</p>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-amber-400/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
+                      <p className="font-medium text-warning/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais — ele só existe no endpoint de detalhe individual de cada edital.</p>
                     </div>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-green-400/80 text-xs uppercase tracking-wide">Como preencher?</p>
+                      <p className="font-medium text-success/80 text-xs uppercase tracking-wide">Como preencher?</p>
                       <p>Nesta página, faça uma busca e clique em <span className="font-semibold">"Ver detalhes"</span> em qualquer edital dos resultados. O sistema consultará o PNCP e salvará a fonte automaticamente. Repita para alguns editais — as opções começarão a aparecer aqui.</p>
                     </div>
                   </div>
@@ -1462,14 +1462,14 @@ export default function MonitoramentoEditais() {
                 placeholder={margensPreferenciaOpts.length === 0 ? 'Dados ainda não disponíveis' : 'Todas as margens'}
                 info={
                   <div className="space-y-2">
-                    <p className="font-semibold text-amber-400">Margem de Preferência</p>
+                    <p className="font-semibold text-warning">Margem de Preferência</p>
                     <p>Indica se a licitação aplica vantagem de preço para produtos ou serviços nacionais — ex: <span className="font-medium">Normal</span>, <span className="font-medium">Ampliada</span>.</p>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-amber-400/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
+                      <p className="font-medium text-warning/80 text-xs uppercase tracking-wide">Por que está vazio?</p>
                       <p>A API pública do PNCP <span className="font-semibold">não retorna esse campo na listagem</span> de editais. Dependendo da versão da API, ele pode aparecer só no detalhe individual.</p>
                     </div>
                     <div className="border-t border-white/10 pt-2 space-y-1">
-                      <p className="font-medium text-green-400/80 text-xs uppercase tracking-wide">Como preencher?</p>
+                      <p className="font-medium text-success/80 text-xs uppercase tracking-wide">Como preencher?</p>
                       <p>O sistema tenta extrair esse dado automaticamente a cada coleta periódica do PNCP. As opções aparecerão aqui assim que estiverem disponíveis na próxima atualização.</p>
                     </div>
                   </div>
@@ -1704,7 +1704,7 @@ function ChipMultiSelect({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-xs font-bold cursor-help shrink-0"
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning/15 text-warning text-xs font-bold cursor-help shrink-0"
                         onClick={e => e.stopPropagation()}
                       >
                         !
@@ -1741,7 +1741,7 @@ function ChipMultiSelect({
           </div>
         </div>
         {open && options.length === 0 && info && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5 text-xs text-amber-900 dark:text-amber-200 leading-relaxed [&_p]:mb-1 [&_.border-t]:border-amber-200 [&_.dark\:border-white\/10]:border-amber-200 [&_p.font-medium]:text-amber-700 dark:[&_p.font-medium]:text-amber-400">
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning leading-relaxed [&_p]:mb-1 [&_.border-t]:border-warning/30 [&_p.font-medium]:text-warning">
             {info}
           </div>
         )}

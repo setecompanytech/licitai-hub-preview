@@ -108,17 +108,17 @@ export default function Blog() {
           <div>
             <div className="flex gap-2 mb-3">
               {artigoAberto.caso_fortuito && (
-                <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs">
+                <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" /> Caso Fortuito
                 </Badge>
               )}
               {artigoAberto.forca_maior && (
-                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs">
+                <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" /> Força Maior
                 </Badge>
               )}
               {artigoAberto.tcu_referencia && (
-                <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs">
+                <Badge variant="outline" className="bg-info/15 text-info border-info/30 text-xs">
                   <Gavel className="w-3 h-3 mr-1" /> TCU: {artigoAberto.tcu_referencia}
                 </Badge>
               )}
@@ -181,12 +181,12 @@ export default function Blog() {
                     ⭐ Destaque
                   </Badge>
                   {artigo.caso_fortuito && (
-                    <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs">
+                    <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
                       Caso Fortuito
                     </Badge>
                   )}
                   {artigo.forca_maior && (
-                    <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs">
+                    <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs">
                       Força Maior
                     </Badge>
                   )}
@@ -252,17 +252,17 @@ export default function Blog() {
                   <div className="flex-1">
                     <div className="flex gap-1 mb-1">
                       {artigo.caso_fortuito && (
-                        <Badge variant="outline" className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-xs px-1.5 py-0">
+                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs px-1.5 py-0">
                           Caso Fortuito
                         </Badge>
                       )}
                       {artigo.forca_maior && (
-                        <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30 text-xs px-1.5 py-0">
+                        <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 text-xs px-1.5 py-0">
                           Força Maior
                         </Badge>
                       )}
                       {artigo.tcu_referencia && (
-                        <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs px-1.5 py-0">
+                        <Badge variant="outline" className="bg-info/15 text-info border-info/30 text-xs px-1.5 py-0">
                           TCU
                         </Badge>
                       )}

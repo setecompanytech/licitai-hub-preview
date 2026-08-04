@@ -20,13 +20,13 @@ import { MODULOS_SISTEMA, useMembroPermissoes } from '@/hooks/useMembroPermissoe
 
 const EQUIPES = [
   { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
-  { value: 'financeiro', label: 'Financeiro', icon: DollarSign, color: 'bg-green-500/15 text-green-600' },
-  { value: 'comercial', label: 'Comercial', icon: Briefcase, color: 'bg-blue-500/15 text-blue-600' },
-  { value: 'logistica', label: 'Logística', icon: Truck, color: 'bg-orange-500/15 text-orange-600' },
-  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-indigo-500/15 text-indigo-600' },
-  { value: 'contabil', label: 'Contábil', icon: Calculator, color: 'bg-emerald-500/15 text-emerald-600' },
-  { value: 'licitacoes', label: 'Licitações', icon: Search, color: 'bg-amber-500/15 text-amber-600' },
-  { value: 'documentos', label: 'Documentos', icon: FileText, color: 'bg-purple-500/15 text-purple-600' },
+  { value: 'financeiro', label: 'Financeiro', icon: DollarSign, color: 'bg-muted text-muted-foreground' },
+  { value: 'comercial', label: 'Comercial', icon: Briefcase, color: 'bg-muted text-muted-foreground' },
+  { value: 'logistica', label: 'Logística', icon: Truck, color: 'bg-muted text-muted-foreground' },
+  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-muted text-muted-foreground' },
+  { value: 'contabil', label: 'Contábil', icon: Calculator, color: 'bg-muted text-muted-foreground' },
+  { value: 'licitacoes', label: 'Licitações', icon: Search, color: 'bg-muted text-muted-foreground' },
+  { value: 'documentos', label: 'Documentos', icon: FileText, color: 'bg-muted text-muted-foreground' },
 ];
 
 const PAPEIS: { value: string; label: string }[] = [

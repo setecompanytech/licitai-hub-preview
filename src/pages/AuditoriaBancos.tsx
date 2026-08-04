@@ -139,12 +139,12 @@ export default function AuditoriaBancos() {
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {l.pendencias.length === 0 ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-500">
+                      <span className="inline-flex items-center gap-1 text-success">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Nenhuma
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
                         {l.pendencias.join(" · ")}
                       </span>
                     )}
@@ -176,11 +176,11 @@ function Resumo({
 }) {
   const cor =
     tom === "success"
-      ? "text-emerald-500"
+      ? "text-success"
       : tom === "warning"
-        ? "text-amber-500"
+        ? "text-warning"
         : tom === "danger"
-          ? "text-red-500"
+          ? "text-destructive"
           : "text-foreground";
   return (
     <div className="rounded-lg border border-border/40 bg-card p-3">
@@ -199,10 +199,10 @@ function StatusBadge({
 }) {
   const cls =
     tom === "success"
-      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+      ? "bg-success/10 text-success border-success/30"
       : tom === "warning"
-        ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
-        : "bg-red-500/10 text-red-500 border-red-500/30";
+        ? "bg-warning/10 text-warning border-warning/30"
+        : "bg-destructive/10 text-destructive border-destructive/30";
   return (
     <Badge variant="outline" className={`${cls} text-xs font-medium`}>
       {children}

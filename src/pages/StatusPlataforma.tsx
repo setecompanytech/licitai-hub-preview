@@ -16,9 +16,9 @@ interface ServiceCheck {
 }
 
 const statusConfig: Record<ServiceStatus, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
-  operacional: { label: 'Operacional', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  degradado: { label: 'Degradado', icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  indisponivel: { label: 'Indisponível', icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
+  operacional: { label: 'Operacional', icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10' },
+  degradado: { label: 'Degradado', icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10' },
+  indisponivel: { label: 'Indisponível', icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10' },
 };
 
 // Static services that depend on external factors

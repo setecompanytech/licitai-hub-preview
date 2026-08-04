@@ -99,9 +99,9 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 const movConfig = {
-  entrada: { label: 'Entrada', color: 'text-green-600',  bg: 'bg-green-50  dark:bg-green-950',  icon: TrendingUp,   sign: '+' },
-  saida:   { label: 'Saída',   color: 'text-red-600',    bg: 'bg-red-50    dark:bg-red-950',    icon: TrendingDown, sign: '-' },
-  ajuste:  { label: 'Ajuste',  color: 'text-blue-600',   bg: 'bg-blue-50   dark:bg-blue-950',   icon: RotateCcw,    sign: '±' },
+  entrada: { label: 'Entrada', color: 'text-success',     bg: 'bg-success/10',     icon: TrendingUp,   sign: '+' },
+  saida:   { label: 'Saída',   color: 'text-destructive', bg: 'bg-destructive/10', icon: TrendingDown, sign: '-' },
+  ajuste:  { label: 'Ajuste',  color: 'text-info',        bg: 'bg-info/10',        icon: RotateCcw,    sign: '±' },
 };
 
 // ── Form defaults ─────────────────────────────────────────────
@@ -1485,9 +1485,9 @@ function MovDialog({ open, onOpenChange, form, setForm, saving, onSave, produtos
             <Select value={form.tipo} onValueChange={(v: any) => setForm(f => ({ ...f, tipo: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5 text-green-600" />Entrada</span></SelectItem>
-                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-3.5 h-3.5 text-red-600" />Saída</span></SelectItem>
-                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-3.5 h-3.5 text-blue-600" />Ajuste</span></SelectItem>
+                <SelectItem value="entrada"><span className="flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5 text-success" />Entrada</span></SelectItem>
+                <SelectItem value="saida"><span className="flex items-center gap-2"><TrendingDown className="w-3.5 h-3.5 text-destructive" />Saída</span></SelectItem>
+                <SelectItem value="ajuste"><span className="flex items-center gap-2"><RotateCcw className="w-3.5 h-3.5 text-info" />Ajuste</span></SelectItem>
               </SelectContent>
             </Select>
           </div>

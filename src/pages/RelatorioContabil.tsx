@@ -25,10 +25,10 @@ const fmt = (v: number) =>
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 
 const COLORS_PIE = [
-  'hsl(210, 100%, 40%)',
-  'hsl(174, 72%, 40%)',
-  'hsl(38, 92%, 50%)',
-  'hsl(280, 60%, 50%)',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-5))',
+  'hsl(var(--chart-4))',
 ];
 
 // ─── KPI Card ───
@@ -118,9 +118,9 @@ function ComparativoCenarios() {
               <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
               <Legend />
-              <Bar dataKey="receita" name="Receita" fill="hsl(210, 100%, 40%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="custos" name="Custos" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="lucro" name="Lucro" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="receita" name="Receita" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="custos" name="Custos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="lucro" name="Lucro" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -136,9 +136,9 @@ function ComparativoCenarios() {
               <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
               <Legend />
-              <Line type="monotone" dataKey="margem" name="Margem Líquida" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="infraPct" name="Infra %" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="equipePct" name="Equipe %" stroke="hsl(280, 60%, 50%)" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="margem" name="Margem Líquida" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="infraPct" name="Infra %" stroke="hsl(var(--chart-5))" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="equipePct" name="Equipe %" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -187,7 +187,7 @@ function DREComparativa() {
   const cenario = cenarios[cenarioIdx];
   const regimes = ['simples', 'presumido', 'real'] as const;
   const regimeLabels = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real'];
-  const regimeCores = ['hsl(142, 71%, 45%)', 'hsl(210, 100%, 40%)', 'hsl(280, 60%, 50%)'];
+  const regimeCores = ['hsl(var(--success))', 'hsl(var(--chart-2))', 'hsl(var(--chart-4))'];
 
   const dres = regimes.map(r => buildDre(cenario, r));
   const lucros = dres.map(d => d.find(l => l.item === 'Lucro Líquido')!);
@@ -248,8 +248,8 @@ function DREComparativa() {
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
               <Legend />
-              <Bar dataKey="tributos" name="Tributos" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="lucro" name="Lucro Líquido" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="tributos" name="Tributos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="lucro" name="Lucro Líquido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -263,9 +263,9 @@ function DREComparativa() {
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
               <Legend />
-              <Line type="monotone" dataKey="simplesNacional" name="Simples" stroke="hsl(142, 71%, 45%)" strokeWidth={2} />
-              <Line type="monotone" dataKey="lucroPresumido" name="Presumido" stroke="hsl(210, 100%, 40%)" strokeWidth={2} />
-              <Line type="monotone" dataKey="lucroReal" name="Real" stroke="hsl(280, 60%, 50%)" strokeWidth={2} />
+              <Line type="monotone" dataKey="simplesNacional" name="Simples" stroke="hsl(var(--success))" strokeWidth={2} />
+              <Line type="monotone" dataKey="lucroPresumido" name="Presumido" stroke="hsl(var(--chart-2))" strokeWidth={2} />
+              <Line type="monotone" dataKey="lucroReal" name="Real" stroke="hsl(var(--chart-4))" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -311,11 +311,11 @@ function DREComparativa() {
 // ─── Composição de Custos ───
 function ComposicaoCustos() {
   const pieData = [
-    { name: 'Infraestrutura', value: 2349, color: 'hsl(174, 72%, 40%)' },
-    { name: 'Equipe', value: 33000, color: 'hsl(210, 100%, 40%)' },
-    { name: 'Operacional', value: 10800, color: 'hsl(38, 92%, 50%)' },
-    { name: 'Tributos', value: 51991, color: 'hsl(0, 72%, 51%)' },
-    { name: 'Inadimplência', value: 13925, color: 'hsl(280, 60%, 50%)' },
+    { name: 'Infraestrutura', value: 2349, color: 'hsl(var(--chart-3))' },
+    { name: 'Equipe', value: 33000, color: 'hsl(var(--chart-2))' },
+    { name: 'Operacional', value: 10800, color: 'hsl(var(--chart-5))' },
+    { name: 'Tributos', value: 51991, color: 'hsl(var(--destructive))' },
+    { name: 'Inadimplência', value: 13925, color: 'hsl(var(--chart-4))' },
     { name: 'Reserva', value: 8355, color: 'hsl(var(--muted-foreground))' },
   ];
 
@@ -357,15 +357,15 @@ function ComposicaoCustos() {
             <AreaChart data={escalaInfra}>
               <defs>
                 <linearGradient id="gradInfra" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(174, 72%, 40%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(174, 72%, 40%)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="%" />
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-              <Area type="monotone" dataKey="infraPct" name="Infra % Receita" stroke="hsl(174, 72%, 40%)" fill="url(#gradInfra)" strokeWidth={2} />
+              <Area type="monotone" dataKey="infraPct" name="Infra % Receita" stroke="hsl(var(--chart-3))" fill="url(#gradInfra)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -378,9 +378,9 @@ function ComposicaoCustos() {
             <PolarGrid stroke="hsl(var(--border))" />
             <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
             <PolarRadiusAxis tick={false} domain={[0, 100]} />
-            <Radar name="20 clientes" dataKey="c20" stroke="hsl(38, 92%, 50%)" fill="hsl(38, 92%, 50%)" fillOpacity={0.1} />
-            <Radar name="500 clientes" dataKey="c500" stroke="hsl(210, 100%, 40%)" fill="hsl(210, 100%, 40%)" fillOpacity={0.15} />
-            <Radar name="1.000 clientes" dataKey="c1000" stroke="hsl(142, 71%, 45%)" fill="hsl(142, 71%, 45%)" fillOpacity={0.15} />
+            <Radar name="20 clientes" dataKey="c20" stroke="hsl(var(--chart-5))" fill="hsl(var(--chart-5))" fillOpacity={0.1} />
+            <Radar name="500 clientes" dataKey="c500" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" fillOpacity={0.15} />
+            <Radar name="1.000 clientes" dataKey="c1000" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.15} />
             <Legend />
           </RadarChart>
         </ResponsiveContainer>
@@ -409,10 +409,10 @@ function MercadoRegional() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Municípios (PA)" value="144" icon={Building2} color="hsl(210, 100%, 40%)" />
-        <KpiCard label="Volume Anual" value={mercadoPara.volumeAnual} icon={DollarSign} color="hsl(142, 71%, 45%)" />
-        <KpiCard label="Empresas Ativas" value={mercadoPara.empresasAtivas.toLocaleString('pt-BR')} icon={Users} color="hsl(174, 72%, 40%)" />
-        <KpiCard label="Penetração Digital" value={`${mercadoPara.penetracaoDigital}%`} sub="Oportunidade: 82% sem solução" icon={TrendingUp} color="hsl(38, 92%, 50%)" />
+        <KpiCard label="Municípios (PA)" value="144" icon={Building2} color="hsl(var(--chart-2))" />
+        <KpiCard label="Volume Anual" value={mercadoPara.volumeAnual} icon={DollarSign} color="hsl(var(--success))" />
+        <KpiCard label="Empresas Ativas" value={mercadoPara.empresasAtivas.toLocaleString('pt-BR')} icon={Users} color="hsl(var(--chart-3))" />
+        <KpiCard label="Penetração Digital" value={`${mercadoPara.penetracaoDigital}%`} sub="Oportunidade: 82% sem solução" icon={TrendingUp} color="hsl(var(--chart-5))" />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -424,7 +424,7 @@ function MercadoRegional() {
               <XAxis type="number" unit="%" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={120} />
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="penetracao" fill="hsl(210, 100%, 40%)" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="penetracao" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -435,15 +435,15 @@ function MercadoRegional() {
             <AreaChart data={projecaoData}>
               <defs>
                 <linearGradient id="gradProj" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => fmt(v)} />
               <Tooltip formatter={(v: number, name: string) => [name === 'receita' ? fmt(v) : v, name === 'receita' ? 'Receita' : 'Clientes']} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-              <Area type="monotone" dataKey="receita" name="Receita" stroke="hsl(142, 71%, 45%)" fill="url(#gradProj)" strokeWidth={2} />
+              <Area type="monotone" dataKey="receita" name="Receita" stroke="hsl(var(--success))" fill="url(#gradProj)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>

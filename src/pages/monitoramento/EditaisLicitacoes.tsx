@@ -134,7 +134,7 @@ const CardEdital = ({
           </span>
         )}
         {edital.srp && (
-          <span className="bg-purple-600 text-white text-xs font-bold px-2.5 py-0.5 rounded">
+          <span className="bg-info text-info-foreground text-xs font-bold px-2.5 py-0.5 rounded">
             SRP
           </span>
         )}
@@ -396,7 +396,7 @@ const ModalItensDownload = ({
                   href={edital.link_sistema_origem}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-purple-600 text-white rounded no-underline text-[13px] font-semibold"
+                  className="flex items-center gap-2 px-3.5 py-2.5 bg-accent text-accent-foreground rounded no-underline text-[13px] font-semibold"
                 >
                   <ExternalLink size={15} />
                   Acessar Portal de Origem

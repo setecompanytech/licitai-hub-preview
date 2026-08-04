@@ -169,9 +169,9 @@ export default function AdminMarketing() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Leads', value: kpis.total, icon: UserPlus, color: 'text-accent' },
-            { label: 'Conversões', value: kpis.convertidos, icon: Target, color: 'text-green-500', sub: `${kpis.taxaConversao.toFixed(1)}%` },
-            { label: 'CAC', value: `R$ ${kpis.cac.toFixed(0)}`, icon: DollarSign, color: 'text-yellow-500' },
-            { label: 'LTV Estimado', value: `R$ ${kpis.ltv.toFixed(0)}`, icon: TrendingUp, color: 'text-blue-500', sub: `${kpis.ltv > 0 && kpis.cac > 0 ? (kpis.ltv / kpis.cac).toFixed(1) : '0'}x ROI` },
+            { label: 'Conversões', value: kpis.convertidos, icon: Target, color: 'text-success', sub: `${kpis.taxaConversao.toFixed(1)}%` },
+            { label: 'CAC', value: `R$ ${kpis.cac.toFixed(0)}`, icon: DollarSign, color: 'text-muted-foreground' },
+            { label: 'LTV Estimado', value: `R$ ${kpis.ltv.toFixed(0)}`, icon: TrendingUp, color: 'text-muted-foreground', sub: `${kpis.ltv > 0 && kpis.cac > 0 ? (kpis.ltv / kpis.cac).toFixed(1) : '0'}x ROI` },
           ].map((kpi) => (
             <Card key={kpi.label}>
               <CardContent className="pt-5">

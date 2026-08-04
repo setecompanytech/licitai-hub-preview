@@ -54,19 +54,19 @@ const STATUS_PERDIDO = ['Perdida', 'perdida'];
 const STATUS_ANDAMENTO = ['Monitorando', 'Analisando', 'Proposta Enviada', 'enviada', 'proposta', 'Em Disputa', 'Publicado'];
 
 const STATUS_COLORS: Record<string, string> = {
-  'Monitorando': 'hsl(210, 100%, 40%)',
-  'Analisando': 'hsl(38, 92%, 50%)',
-  'Proposta Enviada': 'hsl(174, 72%, 40%)',
-  'enviada': 'hsl(174, 72%, 40%)',
-  'proposta': 'hsl(174, 72%, 40%)',
-  'Em Disputa': 'hsl(280, 60%, 50%)',
-  'Publicado': 'hsl(220, 14%, 60%)',
-  'Vencida': 'hsl(142, 71%, 45%)',
-  'vencida': 'hsl(142, 71%, 45%)',
-  'Homologada': 'hsl(142, 71%, 35%)',
-  'Perdida': 'hsl(0, 72%, 51%)',
-  'perdida': 'hsl(0, 72%, 51%)',
-  'Arquivada': 'hsl(220, 14%, 40%)',
+  'Monitorando': 'hsl(var(--info))',
+  'Analisando': 'hsl(var(--warning))',
+  'Proposta Enviada': 'hsl(var(--chart-3))',
+  'enviada': 'hsl(var(--chart-3))',
+  'proposta': 'hsl(var(--chart-3))',
+  'Em Disputa': 'hsl(var(--chart-4))',
+  'Publicado': 'hsl(var(--muted-foreground))',
+  'Vencida': 'hsl(var(--success))',
+  'vencida': 'hsl(var(--success))',
+  'Homologada': 'hsl(var(--success))',
+  'Perdida': 'hsl(var(--destructive))',
+  'perdida': 'hsl(var(--destructive))',
+  'Arquivada': 'hsl(var(--muted-foreground))',
 };
 
 function isDispensa(modalidade: string) {
@@ -172,7 +172,7 @@ export function useAnalyticsData() {
     const map: Record<string, number> = {};
     licitacoes.forEach(l => { map[l.status] = (map[l.status] || 0) + 1; });
     return Object.entries(map)
-      .map(([status, count]) => ({ status, count, color: STATUS_COLORS[status] || 'hsl(220, 14%, 60%)' }))
+      .map(([status, count]) => ({ status, count, color: STATUS_COLORS[status] || 'hsl(var(--muted-foreground))' }))
       .sort((a, b) => b.count - a.count);
   })();
 

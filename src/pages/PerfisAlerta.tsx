@@ -486,7 +486,7 @@ export default function PerfisAlerta() {
                     <div className="text-xs text-muted-foreground">Alertas Totais</div>
                   </Card>
                   <Card className="p-4 text-center">
-                    <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                    <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.enviado, 0)}
                     </div>
@@ -524,11 +524,11 @@ export default function PerfisAlerta() {
                             <div className="text-xs text-muted-foreground">Alertas</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold text-green-600">{stats.enviado}</div>
+                            <div className="text-lg font-bold text-success">{stats.enviado}</div>
                             <div className="text-xs text-muted-foreground">Enviados</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold text-yellow-600">{stats.pendente}</div>
+                            <div className="text-lg font-bold text-warning">{stats.pendente}</div>
                             <div className="text-xs text-muted-foreground">Pendentes</div>
                           </div>
                           <div>
@@ -550,8 +550,8 @@ export default function PerfisAlerta() {
                         </div>
                         {stats.total > 0 && (
                           <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden flex">
-                            <div className="bg-green-500 h-full" style={{ width: `${(stats.enviado / stats.total) * 100}%` }} />
-                            <div className="bg-yellow-500 h-full" style={{ width: `${(stats.pendente / stats.total) * 100}%` }} />
+                            <div className="bg-success h-full" style={{ width: `${(stats.enviado / stats.total) * 100}%` }} />
+                            <div className="bg-warning h-full" style={{ width: `${(stats.pendente / stats.total) * 100}%` }} />
                             <div className="bg-destructive h-full" style={{ width: `${(stats.falhou / stats.total) * 100}%` }} />
                           </div>
                         )}
@@ -623,7 +623,7 @@ export default function PerfisAlerta() {
 
                 {/* Palavras-chave */}
                 <div>
-                  <Label className="text-xs font-semibold text-green-600">Palavras-chave (positivas)</Label>
+                  <Label className="text-xs font-semibold text-success">Palavras-chave (positivas)</Label>
                   <div className="flex gap-2 mt-1">
                     <Input value={tempPalavra} onChange={e => setTempPalavra(e.target.value)} placeholder="Ex: material de escritório" className="text-xs"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('palavras_chave', tempPalavra, setTempPalavra))} />
@@ -633,7 +633,7 @@ export default function PerfisAlerta() {
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {editando.palavras_chave?.map((kw, i) => (
-                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-green-100 text-green-800 hover:bg-green-200" onClick={() => removeFromArray('palavras_chave', i)}>
+                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-success/10 text-success hover:bg-success/20" onClick={() => removeFromArray('palavras_chave', i)}>
                         {kw} <X className="w-3 h-3" />
                       </Badge>
                     ))}
@@ -642,7 +642,7 @@ export default function PerfisAlerta() {
 
                 {/* Palavras negativas */}
                 <div>
-                  <Label className="text-xs font-semibold text-red-600">Palavras negativas (excluir)</Label>
+                  <Label className="text-xs font-semibold text-destructive">Palavras negativas (excluir)</Label>
                   <div className="flex gap-2 mt-1">
                     <Input value={tempNeg} onChange={e => setTempNeg(e.target.value)} placeholder="Ex: obra, construção" className="text-xs"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('palavras_negativas', tempNeg, setTempNeg))} />
@@ -652,7 +652,7 @@ export default function PerfisAlerta() {
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {editando.palavras_negativas?.map((neg, i) => (
-                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-red-100 text-red-800 hover:bg-red-200" onClick={() => removeFromArray('palavras_negativas', i)}>
+                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-destructive/10 text-destructive hover:bg-destructive/20" onClick={() => removeFromArray('palavras_negativas', i)}>
                         {neg} <X className="w-3 h-3" />
                       </Badge>
                     ))}
@@ -730,7 +730,7 @@ export default function PerfisAlerta() {
               {/* Tab: Órgãos */}
               <TabsContent value="orgaos" className="space-y-4">
                 <div>
-                  <Label className="text-xs font-semibold text-green-600">Órgãos Favoritos</Label>
+                  <Label className="text-xs font-semibold text-success">Órgãos Favoritos</Label>
                   <div className="flex gap-2 mt-1">
                     <Input value={tempOrgaoFav} onChange={e => setTempOrgaoFav(e.target.value)} placeholder="Ex: Ministério da Saúde" className="text-xs"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('orgaos_favoritos', tempOrgaoFav, setTempOrgaoFav))} />
@@ -740,7 +740,7 @@ export default function PerfisAlerta() {
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {editando.orgaos_favoritos?.map((o, i) => (
-                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-green-100 text-green-800" onClick={() => removeFromArray('orgaos_favoritos', i)}>
+                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-success/10 text-success" onClick={() => removeFromArray('orgaos_favoritos', i)}>
                         {o} <X className="w-3 h-3" />
                       </Badge>
                     ))}
@@ -748,7 +748,7 @@ export default function PerfisAlerta() {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold text-red-600">Órgãos Bloqueados</Label>
+                  <Label className="text-xs font-semibold text-destructive">Órgãos Bloqueados</Label>
                   <div className="flex gap-2 mt-1">
                     <Input value={tempOrgaoBlock} onChange={e => setTempOrgaoBlock(e.target.value)} placeholder="Ex: Prefeitura de..." className="text-xs"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('orgaos_bloqueados', tempOrgaoBlock, setTempOrgaoBlock))} />
@@ -758,7 +758,7 @@ export default function PerfisAlerta() {
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {editando.orgaos_bloqueados?.map((o, i) => (
-                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-red-100 text-red-800" onClick={() => removeFromArray('orgaos_bloqueados', i)}>
+                      <Badge key={i} className="gap-1 text-xs cursor-pointer bg-destructive/10 text-destructive" onClick={() => removeFromArray('orgaos_bloqueados', i)}>
                         {o} <X className="w-3 h-3" />
                       </Badge>
                     ))}
@@ -792,7 +792,7 @@ export default function PerfisAlerta() {
                   <strong>Soma atual:</strong>{' '}
                   {editando.peso_cnae + editando.peso_palavra_chave + editando.peso_regiao + editando.peso_modalidade + editando.peso_valor + editando.peso_urgencia}%
                   {(editando.peso_cnae + editando.peso_palavra_chave + editando.peso_regiao + editando.peso_modalidade + editando.peso_valor + editando.peso_urgencia) !== 100 && (
-                    <span className="text-orange-600 ml-2">
+                    <span className="text-warning ml-2">
                       <AlertTriangle className="w-3 h-3 inline" /> Recomendado: 100%
                     </span>
                   )}
@@ -811,14 +811,14 @@ export default function PerfisAlerta() {
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-green-500" />
+                      <MessageSquare className="w-4 h-4 text-accent" />
                       <Label className="text-xs">WhatsApp</Label>
                     </div>
                     <Switch checked={editando.canal_whatsapp} onCheckedChange={v => setEditando({ ...editando, canal_whatsapp: v })} />
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-orange-500" />
+                      <Bell className="w-4 h-4 text-accent" />
                       <Label className="text-xs">Notificação no Sistema</Label>
                     </div>
                     <Switch checked={editando.canal_sistema} onCheckedChange={v => setEditando({ ...editando, canal_sistema: v })} />

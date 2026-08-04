@@ -29,8 +29,8 @@ type PainelData = {
 };
 
 const SEV_ICON: Record<string, JSX.Element> = {
-  info: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
-  warning: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+  info: <CheckCircle2 className="h-4 w-4 text-success" />,
+  warning: <AlertTriangle className="h-4 w-4 text-warning" />,
   error: <AlertOctagon className="h-4 w-4 text-destructive" />,
 };
 

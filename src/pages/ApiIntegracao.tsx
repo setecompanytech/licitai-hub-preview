@@ -24,10 +24,10 @@ const endpoints = [
 ];
 
 const methodColors: Record<string, string> = {
-  GET: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
-  POST: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
-  PUT: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
-  DELETE: 'bg-red-500/10 text-red-600 border-red-500/30',
+  GET: 'bg-success/10 text-success border-success/30',
+  POST: 'bg-info/10 text-info border-info/30',
+  PUT: 'bg-warning/10 text-warning border-warning/30',
+  DELETE: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 export default function ApiIntegracao() {
@@ -82,7 +82,7 @@ export default function ApiIntegracao() {
               className="absolute top-2 right-2 h-7 w-7"
               onClick={() => copyExample(-1, curlExample)}
             >
-              {copiedIdx === -1 ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copiedIdx === -1 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
         </Card>
@@ -118,7 +118,7 @@ export default function ApiIntegracao() {
               className="absolute top-2 right-2 h-7 w-7"
               onClick={() => copyExample(-2, postExample)}
             >
-              {copiedIdx === -2 ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copiedIdx === -2 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
         </Card>
@@ -128,7 +128,7 @@ export default function ApiIntegracao() {
           <div className="bg-muted rounded-lg p-3 text-sm font-mono flex items-center justify-between">
             <span className="truncate">{BASE_URL}</span>
             <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => copyExample(-3, BASE_URL)}>
-              {copiedIdx === -3 ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copiedIdx === -3 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
         </Card>

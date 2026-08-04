@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 const formatBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-const COLORS = ['hsl(210,100%,50%)', 'hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(280,60%,50%)', 'hsl(0,72%,51%)'];
+const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 interface SaaSMetrics {
   mrr: number;
@@ -88,15 +88,15 @@ export default function MetricasSaaS() {
   }
 
   const kpiCards = [
-    { label: 'MRR', value: formatBRL(metrics.mrr), icon: DollarSign, color: 'text-blue-500', desc: 'Receita Mensal Recorrente' },
-    { label: 'ARR', value: formatBRL(metrics.arr), icon: TrendingUp, color: 'text-emerald-500', desc: 'Receita Anual Recorrente' },
-    { label: 'Assinaturas Ativas', value: metrics.activeSubscriptions.toString(), icon: UserCheck, color: 'text-violet-500', desc: 'Planos ativos no Stripe' },
-    { label: 'Churn Rate', value: `${metrics.churnRate}%`, icon: TrendingDown, color: metrics.churnRate > 5 ? 'text-destructive' : 'text-emerald-500', desc: 'Cancelamentos nos últimos 30 dias' },
-    { label: 'LTV', value: formatBRL(metrics.ltv), icon: BarChart3, color: 'text-amber-500', desc: 'Lifetime Value médio' },
-    { label: 'ARPU', value: formatBRL(metrics.arpu), icon: DollarSign, color: 'text-cyan-500', desc: 'Receita média por assinante' },
-    { label: 'Receita 30d', value: formatBRL(metrics.revenue30d), icon: ArrowUpRight, color: 'text-emerald-500', desc: 'Faturamento últimos 30 dias' },
-    { label: 'Usuários', value: metrics.totalUsers.toString(), icon: Users, color: 'text-blue-500', desc: 'Usuários cadastrados' },
-    { label: 'Empresas', value: metrics.totalEmpresas.toString(), icon: Building2, color: 'text-violet-500', desc: 'Empresas ativas' },
+    { label: 'MRR', value: formatBRL(metrics.mrr), icon: DollarSign, color: 'text-muted-foreground', desc: 'Receita Mensal Recorrente' },
+    { label: 'ARR', value: formatBRL(metrics.arr), icon: TrendingUp, color: 'text-success', desc: 'Receita Anual Recorrente' },
+    { label: 'Assinaturas Ativas', value: metrics.activeSubscriptions.toString(), icon: UserCheck, color: 'text-muted-foreground', desc: 'Planos ativos no Stripe' },
+    { label: 'Churn Rate', value: `${metrics.churnRate}%`, icon: TrendingDown, color: metrics.churnRate > 5 ? 'text-destructive' : 'text-success', desc: 'Cancelamentos nos últimos 30 dias' },
+    { label: 'LTV', value: formatBRL(metrics.ltv), icon: BarChart3, color: 'text-muted-foreground', desc: 'Lifetime Value médio' },
+    { label: 'ARPU', value: formatBRL(metrics.arpu), icon: DollarSign, color: 'text-muted-foreground', desc: 'Receita média por assinante' },
+    { label: 'Receita 30d', value: formatBRL(metrics.revenue30d), icon: ArrowUpRight, color: 'text-success', desc: 'Faturamento últimos 30 dias' },
+    { label: 'Usuários', value: metrics.totalUsers.toString(), icon: Users, color: 'text-muted-foreground', desc: 'Usuários cadastrados' },
+    { label: 'Empresas', value: metrics.totalEmpresas.toString(), icon: Building2, color: 'text-muted-foreground', desc: 'Empresas ativas' },
     { label: 'Cancelamentos', value: metrics.recentCancellations.toString(), icon: ArrowDownRight, color: 'text-destructive', desc: 'Nos últimos 30 dias' },
   ];
 
@@ -144,7 +144,7 @@ export default function MetricasSaaS() {
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} />
                 <Tooltip formatter={(v: number) => formatBRL(v)} />
-                <Area type="monotone" dataKey="mrr" stroke="hsl(210,100%,50%)" fill="hsl(210,100%,50%)" fillOpacity={0.15} strokeWidth={2} />
+                <Area type="monotone" dataKey="mrr" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" fillOpacity={0.15} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -162,7 +162,7 @@ export default function MetricasSaaS() {
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="customers" fill="hsl(142,71%,45%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="customers" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

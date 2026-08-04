@@ -126,9 +126,9 @@ export default function Investidores() {
           <h2 className="text-2xl font-bold text-center mb-8">Tamanho de Mercado</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
-              { label: 'TAM', value: formatBRL(TAM), desc: 'Mercado total de licitações digitais no Brasil', color: 'bg-blue-500/10 border-blue-500/20' },
-              { label: 'SAM', value: formatBRL(SAM), desc: 'Empresas ativas em pregão eletrônico e dispensa', color: 'bg-emerald-500/10 border-emerald-500/20' },
-              { label: 'SOM', value: formatBRL(SOM), desc: 'Meta realista para os primeiros 3 anos', color: 'bg-violet-500/10 border-violet-500/20' },
+              { label: 'TAM', value: formatBRL(TAM), desc: 'Mercado total de licitações digitais no Brasil', color: 'bg-muted/50 border-border' },
+              { label: 'SAM', value: formatBRL(SAM), desc: 'Empresas ativas em pregão eletrônico e dispensa', color: 'bg-muted/50 border-border' },
+              { label: 'SOM', value: formatBRL(SOM), desc: 'Meta realista para os primeiros 3 anos', color: 'bg-accent/10 border-accent/20' },
             ].map((m) => (
               <div key={m.label} className={`rounded-2xl p-6 border ${m.color}`}>
                 <p className="text-sm font-semibold text-muted-foreground mb-2">{m.label}</p>
@@ -189,8 +189,8 @@ export default function Investidores() {
             {milestones.map((m, i) => (
               <div key={m.year} className="flex items-start gap-4 pb-6 last:pb-0">
                 <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${m.done ? 'bg-emerald-500/20' : 'bg-muted'}`}>
-                    {m.done ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${m.done ? 'bg-success/20' : 'bg-muted'}`}>
+                    {m.done ? <CheckCircle2 className="w-4 h-4 text-success" /> : <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />}
                   </div>
                   {i < milestones.length - 1 && <div className="w-px h-full bg-border mt-2" />}
                 </div>

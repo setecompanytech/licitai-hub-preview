@@ -227,9 +227,9 @@ export default function ProcessoWorkspace() {
               {lic.resultado && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   <span className="flex items-center gap-1.5">
-                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="Empresa vencedora" />}
+                    {lic.vencedor && <span className="w-2 h-2 rounded-full bg-success shrink-0" title="Empresa vencedora" />}
                     <span className="text-xs text-muted-foreground">Resultado:</span>
-                    <span className={`font-semibold ${lic.vencedor ? 'text-green-600' : ''}`}>{lic.resultado}</span>
+                    <span className={`font-semibold ${lic.vencedor ? 'text-success' : ''}`}>{lic.resultado}</span>
                   </span>
                   {lic.valor_adjudicado != null && (
                     <>
@@ -328,7 +328,7 @@ export default function ProcessoWorkspace() {
                       )}
                       {pncpDetalhe.valorTotalHomologado != null && (
                         <div><p className="text-xs text-muted-foreground">Valor homologado</p>
-                          <p className="font-medium text-green-600">{fmt(pncpDetalhe.valorTotalHomologado)}</p></div>
+                          <p className="font-medium text-success">{fmt(pncpDetalhe.valorTotalHomologado)}</p></div>
                       )}
                     </div>
 
@@ -376,7 +376,7 @@ export default function ProcessoWorkspace() {
                                     </td>
                                     <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
                                     <td className="px-3 py-2 text-right text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
-                                    <td className="px-3 py-2 text-right font-medium text-green-600">{vTotal != null ? fmt(vTotal) : '—'}</td>
+                                    <td className="px-3 py-2 text-right font-medium text-success">{vTotal != null ? fmt(vTotal) : '—'}</td>
                                   </tr>
                                 );
                               })}

@@ -579,10 +579,10 @@ export default function Produtos() {
             <div className="flex gap-4">
               {/* Image */}
               <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-24 h-24 rounded bg-emerald-600 flex items-center justify-center text-white font-bold text-xs text-center p-1 leading-tight">
+                <div className="w-24 h-24 rounded bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs text-center p-1 leading-tight">
                   {codigoDisplay || 'Novo'}
                 </div>
-                <button className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700">
+                <button className="flex items-center gap-1 text-xs text-accent hover:text-accent/80">
                   <Pencil className="w-3 h-3" /> Alterar
                 </button>
                 <span className="text-xs text-muted-foreground">1 imagem</span>
@@ -639,7 +639,7 @@ export default function Produtos() {
                   <Field label="Família de Produto">
                     <div className="relative">
                       <Input value={form.familia_produto} onChange={e => setForm(f => ({ ...f, familia_produto: e.target.value }))} className="pt-1 pr-7" placeholder="Opcional" />
-                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-600"><Pencil className="w-3 h-3" /></button>
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-accent"><Pencil className="w-3 h-3" /></button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">Opcional (mas importante para os seus relatórios de estoque e de faturamento)</p>
                   </Field>
@@ -701,7 +701,7 @@ export default function Produtos() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="bg-amber-500/10 border-t">
+                      <tr className="bg-accent/10 border-t">
                         <td className="py-2 px-3 font-medium">PADRAO - Local de Estoque Padrão</td>
                         <td className="py-2 px-3 text-center">0 {form.unidade}</td>
                         <td className="py-2 px-3 text-center">0,00</td>
@@ -719,7 +719,7 @@ export default function Produtos() {
               <TabsContent value="fornecedores" className="border rounded-lg p-4 mt-2">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium">Fornecedores vinculados</p>
-                  <Button size="sm" variant="outline" className="text-amber-600 border-amber-600/30 hover:bg-amber-600/10" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
+                  <Button size="sm" variant="outline" className="text-accent border-accent/30 hover:bg-accent/10" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
                     <Link className="w-3.5 h-3.5 mr-1.5" /> Vincular Fornecedor
                   </Button>
                 </div>
@@ -727,7 +727,7 @@ export default function Produtos() {
                   <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
                     <Package className="w-8 h-8 opacity-30" />
                     <p className="text-sm">Nenhum fornecedor vinculado a este produto.</p>
-                    <Button size="sm" variant="ghost" className="text-amber-600" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
+                    <Button size="sm" variant="ghost" className="text-accent" onClick={() => { setFornBusca(''); setVincularOpen(true); }}>
                       <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar fornecedor
                     </Button>
                   </div>
@@ -862,7 +862,7 @@ export default function Produtos() {
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2 border-t">
               <Button variant="outline" onClick={closeForm}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white">
+              <Button onClick={handleSave} disabled={saving} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />} Salvar
               </Button>
             </div>
@@ -934,10 +934,10 @@ export default function Produtos() {
     <AppLayout>
       <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ minHeight: '500px' }}>
         <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
-          <Button size="sm" variant="ghost" className="text-amber-600 hover:text-amber-700 hover:bg-amber-600/10 gap-1 text-sm font-medium" onClick={openNovo}>
+          <Button size="sm" variant="ghost" className="text-accent hover:text-accent hover:bg-accent/10 gap-1 text-sm font-medium" onClick={openNovo}>
             <Plus className="w-4 h-4" /> Incluir
           </Button>
-          <Button size="sm" variant="ghost" className="text-amber-600 hover:text-amber-700 hover:bg-amber-600/10 gap-1 text-sm font-medium">
+          <Button size="sm" variant="ghost" className="text-accent hover:text-accent hover:bg-accent/10 gap-1 text-sm font-medium">
             <Upload className="w-4 h-4" /> Importar Planilha
           </Button>
           <div className="ml-auto">
@@ -981,18 +981,18 @@ export default function Produtos() {
                   {pageItems.map(p => {
                     const isSel = selected === p.id;
                     return (
-                      <tr key={p.id} className={`cursor-pointer transition-colors ${isSel ? 'bg-amber-500/10 border-l-2 border-l-amber-500' : 'hover:bg-muted/30'}`} onClick={() => setSelected(isSel ? null : p.id)} onDoubleClick={() => openEdit(p)}>
+                      <tr key={p.id} className={`cursor-pointer transition-colors ${isSel ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-muted/30'}`} onClick={() => setSelected(isSel ? null : p.id)} onDoubleClick={() => openEdit(p)}>
                         <td className="py-2 px-2" onClick={e => e.stopPropagation()}><Checkbox checked={checked.has(p.id)} onCheckedChange={v => setChecked(prev => { const n = new Set(prev); v ? n.add(p.id) : n.delete(p.id); return n; })} /></td>
                         <td className="py-2 px-2">
                           <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${p.ativo ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
-                            <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.ativo ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-muted text-muted-foreground'}`}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                            <span className={`w-2 h-2 rounded-full ${p.ativo ? 'bg-success' : 'bg-muted-foreground'}`} />
+                            <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.ativo ? 'bg-success/10 text-success border-success/30' : 'bg-muted text-muted-foreground'}`}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge>
                           </div>
                         </td>
                         <td className="py-2 px-2 font-medium">{p.descricao}</td>
                         <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo ?? '—'}</td>
                         <td className="py-2 px-2 text-xs text-muted-foreground italic">{p.categoria ?? <span className="opacity-40">{'<não informado>'}</span>}</td>
-                        <td className="py-2 px-2 text-xs text-amber-600 font-medium">{p.ncm ?? '—'}</td>
+                        <td className="py-2 px-2 text-xs text-accent font-medium">{p.ncm ?? '—'}</td>
                         <td className="py-2 px-2 text-xs text-muted-foreground">{p.cest ?? <span className="opacity-40">—</span>}</td>
                         <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo_ean ?? <span className="opacity-40">—</span>}</td>
                         <td className="py-2 px-2 text-xs text-right">{p.preco_venda != null && p.preco_venda > 0 ? `R$ ${fmtPreco(p.preco_venda)}` : <span className="text-muted-foreground">—</span>}</td>
@@ -1023,7 +1023,7 @@ export default function Produtos() {
                     { icon: ClipboardList, label: 'Tarefas', action: () => {}, disabled: true },
                   ].map(({ icon: Icon, label, action, disabled }) => (
                     <button key={label} onClick={action} disabled={disabled} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}>
-                      <Icon className="w-4 h-4 text-amber-600 shrink-0" /><span>{label}</span>
+                      <Icon className="w-4 h-4 text-accent shrink-0" /><span>{label}</span>
                     </button>
                   ))}
                   <div className="border-t pt-1">
@@ -1046,7 +1046,7 @@ export default function Produtos() {
           <div className="flex items-center gap-1">
             <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage <= 1} onClick={() => setPage(1)}><ChevronsLeft className="w-4 h-4" /></button>
             <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-4 h-4" /></button>
-            <span className="px-2 py-0.5 rounded bg-amber-600 text-white text-xs font-medium">{curPage}</span>
+            <span className="px-2 py-0.5 rounded bg-accent text-accent-foreground text-xs font-medium">{curPage}</span>
             <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}><ChevronRight className="w-4 h-4" /></button>
             <button className="p-1 hover:text-foreground disabled:opacity-30" disabled={curPage >= totalPages} onClick={() => setPage(totalPages)}><ChevronsRight className="w-4 h-4" /></button>
           </div>
