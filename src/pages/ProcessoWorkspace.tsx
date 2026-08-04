@@ -153,7 +153,7 @@ export default function ProcessoWorkspace() {
             <FolderOpen className="w-6 h-6 text-accent" />
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold truncate">{lic.numero || 'Processo'} {lic.orgao && `— ${lic.orgao}`}</h1>
-              <p className="text-xs text-muted-foreground truncate">{lic.objeto}</p>
+              <p className="text-base text-muted-foreground truncate">{lic.objeto}</p>
             </div>
             {lic.status && <Badge variant="outline">{lic.status}</Badge>}
             <Button size="sm" variant="outline" className="gap-2" onClick={handleExportarZip} disabled={exportando}>
@@ -183,7 +183,7 @@ export default function ProcessoWorkspace() {
 
           {/* Visão Geral */}
           <TabsContent value="visao" className="space-y-4">
-            <Card className="p-5 space-y-3 text-sm">
+            <Card className="p-5 space-y-3 text-base">
               <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                 <span><span className="text-xs text-muted-foreground">Local:</span> <span className="font-semibold">{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
                 <span className="text-border select-none">|</span>
@@ -250,7 +250,7 @@ export default function ProcessoWorkspace() {
                 <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
               </div>
               {lic.observacoes && (
-                <p className="pt-2 border-t border-border/40 text-xs text-muted-foreground italic">{lic.observacoes}</p>
+                <p className="pt-2 border-t border-border/40 text-base text-muted-foreground italic">{lic.observacoes}</p>
               )}
             </Card>
             {/* ── Dados completos do PNCP ── */}
@@ -336,7 +336,7 @@ export default function ProcessoWorkspace() {
                     {pncpDetalhe.informacaoComplementar && (
                       <div className="pt-3 border-t border-border/40">
                         <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
-                        <p className="text-sm text-foreground/80 leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
+                        <p className="text-base text-foreground/80 leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
                       </div>
                     )}
 
@@ -437,7 +437,7 @@ export default function ProcessoWorkspace() {
                         <div className="font-semibold text-sm flex items-center gap-1">
                           {a.label} <ExternalLink className="w-3 h-3 opacity-60" />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{a.descricao}</p>
+                        <p className="text-base text-muted-foreground mt-0.5">{a.descricao}</p>
                       </div>
                     </div>
                   </Card>
@@ -467,7 +467,7 @@ export default function ProcessoWorkspace() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold">Histórico de Precificação</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Planilha de custos e itens precificados para este processo</p>
+                <p className="text-base text-muted-foreground mt-0.5">Planilha de custos e itens precificados para este processo</p>
               </div>
               <Button size="sm" asChild>
                 <Link to={`/precificacao?lid=${lic.id}`}>
@@ -534,8 +534,8 @@ export default function ProcessoWorkspace() {
                 })() : (
                   <Card className="p-5 border-dashed text-center">
                     <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">Nenhuma planilha de custos salva ainda.</p>
-                    <p className="text-xs text-muted-foreground mt-1">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
+                    <p className="text-base text-muted-foreground">Nenhuma planilha de custos salva ainda.</p>
+                    <p className="text-base text-muted-foreground mt-1">Acesse a Precificação e preencha os valores para que apareçam aqui.</p>
                   </Card>
                 )}
 
@@ -596,7 +596,7 @@ export default function ProcessoWorkspace() {
           <TabsContent value="historico">
             <Card className="p-8 text-center">
               <History className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">O histórico completo de movimentações será exibido aqui (próxima fase).</p>
+              <p className="text-base text-muted-foreground">O histórico completo de movimentações será exibido aqui (próxima fase).</p>
             </Card>
           </TabsContent>
 

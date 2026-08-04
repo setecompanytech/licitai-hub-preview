@@ -75,7 +75,7 @@ export default function LicitacoesEstrategicas() {
               <Target className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Licitações Estratégicas
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-1">
               Análise inteligente das oportunidades com maior chance de sucesso
             </p>
           </div>
@@ -143,8 +143,8 @@ export default function LicitacoesEstrategicas() {
                   <Card className="border-dashed border-2 border-muted-foreground/20">
                     <div className="flex flex-col items-center justify-center py-12 gap-3">
                       <Target className="w-10 h-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-base text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
+                      <p className="text-base text-muted-foreground">
                         {licitacoes.length === 0
                           ? 'Não há licitações com abertura futura no momento. Tente atualizar.'
                           : 'Nenhuma licitação corresponde ao filtro selecionado.'}
@@ -169,7 +169,7 @@ export default function LicitacoesEstrategicas() {
                             )}
                             {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
                           </div>
-                          <p className="text-sm text-foreground line-clamp-2">{lic.objeto}</p>
+                          <p className="text-base text-foreground line-clamp-2">{lic.objeto}</p>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                             <span>{lic.orgao}</span>
                             {lic.uf && <><span>•</span><span>{lic.uf}{lic.municipio ? ` - ${lic.municipio}` : ''}</span></>}
@@ -229,7 +229,7 @@ export default function LicitacoesEstrategicas() {
                               </h4>
                               <ul className="space-y-1">
                                 {lic.fatoresPositivos.map((f, i) => (
-                                  <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <li key={i} className="text-base text-muted-foreground flex items-center gap-1">
                                     <Zap className="w-3 h-3 text-success flex-shrink-0" /> {f}
                                   </li>
                                 ))}
@@ -241,7 +241,7 @@ export default function LicitacoesEstrategicas() {
                               </h4>
                               <ul className="space-y-1">
                                 {lic.fatoresRisco.map((f, i) => (
-                                  <li key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <li key={i} className="text-base text-muted-foreground flex items-center gap-1">
                                     <AlertTriangle className="w-3 h-3 text-destructive flex-shrink-0" /> {f}
                                   </li>
                                 ))}
@@ -322,7 +322,7 @@ export default function LicitacoesEstrategicas() {
               <Card className="border-dashed border-2 border-muted-foreground/20">
                 <div className="flex flex-col items-center justify-center py-8 gap-3">
                   <Landmark className="w-8 h-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-base text-muted-foreground">
                     Preencha os filtros acima e clique em <strong>Analisar CAPAG</strong> para consultar.
                   </p>
                 </div>

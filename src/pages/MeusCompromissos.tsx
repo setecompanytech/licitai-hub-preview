@@ -304,7 +304,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               <ListChecks className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Meus Compromissos
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-1">
               Processos de interesse com alertas multicanal e workflow autônomo
             </p>
           </div>
@@ -369,7 +369,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
           <Card className="p-12 text-center">
             <ListChecks className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
             <p className="text-lg font-medium text-muted-foreground">Nenhum processo na lista</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-1">
               Marque interesse em editais no Monitoramento para adicioná-los aqui.
             </p>
           </Card>
@@ -396,7 +396,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{p.orgao}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{p.objeto}</p>
+                      <p className="text-base text-muted-foreground line-clamp-2 mt-0.5">{p.objeto}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3 h-3" />
@@ -473,7 +473,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
 
                   {/* IA Analysis result */}
                   {(iaResult[p.id] || p.ia_recomendacao) && (
-                    <div className="bg-muted/30 rounded-lg border border-border/50 text-sm">
+                    <div className="bg-muted/30 rounded-lg border border-border/50 text-base">
                       <button
                         className="flex items-center gap-2 w-full text-left p-3"
                         onClick={() => setExpandedAnalise(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
@@ -487,7 +487,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         )}
                       </button>
                       {expandedAnalise[p.id] && (
-                        <div className="prose prose-sm dark:prose-invert max-w-none px-3 pb-3">
+                        <div className="prose dark:prose-invert max-w-none px-3 pb-3">
                           <ReactMarkdown>{iaResult[p.id] || p.ia_recomendacao || ''}</ReactMarkdown>
                         </div>
                       )}

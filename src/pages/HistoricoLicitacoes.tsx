@@ -189,7 +189,7 @@ export default function HistoricoLicitacoes() {
               <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
               Histórico e Desempenho
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-base text-muted-foreground mt-1">
               Acompanhe os resultados das licitações. Processos finalizados ficam disponíveis por 120 dias.
             </p>
           </div>
@@ -228,7 +228,7 @@ export default function HistoricoLicitacoes() {
 
         {/* Alert */}
         {metrics.arquivados > 0 && (
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2 text-sm">
+          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2 text-base">
             <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
             <span>
               <strong>{metrics.arquivados}</strong> processo(s) arquivado(s). Faça o download antes do prazo de 120 dias para evitar perda de dados.

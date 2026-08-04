@@ -40,7 +40,9 @@ const columns: Column[] = [
   { id: 'Proposta Enviada', title: 'Proposta', color: 'hsl(var(--primary))', description: 'Proposta elaborada e enviada' },
   { id: 'Em Disputa', title: 'Em Disputa', color: 'hsl(var(--accent))', description: 'Disputa/pregão em andamento' },
   { id: 'Vencida', title: 'Vencida', color: 'hsl(var(--success))', description: 'Licitação arrematada' },
-  { id: 'Homologada', title: 'Homologada', color: 'hsl(210, 80%, 45%)', description: 'Resultado homologado' },
+  // Único desvio de token do arquivo (auditoria de cor): azul cru vira o
+  // token neutro — azul deixou de ser cor de estado no sistema.
+  { id: 'Homologada', title: 'Homologada', color: 'hsl(var(--info))', description: 'Resultado homologado' },
   { id: 'Perdida', title: 'Perdida', color: 'hsl(var(--destructive))', description: 'Não arrematada' },
   { id: 'Arquivada', title: 'Arquivada', color: 'hsl(var(--muted-foreground))', description: 'Processos encerrados' },
 ];
