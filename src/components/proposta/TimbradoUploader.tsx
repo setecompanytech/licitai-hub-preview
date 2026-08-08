@@ -453,9 +453,9 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     if (!sourceImageUrl) return null;
 
     return (
-      <div className="space-y-4 border border-accent/20 rounded-xl bg-accent/5 p-4">
+      <div className="space-y-4 border border-border rounded-xl bg-muted/40 p-4">
         <div className="flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-accent" />
+          <Scissors className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold">Recorte Automático de Cabeçalho e Rodapé</span>
         </div>
 
@@ -491,14 +491,14 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-1.5">
-              <ArrowUp className="w-3.5 h-3.5 text-accent" />
+              <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
               Cabeçalho — {headerSplit}% do topo
             </Label>
             <Slider value={[headerSplit]} onValueChange={([v]) => setHeaderSplit(v)} min={5} max={40} step={1} className="w-full" />
           </div>
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-1.5">
-              <ArrowDown className="w-3.5 h-3.5 text-accent" />
+              <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
               Rodapé — {footerSplit}% da base
             </Label>
             <Slider value={[footerSplit]} onValueChange={([v]) => setFooterSplit(v)} min={3} max={30} step={1} className="w-full" />
@@ -528,7 +528,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
           <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
-            <ArrowUp className="w-3.5 h-3.5 text-accent" />
+            <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold">Cabeçalho</span>
           </div>
           {header.url ? (
@@ -537,7 +537,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                 <img src={header.url} alt="Cabeçalho" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
               ) : (
                 <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
-                  <FileText className="w-6 h-6 text-accent" />
+                  <FileText className="w-6 h-6 text-muted-foreground" />
                   <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
                 </div>
               )}
@@ -551,7 +551,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
         <div className="bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
           <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
-            <ArrowDown className="w-3.5 h-3.5 text-accent" />
+            <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold">Rodapé</span>
           </div>
           {footer.url ? (
@@ -560,7 +560,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                 <img src={footer.url} alt="Rodapé" className="w-full h-auto max-h-24 object-contain rounded border border-border/30 bg-white p-1" />
               ) : (
                 <div className="h-16 flex items-center justify-center rounded border border-border/30 bg-white">
-                  <FileText className="w-6 h-6 text-accent" />
+                  <FileText className="w-6 h-6 text-muted-foreground" />
                   <span className="text-xs ml-2 text-muted-foreground">Documento carregado</span>
                 </div>
               )}
@@ -579,7 +579,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     <div className="space-y-5">
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <RotateCw className="w-3.5 h-3.5 text-accent" />
+          <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
           Orientação da Página
         </Label>
         <div className="grid grid-cols-2 gap-2">
@@ -624,7 +624,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <FileImage className="w-3.5 h-3.5 text-accent" />
+          <FileImage className="w-3.5 h-3.5 text-muted-foreground" />
           Tamanho do Papel
         </Label>
         <Select value={pageSetup.paperSize} onValueChange={(v) => setPageSetup(prev => ({ ...prev, paperSize: v as PaperSize }))}>
@@ -639,7 +639,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Ruler className="w-3.5 h-3.5 text-accent" />
+          <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
           Margens
         </Label>
         <div className="grid grid-cols-2 gap-3">
@@ -652,7 +652,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
       <div className="space-y-2">
         <Label className="text-xs font-semibold flex items-center gap-1.5">
-          <Settings2 className="w-3.5 h-3.5 text-accent" />
+          <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
           Área do Cabeçalho / Rodapé
         </Label>
         <div className="grid grid-cols-2 gap-3">
@@ -708,16 +708,16 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     return (
       <div className="flex flex-col items-center gap-4">
         <div className="relative bg-white border border-border/80 shadow-lg" style={{ width: displayW, height: displayH }}>
-          <div className="absolute border border-dashed border-accent/30 pointer-events-none"
+          <div className="absolute border border-dashed border-muted-foreground/30 pointer-events-none"
             style={{ top: mTop, left: mLeft, right: mRight, bottom: mBottom }} />
 
           <div className="absolute overflow-hidden" style={{ top: 0, left: 0, right: 0, height: mTop + hHeight }}>
-            <div className="absolute inset-0 bg-accent/5 border-b border-dashed border-accent/20" />
+            <div className="absolute inset-0 bg-black/[0.04] border-b border-dashed border-border" />
             {header.url && isImageUrl(header.url) ? (
               <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-contain" />
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
+                <span className="text-black/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
                   {header.url ? 'Cabeçalho' : 'Área do cabeçalho'}
                 </span>
               </div>
@@ -733,21 +733,21 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
 
           <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, right: 0, height: mBottom + fHeight }}>
-            <div className="absolute inset-0 bg-accent/5 border-t border-dashed border-accent/20" />
+            <div className="absolute inset-0 bg-black/[0.04] border-t border-dashed border-border" />
             {footer.url && isImageUrl(footer.url) ? (
               <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-contain" />
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
-                <span className="text-muted-foreground/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
+                <span className="text-black/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>
                   {footer.url ? 'Rodapé' : 'Área do rodapé'}
                 </span>
               </div>
             )}
           </div>
 
-          <span className="absolute text-xs text-accent/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
-          <span className="absolute text-xs text-accent/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
-          <span className="absolute text-xs text-accent/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
+          <span className="absolute text-xs text-black/50 select-none" style={{ top: 2, left: mLeft }}>{pageSetup.marginTop}cm</span>
+          <span className="absolute text-xs text-black/50 select-none" style={{ bottom: 2, left: mLeft }}>{pageSetup.marginBottom}cm</span>
+          <span className="absolute text-xs text-black/50 select-none rotate-90 origin-top-left" style={{ top: mTop, left: 2 }}>{pageSetup.marginLeft}cm</span>
           <span className="absolute text-muted-foreground/40 select-none" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
@@ -769,7 +769,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <Label className="flex items-center gap-2 text-base font-semibold">
-            <ImageIcon className="w-4 h-4 text-accent" />
+            <ImageIcon className="w-4 h-4 text-muted-foreground" />
             Papel Timbrado / Marca d'Água
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
@@ -795,7 +795,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors disabled:opacity-50"
         >
           {uploading ? (
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           ) : (
             <Upload className="w-8 h-8 text-muted-foreground" />
           )}
@@ -803,7 +803,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <span className="text-xs text-muted-foreground text-center max-w-sm">
             PNG, JPG, WEBP, SVG, PDF ou Word — Máx. 10MB
             <br />
-            <span className="text-accent/80">Documentos Word: extração automática de cabeçalho e rodapé</span>
+            <span className="font-medium">Documentos Word: extração automática de cabeçalho e rodapé</span>
           </span>
         </button>
       ) : (
@@ -841,7 +841,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         <div className="border border-border rounded-xl bg-card shadow-md overflow-hidden">
           <div className="bg-muted/50 border-b border-border px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Monitor className="w-4 h-4 text-accent" />
+              <Monitor className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-semibold text-foreground">Configurar Página</span>
             </div>
             <div className="flex items-center gap-1.5">

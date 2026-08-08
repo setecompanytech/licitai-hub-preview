@@ -162,7 +162,7 @@ export default function SugestaoMarcasReview({ licitacaoId, itens, onMarcaAplica
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-accent" />
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
             Sugestão de Marcas & Modelos
           </CardTitle>
           <div className="flex items-center gap-2">

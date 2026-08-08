@@ -199,7 +199,7 @@ export default function RelatorioConsumoAtaDialog({ ataId, ataNumero }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <FileBarChart2 className="w-5 h-5 text-accent" />
+            <FileBarChart2 className="w-5 h-5 text-muted-foreground" />
             Relatório de Consumo da ATA
           </DialogTitle>
         </DialogHeader>

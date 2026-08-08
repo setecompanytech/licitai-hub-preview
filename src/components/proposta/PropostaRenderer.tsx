@@ -238,13 +238,13 @@ function AssinaturaCertificado({ empresaData, repData }: AssinaturaCertificadoPr
   return (
     <div className="border-t border-border/50 pt-4 mt-4 space-y-3">
       <div className="flex items-center gap-2 mb-2">
-        <FileSignature className="w-4 h-4 text-accent" />
+        <FileSignature className="w-4 h-4 text-muted-foreground" />
         <p className="font-bold text-sm text-foreground uppercase tracking-wide">Assinatura Digital</p>
       </div>
 
       <div className="bg-muted/30 rounded border border-border/50 p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-accent" />
+          <ShieldCheck className="w-4 h-4 text-muted-foreground" />
           <div>
             <p className="text-xs font-semibold text-foreground">Assinatura Digital (Certificado e-CNPJ/A1)</p>
             <p className="text-xs text-muted-foreground">

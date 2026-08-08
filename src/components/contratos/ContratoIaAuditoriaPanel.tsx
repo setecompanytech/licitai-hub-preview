@@ -165,7 +165,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           </div>
           <div>
             <div className="text-muted-foreground">{isAlerta ? 'Situação detectada' : 'Valor preenchido'}</div>
-            <div className={`font-mono break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-primary'}`}>
+            <div className={`font-mono break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
               {formatVal(r.campo, r.valor_novo)}
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
           <h3 className="font-semibold text-sm">Auditoria & Recálculos Automáticos</h3>
           <Badge variant="secondary">{rows.length}</Badge>
           {counts.alertas > 0 && (

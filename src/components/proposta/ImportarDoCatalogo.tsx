@@ -211,7 +211,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
         className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Package className="w-4 h-4 text-accent" />
+          <Package className="w-4 h-4 text-muted-foreground" />
           Importar do Catálogo de Precificação
         </div>
         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -284,7 +284,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
                   }
                   {item._fonte === 'edital'
                     ? <Badge variant="outline" className="text-xs shrink-0 border-warning/40 text-warning">Edital</Badge>
-                    : <span className="font-semibold text-accent">{formatCurrency(item.preco_total)}</span>
+                    : <span className="font-semibold text-foreground">{formatCurrency(item.preco_total)}</span>
                   }
                 </label>
               ))}

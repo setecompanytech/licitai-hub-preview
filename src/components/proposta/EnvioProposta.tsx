@@ -338,7 +338,7 @@ export default function EnvioProposta() {
               <div className="mt-3 space-y-1">
                 {anexos.map((f, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm p-2 rounded bg-muted/30">
-                    <FileText className="w-4 h-4 text-accent" />
+                    <FileText className="w-4 h-4 text-muted-foreground" />
                     <span className="flex-1 truncate">{f.name}</span>
                     <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
                     <button onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="text-destructive hover:text-destructive/80">
@@ -357,22 +357,22 @@ export default function EnvioProposta() {
             <h3 className="font-semibold text-sm">Resumo da Proposta</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Globe className="w-5 h-5 mx-auto mb-1 text-accent" />
+                <Globe className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Portal</p>
                 <p className="text-sm font-semibold">{portalSelecionado?.icon} {portalSelecionado?.nome}</p>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Package className="w-5 h-5 mx-auto mb-1 text-accent" />
+                <Package className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Itens</p>
                 <p className="text-sm font-semibold">{itensFormatados.length}</p>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <Shield className="w-5 h-5 mx-auto mb-1 text-accent" />
+                <Shield className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Declarações</p>
                 <p className="text-sm font-semibold">{declaracoesCompletas}/5</p>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <FileText className="w-5 h-5 mx-auto mb-1 text-accent" />
+                <FileText className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Pregão</p>
                 <p className="text-sm font-semibold">{numeroPregao || '—'}</p>
               </div>

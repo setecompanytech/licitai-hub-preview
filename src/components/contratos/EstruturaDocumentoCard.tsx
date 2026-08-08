@@ -29,10 +29,10 @@ export default function EstruturaDocumentoCard({ contratoId }: { contratoId: str
   if (!c || (!c.tipo_estrutura_detectado_ia && !c.tipo_estrutura)) return null;
 
   return (
-    <Card className="p-4 border border-accent/20 bg-accent/5">
+    <Card className="p-4 border border-border bg-muted/40">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+          <Sparkles className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <div className="space-y-0.5">
             <p className="text-xs font-semibold flex items-center gap-2">
               Estrutura do documento

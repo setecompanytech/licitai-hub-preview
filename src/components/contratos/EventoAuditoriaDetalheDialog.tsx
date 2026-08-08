@@ -151,7 +151,7 @@ export default function EventoAuditoriaDetalheDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Icon className="h-4 w-4 text-primary shrink-0" />
+            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
             Detalhes do Evento — {CAMPO_LABELS[evento.campo] || evento.campo}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2 flex-wrap">
@@ -189,11 +189,11 @@ export default function EventoAuditoriaDetalheDialog({
                   <div className="hidden md:flex items-center justify-center text-muted-foreground">
                     <ArrowRight className="h-5 w-5" />
                   </div>
-                  <div className={`border rounded-md p-3 ${isAlerta ? 'bg-destructive/10 border-destructive/40' : 'bg-primary/5 border-primary/30'}`}>
+                  <div className={`border rounded-md p-3 ${isAlerta ? 'bg-destructive/10 border-destructive/40' : 'bg-muted/50 border-border'}`}>
                     <div className="text-xs text-muted-foreground mb-1">
                       {isAlerta ? 'Situação detectada' : 'Estado atual'}
                     </div>
-                    <div className={`font-mono text-sm break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-primary'}`}>
+                    <div className={`font-mono text-sm break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
                       {evento.valor_novo || '—'}
                     </div>
                   </div>
@@ -223,7 +223,7 @@ export default function EventoAuditoriaDetalheDialog({
                     </div>
                     <div className="border rounded-md p-2">
                       <div className="text-muted-foreground">Consumido {pctConsumo ? `(${pctConsumo}%)` : ''}</div>
-                      <div className="font-mono text-primary">{fmtBRL(ctx.ataAtual.valor_consumido)}</div>
+                      <div className="font-mono font-semibold text-foreground">{fmtBRL(ctx.ataAtual.valor_consumido)}</div>
                     </div>
                   </div>
                 </section>
@@ -241,9 +241,9 @@ export default function EventoAuditoriaDetalheDialog({
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                       <div><div className="text-muted-foreground">Qtd contratada</div><div className="font-mono">{fmtNum(ctx.itemAtual.quantidade_contratada)}</div></div>
-                      <div><div className="text-muted-foreground">Qtd consumida</div><div className="font-mono text-primary">{fmtNum(ctx.itemAtual.quantidade_ata_consumida)}</div></div>
+                      <div><div className="text-muted-foreground">Qtd consumida</div><div className="font-mono font-semibold text-foreground">{fmtNum(ctx.itemAtual.quantidade_ata_consumida)}</div></div>
                       <div><div className="text-muted-foreground">Valor unit.</div><div className="font-mono">{fmtBRL(ctx.itemAtual.valor_unitario)}</div></div>
-                      <div><div className="text-muted-foreground">Saldo financ.</div><div className="font-mono text-primary">{fmtBRL(ctx.itemAtual.saldo_financeiro)}</div></div>
+                      <div><div className="text-muted-foreground">Saldo financ.</div><div className="font-mono font-semibold text-foreground">{fmtBRL(ctx.itemAtual.saldo_financeiro)}</div></div>
                     </div>
                   </div>
                 </section>
@@ -293,7 +293,7 @@ export default function EventoAuditoriaDetalheDialog({
                           <span className="text-muted-foreground text-xs">{fmtDate(a.created_at)}</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                          {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="font-mono text-primary">{fmtBRL(a.valor_acrescimo)}</span></div>}
+                          {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="font-mono text-success">{fmtBRL(a.valor_acrescimo)}</span></div>}
                           {Number(a.valor_supressao) > 0 && <div><span className="text-muted-foreground">− Valor: </span><span className="font-mono text-destructive">{fmtBRL(a.valor_supressao)}</span></div>}
                           {Number(a.quantidade_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Qtd: </span><span className="font-mono">{fmtNum(a.quantidade_acrescimo)}</span></div>}
                           {a.nova_data_fim && <div><span className="text-muted-foreground">Nova vigência: </span><span className="font-mono">{new Date(a.nova_data_fim).toLocaleDateString('pt-BR')}</span></div>}

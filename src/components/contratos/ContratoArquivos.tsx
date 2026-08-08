@@ -48,15 +48,15 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
 // Tipos disponíveis para CONTRATOS ADMINISTRATIVOS
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
-  contrato_original: { label: 'Contrato Original', color: 'bg-primary/10 text-primary' },
+  contrato_original: { label: 'Contrato Original', color: 'bg-foreground/10 text-foreground' },
   ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning/10 text-warning' },
   aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
   aditivo_valor: { label: 'Termo Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-accent/10 text-accent', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
   aditivo_prazo_valor: { label: 'Termo Aditivo de Prazo e Valor', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
   aditivo_prazo_quantidade: { label: 'Termo Aditivo de Prazo e Quantidade', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
   aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-primary/10 text-primary', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
   aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
   aditivo_revisao: { label: 'Revisão Contratual', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
   aditivo_repactuacao: { label: 'Repactuação', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
@@ -1163,7 +1163,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                     <Download className="w-4 h-4" />
                   </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
-                    {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 text-accent" />}
+                    {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(arq)} title="Editar">
                     <Pencil className="w-4 h-4" />

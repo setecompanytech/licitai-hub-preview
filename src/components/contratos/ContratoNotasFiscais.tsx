@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  Loader2, FileText, CheckCircle2, XCircle, Clock, Send,
+  Loader2, FileText, FileCheck, CheckCircle2, XCircle, Clock, Send,
   Building2, AlertTriangle, DollarSign, ExternalLink, RefreshCw,
   ArrowUpCircle, ArrowDownCircle, Eye
 } from 'lucide-react';
@@ -30,12 +30,12 @@ type NotaFiscal = {
 
 const statusCfg: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   rascunho: { label: 'Rascunho', color: 'bg-muted text-muted-foreground', icon: Clock },
-  enviada: { label: 'Enviada', color: 'bg-accent/10 text-accent', icon: Send },
+  enviada: { label: 'Enviada', color: 'bg-warning/10 text-warning', icon: Send },
   autorizada: { label: 'Autorizada', color: 'bg-success/10 text-success', icon: CheckCircle2 },
   rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive', icon: XCircle },
   cancelada: { label: 'Cancelada', color: 'bg-destructive/10 text-destructive', icon: XCircle },
   inutilizada: { label: 'Inutilizada', color: 'bg-muted text-muted-foreground', icon: XCircle },
-  registrada: { label: 'Registrada', color: 'bg-accent/10 text-accent', icon: CheckCircle2 },
+  registrada: { label: 'Registrada', color: 'bg-info/10 text-info', icon: FileCheck },
 };
 
 /**
@@ -88,10 +88,10 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
   return (
     <div className="space-y-4">
       {/* Sync info banner */}
-      <Card className="p-3 border-accent/20 bg-accent/5">
+      <Card className="p-3 border-border bg-muted/40">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <RefreshCw className="w-3.5 h-3.5 text-accent" />
+            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
             Visualização sincronizada em tempo real. A emissão de NFs é gerenciada pelo setor <strong className="text-foreground">Financeiro</strong>.
           </p>
           <Button size="sm" variant="outline" className="text-xs h-7 shrink-0" onClick={() => navigate('/financeiro')}>
@@ -117,7 +117,7 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><ArrowDownCircle className="w-3 h-3" /> NFs Entrada</div>
-          <p className="text-lg font-bold text-accent">{fmt(totalEntrada)}</p>
+          <p className="text-lg font-bold text-foreground">{fmt(totalEntrada)}</p>
         </Card>
       </div>
 
@@ -158,7 +158,7 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-accent">
+                      <span className="text-sm font-bold text-foreground">
                         {nf.tipo === 'nfse' ? 'NFS-e' : 'NF-e'} {nf.numero_nf || '(sem número)'}
                       </span>
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>

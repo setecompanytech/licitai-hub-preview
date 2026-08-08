@@ -71,16 +71,16 @@ type NotaFiscalSync = {
 const statusCfg: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
   entregue: { label: 'Entregue', color: 'bg-success/10 text-success' },
-  parcial: { label: 'Parcial', color: 'bg-accent/10 text-accent' },
+  parcial: { label: 'Parcial', color: 'bg-info/10 text-info' },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
 };
 
 const kanbanCfg: Record<string, { label: string; color: string }> = {
-  pedido:          { label: 'Aguard. Faturamento', color: 'bg-info/10 text-info border-info/20' },
+  pedido:          { label: 'Aguard. Faturamento', color: 'bg-muted text-muted-foreground border-border' },
   separar_estoque: { label: 'Separar Estoque',     color: 'bg-warning/10 text-warning border-warning/20' },
   faturar:         { label: 'Faturar',             color: 'bg-warning/10 text-warning border-warning/20' },
-  faturado:        { label: 'Faturado',            color: 'bg-primary/10 text-primary border-primary/20' },
-  entrega:         { label: 'Em Entrega',          color: 'bg-accent/10 text-accent border-accent/20' },
+  faturado:        { label: 'Faturado',            color: 'bg-success/10 text-success border-success/20' },
+  entrega:         { label: 'Em Entrega',          color: 'bg-info/10 text-info border-info/20' },
   cancelado:       { label: 'Cancelado',           color: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
 
@@ -779,7 +779,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4 text-accent" /> Pedidos / Ordens de Fornecimento
+            <ShoppingCart className="w-4 h-4 text-muted-foreground" /> Pedidos / Ordens de Fornecimento
           </h3>
           <p className="text-xs text-muted-foreground">
             {pedidos.length} pedidos | Total: {fmt(totalPedidos)}
@@ -802,7 +802,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" /> Registrar Pedido
+                <FileText className="w-5 h-5 text-muted-foreground" /> Registrar Pedido
               </DialogTitle>
             </DialogHeader>
 
@@ -841,7 +841,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
                 {uploading && (
                   <div className="p-3 rounded-lg bg-muted/50 border text-center">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-primary" />
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-muted-foreground" />
                     <p className="text-xs text-muted-foreground">Extraindo dados com IA...</p>
                   </div>
                 )}
@@ -854,7 +854,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
               <TabsContent value="manual" className="space-y-3 mt-3">
                 {extractedData && (
-                  <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
+                  <div className="p-3 rounded-lg bg-success/5 border border-success/20">
                     <p className="text-xs font-medium flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                       Dados extraídos — revise e corrija se necessário
@@ -957,7 +957,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
                     <div className="p-3 rounded-lg bg-muted/50 border flex justify-between items-center">
                       <span className="text-xs font-medium">{extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens válidos</span>
-                      <span className="text-sm font-bold text-primary">Total: {fmt(totalExtracted)}</span>
+                      <span className="text-sm font-bold text-foreground">Total: {fmt(totalExtracted)}</span>
                     </div>
 
                     <div className="col-span-2">
@@ -965,7 +965,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                     </div>
 
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
                       <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
                       <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
                         <DollarSign className="w-3 h-3 inline mr-1" />
@@ -1071,7 +1071,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Label className="text-xs">Observações</Label>
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
                       <Checkbox id="ger-cr-single" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
                       <Label htmlFor="ger-cr-single" className="text-xs cursor-pointer">
                         <DollarSign className="w-3 h-3 inline mr-1" />
@@ -1178,7 +1178,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs">
                       <div className="space-y-1">
                         {p.nota_fiscal && (
-                          <Badge variant="outline" className="text-xs block w-fit border-primary/30 text-primary">
+                          <Badge variant="outline" className="text-xs block w-fit text-foreground">
                             <FileText className="w-3 h-3 mr-1 inline" />
                             {p.nota_fiscal}
                             {p.nf_quitada && p.data_quitacao && (
@@ -1245,9 +1245,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </div>
 
         {nfsSync.length > 0 && (
-          <Card className="p-4 mt-4 border-accent/20">
+          <Card className="p-4 mt-4">
             <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
               Notas Fiscais Sincronizadas do Financeiro
               <Badge variant="outline" className="text-xs">{nfsSync.length} NFs</Badge>
             </h4>
@@ -1315,7 +1315,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 />
               </div>
 
-              <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">
                   Ao registrar o pagamento, o sistema calculará automaticamente a comissão do vendedor 
                   responsável pelo contrato com base na configuração de comissão vigente.
@@ -1337,9 +1337,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
       {/* Pré-Notas Fiscais */}
       {preNotas.length > 0 && (
-        <Card className="p-4 border-primary/20">
+        <Card className="p-4">
           <h4 className="text-xs font-semibold flex items-center gap-2 mb-3">
-            <Receipt className="w-4 h-4 text-primary" />
+            <Receipt className="w-4 h-4 text-muted-foreground" />
             Pré-Notas Fiscais Solicitadas
             <Badge variant="outline" className="text-xs">{preNotas.length}</Badge>
           </h4>
@@ -1347,7 +1347,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {preNotas.map((pn: any) => {
               const statusMap: Record<string, { label: string; color: string }> = {
                 pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning' },
-                em_revisao: { label: 'Em Revisão', color: 'bg-accent/10 text-accent' },
+                em_revisao: { label: 'Em Revisão', color: 'bg-info/10 text-info' },
                 aprovada: { label: 'Aprovada', color: 'bg-success/10 text-success' },
                 rejeitada: { label: 'Rejeitada', color: 'bg-destructive/10 text-destructive' },
                 devolvida: { label: 'Devolvida', color: 'bg-warning/10 text-warning' },
@@ -1441,7 +1441,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" /> Editar Pedido
+              <Pencil className="w-5 h-5 text-muted-foreground" /> Editar Pedido
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

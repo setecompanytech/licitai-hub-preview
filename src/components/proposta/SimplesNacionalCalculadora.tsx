@@ -120,7 +120,7 @@ ${itensResumo}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-1">
-            <Calculator className="w-4 h-4 text-accent" />
+            <Calculator className="w-4 h-4 text-muted-foreground" />
             Receita Bruta em 12 meses (RBT12)
           </Label>
           <Input
@@ -133,10 +133,10 @@ ${itensResumo}
           </p>
         </div>
         {resultado && (
-          <Card className="p-4 bg-accent/5 border-accent/20">
+          <Card className="p-4 bg-muted/40 border-border">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">
+                <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
                   {resultado.faixa}
                 </Badge>
                 <span className="text-xs text-muted-foreground">Anexo I – Comércio</span>
@@ -148,7 +148,7 @@ ${itensResumo}
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Alíq. Efetiva</p>
-                  <p className="font-bold text-accent">{formatPercent(resultado.aliquotaEfetiva)}</p>
+                  <p className="font-bold text-foreground">{formatPercent(resultado.aliquotaEfetiva)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Dedução</p>
@@ -181,7 +181,7 @@ ${itensResumo}
             </thead>
             <tbody>
               {FAIXAS_ANEXO_I.map((f, i) => (
-                <tr key={i} className={`border-t border-border/50 ${resultado?.faixa === f.faixa ? 'bg-accent/10 font-semibold' : ''}`}>
+                <tr key={i} className={`border-t border-border/50 ${resultado?.faixa === f.faixa ? 'bg-muted font-semibold' : ''}`}>
                   <td className="px-2 py-1">{f.faixa}</td>
                   <td className="px-2 py-1 text-right">{formatPercent(f.aliquota)}</td>
                   <td className="px-2 py-1 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '–'}</td>
@@ -211,7 +211,7 @@ ${itensResumo}
             </thead>
             <tbody>
               {REPARTICAO.map((r, i) => (
-                <tr key={i} className={`border-t border-border/50 ${resultado?.faixa.startsWith(r.faixa) ? 'bg-accent/10 font-semibold' : ''}`}>
+                <tr key={i} className={`border-t border-border/50 ${resultado?.faixa.startsWith(r.faixa) ? 'bg-muted font-semibold' : ''}`}>
                   <td className="px-2 py-1">{r.faixa}</td>
                   <td className="px-2 py-1 text-right">{formatPercent(r.cpp)}</td>
                   <td className="px-2 py-1 text-right">{formatPercent(r.csll)}</td>
@@ -230,7 +230,7 @@ ${itensResumo}
       {resultado && valorGlobal > 0 && (
         <Card className="p-4 border-border/50">
           <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-accent" />
+            <Calculator className="w-4 h-4 text-muted-foreground" />
             Impacto Tributário na Proposta
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -294,9 +294,9 @@ ${itensResumo}
 
       {/* Resultado IA */}
       {analiseIA && (
-        <Card className="p-4 border-accent/20 bg-accent/5">
+        <Card className="p-4 border-border bg-muted/40">
           <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-accent" />
+            <Brain className="w-4 h-4 text-muted-foreground" />
             Parecer da IA Contábil Tributária
           </p>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">

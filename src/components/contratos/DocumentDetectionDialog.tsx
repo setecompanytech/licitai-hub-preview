@@ -134,7 +134,7 @@ export default function DocumentDetectionDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-accent" />
+            <FileText className="w-5 h-5 text-muted-foreground" />
             IA detectou: {labelDetected}
           </DialogTitle>
           <DialogDescription>
@@ -191,9 +191,9 @@ export default function DocumentDetectionDialog({
 
         {/* Caso 2: aditivo detectado */}
         {isAditivo && (
-          <Card className="p-4 border-accent/40 bg-accent/5 space-y-3">
+          <Card className="p-4 border-success/40 bg-success/5 space-y-3">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
               <div className="text-xs">
                 <p className="font-semibold">A IA pré-preencheu os dados do aditivo abaixo.</p>
                 <p className="text-muted-foreground">Revise, ajuste se necessário e confirme o registro.</p>

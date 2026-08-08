@@ -124,18 +124,18 @@ ${truncated}`
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground flex items-center gap-2">
-        <UserCheck className="w-4 h-4 text-accent" />
+        <UserCheck className="w-4 h-4 text-muted-foreground" />
         Envie um documento (contrato social, procuração, etc.) para extrair dados automaticamente
       </p>
 
       {file ? (
         <div className="flex items-center gap-4 bg-muted/30 rounded-lg p-4 border border-border/50">
-          <FileText className="w-8 h-8 text-accent shrink-0" />
+          <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
             <p className="text-xs text-muted-foreground">
               {(file.size / 1024).toFixed(0)} KB
-              {extracted && <span className="text-accent ml-2">✓ Dados extraídos</span>}
+              {extracted && <span className="text-success ml-2">✓ Dados extraídos</span>}
             </p>
           </div>
           <div className="flex gap-2">

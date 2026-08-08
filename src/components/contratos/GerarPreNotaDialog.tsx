@@ -164,12 +164,12 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
+            <FileText className="w-5 h-5 text-muted-foreground" />
             Gerar Pré-Nota Fiscal
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-3 rounded-lg bg-accent/5 border border-accent/20 text-xs text-muted-foreground">
+        <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground">
           <p className="font-medium text-foreground mb-1">Fluxo de aprovação</p>
           <p>A Pré-NF será enviada ao setor <strong>Financeiro</strong> para revisão. O financeiro pode aprovar, rejeitar ou devolver para correção antes de emitir a NF-e/NFS-e oficial.</p>
         </div>
@@ -177,7 +177,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         {/* 1. Selecionar Pedidos (faturamento parcial) */}
         <div className="space-y-3">
           <h4 className="text-xs font-semibold flex items-center gap-2">
-            <Package className="w-3.5 h-3.5 text-primary" />
+            <Package className="w-3.5 h-3.5 text-muted-foreground" />
             Selecionar Pedidos para Faturar
             <Badge variant="outline" className="text-xs">{selected.length} selecionados</Badge>
           </h4>
@@ -227,10 +227,10 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           )}
 
           {selected.length > 0 && (
-            <Card className="p-2 bg-primary/5 border-primary/20">
+            <Card className="p-2 bg-muted/50 border-border">
               <div className="flex justify-between items-center text-xs">
                 <span className="font-medium">{selected.length} pedidos selecionados</span>
-                <span className="font-bold text-primary">{fmt(totalValue)}</span>
+                <span className="font-bold text-foreground">{fmt(totalValue)}</span>
               </div>
             </Card>
           )}
@@ -241,7 +241,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         {/* 2. Natureza da Operação */}
         <div className="space-y-3">
           <h4 className="text-xs font-semibold flex items-center gap-2">
-            <FileText className="w-3.5 h-3.5 text-primary" />
+            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
             Dados da Operação
           </h4>
           <div>
@@ -268,7 +268,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         {/* 3. Transporte/Entrega */}
         <div className="space-y-3">
           <h4 className="text-xs font-semibold flex items-center gap-2">
-            <Truck className="w-3.5 h-3.5 text-primary" />
+            <Truck className="w-3.5 h-3.5 text-muted-foreground" />
             Dados de Entrega / Transporte
           </h4>
           <div className="grid grid-cols-2 gap-3">
@@ -316,7 +316,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           <Separator className="my-2" />
           <div className="flex justify-between items-center">
             <span className="text-sm font-semibold">Total Pré-NF:</span>
-            <span className="text-lg font-bold text-primary">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
+            <span className="text-lg font-bold text-foreground">{fmt(totalValue + (parseFloat(freteValor) || 0))}</span>
           </div>
         </Card>
 

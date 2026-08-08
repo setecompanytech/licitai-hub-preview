@@ -195,7 +195,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-accent" /> Comissões do Contrato
+            <DollarSign className="w-4 h-4 text-muted-foreground" /> Comissões do Contrato
           </h3>
           <p className="text-xs text-muted-foreground">
             {podeGerenciar ? 'Gerencie comissões de todos os vendedores' : 'Visualize e solicite suas comissões'}
@@ -355,8 +355,8 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
           <DialogHeader><DialogTitle>Solicitar Pedido de Comissão</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {minhaCfg && (
-              <div className="bg-accent/10 rounded-lg p-3 text-xs">
-                <p className="font-medium">Sua comissão: <span className="text-accent">{minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`}</span></p>
+              <div className="bg-muted rounded-lg p-3 text-xs">
+                <p className="font-medium">Sua comissão: <span className="font-semibold text-foreground">{minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`}</span></p>
                 <p className="text-muted-foreground">Tipo: {TIPO_COMISSAO[minhaCfg.tipo_comissao]}</p>
               </div>
             )}

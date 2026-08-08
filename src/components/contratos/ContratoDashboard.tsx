@@ -235,7 +235,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       {/* Composição de custos - apenas admin/financeiro */}
       {podeVerCustos && totalCustos > 0 && (
         <Card className="p-4">
-          <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-accent" /> Composição de Custos</h4>
+          <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-muted-foreground" /> Composição de Custos</h4>
           <div className="space-y-2">
             {[
               { label: 'Custos Diretos (Pedidos)', valor: custoPedidos, color: 'bg-primary' },
@@ -280,7 +280,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       />
 
       <Card className="p-4">
-        <h4 className="text-xs font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-accent" /> Vigência</h4>
+        <h4 className="text-xs font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(c.data_assinatura).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'}</p></div>

@@ -360,7 +360,7 @@ export default function ManutencaoAtaSrpDialog({ ataId, ataNumero, onAtualizou }
                         <TableCell className="text-xs max-w-[260px]">
                           {i.sugestao ? (
                             <div className="flex items-center gap-1.5">
-                              <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                              <Sparkles className="w-3 h-3 text-muted-foreground shrink-0" />
                               <span className="truncate" title={i.sugestao.ata_descricao}>
                                 {i.sugestao.ata_descricao}
                               </span>

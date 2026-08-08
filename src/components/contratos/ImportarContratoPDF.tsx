@@ -226,7 +226,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
         {step === 'extracting' && (
           <div className="py-8 space-y-4">
             <div className="flex items-center gap-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Processando: {fileName}</p>
                 <p className="text-xs text-muted-foreground">
@@ -275,7 +275,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 <div><span className="text-muted-foreground">Modalidade:</span> {extracted.modalidade}</div>
               )}
               <div className="flex gap-2 pt-1 flex-wrap">
-                <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                <Badge variant="outline" className="text-xs text-foreground">
                   Estrutura: {tipoEstrutura === 'lotes' ? 'Lotes' : 'Itens'}
                 </Badge>
                 <Badge variant="secondary" className="text-xs">{filledFields} campos extraídos</Badge>

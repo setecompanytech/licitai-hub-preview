@@ -169,8 +169,8 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
     <div className="space-y-3">
       {/* Sugestão automática banner */}
       {itensComSugestao > 0 && regime && (
-        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+        <div className="bg-muted border border-border rounded-lg p-3 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
               Sugestão de Preço Disponível — {itensComSugestao} {itensComSugestao === 1 ? 'item' : 'itens'}
@@ -225,7 +225,14 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
               const usandoCusto = temSugestao && item.custoAquisicao && Math.abs(valorAtual - item.custoAquisicao) < 0.01;
 
               return (
-                <tr key={i} className={`group transition-colors hover:bg-muted/20 ${usandoCusto ? 'bg-accent/5' : i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                <tr
+                  key={i}
+                  className={`group transition-colors ${
+                    usandoCusto
+                      ? 'bg-warning/10 hover:bg-warning/20'
+                      : `hover:bg-muted/20 ${i % 2 === 0 ? '' : 'bg-muted/10'}`
+                  }`}
+                >
                   {/* # */}
                   <td className="px-2 py-2 text-center">
                     <Input
@@ -322,7 +329,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
                                   Inclui tributos ({uf}), frete (2%), desp. administrativas (5%) e margem de lucro (10%).
                                 </p>
                                 <p className="text-muted-foreground italic">BDI: {((precoSug / (item.custoAquisicao || 1) - 1) * 100).toFixed(1)}%</p>
-                                <p className="text-accent font-medium mt-1">Clique para aplicar</p>
+                                <p className="text-foreground font-medium mt-1">Clique para aplicar</p>
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -371,7 +378,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
           <Plus className="w-4 h-4 mr-1" /> Adicionar Item
         </Button>
         <div className="text-sm font-semibold text-foreground">
-          Valor Global: <span className="text-accent">R$ {valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          Valor Global: <span className="font-bold text-foreground">R$ {valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           {valorGlobal > 0 && (
             <span className="block text-xs font-normal text-muted-foreground italic mt-0.5">
               ({valorPorExtenso(valorGlobal)})
@@ -383,7 +390,7 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
       <p className="text-xs text-muted-foreground italic">
         IMPORTANTE: Nos preços ofertados já estão inclusos frete, taxas, impostos e demais despesas.
         {itensComSugestao > 0 && (
-          <span className="text-accent not-italic ml-1">
+          <span className="text-foreground not-italic ml-1">
             ✦ Os preços sugeridos foram calculados automaticamente com base no regime tributário da empresa.
           </span>
         )}

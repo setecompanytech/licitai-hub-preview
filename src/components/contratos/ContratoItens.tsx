@@ -370,7 +370,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Package className="w-4 h-4 text-accent" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
+            <Package className="w-4 h-4 text-muted-foreground" /> Itens {meta?.tipo_documento === 'ata_srp' ? 'da ATA SRP' : 'do Contrato'}
             {meta?.tipo_estrutura && (
               <Badge variant="outline" className="text-xs font-normal">
                 Estrutura: {meta.tipo_estrutura === 'lotes' ? 'Lotes' : 'Itens'}
@@ -418,7 +418,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 {/* Busca de produto sincronizado */}
                 <div className="col-span-2">
                   <Label className="flex items-center gap-1.5">
-                    <Search className="w-3.5 h-3.5 text-accent" /> Buscar Produto do Catálogo
+                    <Search className="w-3.5 h-3.5 text-muted-foreground" /> Buscar Produto do Catálogo
                     {form.produto_id && <span className="text-xs text-success font-normal">(vinculado)</span>}
                   </Label>
                   <div className="relative mt-1">
@@ -595,9 +595,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const badgeColor = !consolidado
                   ? 'bg-muted text-muted-foreground'
                   : foiModificado
-                    ? 'bg-accent/10 text-accent border-accent/30'
+                    ? 'bg-warning/10 text-warning border-warning/30'
                     : foiAdicionado
-                      ? 'bg-primary/10 text-primary border-primary/30'
+                      ? 'bg-success/10 text-success border-success/30'
                       : 'bg-muted text-muted-foreground';
 
                 // Tooltip com histórico de versões (só na visão consolidada)
@@ -695,7 +695,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     <TableCell>
                       <div className="flex items-center gap-0.5">
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
-                          <Copy className="w-3.5 h-3.5 text-accent" />
+                          <Copy className="w-3.5 h-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
                           <Trash2 className="w-3.5 h-3.5 text-destructive" />

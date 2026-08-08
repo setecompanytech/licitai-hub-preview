@@ -146,7 +146,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       {/* Header com controles */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-accent" />
+          <BarChart3 className="w-4 h-4 text-muted-foreground" />
           <h4 className="text-xs sm:text-sm font-semibold">Evolução Mensal</h4>
           <Badge variant="outline" className="text-xs">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
         </div>

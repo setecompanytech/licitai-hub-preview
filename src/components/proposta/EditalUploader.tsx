@@ -323,15 +323,15 @@ ${truncated}`
       {editalFile ? (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-              <FileText className="w-6 h-6 text-accent" />
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <FileText className="w-6 h-6 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{editalFile.name}</p>
               <p className="text-xs text-muted-foreground">
                 {(editalFile.size / 1024).toFixed(0)} KB
                 {extracted && (
-                  <Badge className="ml-2 bg-accent/10 text-accent border-accent/20 text-xs">
+                  <Badge className="ml-2 bg-success/10 text-success border-success/20 text-xs">
                     <CheckCircle className="w-3 h-3 mr-1" /> Dados extraídos
                   </Badge>
                 )}
@@ -354,7 +354,7 @@ ${truncated}`
           </div>
 
           {isExtracting && progress && (
-            <div className="flex items-center gap-2 text-xs text-accent animate-pulse">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
               <Loader2 className="w-3 h-3 animate-spin" />
               {progress}
             </div>
@@ -362,9 +362,9 @@ ${truncated}`
 
           {extracted && (
             <>
-              <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-accent shrink-0" />
-                <p className="text-xs text-accent">
+              <div className="flex items-center gap-2 p-2.5 bg-success/5 border border-success/20 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                <p className="text-xs text-success">
                   Extração concluída! Avance para revisar e editar os dados extraídos nas próximas etapas.
                 </p>
               </div>

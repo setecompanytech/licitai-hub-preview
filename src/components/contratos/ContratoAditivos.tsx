@@ -21,10 +21,10 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
 const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string; semLimite?: boolean }> = {
   valor: { label: 'Valor', icon: DollarSign, color: 'bg-success/10 text-success' },
-  quantidade: { label: 'Quantidade', icon: Package, color: 'bg-accent/10 text-accent' },
+  quantidade: { label: 'Quantidade', icon: Package, color: 'bg-info/10 text-info' },
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
-  escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-primary/10 text-primary' },
+  escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-muted text-muted-foreground' },
   reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
