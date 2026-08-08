@@ -109,12 +109,13 @@ dependência e do `count(*)` em produção.
 
 ### 3.3 Ordem de execução — aprovada
 
-1. **Fase 0 — Higiene** (feita): gatilho de deploy manual + CI, registro da 20260425194132,
+1. **Fase 0 — Higiene** ✅ 2026-08-08: gatilho de deploy manual + CI, registro da 20260425194132,
    correção do ref de projeto no `SQL_MIGRATIONS.md`, obsolescência do `01-ARQUITETURA.md`,
-   convenção no `CLAUDE.md`.
+   convenção no `CLAUDE.md`, DROP da tabela `precificacao` (singular).
 2. **Fase 1 — Caracterização** (§6): 8 arquivos de teste, nenhum motor tocado até os 8 verdes.
-3. **Correção do Anexo III** (§5.2), logo após o arquivo de teste nº 1, que é a guarda dela.
-4. **Correção da CalculadoraUnificada** (§5.3).
+   Arquivo 1 ✅ 2026-08-08 (`5a9734f2`).
+3. **Correção do Anexo III** ✅ 2026-08-08 (`e7405d2f`), logo após o arquivo de teste nº 1.
+4. **Correção da CalculadoraUnificada** (§5.3) — próximo item de valor.
 5. **Consolidação**: fonte canônica de regime, uma tabela do Anexo I, os 3 RBT12 divergentes,
    `ALTER TYPE` do `numeric(5,4)`, alinhar `enviarParaProposta` ao divisor.
 6. **Ligação**: precificação lê RBT12 real; enriquecer `EditalItem`/carrinho; fechar os 10
@@ -154,7 +155,7 @@ overflow (22003). Descartado por verificação: não há problema de `onConflict
 
 **Correção:** `ALTER TYPE` para `numeric(7,4)` + `CHECK (0..100)`, na fase 5, em bloco próprio.
 
-### 5.2 Anexo III soma 102% — DEFEITO CONHECIDO, cobra imposto a mais hoje
+### 5.2 Anexo III somava 102% — CORRIGIDO em 2026-08-08 (`e7405d2f`)
 
 `src/data/simples-nacional-anexos.ts`, faixas 1–5 do Anexo III: `IRPJ: 6.00`, e a partilha soma
 **102,00**. Com 4,00 (Resolução CGSN 140/2018) soma exatamente 100,00 — e os outros 25 pares
@@ -164,11 +165,21 @@ Não fica no papel: `composicao-engine.ts` importa `getPartilhaSimplesReal` e so
 divisor (`:268`), então toda proposta de serviço no Simples sai com ~0,4% de sobrepreço — mais que
 a margem de disputa num pregão eletrônico.
 
-**Maior retorno e menor risco do épico:** uma linha, tabela sem consumidor de escrita, não depende
-de convenção, nomenclatura nem deploy. Sai logo após o arquivo de teste nº 1.
+**Diferença medida no próprio motor** (custo R$ 1.000.000, margem 10, frete 2, desp. adm 5):
 
-Conferência humana pendente: o valor 4,00 está confirmado aritmeticamente; confirmar no texto
-legal antes de trocar.
+| Cenário | Preço antes | Preço depois | Δ |
+| --- | --- | --- | --- |
+| RBT12 300k (faixa 2) | 1.337.640 | 1.334.760 | −R$ 2.880 (−0,215%) |
+| RBT12 1M (faixa 4) | 1.422.170 | 1.417.150 | −R$ 5.020 (−0,353%) |
+| RBT12 3M (faixa 5) | 1.518.560 | 1.510.850 | −R$ 7.710 (−0,508%) |
+
+O teste do commit anterior guardou a mudança: com a fonte corrigida e a lista de divergências
+ainda cheia, 11 casos ficaram vermelhos — poder de detecção provado antes de esvaziar a lista.
+
+Corroboração independente: a fixture legal, transcrita sem olhar o código, bateu com o repositório
+em 29 das 30 linhas na primeira execução, divergindo só nesta célula. Ainda assim, **conferência
+humana no texto publicado da Resolução continua recomendada** — duas transcrições concordando
+reduzem a chance de erro, não a eliminam.
 
 ### 5.3 CalculadoraUnificada forma preço sem nenhum tributo — DEFEITO CONHECIDO
 
@@ -228,8 +239,13 @@ congelar sem marcar significa que a correção nunca acontece.
 
 ## 6. Fase 1 — plano de arquivos
 
-8 arquivos, ~230 casos, **nenhum toca banco** — mesmo padrão do módulo de Metas. Nenhum motor é
-tocado até os 8 estarem verdes. Suíte atual: 169/169 verde.
+8 arquivos, **nenhum toca banco** — mesmo padrão do módulo de Metas. Suíte: 169 → **273** com o
+arquivo 1. A estimativa original era ~45 casos para o arquivo 1; saíram 104, porque cada linha
+anexo×faixa virou caso nomeado em vez de laço dentro de um `it` — o custo é ~24ms e o ganho é
+saber qual linha quebrou sem abrir o teste.
+
+Exceção deliberada à regra "nenhum motor é tocado até os 8 verdes": a correção do Anexo III (§5.2)
+saiu logo após o arquivo 1, que é justamente a guarda dela. Não depende dos outros 7.
 
 **O oráculo é uma fixture transcrita da Resolução CGSN 140/2018, conferida por humano no texto
 legal. A igualdade entre cópias é corolário, nunca a fonte.** As 6 cópias do Anexo I são idênticas
@@ -240,7 +256,7 @@ propagaria o erro com selo de aprovação. Por isso invariantes vêm primeiro.
 
 | # | Arquivo | Cobre | ~casos |
 | --- | --- | --- | --- |
-| 1 | `tributario-partilha.test.ts` | Soma da partilha por anexo/faixa contra a fixture legal. 25 afirmam 100,00; 5 (Anexo III 1–5) afirmam 102,00 com comentário DEFEITO CONHECIDO | 45 |
+| 1 ✅ | `tributario-partilha.test.ts` | Fixture legal se auto-valida (30); código vs. lei célula a célula (30); soma = 100 + desvio documentado (30); divergências toleradas e invariantes estruturais | **104** |
 | 2 | `tributario-tabelas.test.ts` | As 30 faixas contra a fixture; igualdade das 6 cópias como corolário (`readFileSync` + regex, mecanismo do `metas-modalidades`); guarda estática cruzando `DEFAULT_CONFIG` com a precisão da migration | 40 |
 | 3 | `simples-nacional-2026.test.ts` | 6 limites superiores e inferiores exatos, o buraco de 1 centavo, `rbt12=0`, empresa nova, `excedeuLimite` em 4.800.000,00 vs ,01 | 34 |
 | 4 | `simples-nacional-anexos.test.ts` | 2º motor: `rbt12=0` → `NaN` (defeito documentado), faixa `null`, Anexo IV com `CPP (INSS separado)` | 22 |
@@ -253,14 +269,19 @@ Verificado antes de começar: as 4 cópias in-component são parseáveis por reg
 código; só `SimplesNacionalCalculadora.tsx` exige regex próprio (ordem de campos diferente e
 separador numérico `180_000`).
 
-## 7. Pendente de confirmação no banco
+## 7. Pendente
 
-- `SELECT count(*) FROM precificacao;` e as duas consultas de dependência — pré-requisito do DROP.
+- **Aplicar a migration `20260808000001`** no SQL Editor (DROP da tabela `precificacao`) e
+  **regenerar o `types.ts`** depois — enquanto não regenerar, a tabela continua aparecendo lá,
+  que é justamente o motivo de ela ter sido dropada.
+- Conferência humana da partilha do Anexo III no texto publicado da CGSN 140/2018.
 - Se `alerta-vencimento-financeiro` está agendada por `cron.schedule` no dashboard (não há nenhuma
-  nas 14 migrations que usam `cron.schedule`). Muda o impacto do bug e o custo do DROP.
+  nas 14 migrations que usam `cron.schedule`). Muda o impacto do bug e o custo do DROP de
+  `fin_lancamentos`.
 - População das ~31 colunas percent-shaped fora do par vazio — só importaria se a convenção fosse
   revista.
-- Conferência humana da partilha do Anexo III no texto da CGSN 140/2018.
+
+Resolvido em 2026-08-08: `count(*)` de `precificacao` = 0, sem FK e sem view dependente.
 
 ## 8. Higiene do `SQL_MIGRATIONS.md` — lacunas abertas
 
