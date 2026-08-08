@@ -42,7 +42,7 @@ export default function CentralAjuda() {
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-10 text-center">
-              <p className="text-xs font-semibold tracking-widest text-accent uppercase mb-3">Central de Ajuda</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Central de Ajuda</p>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Como podemos ajudar?</h1>
               <p className="text-muted-foreground mb-6">Encontre guias, tutoriais e respostas sobre todas as funcionalidades da plataforma.</p>
               <div className="max-w-md mx-auto relative">
@@ -60,13 +60,13 @@ export default function CentralAjuda() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((cat) => (
                 <div key={cat.title} className="border border-border rounded-xl p-6 bg-card hover:border-accent/30 transition-colors">
-                  <cat.icon className="w-6 h-6 text-accent mb-3" />
+                  <cat.icon className="w-6 h-6 text-muted-foreground mb-3" />
                   <h3 className="font-semibold mb-1">{cat.title}</h3>
                   <p className="text-xs text-muted-foreground mb-4">{cat.desc}</p>
                   <ul className="space-y-1.5">
                     {cat.articles.map((a) => (
                       <li key={a} className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1.5">
-                        <span className="text-accent">›</span> {a}
+                        <span className="text-muted-foreground">›</span> {a}
                       </li>
                     ))}
                   </ul>
@@ -79,7 +79,7 @@ export default function CentralAjuda() {
             )}
 
             <div className="mt-14 border border-border rounded-xl p-8 bg-card text-center">
-              <MessageSquare className="w-8 h-8 text-accent mx-auto mb-3" />
+              <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
               <h3 className="font-semibold text-lg mb-2">Não encontrou o que procurava?</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Nossa equipe de suporte está disponível de segunda a sexta, das 08h às 18h.

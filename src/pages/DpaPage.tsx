@@ -16,7 +16,7 @@ export default function DpaPage() {
           </Button>
           <PraefectusLogo size="md" />
           <div className="flex-1" />
-          <FileText className="w-5 h-5 text-accent" />
+          <FileText className="w-5 h-5 text-muted-foreground" />
         </div>
       </header>
 
@@ -26,7 +26,7 @@ export default function DpaPage() {
           Data Processing Agreement — Última atualização: Abril 2026
         </p>
 
-        <div className="bg-accent/5 border border-accent/20 rounded-xl p-5 mb-8">
+        <div className="bg-muted border border-border rounded-xl p-5 mb-8">
           <p className="text-sm text-foreground">
             Este Acordo de Processamento de Dados ("DPA") é celebrado entre a <strong>PRAEFECTUS DADOS E CORPORATIVO LTDA</strong> ("Operadora") e o cliente contratante ("Controlador") como parte integrante dos Termos de Uso da plataforma PRAEFECTUS, em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD).
           </p>
@@ -35,7 +35,7 @@ export default function DpaPage() {
         {/* 1. Definições */}
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <FileText className="w-5 h-5 text-accent flex-shrink-0" />
+            <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h2 className="text-xl font-bold m-0">1. Definições</h2>
           </div>
           <ul className="space-y-2">
@@ -51,7 +51,7 @@ export default function DpaPage() {
         {/* 2. Objeto */}
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-5 h-5 text-accent flex-shrink-0" />
+            <Shield className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h2 className="text-xl font-bold m-0">2. Objeto e Finalidade do Tratamento</h2>
           </div>
           <p>A Operadora tratará dados pessoais exclusivamente para as seguintes finalidades:</p>
@@ -68,7 +68,7 @@ export default function DpaPage() {
         {/* 3. Categorias de Dados */}
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <UserCheck className="w-5 h-5 text-accent flex-shrink-0" />
+            <UserCheck className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h2 className="text-xl font-bold m-0">3. Categorias de Dados Tratados</h2>
           </div>
           <div className="overflow-x-auto">
@@ -114,7 +114,7 @@ export default function DpaPage() {
         {/* 4. Suboperadores */}
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <Globe className="w-5 h-5 text-accent flex-shrink-0" />
+            <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h2 className="text-xl font-bold m-0">4. Suboperadores Autorizados</h2>
           </div>
           <p>O Controlador autoriza a Operadora a utilizar os seguintes suboperadores:</p>
@@ -164,7 +164,7 @@ export default function DpaPage() {
         {/* 5. Medidas de Segurança */}
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <Lock className="w-5 h-5 text-accent flex-shrink-0" />
+            <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h2 className="text-xl font-bold m-0">5. Medidas Técnicas e Organizacionais</h2>
           </div>
           <p>A Operadora implementa as seguintes medidas de segurança:</p>

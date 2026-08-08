@@ -74,7 +74,7 @@ export default function Index() {
       {/* 3. Calendário dinâmico — datas de processos, certidões e backups */}
       <section className="mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-bold tracking-tight mb-3 sm:mb-4 flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+          <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
           Agenda Operacional
         </h2>
         <CalendarioLicitacoes />

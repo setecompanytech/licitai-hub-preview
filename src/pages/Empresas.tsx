@@ -68,8 +68,8 @@ export default function Empresas() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-accent" />
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -84,7 +84,7 @@ export default function Empresas() {
                           </Badge>
                         )}
                         {!todasSelecionadas && empresaAtiva?.id === m.empresa_id && (
-                          <Badge className="bg-accent/15 text-accent text-xs">Ativa</Badge>
+                          <Badge className="bg-success/10 text-success text-xs">Ativa</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{m.empresa.cnpj}</p>

@@ -19,7 +19,7 @@ export default function LgpdPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="flex items-center gap-3 mb-6">
-          <Lock className="w-6 h-6 text-accent" />
+          <Lock className="w-6 h-6 text-muted-foreground" />
           <h1 className="text-3xl font-bold tracking-tight">Conformidade com a LGPD</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-8">Lei Geral de Proteção de Dados Pessoais — Lei nº 13.709/2018 | Última atualização: 03 de março de 2026</p>

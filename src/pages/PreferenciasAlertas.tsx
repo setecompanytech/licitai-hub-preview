@@ -150,7 +150,7 @@ export default function PreferenciasAlertas() {
       <div className="space-y-6 max-w-4xl">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Bell className="w-5 h-5 text-accent" />
+            <Bell className="w-5 h-5 text-muted-foreground" />
             Preferências de Alertas
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -257,7 +257,7 @@ export default function PreferenciasAlertas() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-accent" />
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
                     Estados em que deseja competir
                   </h3>
                 </div>
@@ -299,7 +299,7 @@ export default function PreferenciasAlertas() {
             <Card className="p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-accent" />
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
                   Dados da sua empresa para monitoramento
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -369,7 +369,7 @@ export default function PreferenciasAlertas() {
                 <div className="p-3 bg-muted/30 rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-accent" />
+                      <Mail className="w-4 h-4 text-muted-foreground" />
                       <p className="text-sm font-medium">E-mail</p>
                     </div>
                     <Switch checked={form.canal_email} onCheckedChange={v => setForm(f => ({ ...f, canal_email: v }))} />

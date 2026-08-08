@@ -157,7 +157,7 @@ export default function Blog() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Blog & Conteúdos
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -177,7 +177,7 @@ export default function Blog() {
               <Card key={artigo.id} className="p-5 hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() => setArtigoAberto(artigo)}>
                 <div className="flex gap-2 mb-2">
-                  <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">
+                  <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
                     ⭐ Destaque
                   </Badge>
                   {artigo.caso_fortuito && (

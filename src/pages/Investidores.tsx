@@ -77,12 +77,12 @@ export default function Investidores() {
       <main className="max-w-6xl mx-auto px-4 py-16">
         {/* Hero */}
         <section className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 bg-accent/10 text-accent px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 bg-muted text-muted-foreground px-4 py-1.5 rounded-full text-sm font-medium mb-6">
             <Star className="w-4 h-4" /> Oportunidade de Investimento
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
             Transformando licitações<br />
-            <span className="text-accent">públicas com IA</span>
+            <span className="text-foreground">públicas com IA</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
             O PRAEFECTUS é a plataforma SaaS mais completa para empresas que participam de licitações governamentais.
@@ -112,7 +112,7 @@ export default function Investidores() {
                 { label: 'Módulos de IA', value: 8, icon: Zap, suffix: '' },
               ].map((kpi) => (
                 <div key={kpi.label} className="bg-card/50 border border-border/30 rounded-2xl p-6 text-center">
-                  <kpi.icon className="w-6 h-6 mx-auto mb-3 text-accent" />
+                  <kpi.icon className="w-6 h-6 mx-auto mb-3 text-muted-foreground" />
                   <p className="text-3xl font-bold">{kpi.value}{kpi.suffix}</p>
                   <p className="text-xs text-muted-foreground mt-1">{kpi.label}</p>
                 </div>
@@ -128,7 +128,7 @@ export default function Investidores() {
             {[
               { label: 'TAM', value: formatBRL(TAM), desc: 'Mercado total de licitações digitais no Brasil', color: 'bg-muted/50 border-border' },
               { label: 'SAM', value: formatBRL(SAM), desc: 'Empresas ativas em pregão eletrônico e dispensa', color: 'bg-muted/50 border-border' },
-              { label: 'SOM', value: formatBRL(SOM), desc: 'Meta realista para os primeiros 3 anos', color: 'bg-accent/10 border-accent/20' },
+              { label: 'SOM', value: formatBRL(SOM), desc: 'Meta realista para os primeiros 3 anos', color: 'bg-muted/50 border-border' },
             ].map((m) => (
               <div key={m.label} className={`rounded-2xl p-6 border ${m.color}`}>
                 <p className="text-sm font-semibold text-muted-foreground mb-2">{m.label}</p>
@@ -146,8 +146,8 @@ export default function Investidores() {
             {differentials.map((d) => (
               <div key={d.title} className="bg-card/50 border border-border/30 rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <d.icon className="w-5 h-5 text-accent" />
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <d.icon className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <h3 className="font-semibold">{d.title}</h3>
                 </div>
@@ -204,8 +204,8 @@ export default function Investidores() {
         </section>
 
         {/* CTA */}
-        <section className="text-center bg-gradient-to-br from-accent/5 to-accent/10 rounded-3xl p-12 border border-accent/20">
-          <Award className="w-12 h-12 text-accent mx-auto mb-4" />
+        <section className="text-center bg-muted/40 rounded-3xl p-12 border border-border">
+          <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-3">Interessado em investir?</h2>
           <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
             Entre em contato com nossa equipe para receber o pitch deck completo e agendar uma reunião.

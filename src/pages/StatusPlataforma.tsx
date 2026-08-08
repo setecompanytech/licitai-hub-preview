@@ -150,7 +150,7 @@ export default function StatusPlataforma() {
         {/* SLA Info */}
         <div className="mt-12 rounded-xl bg-card/50 border border-border/30 p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-5 h-5 text-accent" />
+            <Shield className="w-5 h-5 text-muted-foreground" />
             <h2 className="font-semibold">SLA e Garantias</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">

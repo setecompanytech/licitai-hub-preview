@@ -132,7 +132,7 @@ const STATUS_CONFIG = {
   aberto:     { label: 'Aberto',     Icon: CheckCircle2, cls: 'bg-success/15 text-success border-success/30' },
   aguardando: { label: 'Aguardando', Icon: Clock,        cls: 'bg-info/15 text-info border-info/30' },
   suspenso:   { label: 'Suspenso',   Icon: PauseCircle,  cls: 'bg-warning/15 text-warning border-warning/30' },
-  homologado: { label: 'Homologado', Icon: CheckCircle2, cls: 'bg-primary/15 text-primary border-primary/30' },
+  homologado: { label: 'Homologado', Icon: CheckCircle2, cls: 'bg-success/15 text-success border-success/30' },
   encerrado:  { label: 'Encerrado',  Icon: XCircle,      cls: 'bg-muted/50 text-muted-foreground border-border' },
 };
 
@@ -1071,10 +1071,10 @@ export default function MonitoramentoEditais() {
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <Search className="w-4 h-4 text-accent" />
+              <Search className="w-4 h-4 text-muted-foreground" />
               <span className="font-semibold text-foreground">Pesquisa de licitações</span>
               {filtrosAtivosCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-muted text-foreground text-xs font-medium">
                   {filtrosAtivosCount} filtro(s)
                 </span>
               )}
@@ -1480,7 +1480,7 @@ export default function MonitoramentoEditais() {
             {/* Aviso Materiais/Serviços */}
             <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
               <p className="flex items-center gap-2">
-                <Info className="w-3.5 h-3.5 text-accent" />
+                <Info className="w-3.5 h-3.5 text-muted-foreground" />
                 <strong className="text-foreground">Materiais (CATMAT) e Serviços (CATSER):</strong>
                 serão integrados via{' '}
                 <a href="/preferencias-alertas" className="text-accent hover:underline font-medium">
@@ -1531,7 +1531,7 @@ export default function MonitoramentoEditais() {
         {/* Loading */}
         {carregando && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             <p className="text-muted-foreground text-sm">Consultando base de editais…</p>
           </div>
         )}
@@ -1539,8 +1539,8 @@ export default function MonitoramentoEditais() {
         {/* Estado inicial */}
         {!buscaRealizada && !carregando && (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-              <Search className="w-8 h-8 text-accent" />
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+              <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">Preencha os critérios de seleção e clique em OK</h2>
@@ -1939,7 +1939,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                     {edital.modalidade}
                   </span>
                   {edital.srp && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                       SRP
                     </span>
                   )}
@@ -2298,7 +2298,7 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
                         <div key={arq.sequencialDocumento ?? i}
                           className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
                           <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-4 h-4 text-accent shrink-0" />
+                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0">
                               <p className="text-xs font-medium text-foreground truncate">
                                 {arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}

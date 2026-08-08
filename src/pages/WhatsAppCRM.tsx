@@ -16,8 +16,8 @@ export default function WhatsAppCRM() {
     <AppLayout>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
           </div>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">WhatsApp CRM</h1>

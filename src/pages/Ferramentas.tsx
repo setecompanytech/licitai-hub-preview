@@ -109,15 +109,15 @@ function ToolCard({ item, navigate }: { item: ToolItem; navigate: (p: string) =>
           className={cn(
             'absolute -top-2 right-2 text-xs font-bold px-2.5 py-0.5 rounded-full leading-none',
             item.badge === 'novo'
-              ? 'bg-accent text-accent-foreground'
-              : 'bg-primary text-primary-foreground'
+              ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
+              : 'bg-foreground text-background'
           )}
         >
           {item.badge === 'novo' ? 'Novo' : 'Premium'}
         </span>
       )}
-      <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors duration-200">
-        <Icon className="w-6 h-6 text-accent" />
+      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-secondary transition-colors duration-200">
+        <Icon className="w-6 h-6 text-muted-foreground" />
       </div>
       <span className="text-sm font-medium text-foreground text-center leading-tight">{item.label}</span>
     </motion.button>
@@ -145,7 +145,7 @@ export default function Ferramentas() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ export default function Ferramentas() {
             className={cn(
               'rounded-2xl border p-5',
               group.highlight
-                ? 'border-accent/30 bg-accent/5'
+                ? 'border-border bg-muted/40'
                 : 'border-border/60 bg-card/50'
             )}
           >

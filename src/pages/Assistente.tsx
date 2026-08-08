@@ -58,7 +58,7 @@ export default function Assistente() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Assistente IA Jurídico
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -70,8 +70,8 @@ export default function Assistente() {
           <div className="flex-1 p-6 space-y-4 overflow-y-auto max-h-[60vh]">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12">
-                <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-accent" />
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h2 className="text-lg font-semibold mb-2">Como posso ajudar?</h2>
                 <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
@@ -84,7 +84,7 @@ export default function Assistente() {
                       onClick={() => handleSend(s.text)}
                       className="flex items-center gap-2 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-left text-sm"
                     >
-                      <s.icon className="w-4 h-4 text-accent flex-shrink-0" />
+                      <s.icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <span>{s.text}</span>
                     </button>
                   ))}
@@ -104,7 +104,7 @@ export default function Assistente() {
                 {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
                   <div className="flex justify-start">
                     <div className="bg-muted rounded-xl px-4 py-3">
-                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     </div>
                   </div>
                 )}

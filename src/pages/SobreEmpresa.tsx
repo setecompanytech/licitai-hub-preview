@@ -25,7 +25,7 @@ export default function SobreEmpresa() {
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-14">
-              <p className="text-xs font-semibold tracking-widest text-accent uppercase mb-3">Sobre a PRAEFECTUS</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Sobre a PRAEFECTUS</p>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
                 Inteligência operacional para quem compete em licitações públicas
               </h1>
@@ -53,7 +53,7 @@ export default function SobreEmpresa() {
               <div className="grid md:grid-cols-2 gap-6">
                 {values.map((v) => (
                   <div key={v.title} className="border border-border rounded-xl p-6 bg-card">
-                    <v.icon className="w-6 h-6 text-accent mb-3" />
+                    <v.icon className="w-6 h-6 text-muted-foreground mb-3" />
                     <h3 className="font-semibold mb-2">{v.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{v.desc}</p>
                   </div>
@@ -67,12 +67,12 @@ export default function SobreEmpresa() {
                 A plataforma é construída sobre uma stack moderna e auditável:
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Frontend em React 18 com TypeScript, Vite e Tailwind CSS</li>
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Backend PostgreSQL com Row Level Security (RLS) em todas as tabelas</li>
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Edge Functions serverless com rate limiting e validação de payloads</li>
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Criptografia AES-256-GCM com derivação PBKDF2 para dados sensíveis</li>
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Modelos Gemini para extração documental e análise de editais</li>
-                <li className="flex items-start gap-2"><span className="text-accent font-bold">•</span> Conformidade com LGPD, WCAG e normas ABNT (NBR 14724)</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Frontend em React 18 com TypeScript, Vite e Tailwind CSS</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Backend PostgreSQL com Row Level Security (RLS) em todas as tabelas</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Edge Functions serverless com rate limiting e validação de payloads</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Criptografia AES-256-GCM com derivação PBKDF2 para dados sensíveis</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Modelos Gemini para extração documental e análise de editais</li>
+                <li className="flex items-start gap-2"><span className="text-muted-foreground font-bold">•</span> Conformidade com LGPD, WCAG e normas ABNT (NBR 14724)</li>
               </ul>
             </section>
 

@@ -123,7 +123,7 @@ export default function AdminTemplates() {
     <AppLayout>
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="w-6 h-6 text-accent" />
+          <ShieldCheck className="w-6 h-6 text-muted-foreground" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Templates de Documentos</h1>
             <p className="text-sm text-muted-foreground">Gerencie modelos e prompts da IA — Painel Administrador</p>

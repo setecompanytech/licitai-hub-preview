@@ -60,7 +60,7 @@ export default function ComplianceGovernanca() {
           <div className="max-w-4xl mx-auto">
             {/* Hero */}
             <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">
                 <Scale className="w-3.5 h-3.5" /> Compliance
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Governança e Compliance</h1>
@@ -219,21 +219,21 @@ export default function ComplianceGovernanca() {
             {/* Control Cards */}
             <div className="mb-12">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" /> Controles Implementados
+                <Shield className="w-5 h-5 text-muted-foreground" /> Controles Implementados
               </h2>
               <div className="space-y-4">
                 {controlCards.map((s) => (
                   <div key={s.title} className="bg-card rounded-xl border border-border/50 p-5">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-primary/8 flex items-center justify-center">
-                        <s.icon className="w-4.5 h-4.5 text-primary" />
+                      <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                        <s.icon className="w-4.5 h-4.5 text-muted-foreground" />
                       </div>
                       <h3 className="text-sm font-bold">{s.title}</h3>
                     </div>
                     <ul className="space-y-2">
                       {s.items.map((item, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] text-muted-foreground leading-relaxed">
-                          <Shield className="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
+                          <Shield className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -246,17 +246,17 @@ export default function ComplianceGovernanca() {
             {/* Related links */}
             <div className="grid sm:grid-cols-3 gap-3 mb-12">
               <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <FileText className="w-5 h-5 text-primary mb-2" />
+                <FileText className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
                 <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
               </Link>
               <Link to="/seguranca-informacao" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Lock className="w-5 h-5 text-primary mb-2" />
+                <Lock className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Segurança da Informação</p>
                 <p className="text-xs text-muted-foreground mt-1">Trust Center e controles técnicos</p>
               </Link>
               <Link to="/termos-de-uso" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Scale className="w-5 h-5 text-primary mb-2" />
+                <Scale className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Termos de Uso</p>
                 <p className="text-xs text-muted-foreground mt-1">Condições contratuais</p>
               </Link>
@@ -265,7 +265,7 @@ export default function ComplianceGovernanca() {
             {/* DPO Contact */}
             <div className="p-6 rounded-xl bg-muted/50 border border-border/50">
               <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" /> Canal de Compliance e DPO
+                <Mail className="w-4 h-4 text-muted-foreground" /> Canal de Compliance e DPO
               </p>
               <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">
                 Para relatar irregularidades, exercer direitos como titular de dados ou comunicar incidentes de segurança:

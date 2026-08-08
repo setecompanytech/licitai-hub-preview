@@ -340,7 +340,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             <p className="text-2xl font-bold text-success">{stats.aprovados}</p>
             <p className="text-xs text-muted-foreground">Aprovados</p>
           </Card>
-          <Card className="p-4 text-center border-accent/30">
+          <Card className="p-4 text-center border-border">
             <p className="text-2xl font-bold text-foreground">{stats.cadastrados}</p>
             <p className="text-xs text-muted-foreground">Cadastrados</p>
           </Card>

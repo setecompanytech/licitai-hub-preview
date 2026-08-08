@@ -138,7 +138,7 @@ export default function CertificadoUpload() {
         <div className="bg-card rounded-xl border border-border shadow-lg p-6 space-y-6">
           {status === 'loading' && (
             <div className="flex flex-col items-center py-12 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-accent" />
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Validando link...</p>
             </div>
           )}
@@ -179,8 +179,8 @@ export default function CertificadoUpload() {
             <>
               {/* Empresa info */}
               {tokenInfo?.empresa && (
-                <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-1">
+                <div className="bg-muted border border-border rounded-lg p-4">
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
                     Empresa vinculada
                   </p>
                   <p className="text-sm font-bold text-foreground">{tokenInfo.empresa.razao_social}</p>

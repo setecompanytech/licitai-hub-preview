@@ -37,7 +37,7 @@ export default function SegurancaInformacao() {
           <div className="max-w-4xl mx-auto">
             {/* Hero */}
             <div className="mb-14">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border text-muted-foreground text-xs font-bold uppercase tracking-wider mb-4">
                 <Shield className="w-3.5 h-3.5" /> Trust Center
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Política de Segurança da Informação</h1>
@@ -205,7 +205,7 @@ export default function SegurancaInformacao() {
             {/* Certifications / Compliance Status */}
             <div className="mb-12">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <BadgeCheck className="w-5 h-5 text-primary" /> Conformidade e Certificações
+                <BadgeCheck className="w-5 h-5 text-muted-foreground" /> Conformidade e Certificações
               </h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {certifications.map((c) => (
@@ -229,8 +229,8 @@ export default function SegurancaInformacao() {
                 {controls.map((c) => (
                   <div key={c.title} className="bg-card rounded-xl border border-border/50 p-5">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center flex-shrink-0">
-                        <c.icon className="w-5 h-5 text-primary" />
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <c.icon className="w-5 h-5 text-muted-foreground" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold mb-1">{c.title}</h3>
@@ -245,17 +245,17 @@ export default function SegurancaInformacao() {
             {/* Related links */}
             <div className="grid sm:grid-cols-3 gap-3 mb-12">
               <Link to="/politica-de-privacidade" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <FileCheck className="w-5 h-5 text-primary mb-2" />
+                <FileCheck className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Política de Privacidade</p>
                 <p className="text-xs text-muted-foreground mt-1">Tratamento de dados pessoais</p>
               </Link>
               <Link to="/lgpd" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Lock className="w-5 h-5 text-primary mb-2" />
+                <Lock className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Conformidade LGPD</p>
                 <p className="text-xs text-muted-foreground mt-1">Bases legais e direitos do titular</p>
               </Link>
               <Link to="/status" className="group rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors">
-                <Server className="w-5 h-5 text-primary mb-2" />
+                <Server className="w-5 h-5 text-muted-foreground mb-2" />
                 <p className="text-sm font-bold group-hover:text-primary transition-colors">Status da Plataforma</p>
                 <p className="text-xs text-muted-foreground mt-1">Disponibilidade em tempo real</p>
               </Link>
@@ -264,7 +264,7 @@ export default function SegurancaInformacao() {
             {/* DPO Contact */}
             <div className="p-6 rounded-xl bg-muted/50 border border-border/50">
               <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" /> Contato do Encarregado de Dados (DPO)
+                <Mail className="w-4 h-4 text-muted-foreground" /> Contato do Encarregado de Dados (DPO)
               </p>
               <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">
                 Para exercer seus direitos como titular de dados, relatar incidentes de segurança ou solicitar informações sobre o tratamento de dados pessoais, entre em contato com nosso DPO:

@@ -156,7 +156,7 @@ export default function TutorialPage() {
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-2">
-            <BookOpen className="w-7 h-7 text-accent" />
+            <BookOpen className="w-7 h-7 text-muted-foreground" />
             <h1 className="text-2xl font-bold tracking-tight">
               Guia: Do Monitoramento à Gestão
             </h1>
@@ -268,7 +268,7 @@ export default function TutorialPage() {
         </div>
 
         {/* CTA bottom */}
-        <div className="bg-accent/5 border border-accent/20 rounded-xl p-6 text-center space-y-3">
+        <div className="bg-muted/50 border border-border rounded-xl p-6 text-center space-y-3">
           <h3 className="text-lg font-semibold">Pronto para começar?</h3>
           <p className="text-sm text-muted-foreground">
             O primeiro passo é buscar editais no Monitoramento e iniciar um processo.

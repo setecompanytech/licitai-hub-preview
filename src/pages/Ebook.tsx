@@ -41,7 +41,7 @@ export default function Ebook() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-accent" />
+              <BookOpen className="w-6 h-6 text-muted-foreground" />
               Guia Completo PRAEFECTUS
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -53,10 +53,10 @@ export default function Ebook() {
           </Badge>
         </div>
 
-        <Card className="p-6 bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
+        <Card className="p-6 bg-muted/40 border-border">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-20 bg-accent/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <FileText className="w-8 h-8 text-accent" />
+            <div className="w-16 h-20 bg-card border border-border rounded-lg flex items-center justify-center flex-shrink-0">
+              <FileText className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <h2 className="font-bold text-lg">PRAEFECTUS — Guia Técnico e Operacional</h2>
@@ -100,8 +100,8 @@ export default function Ebook() {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 p-4 bg-accent/5 border border-accent/15 rounded-lg">
-          <CheckCircle2 className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+        <div className="flex items-start gap-2 p-4 bg-muted border border-border rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
             Material interno para equipes com plano ativo. O documento contém explicações didáticas, ilustrações das telas do sistema e dicas práticas para cada módulo.
           </p>

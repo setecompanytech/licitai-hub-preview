@@ -329,7 +329,7 @@ export default function Auth() {
               {/* Seção 1: Dados do contato */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <User className="w-4 h-4 text-accent" />
+                  <User className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do contato</h2>
                 </div>
                 <Separator className="mb-4" />
@@ -380,7 +380,7 @@ export default function Auth() {
               {/* Seção 2: Dados da conta */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <Mail className="w-4 h-4 text-accent" />
+                  <Mail className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados da conta</h2>
                 </div>
                 <Separator className="mb-4" />
@@ -447,7 +447,7 @@ export default function Auth() {
               {/* Seção 3: Configuração do serviço */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-4 h-4 text-accent" />
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Configuração do serviço</h2>
                 </div>
                 <Separator className="mb-4" />
@@ -469,7 +469,7 @@ export default function Auth() {
               {/* Seção 4: Informações do perfil */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <Briefcase className="w-4 h-4 text-accent" />
+                  <Briefcase className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Informações do perfil</h2>
                 </div>
                 <Separator className="mb-4" />
@@ -591,8 +591,8 @@ export default function Auth() {
                   onClick={() => setStep('manual')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
-                    <KeyRound className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-secondary transition-colors">
+                    <KeyRound className="w-6 h-6 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-sm">Login e Senha</p>
@@ -605,7 +605,7 @@ export default function Auth() {
                   onClick={() => setStep('certificado')}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/15 transition-colors">
+                  <div className="w-12 h-12 rounded-lg bg-accent/10 ring-1 ring-accent/30 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
                     <ShieldCheck className="w-6 h-6 text-accent" />
                   </div>
                   <div className="flex-1">
@@ -632,7 +632,7 @@ export default function Auth() {
             <>
               {backButton()}
               <div className="flex items-center gap-2 mb-5">
-                <KeyRound className="w-5 h-5 text-primary" />
+                <KeyRound className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-lg font-bold">Acesso com Login e Senha</h2>
               </div>
 
@@ -692,7 +692,7 @@ export default function Auth() {
             <>
               {backButton()}
               <div className="flex items-center gap-2 mb-5">
-                <ShieldCheck className="w-5 h-5 text-accent" />
+                <ShieldCheck className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-lg font-bold">Acesso com Certificado Digital</h2>
               </div>
 
@@ -715,7 +715,7 @@ export default function Auth() {
                 </Button>
               </div>
 
-              <div className="mt-5 p-3 rounded-lg bg-accent/5 border border-accent/10">
+              <div className="mt-5 p-3 rounded-lg bg-muted border border-border">
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Certificados aceitos:</strong> e-CNPJ A1, e-CNPJ A3, e-CPF A1, e-CPF A3 nos formatos .pfx, .p12, .cer, .crt e .pem.
                 </p>

@@ -121,7 +121,7 @@ export default function DiariosOficiais() {
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <FileText className="w-6 h-6 text-primary" />
+              <FileText className="w-6 h-6 text-muted-foreground" />
               Diários Oficiais
             </h1>
             <p className="text-xs text-muted-foreground mt-1">

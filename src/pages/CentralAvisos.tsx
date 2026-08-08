@@ -23,7 +23,7 @@ const TIPO_CONFIG: Record<string, { icon: any; label: string; color: string; emo
   suspensao: { icon: Ban, label: 'Suspensão', color: 'bg-warning/10 text-warning border-warning/30', emoji: '🚫' },
   cancelamento: { icon: XCircle, label: 'Cancelamento', color: 'bg-destructive/10 text-destructive border-destructive/30', emoji: '❌' },
   homologacao: { icon: CheckCircle2, label: 'Homologação', color: 'bg-success/10 text-success border-success/30', emoji: '✅' },
-  resultado: { icon: Trophy, label: 'Resultado', color: 'bg-accent/10 text-accent border-accent/30', emoji: '📊' },
+  resultado: { icon: Trophy, label: 'Resultado', color: 'bg-muted text-muted-foreground border-border', emoji: '📊' },
 };
 
 const FONTE_COLORS: Record<string, string> = {
@@ -70,7 +70,7 @@ export default function CentralAvisos() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              <Bell className="w-5 h-5 text-accent" />
+              <Bell className="w-5 h-5 text-muted-foreground" />
               Central de Avisos
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
@@ -158,8 +158,10 @@ export default function CentralAvisos() {
                   <div
                     key={alerta.id}
                     onClick={() => openAlerta(alerta)}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/30 ${
-                      !alerta.lido ? 'bg-accent/5 border-accent/20' : 'border-border/50'
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      !alerta.lido
+                        ? 'bg-secondary border-border hover:bg-secondary/80'
+                        : 'border-border/50 hover:bg-muted/40'
                     }`}
                   >
                     <div className={`p-1.5 rounded-lg shrink-0 ${cfg.color}`}>

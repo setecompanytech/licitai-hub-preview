@@ -230,8 +230,8 @@ export default function AssistenteEspecializado() {
         <div className="border-b border-border/50 pb-4 mb-4">
            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight">Assistente IA Especializada</h1>
@@ -276,8 +276,8 @@ export default function AssistenteEspecializado() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pb-4">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
-              <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-accent" />
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-muted-foreground" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold mb-1">Assistente IA Especializada</h2>
@@ -293,7 +293,7 @@ export default function AssistenteEspecializado() {
                     onClick={() => handleSend(chip.label)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/50 bg-card hover:bg-accent/5 hover:border-accent/30 transition-colors text-left"
                   >
-                    <chip.icon className="w-4 h-4 text-accent shrink-0" />
+                    <chip.icon className="w-4 h-4 text-muted-foreground shrink-0" />
                     <span className="text-xs text-foreground">{chip.label}</span>
                   </button>
                 ))}
@@ -309,7 +309,7 @@ export default function AssistenteEspecializado() {
                   : 'bg-card border border-border/50'
               }`}>
                 {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-base prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground prose-blockquote:border-accent/50 prose-blockquote:bg-accent/5 prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:pl-5">
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-base prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground prose-blockquote:border-border prose-blockquote:bg-muted prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:pl-5">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
@@ -342,7 +342,7 @@ export default function AssistenteEspecializado() {
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
               <div className="bg-card border border-border/50 rounded-xl px-4 py-3 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">
                   {buscaWeb ? 'Buscando em fontes oficiais e analisando...' : 'Analisando...'}
                 </span>

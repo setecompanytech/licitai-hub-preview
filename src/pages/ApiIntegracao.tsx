@@ -60,7 +60,7 @@ export default function ApiIntegracao() {
       <div className="space-y-6 max-w-5xl">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Code2 className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Code2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             API de Integração (ERP)
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">

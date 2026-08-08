@@ -845,7 +845,7 @@ export default function GestaoCompras() {
                 <tfoot>
                   <tr className="border-t">
                     <td colSpan={4} className="py-2 text-right text-xs text-muted-foreground pr-2 font-medium">Total do Pedido</td>
-                    <td className="py-2 pl-2 text-right font-bold text-primary">{fmtCurrency(p.valor_total)}</td>
+                    <td className="py-2 pl-2 text-right font-bold text-foreground">{fmtCurrency(p.valor_total)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1208,7 +1208,7 @@ export default function GestaoCompras() {
 
               {nfeMode === 'xml' && (
                 <div
-                  className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${nfePdfLoading ? 'border-primary/40 bg-primary/5 cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}`}
+                  className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${nfePdfLoading ? 'border-border bg-muted/40 cursor-wait' : `cursor-pointer ${nfeDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'}`}`}
                   onClick={() => { if (!nfePdfLoading) fileRef.current?.click(); }}
                   onDragOver={e => { e.preventDefault(); if (!nfePdfLoading) setNfeDragging(true); }}
                   onDragLeave={() => setNfeDragging(false)}
@@ -1217,7 +1217,7 @@ export default function GestaoCompras() {
                   {nfePdfLoading ? (
                     <>
                       <div className="flex justify-center mb-3">
-                        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                        <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
                       </div>
                       <p className="text-sm font-medium">Extraindo dados do DANFE...</p>
                       <p className="text-xs text-muted-foreground mt-1">Aguarde, isso pode levar alguns segundos</p>
@@ -1557,7 +1557,7 @@ function OnboardingCompras({ onCadastrarFornecedor, onNovoPedido, onEstoque, onI
           return (
             <li key={idx} className="flex gap-5">
               <div className="flex flex-col items-center pt-0.5">
-                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-primary/40 bg-primary/10 text-primary text-sm font-bold flex-shrink-0">{idx + 1}</div>
+                <div className="flex items-center justify-center w-11 h-11 rounded-full border-2 border-border bg-muted text-foreground text-sm font-bold flex-shrink-0">{idx + 1}</div>
                 {!isLast && <div className="w-px flex-1 bg-border mt-2 mb-2 min-h-[32px]" />}
               </div>
               <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 flex-1 ${isLast ? 'pb-0' : 'pb-10'}`}>

@@ -241,7 +241,7 @@ export default function BuscaInteligenteIA() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-4">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Busca Inteligente de Editais
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -323,8 +323,8 @@ export default function BuscaInteligenteIA() {
           <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[60vh]">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-8">
-                <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-accent" />
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h2 className="text-lg font-semibold mb-2">O que você procura?</h2>
                 <p className="text-sm text-muted-foreground text-center mb-4 max-w-md">
@@ -337,7 +337,7 @@ export default function BuscaInteligenteIA() {
                       onClick={() => handleSearch(s)}
                       className="flex items-center gap-2 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-left text-xs"
                     >
-                      <Search className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                      <Search className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                       <span>{s}</span>
                     </button>
                   ))}
@@ -392,7 +392,7 @@ export default function BuscaInteligenteIA() {
                                       </span>
                                     )}
                                     {r.valor_estimado && (
-                                      <span className="flex items-center gap-1 text-accent font-medium">
+                                      <span className="flex items-center gap-1 text-foreground font-medium">
                                         <DollarSign className="w-3 h-3" /> {formatCurrency(r.valor_estimado)}
                                       </span>
                                     )}
@@ -449,7 +449,7 @@ export default function BuscaInteligenteIA() {
                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
-                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                       <span className="text-muted-foreground">Buscando nos portais...</span>
                     </div>
                   </div>

@@ -74,7 +74,7 @@ export default function DemoAmbiente() {
               {mockKpis.map((kpi) => (
                 <div key={kpi.label} className="bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center justify-between mb-2">
-                    <kpi.icon className="w-5 h-5 text-accent" />
+                    <kpi.icon className="w-5 h-5 text-muted-foreground" />
                     <span className="text-xs text-success font-semibold">{kpi.trend}</span>
                   </div>
                   <p className="text-2xl font-bold">{kpi.value}</p>
@@ -164,8 +164,8 @@ export default function DemoAmbiente() {
             </Tabs>
 
             {/* CTA */}
-            <div className="mt-14 bg-card border border-accent/20 rounded-xl p-8 text-center">
-              <Shield className="w-8 h-8 text-accent mx-auto mb-3" />
+            <div className="mt-14 bg-card border border-border rounded-xl p-8 text-center">
+              <Shield className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
               <h2 className="text-lg font-bold mb-2">Pronto para acessar dados reais?</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 Crie sua conta e configure seus perfis de monitoramento em menos de 5 minutos.

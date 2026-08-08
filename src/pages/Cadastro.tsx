@@ -253,7 +253,7 @@ export default function Cadastro() {
                       ))}
                     </div>
                     {ufsInteresse.length > 0 && (
-                      <p className="text-xs text-accent mt-2 font-medium">{ufsInteresse.length} estado(s) selecionado(s)</p>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium">{ufsInteresse.length} estado(s) selecionado(s)</p>
                     )}
                   </div>
                 </div>

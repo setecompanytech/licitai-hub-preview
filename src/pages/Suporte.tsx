@@ -121,8 +121,8 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                 {chatMsgs.map((msg, i) => (
                   <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                     {msg.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                        <Bot className="w-4 h-4 text-accent" />
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <Bot className="w-4 h-4 text-foreground" />
                       </div>
                     )}
                     <div className={`max-w-[75%] rounded-xl px-4 py-3 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -137,7 +137,7 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                 ))}
                 {chatLoading && (
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center"><Bot className="w-4 h-4 text-accent" /></div>
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><Bot className="w-4 h-4 text-foreground" /></div>
                     <div className="bg-muted rounded-xl px-4 py-3 text-sm text-muted-foreground">Digitando...</div>
                   </div>
                 )}
@@ -257,8 +257,8 @@ const Suporte = forwardRef<HTMLDivElement>(function Suporte(_props, _ref) {
                         <span>{new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
                       </div>
                       {t.resposta && (
-                        <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                          <p className="text-xs font-semibold text-accent mb-1">Resposta da Equipe</p>
+                        <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border/50">
+                          <p className="text-xs font-semibold text-foreground mb-1">Resposta da Equipe</p>
                           <p className="text-sm">{t.resposta}</p>
                         </div>
                       )}

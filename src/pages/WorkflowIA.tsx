@@ -109,7 +109,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Workflow Autônomo IA
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -172,7 +172,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isDone ? 'bg-success/20 text-success' : isActive ? 'bg-accent/20 text-accent animate-pulse' : 'bg-muted text-muted-foreground'
+                    isDone ? 'bg-success/20 text-success' : isActive ? 'bg-warning/20 text-warning animate-pulse' : 'bg-muted text-muted-foreground'
                   }`}>
                     {isDone ? <CheckCircle2 className="w-5 h-5" /> : isActive ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
                   </div>
@@ -180,7 +180,7 @@ Seja objetivo e formate em Markdown limpo com seções numeradas. NÃO utilize e
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm">{step.label}</h3>
                       {isDone && <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">Concluído</Badge>}
-                      {isActive && <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">Em execução</Badge>}
+                      {isActive && <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-xs">Em execução</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
 

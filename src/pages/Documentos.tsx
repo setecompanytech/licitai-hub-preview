@@ -619,7 +619,7 @@ export default function Documentos() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Controle de Documentos
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -650,7 +650,7 @@ export default function Documentos() {
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Conformidade Geral</span>
-                <span className="text-sm font-bold text-accent">{progress}%</span>
+                <span className="text-sm font-bold text-foreground">{progress}%</span>
               </div>
               <Progress value={progress} className="h-2" />
               <div className="flex gap-4 mt-3">
@@ -679,7 +679,7 @@ export default function Documentos() {
                 return (
                   <div key={cat} className="bg-card rounded-xl border border-border/50 shadow-sm">
                     <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50">
-                      <FolderOpen className="w-4 h-4 text-accent" />
+                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
                       <h3 className="text-sm font-semibold">{cat}</h3>
                       <Badge variant="outline" className="ml-auto text-xs">
                         {docs[0]?.artigo}
@@ -822,7 +822,7 @@ export default function Documentos() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-accent" />
+                <CalendarDays className="w-5 h-5 text-muted-foreground" />
                 Validade do Documento
               </DialogTitle>
             </DialogHeader>
@@ -916,8 +916,8 @@ export default function Documentos() {
               </Button>
 
               {pendingValidadeDate && (
-                <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-lg text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-accent" />
+                <div className="flex items-center gap-2 p-2 bg-success/10 rounded-lg text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-success" />
                   <span>Validade: <strong>{format(pendingValidadeDate, 'dd/MM/yyyy')}</strong></span>
                 </div>
               )}

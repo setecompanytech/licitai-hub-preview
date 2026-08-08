@@ -68,7 +68,7 @@ const formatCurrency = (v: number) =>
 const fonteColors: Record<string, string> = {
   'Mercado Livre': 'bg-warning/15 text-warning',
   'Google Shopping': 'bg-info/15 text-info',
-  SINAPI: 'bg-accent/15 text-accent',
+  SINAPI: 'bg-success/15 text-success',
 };
 
 
@@ -442,8 +442,8 @@ export default function Precificacao() {
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
               {tabInicial === 'extracao-itens'
-                ? <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
-                : <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />}
+                ? <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
+                : <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />}
               {tabInicial === 'extracao-itens' ? 'Itens do Edital' : 'Precificação de Preços'}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -475,7 +475,7 @@ export default function Precificacao() {
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-muted-foreground">{s.label}</span>
-                <s.icon className={`w-4 h-4 ${s.color || 'text-accent'}`} />
+                <s.icon className={`w-4 h-4 ${s.color || 'text-muted-foreground'}`} />
               </div>
               <p className="text-2xl font-bold">{s.value}</p>
             </div>
@@ -573,9 +573,9 @@ export default function Precificacao() {
           <TabsContent value="marketplaces" className="space-y-4">
         {/* Integrated Platforms Banner */}
         {!aiParsedData && !isSearchingAI && !showHistory && (
-          <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-success/5 border border-primary/15 rounded-xl p-5">
+          <div className="bg-muted/40 border border-border/50 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Globe className="w-5 h-5 text-primary" />
+              <Globe className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-sm font-semibold text-foreground">Plataformas e Marketplaces Integrados</h3>
               <Badge variant="outline" className="text-xs ml-auto">+30 fontes</Badge>
             </div>
@@ -591,7 +591,7 @@ export default function Precificacao() {
               ].map((group) => (
                 <div key={group.title} className="bg-card/80 rounded-lg border border-border/30 p-3">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <group.icon className="w-3.5 h-3.5 text-primary" />
+                    <group.icon className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-semibold text-foreground">{group.title}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -647,7 +647,7 @@ export default function Precificacao() {
         {/* Planilha de Custos — Extração por IA */}
         <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-accent" />
+            <Sparkles className="w-4 h-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
             <Badge variant="outline" className="text-xs ml-auto">Upload + Extração + Cotação</Badge>
           </div>
@@ -655,7 +655,7 @@ export default function Precificacao() {
             Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
           </p>
           {processoId && (
-            <div className="rounded-lg border border-dashed border-accent/30 bg-accent/5 p-3 flex items-center justify-between gap-2 flex-wrap">
+            <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="text-xs">
                 <p className="font-medium">Sem download/upload manual</p>
                 <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
@@ -674,9 +674,9 @@ export default function Precificacao() {
         {showHistory && (
           <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
-              <History className="w-5 h-5 text-accent" />
+              <History className="w-5 h-5 text-muted-foreground" />
               <h3 className="font-semibold text-sm">Pesquisas Salvas</h3>
-              {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+              {loadingHistory && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <Popover>
@@ -745,8 +745,8 @@ export default function Precificacao() {
                 <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-3 scrollbar-thin">
                   {/* Active filters summary */}
                   {hasActiveFilters && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
-                      <span className="text-xs text-primary font-medium">Filtros ativos</span>
+                    <div className="bg-muted/50 border border-border rounded-lg p-2.5 flex items-center justify-between">
+                      <span className="text-xs text-foreground font-medium">Filtros ativos</span>
                       <button onClick={resetAllFilters} className="text-xs text-primary hover:underline">Limpar todos</button>
                     </div>
                   )}
@@ -755,7 +755,7 @@ export default function Precificacao() {
                   {categoryTree.subs.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Tag className="w-3 h-3 text-primary" />
+                        <Tag className="w-3 h-3 text-muted-foreground" />
                         {categoryTree.main || 'Categorias'}
                       </h4>
                       <ul className="space-y-0.5">
@@ -796,7 +796,7 @@ export default function Precificacao() {
                   {/* Price Range */}
                   <div className="bg-card border border-border/40 rounded-lg p-3">
                     <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <DollarSign className="w-3 h-3 text-primary" />
+                      <DollarSign className="w-3 h-3 text-muted-foreground" />
                       Faixa de preço
                     </h4>
                     <div className="flex items-center gap-1.5">
@@ -827,7 +827,7 @@ export default function Precificacao() {
                   {availableConditions.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Package className="w-3 h-3 text-primary" />
+                        <Package className="w-3 h-3 text-muted-foreground" />
                         Condição
                       </h4>
                       <ul className="space-y-0.5">
@@ -868,7 +868,7 @@ export default function Precificacao() {
                   {/* Frete Grátis */}
                   <div className="bg-card border border-border/40 rounded-lg p-3">
                     <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Truck className="w-3 h-3 text-primary" />
+                      <Truck className="w-3 h-3 text-muted-foreground" />
                       Envio
                     </h4>
                     <button
@@ -889,7 +889,7 @@ export default function Precificacao() {
                   {availableLojas.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Store className="w-3 h-3 text-primary" />
+                        <Store className="w-3 h-3 text-muted-foreground" />
                         Lojas
                       </h4>
                       <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
@@ -923,7 +923,7 @@ export default function Precificacao() {
                   {availableMarcas.length > 0 && (
                     <div className="bg-card border border-border/40 rounded-lg p-3">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Award className="w-3 h-3 text-primary" />
+                        <Award className="w-3 h-3 text-muted-foreground" />
                         Marcas
                       </h4>
                       <ul className="space-y-0.5 max-h-[180px] overflow-y-auto">
@@ -961,9 +961,9 @@ export default function Precificacao() {
               <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-primary" />
+                    <ShoppingCart className="w-5 h-5 text-muted-foreground" />
                     <h3 className="font-semibold text-sm">Resultados dos Marketplaces</h3>
-                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                    {isSearchingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                   </div>
                   {aiResult && !isSearchingAI && (
                     <Button size="sm" variant="outline" onClick={handleSaveSearch}>
@@ -989,9 +989,9 @@ export default function Precificacao() {
 
         {/* Pending items banner */}
         {hasPending && (
-          <div className="flex items-center justify-between p-3 bg-accent/10 border border-accent/30 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted border border-border rounded-lg">
             <div className="flex items-center gap-2 text-sm">
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
               <span><strong>{pendingItems.length}</strong> {pendingItems.length === 1 ? 'item adicionado' : 'itens adicionados'} à proposta</span>
             </div>
             <Button size="sm" onClick={() => navigate('/proposta-tecnica')} className="bg-accent hover:bg-accent/90 text-accent-foreground">

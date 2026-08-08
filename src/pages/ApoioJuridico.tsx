@@ -49,7 +49,7 @@ export default function ApoioJuridico() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Apoio Jurídico Especializado
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -120,7 +120,7 @@ export default function ApoioJuridico() {
           <TabsContent value="legislacao">
             <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-5 h-5 text-accent" />
+                <BookOpen className="w-5 h-5 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Referências Legais</h3>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -162,7 +162,7 @@ export default function ApoioJuridico() {
                     { num: '272', desc: 'Certificado de registro cadastral não substitui habilitação' },
                     { num: '285', desc: 'Margem de preferência para bens e serviços nacionais' },
                   ].map((s) => (
-                    <div key={s.num} className="flex items-start gap-2 p-2 rounded-lg bg-accent/5 border border-accent/10">
+                    <div key={s.num} className="flex items-start gap-2 p-2 rounded-lg bg-muted border border-border">
                       <Badge variant="outline" className="text-xs shrink-0 mt-0.5">
                         Súm. {s.num}
                       </Badge>

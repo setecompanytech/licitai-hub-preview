@@ -51,7 +51,7 @@ export default function ApoioContabil() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Apoio Contábil Especializado
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -86,8 +86,8 @@ export default function ApoioContabil() {
                     {items.map((m) => (
                       <div key={m.id} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <m.icon className="w-4 h-4 text-accent" />
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                            <m.icon className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm">{m.titulo}</p>

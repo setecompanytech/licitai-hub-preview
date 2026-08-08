@@ -124,7 +124,7 @@ export default function AdminMarketing() {
     );
   }, [leads, search]);
 
-  if (roleLoading) return <AppLayout><div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div></AppLayout>;
+  if (roleLoading) return <AppLayout><div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div></AppLayout>;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const statusColor = (s: string) => {
@@ -141,7 +141,7 @@ export default function AdminMarketing() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <Megaphone className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <Megaphone className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Painel de Marketing
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Métricas de aquisição, leads e conversões</p>
@@ -168,7 +168,7 @@ export default function AdminMarketing() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Leads', value: kpis.total, icon: UserPlus, color: 'text-accent' },
+            { label: 'Total Leads', value: kpis.total, icon: UserPlus, color: 'text-muted-foreground' },
             { label: 'Conversões', value: kpis.convertidos, icon: Target, color: 'text-success', sub: `${kpis.taxaConversao.toFixed(1)}%` },
             { label: 'CAC', value: `R$ ${kpis.cac.toFixed(0)}`, icon: DollarSign, color: 'text-muted-foreground' },
             { label: 'LTV Estimado', value: `R$ ${kpis.ltv.toFixed(0)}`, icon: TrendingUp, color: 'text-muted-foreground', sub: `${kpis.ltv > 0 && kpis.cac > 0 ? (kpis.ltv / kpis.cac).toFixed(1) : '0'}x ROI` },
@@ -360,7 +360,7 @@ export default function AdminMarketing() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
-              <Eye className="w-4 h-4 text-accent" />
+              <Eye className="w-4 h-4 text-muted-foreground" />
               Configuração de Pixels
             </CardTitle>
           </CardHeader>

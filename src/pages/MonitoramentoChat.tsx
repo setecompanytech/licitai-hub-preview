@@ -123,7 +123,7 @@ export default function MonitoramentoChat() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Monitoramento de Chat e Mural
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -132,7 +132,7 @@ export default function MonitoramentoChat() {
           </div>
           <div className="flex items-center gap-3 self-start sm:self-auto">
             <div className="flex items-center gap-2 text-sm">
-              {alertaSonoro ? <Volume2 className="w-4 h-4 text-accent" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+              {alertaSonoro ? <Volume2 className="w-4 h-4 text-success" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
               <Switch checked={alertaSonoro} onCheckedChange={handleToggleSom} />
               <span className="text-xs text-muted-foreground">{alertaSonoro ? 'Som ativo' : 'Mudo'}</span>
             </div>
@@ -141,7 +141,7 @@ export default function MonitoramentoChat() {
 
         {/* Sound alert indicator */}
         {alertaSonoro && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-accent/10 rounded-lg border border-accent/20 text-xs text-accent">
+          <div className="flex items-center gap-2 px-3 py-2 bg-success/10 rounded-lg border border-success/20 text-xs text-success">
             <Volume2 className="w-4 h-4 animate-pulse" />
             <span>Alertas sonoros ativados — você receberá notificações sonoras ao ser convocado ou quando houver mensagens urgentes</span>
           </div>

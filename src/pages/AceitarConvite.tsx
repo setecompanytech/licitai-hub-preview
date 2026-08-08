@@ -143,7 +143,7 @@ export default function AceitarConvite() {
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
           {status === 'loading' && (
             <div className="text-center space-y-3 py-6">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-accent" />
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Validando convite...</p>
             </div>
           )}
@@ -176,7 +176,7 @@ export default function AceitarConvite() {
 
           {status === 'used' && (
             <div className="text-center space-y-4 py-6">
-              <CheckCircle2 className="w-12 h-12 text-accent mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
               <h2 className="text-xl font-bold">Convite já utilizado</h2>
               <p className="text-sm text-muted-foreground">
                 Este convite já foi aceito. Acesse sua conta normalmente.
@@ -192,7 +192,7 @@ export default function AceitarConvite() {
 
           {status === 'success' && (
             <div className="text-center space-y-3 py-6">
-              <CheckCircle2 className="w-12 h-12 text-accent mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
               <h2 className="text-xl font-bold">Conta criada!</h2>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
             </div>

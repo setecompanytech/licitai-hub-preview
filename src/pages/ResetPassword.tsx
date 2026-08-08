@@ -143,18 +143,18 @@ export default function ResetPassword() {
         <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
           {verifying ? (
             <div className="text-center space-y-3 py-6">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-accent" />
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Validando link...</p>
             </div>
           ) : success ? (
             <div className="text-center space-y-3">
-              <CheckCircle2 className="w-12 h-12 text-accent mx-auto" />
+              <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
               <h2 className="text-xl font-bold">Senha alterada!</h2>
               <p className="text-sm text-muted-foreground">Redirecionando...</p>
             </div>
           ) : pendingTokenHash ? (
             <div className="text-center space-y-5 py-2">
-              <ShieldCheck className="w-12 h-12 text-accent mx-auto" />
+              <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto" />
               <div>
                 <h2 className="text-xl font-bold mb-1">
                   {isInvite ? 'Confirmar convite' : 'Confirmar acesso'}

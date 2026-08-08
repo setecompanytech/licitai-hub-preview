@@ -272,7 +272,7 @@ export default function GestaoContratos() {
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                {isAta && <Badge className="bg-accent/15 text-accent border-accent/30 text-xs"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
+                {isAta && <Badge className="bg-muted text-muted-foreground border-border text-xs"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
                 <h1 className="text-xl font-bold">{c.numero_contrato}</h1>
                 <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
                 {isAta && c.permite_carona && <Badge variant="outline" className="text-xs">Permite carona</Badge>}
@@ -294,7 +294,7 @@ export default function GestaoContratos() {
                 {c.licitacao_id && (() => {
                   const l = licitacoes.find(x => x.id === c.licitacao_id);
                   return l ? (
-                    <span className="flex items-center gap-1 text-primary">
+                    <span className="flex items-center gap-1 text-foreground">
                       <Link2 className="w-3 h-3" />
                       Processo: {l.numero}
                     </span>
@@ -468,9 +468,9 @@ export default function GestaoContratos() {
                   {form.licitacao_id && !licitacaoSearch && (() => {
                     const l = licitacoes.find(x => x.id === form.licitacao_id);
                     return l ? (
-                      <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/20 rounded px-3 py-1.5">
-                        <Link2 className="w-3 h-3 text-primary shrink-0" />
-                        <span className="font-medium text-primary">{l.numero}</span>
+                      <div className="flex items-center gap-2 text-xs bg-muted border border-border rounded px-3 py-1.5">
+                        <Link2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="font-medium text-foreground">{l.numero}</span>
                         <span className="text-muted-foreground">— {l.orgao}</span>
                         <button type="button" className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setForm(f => ({ ...f, licitacao_id: '' }))}>✕</button>
                       </div>
@@ -519,8 +519,8 @@ export default function GestaoContratos() {
               <div className="md:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} /></div>
             </div>
             {pendingItens.length > 0 && (
-              <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
-                <p className="text-sm font-medium flex items-center gap-2 text-accent">
+              <div className="mt-3 p-3 rounded-lg bg-muted border border-border">
+                <p className="text-sm font-medium flex items-center gap-2 text-foreground">
                   <Package className="w-4 h-4" /> {pendingItens.length} itens extraídos do PDF
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -571,7 +571,7 @@ export default function GestaoContratos() {
             const Icon = cfg.icon;
             const dias = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / 86400000) : null;
             return (
-              <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-accent/40 bg-accent/[0.03]' : ''}`} onClick={() => setSelectedContrato(c)}>
+              <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-l-4 border-l-accent' : ''}`} onClick={() => setSelectedContrato(c)}>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     {/* 1º — Órgão/cliente */}
@@ -582,12 +582,12 @@ export default function GestaoContratos() {
                     {/* 2º — Número + tipo + badges de status */}
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {isAta
-                        ? <span className="text-xs font-medium text-accent">ATA SRP n. {c.numero_ata || c.numero_contrato}</span>
-                        : <span className="text-xs font-medium text-accent">Contrato n. {c.numero_contrato}</span>}
+                        ? <span className="text-xs font-medium text-foreground">ATA SRP n. {c.numero_ata || c.numero_contrato}</span>
+                        : <span className="text-xs font-medium text-foreground">Contrato n. {c.numero_contrato}</span>}
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
                       {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
                       {!isAta && pct >= 80 && <Badge variant="outline" className="text-xs text-destructive border-destructive/30">Saldo baixo</Badge>}
-                      {c.ata_srp_id && <Badge variant="outline" className="text-xs text-accent border-accent/30">Origem: ATA</Badge>}
+                      {c.ata_srp_id && <Badge variant="outline" className="text-xs text-muted-foreground border-border">Origem: ATA</Badge>}
                     </div>
                     {/* 3º — Objeto */}
                     <p className="text-xs text-muted-foreground line-clamp-1">{c.objeto}</p>
@@ -635,7 +635,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
 
   return (
     <div className="space-y-3">
-      <Card className="p-4 bg-accent/5 border-accent/20">
+      <Card className="p-4 bg-muted/50 border-border">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">Contratos derivados</p>
@@ -643,7 +643,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Valor total consumido</p>
-            <p className="text-2xl font-bold text-accent">{formatCurrency(totalConsumido)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalConsumido)}</p>
           </div>
         </div>
       </Card>
@@ -653,7 +653,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-accent">{c.numero_contrato}</span>
+                  <span className="text-sm font-bold text-foreground">{c.numero_contrato}</span>
                   <Badge variant="outline" className="text-xs">{c.status}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.objeto}</p>

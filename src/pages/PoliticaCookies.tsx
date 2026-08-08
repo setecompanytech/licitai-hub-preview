@@ -15,7 +15,7 @@ export default function PoliticaCookies() {
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-3xl mx-auto">
             <div className="mb-12">
-              <p className="text-xs font-semibold tracking-widest text-accent uppercase mb-3">Política de Cookies</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Política de Cookies</p>
               <h1 className="text-3xl font-bold tracking-tight mb-4">Política de Cookies e Tecnologias de Rastreamento</h1>
               <p className="text-sm text-muted-foreground">Última atualização: 02 de abril de 2026</p>
             </div>

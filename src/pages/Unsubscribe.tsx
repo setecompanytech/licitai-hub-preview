@@ -77,7 +77,7 @@ const Unsubscribe = () => {
 
           {status === "valid" && (
             <>
-              <MailX className="h-12 w-12 text-primary mx-auto" />
+              <MailX className="h-12 w-12 text-muted-foreground mx-auto" />
               <h1 className="text-xl font-bold text-foreground">Cancelar Inscrição</h1>
               <p className="text-muted-foreground text-sm">
                 Deseja deixar de receber e-mails do PRAEFECTUS? Esta ação pode ser revertida entrando em contato com o suporte.
@@ -91,7 +91,7 @@ const Unsubscribe = () => {
 
           {status === "success" && (
             <>
-              <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
+              <CheckCircle2 className="h-12 w-12 text-success mx-auto" />
               <h1 className="text-xl font-bold text-foreground">Inscrição Cancelada</h1>
               <p className="text-muted-foreground text-sm">
                 Você não receberá mais e-mails do PRAEFECTUS. Se mudar de ideia, entre em contato com o suporte.

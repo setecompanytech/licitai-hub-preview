@@ -27,7 +27,7 @@ type RowUnif = {
 };
 
 const FONTE_META: Record<Fonte, { label: string; icon: typeof Shield; cor: string; tabela: string }> = {
-  lgpd:        { label: 'LGPD (Art. 37)',     icon: Lock,        cor: 'text-accent',      tabela: 'lgpd_tratamento_log' },
+  lgpd:        { label: 'LGPD (Art. 37)',     icon: Lock,        cor: 'text-muted-foreground', tabela: 'lgpd_tratamento_log' },
   colaborador: { label: 'Atividades equipe',  icon: Activity,    cor: 'text-info',        tabela: 'atividades_colaborador' },
   lances:      { label: 'Lances (chained)',   icon: ShieldCheck, cor: 'text-success',     tabela: 'audit_log_lances' },
   financeiro:  { label: 'Financeiro',         icon: FileText,    cor: 'text-warning',     tabela: 'financeiro_audit_log' },
@@ -193,7 +193,7 @@ export default function AuditoriaAdmin() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              <Shield className="w-6 h-6 text-accent" />
+              <Shield className="w-6 h-6 text-muted-foreground" />
               Auditoria & Compliance LGPD
             </h1>
             <p className="text-sm text-muted-foreground mt-1">

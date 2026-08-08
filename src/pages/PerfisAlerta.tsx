@@ -319,7 +319,7 @@ export default function PerfisAlerta() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Target className="w-6 h-6 text-accent" />
+              <Target className="w-6 h-6 text-muted-foreground" />
               Perfis de Alerta
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -349,15 +349,15 @@ export default function PerfisAlerta() {
 
         {/* Score results */}
         {scoreResults && (
-          <Card className="p-4 mb-4 border-accent/30 bg-accent/5">
+          <Card className="p-4 mb-4 border-success/30 bg-success/5">
             <div className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-accent" />
+              <CheckCircle2 className="w-4 h-4 text-success" />
               <span className="font-medium">Matching concluído:</span>
               <Badge variant="secondary">{scoreResults.total_perfis} perfis</Badge>
               <span>×</span>
               <Badge variant="secondary">{scoreResults.total_licitacoes} licitações</Badge>
               <span>=</span>
-              <Badge className="bg-accent text-accent-foreground">{scoreResults.scores_calculados} scores</Badge>
+              <Badge className="bg-success text-success-foreground">{scoreResults.scores_calculados} scores</Badge>
               {scoreResults.dispatches_criados > 0 && (
                 <>
                   <span>·</span>
@@ -373,7 +373,7 @@ export default function PerfisAlerta() {
             {/* Lista de perfis */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : perfis.length === 0 ? (
               <Card className="p-12 text-center">
@@ -440,7 +440,7 @@ export default function PerfisAlerta() {
             {/* Legenda de classificações */}
             <Card className="mt-6 p-4">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-accent" />
+                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
                 Classificação Automática de Licitações
               </h3>
               <div className="flex flex-wrap gap-3">
@@ -462,7 +462,7 @@ export default function PerfisAlerta() {
           <div className="space-y-4">
             {loadingStats ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : perfis.length === 0 ? (
               <Card className="p-12 text-center">
@@ -474,12 +474,12 @@ export default function PerfisAlerta() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Card className="p-4 text-center">
-                    <Target className="w-5 h-5 mx-auto mb-1 text-accent" />
+                    <Target className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                     <div className="text-2xl font-bold">{perfis.length}</div>
                     <div className="text-xs text-muted-foreground">Perfis Ativos</div>
                   </Card>
                   <Card className="p-4 text-center">
-                    <Send className="w-5 h-5 mx-auto mb-1 text-accent" />
+                    <Send className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.total, 0)}
                     </div>
@@ -503,7 +503,7 @@ export default function PerfisAlerta() {
 
                 {/* Per-profile analytics */}
                 <h3 className="text-sm font-semibold flex items-center gap-2 mt-4">
-                  <TrendingUp className="w-4 h-4 text-accent" />
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
                   Desempenho por Perfil
                 </h3>
                 <div className="space-y-3">
@@ -780,7 +780,7 @@ export default function PerfisAlerta() {
                 ].map(({ key, label, icon: Icon }) => (
                   <div key={key} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-accent" />{label}</Label>
+                      <Label className="text-xs flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-muted-foreground" />{label}</Label>
                       <span className="text-xs font-mono font-bold">{editando[key]}%</span>
                     </div>
                     <Slider value={[editando[key]]} min={0} max={100} step={5}
@@ -804,21 +804,21 @@ export default function PerfisAlerta() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-accent" />
+                      <Mail className="w-4 h-4 text-muted-foreground" />
                       <Label className="text-xs">E-mail</Label>
                     </div>
                     <Switch checked={editando.canal_email} onCheckedChange={v => setEditando({ ...editando, canal_email: v })} />
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-accent" />
+                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
                       <Label className="text-xs">WhatsApp</Label>
                     </div>
                     <Switch checked={editando.canal_whatsapp} onCheckedChange={v => setEditando({ ...editando, canal_whatsapp: v })} />
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-accent" />
+                      <Bell className="w-4 h-4 text-muted-foreground" />
                       <Label className="text-xs">Notificação no Sistema</Label>
                     </div>
                     <Switch checked={editando.canal_sistema} onCheckedChange={v => setEditando({ ...editando, canal_sistema: v })} />

@@ -44,7 +44,7 @@ export default function ContatoDemo() {
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-5xl mx-auto">
             <div className="mb-14 text-center">
-              <p className="text-xs font-semibold tracking-widest text-accent uppercase mb-3">Demonstração Comercial</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Demonstração Comercial</p>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
                 Solicite uma apresentação personalizada
               </h1>
@@ -58,7 +58,7 @@ export default function ContatoDemo() {
               <div className="border border-border rounded-xl p-8 bg-card">
                 {sent ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <CheckCircle2 className="w-16 h-16 text-accent mb-4" />
+                    <CheckCircle2 className="w-16 h-16 text-success mb-4" />
                     <h3 className="text-xl font-bold mb-2">Solicitação recebida</h3>
                     <p className="text-muted-foreground">Nossa equipe comercial entrará em contato em até 24 horas úteis para agendar sua demonstração.</p>
                   </div>
@@ -119,7 +119,7 @@ export default function ContatoDemo() {
                   <ul className="space-y-3">
                     {benefits.map((b) => (
                       <li key={b} className="flex items-start gap-3 text-sm text-muted-foreground">
-                        <CheckCircle2 className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                         {b}
                       </li>
                     ))}
@@ -129,10 +129,10 @@ export default function ContatoDemo() {
                 <div className="border border-border rounded-xl p-6 bg-card space-y-4">
                   <h3 className="font-semibold">Canais de contato direto</h3>
                   <div className="space-y-3 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-3"><Mail className="w-4 h-4 text-accent" /> contato@praefectus.com.br</div>
-                    <div className="flex items-center gap-3"><Phone className="w-4 h-4 text-accent" /> (11) 0000-0000</div>
-                    <div className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-accent" /> WhatsApp Comercial</div>
-                    <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-accent" /> Seg–Sex, 08h às 18h (Brasília)</div>
+                    <div className="flex items-center gap-3"><Mail className="w-4 h-4 text-muted-foreground" /> contato@praefectus.com.br</div>
+                    <div className="flex items-center gap-3"><Phone className="w-4 h-4 text-muted-foreground" /> (11) 0000-0000</div>
+                    <div className="flex items-center gap-3"><MessageSquare className="w-4 h-4 text-muted-foreground" /> WhatsApp Comercial</div>
+                    <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-muted-foreground" /> Seg–Sex, 08h às 18h (Brasília)</div>
                   </div>
                 </div>
 

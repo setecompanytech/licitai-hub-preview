@@ -109,7 +109,7 @@ function ComparativoCenarios() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> Receita vs Custos vs Lucro (R$/mês)
+            <BarChart3 className="w-4 h-4 text-muted-foreground" /> Receita vs Custos vs Lucro (R$/mês)
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
@@ -127,7 +127,7 @@ function ComparativoCenarios() {
 
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-accent" /> Margens e Composição de Custos (%)
+            <TrendingUp className="w-4 h-4 text-muted-foreground" /> Margens e Composição de Custos (%)
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={margemData}>
@@ -339,7 +339,7 @@ function ComposicaoCustos() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <PieIcon className="w-4 h-4 text-primary" /> Composição de Custos (500 clientes)
+            <PieIcon className="w-4 h-4 text-muted-foreground" /> Composição de Custos (500 clientes)
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -470,7 +470,7 @@ function ParecerTecnico() {
   return (
     <Card className="p-6 space-y-5">
       <h2 className="text-lg font-bold flex items-center gap-2">
-        <FileText className="w-5 h-5 text-primary" /> Parecer Técnico-Contábil
+        <FileText className="w-5 h-5 text-muted-foreground" /> Parecer Técnico-Contábil
       </h2>
 
       <div className="space-y-4 text-sm leading-relaxed text-foreground">

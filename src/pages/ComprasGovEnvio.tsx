@@ -89,7 +89,7 @@ export default function ComprasGovEnvio() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Send className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Send className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Envio de Propostas
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -198,7 +198,7 @@ export default function ComprasGovEnvio() {
                   <Plus className="w-3 h-3 mr-1" /> Adicionar Item
                 </Button>
                 <div className="text-sm">
-                  Total: <span className="font-bold text-accent">
+                  Total: <span className="font-bold text-foreground">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProposta)}
                   </span>
                 </div>
@@ -249,22 +249,22 @@ export default function ComprasGovEnvio() {
               <h3 className="font-semibold text-sm">Resumo da Proposta</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <Globe className="w-5 h-5 mx-auto mb-1 text-accent" />
+                  <Globe className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">Portal</p>
                   <p className="text-sm font-semibold capitalize">{portal === 'comprasgov' ? 'Compras.gov.br' : portal.toUpperCase()}</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <Package className="w-5 h-5 mx-auto mb-1 text-accent" />
+                  <Package className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">Itens</p>
                   <p className="text-sm font-semibold">{itens.length}</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <DollarSign className="w-5 h-5 mx-auto mb-1 text-accent" />
+                  <DollarSign className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">Valor Total</p>
                   <p className="text-sm font-semibold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalProposta)}</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <Shield className="w-5 h-5 mx-auto mb-1 text-accent" />
+                  <Shield className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">Declarações</p>
                   <p className="text-sm font-semibold">{Object.values(declaracoes).filter(Boolean).length}/5</p>
                 </div>

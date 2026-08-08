@@ -183,14 +183,14 @@ export default function AdminFontesFabricantes() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              <Factory className="w-5 h-5 text-accent" />
+              <Factory className="w-5 h-5 text-muted-foreground" />
               Fontes de Fabricantes & Portais
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Alimente a IA de catalogação com portais e sites de fabricantes para aperfeiçoar as buscas de especificações e imagens.
             </p>
           </div>
-          <Badge variant="outline" className="border-accent/30 text-accent">
+          <Badge variant="outline" className="border-border text-muted-foreground">
             <ShieldCheck className="w-3 h-3 mr-1" /> Admin
           </Badge>
         </div>
@@ -219,9 +219,9 @@ export default function AdminFontesFabricantes() {
 
         {/* Create/Edit Form */}
         {(creating || editing) && (
-          <div className="border border-accent/30 rounded-xl p-5 bg-accent/5 space-y-4">
+          <div className="border border-border rounded-xl p-5 bg-muted space-y-4">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              {creating ? <Plus className="w-4 h-4 text-accent" /> : <Pencil className="w-4 h-4 text-accent" />}
+              {creating ? <Plus className="w-4 h-4 text-muted-foreground" /> : <Pencil className="w-4 h-4 text-muted-foreground" />}
               {creating ? 'Adicionar Nova Fonte' : 'Editar Fonte'}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

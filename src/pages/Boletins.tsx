@@ -37,7 +37,7 @@ export default function Boletins() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Boletins Diários
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">

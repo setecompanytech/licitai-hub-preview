@@ -27,7 +27,7 @@ export default function Analytics() {
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Activity className="w-6 h-6 text-accent" />
+            <Activity className="w-6 h-6 text-muted-foreground" />
             Analytics em Tempo Real
           </h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">

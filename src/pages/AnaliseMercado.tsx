@@ -74,7 +74,7 @@ export default function AnaliseMercado() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Análise de Mercado
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -90,7 +90,7 @@ export default function AnaliseMercado() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-accent" />
+              <Activity className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Licitações/mês</span>
             </div>
             <p className="text-2xl font-bold">4.657</p>
@@ -98,7 +98,7 @@ export default function AnaliseMercado() {
           </div>
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-4 h-4 text-accent" />
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Volume financeiro</span>
             </div>
             <p className="text-2xl font-bold">R$ 3,2 bi</p>
@@ -106,7 +106,7 @@ export default function AnaliseMercado() {
           </div>
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
-              <Building2 className="w-4 h-4 text-accent" />
+              <Building2 className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Órgãos contratando</span>
             </div>
             <p className="text-2xl font-bold">1.234</p>
@@ -114,7 +114,7 @@ export default function AnaliseMercado() {
           </div>
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
-              <Package className="w-4 h-4 text-accent" />
+              <Package className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Valor médio</span>
             </div>
             <p className="text-2xl font-bold">R$ 687 mil</p>
@@ -136,7 +136,7 @@ export default function AnaliseMercado() {
             {/* Portal selector - shown next to tabs */}
             <Select value={portalSelecionado} onValueChange={handlePortalChange}>
               <SelectTrigger className="w-64 h-9 text-sm">
-                <Landmark className="w-4 h-4 mr-1 text-accent shrink-0" />
+                <Landmark className="w-4 h-4 mr-1 text-muted-foreground shrink-0" />
                 <SelectValue placeholder="Selecione o portal" />
               </SelectTrigger>
               <SelectContent className="max-h-[400px]">
@@ -235,7 +235,7 @@ export default function AnaliseMercado() {
                   .map((produto, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-accent w-8 text-center">{i + 1}º</span>
+                        <span className="text-lg font-bold text-foreground w-8 text-center">{i + 1}º</span>
                         <div>
                           <p className="text-sm font-medium">{produto.item}</p>
                           <p className="text-xs text-muted-foreground">{produto.qtd} licitações encontradas</p>

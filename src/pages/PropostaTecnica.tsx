@@ -745,13 +745,13 @@ export default function PropostaTecnica() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <FileText className="w-6 h-6 text-accent" />
+              <FileText className="w-6 h-6 text-muted-foreground" />
               Proposta Comercial
             </h1>
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
               Montagem assistida por IA · Modelo conforme Lei 14.133/2021 e ABNT NBR 14724
               {lastSaved && (
-                <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                   <Clock className="w-3 h-3" />
                   {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
                 </span>
@@ -791,12 +791,12 @@ export default function PropostaTecnica() {
                     isActive
                       ? 'bg-accent text-accent-foreground shadow-md'
                       : isDone
-                        ? 'bg-accent/10 text-accent hover:bg-accent/20'
+                        ? 'bg-success/10 text-success hover:bg-success/20'
                         : 'text-muted-foreground hover:bg-muted/50'
                   }`}
                 >
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                    isActive ? 'bg-accent-foreground/20' : isDone ? 'bg-accent/20' : 'bg-muted'
+                    isActive ? 'bg-accent-foreground/20' : isDone ? 'bg-success/20' : 'bg-muted'
                   }`}>
                     {isDone && !isActive ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
                   </div>
@@ -817,7 +817,7 @@ export default function PropostaTecnica() {
           {currentStep === 1 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-5 h-5 text-accent" />
+                <FileText className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Upload do Edital</h2>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -825,7 +825,7 @@ export default function PropostaTecnica() {
                 objeto, planilha de itens com quantidades e preços, prazos de validade, pagamento, entrega e local de entrega.
               </p>
               {processoId && (
-                <div className="rounded-lg border border-dashed border-accent/30 bg-accent/5 p-3 flex items-center justify-between gap-2 flex-wrap">
+                <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 flex items-center justify-between gap-2 flex-wrap">
                   <div className="text-xs">
                     <p className="font-medium">Sem download/upload manual</p>
                     <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
@@ -855,9 +855,9 @@ export default function PropostaTecnica() {
                     ].map((s, i) => {
                       const Icon = s.icon;
                       return (
-                        <div key={i} className="bg-accent/5 rounded-lg p-3 border border-accent/10">
+                        <div key={i} className="bg-muted/50 rounded-lg p-3 border border-border/50">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <Icon className="w-3.5 h-3.5 text-accent" />
+                            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground font-medium">{s.label}</span>
                           </div>
                           <p className="text-xs font-semibold text-foreground truncate">{s.value || '—'}</p>
@@ -883,13 +883,13 @@ export default function PropostaTecnica() {
           {currentStep === 2 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <Building2 className="w-5 h-5 text-accent" />
+                <Building2 className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Dados da Empresa Licitante</h2>
               </div>
 
               {empresaAtiva ? (
                 <div className="space-y-3">
-                  <div className="bg-accent/5 rounded-lg p-4 text-sm border border-accent/20">
+                  <div className="bg-muted/50 rounded-lg p-4 text-sm border border-border/50">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <p className="font-semibold text-foreground mb-1">{empresaAtiva.razao_social}</p>
@@ -985,7 +985,7 @@ export default function PropostaTecnica() {
 
               <div className="border-t border-border/50 pt-4">
                 <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-accent" /> Dados Bancários
+                  <Banknote className="w-4 h-4 text-muted-foreground" /> Dados Bancários
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -1023,13 +1023,13 @@ export default function PropostaTecnica() {
           {currentStep === 3 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <User className="w-5 h-5 text-accent" />
+                <User className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Representante Legal</h2>
               </div>
 
               {/* Auto-fill status / uploader */}
               {repNome ? (
-                <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/15 rounded-lg text-xs text-accent">
+                <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg text-xs text-muted-foreground">
                   <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                   Dados preenchidos automaticamente do cadastro da empresa. Revise e ajuste se necessário.
                 </div>
@@ -1105,12 +1105,12 @@ export default function PropostaTecnica() {
           {currentStep === 4 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <Receipt className="w-5 h-5 text-accent" />
+                <Receipt className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Dados da Licitação</h2>
               </div>
 
               {editalRawText && (
-                <div className="flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/15 rounded-lg text-xs text-accent">
+                <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg text-xs text-muted-foreground">
                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
                   Campos pré-preenchidos pela extração do edital. Revise e ajuste conforme necessário.
                 </div>
@@ -1154,19 +1154,19 @@ export default function PropostaTecnica() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-accent" /> Validade da Proposta Comercial</Label>
+                  <Label className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-muted-foreground" /> Validade da Proposta Comercial</Label>
                   <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent" /> Prazo de Pagamento</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-muted-foreground" /> Prazo de Pagamento</Label>
                   <Input placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-accent" /> Prazo de Entrega</Label>
+                  <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-muted-foreground" /> Prazo de Entrega</Label>
                   <Input placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-accent" /> Local de Entrega</Label>
+                  <Label className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-muted-foreground" /> Local de Entrega</Label>
                   <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
@@ -1190,7 +1190,7 @@ export default function PropostaTecnica() {
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-accent" />
+                  <CreditCard className="w-5 h-5 text-muted-foreground" />
                   <h2 className="font-semibold text-lg">Planilha de Preços</h2>
                 </div>
                 {totalItens > 0 && (
@@ -1239,7 +1239,7 @@ export default function PropostaTecnica() {
           {currentStep === 6 && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-1">
-                <Scale className="w-5 h-5 text-accent" />
+                <Scale className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Declarações Obrigatórias</h2>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -1294,7 +1294,7 @@ export default function PropostaTecnica() {
            {currentStep === 7 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-1">
-                <Settings2 className="w-5 h-5 text-accent" />
+                <Settings2 className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Formatação</h2>
               </div>
 
@@ -1385,7 +1385,7 @@ export default function PropostaTecnica() {
               {/* Envio da Proposta */}
               <div className="border-t border-border/50 pt-4 space-y-2">
                 <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Send className="w-4 h-4 text-accent" /> Envio da Proposta
+                  <Send className="w-4 h-4 text-muted-foreground" /> Envio da Proposta
                 </p>
                 <p className="text-sm text-muted-foreground">Prepare e envie sua proposta para portais de compras públicas</p>
                 <EnvioProposta />
@@ -1397,17 +1397,17 @@ export default function PropostaTecnica() {
           {currentStep === 8 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-5 h-5 text-accent" />
+                <Sparkles className="w-5 h-5 text-muted-foreground" />
                 <h2 className="font-semibold text-lg">Gerar Proposta Final</h2>
               </div>
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Órgão', value: orgao || '—', icon: Building2, color: 'text-accent' },
-                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText, color: 'text-accent' },
-                  { label: 'Itens', value: `${totalItens} · R$ ${valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard, color: 'text-accent' },
-                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length} ativa(s)`, icon: Scale, color: 'text-accent' },
+                  { label: 'Órgão', value: orgao || '—', icon: Building2, color: 'text-muted-foreground' },
+                  { label: 'Licitação', value: numeroLicitacao || '—', icon: FileText, color: 'text-muted-foreground' },
+                  { label: 'Itens', value: `${totalItens} · R$ ${valorGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: CreditCard, color: 'text-muted-foreground' },
+                  { label: 'Declarações', value: `${Object.values(declaracoes).filter(Boolean).length + declaracoesCustom.length} ativa(s)`, icon: Scale, color: 'text-muted-foreground' },
                 ].map((s, i) => {
                   const Icon = s.icon;
                   return (
@@ -1458,7 +1458,7 @@ export default function PropostaTecnica() {
                   key={step.id}
                   onClick={() => setCurrentStep(step.id)}
                   className={`w-2 h-2 rounded-full transition-all ${
-                    currentStep === step.id ? 'bg-accent w-4' : completed.has(step.id) ? 'bg-accent/40' : 'bg-muted-foreground/20'
+                    currentStep === step.id ? 'bg-accent w-4' : completed.has(step.id) ? 'bg-success/40' : 'bg-muted-foreground/20'
                   }`}
                 />
               ))}
@@ -1474,7 +1474,7 @@ export default function PropostaTecnica() {
           <div ref={resultRef} className="bg-card rounded-xl border border-border/50 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="font-semibold text-lg flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-accent" />
+                <CheckCircle className="w-5 h-5 text-success" />
                 Proposta Comercial Gerada
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1561,7 +1561,7 @@ export default function PropostaTecnica() {
             <div className="w-1/2 min-w-0">
               <div className="sticky top-20">
                 <div className="flex items-center gap-2 mb-2">
-                  <Eye className="w-4 h-4 text-accent" />
+                  <Eye className="w-4 h-4 text-muted-foreground" />
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview em Tempo Real</span>
                 </div>
                 <div className="max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-border/50 shadow-sm scrollbar-thin">

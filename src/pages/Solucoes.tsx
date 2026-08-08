@@ -35,7 +35,7 @@ export default function Solucoes() {
         <main className="pt-24 pb-20 px-6">
           <div className="max-w-5xl mx-auto">
             <div className="mb-14 text-center">
-              <p className="text-xs font-semibold tracking-widest text-accent uppercase mb-3">Soluções</p>
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Soluções</p>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">12 módulos integrados para o ciclo licitatório completo</h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Da identificação da oportunidade à execução do contrato — cada módulo foi projetado para eliminar retrabalho e aumentar a taxa de sucesso.
@@ -45,7 +45,7 @@ export default function Solucoes() {
             <div className="grid md:grid-cols-2 gap-6">
               {modules.map((m) => (
                 <div key={m.title} className="border border-border rounded-xl p-6 bg-card hover:border-accent/30 transition-colors group">
-                  <m.icon className="w-7 h-7 text-accent mb-3" />
+                  <m.icon className="w-7 h-7 text-muted-foreground mb-3" />
                   <h3 className="text-lg font-bold mb-2">{m.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
                 </div>

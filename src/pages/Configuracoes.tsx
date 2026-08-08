@@ -387,7 +387,7 @@ export default function Configuracoes() {
             {/* Dados da Empresa */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Building2 className="w-5 h-5 text-accent" />
+                <Building2 className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Dados da Empresa</h2>
               </div>
               <div className="grid gap-4">
@@ -505,7 +505,7 @@ export default function Configuracoes() {
             {/* Dados do Representante */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <User className="w-5 h-5 text-accent" />
+                <User className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
@@ -565,7 +565,7 @@ export default function Configuracoes() {
             {/* Timbrado e Marca d'Água — Sistema global */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
-                <ImageIcon className="w-5 h-5 text-accent" />
+                <ImageIcon className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Timbrado e Marca d'Água</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
@@ -577,7 +577,7 @@ export default function Configuracoes() {
             {/* Notificações */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Bell className="w-5 h-5 text-accent" />
+                <Bell className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Notificações</h2>
               </div>
               <div className="space-y-4">
@@ -604,7 +604,7 @@ export default function Configuracoes() {
             {/* Portais Monitorados */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-accent" />
+                <Globe className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Portais Monitorados</h2>
               </div>
               <div className="space-y-3">
@@ -634,7 +634,7 @@ export default function Configuracoes() {
             {/* Diários Oficiais */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Newspaper className="w-5 h-5 text-accent" />
+                <Newspaper className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
               </div>
               <div className="space-y-3">
@@ -659,7 +659,7 @@ export default function Configuracoes() {
 
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5 text-accent" />
+                <MapPin className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">UFs prioritárias do Monitoramento</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
@@ -712,7 +712,7 @@ export default function Configuracoes() {
             {/* Exportar Dados */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-5 h-5 text-accent" />
+                <Shield className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Privacidade & Dados (LGPD)</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
@@ -748,7 +748,7 @@ export default function Configuracoes() {
           <TabsContent value="seguranca" className="space-y-6">
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
-                <User className="w-5 h-5 text-accent" />
+                <User className="w-5 h-5 text-muted-foreground" />
                 <h2 className="text-sm font-semibold">Usuário de Acesso</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">

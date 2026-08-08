@@ -164,7 +164,7 @@ export default function IndicesRepactuacao() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Índices Econômicos & Repactuação
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -214,8 +214,8 @@ export default function IndicesRepactuacao() {
                     <Card key={idx.id} className="p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
-                            <Icon className="w-4 h-4 text-accent" />
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                            <Icon className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div>
                             <p className="font-bold text-sm">{idx.sigla}</p>
@@ -338,8 +338,8 @@ export default function IndicesRepactuacao() {
                   <Card key={cct.id} className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <Users className="w-4 h-4 text-accent" />
+                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                          <Users className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
                           <p className="font-semibold text-sm">{cct.categoria_profissional}</p>
@@ -377,7 +377,7 @@ export default function IndicesRepactuacao() {
           <TabsContent value="simulador" className="space-y-4">
             <Card className="p-5 space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-accent" /> Simulador de Reajuste / Repactuação
+                <Calculator className="w-4 h-4 text-muted-foreground" /> Simulador de Reajuste / Repactuação
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -439,7 +439,7 @@ export default function IndicesRepactuacao() {
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Valor Reajustado</p>
-                    <p className="text-lg font-bold text-accent">{fmtCur(simResult.valor_reajustado)}</p>
+                    <p className="text-lg font-bold text-foreground">{fmtCur(simResult.valor_reajustado)}</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Diferença</p>
@@ -464,7 +464,7 @@ export default function IndicesRepactuacao() {
 
                 <Card className="p-4">
                   <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <Scale className="w-4 h-4 text-accent" /> Fundamentação Jurídica
+                    <Scale className="w-4 h-4 text-muted-foreground" /> Fundamentação Jurídica
                   </h4>
                   <div className="prose prose-sm max-w-none dark:prose-invert text-xs">
                     <ReactMarkdown>{simResult.fundamentacao}</ReactMarkdown>
@@ -473,7 +473,7 @@ export default function IndicesRepactuacao() {
 
                 <Card className="p-4">
                   <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <FileText className="w-4 h-4 text-accent" /> Parecer Técnico
+                    <FileText className="w-4 h-4 text-muted-foreground" /> Parecer Técnico
                   </h4>
                   <div className="prose prose-sm max-w-none dark:prose-invert text-xs">
                     <ReactMarkdown>{simResult.parecer}</ReactMarkdown>
@@ -482,10 +482,10 @@ export default function IndicesRepactuacao() {
               </div>
             )}
 
-            <Card className="p-4 bg-accent/5 border-accent/20">
+            <Card className="p-4 bg-muted/50 border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-accent" />
+                  <Scale className="w-4 h-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-semibold">Gerar Pedido de Reequilíbrio Formal</p>
                     <p className="text-xs text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>

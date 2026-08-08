@@ -40,7 +40,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   'Publicado': { label: 'Publicado', className: 'bg-info/10 text-info border-info/20' },
   'Em Disputa': { label: 'Em Disputa', className: 'bg-warning/10 text-warning border-warning/20' },
   'Homologado': { label: 'Homologado', className: 'bg-success/10 text-success border-success/20' },
-  'Contrato Assinado': { label: 'Contrato Assinado', className: 'bg-accent/10 text-accent border-accent/20' },
+  'Contrato Assinado': { label: 'Contrato Assinado', className: 'bg-success/10 text-success border-success/20' },
   'Deserto': { label: 'Deserto', className: 'bg-muted text-muted-foreground border-border' },
   'Fracassado': { label: 'Fracassado', className: 'bg-destructive/10 text-destructive border-destructive/20' },
   'Revogado': { label: 'Revogado', className: 'bg-destructive/10 text-destructive border-destructive/20' },

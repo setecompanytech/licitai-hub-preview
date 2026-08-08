@@ -114,7 +114,7 @@ export default function AdminFinanceiro() {
           {[
             { label: 'Assinaturas Ativas', value: assinaturas.filter(a => a.status === 'ativa').length, icon: Check, color: 'text-success' },
             { label: 'Pendentes', value: assinaturas.filter(a => a.status === 'pendente').length, icon: Clock, color: 'text-warning' },
-            { label: 'Receita Mensal', value: `R$ ${assinaturas.filter(a => a.status === 'ativa').reduce((sum, a) => sum + (a.plano?.preco_mensal || 0), 0).toLocaleString('pt-BR')}`, icon: DollarSign, color: 'text-accent' },
+            { label: 'Receita Mensal', value: `R$ ${assinaturas.filter(a => a.status === 'ativa').reduce((sum, a) => sum + (a.plano?.preco_mensal || 0), 0).toLocaleString('pt-BR')}`, icon: DollarSign, color: 'text-muted-foreground' },
             { label: 'Tickets Abertos', value: ticketsAbertos, icon: MessageCircle, color: ticketsAbertos > 0 ? 'text-destructive' : 'text-muted-foreground' },
           ].map(k => (
             <div key={k.label} className="stat-card">
@@ -216,8 +216,8 @@ export default function AdminFinanceiro() {
                   <p className="text-sm text-muted-foreground mb-3">{t.descricao}</p>
 
                   {t.resposta && (
-                    <div className="p-3 rounded-lg bg-accent/5 border border-accent/10 mb-3">
-                      <p className="text-xs font-semibold text-accent mb-1">Sua Resposta</p>
+                    <div className="p-3 rounded-lg bg-muted border border-border mb-3">
+                      <p className="text-xs font-semibold text-foreground mb-1">Sua Resposta</p>
                       <p className="text-sm">{t.resposta}</p>
                     </div>
                   )}

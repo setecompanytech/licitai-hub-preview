@@ -232,7 +232,7 @@ export default function EquipePermissoes() {
               <ChevronLeft className="w-3 h-3" /> Voltar para Equipe
             </Link>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Shield className="w-5 h-5 text-accent" />
+              <Shield className="w-5 h-5 text-muted-foreground" />
               Administração de Papéis & Permissões
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
@@ -326,19 +326,19 @@ export default function EquipePermissoes() {
                   <div
                     key={m.id}
                     className={`bg-card rounded-lg border p-4 transition-colors ${
-                      isDirty ? 'border-accent/60 bg-accent/5' : 'border-border/50'
+                      isDirty ? 'border-warning/60 bg-warning/5' : 'border-border/50'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs flex-shrink-0">
                           {(m.nome || m.email || '?').slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm truncate">{m.nome || m.email || 'Colaborador'}</span>
                             {isMe && <Badge variant="outline" className="text-xs">Você</Badge>}
-                            {isDirty && <Badge className="text-xs bg-accent text-accent-foreground">Alterado</Badge>}
+                            {isDirty && <Badge className="text-xs bg-warning text-warning-foreground">Alterado</Badge>}
                           </div>
                           {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
                         </div>

@@ -292,7 +292,7 @@ export default function RoboLances() {
         {/* ── Top Header ── */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border bg-card px-4 py-2">
           <div className="flex items-center gap-3">
-            <Bot className="w-5 h-5 text-accent flex-shrink-0" />
+            <Bot className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <h1 className="text-base sm:text-lg font-bold tracking-tight">Robô de Lances</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -407,8 +407,8 @@ export default function RoboLances() {
               /* empty state with level selector */
               <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 gap-6 p-6">
                 <div className="text-center space-y-3">
-                  <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
-                    <Target className="w-8 h-8 text-accent" />
+                  <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+                    <Target className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Selecione ou crie uma disputa</h3>
                   <p className="text-xs text-muted-foreground max-w-xs">
@@ -753,7 +753,7 @@ export default function RoboLances() {
 
           <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4 max-w-2xl">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Settings className="w-4 h-4 text-accent" /> Regras de Lance Automático (Padrão Global)
+              <Settings className="w-4 h-4 text-muted-foreground" /> Regras de Lance Automático (Padrão Global)
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
