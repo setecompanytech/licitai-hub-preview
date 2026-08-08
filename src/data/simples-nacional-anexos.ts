@@ -112,11 +112,14 @@ const ANEXO_III: AnexoSimples = {
     { min: 3_600_000.01, max: 4_800_000, aliquota: 33.00, deducao: 648_000, faixaNum: 6 },
   ],
   partilha: {
-    1: { IRPJ: 6.00, CSLL: 3.50, COFINS: 12.82, PIS: 2.78, CPP: 43.40, ICMS: 0, ISS: 33.50, IPI: 0 },
-    2: { IRPJ: 6.00, CSLL: 3.50, COFINS: 14.05, PIS: 3.05, CPP: 43.40, ICMS: 0, ISS: 32.00, IPI: 0 },
-    3: { IRPJ: 6.00, CSLL: 3.50, COFINS: 13.64, PIS: 2.96, CPP: 43.40, ICMS: 0, ISS: 32.50, IPI: 0 },
-    4: { IRPJ: 6.00, CSLL: 3.50, COFINS: 13.64, PIS: 2.96, CPP: 43.40, ICMS: 0, ISS: 32.50, IPI: 0 },
-    5: { IRPJ: 6.00, CSLL: 3.50, COFINS: 12.82, PIS: 2.78, CPP: 43.40, ICMS: 0, ISS: 33.50, IPI: 0 },
+    // IRPJ 4,00 nas faixas 1-5 (CGSN 140/2018). Estava 6,00 até 2026-08-08, o que
+    // fazia a partilha somar 102% e inflar o divisor do mark-up — ver
+    // src/test/tributario-partilha.test.ts.
+    1: { IRPJ: 4.00, CSLL: 3.50, COFINS: 12.82, PIS: 2.78, CPP: 43.40, ICMS: 0, ISS: 33.50, IPI: 0 },
+    2: { IRPJ: 4.00, CSLL: 3.50, COFINS: 14.05, PIS: 3.05, CPP: 43.40, ICMS: 0, ISS: 32.00, IPI: 0 },
+    3: { IRPJ: 4.00, CSLL: 3.50, COFINS: 13.64, PIS: 2.96, CPP: 43.40, ICMS: 0, ISS: 32.50, IPI: 0 },
+    4: { IRPJ: 4.00, CSLL: 3.50, COFINS: 13.64, PIS: 2.96, CPP: 43.40, ICMS: 0, ISS: 32.50, IPI: 0 },
+    5: { IRPJ: 4.00, CSLL: 3.50, COFINS: 12.82, PIS: 2.78, CPP: 43.40, ICMS: 0, ISS: 33.50, IPI: 0 },
     6: { IRPJ: 35.00, CSLL: 15.00, COFINS: 16.03, PIS: 3.47, CPP: 30.50, ICMS: 0, ISS: 0, IPI: 0 },
   },
 };

@@ -96,24 +96,20 @@ type Divergencia = {
 };
 
 /**
- * DEFEITO CONHECIDO — Anexo III, faixas 1 a 5, IRPJ 6,00 onde a lei diz 4,00.
+ * Divergências entre o código e a lei que estão CONSCIENTEMENTE toleradas.
  *
- * Não é cosmético: `composicao-engine.ts` importa `getPartilhaSimplesReal` e soma
- * as alíquotas resultantes no divisor do mark-up (`:268`). Com a partilha somando
- * 102% em vez de 100%, toda proposta de serviço no Simples sai com ~0,4% de
- * sobrepreço — mais que a margem de disputa de um pregão eletrônico.
+ * A lista está VAZIA — o código concorda com a Resolução em todas as 30 linhas.
  *
- * Este arquivo apenas CONGELA o estado atual. A correção sai no commit seguinte,
- * e o diff desta lista é a prova da mudança de valor: ao trocar 6,00 por 4,00 na
- * fonte, estas cinco entradas saem daqui e nenhuma outra asserção precisa mudar.
+ * Ela existiu com 5 entradas por um commit: Anexo III, faixas 1 a 5, IRPJ 6,00
+ * onde a lei diz 4,00, o que fazia a partilha somar 102%. Não era cosmético —
+ * `composicao-engine.ts` importa `getPartilhaSimplesReal` e soma as alíquotas
+ * resultantes no divisor do mark-up (`:268`), então toda proposta de serviço no
+ * Simples saía com ~0,4% de sobrepreço.
+ *
+ * Manter o mecanismo mesmo vazio é deliberado: é onde uma divergência futura
+ * entra declarada, com motivo, em vez de virar um número mágico numa asserção.
  */
-const DIVERGENCIAS_CONHECIDAS: Divergencia[] = [
-  { anexo: 'anexo_iii', faixa: 1, tributo: 'IRPJ', naLei: 4.0, noCodigo: 6.0, motivo: 'partilha soma 102%' },
-  { anexo: 'anexo_iii', faixa: 2, tributo: 'IRPJ', naLei: 4.0, noCodigo: 6.0, motivo: 'partilha soma 102%' },
-  { anexo: 'anexo_iii', faixa: 3, tributo: 'IRPJ', naLei: 4.0, noCodigo: 6.0, motivo: 'partilha soma 102%' },
-  { anexo: 'anexo_iii', faixa: 4, tributo: 'IRPJ', naLei: 4.0, noCodigo: 6.0, motivo: 'partilha soma 102%' },
-  { anexo: 'anexo_iii', faixa: 5, tributo: 'IRPJ', naLei: 4.0, noCodigo: 6.0, motivo: 'partilha soma 102%' },
-];
+const DIVERGENCIAS_CONHECIDAS: Divergencia[] = [];
 
 // ─── Auxiliares ───────────────────────────────────────────────────────────────
 
@@ -178,7 +174,7 @@ describe('partilha do código contra a lei', () => {
 
 // ─── 3. As divergências conhecidas ────────────────────────────────────────────
 
-describe('DEFEITO CONHECIDO — Anexo III com IRPJ 6,00', () => {
+describe('divergências toleradas', () => {
   it('cada divergência listada existe de fato e difere da lei', () => {
     for (const d of DIVERGENCIAS_CONHECIDAS) {
       expect(partilhaDoCodigo(d.anexo, d.faixa)[d.tributo]).toBe(d.noCodigo);
@@ -187,11 +183,10 @@ describe('DEFEITO CONHECIDO — Anexo III com IRPJ 6,00', () => {
     }
   });
 
-  it('o defeito está confinado ao IRPJ do Anexo III, faixas 1 a 5', () => {
-    const fora = DIVERGENCIAS_CONHECIDAS.filter(
-      (d) => d.anexo !== 'anexo_iii' || d.tributo !== 'IRPJ' || d.faixa === 6,
-    );
-    expect(fora).toEqual([]);
+  it('o Anexo III reparte IRPJ a 4,00 nas faixas 1 a 5 (era 6,00 até 2026-08-08)', () => {
+    for (const faixa of [1, 2, 3, 4, 5]) {
+      expect(partilhaDoCodigo('anexo_iii', faixa).IRPJ).toBe(4.0);
+    }
   });
 
   it('nenhuma faixa fora da lista diverge de 100,00', () => {
