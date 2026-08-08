@@ -6,6 +6,48 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-08] Um segundo banco com schema do Praefectus na organização
+
+**Situação:** ao investigar por que uma semente de dados de teste "sumiu", verificou-se que
+existem **dois projetos Supabase com o schema do Praefectus** na organização:
+
+| Projeto | Ref | Papel |
+| --- | --- | --- |
+| New Database - Praefectus | `uwtyuwktxalnpgrcbbgk` | **o que o app usa** (produção de fato) |
+| xfinconsultuoriaempresarial-a11y's Project | `pyizwczmmzavtujfbivd` | desconhecido — mas `public.licitacoes` **existe** lá |
+
+**Por que importa:** um SQL colado na aba errada do SQL Editor executa em silêncio no banco
+errado, e a conferência "passa" — foi exatamente o que aconteceu em 2026-08-08 com a semente
+do piloto de UI. Sem saber que o segundo banco existe, o diagnóstico custa caro.
+
+**A que o app está preso:** `uwtyuwktxalnpgrcbbgk` está **hardcoded** em
+`src/integrations/supabase/client.ts:5` (arquivo gerado, não lê `.env`) e reforçado pelo
+`define` do `vite.config.ts`. Não há banco local: `npm run dev` fala com a nuvem.
+
+**Pendente de decisão:** descobrir o que é o `pyizwczmmzavtujfbivd` — cópia antiga, ambiente
+de teste, ou projeto órfão de algum experimento. Se for lixo, apagar; se tiver uso,
+documentar qual. Enquanto não se decide, **confira sempre o projeto selecionado antes de
+rodar SQL**.
+
+**Mitigação já aplicada:** os scripts de dados de teste passaram a ter *guarda de banco* —
+abortam com `BANCO ERRADO` se o registro esperado não existir ali (ver `piloto-ui-seed.sql`).
+Vale repetir o padrão em qualquer script futuro que dependa de dados de uma conta específica.
+
+---
+
+## ~~[2026-08-08] `.env` apontava as `VITE_*` para um projeto inexistente~~ — RESOLVIDO no mesmo dia
+
+**Era:** `VITE_SUPABASE_URL` e `VITE_SUPABASE_PROJECT_ID` apontavam para
+`sbnlovigyifvrkgsoalj` — um ref que **não existe na organização** (provável resíduo de
+template/experimento), enquanto `SUPABASE_URL` apontava para o projeto real. Inofensivo hoje
+porque o `define` do Vite e o hardcode do `client.ts` vencem, mas era uma bomba de efeito
+retardado: remover o `define` faria o app trocar de banco silenciosamente.
+
+**Correção:** todas as variáveis do `.env` alinhadas para `uwtyuwktxalnpgrcbbgk`. As chaves
+seguem sendo `anon`/publishable, como manda a convenção do repo.
+
+---
+
 ## ~~[2026-08-03] 2 testes falhando em `concorrentes-document-analysis.test.ts`~~ — RESOLVIDO em 2026-08-04
 
 **Causa raiz:** o `Blob` do jsdom não implementa `arrayBuffer()`/`text()` — lacuna do
