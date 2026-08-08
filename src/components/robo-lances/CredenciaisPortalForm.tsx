@@ -129,7 +129,7 @@ export default function CredenciaisPortalForm() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-accent" />
+          <Shield className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Credenciais Cadastradas</h3>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -141,7 +141,7 @@ export default function CredenciaisPortalForm() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <FileKey2 className="w-5 h-5 text-accent" />
+                <FileKey2 className="w-5 h-5 text-muted-foreground" />
                 Cadastrar Credencial do Portal
               </DialogTitle>
             </DialogHeader>

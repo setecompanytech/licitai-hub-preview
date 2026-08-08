@@ -36,7 +36,7 @@ export default function DisputasResumo({ lances, onSelect, selectedId }: Props) 
   return (
     <div className="border-b border-border bg-card/80 px-4 py-2">
       <div className="flex items-center gap-3 mb-2">
-        <Zap className="w-4 h-4 text-accent" />
+        <Zap className="w-4 h-4 text-muted-foreground" />
         <span className="text-xs font-semibold">
           {ativas.length} disputa(s) simultânea(s)
         </span>

@@ -83,7 +83,7 @@ export default function AgenteTemplateDownload() {
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <FileCode className="w-5 h-5 text-accent" />
+              <FileCode className="w-5 h-5 text-muted-foreground" />
               Template do Agente Externo
             </h3>
             <p className="text-sm text-muted-foreground max-w-xl">
@@ -111,8 +111,8 @@ export default function AgenteTemplateDownload() {
       <div className="grid grid-cols-4 gap-4">
         {steps.map((step, i) => (
           <div key={i} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm text-center space-y-2">
-            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
-              <step.icon className="w-5 h-5 text-accent" />
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <step.icon className="w-5 h-5 text-muted-foreground" />
             </div>
             <p className="text-xs font-semibold">{i + 1}. {step.title}</p>
             <p className="text-xs text-muted-foreground">{step.desc}</p>
@@ -123,7 +123,7 @@ export default function AgenteTemplateDownload() {
       {/* Estrutura de arquivos */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-          <FolderTree className="w-4 h-4 text-accent" />
+          <FolderTree className="w-4 h-4 text-muted-foreground" />
           Estrutura do Projeto
         </h4>
         <div className="grid grid-cols-2 gap-2">
@@ -156,7 +156,7 @@ export default function AgenteTemplateDownload() {
       {/* Comandos rápidos */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-3">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-accent" />
+          <Terminal className="w-4 h-4 text-muted-foreground" />
           Comandos Rápidos
         </h4>
         <div className="space-y-2">
@@ -233,7 +233,7 @@ export default function AgenteTemplateDownload() {
             { tipo: 'heartbeat', desc: 'Sinal de vida periódico (30s)', payload: '{}' },
           ].map((c) => (
             <div key={c.tipo} className="flex items-start gap-3 py-2 px-3 rounded-lg bg-muted/30">
-              <code className="text-xs font-mono text-accent shrink-0 pt-0.5">{c.tipo}</code>
+              <code className="text-xs font-mono text-foreground shrink-0 pt-0.5">{c.tipo}</code>
               <div className="flex-1">
                 <p className="text-xs text-foreground">{c.desc}</p>
                 <code className="text-xs text-muted-foreground">{c.payload}</code>

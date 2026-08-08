@@ -238,7 +238,7 @@ export default function BaseJuridicaUpload() {
       {/* Upload Form */}
       <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2 mb-2">
-          <Upload className="w-5 h-5 text-accent" />
+          <Upload className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Alimentar Base Jurídica da IA</h3>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -324,7 +324,7 @@ export default function BaseJuridicaUpload() {
       <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-accent" />
+            <BookOpen className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Documentos na Base ({docs.length})</h3>
           </div>
         </div>
@@ -367,8 +367,8 @@ export default function BaseJuridicaUpload() {
               const Icon = TipoIcon(doc.tipo);
               return (
                 <div key={doc.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-accent" />
+                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{doc.titulo}</p>
@@ -383,7 +383,7 @@ export default function BaseJuridicaUpload() {
                     {doc.tags && doc.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {doc.tags.map((tag, i) => (
-                          <span key={i} className="inline-flex items-center gap-0.5 text-xs text-accent">
+                          <span key={i} className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
                             <Tag className="w-2.5 h-2.5" />{tag}
                           </span>
                         ))}

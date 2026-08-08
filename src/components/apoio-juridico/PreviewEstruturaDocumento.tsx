@@ -100,7 +100,7 @@ REGRAS:
     <div className="bg-card border border-border/50 rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <FileSearch className="w-4 h-4 text-accent shrink-0" />
+          <FileSearch className="w-4 h-4 text-muted-foreground shrink-0" />
           <h4 className="text-sm font-semibold whitespace-nowrap">Pré-visualização da estrutura</h4>
           {preview && (
             <Badge className="text-xs gap-1 bg-success/10 text-success border-success/30 shrink-0">
@@ -169,7 +169,7 @@ REGRAS:
 
 function Bloco({ titulo, itens, accent, warn }: { titulo: string; itens: string[]; accent?: boolean; warn?: boolean }) {
   return (
-    <div className={`rounded p-2 border ${warn ? 'border-warning/30 bg-warning/5' : accent ? 'border-accent/20 bg-accent/5' : 'border-border/50 bg-muted/20'}`}>
+    <div className={`rounded p-2 border ${warn ? 'border-warning/30 bg-warning/5' : accent ? 'border-l-2 border-l-accent border-border/50 bg-muted/40' : 'border-border/50 bg-muted/20'}`}>
       <p className={`font-semibold mb-1 ${warn ? 'text-warning' : ''}`}>{titulo}</p>
       <ul className="space-y-0.5 list-disc pl-4">
         {itens.map((t, i) => <li key={i} className="text-muted-foreground">{t}</li>)}

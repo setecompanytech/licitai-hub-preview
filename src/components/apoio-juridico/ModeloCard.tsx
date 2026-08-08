@@ -94,7 +94,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
         </span>
         <span className="block w-4 h-px bg-border/60 mt-1" />
         {pedidosCount > 0 && (
-          <Badge className="mt-1 text-xs gap-0.5 bg-accent/15 text-accent border-accent/30 h-4 px-1 leading-none shrink-0">
+          <Badge className="mt-1 text-xs gap-0.5 bg-muted text-foreground border-border h-4 px-1 leading-none shrink-0">
             <FileText className="w-2.5 h-2.5" /> {pedidosCount}
           </Badge>
         )}
@@ -109,7 +109,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           {m.descricao}
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-          <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-primary/90 tabular-nums whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-foreground tabular-nums whitespace-nowrap">
             <span className="text-muted-foreground">§</span> {m.fundamentacao}
           </span>
           {m.requisitosFiltro.includes('indices') && (

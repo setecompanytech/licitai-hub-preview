@@ -96,7 +96,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
     <div className="bg-card rounded-xl border border-border/50 p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-xs font-semibold flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-accent" />
+          <ShieldAlert className="w-4 h-4 text-muted-foreground" />
           Painel de Risco — Nível {nivel}
         </h3>
         <Badge variant="outline" className={RISCO_CORES[risco.nivel]}>
@@ -131,7 +131,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
 
         {/* Faixa ideal */}
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-          <BarChart3 className="w-3.5 h-3.5 mx-auto text-accent mb-1" />
+          <BarChart3 className="w-3.5 h-3.5 mx-auto text-muted-foreground mb-1" />
           <p className="text-xs text-muted-foreground">Faixa Ideal</p>
           <p className="text-xs font-mono font-bold">
             {formatCurrency(faixa.min)}
@@ -157,7 +157,7 @@ export default function PainelRisco({ lance, nivel }: Props) {
       <div>
         <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span>Piso: {formatCurrency(lance.valorMinimo)}</span>
-          <span className="text-accent font-semibold">Ótimo: {formatCurrency(faixa.otimo)}</span>
+          <span className="text-foreground font-semibold">Ótimo: {formatCurrency(faixa.otimo)}</span>
           <span>Ref: {formatCurrency(lance.valorReferencia)}</span>
         </div>
         <div className="relative h-3 bg-muted rounded-full overflow-hidden">

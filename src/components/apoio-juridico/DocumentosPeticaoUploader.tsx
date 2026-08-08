@@ -537,7 +537,7 @@ ${truncated}`
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-1">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">1</div>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">1</div>
           <h4 className="text-sm font-semibold">Etapa 1 — Anexar Documentos para {config.label}</h4>
         </div>
 
@@ -563,9 +563,9 @@ ${truncated}`
               {arquivos.map((arq) => (
                 <div key={arq.id} className="flex items-center gap-3 px-4 py-2.5">
                   {arq.nome.endsWith('.zip') ? (
-                    <FileArchive className="w-4 h-4 text-accent shrink-0" />
+                    <FileArchive className="w-4 h-4 text-muted-foreground shrink-0" />
                   ) : (
-                    <FileText className="w-4 h-4 text-accent shrink-0" />
+                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{arq.nome}</p>
@@ -584,7 +584,7 @@ ${truncated}`
             onClick={() => fileRef.current?.click()}
             className="w-full border-2 border-dashed border-border/60 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all"
           >
-            <Upload className="w-6 h-6 text-accent" />
+            <Upload className="w-6 h-6 text-muted-foreground" />
             <span className="text-xs font-medium">Anexar documentos</span>
             <div className="flex gap-1">
               <Badge variant="outline" className="text-xs">PDF</Badge>
@@ -615,7 +615,7 @@ ${truncated}`
         {/* Concorrentes integration */}
         <div className="bg-muted/30 rounded-lg border border-border/50 p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-accent" />
+            <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-semibold">Dados da Inteligência de Concorrentes</span>
             <Badge variant="outline" className="text-xs">Opcional</Badge>
           </div>
@@ -671,7 +671,7 @@ ${truncated}`
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">2</div>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">2</div>
           <h4 className="text-sm font-semibold">Etapa 2 — Revisão dos Fatos Jurídicos</h4>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-xs">
@@ -686,7 +686,7 @@ ${truncated}`
       {/* Stats */}
       <div className="flex gap-3 flex-wrap">
         <Badge variant="outline" className="text-xs">{fatos.length} identificado(s)</Badge>
-        <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">{selectedCount} selecionado(s)</Badge>
+        <Badge className="bg-muted text-foreground border-border text-xs">{selectedCount} selecionado(s)</Badge>
         <Badge variant="outline" className="text-xs">{fatos.filter(f => f.origem === 'manual').length} manual(is)</Badge>
       </div>
 
@@ -710,7 +710,7 @@ ${truncated}`
                   <Badge variant="outline" className="text-xs">
                     {item.origem === 'ia' ? '🤖 IA' : item.origem === 'concorrente' ? '🏢 Concorrente' : '✏️ Manual'}
                   </Badge>
-                  <Badge variant="outline" className="text-xs bg-primary/5">{item.categoria}</Badge>
+                  <Badge variant="outline" className="text-xs bg-muted">{item.categoria}</Badge>
                 </div>
                 <p className="text-xs text-foreground leading-relaxed">{item.descricao}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed italic">📖 {item.fundamentacao}</p>

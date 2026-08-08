@@ -628,8 +628,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     const map: Record<string, string> = {
       'Monitorando': 'bg-info/10 text-info border-info/30',
       'Analisando': 'bg-warning/10 text-warning border-warning/30',
-      'Proposta': 'bg-accent/10 text-accent border-accent/30',
-      'Em Disputa': 'bg-primary/10 text-primary border-primary/30',
+      'Proposta': 'bg-muted text-foreground border-border',
+      'Em Disputa': 'bg-accent/10 text-accent border-accent/30',
       'Vencida': 'bg-success/10 text-success border-success/30',
       'Homologada': 'bg-success/10 text-success border-success/30',
     };
@@ -654,7 +654,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-accent" />
+            <Bot className="w-5 h-5 text-muted-foreground" />
             {editingLance ? 'Editar Sessão de Lance' : 'Configurar Nova Sessão de Lance'}
           </DialogTitle>
           <DialogDescription>
@@ -671,7 +671,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               {idx > 0 && <div className="w-5 h-px bg-border" />}
               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 currentStepIndex === idx ? 'bg-accent text-accent-foreground' :
-                currentStepIndex > idx ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'
+                currentStepIndex > idx ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
               }`}>
                 {currentStepIndex > idx && <CheckCircle2 className="w-3 h-3" />}
                 {label}
@@ -710,10 +710,10 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </button>
               <button
                 onClick={() => setShowEditalUpload(true)}
-                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-primary/40 hover:border-primary/60 hover:bg-primary/5 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
               >
-                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                  <Sparkles className="w-5 h-5 text-primary" />
+                <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                  <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground">Extrair do Edital (IA)</p>
@@ -724,9 +724,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
             {/* AI Edital Upload area */}
             {showEditalUpload && (
-              <div className="space-y-3 border border-primary/30 rounded-xl bg-primary/5 p-4">
+              <div className="space-y-3 border border-border/50 rounded-xl bg-muted/30 p-4">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
+                  <Sparkles className="w-4 h-4 text-muted-foreground" />
                   <h4 className="text-sm font-semibold text-foreground">Extração Inteligente do Edital</h4>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -739,13 +739,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                     onClick={() => editalFileRef.current?.click()}
                     className="w-full border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-muted/30 transition-colors"
                   >
-                    <Upload className="w-6 h-6 text-primary/60" />
+                    <Upload className="w-6 h-6 text-muted-foreground" />
                     <span className="text-xs font-medium text-foreground">Clique para enviar o arquivo</span>
                     <span className="text-xs text-muted-foreground">PDF, DOC, DOCX, TXT — Máx. 15MB</span>
                   </button>
                 ) : (
                   <div className="bg-card rounded-lg p-3 border border-border/50 flex items-center gap-3">
-                    <FileText className="w-6 h-6 text-primary shrink-0" />
+                    <FileText className="w-6 h-6 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{editalFile.name}</p>
                       <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
@@ -777,7 +777,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                 <input ref={editalFileRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleEditalFileChange} />
 
                 {isExtracting && (
-                  <div className="flex items-center gap-2 text-xs text-primary">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     Analisando o documento e extraindo itens, quantidades e valores de referência...
                   </div>
@@ -790,7 +790,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <FileSearch className="w-4 h-4 text-accent" />
+                    <FileSearch className="w-4 h-4 text-muted-foreground" />
                     Seus Processos Licitatórios
                   </h4>
                   <Badge variant="outline" className="text-xs">
@@ -824,7 +824,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
                 {loadingLicitacoes ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     <span className="text-xs text-muted-foreground ml-2">Carregando processos...</span>
                   </div>
                 ) : filteredLicitacoes.length === 0 ? (
@@ -873,7 +873,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                             </div>
                             <div className="shrink-0 ml-3 self-center">
                               {loadingItems && selectedLicId === lic.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                               ) : (
                                 <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
                               )}
@@ -976,7 +976,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-accent" /> Tipo de Disputa
+                  <Layers className="w-4 h-4 text-muted-foreground" /> Tipo de Disputa
                   {(licitacaoIdRef || editalFile) && (
                     <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 ml-1">
                       Detectado automaticamente
@@ -1020,7 +1020,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             {/* Add item form */}
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Plus className="w-4 h-4 text-accent" /> Adicionar {tipoDisputa === 'lote' ? 'Item ao Lote' : 'Item'}
+                <Plus className="w-4 h-4 text-muted-foreground" /> Adicionar {tipoDisputa === 'lote' ? 'Item ao Lote' : 'Item'}
               </h4>
               <div className="grid grid-cols-12 gap-2">
                 <div className="col-span-5">
@@ -1081,7 +1081,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         <div key={lote} className="border border-border rounded-lg overflow-hidden">
                           <div className="flex items-center justify-between bg-muted/60 px-3 py-1.5 border-b border-border">
                             <div className="flex items-center gap-2">
-                              <Layers className="w-3.5 h-3.5 text-accent" />
+                              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
                               <span className="text-xs font-bold text-foreground">{lote}</span>
                               <Badge variant="outline" className="text-xs">{loteItens.length} {loteItens.length === 1 ? 'item' : 'itens'}</Badge>
                               <span className="text-xs font-mono text-muted-foreground">{formatCurrency(loteTotal)}</span>
@@ -1215,8 +1215,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
             )}
 
             {itens.length === 0 && isExtracting && (
-              <div className="text-center py-8 border border-primary/30 rounded-lg bg-primary/5 space-y-3">
-                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+              <div className="text-center py-8 border border-border/50 rounded-lg bg-muted/30 space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" />
                 <p className="text-sm font-medium text-foreground">Extraindo itens automaticamente...</p>
                 <p className="text-xs text-muted-foreground">
                   A IA está analisando o edital para identificar descrição, quantidade, unidade e valores de referência.
@@ -1226,11 +1226,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
 
             {/* ── Values panel ── */}
             {itens.length > 0 && (
-              <div className="space-y-3 border border-accent/30 rounded-xl bg-accent/5 p-4">
+              <div className="space-y-3 border border-border rounded-xl bg-muted/30 p-4">
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-accent" />
+                  <Calculator className="w-4 h-4 text-muted-foreground" />
                   Valores da Disputa
-                  <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30 ml-auto">
+                  <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border ml-auto">
                     Desconto calculado automaticamente
                   </Badge>
                 </h4>
@@ -1257,7 +1257,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
                         className="h-8 w-40 text-sm text-center px-1 font-mono font-bold"
                       />
                     </div>
-                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-accent'}`}>
+                    <p className={`text-xs font-semibold mt-1.5 ${inexequibilidadeInicial ? 'text-destructive' : 'text-foreground'}`}>
                       {pctDescontoInicial >= 0 ? `↓ ${pctDescontoInicial.toFixed(2)}% de desconto` : `↑ ${Math.abs(pctDescontoInicial).toFixed(2)}% acima`}
                     </p>
                     {inexequibilidadeInicial && (

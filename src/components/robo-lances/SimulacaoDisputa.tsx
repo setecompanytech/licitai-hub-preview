@@ -216,7 +216,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
               onClick={() => setMuralSync(!muralSync)}
               className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
                 muralSync
-                  ? 'bg-accent/10 text-accent border-accent/30'
+                  ? 'bg-success/10 text-success border-success/30'
                   : 'bg-muted text-muted-foreground border-border'
               }`}
               title={muralSync ? 'Sincronizando com o Mural' : 'Mural desativado'}
@@ -244,7 +244,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
 
       {/* Mural sync indicator */}
       {muralSync && lidAtivo && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/15 text-xs text-accent">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg border border-border text-xs text-muted-foreground">
           <Zap className="w-3 h-3" />
           <span>Eventos da simulação serão publicados no Mural do Processo em tempo real</span>
         </div>
@@ -255,7 +255,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <DollarSign className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
           <p className="text-xs text-muted-foreground">Valor Atual</p>
-          <p className="text-xs font-bold text-accent">{formatCurrency(valorAtual)}</p>
+          <p className="text-xs font-bold text-foreground">{formatCurrency(valorAtual)}</p>
         </div>
         <div className="bg-muted/50 rounded-lg p-2.5 text-center">
           <TrendingDown className="w-3 h-3 mx-auto text-success mb-1" />
@@ -309,7 +309,7 @@ export default function SimulacaoDisputa({ lance, onUpdate, licitacaoId }: Props
                       variant="outline"
                       className={`text-xs ${
                         h.tipo === 'meu'
-                          ? 'bg-accent/10 text-accent border-accent/30'
+                          ? 'bg-info/10 text-info border-info/30'
                           : 'bg-warning/10 text-warning border-warning/30'
                       }`}
                     >

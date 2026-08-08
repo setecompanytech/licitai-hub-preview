@@ -114,10 +114,10 @@ export function ChecklistFatoGerador({ tipoFato, onConfirm, onCancel, className 
   }, [checked, matriz]);
 
   return (
-    <Card className={cn('p-4 space-y-4 border-primary/30 bg-primary/5', className)}>
+    <Card className={cn('p-4 space-y-4 border-border/60 bg-muted/30', className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Scale className="w-4 h-4 text-primary shrink-0" />
+          <Scale className="w-4 h-4 text-muted-foreground shrink-0" />
           <div>
             <h4 className="text-sm font-semibold">Checklist de Validação Jurídica</h4>
             <p className="text-xs text-muted-foreground">Confirme cada requisito antes de aceitar a classificação do fato gerador.</p>

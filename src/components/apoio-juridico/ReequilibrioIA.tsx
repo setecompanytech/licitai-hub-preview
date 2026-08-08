@@ -109,7 +109,7 @@ const MECANISMOS: Record<Mecanismo, {
     icone: Users,
     fundamento: 'Art. 135, I da Lei 14.133/2021. Baseada em CCT/Dissídio Coletivo ou variação de insumos demonstrada.',
     periodicidade: 'Anual (vinculada a CCT/Dissídio)',
-    cor: 'text-accent',
+    cor: 'text-warning',
   },
   revisao: {
     titulo: 'Revisão / Reequilíbrio (Stricto Sensu)',
@@ -500,8 +500,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             onClick={() => toggleIndice(indice.id)}
           >
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <CatIcon className="w-4 h-4 text-accent" />
+              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <CatIcon className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
@@ -546,8 +546,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             onClick={() => toggleCCT(cct.id)}
           >
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <Users className="w-4 h-4 text-accent" />
+              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
@@ -558,7 +558,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
                   {cct.piso_salarial && <span className="text-xs font-medium">Piso: {fmtCur(cct.piso_salarial)}</span>}
                   {cct.reajuste_percentual && (
-                    <span className="text-xs font-medium text-accent">Reajuste: +{cct.reajuste_percentual}%</span>
+                    <span className="text-xs font-medium text-foreground">Reajuste: +{cct.reajuste_percentual}%</span>
                   )}
                   {cct.abrangencia_uf && <Badge variant="outline" className="text-xs">{cct.abrangencia_uf}</Badge>}
                   {cct.indice_reajuste && <Badge variant="outline" className="text-xs">{cct.indice_reajuste}</Badge>}
@@ -584,7 +584,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-accent" />
+          <Scale className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Reajuste, Repactuação e Revisão com IA</h3>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -614,8 +614,8 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Indicador de pedido ativo */}
       {pedidoAtivo && (
-        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-3 flex-wrap">
-          <Hash className="w-4 h-4 text-accent flex-shrink-0" />
+        <div className="bg-muted border border-border rounded-lg p-3 flex items-center gap-3 flex-wrap">
+          <Hash className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-xs font-semibold whitespace-nowrap">{pedidoAtivo.numero_formatado}</span>
           <Badge variant="outline" className="text-xs whitespace-nowrap">
             v{pedidoAtivo.versoes_count} · {pedidoAtivo.status}
@@ -633,7 +633,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
       {showLista && (
         <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-accent" />
+            <FolderOpen className="w-4 h-4 text-muted-foreground" />
             <h4 className="text-sm font-semibold">Pedidos Jurídicos da Empresa</h4>
           </div>
           <PedidosJuridicosList
@@ -669,7 +669,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
         </TabsList>
 
         {/* Mechanism info banner */}
-        <div className={`bg-accent/10 border border-accent/20 rounded-lg p-3 mt-3 space-y-1`}>
+        <div className={`bg-muted border border-border rounded-lg p-3 mt-3 space-y-1`}>
           <div className="flex items-center gap-2">
             <MecIcon className={`w-4 h-4 ${info.cor}`} />
             <span className="text-xs font-semibold text-foreground">{info.titulo}</span>
@@ -863,7 +863,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
 
       {/* Generator panel */}
       {showGenerator && (
-        <div className="bg-card rounded-xl border border-accent/30 p-5 shadow-lg space-y-4">
+        <div className="bg-card rounded-xl border border-border p-5 shadow-lg space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <MecIcon className={`w-5 h-5 ${info.cor}`} />
@@ -881,7 +881,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               {selectedIndices.map(id => {
                 const i = indices.find(x => x.id === id);
                 return i ? (
-                  <Badge key={id} className="text-xs bg-accent/10 text-accent border-accent/30">
+                  <Badge key={id} className="text-xs bg-muted text-foreground border-border">
                     📊 {i.sigla} ({fmtPerc(i.acumulado_12m)} 12m)
                   </Badge>
                 ) : null;
@@ -889,7 +889,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
               {selectedCCTs.map(id => {
                 const c = ccts.find(x => x.id === id);
                 return c ? (
-                  <Badge key={id} className="text-xs bg-accent/10 text-accent border-accent/30">
+                  <Badge key={id} className="text-xs bg-muted text-foreground border-border">
                     👷 {c.categoria_profissional} ({c.reajuste_percentual ? `+${c.reajuste_percentual}%` : 'N/I'})
                   </Badge>
                 ) : null;
@@ -905,7 +905,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           {/* Tipo de instrumento contratual */}
           <div className="bg-muted/30 rounded-lg p-3 space-y-3">
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs font-semibold">Instrumento atacado</span>
             </div>
             <Select value={instrumento} onValueChange={(v) => setInstrumento(v as Instrumento)}>
@@ -983,7 +983,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
           <div className="bg-muted/30 rounded-lg p-3 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-accent" />
+                <Receipt className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs font-semibold">Demonstração comparativa de preços</span>
                 <Badge variant="outline" className="text-xs">{itensCompValidos.length} válidos</Badge>
               </div>
@@ -1059,7 +1059,7 @@ REGRAS DE REDAÇÃO ABSOLUTAS:
             <Textarea placeholder="Informações complementares..." className="mt-1 min-h-[60px]" value={observacoes} onChange={e => setObservacoes(e.target.value)} />
           </div>
 
-          <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
+          <div className="bg-muted/30 border border-border/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">
               <strong className="text-foreground">Fundamentação automática:</strong> {info.fundamento}
             </p>

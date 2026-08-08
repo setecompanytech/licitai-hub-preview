@@ -49,7 +49,7 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <Lock className="w-4 h-4 text-accent" />
+        <Lock className="w-4 h-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold">Nível de Automação</h3>
       </div>
 

@@ -41,7 +41,7 @@ export default function VncWebViewer() {
       {/* Header */}
       <div className="flex items-center justify-between bg-muted/30 px-4 py-3">
         <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-accent" />
+          <Monitor className="w-4 h-4 text-muted-foreground" />
           <h4 className="text-sm font-semibold">Acesso Remoto — VNC Web</h4>
           <Badge variant="outline" className="text-xs ml-1">noVNC</Badge>
         </div>
@@ -97,8 +97,8 @@ export default function VncWebViewer() {
       {!showViewer ? (
         <div className="p-5 space-y-4">
           <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto">
-              <Monitor className="w-6 h-6 text-accent" />
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto">
+              <Monitor className="w-6 h-6 text-muted-foreground" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
@@ -152,8 +152,8 @@ export default function VncWebViewer() {
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
               <div className="text-center space-y-2">
-                <Loader2 className="w-6 h-6 animate-spin text-accent mx-auto" />
-                <p className="text-xs text-muted-foreground">Conectando ao servidor VPS...</p>
+                <Loader2 className="w-6 h-6 animate-spin text-white/90 mx-auto" />
+                <p className="text-xs text-white/70">Conectando ao servidor VPS...</p>
               </div>
             </div>
           )}

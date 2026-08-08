@@ -109,7 +109,7 @@ export default function DeteccaoPortais() {
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-accent" />
+          <Building2 className="w-4 h-4 text-muted-foreground" />
           Análise de Portais da Empresa
           {empresaNome && (
             <span className="text-xs text-muted-foreground font-normal">— {empresaNome}</span>

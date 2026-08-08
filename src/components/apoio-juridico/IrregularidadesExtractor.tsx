@@ -222,7 +222,7 @@ ${truncated}`
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-1">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">1</div>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">1</div>
           <h4 className="text-sm font-semibold">Etapa 1 — Envio do Edital para Análise</h4>
         </div>
 
@@ -244,7 +244,7 @@ ${truncated}`
         <div className="space-y-2">
           {editalFile ? (
             <div className="flex items-center gap-3 bg-muted/30 rounded-lg p-3 border border-border/50">
-              <FileText className="w-5 h-5 text-accent shrink-0" />
+              <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{editalFile.name}</p>
                 <p className="text-xs text-muted-foreground">{(editalFile.size / 1024).toFixed(0)} KB</p>
@@ -255,7 +255,7 @@ ${truncated}`
             </div>
           ) : (
             <label className="flex flex-col items-center gap-2 border-2 border-dashed border-border/60 rounded-xl p-6 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all">
-              <Upload className="w-6 h-6 text-accent" />
+              <Upload className="w-6 h-6 text-muted-foreground" />
               <span className="text-xs font-medium">Enviar arquivo do edital</span>
               <div className="flex gap-1">
                 <Badge variant="outline" className="text-xs">PDF</Badge>
@@ -301,7 +301,7 @@ ${truncated}`
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">2</div>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">2</div>
           <h4 className="text-sm font-semibold">Etapa 2 — Revisão e Complemento</h4>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="text-xs">
@@ -318,7 +318,7 @@ ${truncated}`
         <Badge variant="outline" className="text-xs">
           {irregularidades.length} encontrada(s)
         </Badge>
-        <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">
+        <Badge className="bg-muted text-foreground border-border text-xs">
           {selectedCount} selecionada(s)
         </Badge>
         <Badge variant="outline" className="text-xs">
@@ -351,7 +351,7 @@ ${truncated}`
                     {item.origem === 'ia' ? '🤖 IA' : '✏️ Manual'}
                   </Badge>
                   {item.artigos.map((art, i) => (
-                    <Badge key={i} variant="outline" className="text-xs bg-primary/5">
+                    <Badge key={i} variant="outline" className="text-xs bg-muted">
                       <Scale className="w-2.5 h-2.5 mr-0.5" /> {art}
                     </Badge>
                   ))}

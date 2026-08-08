@@ -227,7 +227,7 @@ export default function AtivacaoChecklist() {
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-accent" />
+            <Rocket className="w-4 h-4 text-muted-foreground" />
             Checklist de Ativação — Robô de Lances
           </h3>
           <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function AtivacaoChecklist() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-accent" />
+              <Send className="w-4 h-4 text-muted-foreground" />
               Enviar Certificado Digital
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left space-y-2">

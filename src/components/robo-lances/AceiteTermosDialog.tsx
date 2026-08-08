@@ -157,7 +157,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-accent" />
+            <Shield className="w-5 h-5 text-muted-foreground" />
             Aceite de Termos — Nível {nivel}
             <Badge variant="outline" className={nivelColor}>{nivelLabel}</Badge>
           </DialogTitle>

@@ -297,7 +297,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
     <div className="space-y-4">
       <div className="bg-card rounded-xl border border-border/50 p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-5 h-5 text-accent" />
+          <Sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Gerador de Documentos com IA</h3>
         </div>
 
@@ -340,10 +340,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {irregularidades.length > 0 ? (
-                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                  <div className="bg-muted/30 border border-border/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">3</div>
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">3</div>
                         <h4 className="text-sm font-semibold">Etapa 3 — Geração do Documento</h4>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setShowExtractor(true)} className="text-xs text-accent">
@@ -372,7 +372,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                     onClick={() => setShowExtractor(true)}
                     className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
                   >
-                    <FileText className="w-5 h-5 mr-2 text-accent" />
+                    <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
                     <span className="text-sm">Analisar edital e extrair irregularidades</span>
                   </Button>
                 )}
@@ -394,10 +394,10 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
             ) : (
               <>
                 {fatosPeticao.length > 0 ? (
-                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-2">
+                  <div className="bg-muted/30 border border-border/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold">3</div>
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-xs font-bold">3</div>
                         <h4 className="text-sm font-semibold">Etapa 3 — Geração do {tipoDoc}</h4>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setShowPeticaoUploader(true)} className="text-xs text-accent">
@@ -427,7 +427,7 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
                     onClick={() => setShowPeticaoUploader(true)}
                     className="w-full border-dashed border-2 py-6 hover:border-accent/50 hover:bg-accent/5"
                   >
-                    <FileText className="w-5 h-5 mr-2 text-accent" />
+                    <FileText className="w-5 h-5 mr-2 text-muted-foreground" />
                     <span className="text-sm">
                       {tipoDoc === 'Recurso Administrativo' && 'Anexar decisão da CPL e extrair fatos'}
                       {tipoDoc === 'Contrarrazões' && 'Anexar recurso do concorrente e extrair argumentos'}
@@ -442,9 +442,9 @@ Linguagem técnica, formal, objetiva e impessoal. Cite artigos, incisos e parág
 
         {/* Reequilibrio indices */}
         {isReequilibrio && (
-          <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 space-y-2">
+          <div className="bg-muted border border-border rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-accent" />
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs font-semibold text-foreground">Dados econômicos sincronizados automaticamente</span>
             </div>
             {loadingIndices ? (

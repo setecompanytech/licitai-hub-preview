@@ -218,7 +218,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 flex-wrap">
-                  <Hash className="w-4 h-4 text-accent" />
+                  <Hash className="w-4 h-4 text-muted-foreground" />
                   {detalhe.numero_formatado}
                   <Badge className={`text-xs border ${STATUS_CORES[detalhe.status]}`}>
                     {STATUS_LABELS[detalhe.status]}
@@ -286,7 +286,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
 
                 <TabsContent value="documento">
                   {loadingDetail ? (
-                    <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-accent" /></div>
+                    <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                   ) : versaoSel ? (
                     <div className="bg-card border border-border/50 rounded-lg p-5">
                       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">

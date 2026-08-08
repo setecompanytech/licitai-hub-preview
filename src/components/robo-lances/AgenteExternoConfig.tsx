@@ -152,7 +152,7 @@ export default function AgenteExternoConfig() {
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Server className="w-4 h-4 text-accent" />
+          <Server className="w-4 h-4 text-muted-foreground" />
           Agente Cloud de Lances
         </h3>
         {planConfig && (
@@ -169,8 +169,8 @@ export default function AgenteExternoConfig() {
         </div>
       ) : agentes.length === 0 ? (
         <div className="text-center py-8 space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
-            <Rocket className="w-7 h-7 text-accent" />
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+            <Rocket className="w-7 h-7 text-muted-foreground" />
           </div>
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">
@@ -298,9 +298,9 @@ export default function AgenteExternoConfig() {
           })}
 
           {/* Certificate Upload Section */}
-          <div className="border border-border/50 rounded-lg p-4 space-y-3 bg-accent/5">
+          <div className="border border-border/50 rounded-lg p-4 space-y-3 bg-muted/30">
             <div className="flex items-center gap-2">
-              <Upload className="w-4 h-4 text-accent" />
+              <Upload className="w-4 h-4 text-muted-foreground" />
               <h4 className="text-sm font-semibold">Certificado Digital</h4>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -311,7 +311,7 @@ export default function AgenteExternoConfig() {
             {certUploadUrl ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2.5">
-                  <Link2 className="w-4 h-4 text-accent shrink-0" />
+                  <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-xs text-foreground truncate flex-1">{certUploadUrl}</span>
                   <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={handleCopyLink}>
                     <Copy className="w-3.5 h-3.5" />

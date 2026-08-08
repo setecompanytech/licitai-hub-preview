@@ -17,14 +17,14 @@ const EVENTO_CONFIG: Record<string, {
   sessao_iniciada: { icon: Play, cor: 'text-success', label: 'Sessão iniciada' },
   sessao_pausada: { icon: Pause, cor: 'text-warning', label: 'Sessão pausada' },
   sessao_encerrada: { icon: XCircle, cor: 'text-muted-foreground', label: 'Sessão encerrada' },
-  lance_enviado: { icon: ArrowDown, cor: 'text-accent', label: 'Lance enviado' },
+  lance_enviado: { icon: ArrowDown, cor: 'text-info', label: 'Lance enviado' },
   lance_concorrente: { icon: ArrowDown, cor: 'text-warning', label: 'Lance concorrente' },
   aceite_termos: { icon: Shield, cor: 'text-success', label: 'Aceite de termos' },
   nivel_alterado: { icon: Shield, cor: 'text-info', label: 'Nível alterado' },
   parada_emergencial: { icon: OctagonX, cor: 'text-destructive', label: 'PARADA EMERGENCIAL' },
   limite_atingido: { icon: AlertTriangle, cor: 'text-destructive', label: 'Limite atingido' },
   autorizacao_lance: { icon: CheckCircle2, cor: 'text-success', label: 'Lance autorizado' },
-  '2fa_verificado': { icon: Key, cor: 'text-accent', label: '2FA verificado' },
+  '2fa_verificado': { icon: Key, cor: 'text-success', label: '2FA verificado' },
   estrategia_aprovada: { icon: Shield, cor: 'text-success', label: 'Estratégia aprovada' },
   alerta_risco: { icon: AlertTriangle, cor: 'text-warning', label: 'Alerta de risco' },
   replay_solicitado: { icon: History, cor: 'text-info', label: 'Replay solicitado' },
@@ -87,7 +87,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
     <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-xs font-semibold flex items-center gap-2">
-          <History className="w-4 h-4 text-accent" />
+          <History className="w-4 h-4 text-muted-foreground" />
           Trilha de Auditoria Imutável
         </h3>
         <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export default function AuditTrailViewer({ sessaoId }: Props) {
                         N{entry.nivel_automacao}
                       </Badge>
                       {entry.valor_lance && (
-                        <span className="font-mono text-accent">
+                        <span className="font-mono font-semibold text-foreground">
                           {formatCurrency(entry.valor_lance)}
                         </span>
                       )}

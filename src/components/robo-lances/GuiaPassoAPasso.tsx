@@ -53,10 +53,10 @@ export default function GuiaPassoAPasso() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-card rounded-xl border border-accent/20 p-5 shadow-sm">
+    <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-accent" />
+          <BarChart3 className="w-4 h-4 text-muted-foreground" />
           Como usar o Robô de Lances
         </h3>
         <Button
@@ -83,10 +83,10 @@ export default function GuiaPassoAPasso() {
                 onClick={() => setExpanded(isExpanded ? null : step.id)}
                 className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
               >
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-accent/10 text-accent shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted text-foreground shrink-0">
                   <span className="text-xs font-bold">{step.id}</span>
                 </div>
-                <StepIcon className="w-4 h-4 text-accent shrink-0" />
+                <StepIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{step.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{step.description}</p>
@@ -103,7 +103,7 @@ export default function GuiaPassoAPasso() {
                   <ul className="space-y-1.5">
                     {step.details.map((detail, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <Circle className="w-2 h-2 mt-1 shrink-0 text-accent" />
+                        <Circle className="w-2 h-2 mt-1 shrink-0 text-muted-foreground" />
                         {detail}
                       </li>
                     ))}

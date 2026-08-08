@@ -94,10 +94,10 @@ Responda em português, com dados numéricos claros e recomendações práticas.
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Brain className="w-4 h-4 text-accent" />
+          <Brain className="w-4 h-4 text-muted-foreground" />
           Estratégia Preditiva IA
         </h3>
-        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 text-xs">
+        <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
           <Sparkles className="w-3 h-3 mr-1" /> Gemini AI
         </Badge>
       </div>
@@ -148,9 +148,9 @@ Responda em português, com dados numéricos claros e recomendações práticas.
               <p className="text-xs font-bold text-success">{result.desconto_medio}%</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-              <DollarSign className="w-3 h-3 mx-auto text-accent mb-1" />
+              <DollarSign className="w-3 h-3 mx-auto text-muted-foreground mb-1" />
               <p className="text-xs text-muted-foreground">Decremento</p>
-              <p className="text-xs font-bold text-accent">{formatCurrency(result.decremento_sugerido)}</p>
+              <p className="text-xs font-bold text-foreground">{formatCurrency(result.decremento_sugerido)}</p>
             </div>
             <div className="bg-muted/50 rounded-lg p-2.5 text-center">
               <Target className="w-3 h-3 mx-auto text-warning mb-1" />

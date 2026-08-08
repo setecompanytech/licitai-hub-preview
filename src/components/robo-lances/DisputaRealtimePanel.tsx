@@ -66,7 +66,7 @@ export default function DisputaRealtimePanel() {
     <div className="bg-card rounded-xl border border-border/50 p-4 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-xs font-semibold flex items-center gap-2">
-          <Zap className="w-4 h-4 text-accent" />
+          <Zap className="w-4 h-4 text-muted-foreground" />
           Disputas em Tempo Real
         </h3>
         <Badge
@@ -103,7 +103,7 @@ export default function DisputaRealtimePanel() {
               className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-muted/30"
             >
               {evt.evento === 'lance_enviado' ? (
-                <TrendingDown className="w-3 h-3 text-accent shrink-0" />
+                <TrendingDown className="w-3 h-3 text-info shrink-0" />
               ) : evt.evento === 'lance_concorrente' ? (
                 <TrendingDown className="w-3 h-3 text-warning shrink-0" />
               ) : (
@@ -111,7 +111,7 @@ export default function DisputaRealtimePanel() {
               )}
               <span className="font-medium">{evt.evento.replace(/_/g, ' ')}</span>
               {evt.valor_lance && (
-                <span className="font-mono text-accent">{formatCurrency(evt.valor_lance)}</span>
+                <span className="font-mono font-semibold text-foreground">{formatCurrency(evt.valor_lance)}</span>
               )}
               {evt.rodada && (
                 <span className="text-muted-foreground">R{evt.rodada}</span>
