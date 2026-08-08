@@ -1,0 +1,22 @@
+-- Remove a tabela `precificacao` (singular) — legado morto desde 2026-02-22.
+--
+-- Por que sai:
+--   Zero `from('precificacao')` no repo inteiro (as ocorrencias do termo em src/
+--   sao `value` de TabsTrigger/TabsContent, nao acesso a tabela). Mas ela continua
+--   visivel no src/integrations/supabase/types.ts com um nome perfeito e colunas
+--   atraentes (custo_unitario, bdi_percentual, preco_unitario, licitacao_id) —
+--   e o Lovable trabalha a partir do types.ts. Deixa-la no schema e convite para
+--   alguem escrever nela e criar um concorrente de `precificacao_parametros` e
+--   `precificacao_memoria_calculo`, que o epico do motor tributario vai criar.
+--   Ver docs/epico-motor-precificacao-tributaria.md, secao 3.2.
+--
+-- Conferido em producao (uwtyuwktxalnpgrcbbgk) antes do DROP:
+--   SELECT count(*) FROM public.precificacao;                    -> 0
+--   FKs apontando para ela (pg_constraint.confrelid)             -> nenhuma
+--   views dependentes (pg_depend/pg_rewrite)                     -> nenhuma
+--
+-- Sem CASCADE de proposito: se algum objeto tiver surgido depois da conferencia,
+-- e melhor este bloco falhar em voz alta do que derrubar o dependente em silencio.
+-- O trigger update_precificacao_updated_at cai junto com a tabela.
+
+DROP TABLE IF EXISTS public.precificacao;

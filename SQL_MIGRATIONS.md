@@ -1460,3 +1460,44 @@ AS $$
   );
 $$;
 ```
+
+---
+
+## [2026-08-08] Remove a tabela `precificacao` (singular) — legado morto
+
+Tabela criada em 2026-02-22 e nunca usada: zero `from('precificacao')` no repo. Sai porque
+continua visível no `types.ts` com nome perfeito e colunas atraentes (`custo_unitario`,
+`bdi_percentual`, `licitacao_id`) — e o Lovable trabalha a partir do `types.ts`. Mantê-la é
+convite para alguém escrever nela e criar um concorrente das tabelas que o épico do motor
+tributário vai criar. Ver `docs/epico-motor-precificacao-tributaria.md`, seção 3.2.
+
+**Conferido em produção antes do DROP:** `count(*)` = 0, nenhuma FK apontando para ela
+(`pg_constraint.confrelid`), nenhuma view dependente (`pg_depend`/`pg_rewrite`).
+
+Sem `CASCADE` de propósito: se algum objeto tiver surgido depois da conferência, é melhor o
+bloco falhar em voz alta do que derrubar o dependente em silêncio.
+
+```sql
+-- Remove a tabela `precificacao` (singular) — legado morto desde 2026-02-22.
+--
+-- Por que sai:
+--   Zero `from('precificacao')` no repo inteiro (as ocorrencias do termo em src/
+--   sao `value` de TabsTrigger/TabsContent, nao acesso a tabela). Mas ela continua
+--   visivel no src/integrations/supabase/types.ts com um nome perfeito e colunas
+--   atraentes (custo_unitario, bdi_percentual, preco_unitario, licitacao_id) —
+--   e o Lovable trabalha a partir do types.ts. Deixa-la no schema e convite para
+--   alguem escrever nela e criar um concorrente de `precificacao_parametros` e
+--   `precificacao_memoria_calculo`, que o epico do motor tributario vai criar.
+--   Ver docs/epico-motor-precificacao-tributaria.md, secao 3.2.
+--
+-- Conferido em producao (uwtyuwktxalnpgrcbbgk) antes do DROP:
+--   SELECT count(*) FROM public.precificacao;                    -> 0
+--   FKs apontando para ela (pg_constraint.confrelid)             -> nenhuma
+--   views dependentes (pg_depend/pg_rewrite)                     -> nenhuma
+--
+-- Sem CASCADE de proposito: se algum objeto tiver surgido depois da conferencia,
+-- e melhor este bloco falhar em voz alta do que derrubar o dependente em silencio.
+-- O trigger update_precificacao_updated_at cai junto com a tabela.
+
+DROP TABLE IF EXISTS public.precificacao;
+```
