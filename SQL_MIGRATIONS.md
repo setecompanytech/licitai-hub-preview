@@ -1,8 +1,14 @@
 # SQL Migrations — Praefectus / Licitai Hub
 
-> Rode cada bloco no **Supabase SQL Editor** do projeto `sbnlovigyifvrkgsoalj`.
+> Rode cada bloco no **Supabase SQL Editor** do projeto `uwtyuwktxalnpgrcbbgk`.
 > Os blocos são idempotentes (usam `IF NOT EXISTS` / `IF NOT EXISTS`), então podem ser rerodados sem problema.
 > Sempre adicione novas entradas **no final**, com data e descrição.
+>
+> **O que entra aqui:** as migrations escritas à mão, que um humano precisa colar no SQL
+> Editor. As migrations de nome UUID em `supabase/migrations/` são geradas e aplicadas
+> automaticamente pelo Lovable e **não** são registradas neste arquivo — registrá-las
+> enterraria as que exigem ação. A exceção é quando uma migration do Lovable vira fundação
+> de um épico ou tem defeito conhecido; aí ela entra, com o motivo escrito.
 
 ---
 
@@ -1278,4 +1284,179 @@ ALTER TABLE public.empresa_membros ADD CONSTRAINT empresa_membros_praca_municipi
     OR (praca_uf IS NOT NULL AND public.comercial_normalizar_municipio(praca_municipio) IS NOT NULL)
   );
 
+```
+---
+
+## [2026-04-25] Configuração tributária e apurações do Financeiro (registro retroativo)
+
+Migration gerada pelo Lovable (`20260425194132_9068ae31-35fa-436b-bdcc-1fe5038e86c5.sql`),
+aplicada em produção mas nunca registrada aqui. Entra no log por ser a fundação do épico do
+Motor de Precificação Tributária e por ter um defeito de domínio conhecido.
+
+**DEFEITO CONHECIDO — não corrigido neste bloco.** As nove colunas de alíquota são
+`numeric(5,4)`, cujo valor máximo é 9,9999, mas os DEFAULTs são percentuais: `aliquota_irpj
+15.00`, `adicional_irpj 10.00` e `aliquota_icms 18.00` estouram o próprio tipo. O DDL passa
+(o Postgres não avalia a default expression na criação), mas nenhum INSERT funciona — nem um
+que omita as colunas. Por isso `financeiro_config_tributaria` e `financeiro_apuracoes` estavam
+com zero linhas em 2026-08-08. O `ALTER TYPE` para `numeric(7,4)` + `CHECK (0..100)` sai na
+fase de correção de schema do épico, com bloco próprio; ver `docs/epico-motor-precificacao-tributaria.md`.
+
+Em relação ao arquivo original foram acrescentadas apenas as guardas `DROP POLICY IF EXISTS`
+e `DROP TRIGGER IF EXISTS` — sem elas o bloco falha ao ser recolado, porque as tabelas já
+existem. As mesmas guardas foram aplicadas ao arquivo de migration, para os dois lados
+permanecerem com o mesmo conteúdo.
+
+```sql
+-- 0) Coluna auxiliar (precisa existir antes da RPC)
+ALTER TABLE public.financeiro_categorias
+  ADD COLUMN IF NOT EXISTS tipo_servico text CHECK (tipo_servico IN ('comercio','servico','outro'));
+
+-- 1) Configuração tributária da empresa
+CREATE TABLE IF NOT EXISTS public.financeiro_config_tributaria (
+  empresa_id uuid PRIMARY KEY REFERENCES public.empresas(id) ON DELETE CASCADE,
+  regime text NOT NULL DEFAULT 'simples' CHECK (regime IN ('simples','presumido','real')),
+  anexo_simples smallint CHECK (anexo_simples BETWEEN 1 AND 5),
+  presuncao_irpj_comercio numeric(5,2) DEFAULT 8.00,
+  presuncao_irpj_servico numeric(5,2) DEFAULT 32.00,
+  presuncao_csll_comercio numeric(5,2) DEFAULT 12.00,
+  presuncao_csll_servico numeric(5,2) DEFAULT 32.00,
+  aliquota_pis numeric(5,4) DEFAULT 0.65,
+  aliquota_cofins numeric(5,4) DEFAULT 3.00,
+  aliquota_pis_nc numeric(5,4) DEFAULT 1.65,
+  aliquota_cofins_nc numeric(5,4) DEFAULT 7.60,
+  aliquota_irpj numeric(5,4) DEFAULT 15.00,
+  adicional_irpj numeric(5,4) DEFAULT 10.00,
+  limite_adicional_irpj numeric(14,2) DEFAULT 20000.00,
+  aliquota_csll numeric(5,4) DEFAULT 9.00,
+  aliquota_iss numeric(5,4) DEFAULT 5.00,
+  aliquota_icms numeric(5,4) DEFAULT 18.00,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.financeiro_config_tributaria ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "membros veem config tributaria" ON public.financeiro_config_tributaria;
+CREATE POLICY "membros veem config tributaria"
+  ON public.financeiro_config_tributaria FOR SELECT
+  USING (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "admins gerenciam config tributaria" ON public.financeiro_config_tributaria;
+CREATE POLICY "admins gerenciam config tributaria"
+  ON public.financeiro_config_tributaria FOR ALL
+  USING (public.is_empresa_admin(auth.uid(), empresa_id))
+  WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
+
+DROP TRIGGER IF EXISTS trg_fin_config_trib_updated ON public.financeiro_config_tributaria;
+CREATE TRIGGER trg_fin_config_trib_updated
+  BEFORE UPDATE ON public.financeiro_config_tributaria
+  FOR EACH ROW EXECUTE FUNCTION public.fin_updated_at();
+
+-- 2) Apurações mensais
+CREATE TABLE IF NOT EXISTS public.financeiro_apuracoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+  competencia date NOT NULL,
+  regime text NOT NULL CHECK (regime IN ('simples','presumido','real')),
+  receita_bruta_comercio numeric(14,2) NOT NULL DEFAULT 0,
+  receita_bruta_servico numeric(14,2) NOT NULL DEFAULT 0,
+  receita_bruta_total numeric(14,2) NOT NULL DEFAULT 0,
+  rbt12 numeric(14,2) DEFAULT 0,
+  base_irpj numeric(14,2) DEFAULT 0,
+  base_csll numeric(14,2) DEFAULT 0,
+  base_pis_cofins numeric(14,2) DEFAULT 0,
+  valor_simples numeric(14,2) DEFAULT 0,
+  aliquota_efetiva_simples numeric(7,4) DEFAULT 0,
+  valor_irpj numeric(14,2) DEFAULT 0,
+  valor_adicional_irpj numeric(14,2) DEFAULT 0,
+  valor_csll numeric(14,2) DEFAULT 0,
+  valor_pis numeric(14,2) DEFAULT 0,
+  valor_cofins numeric(14,2) DEFAULT 0,
+  valor_iss numeric(14,2) DEFAULT 0,
+  valor_icms numeric(14,2) DEFAULT 0,
+  valor_total numeric(14,2) NOT NULL DEFAULT 0,
+  detalhes jsonb DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'rascunho' CHECK (status IN ('rascunho','apurado','pago')),
+  pago_em date,
+  observacoes text,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(empresa_id, competencia, regime)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fin_apuracoes_empresa_comp
+  ON public.financeiro_apuracoes(empresa_id, competencia DESC);
+
+ALTER TABLE public.financeiro_apuracoes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "membros veem apuracoes" ON public.financeiro_apuracoes;
+CREATE POLICY "membros veem apuracoes"
+  ON public.financeiro_apuracoes FOR SELECT
+  USING (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "membros criam apuracoes" ON public.financeiro_apuracoes;
+CREATE POLICY "membros criam apuracoes"
+  ON public.financeiro_apuracoes FOR INSERT
+  WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "membros atualizam apuracoes" ON public.financeiro_apuracoes;
+CREATE POLICY "membros atualizam apuracoes"
+  ON public.financeiro_apuracoes FOR UPDATE
+  USING (public.is_empresa_member(auth.uid(), empresa_id))
+  WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "admins removem apuracoes" ON public.financeiro_apuracoes;
+CREATE POLICY "admins removem apuracoes"
+  ON public.financeiro_apuracoes FOR DELETE
+  USING (public.is_empresa_admin(auth.uid(), empresa_id));
+
+DROP TRIGGER IF EXISTS trg_fin_apuracoes_updated ON public.financeiro_apuracoes;
+CREATE TRIGGER trg_fin_apuracoes_updated
+  BEFORE UPDATE ON public.financeiro_apuracoes
+  FOR EACH ROW EXECUTE FUNCTION public.fin_updated_at();
+
+-- 3) RPC de receita por competência
+CREATE OR REPLACE FUNCTION public.financeiro_receita_competencia(
+  p_empresa_id uuid,
+  p_competencia date
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH faixa AS (
+    SELECT date_trunc('month', p_competencia)::date AS ini,
+           (date_trunc('month', p_competencia) + interval '1 month - 1 day')::date AS fim
+  ),
+  rec AS (
+    SELECT
+      COALESCE(SUM(l.valor) FILTER (WHERE c.tipo_servico = 'comercio'), 0)::numeric AS comercio,
+      COALESCE(SUM(l.valor) FILTER (WHERE c.tipo_servico = 'servico'), 0)::numeric AS servico,
+      COALESCE(SUM(l.valor), 0)::numeric AS total
+    FROM public.financeiro_lancamentos l
+    LEFT JOIN public.financeiro_categorias c ON c.id = l.categoria_id
+    , faixa f
+    WHERE l.empresa_id = p_empresa_id
+      AND l.natureza = 'receita'
+      AND l.status IN ('realizado','conciliado','previsto')
+      AND l.data_competencia BETWEEN f.ini AND f.fim
+  ),
+  rbt12 AS (
+    SELECT COALESCE(SUM(l.valor), 0)::numeric AS total
+    FROM public.financeiro_lancamentos l
+    WHERE l.empresa_id = p_empresa_id
+      AND l.natureza = 'receita'
+      AND l.status IN ('realizado','conciliado','previsto')
+      AND l.data_competencia >= (date_trunc('month', p_competencia) - interval '12 months')::date
+      AND l.data_competencia < date_trunc('month', p_competencia)::date
+  )
+  SELECT jsonb_build_object(
+    'comercio', (SELECT comercio FROM rec),
+    'servico', (SELECT servico FROM rec),
+    'total', (SELECT total FROM rec),
+    'rbt12', (SELECT total FROM rbt12)
+  );
+$$;
 ```

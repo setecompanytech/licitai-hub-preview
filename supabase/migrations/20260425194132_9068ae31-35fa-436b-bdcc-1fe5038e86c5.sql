@@ -28,15 +28,18 @@ CREATE TABLE IF NOT EXISTS public.financeiro_config_tributaria (
 
 ALTER TABLE public.financeiro_config_tributaria ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "membros veem config tributaria" ON public.financeiro_config_tributaria;
 CREATE POLICY "membros veem config tributaria"
   ON public.financeiro_config_tributaria FOR SELECT
   USING (public.is_empresa_member(auth.uid(), empresa_id));
 
+DROP POLICY IF EXISTS "admins gerenciam config tributaria" ON public.financeiro_config_tributaria;
 CREATE POLICY "admins gerenciam config tributaria"
   ON public.financeiro_config_tributaria FOR ALL
   USING (public.is_empresa_admin(auth.uid(), empresa_id))
   WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
 
+DROP TRIGGER IF EXISTS trg_fin_config_trib_updated ON public.financeiro_config_tributaria;
 CREATE TRIGGER trg_fin_config_trib_updated
   BEFORE UPDATE ON public.financeiro_config_tributaria
   FOR EACH ROW EXECUTE FUNCTION public.fin_updated_at();
@@ -79,23 +82,28 @@ CREATE INDEX IF NOT EXISTS idx_fin_apuracoes_empresa_comp
 
 ALTER TABLE public.financeiro_apuracoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "membros veem apuracoes" ON public.financeiro_apuracoes;
 CREATE POLICY "membros veem apuracoes"
   ON public.financeiro_apuracoes FOR SELECT
   USING (public.is_empresa_member(auth.uid(), empresa_id));
 
+DROP POLICY IF EXISTS "membros criam apuracoes" ON public.financeiro_apuracoes;
 CREATE POLICY "membros criam apuracoes"
   ON public.financeiro_apuracoes FOR INSERT
   WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
 
+DROP POLICY IF EXISTS "membros atualizam apuracoes" ON public.financeiro_apuracoes;
 CREATE POLICY "membros atualizam apuracoes"
   ON public.financeiro_apuracoes FOR UPDATE
   USING (public.is_empresa_member(auth.uid(), empresa_id))
   WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
 
+DROP POLICY IF EXISTS "admins removem apuracoes" ON public.financeiro_apuracoes;
 CREATE POLICY "admins removem apuracoes"
   ON public.financeiro_apuracoes FOR DELETE
   USING (public.is_empresa_admin(auth.uid(), empresa_id));
 
+DROP TRIGGER IF EXISTS trg_fin_apuracoes_updated ON public.financeiro_apuracoes;
 CREATE TRIGGER trg_fin_apuracoes_updated
   BEFORE UPDATE ON public.financeiro_apuracoes
   FOR EACH ROW EXECUTE FUNCTION public.fin_updated_at();
