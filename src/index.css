@@ -207,6 +207,12 @@
     overflow-wrap: normal;
   }
 
+  /* NÃO impedir a quebra dos rótulos de menu aqui: sem `overflow-wrap:
+     anywhere` os itens do AppTopNav ficam largos demais para 1280px e a
+     barra se SOBREPÕE (wordmark cobrindo "Painel", "Ferramentas" colidindo
+     com o seletor de empresa) — pior que a quebra. A correção real é de
+     layout na própria barra; ver docs/pendencias.md. */
+
   /* Tabelas: contêineres com overflow horizontal automático */
   table {
     table-layout: auto;

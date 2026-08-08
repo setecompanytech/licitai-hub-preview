@@ -6,6 +6,52 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-08] PRIORIZADA — estratégia de espaço em 1280px (barra superior + cards)
+
+Dois sintomas, **uma causa só**: nenhum dos dois containers tem estratégia de espaço, e ambos
+contam com a quebra de texto para caber. Devem ser tratados no **mesmo ciclo de layout**.
+
+### Sintoma A — AppTopNav quebra os rótulos no meio da palavra
+
+Em 1280px a barra mostra "Pai-nel", "Monitora-mento", "Ges-tão", "Inteligên-cia",
+"Comunica-ção", "Ferramen-tas". Causa imediata: o `overflow-wrap: anywhere` global de
+`src/index.css` (normalização de quebra) atinge os itens de menu.
+
+**Tentativa que FALHOU (2026-08-08):** impedir a quebra com
+`nav a, nav button { overflow-wrap: normal; word-break: keep-all }` resolveu os rótulos e
+**criou defeito pior** — sem a quebra, os itens ficam mais largos que o espaço e a barra se
+sobrepõe: a wordmark PRAEFECTUS cobre "Painel" e "Ferramentas" colide com o seletor de
+empresa. Revertido. **Não repetir sem antes resolver o espaço.**
+
+### Sintoma B — títulos dos cards do Kanban truncam cedo demais
+
+Com o corpo a 16px, o título trunca em "[PILOTO] Aquisição de material de escri…". O
+`line-clamp-2` de `src/pages/KanbanPage.tsx` foi dimensionado quando o texto era 14px; a
+16px cabem menos caracteres na mesma altura, e a coluna tem largura fixa.
+
+### Diagnóstico comum e caminhos
+
+Falta, nos dois casos: `min-width: 0` nos filhos flex (sem isso o item nunca encolhe abaixo
+do conteúdo), `flex-shrink` com prioridade definida, e um **ponto de corte** que mande os
+itens excedentes para o menu móvel/overflow em vez de espremer.
+
+- **Barra:** definir o breakpoint em que a nav horizontal vira o botão de menu (hoje só
+  acontece abaixo de `lg`), ou reduzir rótulos/ícones antes de quebrar.
+- **Cards:** (a) `line-clamp-3` aceitando cards mais altos; (b) coluna mais larga com menos
+  colunas antes da rolagem; (c) título em 14px como exceção de UI densa — contraria a régua
+  e só vale se (a) e (b) forem descartadas.
+  **Reforço para (a)** (conferido na aprovação do Kanban em 2026-08-08): após a régua, todo o
+  texto do card já está entre 12 e 16px; o único desconforto restante é o título cortado em
+  duas linhas. `line-clamp-3` resolve sem tocar em mais nada. Decisão final no ciclo.
+
+**Por que ficou fora da régua:** o escopo acordado da auditoria é explicitamente só tipo e
+cor — "nenhuma mudança de estrutura, copy ou layout".
+
+**Evidência:** `scratchpad/shots/kanban-ANTES-*.png` e `kanban-DEPOIS-*.png` (2026-08-08); o
+print da tentativa revertida mostra a sobreposição da barra.
+
+---
+
 ## [2026-08-08] Um segundo banco com schema do Praefectus na organização
 
 **Situação:** ao investigar por que uma semente de dados de teste "sumiu", verificou-se que

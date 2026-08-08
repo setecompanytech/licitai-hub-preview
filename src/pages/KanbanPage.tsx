@@ -352,8 +352,10 @@ export default function KanbanPage() {
                                   </span>
                                 )}
                               </div>
+                              {/* Valor é dado, não ação: hierarquia por peso, não por cor
+                                  (regra da auditoria — laranja só para ação/foco). */}
                               {lic.valor_estimado && (
-                                <p className="text-xs font-semibold text-accent mt-1.5">{formatCurrency(lic.valor_estimado)}</p>
+                                <p className="text-sm font-semibold text-foreground mt-1.5">{formatCurrency(lic.valor_estimado)}</p>
                               )}
                             </div>
                           </div>
@@ -386,7 +388,7 @@ export default function KanbanPage() {
               </p>
             )}
             {draggedItem.valor_estimado && (
-              <p className="text-xs font-semibold text-accent mt-1">{formatCurrency(draggedItem.valor_estimado)}</p>
+              <p className="text-sm font-semibold text-foreground mt-1">{formatCurrency(draggedItem.valor_estimado)}</p>
             )}
           </div>
         </div>
