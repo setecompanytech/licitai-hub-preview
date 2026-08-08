@@ -72,7 +72,7 @@ export default function LicitacoesEstrategicas() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Licitações Estratégicas
             </h1>
             <p className="text-base text-muted-foreground mt-1">
@@ -81,7 +81,7 @@ export default function LicitacoesEstrategicas() {
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
             {fonteClassificacao && (
-              <Badge variant="outline" className={fonteClassificacao === 'ia' ? 'bg-accent/15 text-accent border-accent/30' : 'bg-muted text-muted-foreground'}>
+              <Badge variant="outline" className={fonteClassificacao === 'ia' ? 'bg-muted text-muted-foreground border-border' : 'bg-muted text-muted-foreground'}>
                 <Brain className="w-3 h-3 mr-1" /> {fonteClassificacao === 'ia' ? 'Classificada por IA' : 'Sem IA'}
               </Badge>
             )}
@@ -129,7 +129,7 @@ export default function LicitacoesEstrategicas() {
             {loading && (
               <Card className="border-dashed border-2 border-accent/30">
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                  <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
                   <p className="text-sm text-muted-foreground">Analisando licitações com IA...</p>
                   <p className="text-xs text-muted-foreground">Isso pode levar alguns segundos</p>
                 </div>
@@ -181,7 +181,7 @@ export default function LicitacoesEstrategicas() {
                         </div>
                         <div className="flex items-center gap-3 ml-2 flex-shrink-0">
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-accent">{lic.scoreGeral}%</div>
+                            <div className="text-2xl font-bold text-foreground">{lic.scoreGeral}%</div>
                             <p className="text-xs text-muted-foreground">Score</p>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -271,7 +271,7 @@ export default function LicitacoesEstrategicas() {
           <TabsContent value="capag" className="mt-4 space-y-4">
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 text-accent" />
+                <MapPin className="w-4 h-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Consulta CAPAG por Ente Federativo</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">

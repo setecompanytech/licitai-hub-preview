@@ -23,7 +23,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
   'Publicado': { label: 'Publicado', className: 'bg-info/10 text-info border-info/20', icon: Clock },
   'Em Disputa': { label: 'Em Disputa', className: 'bg-warning/10 text-warning border-warning/20', icon: TrendingUp },
   'Homologado': { label: 'Homologado', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
-  'Contrato Assinado': { label: 'Contrato Assinado', className: 'bg-accent/10 text-accent border-accent/20', icon: CheckCircle },
+  'Contrato Assinado': { label: 'Contrato Assinado', className: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
   'Deserto': { label: 'Deserto', className: 'bg-muted text-muted-foreground border-border', icon: AlertTriangle },
   'Fracassado': { label: 'Fracassado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
   'Revogado': { label: 'Revogado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
@@ -186,7 +186,7 @@ export default function HistoricoLicitacoes() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Histórico e Desempenho
             </h1>
             <p className="text-base text-muted-foreground mt-1">
@@ -213,7 +213,7 @@ export default function HistoricoLicitacoes() {
             { label: 'Em Andamento', value: metrics.emAndamento, icon: Clock, color: 'text-warning' },
             { label: 'Vencidas', value: metrics.vencidas, icon: Trophy, color: 'text-success' },
             { label: 'Perdidas', value: metrics.perdidas, icon: XCircle, color: 'text-destructive' },
-            { label: 'Taxa de Sucesso', value: `${metrics.taxaSucesso}%`, icon: TrendingUp, color: 'text-accent' },
+            { label: 'Taxa de Sucesso', value: `${metrics.taxaSucesso}%`, icon: TrendingUp, color: 'text-foreground' },
             { label: 'Valor Ganho', value: formatCurrency(metrics.valorGanho), icon: CheckCircle, color: 'text-success' },
           ].map((m, i) => (
             <div key={i} className="bg-card rounded-xl border border-border/50 p-4 shadow-sm">

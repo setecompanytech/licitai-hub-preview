@@ -150,7 +150,7 @@ export default function ProcessoWorkspace() {
         <div className="max-w-[1440px] mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-            <FolderOpen className="w-6 h-6 text-accent" />
+            <FolderOpen className="w-6 h-6 text-muted-foreground" />
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold truncate">{lic.numero || 'Processo'} {lic.orgao && `— ${lic.orgao}`}</h1>
               <p className="text-base text-muted-foreground truncate">{lic.objeto}</p>
@@ -397,7 +397,7 @@ export default function ProcessoWorkspace() {
                             <div key={arq.sequencialDocumento ?? i}
                               className="flex items-center justify-between p-2.5 rounded border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
                               <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-4 h-4 text-accent shrink-0" />
+                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                                 <div className="min-w-0">
                                   <p className="text-xs font-medium truncate">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
                                   {arq.dataPublicacao && (
@@ -430,8 +430,10 @@ export default function ProcessoWorkspace() {
                 <Link key={a.label} to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
                   <Card className="p-4 hover:border-accent transition cursor-pointer h-full">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-md bg-accent/10 flex items-center justify-center shrink-0">
-                        <a.icon className="w-5 h-5 text-accent" />
+                      {/* Fundo acompanha o ícone: neutro em repouso. O card
+                          inteiro já sinaliza que é clicável no hover:border-accent. */}
+                      <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <a.icon className="w-5 h-5 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm flex items-center gap-1">
@@ -489,7 +491,7 @@ export default function ProcessoWorkspace() {
                     <Card className="p-4 border-primary/20 bg-primary/5">
                       <div className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                          <TrendingUp className="w-4 h-4 text-primary" />
+                          <TrendingUp className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold">Planilha de Custos</p>

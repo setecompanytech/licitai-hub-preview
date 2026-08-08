@@ -6,6 +6,30 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-08] Screenshot NÃO serve de regressão visual em Licitações Estratégicas
+
+**Fato medido:** duas capturas da MESMA tela, com o MESMO código, minutos de diferença,
+divergem em **276.821 pixels (3,93%)**. A comparação antes/depois de uma mudança real de
+código, na mesma tela, deu **232.309 px (3,30%)** — ou seja, **o ruído é maior que o sinal**.
+
+**Causa:** a lista é alimentada por dados vivos do PNCP e se reordena a cada carregamento.
+
+**Consequência prática:** qualquer critério do tipo "confira se os N registros estão
+idênticos entre antes e depois" é **inverificável** nessa tela — foi proposto no rollout da
+régua e teve de ser abandonado. Para essa tela, verificar por **diff de código** (ou por
+teste, quando houver lógica envolvida), nunca por imagem.
+
+**Telas com o mesmo risco** (dados externos/voláteis, a confirmar caso a caso): Monitoramento
+de Editais, Boletins, Análise de Mercado, Concorrentes.
+
+**Onde screenshot funciona bem:** telas de dados estáveis ou semeados. No mesmo rollout,
+Compromissos deu 187 px de diferença e Histórico 869 px, com cada faixa de pixels casando
+com uma mudança prevista — verificação mais forte que a inspeção visual. A ferramenta usada
+está em `scratchpad/diff.mjs` (pixelmatch + pngjs, com `diffMask` e contagem por faixa de
+100px); vale recriar num ciclo futuro que precise de regressão visual.
+
+---
+
 ## [2026-08-08] Barra de progresso das Metas ligada à severidade
 
 **Hoje:** a barra de "Progresso" do painel de Metas é laranja fixo, em qualquer situação —

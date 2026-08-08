@@ -58,7 +58,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   interessado: { label: 'Interessado', color: 'bg-info/10 text-info border-info/20', icon: ListChecks },
   analisando: { label: 'IA Analisando', color: 'bg-warning/10 text-warning border-warning/20', icon: Brain },
   aprovado: { label: 'Aprovado', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
-  cadastrado: { label: 'Cadastrado', color: 'bg-accent/10 text-accent border-accent/20', icon: Shield },
+  cadastrado: { label: 'Cadastrado', color: 'bg-muted text-muted-foreground border-border', icon: Shield },
   rejeitado: { label: 'Rejeitado', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
   arquivado: { label: 'Arquivado', color: 'bg-muted text-muted-foreground border-border', icon: Archive },
 };
@@ -301,7 +301,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <ListChecks className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0" />
+              <ListChecks className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Meus Compromissos
             </h1>
             <p className="text-base text-muted-foreground mt-1">
@@ -341,7 +341,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             <p className="text-xs text-muted-foreground">Aprovados</p>
           </Card>
           <Card className="p-4 text-center border-accent/30">
-            <p className="text-2xl font-bold text-accent">{stats.cadastrados}</p>
+            <p className="text-2xl font-bold text-foreground">{stats.cadastrados}</p>
             <p className="text-xs text-muted-foreground">Cadastrados</p>
           </Card>
           <Card className="p-4 text-center border-destructive/30">
@@ -390,7 +390,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         <span className="font-semibold text-sm">{p.numero}</span>
                         {p.data_encerramento && <Countdown targetDate={p.data_encerramento} />}
                         {p.auto_cadastro && (
-                          <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">
+                          <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
                             <Zap className="w-3 h-3 mr-0.5" /> Auto
                           </Badge>
                         )}
@@ -406,7 +406,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         {p.uf && <span>{p.municipio ? `${p.municipio}/${p.uf}` : p.uf}</span>}
                         {p.portal && <span>{p.portal}</span>}
                         <span className="flex items-center gap-1">
-                          {p.alerta_sistema && <Bell className="w-3 h-3 text-accent" />}
+                          {p.alerta_sistema && <Bell className="w-3 h-3 text-muted-foreground" />}
                           {p.alerta_email && <Mail className="w-3 h-3 text-info" />}
                           {p.alerta_whatsapp && <MessageSquare className="w-3 h-3 text-success" />}
                         </span>
@@ -478,8 +478,8 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         className="flex items-center gap-2 w-full text-left p-3"
                         onClick={() => setExpandedAnalise(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
                       >
-                        <Brain className="w-3.5 h-3.5 text-accent" />
-                        <span className="text-xs font-semibold text-accent flex-1">Análise da IA</span>
+                        <Brain className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-foreground flex-1">Análise da IA</span>
                         {expandedAnalise[p.id] ? (
                           <ChevronUp className="w-4 h-4 text-muted-foreground" />
                         ) : (
