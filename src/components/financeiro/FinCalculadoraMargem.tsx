@@ -141,7 +141,7 @@ export default function FinCalculadoraMargem() {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-primary" />
+                <Calculator className="w-5 h-5 text-muted-foreground" />
                 Calculadora Contábil de Margem
               </CardTitle>
               <CardDescription>
@@ -217,10 +217,10 @@ export default function FinCalculadoraMargem() {
           </Card>
 
           {/* Sugestão de margem */}
-          <Card className="border-primary/30">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
                 Sugestão de margem ideal
               </CardTitle>
               <CardDescription>
@@ -261,10 +261,10 @@ export default function FinCalculadoraMargem() {
                   />
 
                   {sugestao.viavel ? (
-                    <div className="rounded-lg bg-primary/10 border border-primary/30 p-4 space-y-2">
+                    <div className="rounded-lg bg-muted border border-border/60 p-4 space-y-2">
                       <div className="flex items-baseline justify-between">
                         <span className="text-xs text-muted-foreground">Preço de venda sugerido</span>
-                        <span className="text-2xl font-bold text-primary">
+                        <span className="text-2xl font-bold text-foreground">
                           {fmtBRL(sugestao.precoSugerido)}
                         </span>
                       </div>

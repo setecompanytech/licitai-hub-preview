@@ -75,7 +75,7 @@ export default function FinTransferencia() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <ArrowRightLeft className="w-5 h-5 text-primary" /> Transferência entre contas
+            <ArrowRightLeft className="w-5 h-5 text-muted-foreground" /> Transferência entre contas
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Movimente saldo entre contas correntes. O sistema registra automaticamente uma única operação tipo "transferência" que afeta as duas contas — sem dupla contagem no DRE.

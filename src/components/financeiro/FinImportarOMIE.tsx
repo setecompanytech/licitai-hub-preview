@@ -417,7 +417,7 @@ export default function FinImportarOMIE() {
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-primary" /> Importar planilha OMIE (.xlsx)
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Importar planilha OMIE (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={handleEntidadeChange}>
               <TabsList>
@@ -431,7 +431,7 @@ export default function FinImportarOMIE() {
         <CardContent className="space-y-4">
           <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
             <p className="font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
               Mapeamento inteligente — reconhece automaticamente as ~40 colunas do padrão OMIE.
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">

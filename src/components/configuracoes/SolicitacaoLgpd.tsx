@@ -35,7 +35,7 @@ const TIPOS = [
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
-  em_analise: { label: 'Em análise', color: 'bg-primary/10 text-primary border-primary/20', icon: Loader2 },
+  em_analise: { label: 'Em análise', color: 'bg-muted text-foreground border-border/60', icon: Loader2 },
   concluida: { label: 'Concluída', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
   recusada: { label: 'Recusada', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: AlertCircle },
 };
@@ -91,7 +91,7 @@ export default function SolicitacaoLgpd() {
     <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <FileWarning className="w-5 h-5 text-accent" />
+          <FileWarning className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Meus Dados (LGPD — Art. 18)</h2>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

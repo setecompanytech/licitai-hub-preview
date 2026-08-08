@@ -60,7 +60,7 @@ const plans: PlanTier[] = [
   },
   {
     name: 'Profissional', slug: 'profissional', monthly: 497, cnpjs: 3, sessions: 1, users: 3,
-    color: 'text-accent',
+    color: 'text-foreground',
     services: [
       'Tudo do Básico +',
       'Monitoramento estendido (38 portais)',
@@ -77,7 +77,7 @@ const plans: PlanTier[] = [
   },
   {
     name: 'Enterprise Start', slug: 'enterprise-start', monthly: 997, cnpjs: 5, sessions: 3, users: 5,
-    color: 'text-primary',
+    color: 'text-foreground',
     services: [
       'Tudo do Profissional +',
       'Agente Cloud Gerenciado (3 sessões simultâneas)',
@@ -92,7 +92,7 @@ const plans: PlanTier[] = [
   },
   {
     name: 'Enterprise Pro', slug: 'enterprise-pro', monthly: 1497, cnpjs: 7, sessions: 5, users: 10,
-    color: 'text-accent',
+    color: 'text-foreground',
     services: [
       'Tudo do Enterprise Start +',
       'Agente Cloud Gerenciado (5 sessões simultâneas)',
@@ -105,7 +105,7 @@ const plans: PlanTier[] = [
   },
   {
     name: 'Enterprise Max', slug: 'enterprise-max', monthly: 1997, cnpjs: 10, sessions: 7, users: 15,
-    color: 'text-primary',
+    color: 'text-foreground',
     services: [
       'Tudo do Enterprise Pro +',
       'Agente Cloud Gerenciado (7 sessões simultâneas)',
@@ -156,7 +156,7 @@ export default function AnalyseCustosPlanos() {
     <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-accent" />
+          <TrendingUp className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Planilha Completa — Custos, Receita e Lucratividade</h2>
         </div>
         {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -211,7 +211,7 @@ export default function AnalyseCustosPlanos() {
                     <th className="text-center py-2.5 font-bold text-muted-foreground">Usuários</th>
                     <th className="text-center py-2.5 font-bold text-destructive">Custo Var.</th>
                     <th className="text-center py-2.5 font-bold text-success">Lucro/cliente</th>
-                    <th className="text-center py-2.5 font-bold text-accent">Margem</th>
+                    <th className="text-center py-2.5 font-bold text-foreground">Margem</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,19 +228,19 @@ export default function AnalyseCustosPlanos() {
                         <td className="py-2.5 text-center">{p.users}</td>
                         <td className="py-2.5 text-center font-semibold text-destructive tabular-nums">{R$(v.total)}</td>
                         <td className={cn('py-2.5 text-center font-bold tabular-nums', profit > 0 ? 'text-success' : 'text-destructive')}>{R$(profit)}</td>
-                        <td className="py-2.5 text-center font-bold text-accent">{margin.toFixed(0)}%</td>
+                        <td className="py-2.5 text-center font-bold text-foreground">{margin.toFixed(0)}%</td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-accent/5 border-t border-accent/30">
-                    <td className="py-2.5 font-bold text-accent" colSpan={3}>Sessão Adicional (Enterprise)</td>
+                  <tr className="bg-muted/30 border-t border-border">
+                    <td className="py-2.5 font-bold text-foreground" colSpan={3}>Sessão Adicional (Enterprise)</td>
                     <td className="py-2.5 text-center font-bold">+1</td>
                     <td className="py-2.5 text-center">—</td>
                     <td className="py-2.5 text-center font-semibold text-destructive tabular-nums">{R$(COST_PER_SESSION)}</td>
                     <td className="py-2.5 text-center font-bold text-success tabular-nums">{R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)}</td>
-                    <td className="py-2.5 text-center font-bold text-accent">{R$(ADDITIONAL_SESSION_PRICE)}/mês</td>
+                    <td className="py-2.5 text-center font-bold text-foreground">{R$(ADDITIONAL_SESSION_PRICE)}/mês</td>
                   </tr>
                 </tfoot>
               </table>
@@ -281,9 +281,9 @@ export default function AnalyseCustosPlanos() {
                       const Icon = iconForIndex(i);
                       const isHeader = s.startsWith('Tudo do');
                       return (
-                        <li key={i} className={cn('flex items-start gap-1.5 text-xs', isHeader && 'text-accent font-semibold mt-1')}>
-                          {!isHeader && <Icon className="w-3 h-3 text-accent mt-0.5 shrink-0" />}
-                          {isHeader && <Zap className="w-3 h-3 text-accent mt-0.5 shrink-0" />}
+                        <li key={i} className={cn('flex items-start gap-1.5 text-xs', isHeader && 'text-foreground font-semibold mt-1')}>
+                          {!isHeader && <Icon className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />}
+                          {isHeader && <Zap className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />}
                           <span>{s}</span>
                         </li>
                       );
@@ -299,7 +299,7 @@ export default function AnalyseCustosPlanos() {
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
               <Monitor className="w-3.5 h-3.5" /> 4. Simulador — Receita com Sessões Adicionais
             </h3>
-            <div className="p-4 rounded-xl border border-accent/30 bg-accent/5 space-y-2.5">
+            <div className="p-4 rounded-xl border border-border/50 bg-muted/30 space-y-2.5">
               {plans.filter(p => p.sessions > 0).map((p) => {
                 const extra = extraSessions[p.slug] ?? 0;
                 const totalSessions = p.sessions + extra;
@@ -336,7 +336,7 @@ export default function AnalyseCustosPlanos() {
                 );
               })}
               <p className="text-xs text-muted-foreground text-center pt-1">
-                Sessão adicional: <strong className="text-accent">{R$(ADDITIONAL_SESSION_PRICE)}/mês</strong> (custo {R$(COST_PER_SESSION)} · lucro {R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)} · margem {(((ADDITIONAL_SESSION_PRICE - COST_PER_SESSION) / ADDITIONAL_SESSION_PRICE) * 100).toFixed(0)}%)
+                Sessão adicional: <strong className="text-foreground">{R$(ADDITIONAL_SESSION_PRICE)}/mês</strong> (custo {R$(COST_PER_SESSION)} · lucro {R$(ADDITIONAL_SESSION_PRICE - COST_PER_SESSION)} · margem {(((ADDITIONAL_SESSION_PRICE - COST_PER_SESSION) / ADDITIONAL_SESSION_PRICE) * 100).toFixed(0)}%)
               </p>
             </div>
           </div>
@@ -400,10 +400,10 @@ export default function AnalyseCustosPlanos() {
           </div>
 
           {/* ─── SEÇÃO 6: BREAK-EVEN ─── */}
-          <div className="p-4 rounded-xl border border-accent/30 bg-accent/5">
+          <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-4 h-4 text-accent" />
-              <p className="text-xs font-bold text-accent">6. Ponto de Equilíbrio (Break-even)</p>
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs font-bold text-foreground">6. Ponto de Equilíbrio (Break-even)</p>
             </div>
             <div className="space-y-2 text-xs text-muted-foreground">
               <p>

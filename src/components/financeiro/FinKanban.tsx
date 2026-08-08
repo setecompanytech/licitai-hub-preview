@@ -549,10 +549,10 @@ export default function FinKanban({ tipo }: Props) {
 
       {/* Barra de seleção em lote */}
       {selecionados.size > 0 && (
-        <Card className="border-primary/40 bg-primary/5">
+        <Card className="border-border/60 bg-muted/40">
           <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-sm">
-              <CheckSquare className="w-4 h-4 text-primary" />
+              <CheckSquare className="w-4 h-4 text-muted-foreground" />
               <span>
                 <strong>{selecionados.size}</strong> selecionado(s) ·{" "}
                 <span className="tabular-nums font-semibold">

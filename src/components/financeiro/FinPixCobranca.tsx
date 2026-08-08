@@ -152,7 +152,7 @@ export default function FinPixCobranca() {
         </Card>
 
         {ultimaCobranca && (
-          <Card className="border-primary/40 bg-primary/5">
+          <Card className="border-success/40 bg-success/5">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-success" /> Cobrança gerada — {formatBRL(ultimaCobranca.valor)}

@@ -589,7 +589,7 @@ function StatCard({
   tone: "default" | "success" | "danger";
 }) {
   const cls = {
-    default: { text: "text-foreground", bg: "bg-primary/10", icon: "text-primary" },
+    default: { text: "text-foreground", bg: "bg-muted", icon: "text-muted-foreground" },
     success: { text: "text-success", bg: "bg-success/10", icon: "text-success" },
     danger: { text: "text-destructive", bg: "bg-destructive/10", icon: "text-destructive" },
   }[tone];

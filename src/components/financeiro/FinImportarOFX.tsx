@@ -436,7 +436,7 @@ export default function FinImportarOFX() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Upload className="w-5 h-5 text-primary" /> Importar Extrato OFX
+          <Upload className="w-5 h-5 text-muted-foreground" /> Importar Extrato OFX
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Faça upload do arquivo .ofx do seu banco. O sistema detecta as
@@ -554,7 +554,7 @@ export default function FinImportarOFX() {
 
         {analisando && (
           <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 animate-pulse text-primary" />
+            <Sparkles className="w-4 h-4 animate-pulse text-muted-foreground" />
             Analisando transações e sugerindo conciliações...
           </div>
         )}

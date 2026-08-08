@@ -341,7 +341,7 @@ export default function FinContas() {
           <RefreshCw className={cn("w-4 h-4 mr-1", sincronizando && "animate-spin")} />
           {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
           {candidatasSync > 0 && !sincronizando && (
-            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-foreground/10 text-foreground text-xs font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
               {candidatasSync}
             </span>
           )}

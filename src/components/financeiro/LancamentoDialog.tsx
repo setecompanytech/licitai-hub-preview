@@ -534,7 +534,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                     }}
                   />
                   <label htmlFor="chk-transferencia" className="text-sm font-medium cursor-pointer select-none flex items-center gap-1.5">
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
+                    <ArrowLeftRight className={cn("w-3.5 h-3.5", isTransferencia ? "text-primary" : "text-muted-foreground")} />
                     Transferência entre contas
                   </label>
                   {isTransferencia && (
@@ -559,7 +559,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-primary font-medium">Conta de destino *</Label>
+                      <Label className="text-xs text-foreground font-medium">Conta de destino *</Label>
                       <Select
                         value={contaDestinoId || "none"}
                         onValueChange={(v) => setContaDestinoId(v === "none" ? "" : v)}

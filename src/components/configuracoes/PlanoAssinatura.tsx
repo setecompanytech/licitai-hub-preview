@@ -183,7 +183,7 @@ export default function PlanoAssinatura() {
     return (
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="w-5 h-5 text-accent" />
+          <CreditCard className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Plano & Assinatura</h2>
         </div>
         <div className="animate-pulse space-y-4">
@@ -209,7 +209,7 @@ export default function PlanoAssinatura() {
     >
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-accent" />
+          <CreditCard className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Plano & Assinatura</h2>
         </div>
         {subscription?.subscribed && (
@@ -330,7 +330,7 @@ export default function PlanoAssinatura() {
               <ul className="space-y-2 flex-1 mb-5">
                 {plano.recursos?.map((r, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs">
-                    <Check className="w-3.5 h-3.5 text-accent mt-0.5 flex-shrink-0" />
+                    <Check className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                     <span>{r}</span>
                   </li>
                 ))}

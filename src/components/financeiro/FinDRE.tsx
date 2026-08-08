@@ -120,7 +120,7 @@ export default function FinDRE() {
         <CardHeader className="flex flex-row items-end justify-between gap-2 flex-wrap">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Scale className="w-4 h-4 text-primary" />
+              <Scale className="w-4 h-4 text-muted-foreground" />
               DRE — Demonstração do Resultado do Exercício
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">

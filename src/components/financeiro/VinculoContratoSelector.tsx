@@ -345,10 +345,10 @@ export default function VinculoContratoSelector({
   };
 
   return (
-    <Card className="border-primary/30">
+    <Card className="border-border">
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-primary" />
+          <Link2 className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">
             Vincular a um Contrato / ATA SRP {tipo === "a_receber" ? "(cliente)" : "(fornecedor)"}
           </span>
@@ -641,7 +641,7 @@ export default function VinculoContratoSelector({
             )}
 
             {itensSelecionados.length > 1 && (
-              <div className="mt-1.5 rounded-md bg-primary/5 border border-primary/20 p-2 text-xs">
+              <div className="mt-1.5 rounded-md bg-muted/40 border border-border/60 p-2 text-xs">
                 <div className="font-medium text-foreground flex items-center gap-1">
                   <Layers className="w-3 h-3" /> Saldos somados dos itens marcados:
                 </div>

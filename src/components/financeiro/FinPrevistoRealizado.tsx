@@ -57,7 +57,7 @@ export default function FinPrevistoRealizado() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="w-5 h-5 text-primary" /> Previsto × Realizado — {new Date().getFullYear()}
+            <Target className="w-5 h-5 text-muted-foreground" /> Previsto × Realizado — {new Date().getFullYear()}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Compara o que foi planejado (previsto) com o efetivamente realizado em cada mês do ano corrente.

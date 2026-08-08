@@ -64,7 +64,7 @@ export default function FinCNAB() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <FileSpreadsheet className="w-5 h-5 text-primary" /> Remessa & Retorno CNAB 240
+          <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Remessa & Retorno CNAB 240
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Geração de arquivos CNAB 240 para cobrança bancária e pagamento em massa, e processamento de retornos com baixa automática.

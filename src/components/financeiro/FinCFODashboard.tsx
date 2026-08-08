@@ -76,8 +76,11 @@ function nivelBadge(nivel: CFOInsights["saude_nivel"]) {
   const map = {
     critico: { label: "Crítico", cls: "bg-destructive text-destructive-foreground" },
     atencao: { label: "Atenção", cls: "bg-warning text-warning-foreground" },
-    saudavel: { label: "Saudável", cls: "bg-success text-success-foreground" },
-    excelente: { label: "Excelente", cls: "bg-primary text-primary-foreground" },
+    saudavel: {
+      label: "Saudável",
+      cls: "bg-success/15 text-success border border-success/30 hover:bg-success/15",
+    },
+    excelente: { label: "Excelente", cls: "bg-success text-success-foreground" },
   };
   const v = map[nivel] ?? map.atencao;
   return <Badge className={v.cls}>{v.label}</Badge>;
@@ -122,7 +125,7 @@ export default function FinCFODashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
+            <Activity className="w-5 h-5 text-muted-foreground" />
             Painel CFO — Visão Executiva
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -282,7 +285,7 @@ export default function FinCFODashboard() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
+            <TrendingUp className="w-4 h-4 text-muted-foreground" />
             Projeção de Caixa — Próximos 90 dias
           </CardTitle>
         </CardHeader>
@@ -327,12 +330,12 @@ export default function FinCFODashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
                 Análise Executiva IA
               </CardTitle>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Saúde financeira:</span>
-                <span className="text-2xl font-bold text-primary">{insights.saude_score}</span>
+                <span className="text-2xl font-bold text-foreground">{insights.saude_score}</span>
                 {nivelBadge(insights.saude_nivel)}
               </div>
             </div>
@@ -371,7 +374,7 @@ export default function FinCFODashboard() {
 
             {insights.acoes_prioritarias?.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-primary uppercase mb-2 flex items-center gap-1">
+                <h4 className="text-xs font-semibold text-foreground uppercase mb-2 flex items-center gap-1">
                   <Target className="w-3 h-3" /> Ações Prioritárias (30 dias)
                 </h4>
                 <div className="space-y-2">
@@ -380,7 +383,7 @@ export default function FinCFODashboard() {
                       key={i}
                       className="flex items-start gap-3 p-2.5 rounded-md border bg-muted/30"
                     >
-                      <div className="text-xl font-bold text-primary leading-none">{i + 1}</div>
+                      <div className="text-xl font-bold text-foreground leading-none">{i + 1}</div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{a.titulo}</p>
                         <div className="flex gap-2 mt-1">

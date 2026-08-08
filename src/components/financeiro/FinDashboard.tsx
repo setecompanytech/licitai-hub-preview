@@ -82,7 +82,7 @@ export default function FinDashboard() {
                         <span className="tabular-nums font-medium">{formatBRL(d.total)}</span>
                       </div>
                       <div className="h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-muted-foreground" style={{ width: `${pct}%` }} />
                       </div>
                     </li>
                   );

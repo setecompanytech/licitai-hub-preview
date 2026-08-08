@@ -166,7 +166,7 @@ export default function FinImportarPlanilha() {
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-primary" /> Importar planilha (CSV)
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Importar planilha (CSV)
             </CardTitle>
             <Tabs value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
               <TabsList>

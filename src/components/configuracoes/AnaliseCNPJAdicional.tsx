@@ -142,7 +142,7 @@ export default function AnaliseCNPJAdicional() {
     <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-accent" />
+          <Building2 className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Análise: Modelo CNPJ Adicional (Benchmark de Mercado)</h2>
         </div>
         {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -166,7 +166,7 @@ export default function AnaliseCNPJAdicional() {
                   </div>
                   <div className="flex flex-wrap gap-1.5 mb-1.5">
                     {b.planos.filter(p => p.mensal > 0).map((p) => (
-                      <span key={p.nome} className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
+                      <span key={p.nome} className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">
                         {p.nome}: {fmt(p.mensal)}/mês ({p.ciclo})
                       </span>
                     ))}
@@ -181,25 +181,25 @@ export default function AnaliseCNPJAdicional() {
           </div>
 
           {/* 2. Conclusões do Benchmark */}
-          <div className="p-4 rounded-lg border border-accent/30 bg-accent/5">
-            <h3 className="text-xs font-bold text-accent mb-2 flex items-center gap-1.5">
+          <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+            <h3 className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5" /> Conclusões do Benchmark
             </h3>
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">
-                <span className="text-accent font-bold shrink-0">1.</span>
+                <span className="text-foreground font-bold shrink-0">1.</span>
                 <span><strong className="text-foreground">Padrão do mercado: 1 CNPJ = 1 assinatura.</strong> ConLicitação, Effecti e a maioria cobram um plano completo por empresa. A Licitei cobra 3x pelo multi-empresa (sem desconto).</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-accent font-bold shrink-0">2.</span>
+                <span className="text-foreground font-bold shrink-0">2.</span>
                 <span><strong className="text-foreground">Exceção: Licitante Prime inclui 5 CNPJs</strong>, mas com funcionalidades muito limitadas (sem robô de lances, sem IA avançada). Preço agressivo de R$103-180/mês.</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-accent font-bold shrink-0">3.</span>
+                <span className="text-foreground font-bold shrink-0">3.</span>
                 <span><strong className="text-foreground">Faixa de preço por CNPJ no mercado: R$264 a R$515/mês</strong> para planos completos com robô de lances (referência ConLicitação).</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-accent font-bold shrink-0">4.</span>
+                <span className="text-foreground font-bold shrink-0">4.</span>
                 <span><strong className="text-foreground">Ninguém oferece "CNPJ adicional" com desconto.</strong> A PRAEFECTUS pode se diferenciar com um modelo mais acessível.</span>
               </div>
             </div>
@@ -214,14 +214,14 @@ export default function AnaliseCNPJAdicional() {
               {PLANS.map((p, i) => (
                 <div key={p.nome} className={cn(
                   'p-3.5 rounded-lg border',
-                  i === 1 ? 'border-accent/40 bg-accent/5' : 'border-border/40 bg-muted/20'
+                  i === 1 ? 'border-border/60 bg-muted/40' : 'border-border/40 bg-muted/20'
                 )}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="text-sm font-bold text-foreground">{p.nome}</span>
                       <span className="text-xs text-muted-foreground ml-2">{fmt(p.mensal)}/mês</span>
                     </div>
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-bold', i === 1 ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground')}>
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-bold', i === 1 ? 'bg-muted text-foreground' : 'bg-muted text-muted-foreground')}>
                       {p.cnpjsInclusos} CNPJ{p.cnpjsInclusos > 1 ? 's' : ''} incluso{p.cnpjsInclusos > 1 ? 's' : ''}
                     </span>
                   </div>
@@ -236,7 +236,7 @@ export default function AnaliseCNPJAdicional() {
                     </div>
                     <div className="p-2 rounded bg-background/60">
                       <p className="text-xs text-muted-foreground">Custo c/ máximo</p>
-                      <p className="text-xs font-bold text-accent">
+                      <p className="text-xs font-bold text-foreground">
                         {fmt(p.mensal + (p.maxCnpjs - p.cnpjsInclusos) * CNPJ_ADDON_PRICE)}/mês
                       </p>
                     </div>
@@ -297,7 +297,7 @@ export default function AnaliseCNPJAdicional() {
               ))}
             </div>
 
-            <div className="p-4 rounded-lg border border-accent/30 bg-accent/5">
+            <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
               {/* Breakdown por plano */}
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {sc.clients.map(({ plan, count, extraCnpjs }) => (
@@ -306,7 +306,7 @@ export default function AnaliseCNPJAdicional() {
                     <p className="text-xs font-bold">{count} clientes</p>
                     <p className="text-xs text-muted-foreground">+{extraCnpjs} CNPJs extras/cada</p>
                     <div className="mt-1 border-t border-border/30 pt-1">
-                      <p className="text-xs text-accent font-medium">
+                      <p className="text-xs text-foreground font-medium">
                         {fmt(PLANS[plan].mensal * count)} base
                       </p>
                       <p className="text-xs text-success font-medium">
@@ -327,9 +327,9 @@ export default function AnaliseCNPJAdicional() {
                   <p className="text-xs text-success">Receita CNPJs</p>
                   <p className="text-xs font-bold text-success">{fmt(sc.revAddon)}</p>
                 </div>
-                <div className="p-2 rounded bg-accent/10 text-center">
-                  <p className="text-xs text-accent">Total Receita</p>
-                  <p className="text-xs font-bold text-accent">{fmt(sc.totalRev)}</p>
+                <div className="p-2 rounded bg-muted text-center">
+                  <p className="text-xs text-muted-foreground">Total Receita</p>
+                  <p className="text-xs font-bold text-foreground">{fmt(sc.totalRev)}</p>
                 </div>
                 <div className="p-2 rounded bg-background/60 text-center">
                   <p className="text-xs text-muted-foreground">CNPJs Ativos</p>
@@ -367,25 +367,25 @@ export default function AnaliseCNPJAdicional() {
           </div>
 
           {/* 6. Vantagem competitiva */}
-          <div className="p-4 rounded-lg border border-primary/30 bg-primary/5">
-            <h3 className="text-xs font-bold text-primary mb-2 flex items-center gap-1.5">
+          <div className="p-4 rounded-lg border border-border/50 bg-muted/30">
+            <h3 className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" /> Vantagem Competitiva: "Produto Completo, Sem Instalação"
             </h3>
             <div className="space-y-2 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">
-                <Plus className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                 <span><strong className="text-foreground">Zero fricção técnica:</strong> O cliente não instala VPS, não configura servidor, não compra hospedagem. Tudo roda na nuvem gerenciada pela PRAEFECTUS.</span>
               </div>
               <div className="flex items-start gap-2">
-                <Plus className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                 <span><strong className="text-foreground">CNPJ adicional = 1 clique:</strong> O cliente adiciona uma nova empresa no painel e automaticamente tem boletins, monitoramento e robô de lances para o novo CNPJ.</span>
               </div>
               <div className="flex items-start gap-2">
-                <Plus className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                 <span><strong className="text-foreground">Custo previsível:</strong> {fmt(CNPJ_ADDON_PRICE)}/mês por CNPJ adicional vs. R$264-515 por um novo plano nos concorrentes. O cliente economiza {((1 - CNPJ_ADDON_PRICE / 335) * 100).toFixed(0)}% por empresa adicional.</span>
               </div>
               <div className="flex items-start gap-2">
-                <Plus className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                 <span><strong className="text-foreground">Escalabilidade de receita:</strong> Com {fmt(CNPJ_ADDON_PRICE - COST_PER_CNPJ.total)} de margem por CNPJ extra, cada novo CNPJ é receita recorrente de alta margem ({((1 - COST_PER_CNPJ.total / CNPJ_ADDON_PRICE) * 100).toFixed(0)}%).</span>
               </div>
             </div>

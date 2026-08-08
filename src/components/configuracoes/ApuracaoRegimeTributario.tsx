@@ -201,7 +201,7 @@ export default function ApuracaoRegimeTributario() {
       {/* Header */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-5 h-5 text-accent" />
+          <BarChart3 className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Apuração de Faturamento — Últimos 12 Meses</h2>
         </div>
         <p className="text-xs text-muted-foreground mb-4">
@@ -219,7 +219,7 @@ export default function ApuracaoRegimeTributario() {
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-accent" />
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
@@ -288,11 +288,11 @@ export default function ApuracaoRegimeTributario() {
               <p className="text-sm font-bold">{mesesPreenchidos}/12</p>
             </Card>
             {regimeRecomendado && (
-              <Card className="p-3 border-accent/30 bg-accent/5">
-                <div className="flex items-center gap-1 text-accent text-xs mb-1">
+              <Card className="p-3 border-border/50 bg-muted/30">
+                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                   <Lightbulb className="w-3 h-3" /> Regime Sugerido
                 </div>
-                <p className="text-sm font-bold text-accent">{regimeRecomendado.label}</p>
+                <p className="text-sm font-bold text-foreground">{regimeRecomendado.label}</p>
                 <p className="text-xs text-muted-foreground">~{regimeRecomendado.carga.toFixed(2)}% carga</p>
               </Card>
             )}
@@ -301,7 +301,7 @@ export default function ApuracaoRegimeTributario() {
           {/* Comparison table */}
           <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <Calculator className="w-5 h-5 text-accent" />
+              <Calculator className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Comparativo de Regimes Tributários</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
@@ -321,7 +321,7 @@ export default function ApuracaoRegimeTributario() {
                 </TableHeader>
                 <TableBody>
                   {/* Simples */}
-                  <TableRow className={regimeRecomendado?.regime === 'simples_nacional' ? 'bg-accent/5' : ''}>
+                  <TableRow className={regimeRecomendado?.regime === 'simples_nacional' ? 'bg-success/10 hover:bg-success/15' : ''}>
                     <TableCell className="text-xs font-medium">Simples Nacional</TableCell>
                     <TableCell className="text-xs text-right font-mono">
                       {simplesInfo?.elegivel ? `${simplesInfo.aliquotaEfetiva.toFixed(2)}%` : '—'}
@@ -335,7 +335,7 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'simples_nacional' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'simples_nacional' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
                       {regimeRecomendado?.regime === 'simples_nacional' && regimeAtual !== 'simples_nacional' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
@@ -343,7 +343,7 @@ export default function ApuracaoRegimeTributario() {
                   </TableRow>
 
                   {/* Presumido */}
-                  <TableRow className={regimeRecomendado?.regime === 'lucro_presumido' ? 'bg-accent/5' : ''}>
+                  <TableRow className={regimeRecomendado?.regime === 'lucro_presumido' ? 'bg-success/10 hover:bg-success/15' : ''}>
                     <TableCell className="text-xs font-medium">Lucro Presumido</TableCell>
                     <TableCell className="text-xs text-right font-mono">
                       {presumidoInfo?.elegivel ? `${presumidoInfo.cargaEfetiva.toFixed(2)}%` : '—'}
@@ -357,7 +357,7 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_presumido' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'lucro_presumido' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_presumido' && regimeAtual !== 'lucro_presumido' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
@@ -365,7 +365,7 @@ export default function ApuracaoRegimeTributario() {
                   </TableRow>
 
                   {/* Lucro Real */}
-                  <TableRow className={regimeRecomendado?.regime === 'lucro_real' ? 'bg-accent/5' : ''}>
+                  <TableRow className={regimeRecomendado?.regime === 'lucro_real' ? 'bg-success/10 hover:bg-success/15' : ''}>
                     <TableCell className="text-xs font-medium">Lucro Real</TableCell>
                     <TableCell className="text-xs text-right font-mono">
                       {lucroRealInfo ? `${lucroRealInfo.cargaEfetiva.toFixed(2)}%` : '—'}
@@ -377,7 +377,7 @@ export default function ApuracaoRegimeTributario() {
                       <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_real' && <Badge className="text-xs bg-accent/15 text-accent">Atual</Badge>}
+                      {regimeAtual === 'lucro_real' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
                       {regimeRecomendado?.regime === 'lucro_real' && regimeAtual !== 'lucro_real' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
@@ -388,8 +388,8 @@ export default function ApuracaoRegimeTributario() {
             </div>
 
             {simplesInfo?.faixa && simplesInfo.elegivel && (
-              <div className="mt-3 bg-accent/5 rounded-lg p-3 text-xs">
-                <p className="font-semibold text-accent mb-1">Simples Nacional — Detalhamento</p>
+              <div className="mt-3 bg-muted/30 rounded-lg p-3 text-xs">
+                <p className="font-semibold text-foreground mb-1">Simples Nacional — Detalhamento</p>
                 <p><strong>Faixa:</strong> {simplesInfo.faixa.faixa} ({formatBRL(simplesInfo.faixa.min)} a {formatBRL(simplesInfo.faixa.max)})</p>
                 <p><strong>Alíquota Nominal:</strong> {simplesInfo.faixa.aliquota}% | <strong>Dedução:</strong> {formatBRL(simplesInfo.faixa.deducao)}</p>
                 <p><strong>Alíquota Efetiva:</strong> {simplesInfo.aliquotaEfetiva.toFixed(2)}%</p>
@@ -398,8 +398,8 @@ export default function ApuracaoRegimeTributario() {
           </section>
 
           {/* Info box */}
-          <section className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex gap-3">
-            <Info className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+          <section className="bg-muted/30 border border-border/50 rounded-xl p-4 flex gap-3">
+            <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
             <div className="text-xs text-muted-foreground space-y-1">
               <p className="font-semibold text-foreground">Como funciona a integração com a Calculadora?</p>
               <p>• O valor do <strong>RBT12 ({formatBRL(rbt12)})</strong> será preenchido automaticamente no campo "Faturamento 12 meses" da Calculadora de Precificação.</p>

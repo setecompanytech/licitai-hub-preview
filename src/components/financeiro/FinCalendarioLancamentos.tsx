@@ -281,7 +281,7 @@ export default function FinCalendarioLancamentos({ tipo }: Props) {
                       } ${hoje ? "ring-2 ring-primary" : ""}`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-medium ${hoje ? "text-primary" : ""}`}>
+                        <span className={`text-xs font-medium ${hoje ? "text-foreground font-bold" : ""}`}>
                           {format(d, "d")}
                         </span>
                         {!foraMes && (

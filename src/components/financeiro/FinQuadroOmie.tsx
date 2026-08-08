@@ -259,7 +259,7 @@ function CardOmie({
 }) {
   const accent = tone === "success" ? "text-success"
     : tone === "danger" ? "text-destructive"
-    : "text-primary";
+    : "text-muted-foreground";
   return (
     <Card className={`group hover:shadow-md transition-shadow ${className ?? ""}`}>
       <CardContent className="p-4 flex flex-col h-full">

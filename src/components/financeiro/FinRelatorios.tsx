@@ -419,7 +419,7 @@ export default function FinRelatorios() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="w-4 h-4 text-primary" />
+            <Activity className="w-4 h-4 text-muted-foreground" />
             Parâmetros do Relatório
           </CardTitle>
           <CardDescription>

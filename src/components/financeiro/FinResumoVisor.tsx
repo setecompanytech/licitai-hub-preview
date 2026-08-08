@@ -128,7 +128,7 @@ export default function FinResumoVisor() {
       {/* Hero + gráfico */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Hero */}
-        <Card className="lg:col-span-1 overflow-hidden border-0 bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+        <Card className="lg:col-span-1 overflow-hidden border bg-gradient-to-br from-muted to-muted/60 text-foreground">
           <CardContent className="p-6 h-full flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
@@ -157,7 +157,7 @@ export default function FinResumoVisor() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
               Resumo para os próximos 10 dias
             </CardTitle>
           </CardHeader>
@@ -352,7 +352,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-primary" />
+          <Wallet className="w-4 h-4 text-muted-foreground" />
           Saldos por conta
           <Badge variant="secondary" className="ml-1 text-xs">{ativas.length} ativas</Badge>
         </CardTitle>
@@ -388,7 +388,7 @@ function SaldosPorConta({ contas, saldoTotal }: { contas: Array<{ id: string; no
                     {subtitulo && <div className="text-xs text-muted-foreground truncate">{subtitulo}</div>}
                     <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
                       <div
-                        className={negativo ? "h-full bg-destructive" : "h-full bg-primary"}
+                        className={negativo ? "h-full bg-destructive" : "h-full bg-muted-foreground"}
                         style={{ width: `${Math.min(100, Math.abs(pct))}%` }}
                       />
                     </div>

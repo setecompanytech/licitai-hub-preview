@@ -90,7 +90,7 @@ const GROUPS = [
 ] as const;
 
 const ACCENT_MAP: Record<string, { icon: string; bg: string; ring: string; bar: string }> = {
-  primary: { icon: "text-primary", bg: "bg-primary/10", ring: "ring-primary/30", bar: "bg-primary" },
+  primary: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
   blue: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
   amber: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
   emerald: { icon: "text-muted-foreground", bg: "bg-muted", ring: "ring-border", bar: "bg-muted-foreground/40" },
@@ -213,11 +213,11 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.08] via-card to-background">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-primary/10 blur-3xl"
+          className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-muted blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-muted/50 blur-3xl"
         />
         <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 p-5 md:p-6">
           {/* Saldo destaque */}
@@ -416,7 +416,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
               title="Favoritos"
               subtitle="Pinados por você"
               icon={Star}
-              iconClass="fill-accent text-accent"
+              iconClass="fill-muted-foreground text-muted-foreground"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
                 {favoriteItems.map((item, idx) => (
@@ -615,7 +615,7 @@ function ModuleRow({
       <div className={cn(
         "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200",
         "group-hover:scale-105",
-        item.highlight ? "bg-primary/15 text-primary" : cn(accent.bg, accent.icon),
+        item.highlight ? "bg-muted text-foreground" : cn(accent.bg, accent.icon),
       )}>
         <Icon className="w-4 h-4" />
       </div>
@@ -629,7 +629,7 @@ function ModuleRow({
               className={cn(
                 "text-xs px-1.5 py-0 h-4 shrink-0 font-medium",
                 (item.badge === "Novo" || item.badge.startsWith("Fase")) &&
-                  "bg-primary/10 text-primary border-primary/20",
+                  "bg-foreground text-background border-transparent hover:bg-foreground/90",
               )}
             >
               {item.badge}

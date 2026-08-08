@@ -315,7 +315,7 @@ export default function FinDemonstracoes() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-base">
-                <span className="flex items-center gap-2"><Scale className="w-5 h-5 text-primary" />Balanço Patrimonial</span>
+                <span className="flex items-center gap-2"><Scale className="w-5 h-5 text-muted-foreground" />Balanço Patrimonial</span>
                 <div className="flex gap-2">
                   <Badge variant="outline" className={calc.bp.balanceado ? "bg-success/10 text-success border-success/30" : "bg-destructive/10 text-destructive border-destructive/30"}>
                     {calc.bp.balanceado ? "✓ Balanceado" : "⚠ Desbalanceado"}

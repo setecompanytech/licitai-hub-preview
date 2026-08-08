@@ -205,8 +205,8 @@ const createTests = (userId: string): TestCase[] => [
 
 const planLabels: Record<string, { name: string; color: string }> = {
   basico: { name: 'Básico', color: 'bg-muted text-muted-foreground' },
-  profissional: { name: 'Profissional', color: 'bg-accent/15 text-accent' },
-  enterprise: { name: 'Enterprise', color: 'bg-primary/15 text-primary' },
+  profissional: { name: 'Profissional', color: 'bg-muted text-foreground' },
+  enterprise: { name: 'Enterprise', color: 'bg-muted text-foreground' },
 };
 
 export default function PlanoVerificacao() {
@@ -252,7 +252,7 @@ export default function PlanoVerificacao() {
     <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-accent" />
+          <Shield className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Verificação de Funcionalidades por Plano</h2>
         </div>
       </div>
@@ -306,7 +306,7 @@ export default function PlanoVerificacao() {
                 'flex items-center gap-3 p-3 rounded-lg border transition-all',
                 status === 'pass' && 'border-success/30 bg-success/5',
                 status === 'fail' && 'border-destructive/30 bg-destructive/5',
-                status === 'running' && 'border-accent/30 bg-accent/5',
+                status === 'running' && 'border-accent/40 bg-accent/5',
                 status === 'idle' && 'border-border/50 bg-muted/20',
               )}
             >

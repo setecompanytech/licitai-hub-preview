@@ -194,7 +194,7 @@ export default function FinPedidosAFaturar() {
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Total pendente</p>
-          <p className="text-xl font-bold text-primary">{fmt(total)}</p>
+          <p className="text-xl font-bold text-foreground">{fmt(total)}</p>
           <p className="text-xs text-muted-foreground">{rows.length} pedido(s)</p>
         </div>
       </div>
@@ -280,7 +280,7 @@ export default function FinPedidosAFaturar() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-primary" /> Lançar Conta a Receber
+              <DollarSign className="w-4 h-4 text-muted-foreground" /> Lançar Conta a Receber
             </DialogTitle>
           </DialogHeader>
           {faturando && (
@@ -298,7 +298,7 @@ export default function FinPedidosAFaturar() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Valor total</span>
-                  <span className="font-bold text-primary">{fmt(faturando.valor_total)}</span>
+                  <span className="font-bold text-foreground">{fmt(faturando.valor_total)}</span>
                 </div>
               </div>
 

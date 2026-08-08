@@ -233,7 +233,7 @@ export default function FinExportarOMIE() {
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-primary" /> Exportar para padrão OMIE (.xlsx)
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Exportar para padrão OMIE (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={(v) => { setEntidade(v as Entidade); setPreviewCount(null); }}>
               <TabsList>
@@ -248,7 +248,7 @@ export default function FinExportarOMIE() {
         <CardContent className="space-y-4">
           <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
             <p className="font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
               Compatível com reimportação no OMIE — mesmas colunas e formatação aceitas pela plataforma.
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">

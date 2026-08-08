@@ -18,7 +18,7 @@ export default function FinNFSe() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="w-5 h-5 text-primary" /> NFS-e Municipal
+            <Building2 className="w-5 h-5 text-muted-foreground" /> NFS-e Municipal
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Emissão e monitoramento de Notas Fiscais de Serviço Eletrônicas para 5.570 municípios brasileiros.

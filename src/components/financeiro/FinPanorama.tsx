@@ -49,7 +49,7 @@ export default function FinPanorama() {
 
       <section className="space-y-3 pt-2 border-t border-border/60">
         <div className="flex items-center gap-2">
-          <CalendarDays className="w-5 h-5 text-primary" />
+          <CalendarDays className="w-5 h-5 text-muted-foreground" />
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Calendário Financeiro</h2>
             <p className="text-xs text-muted-foreground">

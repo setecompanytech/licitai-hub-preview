@@ -139,7 +139,7 @@ export default function MfaEnrollment() {
     <>
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-accent" />
+          <Shield className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Autenticação em Dois Fatores (2FA/MFA)</h2>
         </div>
 
@@ -198,7 +198,7 @@ export default function MfaEnrollment() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-accent" />
+              <Shield className="w-5 h-5 text-muted-foreground" />
               Configurar Autenticação em Dois Fatores
             </DialogTitle>
             <DialogDescription>

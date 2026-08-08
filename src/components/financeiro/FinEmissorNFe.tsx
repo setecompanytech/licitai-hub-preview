@@ -1251,7 +1251,7 @@ export default function FinEmissorNFe() {
                             <TableCell className="max-w-[280px]">
                               <div className="flex items-start gap-1.5">
                                 {n.status === "processando" && <Loader2 className="w-3 h-3 mt-0.5 animate-spin text-muted-foreground shrink-0" />}
-                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-primary shrink-0" />}
+                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-success shrink-0" />}
                                 {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="w-3 h-3 mt-0.5 text-destructive shrink-0" />}
                                 <span className="text-xs text-muted-foreground line-clamp-2" title={motivoTexto}>{motivoTexto}</span>
                               </div>
@@ -1312,7 +1312,7 @@ export default function FinEmissorNFe() {
               <ol className="space-y-3">
                 {ETAPAS_EMISSAO.map((e, i) => (
                   <li key={e.id} className="flex gap-3 p-3 border rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">{i + 1}</div>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-sm font-semibold">{i + 1}</div>
                     <div>
                       <div className="font-medium">{e.titulo}</div>
                       <div className="text-sm text-muted-foreground">{e.descricao}</div>

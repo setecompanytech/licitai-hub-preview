@@ -716,7 +716,7 @@ export default function FinConciliacao() {
             <Card>
               <CardHeader className="py-3 px-5 border-b">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <FileCheck2 className="w-4 h-4 text-primary" />
+                  <FileCheck2 className="w-4 h-4 text-muted-foreground" />
                   Extratos importados
                   <Badge variant="outline" className="text-xs">{extratos?.length ?? 0}</Badge>
                   <span className="ml-auto text-xs font-normal text-muted-foreground">
@@ -751,7 +751,7 @@ export default function FinConciliacao() {
                         >
                           <div className="min-w-[220px] flex-1">
                             <div className="flex items-center gap-2">
-                              <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-success" : "text-primary"}`} />
+                              <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-success" : "text-muted-foreground"}`} />
                               <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-0.5 pl-6">
@@ -771,7 +771,7 @@ export default function FinConciliacao() {
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${concluido ? "bg-success" : "bg-primary"}`}
+                                className={`h-full rounded-full transition-all ${concluido ? "bg-success" : "bg-muted-foreground"}`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
@@ -851,7 +851,7 @@ export default function FinConciliacao() {
                   <ArrowLeft className="w-3.5 h-3.5 mr-1" />Todos os extratos
                 </Button>
                 <div className="flex items-center gap-2 mt-1">
-                  <FileCheck2 className="w-4 h-4 text-primary shrink-0" />
+                  <FileCheck2 className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-sm font-semibold truncate">{extratoAtivo?.arquivo_nome ?? "Extrato"}</span>
                 </div>
                 <div className="text-xs text-muted-foreground pl-6">
@@ -1021,7 +1021,7 @@ export default function FinConciliacao() {
           <CardHeader className="py-3 px-5 border-b">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
                 <CardTitle className="text-sm font-semibold">Sugestões de conciliação</CardTitle>
                 {sugestoes.length > 0 && (
                   <Badge variant="secondary" className="tabular-nums text-xs px-2">
@@ -1063,7 +1063,7 @@ export default function FinConciliacao() {
                 >
                   {conciliarAuto.isPending
                     ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />}
+                    : <Sparkles className="w-3.5 h-3.5 mr-1 text-muted-foreground" />}
                   Sugerir com IA
                 </Button>
 
@@ -1473,11 +1473,11 @@ export default function FinConciliacao() {
                           {/* Card de sugestão IA se já classificou */}
                           {aiClassifs[m.id] ? (
                             <div className="flex-1 min-w-0">
-                              <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                              <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-1.5">
-                                    <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    <span className="text-xs font-semibold text-primary">Sugestão IA</span>
+                                    <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-xs font-semibold text-foreground">Sugestão IA</span>
                                     <span className="text-xs text-muted-foreground bg-muted px-1 rounded tabular-nums">{aiClassifs[m.id].confianca}%</span>
                                   </div>
                                   <button
@@ -1553,7 +1553,7 @@ export default function FinConciliacao() {
                           ) : (
                           <>
                           {movSugs.length > 0 && (
-                            <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">
+                            <Badge variant="outline" className="text-xs border-border/60 text-foreground shrink-0">
                               <Sparkles className="w-3 h-3 mr-1" />{movSugs.length} sugestão
                             </Badge>
                           )}
@@ -1593,7 +1593,7 @@ export default function FinConciliacao() {
                                       )
                                     }
                                   >
-                                    <Sparkles className="w-3.5 h-3.5 text-primary mr-2 shrink-0" />
+                                    <Sparkles className="w-3.5 h-3.5 text-muted-foreground mr-2 shrink-0" />
                                     <span className="truncate flex-1">{lancSug.descricao}</span>
                                     <span className="ml-2 text-xs text-muted-foreground tabular-nums">{s.score}</span>
                                   </DropdownMenuItem>
@@ -1722,7 +1722,7 @@ function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
     score >= 90
       ? "bg-success"
       : score >= 75
-      ? "bg-primary"
+      ? "bg-success/60"
       : score >= 60
       ? "bg-warning"
       : "bg-destructive";
@@ -1742,7 +1742,7 @@ function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
       {metodo === "ia" && (
         <Badge
           variant="outline"
-          className="text-xs px-1 py-0 h-3.5 border-primary/40 text-primary gap-0.5 mt-0.5"
+          className="text-xs px-1 py-0 h-3.5 border-border/60 text-muted-foreground gap-0.5 mt-0.5"
         >
           <Sparkles className="w-2 h-2" /> IA
         </Badge>

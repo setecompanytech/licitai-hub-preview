@@ -79,7 +79,7 @@ export default function SegurancaConta() {
       {/* Alterar Senha */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Key className="w-5 h-5 text-accent" />
+          <Key className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Alterar Senha</h2>
         </div>
 
@@ -132,7 +132,7 @@ export default function SegurancaConta() {
       {/* Informações de Segurança */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-accent" />
+          <Shield className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Informações de Segurança</h2>
         </div>
 
@@ -167,7 +167,7 @@ export default function SegurancaConta() {
       {/* Log de Atividades de Autenticação */}
       <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Eye className="w-5 h-5 text-accent" />
+          <Eye className="w-5 h-5 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Atividades Recentes de Autenticação</h2>
         </div>
 

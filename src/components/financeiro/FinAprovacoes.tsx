@@ -86,7 +86,7 @@ export default function FinAprovacoes() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ShieldCheck className="w-5 h-5 text-primary" /> Aprovação de Pagamentos
+          <ShieldCheck className="w-5 h-5 text-muted-foreground" /> Aprovação de Pagamentos
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Workflow multi-nível com alçada por valor: até R$ 1.000 (Operacional) · até R$ 10.000 (Gerência) · acima (Diretoria).
