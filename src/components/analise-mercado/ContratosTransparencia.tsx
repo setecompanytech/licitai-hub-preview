@@ -96,7 +96,7 @@ export default function ContratosTransparencia() {
       {/* Filtros */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-          <Building2 className="w-4 h-4 text-accent" />
+          <Building2 className="w-4 h-4 text-muted-foreground" />
           Consulta Federal – Portal da Transparência
         </h3>
 
@@ -211,7 +211,7 @@ export default function ContratosTransparencia() {
                       </div>
                       <div className="text-right ml-4 shrink-0">
                         {item.valorInicial && (
-                          <p className="text-sm font-bold text-accent">{formatCurrency(item.valorInicial)}</p>
+                          <p className="text-sm font-bold text-foreground">{formatCurrency(item.valorInicial)}</p>
                         )}
                         {item.dataInicioVigencia && (
                           <p className="text-xs text-muted-foreground flex items-center gap-0.5 justify-end">
@@ -240,7 +240,7 @@ export default function ContratosTransparencia() {
                       </div>
                       <div className="text-right ml-4 shrink-0">
                         {item.valorEstimado && (
-                          <p className="text-sm font-bold text-accent">{formatCurrency(item.valorEstimado)}</p>
+                          <p className="text-sm font-bold text-foreground">{formatCurrency(item.valorEstimado)}</p>
                         )}
                         {item.dataAbertura && (
                           <p className="text-xs text-muted-foreground">{item.dataAbertura}</p>

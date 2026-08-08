@@ -71,7 +71,7 @@ export default function VerificacaoIdoneidade() {
     <div className="space-y-4">
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
-          <Shield className="w-4 h-4 text-accent" />
+          <Shield className="w-4 h-4 text-muted-foreground" />
           Verificação de Idoneidade – Portal da Transparência
         </h3>
         <p className="text-xs text-muted-foreground mb-4">

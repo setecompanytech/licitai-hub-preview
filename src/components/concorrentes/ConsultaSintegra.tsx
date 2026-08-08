@@ -38,7 +38,7 @@ function InfoField({ label, value, highlight }: { label: string; value: string; 
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm ${highlight ? 'font-semibold text-accent' : 'text-foreground'}`}>{value || '—'}</p>
+      <p className={`text-sm text-foreground ${highlight ? 'font-semibold' : ''}`}>{value || '—'}</p>
     </div>
   );
 }
@@ -89,7 +89,7 @@ export default function ConsultaSintegra() {
     <div className="space-y-4">
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-          <Building2 className="w-4 h-4 text-accent" />
+          <Building2 className="w-4 h-4 text-muted-foreground" />
           Consulta SINTEGRA – Inscrição Estadual
         </h3>
         <div className="flex gap-2">
@@ -127,7 +127,7 @@ export default function ConsultaSintegra() {
         <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm animate-fade-in space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-accent" /> Resultado SINTEGRA
+              <FileText className="w-4 h-4 text-muted-foreground" /> Resultado SINTEGRA
             </h3>
             <div className="flex items-center gap-2">
               <DropdownMenu>

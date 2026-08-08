@@ -158,10 +158,10 @@ export default function VerificadorDocumentos({ editalTexto, licitacaoId, licita
   const pctEncontrado = result ? Math.round((result.total_encontrados / Math.max(result.total_exigidos, 1)) * 100) : 0;
 
   return (
-    <Card className="border-accent/30 bg-gradient-to-br from-background to-accent/5">
+    <Card className="border-border/50">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bot className="w-5 h-5 text-accent" />
+          <Bot className="w-5 h-5 text-muted-foreground" />
           Conferência Documental por IA
         </CardTitle>
         <p className="text-xs text-muted-foreground">

@@ -55,7 +55,7 @@ const verificacaoStatusConfig = {
   regular: { label: 'Regular', icon: CheckCircle2, color: 'text-success' },
   irregular: { label: 'Irregular', icon: AlertCircle, color: 'text-destructive' },
   erro: { label: 'Erro', icon: WifiOff, color: 'text-muted-foreground' },
-  verificando: { label: 'Verificando', icon: Loader2, color: 'text-accent' },
+  verificando: { label: 'Verificando', icon: Loader2, color: 'text-muted-foreground' },
 };
 const emissaoStatusConfig = {
   emitida: { label: 'Emitida', icon: CheckCircle2, color: 'text-success', bg: 'border-success/30 bg-success/5' },
@@ -155,7 +155,7 @@ export default function CertidoesNegativas() {
       {/* Header */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
-          <Shield className="w-4 h-4 text-accent" />
+          <Shield className="w-4 h-4 text-muted-foreground" />
           Certidões Negativas – Verificação & Emissão Automática
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
@@ -194,13 +194,13 @@ export default function CertidoesNegativas() {
           </div>
         </div>
         {portaisRegionais.length > 0 && (
-          <div className="mt-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
-            <p className="text-xs font-medium text-accent mb-1 flex items-center gap-1">
+          <div className="mt-2 p-2 rounded-lg bg-muted border border-border">
+            <p className="text-xs font-medium text-foreground mb-1 flex items-center gap-1">
               <MapPin className="w-3 h-3" /> Portais regionais identificados ({portaisRegionais.length}):
             </p>
             <div className="flex flex-wrap gap-1">
               {portaisRegionais.map((p, i) => (
-                <Badge key={i} variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
+                <Badge key={i} variant="outline" className="text-xs bg-background text-muted-foreground border-border">
                   {p.tipo === 'estadual' ? '🏛️' : '🏙️'} {p.nome.split(' - ')[0]}
                   {p.requerLogin && ' 🔒'}
                 </Badge>
@@ -220,7 +220,7 @@ export default function CertidoesNegativas() {
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
           <Badge variant="outline" className="text-xs gap-1 bg-success/10 text-success border-success/30"><Wifi className="w-3 h-3" /> APIs Públicas</Badge>
-          <Badge variant="outline" className="text-xs gap-1 bg-accent/10 text-accent border-accent/30"><Globe className="w-3 h-3" /> Firecrawl (Scraping)</Badge>
+          <Badge variant="outline" className="text-xs gap-1 bg-muted text-muted-foreground border-border"><Globe className="w-3 h-3" /> Firecrawl (Scraping)</Badge>
           <Badge variant="outline" className="text-xs gap-1 bg-muted text-muted-foreground"><Bot className="w-3 h-3" /> IA (Extração)</Badge>
         </div>
         {erro && <div className="flex items-center gap-2 mt-3 text-sm text-destructive"><AlertTriangle className="w-4 h-4" /> {erro}</div>}
@@ -229,7 +229,7 @@ export default function CertidoesNegativas() {
       {/* Loading states */}
       {loading && (
         <div className="bg-card rounded-xl border border-border/50 p-8 shadow-sm text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-accent mb-3" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">Consultando APIs públicas em tempo real...</p>
           <div className="flex justify-center gap-3 mt-3">
             {['CEIS', 'CNEP', 'CEPIM', 'Receita', 'TST', 'FGTS'].map(f => (
@@ -240,13 +240,13 @@ export default function CertidoesNegativas() {
       )}
 
       {loadingEmissao && (
-        <div className="bg-card rounded-xl border border-accent/30 p-8 shadow-sm text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-accent mb-3" />
+        <div className="bg-card rounded-xl border border-border/50 p-8 shadow-sm text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-3" />
           <p className="text-sm font-medium text-foreground">Emitindo certidões nos portais oficiais...</p>
           <p className="text-xs text-muted-foreground mt-1">Preenchendo formulários e extraindo resultados via scraping</p>
           <div className="flex justify-center gap-3 mt-3">
             {['Receita Federal', 'TST', 'Caixa/FGTS', 'Transparência'].map(f => (
-              <Badge key={f} variant="outline" className="text-xs animate-pulse bg-accent/10 text-accent border-accent/30">{f}</Badge>
+              <Badge key={f} variant="outline" className="text-xs animate-pulse bg-muted text-muted-foreground border-border">{f}</Badge>
             ))}
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function CertidoesNegativas() {
                         </p>
                       )}
                       {r.dataEmissao && (
-                        <p className="text-xs text-accent">
+                        <p className="text-xs text-muted-foreground">
                           <Clock className="w-3 h-3 inline mr-0.5" />
                           Emitida: {new Date(r.dataEmissao).toLocaleString('pt-BR')}
                         </p>
@@ -381,10 +381,10 @@ export default function CertidoesNegativas() {
           {resultado && (
             <TabsContent value="verificar" className="space-y-4 animate-fade-in">
               {resultado.verificacoesReais && resultado.verificacoesReais.length > 0 && (
-                <div className="bg-card rounded-xl border border-accent/30 p-5 shadow-sm">
+                <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <Wifi className="w-4 h-4 text-accent" /> Verificações em Tempo Real
-                    <Badge variant="outline" className="text-xs ml-auto bg-accent/10 text-accent">
+                    <Wifi className="w-4 h-4 text-muted-foreground" /> Verificações em Tempo Real
+                    <Badge variant="outline" className="text-xs ml-auto bg-muted text-muted-foreground">
                       <Clock className="w-3 h-3 mr-0.5" />{new Date().toLocaleTimeString('pt-BR')}
                     </Badge>
                   </h3>
@@ -405,7 +405,7 @@ export default function CertidoesNegativas() {
                         </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs">
                           <p className="text-xs font-semibold">{v.fonte}</p>
                           <p className="text-xs text-muted-foreground mt-1">{v.detalhes}</p>
-                          {v.url && <p className="text-xs text-accent mt-1">🔗 {v.url}</p>}
+                          {v.url && <p className="text-xs text-muted-foreground mt-1">🔗 {v.url}</p>}
                         </TooltipContent></Tooltip></TooltipProvider>
                       );
                     })}
@@ -458,7 +458,7 @@ export default function CertidoesNegativas() {
                   <div className="mt-3 pt-3 border-t border-border/30">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Recomendações:</p>
                     <ul className="space-y-1">{resultado.recomendacoes.map((r, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5"><span className="text-accent mt-0.5">→</span> {r}</li>
+                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5"><span className="text-muted-foreground mt-0.5">→</span> {r}</li>
                     ))}</ul>
                   </div>
                 )}
@@ -474,9 +474,9 @@ export default function CertidoesNegativas() {
                       const st = statusConfig[cert.statusProvavel] || statusConfig.verificar;
                       const Icon = st.icon;
                       return (
-                        <div key={i} className="bg-card rounded-xl border-2 border-accent/20 p-4 shadow-sm hover:shadow-md transition-shadow relative">
+                        <div key={i} className="bg-card rounded-xl border-2 border-border p-4 shadow-sm hover:shadow-md transition-shadow relative">
                           <div className="absolute top-2 right-2">
-                            <Badge className="text-xs bg-accent/15 text-accent border-accent/30 gap-0.5"><Wifi className="w-2.5 h-2.5" /> REAL</Badge>
+                            <Badge className="text-xs bg-muted text-muted-foreground border-border gap-0.5"><Wifi className="w-2.5 h-2.5" /> REAL</Badge>
                           </div>
                           <h4 className="text-xs font-semibold leading-tight pr-14 mb-2">{cert.nome}</h4>
                           <Badge variant="outline" className={`${st.className} text-xs mb-2`}><Icon className="w-3 h-3 mr-0.5" /> {st.label}</Badge>
@@ -484,7 +484,7 @@ export default function CertidoesNegativas() {
                           <div className="text-xs text-muted-foreground space-y-1">
                             {cert.validadeDias > 0 && <p>Validade: <span className="font-medium text-foreground">{cert.validadeDias} dias</span></p>}
                             <p className="line-clamp-3">{cert.observacoes}</p>
-                            {cert.dataVerificacao && <p className="text-accent"><Clock className="w-3 h-3 inline mr-0.5" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}</p>}
+                            {cert.dataVerificacao && <p className="text-muted-foreground"><Clock className="w-3 h-3 inline mr-0.5" />Verificado: {new Date(cert.dataVerificacao).toLocaleString('pt-BR')}</p>}
                           </div>
                           {cert.url && cert.url !== '#' && (
                             <a href={cert.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-2 text-xs text-accent hover:underline">

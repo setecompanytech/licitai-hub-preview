@@ -98,7 +98,7 @@ export default function CertificadoDigital() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-              <Key className="w-4 h-4 text-accent" /> Adicionar Certificado Digital A1
+              <Key className="w-4 h-4 text-muted-foreground" /> Adicionar Certificado Digital A1
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-1">
@@ -113,7 +113,7 @@ export default function CertificadoDigital() {
                 onClick={() => fileRef.current?.click()}
               >
                 {file
-                  ? <p className="text-sm font-medium text-accent">{file.name}</p>
+                  ? <p className="text-sm font-medium text-foreground">{file.name}</p>
                   : <><Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground" /><p className="text-xs text-muted-foreground">Clique para selecionar</p></>
                 }
               </div>
@@ -155,7 +155,7 @@ export default function CertificadoDigital() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-accent" /> Certificado Digital
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" /> Certificado Digital
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Usado para assinar e emitir NFS-e via Prefeitura de Belém (ABRASFv2)

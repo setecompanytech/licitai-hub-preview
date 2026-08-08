@@ -157,7 +157,7 @@ function DatePickerBtn({ value, onChange, placeholder }: {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs transition-colors hover:bg-muted/50 ${value ? 'text-foreground border-accent/60' : 'text-muted-foreground'}`}>
-          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-accent" />
+          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
           {label}
         </button>
       </PopoverTrigger>
@@ -291,7 +291,7 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
                     className={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 border-b last:border-0 transition-colors ${item.produto_id === p.id ? 'bg-accent/20' : ''}`}
                     onClick={() => selectProd(p)}
                   >
-                    <span className="font-medium text-accent mr-2">{p.codigo ?? '—'}</span>
+                    <span className="font-medium text-foreground mr-2">{p.codigo ?? '—'}</span>
                     <span>{p.descricao}</span>
                     <span className="ml-2 text-muted-foreground">({p.unidade})</span>
                     {p.preco_venda != null && p.preco_venda > 0 && (
@@ -1069,7 +1069,7 @@ export default function PedidosOmie() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Valor total</span>
-                <span className="font-semibold text-primary">
+                <span className="font-semibold text-foreground">
                   {faturadoPedido.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
@@ -1165,9 +1165,9 @@ export default function PedidosOmie() {
         <div className="grid grid-cols-2 gap-3 mt-2">
           <button
             onClick={() => openNovo('compra')}
-            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
+            className="flex flex-col items-center gap-3 p-5 border-2 border-accent/40 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
           >
-            <ShoppingBag className="w-9 h-9 text-accent" />
+            <ShoppingBag className="w-9 h-9 text-muted-foreground" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Compra</p>
               <p className="text-xs text-muted-foreground mt-0.5">Vincular fornecedor</p>
@@ -1175,9 +1175,9 @@ export default function PedidosOmie() {
           </button>
           <button
             onClick={() => openNovo('venda')}
-            className="flex flex-col items-center gap-3 p-5 border-2 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
+            className="flex flex-col items-center gap-3 p-5 border-2 border-accent/40 rounded-xl hover:border-accent hover:bg-accent/10 transition-all"
           >
-            <ShoppingCart className="w-9 h-9 text-accent" />
+            <ShoppingCart className="w-9 h-9 text-muted-foreground" />
             <div className="text-center">
               <p className="font-semibold text-sm">Pedido de Venda</p>
               <p className="text-xs text-muted-foreground mt-0.5">Vincular cliente</p>
@@ -1194,7 +1194,7 @@ export default function PedidosOmie() {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
-            <Paperclip className="w-4 h-4 text-accent" />
+            <Paperclip className="w-4 h-4 text-muted-foreground" />
             Anexos — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
@@ -1210,7 +1210,7 @@ export default function PedidosOmie() {
           </div>
           {anexosLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-accent" />
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : anexosList.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm border rounded-md border-dashed">
@@ -1261,14 +1261,14 @@ export default function PedidosOmie() {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
-            <History className="w-4 h-4 text-accent" />
+            <History className="w-4 h-4 text-muted-foreground" />
             Histórico — Pedido Nº {editingNum}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {!historicoData ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-accent" />
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <>
@@ -1388,15 +1388,15 @@ export default function PedidosOmie() {
           {/* Somatórios */}
           <div className="ml-auto flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <ShoppingBag className="w-3.5 h-3.5 text-accent shrink-0" />
+              <ShoppingBag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground">Compras:</span>
-              <span className="text-xs font-semibold text-accent">R$ {fmtM(totalCompras)}</span>
+              <span className="text-xs font-semibold text-foreground">R$ {fmtM(totalCompras)}</span>
             </div>
             <div className="w-px h-4 bg-border" />
             <div className="flex items-center gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5 text-info shrink-0" />
+              <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground">Vendas:</span>
-              <span className="text-xs font-semibold text-info">R$ {fmtM(totalVendas)}</span>
+              <span className="text-xs font-semibold text-foreground">R$ {fmtM(totalVendas)}</span>
             </div>
           </div>
         </div>
@@ -1435,11 +1435,11 @@ export default function PedidosOmie() {
                       <td className="py-2 px-3 font-medium text-xs">#{p.numero}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${p.tipo === 'venda' ? 'border-info/30 text-info' : 'border-accent/30 text-accent'}`}>
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 border-border text-muted-foreground">
                             {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                           </Badge>
                           {p.contrato_id && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 border-border text-muted-foreground">
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
                               Contrato
                             </Badge>
                           )}
@@ -1462,7 +1462,7 @@ export default function PedidosOmie() {
                             onClick={() => openEdit(p)}
                             className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            <Pencil className="w-3.5 h-3.5 text-accent" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(p.id)}
@@ -1534,11 +1534,11 @@ export default function PedidosOmie() {
                               <span className="text-xs font-semibold text-muted-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className={`text-xs px-1 py-0 ${p.tipo === 'venda' ? 'border-info/30 text-info' : 'border-accent/30 text-accent'}`}>
+                              <Badge variant="outline" className="text-xs px-1 py-0 border-border text-muted-foreground">
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="outline" className="text-xs px-1 py-0 border-border text-muted-foreground">
+                                <Badge variant="secondary" className="text-xs px-1 py-0">
                                   Contrato
                                 </Badge>
                               )}
@@ -1570,7 +1570,7 @@ export default function PedidosOmie() {
                               className="w-full text-left text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted/50"
                               onClick={() => { setKanbanMenu(null); openEdit(p); }}
                             >
-                              <Pencil className="w-3 h-3 text-accent" /> Editar
+                              <Pencil className="w-3 h-3 text-muted-foreground" /> Editar
                             </button>
                             {KANBAN_STATUS.filter(s => s.key !== p.status).map(s => (
                               <button key={s.key}
@@ -1609,7 +1609,7 @@ export default function PedidosOmie() {
                   )}
                   {colIdx === 2 && (
                     <button className="w-full text-center text-xs py-1.5 rounded-md border text-muted-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1">
-                      <Zap className="w-3 h-3 text-accent" /> Faturar Todos
+                      <Zap className="w-3 h-3" /> Faturar Todos
                     </button>
                   )}
                   {colIdx === 3 && (
@@ -1901,7 +1901,7 @@ export default function PedidosOmie() {
                           onClick={() => setSelectedItem(isSel ? null : item._key)}
                           onDoubleClick={() => { setEditingItem(item); setItemDialogOpen(true); }}
                         >
-                          <td className="py-1.5 px-2 text-accent font-medium">{item.codigo_produto || '—'}</td>
+                          <td className="py-1.5 px-2 text-foreground font-medium">{item.codigo_produto || '—'}</td>
                           <td className="py-1.5 px-2">{item.descricao}</td>
                           <td className="py-1.5 px-2 text-center">{item.quantidade} {item.unidade}</td>
                           <td className="py-1.5 px-2 text-muted-foreground text-xs">{item.local_estoque}</td>
@@ -2059,9 +2059,9 @@ export default function PedidosOmie() {
           </Tabs>
 
           {/* Bottom status bar */}
-          <div className="border-t px-4 py-2 bg-accent/10 border-accent/30 shrink-0">
-            <p className="text-xs text-accent flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+          <div className="border-t px-4 py-2 bg-muted border-border shrink-0">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />
               {form.previsao_faturamento
                 ? `Previsão de faturamento: ${fmtDateBR(form.previsao_faturamento)}`
                 : 'Sem previsão definida'}
@@ -2077,7 +2077,7 @@ export default function PedidosOmie() {
                 className={`w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors
                   ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}
               >
-                <Icon className="w-4 h-4 text-accent shrink-0" />
+                <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
                 <span className="text-xs">{label}</span>
                 {loading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
               </button>

@@ -32,7 +32,7 @@ function InfoField({ label, value, highlight }: { label: string; value: string; 
   return (
     <div>
       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm ${highlight ? 'font-semibold text-accent' : 'text-foreground'}`}>{value}</p>
+      <p className={`text-sm text-foreground ${highlight ? 'font-semibold' : ''}`}>{value}</p>
     </div>
   );
 }
@@ -76,7 +76,7 @@ export default function ConsultaCNPJ() {
     <div className="space-y-4">
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-          <Search className="w-4 h-4 text-accent" />
+          <Search className="w-4 h-4 text-muted-foreground" />
           Consulta de CNPJ – Receita Federal (BrasilAPI)
         </h3>
 
@@ -114,7 +114,7 @@ export default function ConsultaCNPJ() {
         <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm animate-fade-in space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
               Resultado da Consulta
             </h3>
             <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export default function ConsultaCNPJ() {
               </h4>
               <div className="flex flex-wrap gap-2">
                 {resultado.cnaesSecundarios.map((cnae, i) => (
-                  <Badge key={i} variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                  <Badge key={i} variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
                     {cnae}
                   </Badge>
                 ))}

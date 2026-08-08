@@ -142,7 +142,7 @@ export default function MergeDocumentos() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <FileArchive className="w-5 h-5 text-accent" />
+          <FileArchive className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold text-sm">Juntar Documentos</h3>
           <Badge variant="outline" className="text-xs">{arquivos.length} arquivo(s)</Badge>
         </div>
@@ -190,7 +190,7 @@ export default function MergeDocumentos() {
             <div key={arq.id} className="flex items-center gap-3 px-4 py-3">
               <GripVertical className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
               <span className="text-xs font-mono text-muted-foreground w-6">{index + 1}.</span>
-              <FileText className="w-4 h-4 text-accent flex-shrink-0" />
+              <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{arq.nome}</p>
                 <p className="text-xs text-muted-foreground">{arq.tamanho}</p>

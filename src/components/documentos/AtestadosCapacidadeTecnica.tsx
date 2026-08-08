@@ -420,7 +420,7 @@ export default function AtestadosCapacidadeTecnica() {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
-          <FolderOpen className="w-4 h-4 text-accent" />
+          <FolderOpen className="w-4 h-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Atestados de Capacidade Técnica</h3>
           <Badge variant="outline" className="text-xs">Art. 67</Badge>
         </div>
@@ -508,8 +508,8 @@ export default function AtestadosCapacidadeTecnica() {
             return (
               <div key={doc.id} className="px-5 py-3 flex items-start justify-between hover:bg-muted/20 transition-colors">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Icon className="w-4 h-4 text-accent" />
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -569,7 +569,7 @@ export default function AtestadosCapacidadeTecnica() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-accent" />
+              <FileText className="w-5 h-5 text-muted-foreground" />
               Adicionar Atestado de Capacidade Técnica
             </DialogTitle>
           </DialogHeader>
@@ -657,8 +657,8 @@ export default function AtestadosCapacidadeTecnica() {
 
             {/* Extracted data display */}
             {extractedData && (
-              <div className="space-y-2 p-3 bg-accent/5 rounded-lg border border-accent/20">
-                <p className="text-xs font-semibold text-accent flex items-center gap-1">
+              <div className="space-y-2 p-3 bg-muted rounded-lg border border-border">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
                   <Bot className="w-3 h-3" /> Dados Extraídos pela IA
                 </p>
                 <div>

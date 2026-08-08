@@ -342,9 +342,9 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Scale className="w-5 h-5 text-accent" />
+        <Scale className="w-5 h-5 text-muted-foreground" />
         <h3 className="font-semibold text-sm">Análise Jurídico-Contábil de Concorrente</h3>
-        <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/20">
+        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
           Lei 14.133/2021
         </Badge>
       </div>
@@ -387,8 +387,8 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           Edital da Licitação (permite cruzamento de exigências)
         </label>
         {editalFile ? (
-          <div className="bg-card rounded-xl border border-accent/30 flex items-center gap-3 px-4 py-3">
-            <BookOpen className="w-4 h-4 text-accent shrink-0" />
+          <div className="bg-card rounded-xl border border-border/50 flex items-center gap-3 px-4 py-3">
+            <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{editalFile.nome}</p>
               <p className="text-xs text-muted-foreground">{formatSize(editalFile.tamanho)}</p>
@@ -406,9 +406,9 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           <button
             type="button"
             onClick={() => editalRef.current?.click()}
-            className="w-full border border-dashed border-accent/40 rounded-xl p-4 flex items-center gap-3 hover:border-accent hover:bg-accent/5 transition-colors"
+            className="w-full border border-dashed border-border rounded-xl p-4 flex items-center gap-3 hover:border-accent hover:bg-accent/5 transition-colors"
           >
-            <Upload className="w-5 h-5 text-accent" />
+            <Upload className="w-5 h-5 text-muted-foreground" />
             <div className="text-left">
               <span className="text-sm font-medium text-foreground block">Anexar Edital (PDF/DOCX)</span>
               <span className="text-xs text-muted-foreground">
@@ -460,9 +460,9 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
           {arquivos.map((arq) => (
             <div key={arq.id} className="flex items-center gap-3 px-4 py-3">
               {arq.nome.endsWith('.zip') ? (
-                <FileArchive className="w-4 h-4 text-accent shrink-0" />
+                <FileArchive className="w-4 h-4 text-muted-foreground shrink-0" />
               ) : (
-                <FileText className="w-4 h-4 text-accent shrink-0" />
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{arq.nome}</p>
@@ -537,7 +537,7 @@ Este relatório possui finalidade meramente informativa e não substitui parecer
 
       {analisando && !resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-8 flex flex-col items-center gap-3 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           <p className="text-sm font-medium">{progressMsg || 'Analisando documentos...'}</p>
           <p className="text-xs text-muted-foreground">
             A IA está realizando leitura integral dos documentos, extração de dados concretos e análise

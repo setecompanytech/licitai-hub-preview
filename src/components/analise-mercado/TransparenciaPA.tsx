@@ -270,7 +270,7 @@ export default function TransparenciaPA({ portal }: Props) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
-            <Building2 className="w-4 h-4 text-accent" />
+            <Building2 className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Órgãos</span>
           </div>
           <p className="text-2xl font-bold">{orgaosUnicos}</p>
@@ -278,21 +278,21 @@ export default function TransparenciaPA({ portal }: Props) {
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
-            <FileSpreadsheet className="w-4 h-4 text-accent" />
+            <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Total Empenhos</span>
           </div>
           <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-accent" />
+            <TrendingUp className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Volume Total</span>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingDown className="w-4 h-4 text-accent" />
+            <TrendingDown className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Ticket Médio</span>
           </div>
           <p className="text-2xl font-bold">{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
@@ -375,7 +375,7 @@ export default function TransparenciaPA({ portal }: Props) {
               {dadosFiltrados.map((d, i) => (
                 <div key={d.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-accent w-8 text-center">{i + 1}º</span>
+                    <span className="text-lg font-bold text-foreground w-8 text-center">{i + 1}º</span>
                     <div>
                       <p className="text-sm font-medium">{d.orgao}</p>
                       <div className="flex gap-2">

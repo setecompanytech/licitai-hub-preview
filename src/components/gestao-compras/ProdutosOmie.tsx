@@ -688,7 +688,7 @@ export default function ProdutosOmie() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="bg-accent/10 border-t">
+                    <tr className="bg-muted/30 border-t">
                       <td className="py-2 px-3 font-medium">PADRAO - Local de Estoque Padrão</td>
                       <td className="py-2 px-3 text-center">0 {form.unidade}</td>
                       <td className="py-2 px-3 text-center">0,00</td>
@@ -977,7 +977,7 @@ export default function ProdutosOmie() {
                       <td className="py-2 px-2 font-medium">{p.descricao}</td>
                       <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo ?? '—'}</td>
                       <td className="py-2 px-2 text-xs text-muted-foreground italic">{p.categoria ?? <span className="opacity-40">{'<não informado>'}</span>}</td>
-                      <td className="py-2 px-2 text-xs text-accent font-medium">{p.ncm ?? '—'}</td>
+                      <td className="py-2 px-2 text-xs text-foreground font-medium">{p.ncm ?? '—'}</td>
                       <td className="py-2 px-2 text-xs text-muted-foreground">{p.cest ?? <span className="opacity-40">—</span>}</td>
                       <td className="py-2 px-2 text-xs text-muted-foreground">{p.codigo_ean ?? <span className="opacity-40">—</span>}</td>
                       <td className="py-2 px-2 text-xs text-right">{p.preco_venda != null && p.preco_venda > 0 ? `R$ ${fmtPreco(p.preco_venda)}` : <span className="text-muted-foreground">—</span>}</td>
@@ -1008,7 +1008,7 @@ export default function ProdutosOmie() {
                   { icon: ClipboardList, label: 'Tarefas', action: () => {}, disabled: true },
                 ].map(({ icon: Icon, label, action, disabled }) => (
                   <button key={label} onClick={action} disabled={disabled} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted/50'}`}>
-                    <Icon className="w-4 h-4 text-accent shrink-0" /><span>{label}</span>
+                    <Icon className="w-4 h-4 text-muted-foreground shrink-0" /><span>{label}</span>
                   </button>
                 ))}
                 <div className="border-t pt-1">
