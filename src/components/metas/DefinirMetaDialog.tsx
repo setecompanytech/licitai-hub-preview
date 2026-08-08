@@ -62,7 +62,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary" />
+            <Target className="w-4 h-4 text-muted-foreground" />
             {metaAtual ? 'Editar meta' : 'Definir meta'}
           </DialogTitle>
           <DialogDescription>

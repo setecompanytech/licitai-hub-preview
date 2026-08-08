@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useMetasComercial';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { formatBRL, formatPercent } from '@/lib/financeiro/formatters';
 import { paraCentavos, paraReais } from '@/lib/metas/dinheiro';
 import { apurarTickets } from '@/lib/metas/tickets';
@@ -327,6 +328,11 @@ export default function PainelMetas() {
             />
           </div>
 
+          {/* EXCEÇÃO DOCUMENTADA à regra de cor (decisão de 2026-08-08): a
+              barra segue no laranja da marca. Medidor de progresso não é ação
+              nem estado — as duas categorias que a régua governa. Ligá-la à
+              severidade que o painel já calcula seria melhor, mas é mudança de
+              comportamento; está registrado em docs/pendencias.md. */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -343,7 +349,7 @@ export default function PainelMetas() {
           <Card>
             <CardHeader className="py-3 px-5 border-b">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-primary" />
+                <Gauge className="w-4 h-4 text-muted-foreground" />
                 O que falta para bater a meta
               </CardTitle>
             </CardHeader>
@@ -394,9 +400,16 @@ export default function PainelMetas() {
                 <span className="font-semibold tabular-nums">
                   {formatBRL(paraReais(analise.projecao.projecaoFimMesCent))}
                 </span>
+                {/* Bater a meta é ESTADO, não ação: verde de sucesso quando a
+                    projeção alcança, contorno neutro quando não — o laranja
+                    fica reservado a botão/link/foco (regra da auditoria). */}
                 <Badge
-                  variant={analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent ? 'default' : 'outline'}
-                  className="text-xs"
+                  variant="outline"
+                  className={cn(
+                    'text-xs',
+                    analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent &&
+                      'border-success/40 bg-success/10 text-success',
+                  )}
                 >
                   {analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent
                     ? 'Bate a meta no ritmo atual'
@@ -410,7 +423,7 @@ export default function PainelMetas() {
           <Card>
             <CardHeader className="py-3 px-5 border-b">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Info className="w-4 h-4 text-primary" />
+                <Info className="w-4 h-4 text-muted-foreground" />
                 Premissas do cálculo
                 <Badge
                   variant={analise.projecao.premissas.confianca === 'alta' ? 'default' : 'outline'}

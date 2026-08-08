@@ -6,6 +6,28 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-08] Barra de progresso das Metas ligada à severidade
+
+**Hoje:** a barra de "Progresso" do painel de Metas é laranja fixo, em qualquer situação —
+exceção documentada à regra de cor, decidida em 2026-08-08 (medidor não é ação nem estado,
+as duas categorias que a régua governa). O comentário está em `PainelMetas.tsx`, na própria
+barra.
+
+**Estado final desejado:** colorir a barra pela severidade que o painel **já calcula**
+(`avaliarAlerta` devolve `nenhum`/`atencao`/`risco`/`critico`): verde ao atingir a meta,
+âmbar/vermelho quando o mês entra em risco. Hoje o alerta e a barra contam a mesma história
+com pesos visuais diferentes — a barra fica igualmente laranja com 24% ou com 98%.
+
+**Por que não entrou na auditoria:** mudança de **comportamento**, não de cor — a barra
+passaria a depender da lógica de alerta. E o módulo de Metas é o mais validado do sistema
+(169 testes, motor conferido contra o calendário); mexer na semântica dele exige ciclo
+próprio, com teste. Mesmo critério aplicado ao truncamento dos cards e ao AppTopNav.
+
+**Ao implementar:** a severidade já está em `analise.severidade` no mesmo `useMemo`; o
+`Progress` do shadcn aceita `className` no indicador. Cobrir com teste os quatro estados.
+
+---
+
 ## [2026-08-08] PRIORIZADA — estratégia de espaço em 1280px (barra superior + cards)
 
 Dois sintomas, **uma causa só**: nenhum dos dois containers tem estratégia de espaço, e ambos

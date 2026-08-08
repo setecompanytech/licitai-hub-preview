@@ -19,7 +19,7 @@ export default function MetasComercial() {
     <AppLayout>
       <div className="mb-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Target className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+          <Target className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
           Metas do Comercial
         </h1>
         <p className="text-base text-muted-foreground mt-1">

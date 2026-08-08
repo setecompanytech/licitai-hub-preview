@@ -47,7 +47,7 @@ export default function ParametrizacaoMetas() {
       <Card>
         <CardHeader className="py-3 px-5 border-b">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary" />
+            <Target className="w-4 h-4 text-muted-foreground" />
             Valores-alvo por modalidade
             <span className="ml-auto text-sm font-normal text-muted-foreground">
               Referência de meta usada nas projeções
@@ -185,7 +185,7 @@ export default function ParametrizacaoMetas() {
       <Card>
         <CardHeader className="py-3 px-5 border-b">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Bell className="w-4 h-4 text-primary" />
+            <Bell className="w-4 h-4 text-muted-foreground" />
             Alertas e histórico
           </CardTitle>
         </CardHeader>
