@@ -150,7 +150,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-foreground text-xs sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
@@ -160,7 +160,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             {profileOpen && (
               <div className="absolute right-0 top-11 w-[300px] bg-card border border-border rounded-xl shadow-xl z-50 animate-fade-in overflow-hidden">
                 <div className="px-5 pt-5 pb-3 text-center border-b border-border">
-                  <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold mx-auto mb-3">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-foreground text-xl font-bold mx-auto mb-3">
                     {initials}
                   </div>
                   <p className="font-semibold text-foreground text-sm truncate">{userName}</p>
