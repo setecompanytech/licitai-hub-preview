@@ -1,5 +1,25 @@
 # Arquitetura — Módulo Financeiro Praefectus
 
+> ## ⚠️ OBSOLETO — NÃO SEGUIR (marcado em 2026-08-08)
+>
+> Este documento é uma **spec pré-implementação** que nunca foi conciliada com o que foi
+> construído. Seguir o que está aqui produz código errado. Divergências verificadas:
+>
+> - **RLS por `org_id`** (seções 6 e 7). `org_id` aparece **zero** vezes em `src/` e em
+>   `supabase/migrations/`. A produção usa `empresa_id` + `public.is_empresa_member(auth.uid(), empresa_id)`,
+>   como manda o `CLAUDE.md`. Esta é a divergência perigosa: um agente que siga o doc escreve
+>   policy que não protege nada.
+> - **Caminhos de arquivo** — o doc manda em `src/pages/financeiro/`, que **não existe**. Os
+>   componentes vivem em `src/components/financeiro/`.
+> - **`docs/financeiro/00-README.md`** indexa `02-supabase-migration.sql`, `04-ROADMAP.md` e um
+>   diretório `edge-functions/` que nunca foram commitados.
+>
+> O que **sobrevive** e continua valendo: o módulo financeiro tem schema próprio `financeiro_*`
+> (parágrafo abaixo) — é a razão de o épico tributário não criar nada com prefixo `fin_`.
+>
+> Fonte de verdade atual: `src/integrations/supabase/types.ts`, `supabase/migrations/` e
+> `docs/epico-motor-precificacao-tributaria.md`.
+
 ## 1. Visão geral
 
 O módulo financeiro do Praefectus é uma camada autônoma dentro da plataforma, com schema próprio (`financeiro_*`), Edge Functions dedicadas e UI organizada em sub-módulos. Foi desenhado para:
