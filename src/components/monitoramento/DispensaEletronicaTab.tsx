@@ -16,8 +16,8 @@ import {
 
 const categoriaConfig: Record<PortalCategoria, { label: string; className: string; icon: typeof Globe }> = {
   federal: { label: 'Federal', className: 'bg-info/15 text-info border-info/30', icon: Building2 },
-  estadual: { label: 'Estadual', className: 'bg-accent/15 text-accent border-accent/30', icon: MapPin },
-  plataforma: { label: 'Plataforma', className: 'bg-primary/15 text-primary border-primary/30', icon: Globe },
+  estadual: { label: 'Estadual', className: 'bg-secondary text-secondary-foreground border-border', icon: MapPin },
+  plataforma: { label: 'Plataforma', className: 'bg-muted text-foreground border-border', icon: Globe },
   municipal: { label: 'Municipal', className: 'bg-warning/15 text-warning border-warning/30', icon: Building2 },
 };
 
@@ -29,7 +29,7 @@ function PortalCard({ portal }: { portal: PortalCompras }) {
     <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Globe className="w-4 h-4 text-accent shrink-0" />
+          <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
           <h3 className="font-semibold text-sm truncate">{portal.nomeAbreviado}</h3>
         </div>
         <div className="flex gap-1 shrink-0">
@@ -138,8 +138,8 @@ export default function DispensaEletronicaTab() {
   return (
     <div className="space-y-6">
       {/* Info Banner */}
-      <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex items-start gap-3">
-        <Info className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+      <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-start gap-3">
+        <Info className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">Dispensa Eletrônica — Lei 14.133/2021 (Valores 2026)</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -162,23 +162,23 @@ export default function DispensaEletronicaTab() {
       {/* Stats */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         <div className="stat-card text-center">
-          <p className="text-lg sm:text-2xl font-bold text-accent">{stats.total}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.total}</p>
           <p className="text-xs text-muted-foreground">Portais com Dispensa</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-lg sm:text-2xl font-bold text-info">{stats.federais}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.federais}</p>
           <p className="text-xs text-muted-foreground">Federais</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-lg sm:text-2xl font-bold text-primary">{stats.estaduais}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.estaduais}</p>
           <p className="text-xs text-muted-foreground">Estaduais</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-lg sm:text-2xl font-bold text-warning">{stats.plataformas}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.plataformas}</p>
           <p className="text-xs text-muted-foreground">Plataformas</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-lg sm:text-2xl font-bold text-success">{stats.comApi}</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">{stats.comApi}</p>
           <p className="text-xs text-muted-foreground">Com API</p>
         </div>
         <div className="stat-card text-center">
@@ -249,7 +249,7 @@ export default function DispensaEletronicaTab() {
       {/* UF Coverage Map */}
       <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-accent" />
+          <MapPin className="w-4 h-4 text-muted-foreground" />
           Cobertura por Unidade Federativa
         </h3>
         <div className="space-y-4">

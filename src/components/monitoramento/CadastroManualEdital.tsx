@@ -223,7 +223,7 @@ export default function CadastroManualEdital({ open, onOpenChange, onSuccess }: 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-accent" />
+            <Upload className="w-5 h-5 text-muted-foreground" />
             Cadastro Manual de Edital
           </DialogTitle>
           <DialogDescription>

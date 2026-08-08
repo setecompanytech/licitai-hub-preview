@@ -120,7 +120,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
               >
                 <span className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-accent/10">
                   {isLoading
-                    ? <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                    ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     : <Icon className="w-4 h-4 text-foreground group-hover:text-accent" />}
                 </span>
                 <div className="flex-1 min-w-0">

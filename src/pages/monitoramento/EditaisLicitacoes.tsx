@@ -221,7 +221,7 @@ const CardEdital = ({
             </tr>
             <tr>
               <td className="py-0.5 text-foreground font-bold">Abertura da Proposta:</td>
-              <td colSpan={3} className="py-0.5 text-primary font-semibold">
+              <td colSpan={3} className="py-0.5 text-foreground font-semibold">
                 {dataAbertura
                   ? `em ${fmtData(edital.data_abertura_proposta)}, no endereço: `
                   : "—"}
@@ -306,17 +306,17 @@ const ModalItensDownload = ({
         {/* Header do modal */}
         <div className="bg-[hsl(var(--sidebar-background))] p-3.5 px-5 flex items-center justify-between rounded-t-lg">
           <div>
-            <div className="text-white text-sm font-bold tracking-wide">
+            <div className="text-sidebar-foreground text-sm font-bold tracking-wide">
               ITENS E DOWNLOAD — {edital.modalidade_nome?.toUpperCase()} Nº{" "}
               {edital.numero_compra}/{edital.ano_compra}
             </div>
-            <div className="text-accent text-xs mt-0.5">
+            <div className="text-sidebar-foreground/70 text-xs mt-0.5">
               {edital.orgao}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="bg-white/15 border-none rounded-full w-8 h-8 text-white cursor-pointer flex items-center justify-center text-lg"
+            className="bg-sidebar-foreground/15 border-none rounded-full w-8 h-8 text-sidebar-foreground cursor-pointer flex items-center justify-center text-lg"
           >
             ×
           </button>
@@ -359,8 +359,8 @@ const ModalItensDownload = ({
           </table>
 
           {/* Seção de downloads */}
-          <div className="bg-accent/10 border border-accent/30 rounded-md p-4 mb-4">
-            <div className="text-[13px] font-bold text-accent mb-3">
+          <div className="bg-muted border border-border rounded-md p-4 mb-4">
+            <div className="text-[13px] font-bold text-foreground mb-3">
               DOCUMENTOS E ARQUIVOS DO EDITAL
             </div>
 
@@ -588,11 +588,11 @@ export default function EditaisLicitacoes() {
   return (
     <div className="py-5 px-6 max-w-[1100px] mx-auto">
       {/* Título da seção */}
-      <div className="bg-[hsl(var(--sidebar-background))] text-white px-4 py-2.5 rounded-t-md flex items-center justify-between">
+      <div className="bg-[hsl(var(--sidebar-background))] text-sidebar-foreground px-4 py-2.5 rounded-t-md flex items-center justify-between">
         <span className="text-sm font-bold tracking-wide">
           LICITAÇÕES — BUSCA E MONITORAMENTO
         </span>
-        <span className="text-xs text-accent">
+        <span className="text-xs text-sidebar-foreground/70">
           Portal Nacional de Contratações Públicas — PNCP Oficial
         </span>
       </div>
@@ -620,7 +620,7 @@ export default function EditaisLicitacoes() {
           <div className="p-4">
             {/* Linha 1: Termo + UASG */}
             {!filtros.uf && ufsPreferidas.length > 0 && (
-              <div className="mb-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent">
+              <div className="mb-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                 Prioridade automática ativa para as UFs: <strong>{ufsPreferidas.join(', ')}</strong>.
                 Selecione uma UF abaixo para sobrescrever esse filtro.
               </div>
@@ -767,9 +767,9 @@ export default function EditaisLicitacoes() {
 
       {/* Barra de resultado */}
       <div className={`flex items-center justify-between px-3.5 py-2 border rounded-md mb-3 ${
-        total > 0 ? "bg-accent/10 border-accent/30" : "bg-muted/30 border-border"
+        total > 0 ? "bg-muted border-border" : "bg-muted/30 border-border"
       }`}>
-        <span className={`text-[13px] ${total > 0 ? "text-accent font-bold" : "text-muted-foreground"}`}>
+        <span className={`text-[13px] ${total > 0 ? "text-foreground font-bold" : "text-muted-foreground"}`}>
           {loading
             ? "Buscando licitações..."
             : total > 0

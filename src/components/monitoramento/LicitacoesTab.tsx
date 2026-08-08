@@ -923,16 +923,16 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
   return (
     <div className="space-y-4">
       {/* Unified Search */}
-      <div className="bg-accent/5 rounded-xl border-2 border-accent/30 p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-accent" />
+            <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+              <Zap className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                 <span className="whitespace-nowrap">Busca Inteligente</span>
-                <Badge className="bg-accent text-accent-foreground text-xs">IA + Portais</Badge>
+                <Badge className="bg-muted text-foreground text-xs">IA + Portais</Badge>
               </h3>
               <p className="text-xs sm:text-xs text-muted-foreground">
                 Pesquisa simultânea em {portaisSelecionados.length} portal{portaisSelecionados.length !== 1 ? 'is' : ''} com análise inteligente
@@ -972,12 +972,12 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         {/* Main search input */}
         <form onSubmit={e => { e.preventDefault(); handleBuscaUnificada(); }} className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1 min-w-0">
-            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Descreva o que busca: pavimentação em PA, TI acima de 500 mil..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 text-xs sm:text-sm bg-background border-accent/20 focus-visible:ring-accent"
+              className="pl-9 text-xs sm:text-sm bg-background border-border focus-visible:ring-accent"
               disabled={buscando}
             />
           </div>
@@ -1043,13 +1043,13 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
               onCheckedChange={(v) => setComAnaliseIA(!!v)}
               className="h-3.5 w-3.5"
             />
-            <Brain className="w-3.5 h-3.5 text-accent" />
+            <Brain className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">Análise IA</span>
           </label>
         </div>
 
         {showFilters && (
-          <div className="space-y-3 pt-1 border-t border-accent/10">
+          <div className="space-y-3 pt-1 border-t border-border">
             {/* Portais */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -1195,14 +1195,14 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
 
       {/* AI Analysis */}
       {analiseIA && (
-        <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 shadow-sm animate-fade-in">
+        <div className="bg-muted/30 rounded-xl border border-border p-4 shadow-sm animate-fade-in">
           <button
             className="flex items-center gap-2 w-full text-left mb-2"
             onClick={() => setShowAnalise(!showAnalise)}
           >
-            <Brain className="w-4 h-4 text-accent" />
+            <Brain className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-semibold flex-1">Análise da IA</span>
-            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">Inteligência Artificial</Badge>
+            <Badge variant="outline" className="bg-muted text-foreground border-border text-xs">Inteligência Artificial</Badge>
             {showAnalise ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
           {showAnalise && (
@@ -1220,7 +1220,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
         </p>
         <div className="flex items-center gap-2">
           {filtroDiariosPublicadosDownload && (
-            <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
+            <Badge variant="outline" className="text-xs bg-muted text-foreground border-border">
               Diários oficiais publicados
             </Badge>
           )}
@@ -1455,11 +1455,11 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                       {isExpanded && (
                         <tr className="animate-fade-in">
                           <td colSpan={9} className="px-4 py-0">
-                            <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 my-2">
+                            <div className="bg-muted/30 border border-border rounded-lg p-4 my-2">
                               <div className="flex items-center gap-2 mb-2">
-                                <Brain className="w-4 h-4 text-accent" />
+                                <Brain className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-xs font-semibold">Resumo Executivo por IA</span>
-                                <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">Inteligência Artificial</Badge>
+                                <Badge variant="outline" className="bg-muted text-foreground border-border text-xs">Inteligência Artificial</Badge>
                               </div>
                               {summaryContent[lic.id] ? (
                                 <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
@@ -1467,7 +1467,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                                   Analisando edital com IA...
                                 </div>
                               )}

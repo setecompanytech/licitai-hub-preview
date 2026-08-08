@@ -105,10 +105,10 @@ export default function GuiaComprasGov() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-card rounded-xl border border-accent/20 p-5 shadow-sm">
+    <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-accent" />
+          <Shield className="w-4 h-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Integração Compras.gov.br — Passo a Passo</h3>
           <Badge variant="outline" className="text-xs">Tier 1</Badge>
         </div>
@@ -122,7 +122,7 @@ export default function GuiaComprasGov() {
         </Button>
       </div>
 
-      <div className="bg-accent/5 border border-accent/10 rounded-lg p-3 mb-4">
+      <div className="bg-muted/50 border border-border/50 rounded-lg p-3 mb-4">
         <p className="text-xs text-muted-foreground">
           <strong className="text-foreground">API pública, sem autenticação, custo zero.</strong>{' '}
           O Compras.gov.br cobre toda a administração federal desde 2013, incluindo contratos sob Lei 8.666/93 ainda vigentes.
@@ -144,10 +144,10 @@ export default function GuiaComprasGov() {
                 onClick={() => setExpanded(isExpanded ? null : step.id)}
                 className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
               >
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-accent/10 text-accent shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted text-foreground shrink-0">
                   <span className="text-xs font-bold">{step.id}</span>
                 </div>
-                <StepIcon className="w-4 h-4 text-accent shrink-0" />
+                <StepIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{step.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{step.description}</p>
@@ -164,7 +164,7 @@ export default function GuiaComprasGov() {
                   <ul className="space-y-1.5">
                     {step.details.map((detail, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-accent" />
+                        <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground" />
                         {detail}
                       </li>
                     ))}
@@ -178,11 +178,11 @@ export default function GuiaComprasGov() {
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-center">
         <div className="bg-muted/30 rounded-lg p-3">
-          <p className="text-lg font-bold text-accent">7</p>
+          <p className="text-lg font-bold text-foreground">7</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Passos</p>
         </div>
         <div className="bg-muted/30 rounded-lg p-3">
-          <p className="text-lg font-bold text-accent">~100%</p>
+          <p className="text-lg font-bold text-foreground">~100%</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Cobertura Federal</p>
         </div>
       </div>

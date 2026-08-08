@@ -45,7 +45,7 @@ type AtoLicitatorio = {
 };
 
 const tipoConfig: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-  aviso_licitacao: { label: 'Aviso de Licitação', icon: CalendarDays, color: 'bg-accent/15 text-accent border-accent/30' },
+  aviso_licitacao: { label: 'Aviso de Licitação', icon: CalendarDays, color: 'bg-muted text-foreground border-border' },
   edital: { label: 'Edital', icon: FileText, color: 'bg-info/15 text-info border-info/30' },
   suspensao: { label: 'Suspenso', icon: PauseCircle, color: 'bg-warning/15 text-warning border-warning/30' },
   cancelamento: { label: 'Cancelado', icon: XCircle, color: 'bg-destructive/15 text-destructive border-destructive/30' },
@@ -53,11 +53,11 @@ const tipoConfig: Record<string, { label: string; icon: typeof FileText; color: 
   revogacao: { label: 'Revogado', icon: XCircle, color: 'bg-destructive/15 text-destructive border-destructive/30' },
   homologacao: { label: 'Homologado', icon: FileCheck, color: 'bg-success/15 text-success border-success/30' },
   adjudicacao: { label: 'Adjudicado', icon: Award, color: 'bg-success/15 text-success border-success/30' },
-  aditivamento: { label: 'Aditivado', icon: ArrowUpDown, color: 'bg-primary/15 text-primary border-primary/30' },
+  aditivamento: { label: 'Aditivado', icon: ArrowUpDown, color: 'bg-muted text-foreground border-border' },
   errata: { label: 'Errata', icon: AlertTriangle, color: 'bg-warning/15 text-warning border-warning/30' },
   resultado: { label: 'Resultado', icon: CheckCircle2, color: 'bg-info/15 text-info border-info/30' },
-  contrato: { label: 'Contrato', icon: Bookmark, color: 'bg-primary/15 text-primary border-primary/30' },
-  ata_registro_precos: { label: 'Ata de Registro', icon: FileText, color: 'bg-accent/15 text-accent border-accent/30' },
+  contrato: { label: 'Contrato', icon: Bookmark, color: 'bg-muted text-foreground border-border' },
+  ata_registro_precos: { label: 'Ata de Registro', icon: FileSpreadsheet, color: 'bg-muted text-foreground border-border' },
 };
 
 const formatCurrency = (v: number) =>
@@ -633,9 +633,9 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Newspaper className="w-5 h-5 text-accent" />
+            <Newspaper className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Busca nos Diários Oficiais</h3>
-            <Badge variant="outline" className="bg-accent/15 text-accent border-accent/30 text-xs">
+            <Badge variant="outline" className="bg-muted text-foreground border-border text-xs">
               {naoLidos > 0 ? `${naoLidos} novos` : `${atosOrdenados.length} registros`}
             </Badge>
           </div>
@@ -699,7 +699,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
         {/* Pesquisa avançada com IA */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Pesquisa com IA (ex: pavimentação, saneamento, energia solar...)"
               value={buscaIA}
@@ -772,8 +772,8 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/80 border border-border/30 hover:border-accent/40 transition-all group"
               >
-                <div className="w-7 h-7 rounded-md bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                  <Newspaper className="w-3.5 h-3.5 text-accent" />
+                <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-accent/10 transition-colors">
+                  <Newspaper className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium truncate">{fonte.label}</p>
@@ -854,8 +854,8 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
 
       {/* Link direto ao portal selecionado */}
       {fonteFiltro !== 'todos' && fonteAtual?.url && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/5 border border-accent/20 text-xs">
-          <Globe className="w-3.5 h-3.5 text-accent shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border text-xs">
+          <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground">Filtrando por:</span>
           <span className="font-medium">{fonteAtual.label}</span>
           <span className="text-muted-foreground">—</span>
@@ -877,14 +877,14 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
       {/* Lista de atos */}
       <div className="space-y-2">
         {atosOrdenados.map(ato => {
-          const cfg = tipoConfig[ato.tipo || ''] || { label: ato.tipo || 'Outro', icon: FileText, color: 'bg-muted text-muted-foreground border-border' };
+          const cfg = tipoConfig[ato.tipo || ''] || { label: ato.tipo || 'Outro', icon: FileText, color: 'bg-transparent text-muted-foreground border-border/60' };
           const Icon = cfg.icon;
           return (
             <div
               key={ato.id}
               className={cn(
                 "bg-card rounded-xl border border-border/50 p-4 shadow-sm hover:shadow-md transition-shadow",
-                !ato.lido && "border-l-2 border-l-accent"
+                !ato.lido && "border-l-2 border-l-foreground/40"
               )}
             >
               <div className="flex items-start justify-between gap-4">
@@ -908,7 +908,7 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
                         </Badge>
                       )}
                       {!ato.lido && (
-                        <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs">
+                        <Badge variant="outline" className="bg-foreground text-background border-transparent text-xs">
                           Novo
                         </Badge>
                       )}

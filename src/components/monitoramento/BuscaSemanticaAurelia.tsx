@@ -38,10 +38,22 @@ type Resposta = {
   resultados: ResultadoSemantico[];
 };
 
+// Os dois provedores vetoriais sao o caminho feliz -> chip neutro (o texto do label ja
+// diferencia Gemini de OpenAI). O fallback textual sinaliza qualidade DEGRADADA do
+// resultado, entao precisa destoar em cor, nao so em texto.
 const PROVEDOR_LABEL: Record<string, { texto: string; cor: string }> = {
-  lovable_gemini_768: { texto: 'IA Gemini (vetorial)', cor: 'bg-accent text-accent-foreground' },
-  openai_1536: { texto: 'IA OpenAI (vetorial)', cor: 'bg-primary text-primary-foreground' },
-  textual_tsvector: { texto: 'Busca textual (fallback)', cor: 'bg-muted text-muted-foreground' },
+  lovable_gemini_768: {
+    texto: 'IA Gemini (vetorial)',
+    cor: 'bg-muted text-foreground border-border hover:bg-muted',
+  },
+  openai_1536: {
+    texto: 'IA OpenAI (vetorial)',
+    cor: 'bg-muted text-foreground border-border hover:bg-muted',
+  },
+  textual_tsvector: {
+    texto: 'Busca textual (fallback)',
+    cor: 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/10',
+  },
 };
 
 export default function BuscaSemanticaAurelia() {
@@ -101,10 +113,10 @@ export default function BuscaSemanticaAurelia() {
   };
 
   return (
-    <Card className="p-4 sm:p-5 border-accent/40 bg-gradient-to-br from-accent/5 via-background to-background">
+    <Card className="p-4 sm:p-5 border-border bg-gradient-to-br from-muted/40 via-background to-background">
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-accent" />
+        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+          <Sparkles className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -159,7 +171,7 @@ export default function BuscaSemanticaAurelia() {
       <div className="flex items-center gap-2 mb-3">
         <Switch id="rerank" checked={usarRerank} onCheckedChange={setUsarRerank} />
         <Label htmlFor="rerank" className="text-xs flex items-center gap-1.5 cursor-pointer">
-          <Brain className="w-3.5 h-3.5 text-primary" />
+          <Brain className="w-3.5 h-3.5 text-muted-foreground" />
           Reordenar com IA Claude (mais preciso, +2s)
         </Label>
       </div>
@@ -196,7 +208,7 @@ export default function BuscaSemanticaAurelia() {
                         r.similaridade > 0.7
                           ? 'border-success text-success'
                           : r.similaridade > 0.5
-                          ? 'border-accent text-accent'
+                          ? 'border-warning text-warning'
                           : 'border-muted-foreground text-muted-foreground'
                       }`}
                     >

@@ -235,7 +235,7 @@ const statusColor = (status: string) => {
   if (s.includes('encerrad') || s.includes('fechad')) return 'bg-muted text-muted-foreground border-border';
   if (s.includes('revogad') || s.includes('cancel') || s.includes('anulad')) return 'bg-destructive/10 text-destructive border-destructive/20';
   if (s.includes('suspens')) return 'bg-warning/10 text-warning border-warning/20';
-  return 'bg-accent/10 text-accent border-accent/20';
+  return 'bg-secondary text-secondary-foreground border-border';
 };
 
 // Build PNCP portal URL
@@ -1132,11 +1132,11 @@ export default function MuralLicitacoes() {
 
         <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="bg-accent/10 border-b border-accent/20 px-4 sm:px-6 py-4">
+          <div className="bg-muted/30 border-b border-border px-4 sm:px-6 py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-                  <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="font-bold text-base sm:text-lg">Ficha da Licitação</h2>
@@ -1274,7 +1274,7 @@ export default function MuralLicitacoes() {
             {d && d.itens.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Package className="w-4 h-4 text-accent" />
+                  <Package className="w-4 h-4 text-muted-foreground" />
                   Itens da Licitação ({d.total_itens} {d.total_itens === 1 ? 'item' : 'itens'})
                   <Badge className="bg-success/10 text-success border-success/30 text-xs">Dados reais PNCP</Badge>
                 </h3>
@@ -1429,11 +1429,11 @@ export default function MuralLicitacoes() {
       <BuscaSemanticaAurelia />
 
       {/* Header */}
-      <div className="bg-accent/5 rounded-xl border border-accent/20 p-4 sm:p-5 shadow-sm">
+      <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
-              <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+              <Gavel className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
@@ -1475,7 +1475,7 @@ export default function MuralLicitacoes() {
               Cadastrar Edital
             </Button>
             <div className="flex items-center gap-2 bg-card border border-border/50 rounded-lg px-2.5 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <label htmlFor="toggle-externos" className="text-xs sm:text-xs font-medium cursor-pointer select-none whitespace-nowrap">
                 Incluir portais externos
               </label>
@@ -1485,7 +1485,7 @@ export default function MuralLicitacoes() {
                 onCheckedChange={setIncluirExternos}
                 className="scale-90"
               />
-              {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
+              {loadingExternos && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
             </div>
             <Button size="sm" variant="outline" onClick={carregarMural} disabled={loading} className="gap-1.5 text-xs">
               <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} /> Atualizar
@@ -1523,11 +1523,11 @@ export default function MuralLicitacoes() {
 
         {/* ═══ BUSCA DIRETA POR URL/NÚMERO PNCP ═══ */}
         {buscaDiretaAberta && (
-          <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-3 animate-fade-in">
+          <div className="bg-muted/50 border border-border rounded-xl p-4 mb-3 animate-fade-in">
             <div className="flex items-center gap-2 mb-3">
-              <Link2 className="w-4 h-4 text-accent" />
+              <Link2 className="w-4 h-4 text-muted-foreground" />
               <h4 className="text-sm font-bold">Busca Direta por Edital</h4>
-              <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">PNCP</Badge>
+              <Badge className="bg-muted text-foreground border-border text-xs">PNCP</Badge>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
               Cole a URL do PNCP ou informe o número no formato <code className="bg-muted px-1.5 py-0.5 rounded text-xs">CNPJ/ANO/SEQUENCIAL</code> para localizar qualquer edital publicado.
@@ -1563,7 +1563,7 @@ export default function MuralLicitacoes() {
             className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
           >
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <SlidersHorizontal className="w-4 h-4 text-accent" />
+              <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
               FILTROS
               {(() => {
                 const count = [tipoInstrumentoFiltro !== 'all', modalidadeFiltro !== 'all', orgaoFiltro, unidadeFiltro, ufFiltro !== 'all', municipioFiltro, esferaFiltro !== 'all', portalFiltro !== 'all', segmentoFiltro !== 'all', !!dataInicio, !!dataFim, searchSubmitted, uasgSubmitted].filter(Boolean).length;
@@ -1876,7 +1876,7 @@ export default function MuralLicitacoes() {
               </Badge>
             )}
             {uasgSubmitted && (
-              <Badge variant="outline" className="gap-1 text-xs bg-primary/5 border-primary/20">
+              <Badge variant="outline" className="gap-1 text-xs">
                 <Building2 className="w-3 h-3" /> UASG/CNPJ: {uasgSubmitted}
                 <button onClick={() => { setUasgSubmitted(''); setUasgTerm(''); setPagina(1); }}>
                   <X className="w-3 h-3" />
@@ -1900,7 +1900,7 @@ export default function MuralLicitacoes() {
               </Badge>
             )}
             {esferaFiltro !== 'all' && (
-              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+              <Badge variant="outline" className="gap-1 text-xs">
                 <Landmark className="w-3 h-3" /> Esfera: {esferaFiltro}
                 <button onClick={() => { setEsferaFiltro('all'); setPagina(1); }}>
                   <X className="w-3 h-3" />
@@ -1908,7 +1908,7 @@ export default function MuralLicitacoes() {
               </Badge>
             )}
             {modalidadeFiltro !== 'all' && (
-              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+              <Badge variant="outline" className="gap-1 text-xs">
                 <Gavel className="w-3 h-3" /> {MODALIDADES.find(m => m.value === modalidadeFiltro)?.label || modalidadeFiltro}
                 <button onClick={() => { setModalidadeFiltro('all'); setPagina(1); }}>
                   <X className="w-3 h-3" />
@@ -1948,7 +1948,7 @@ export default function MuralLicitacoes() {
               </Badge>
             )}
             {segmentoFiltro !== 'all' && (
-              <Badge variant="outline" className="gap-1 text-xs bg-accent/10 text-accent border-accent/30">
+              <Badge variant="outline" className="gap-1 text-xs">
                 <Package className="w-3 h-3" /> Segmento: {segmentoFiltro}
                 <button onClick={() => { setSegmentoFiltro('all'); setPagina(1); }}>
                   <X className="w-3 h-3" />
@@ -1998,7 +1998,7 @@ export default function MuralLicitacoes() {
             <Globe className="w-3 h-3" /> PNCP Oficial
           </Badge>
           {incluirExternos && licitacoesExternas.length > 0 && (
-            <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30 gap-1 whitespace-nowrap">
+            <Badge variant="outline" className="text-xs bg-muted text-foreground border-border gap-1 whitespace-nowrap">
               <Sparkles className="w-3 h-3" /> Portais Externos
             </Badge>
           )}
@@ -2048,8 +2048,8 @@ export default function MuralLicitacoes() {
       {!loading && !buscaRealizada && (
         <Card className="p-8 sm:p-12 text-center border-dashed border-2 border-border/50">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center">
-              <Search className="w-8 h-8 text-accent" />
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="space-y-2 max-w-md">
               <h3 className="text-lg font-semibold">Pesquisar Editais e Licitações</h3>
@@ -2085,7 +2085,7 @@ export default function MuralLicitacoes() {
             const isDownloading = downloading === lic.id;
             const scoreInfo = scoresMap.get(lic.id);
             const classEmoji: Record<string, string> = { quente: '🔥', urgente: '⚡', premium: '⭐', regional: '📍' };
-            const classCor: Record<string, string> = { quente: 'bg-destructive/10 text-destructive border-destructive/30', urgente: 'bg-warning/10 text-warning border-warning/30', premium: 'bg-accent/10 text-accent border-accent/30', regional: 'bg-info/10 text-info border-info/30' };
+            const classCor: Record<string, string> = { quente: 'bg-destructive/10 text-destructive border-destructive/30', urgente: 'bg-warning/10 text-warning border-warning/30', premium: 'bg-muted text-foreground border-border', regional: 'bg-info/10 text-info border-info/30' };
             return (
               <Card
                 key={lic.id}
@@ -2120,7 +2120,7 @@ export default function MuralLicitacoes() {
                       {isFav ? <Star className="w-3.5 h-3.5 fill-current" /> : <StarOff className="w-3.5 h-3.5" />}
                     </button>
                     <Badge variant="outline" className={cn('text-xs',
-                      lic.id.startsWith('ext-') ? 'bg-accent/10 text-accent border-accent/30' :
+                      lic.id.startsWith('ext-') ? 'bg-muted text-foreground border-border' :
                       lic.fonte === 'comprasnet' ? 'bg-success/10 text-success border-success/30' :
                       ''
                     )}>
@@ -2138,7 +2138,7 @@ export default function MuralLicitacoes() {
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-xs font-mono text-muted-foreground">{lic.numero}</p>
                   {lic.modalidade && lic.modalidade !== 'Não informada' && (
-                    <Badge variant="outline" className="text-xs px-1.5 py-0 font-medium bg-primary/5 text-primary border-primary/20">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0 font-medium">
                       <Gavel className="w-2.5 h-2.5 mr-0.5" />
                       {lic.modalidade}
                     </Badge>
@@ -2174,7 +2174,7 @@ export default function MuralLicitacoes() {
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     <span>{lic.municipio ? `${lic.municipio}/${lic.uf}` : lic.uf}</span>
                     {ufSede && lic.uf && lic.uf.toUpperCase() === ufSede && (
-                      <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 ml-1 bg-accent/10 text-accent border-accent/30 font-semibold">
+                      <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 ml-1 bg-muted text-foreground border-border font-semibold">
                         Sua UF
                       </Badge>
                     )}
@@ -2214,8 +2214,8 @@ export default function MuralLicitacoes() {
                 {/* Valor */}
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
                   <div className="flex items-center gap-1.5 text-xs">
-                    <DollarSign className="w-3 h-3 text-success" />
-                    <span className="font-semibold text-success">
+                    <DollarSign className="w-3 h-3 text-muted-foreground" />
+                    <span className="font-semibold text-foreground">
                       {lic.valor_estimado ? formatCurrency(lic.valor_estimado) : 'N/I'}
                     </span>
                   </div>

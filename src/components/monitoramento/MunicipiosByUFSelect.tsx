@@ -100,12 +100,12 @@ export default function MunicipiosByUFSelect({
             selecionados.map((v) => (
               <span
                 key={v}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent/15 text-accent text-xs font-medium"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-foreground text-xs font-medium"
               >
                 {v}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggle(v); }}
-                  className="hover:text-accent-foreground"
+                  className="hover:text-destructive"
                   type="button"
                 >
                   <X className="w-3 h-3" />

@@ -25,11 +25,11 @@ const tipoLabels: Record<string, string> = {
 
 const tipoColors: Record<string, string> = {
   edital: 'bg-info/15 text-info border-info/30',
-  aviso: 'bg-accent/15 text-accent border-accent/30',
+  aviso: 'bg-muted text-foreground border-border',
   cancelamento: 'bg-destructive/15 text-destructive border-destructive/30',
   suspenso: 'bg-warning/15 text-warning border-warning/30',
   adiado: 'bg-warning/15 text-warning border-warning/30',
-  aditivado: 'bg-primary/15 text-primary border-primary/30',
+  aditivado: 'bg-muted text-foreground border-border',
   adjudicado: 'bg-success/15 text-success border-success/30',
   homologado: 'bg-success/15 text-success border-success/30',
 };
@@ -255,10 +255,10 @@ export default function ConfiguracaoPesquisaTab() {
       <h3 className="text-sm font-semibold">Configuração de Pesquisa Automática</h3>
 
       {/* ── Localização Sede ── */}
-      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 sm:p-4 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
-          <h4 className="text-sm font-semibold text-accent">Prioridade por Localização (Sede)</h4>
+          <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <h4 className="text-sm font-semibold text-foreground">Prioridade por Localização (Sede)</h4>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           O sistema prioriza editais na região metropolitana da sede da sua empresa, conforme endereço do CNPJ.
@@ -282,17 +282,17 @@ export default function ConfiguracaoPesquisaTab() {
       </div>
 
       {/* ── Segmentos/Ramos de Prioridade ── */}
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4 space-y-3">
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
-          <h4 className="text-sm font-semibold text-primary">Segmentos Prioritários</h4>
+          <Sparkles className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <h4 className="text-sm font-semibold text-foreground">Segmentos Prioritários</h4>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           Defina os ramos/segmentos que deseja priorizar. O sistema enviará alertas quando editais compatíveis forem publicados.
         </p>
         <div className="flex flex-wrap gap-1.5 min-h-[32px]">
           {segmentos.map(seg => (
-            <Badge key={seg} variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs pr-1 cursor-pointer hover:bg-destructive/10" onClick={() => removeSegmento(seg)}>
+            <Badge key={seg} variant="outline" className="bg-secondary text-secondary-foreground border-border text-xs pr-1 cursor-pointer hover:bg-destructive/10" onClick={() => removeSegmento(seg)}>
               {seg} <X className="w-3 h-3 ml-1 text-destructive" />
             </Badge>
           ))}
@@ -326,7 +326,7 @@ export default function ConfiguracaoPesquisaTab() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <Bell className="w-5 h-5 text-primary flex-shrink-0" />
+            <Bell className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">Sistema</Label>
               <p className="text-xs text-muted-foreground">Notificações no app</p>
@@ -334,7 +334,7 @@ export default function ConfiguracaoPesquisaTab() {
             <Switch checked={alertaSistema} onCheckedChange={setAlertaSistema} />
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <Mail className="w-5 h-5 text-accent flex-shrink-0" />
+            <Mail className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">E-mail</Label>
               <p className="text-xs text-muted-foreground">Alertas por e-mail</p>
@@ -342,7 +342,7 @@ export default function ConfiguracaoPesquisaTab() {
             <Switch checked={alertaEmail} onCheckedChange={setAlertaEmail} />
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card">
-            <MessageCircle className="w-5 h-5 text-success flex-shrink-0" />
+            <MessageCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <Label className="text-xs font-medium">WhatsApp</Label>
               <p className="text-xs text-muted-foreground">Alertas via WhatsApp</p>
@@ -374,7 +374,7 @@ export default function ConfiguracaoPesquisaTab() {
           <label className="text-xs text-muted-foreground">CNAEs Secundários ({cnaesSecundarios.length})</label>
           <div className="mt-1 p-2 rounded-lg border border-border/50 min-h-[38px] max-h-32 overflow-y-auto flex flex-wrap gap-1">
             {cnaesSecundarios.length > 0 ? cnaesSecundarios.map((cnae, idx) => (
-              <Badge key={idx} variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs pr-1 cursor-pointer hover:bg-destructive/10"
+              <Badge key={idx} variant="outline" className="bg-muted text-foreground border-border text-xs pr-1 cursor-pointer hover:bg-destructive/10"
                 onClick={() => removeCnae(idx)} title="Remover">
                 {cnae.length > 40 ? cnae.slice(0, 40) + '…' : cnae} <span className="ml-1 text-destructive">×</span>
               </Badge>
@@ -393,7 +393,7 @@ export default function ConfiguracaoPesquisaTab() {
         </div>
         <div className="p-2 rounded-lg border border-border/50 min-h-[38px] max-h-28 overflow-y-auto flex flex-wrap gap-1.5 mb-2">
           {palavrasChave.length > 0 ? palavrasChave.map(word => (
-            <Badge key={word} variant="outline" className="bg-accent/10 text-accent border-accent/20 text-xs pr-1 cursor-pointer hover:bg-destructive/10"
+            <Badge key={word} variant="outline" className="bg-muted text-foreground border-border text-xs pr-1 cursor-pointer hover:bg-destructive/10"
               onClick={() => removePalavra(word)} title="Remover">
               {word} <span className="ml-1 text-destructive">×</span>
             </Badge>
