@@ -237,7 +237,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <div>
                   <p className="font-semibold text-sm">{r.nome || r.email}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    {r.cfg && <Badge className="text-xs bg-accent/15 text-accent">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
+                    {r.cfg && <Badge className="text-xs bg-muted text-muted-foreground">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
                     {r.cfg && <span className="text-xs text-muted-foreground">
                       {r.cfg.tipo_comissao === 'valor_fixo' ? fmt(r.cfg.valor_fixo) : `${r.cfg.percentual}%`}
                     </span>}
@@ -246,7 +246,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Total comissões</p>
-                  <p className="font-bold text-accent">{fmt(r.total)}</p>
+                  <p className="font-bold text-foreground">{fmt(r.total)}</p>
                   <div className="flex gap-2 text-xs mt-0.5">
                     <span className="text-warning">P: {fmt(r.totalPendente)}</span>
                     <span className="text-success">Pg: {fmt(r.totalPago)}</span>
@@ -285,7 +285,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   {l.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{l.observacoes}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="font-bold text-accent">{fmt(l.valor_comissao)}</span>
+                  <span className="font-bold text-foreground">{fmt(l.valor_comissao)}</span>
                   {isAdmin && l.status !== 'pago' && (
                     <Select value={l.status} onValueChange={v => handleUpdateLancStatus(l.id, v)}>
                       <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
@@ -430,9 +430,9 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               </div>
             </div>
             {lancUserId && lancValorBase && (
-              <div className="bg-accent/10 rounded-lg p-3">
+              <div className="bg-muted rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Comissão calculada:</p>
-                <p className="text-lg font-bold text-accent">
+                <p className="text-lg font-bold text-foreground">
                   {(() => {
                     const cfg = configs.find(c => c.user_id === lancUserId);
                     if (!cfg) return 'R$ 0,00';

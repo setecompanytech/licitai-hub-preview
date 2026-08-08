@@ -366,7 +366,7 @@ export default function EquipeColaboradores() {
                     <div key={eq.value} className="bg-card rounded-lg border border-border/50 p-3 text-center">
                       <eq.icon className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                       <p className="text-xs font-semibold">{eq.label}</p>
-                      <p className="text-lg font-bold text-accent">{count}</p>
+                      <p className="text-lg font-bold text-foreground">{count}</p>
                     </div>
                   );
                 })}
@@ -388,7 +388,9 @@ export default function EquipeColaboradores() {
                     return (
                       <div key={m.id} className="bg-card rounded-lg border border-border/50 p-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                          {/* Avatar é identidade, não ação: sai do laranja da marca
+                              para o neutro elevado (regra da auditoria). */}
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-sm flex-shrink-0">
                             {((m as any).nome || (m as any).email || '?').slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
@@ -499,7 +501,7 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-accent" />
+                <UserPlus className="w-5 h-5 text-muted-foreground" />
                 Adicionar Colaborador
               </DialogTitle>
             </DialogHeader>
@@ -655,7 +657,7 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-[420px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" />
+                <MapPin className="w-4 h-4 text-muted-foreground" />
                 Praça de {pracaDialog?.nome || pracaDialog?.email || 'Colaborador'}
               </DialogTitle>
             </DialogHeader>
@@ -704,7 +706,7 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-accent" />
+                <Shield className="w-5 h-5 text-muted-foreground" />
                 Permissões de {(permDialog as any)?.nome || 'Colaborador'}
               </DialogTitle>
             </DialogHeader>

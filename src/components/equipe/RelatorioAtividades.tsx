@@ -156,7 +156,7 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
         <div className="space-y-1">
           {filtered.map(a => (
             <div key={a.id} className="bg-card rounded-lg border border-border/50 px-4 py-2.5 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold flex-shrink-0">
                 {(membros[a.user_id] || '?').slice(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
