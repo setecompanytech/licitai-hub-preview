@@ -201,7 +201,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             {item.id && <Badge variant="outline" className="text-xs px-1 py-0 shrink-0 font-mono">{item.id}</Badge>}
             <span className="text-muted-foreground truncate">{item.descricao}</span>
-            {item.percentual != null && item.percentual !== 0 && <span className="text-accent text-xs">({item.percentual}%)</span>}
+            {item.percentual != null && item.percentual !== 0 && <span className="text-muted-foreground text-xs">({item.percentual}%)</span>}
             {item.formula && (
               <TooltipProvider><Tooltip><TooltipTrigger><Eye className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" /></TooltipTrigger>
               <TooltipContent side="right"><p className="text-xs font-mono">{item.formula}</p></TooltipContent></Tooltip></TooltipProvider>
@@ -237,10 +237,10 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
   return (
     <>
       {/* Reference banner */}
-      <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
+      <div className="bg-muted/50 border border-border rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-accent" />
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-semibold">Motor de Cálculo Determinístico — Portal de Compras</span>
           </div>
           <a href="/templates/modelo-planilha-portal-compras-v2.xlsx" download className="inline-flex items-center gap-1 text-xs text-accent hover:underline bg-accent/10 px-2 py-1 rounded">
@@ -267,9 +267,9 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         {result && (
           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <span>Valor mensal/empregado:</span>
-            <Badge className="bg-accent/10 text-accent border-accent/20 text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
+            <Badge className="bg-muted text-foreground border-border text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</Badge>
             <span>×{cargo.quantidadePostos} =</span>
-            <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
+            <Badge className="bg-muted text-foreground border-border text-xs font-bold">{fmtCur(result.quadroResumo.valorMensalTotal)}</Badge>
           </div>
         )}
       </div>
@@ -277,7 +277,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {/* ═══ STEP: CONTRATO ═══ */}
       {step === 'contrato' && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><Briefcase className="w-4 h-4 text-accent" /> Dados do Contrato</h4>
+          <h4 className="text-sm font-semibold flex items-center gap-2"><Briefcase className="w-4 h-4 text-muted-foreground" /> Dados do Contrato</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div><Label className="text-xs">Nº do Processo</Label><Input value={contrato.nrProcesso} onChange={e => updContrato('nrProcesso', e.target.value)} className="mt-1" /></div>
             <div><Label className="text-xs">Nº da Contratação</Label><Input value={contrato.nrContratacao} onChange={e => updContrato('nrContratacao', e.target.value)} className="mt-1" /></div>
@@ -303,7 +303,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {step === 'cargos' && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
+            <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">1</span>
             Módulo 1 — Cargo/Posto e Remuneração Base
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -386,7 +386,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Submódulo 2.1 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.1</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.1</span>
               13º Salário, Férias e Adicional de Férias
             </h4>
             <div className="grid grid-cols-3 gap-3">
@@ -399,7 +399,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Submódulo 2.2 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.2</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.2</span>
               Encargos Previdenciários, FGTS e Contribuições
             </h4>
             <p className="text-xs text-muted-foreground">Incidem sobre Módulo 1 + Submódulo 2.1 (Acórdão TCU 1.753/2008)</p>
@@ -418,7 +418,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Módulo 3 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">3</span>
               Provisão para Rescisão
             </h4>
             <p className="text-xs text-muted-foreground">Acórdão TCU 1.753/2008 e legislação trabalhista</p>
@@ -432,7 +432,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Módulo 4 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">4</span>
               Custo de Reposição do Profissional Ausente
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -453,7 +453,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           {/* Módulo 6 */}
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">6</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">6</span>
               Custos Indiretos, Tributos e Lucro
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -485,7 +485,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
         <div className="space-y-4">
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.3</span>
+              <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">2.3</span>
               Benefícios Mensais e Diários
             </h4>
             <div className="space-y-3">
@@ -512,7 +512,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="bg-accent text-accent-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">5</span>
+                <span className="bg-muted text-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">5</span>
                 Insumos Diversos
               </h4>
               <Button variant="outline" size="sm" onClick={addInsumo}><Plus className="w-3 h-3 mr-1" /> Insumo</Button>
@@ -549,78 +549,78 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
               {/* Módulo 1 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-accent">{result.modulo1.titulo}</h5>
+                  <h5 className="text-xs font-semibold text-foreground">{result.modulo1.titulo}</h5>
                   <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo1.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo1.itens!)}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 1</span><span className="text-accent tabular-nums">{fmtCur(result.modulo1.subtotal)}</span>
+                  <span>Total Módulo 1</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo1.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 2 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-accent">{result.modulo2.titulo}</h5>
+                <h5 className="text-xs font-semibold text-foreground">{result.modulo2.titulo}</h5>
                 {result.modulo2.submodulos && Object.values(result.modulo2.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 2</span><span className="text-accent tabular-nums">{fmtCur(result.modulo2.subtotal)}</span>
+                  <span>Total Módulo 2</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo2.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 3 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-accent">{result.modulo3.titulo}</h5>
+                  <h5 className="text-xs font-semibold text-foreground">{result.modulo3.titulo}</h5>
                   <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo3.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo3.itens!)}
                 {result.modulo3.nota && <p className="text-xs text-muted-foreground italic">{result.modulo3.nota}</p>}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 3</span><span className="text-accent tabular-nums">{fmtCur(result.modulo3.subtotal)}</span>
+                  <span>Total Módulo 3</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo3.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 4 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-accent">{result.modulo4.titulo}</h5>
+                <h5 className="text-xs font-semibold text-foreground">{result.modulo4.titulo}</h5>
                 {result.modulo4.submodulos && Object.values(result.modulo4.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 {result.modulo4.itens && renderLineItems(result.modulo4.itens)}
                 {result.modulo4.nota && <p className="text-xs text-muted-foreground italic">{result.modulo4.nota}</p>}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 4</span><span className="text-accent tabular-nums">{fmtCur(result.modulo4.subtotal)}</span>
+                  <span>Total Módulo 4</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo4.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 5 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-semibold text-accent">{result.modulo5.titulo}</h5>
+                  <h5 className="text-xs font-semibold text-foreground">{result.modulo5.titulo}</h5>
                   <Badge variant="outline" className="text-xs tabular-nums">{fmtCur(result.modulo5.subtotal)}</Badge>
                 </div>
                 {renderLineItems(result.modulo5.itens!)}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 5</span><span className="text-accent tabular-nums">{fmtCur(result.modulo5.subtotal)}</span>
+                  <span>Total Módulo 5</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo5.subtotal)}</span>
                 </div>
               </div>
 
               {/* Módulo 6 */}
               <div className="bg-card rounded-xl border border-border/50 p-4 space-y-2">
-                <h5 className="text-xs font-semibold text-accent">{result.modulo6.titulo}</h5>
+                <h5 className="text-xs font-semibold text-foreground">{result.modulo6.titulo}</h5>
                 {result.modulo6.submodulos && Object.values(result.modulo6.submodulos).map((sub, i) => (
                   <div key={i}>{renderSubmodulo(sub)}</div>
                 ))}
                 <div className="flex items-center justify-between text-xs font-bold border-t border-border/30 pt-1 px-1">
-                  <span>Total Módulo 6</span><span className="text-accent tabular-nums">{fmtCur(result.modulo6.subtotal)}</span>
+                  <span>Total Módulo 6</span><span className="text-foreground tabular-nums">{fmtCur(result.modulo6.subtotal)}</span>
                 </div>
               </div>
 
               {/* Quadro Resumo */}
-              <div className="bg-accent/10 rounded-xl border border-accent/20 p-5 space-y-3">
-                <h5 className="text-sm font-bold text-accent">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
+              <div className="bg-muted rounded-xl border border-border p-5 space-y-3">
+                <h5 className="text-sm font-bold text-foreground">QUADRO-RESUMO DO CUSTO POR EMPREGADO</h5>
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                   {[
                     { label: 'Módulo 1', val: result.quadroResumo.modulo1 },
@@ -630,24 +630,24 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
                     { label: 'Módulo 5', val: result.quadroResumo.modulo5 },
                     { label: 'Subtotal 1-5', val: result.quadroResumo.subtotalMod1a5 },
                   ].map(m => (
-                    <div key={m.label} className="text-center bg-background/50 rounded-lg p-2">
+                    <div key={m.label} className="text-center bg-card rounded-lg p-2">
                       <p className="text-xs text-muted-foreground">{m.label}</p>
                       <p className="text-xs font-bold tabular-nums">{fmtCur(m.val)}</p>
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-accent/20 pt-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t border-border pt-3">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Módulo 6</p>
                     <p className="text-sm font-bold tabular-nums">{fmtCur(result.quadroResumo.modulo6)}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Mensal/Empregado</p>
-                    <p className="text-sm font-bold text-accent tabular-nums">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</p>
+                    <p className="text-sm font-bold text-foreground tabular-nums">{fmtCur(result.quadroResumo.valorMensalEmpregado)}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Mensal Total ({result.quadroResumo.qtdProfissionais} postos)</p>
-                    <p className="text-lg font-bold text-accent tabular-nums">{fmtCur(result.quadroResumo.valorMensalTotal)}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums">{fmtCur(result.quadroResumo.valorMensalTotal)}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Contrato ({result.quadroResumo.vigenciaMeses}m)</p>
@@ -679,7 +679,7 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
       {/* ═══ STEP: EXPORTAR ═══ */}
       {step === 'exportar' && result && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
-          <h4 className="text-sm font-semibold flex items-center gap-2"><Download className="w-4 h-4 text-accent" /> Exportar Planilha de Custos</h4>
+          <h4 className="text-sm font-semibold flex items-center gap-2"><Download className="w-4 h-4 text-muted-foreground" /> Exportar Planilha de Custos</h4>
           <p className="text-xs text-muted-foreground">Exporte os resultados em formato XLSX (compatível com a planilha do Portal de Compras) ou PDF.</p>
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-16 flex-col gap-1">

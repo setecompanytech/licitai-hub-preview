@@ -227,8 +227,8 @@ export default function ComparativoDashboard() {
             label: 'Total de Preços',
             value: totalResults.toString(),
             icon: Package,
-            color: 'text-primary',
-            bg: 'bg-primary/10',
+            color: 'text-muted-foreground',
+            bg: 'bg-muted',
           },
           {
             label: 'Marketplaces',
@@ -248,8 +248,8 @@ export default function ComparativoDashboard() {
             label: 'Fornecedores',
             value: fornecedorData.length.toString(),
             icon: FileText,
-            color: 'text-accent',
-            bg: 'bg-accent/10',
+            color: 'text-muted-foreground',
+            bg: 'bg-muted',
           },
           {
             label: 'Economia Média',
@@ -277,7 +277,7 @@ export default function ComparativoDashboard() {
           {/* Bar chart */}
           <div className="lg:col-span-2 bg-card border border-border/40 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-primary" />
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
               Comparativo de Preços por Item
             </h4>
             <ResponsiveContainer width="100%" height={280}>
@@ -305,7 +305,7 @@ export default function ComparativoDashboard() {
           {/* Radar chart */}
           <div className="bg-card border border-border/40 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Percent className="w-4 h-4 text-accent" />
+              <Percent className="w-4 h-4 text-muted-foreground" />
               Cobertura por Fonte
             </h4>
             <ResponsiveContainer width="100%" height={280}>
@@ -394,7 +394,7 @@ export default function ComparativoDashboard() {
                           className={`text-xs ${
                             item.melhorFonte === 'Marketplace' ? 'bg-warning/10 text-warning border-warning/20' :
                             item.melhorFonte === 'Gov.br' ? 'bg-info/10 text-info border-info/20' :
-                            'bg-accent/10 text-accent border-accent/20'
+                            'bg-muted text-foreground border-border'
                           }`}
                         >
                           {item.melhorFonte === 'Marketplace' && <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />}
@@ -430,13 +430,13 @@ export default function ComparativoDashboard() {
       {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-warning" /> Marketplace
+          <div className="w-2.5 h-2.5 rounded-sm bg-chart-1" /> Marketplace
         </span>
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-info" /> Painel Gov.br
+          <div className="w-2.5 h-2.5 rounded-sm bg-chart-2" /> Painel Gov.br
         </span>
         <span className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-sm bg-accent" /> Fornecedor
+          <div className="w-2.5 h-2.5 rounded-sm bg-chart-3" /> Fornecedor
         </span>
         <span className="ml-auto flex items-center gap-1">
           <CheckCircle className="w-3 h-3 text-success" />

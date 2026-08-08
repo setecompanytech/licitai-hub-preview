@@ -168,16 +168,16 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
   };
 
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
-    ? <CheckCircle className="w-4 h-4 text-accent" />
+    ? <CheckCircle className="w-4 h-4 text-success" />
     : parecer.viabilidade === 'INVIÁVEL'
     ? <XCircle className="w-4 h-4 text-destructive" />
-    : <AlertTriangle className="w-4 h-4 text-primary" />;
+    : <AlertTriangle className="w-4 h-4 text-warning" />;
 
   const viabilidadeColor = parecer.viabilidade === 'VIÁVEL'
-    ? 'bg-accent/10 text-accent border-accent/20'
+    ? 'bg-success/10 text-success border-success/20'
     : parecer.viabilidade === 'INVIÁVEL'
     ? 'bg-destructive/10 text-destructive border-destructive/20'
-    : 'bg-primary/10 text-primary border-primary/20';
+    : 'bg-warning/10 text-warning border-warning/20';
 
   return (
     <div className="space-y-4">
@@ -185,10 +185,10 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-accent" />
+            <Calculator className="w-5 h-5 text-muted-foreground" />
             <h4 className="font-semibold text-sm">Planilha de Composição de Custo — Motor Determinístico</h4>
           </div>
-          <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
+          <Badge className="bg-muted text-foreground border-border text-xs">{regimeLabel} • {ufCalculo}</Badge>
         </div>
 
         {/* Export & Sync Buttons */}
@@ -197,10 +197,10 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
             <FileText className="w-3.5 h-3.5 mr-1 text-destructive" /> PDF
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportWord} className="text-xs">
-            <FileText className="w-3.5 h-3.5 mr-1 text-primary" /> Word
+            <FileText className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Word
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportExcel} className="text-xs">
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-accent" /> Excel
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Excel
           </Button>
           <div className="flex-1" />
           <Button size="sm" onClick={enviarParaProposta} className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
@@ -209,8 +209,8 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
         </div>
 
         {/* Info banner about manual editing */}
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2 mb-4">
-          <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+        <div className="bg-muted/50 border border-border rounded-lg p-3 flex items-start gap-2 mb-4">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">
             <strong className="text-foreground">Preço e lucro editáveis:</strong> Clique no ícone <Pencil className="w-3 h-3 inline" /> ao lado do preço unitário <strong>ou da margem de lucro</strong> para ajustar manualmente. O sistema recalculará todos os valores automaticamente.
           </p>
@@ -226,7 +226,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                 {item.quantidade} {item.unidade}
               </span>
               {item.modoPreco === 'manual' && (
-                <Badge className="bg-primary/10 text-primary text-xs border-primary/20">
+                <Badge className="bg-muted text-foreground text-xs border-border">
                   <Pencil className="w-2.5 h-2.5 mr-0.5" /> Preço Manual
                 </Badge>
               )}
@@ -244,7 +244,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                 </TableHeader>
                 <TableBody>
                   {item.componentes.map((comp) => (
-                    <TableRow key={comp.id} className={`hover:bg-muted/30 ${comp.editavel && item.modoPreco === 'manual' ? 'bg-primary/5' : ''}`}>
+                    <TableRow key={comp.id} className={`hover:bg-muted/30 ${comp.editavel && item.modoPreco === 'manual' ? 'bg-muted/40' : ''}`}>
                       <TableCell className="text-xs py-2 font-medium">
                         <TooltipProvider>
                           <Tooltip>
@@ -311,7 +311,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   )}
 
                   {/* Preço Unitário Final — EDITABLE */}
-                  <TableRow className="bg-accent/5 border-t-2 border-accent/20">
+                  <TableRow className="bg-muted/40 border-t-2 border-border">
                     <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Unitário {item.modoPreco === 'manual' ? '(Manual)' : '(Sugerido)'}
                     </TableCell>
@@ -332,7 +332,7 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                           </>
                         ) : (
                           <>
-                            <span className="font-mono font-bold text-accent">{fmt(item.precoUnitarioFinal)}</span>
+                            <span className="font-mono font-bold text-foreground">{fmt(item.precoUnitarioFinal)}</span>
                             <Button variant="ghost" size="sm" onClick={() => startEdit(idx, item.precoUnitarioFinal)} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
                               <Pencil className="w-3 h-3" />
                             </Button>
@@ -348,11 +348,11 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   </TableRow>
 
                   {/* Preço Total */}
-                  <TableRow className="bg-accent/10">
+                  <TableRow className="bg-muted">
                     <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Total ({item.quantidade} {item.unidade})
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-foreground">
                       {fmt(item.precoTotal)}
                     </TableCell>
                   </TableRow>
@@ -383,20 +383,20 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                         al.tipo === 'erro'
                           ? 'bg-destructive/10 border-destructive/20'
                           : al.tipo === 'atencao'
-                          ? 'bg-primary/10 border-primary/20'
+                          ? 'bg-warning/10 border-warning/20'
                           : 'bg-muted/50 border-border/50'
                       }`}
                     >
                       {al.tipo === 'erro' ? (
                         <XCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
                       ) : al.tipo === 'atencao' ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
                       ) : (
                         <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                       )}
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-semibold ${
-                          al.tipo === 'erro' ? 'text-destructive' : al.tipo === 'atencao' ? 'text-primary' : 'text-muted-foreground'
+                          al.tipo === 'erro' ? 'text-destructive' : al.tipo === 'atencao' ? 'text-warning' : 'text-muted-foreground'
                         }`}>
                           {al.titulo}
                         </p>
@@ -458,18 +458,18 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                   <TableCell className="text-xs py-2">
                     Margem de Lucro Resultante ({resumo.margemLucroResultante.toFixed(2).replace('.', ',')}%)
                     {resumo.margemLucroResultante !== resumo.margemLucroSugerida && (
-                      <span className="text-xs text-primary ml-1">(sugerido: {resumo.margemLucroSugerida}%)</span>
+                      <span className="text-xs text-muted-foreground ml-1">(sugerido: {resumo.margemLucroSugerida}%)</span>
                     )}
                   </TableCell>
-                  <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${resumo.margemLucroResultante < 0 ? 'text-destructive' : 'text-accent'}`}>
+                  <TableCell className={`text-xs py-2 text-right font-mono font-semibold ${resumo.margemLucroResultante < 0 ? 'text-destructive' : 'text-success'}`}>
                     {fmt(resumo.precoTotalFormado - resumo.custoTotalMateriais - resumo.totalTributos - resumo.freteTotal - resumo.despesasAdm)}
                   </TableCell>
                 </TableRow>
               </TableBody>
               <TableFooter>
-                <TableRow className="bg-accent/10 border-t-2 border-accent/20">
+                <TableRow className="bg-muted border-t-2 border-border">
                   <TableCell className="text-[12px] py-2.5 font-bold">PREÇO TOTAL FORMADO</TableCell>
-                  <TableCell className="text-[12px] py-2.5 text-right font-mono font-bold text-accent">{fmt(resumo.precoTotalFormado)}</TableCell>
+                  <TableCell className="text-[12px] py-2.5 text-right font-mono font-bold text-foreground">{fmt(resumo.precoTotalFormado)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
@@ -526,17 +526,17 @@ export default function ComposicaoDeterministica({ result, onResultChange, regim
                       al.tipo === 'erro'
                         ? 'bg-destructive/10 border-destructive/20'
                         : al.tipo === 'atencao'
-                        ? 'bg-primary/10 border-primary/20'
+                        ? 'bg-warning/10 border-warning/20'
                         : 'bg-muted/50 border-border/50'
                     }`}
                   >
                     {al.tipo === 'erro' ? (
                       <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <p className={`text-xs font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-primary'}`}>{al.titulo}</p>
+                      <p className={`text-xs font-bold ${al.tipo === 'erro' ? 'text-destructive' : 'text-warning'}`}>{al.titulo}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{al.mensagem}</p>
                       <p className="text-xs text-muted-foreground italic mt-1">📜 {al.fundamentacao}</p>
                     </div>

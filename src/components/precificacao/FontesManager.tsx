@@ -97,9 +97,9 @@ export default function FontesManager() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Total de Fontes', value: stats.total, color: 'text-primary' },
+          { label: 'Total de Fontes', value: stats.total, color: 'text-foreground' },
           { label: 'Fontes Ativas', value: stats.ativos, color: 'text-success' },
-          { label: 'Categorias', value: stats.categorias, color: 'text-accent' },
+          { label: 'Categorias', value: stats.categorias, color: 'text-foreground' },
           { label: 'Tipos', value: stats.tipos, color: 'text-info' },
         ].map(s => (
           <div key={s.label} className="bg-muted/30 border border-border/30 rounded-lg p-3 text-center">
@@ -151,7 +151,7 @@ export default function FontesManager() {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="border border-border/50 rounded-lg overflow-hidden">

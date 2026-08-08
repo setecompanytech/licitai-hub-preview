@@ -198,7 +198,7 @@ export default function CotacoesManager() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-primary" />
+          <ClipboardList className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold">Cotações</h3>
           <Badge variant="outline">{quotations.length}</Badge>
         </div>
@@ -227,7 +227,7 @@ export default function CotacoesManager() {
         {/* List */}
         <div className="lg:col-span-1 space-y-2">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : quotations.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma cotação criada.</p>
           ) : (
@@ -293,7 +293,7 @@ export default function CotacoesManager() {
               )}
 
               {loadingItems ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Cotação vazia.</p>
               ) : (

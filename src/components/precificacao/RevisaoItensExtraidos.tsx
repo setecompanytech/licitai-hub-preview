@@ -227,7 +227,7 @@ export default function RevisaoItensExtraidos({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 className="text-foreground font-semibold flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-accent" />
+              <Sparkles className="w-5 h-5 text-muted-foreground" />
               Extração de Itens do Edital/TR
             </h2>
             <p className="text-muted-foreground text-xs mt-0.5">
@@ -308,7 +308,7 @@ export default function RevisaoItensExtraidos({
           >
             {fazendoUpload ? (
               <>
-                <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
                 <span className="text-muted-foreground text-sm">
                   Processando documento com IA...
                 </span>
@@ -361,7 +361,7 @@ export default function RevisaoItensExtraidos({
             </Badge>
           )}
           <span className="ml-auto text-muted-foreground">
-            Total: <span className="text-accent font-mono font-semibold">{formatCurrency(valorTotal)}</span>
+            Total: <span className="text-foreground font-mono font-semibold">{formatCurrency(valorTotal)}</span>
           </span>
         </div>
       )}
@@ -451,7 +451,7 @@ export default function RevisaoItensExtraidos({
                     />
                   </td>
 
-                  <td className="px-3 py-2 text-right font-mono text-accent font-semibold">
+                  <td className="px-3 py-2 text-right font-mono text-foreground font-semibold">
                     {item.valor_total ? formatCurrency(item.valor_total) : '—'}
                   </td>
 

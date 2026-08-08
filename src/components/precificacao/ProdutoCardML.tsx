@@ -355,7 +355,7 @@ function GoogleShoppingCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveT
           <Store className="w-3 h-3 text-muted-foreground" />
           <span className="text-xs text-muted-foreground truncate">{item.loja}</span>
           {item.vendedor_qualificado && (
-            <ShieldCheck className="w-3 h-3 text-primary ml-auto flex-shrink-0" />
+            <ShieldCheck className="w-3 h-3 text-success ml-auto flex-shrink-0" />
           )}
         </div>
 
@@ -475,7 +475,7 @@ function MercadoLivreCard({ item, isCheapest, onOpenFicha, onQuickAdd, onSaveToC
             <span className="text-xs">{item.loja}</span>
           </div>
           {item.vendedor_qualificado && (
-            <div className="flex items-center gap-1 text-primary">
+            <div className="flex items-center gap-1 text-success">
               <ShieldCheck className="w-3 h-3" />
               <span className="text-xs font-medium">MercadoLíder</span>
             </div>
@@ -550,7 +550,7 @@ function ResumoPrecos({ resumo }: { resumo: PesquisaMLResult['resumo'] }) {
         </div>
         <div className="text-center p-2 bg-card rounded-md border border-border/30">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Variação</p>
-          <p className="text-lg font-bold text-primary">{resumo.variacao}</p>
+          <p className="text-lg font-bold text-foreground">{resumo.variacao}</p>
         </div>
       </div>
       {resumo.recomendacao && (
@@ -683,12 +683,12 @@ export function PesquisaResultML({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              Resultados para "<span className="text-primary">{data.produto}</span>"
+              Resultados para "<span className="text-foreground">{data.produto}</span>"
             </h3>
             <p className="text-xs text-muted-foreground">
               {data.fornecedores.length} fornecedores encontrados · Pesquisa em {data.data_pesquisa}
               {isLoadingImages && (
-                <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                <span className="ml-2 inline-flex items-center gap-1 text-muted-foreground">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Buscando imagens reais...
                 </span>

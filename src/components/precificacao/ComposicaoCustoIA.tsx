@@ -226,7 +226,7 @@ export default function ComposicaoCustoIA() {
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-accent" />
+            <FileText className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-semibold text-sm">
               Planilha de Composição de Custo — Lei 14.133/2021
             </h3>
@@ -239,10 +239,10 @@ export default function ComposicaoCustoIA() {
           Gere a composição de custo e formação de preço com cálculos tributários determinísticos por regime e UF. Edite o preço final manualmente e o sistema recalcula a margem automaticamente.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
-          <Badge className="bg-accent/10 text-accent border-accent/20">
+          <Badge className="bg-muted text-foreground border-border">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
           </Badge>
-          <Badge className="bg-primary/10 text-primary border-primary/20">
+          <Badge className="bg-muted text-foreground border-border">
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {ufInfo?.icms_interno || 18}%
           </Badge>
           {empresaAtiva && (
@@ -254,7 +254,7 @@ export default function ComposicaoCustoIA() {
       {/* Configuration */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-accent" /> Parâmetros do Cálculo
+          <Calculator className="w-4 h-4 text-muted-foreground" /> Parâmetros do Cálculo
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>

@@ -146,7 +146,7 @@ export default function ImportacoesManager() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-2">
-        <Upload className="w-5 h-5 text-primary" />
+        <Upload className="w-5 h-5 text-muted-foreground" />
         <h3 className="font-semibold">Importação de Dados</h3>
       </div>
 

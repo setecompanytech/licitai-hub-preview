@@ -166,8 +166,8 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
   return (
     <div className="space-y-4">
       {/* Info banner */}
-      <div className="flex items-start gap-2 p-3 bg-accent/30 border border-accent/50 rounded-lg text-xs text-muted-foreground">
-        <FileCheck className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+      <div className="flex items-start gap-2 p-3 bg-muted border border-border rounded-lg text-xs text-muted-foreground">
+        <FileCheck className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
         <p>
           Consulta direta à <strong>API oficial do PNCP</strong> (Portal Nacional de Contratações Públicas).
           Retorna <strong>preços unitários homologados</strong> de ATAs/SRP e contratos reais firmados por órgãos públicos.
@@ -307,9 +307,9 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
 
       {/* Resumo */}
       {resumo && (
-        <div className="bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/20 rounded-lg p-4">
+        <div className="bg-muted/30 border border-border rounded-lg p-4">
           <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground mb-3">
-            <BarChart3 className="w-4 h-4 text-primary" />
+            <BarChart3 className="w-4 h-4 text-muted-foreground" />
             Resumo — Preços Homologados PNCP ({resumo.periodo || `${anoInicio}-${anoFim}`})
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -328,12 +328,12 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
             {resumo.mediana != null && (
               <div className="text-center p-2 bg-card rounded-md border border-border/30">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Mediana</p>
-                <p className="text-lg font-bold text-primary">{formatCurrency(resumo.mediana)}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(resumo.mediana)}</p>
               </div>
             )}
             <div className="text-center p-2 bg-card rounded-md border border-border/30">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Registros</p>
-              <p className="text-lg font-bold text-primary">{resumo.total_registros}</p>
+              <p className="text-lg font-bold text-foreground">{resumo.total_registros}</p>
               <p className="text-xs text-muted-foreground">PNCP Oficial</p>
             </div>
           </div>

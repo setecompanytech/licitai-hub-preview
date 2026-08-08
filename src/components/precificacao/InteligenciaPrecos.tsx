@@ -356,7 +356,7 @@ Responda APENAS em JSON válido:
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-foreground flex-wrap">
-              <Brain className="w-5 h-5 text-primary flex-shrink-0" />
+              <Brain className="w-5 h-5 text-muted-foreground flex-shrink-0" />
               Inteligência de Preços com IA
             </h3>
             <p className="text-xs sm:text-xs text-muted-foreground mt-1">
@@ -499,7 +499,7 @@ Responda APENAS em JSON válido:
       {(loadingAI || recommendations.length > 0) && (
         <Card className="p-4">
           <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
+            <Sparkles className="w-4 h-4 text-muted-foreground" />
             Recomendações da IA
             {loadingAI && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
           </h4>
@@ -522,7 +522,7 @@ Responda APENAS em JSON válido:
                     } className="text-xs">
                       {rec.prioridade}
                     </Badge>
-                    <span className="text-xs font-semibold text-primary whitespace-nowrap">{rec.impacto}</span>
+                    <span className="text-xs font-semibold text-foreground whitespace-nowrap">{rec.impacto}</span>
                   </div>
                 </div>
                 <p className="text-xs font-medium text-foreground mt-1.5 flex items-center gap-1">
@@ -596,7 +596,7 @@ Responda APENAS em JSON válido:
                 <Badge className={`text-xs ${
                   item.oportunidade === 'aumentar' ? 'bg-success/10 text-success border-success/20' :
                   item.oportunidade === 'reduzir' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                  'bg-accent/10 text-accent border-accent/20'
+                  'bg-muted text-foreground border-border'
                 }`}>
                   {item.oportunidade === 'aumentar' ? '↑ Aumentar' :
                    item.oportunidade === 'reduzir' ? '↓ Reduzir' : '= Manter'}

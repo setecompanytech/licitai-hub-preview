@@ -217,8 +217,8 @@ export default function CotacaoEditalAutoIA() {
           onClick={() => fileRef.current?.click()}
           className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent/50 hover:bg-muted/30 transition-colors"
         >
-          <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
-            <Upload className="w-7 h-7 text-accent" />
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+            <Upload className="w-7 h-7 text-muted-foreground" />
           </div>
           <div className="text-center">
             <span className="text-sm font-semibold text-foreground block">
@@ -235,12 +235,12 @@ export default function CotacaoEditalAutoIA() {
       ) : (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
           <div className="flex items-center gap-3">
-            <FileText className="w-8 h-8 text-accent shrink-0" />
+            <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">
                 {(file.size / 1024).toFixed(0)} KB
-                {itens.length > 0 && <span className="text-accent ml-2">✓ {itens.length} itens extraídos</span>}
+                {itens.length > 0 && <span className="text-success ml-2">✓ {itens.length} itens extraídos</span>}
               </p>
             </div>
             <div className="flex gap-2">
@@ -268,7 +268,7 @@ export default function CotacaoEditalAutoIA() {
           {/* Action bar */}
           <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg p-3">
             <div className="flex items-center gap-3">
-              <Package className="w-5 h-5 text-accent" />
+              <Package className="w-5 h-5 text-muted-foreground" />
               <div>
                 <span className="text-sm font-semibold">{itens.length} itens</span>
                 <span className="text-xs text-muted-foreground ml-2">
@@ -310,14 +310,14 @@ export default function CotacaoEditalAutoIA() {
                 <p className="text-lg font-bold text-success">{formatCurrency(totalMenor)}</p>
                 <p className="text-xs text-muted-foreground">Total (Menor Preço)</p>
               </div>
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
-                <ShoppingCart className="w-5 h-5 text-primary mx-auto mb-1" />
-                <p className="text-lg font-bold text-primary">{formatCurrency(totalMedio)}</p>
+              <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-center">
+                <ShoppingCart className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalMedio)}</p>
                 <p className="text-xs text-muted-foreground">Total (Preço Médio)</p>
               </div>
-              <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 text-center">
-                <Package className="w-5 h-5 text-accent mx-auto mb-1" />
-                <p className="text-lg font-bold text-accent">{cotados.length}/{itens.length}</p>
+              <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-center">
+                <Package className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                <p className="text-lg font-bold text-foreground">{cotados.length}/{itens.length}</p>
                 <p className="text-xs text-muted-foreground">Itens Cotados</p>
               </div>
             </div>
@@ -347,7 +347,7 @@ export default function CotacaoEditalAutoIA() {
                       <Badge variant="secondary" className="text-xs">Pendente</Badge>
                     )}
                     {item.status === 'cotando' && (
-                      <Badge className="text-xs bg-accent/20 text-accent">
+                      <Badge className="text-xs bg-info/15 text-info border-info/20">
                         <Loader2 className="w-3 h-3 animate-spin mr-1" /> Cotando
                       </Badge>
                     )}

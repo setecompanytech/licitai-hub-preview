@@ -575,14 +575,14 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-accent" />
+            <Calculator className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-semibold text-sm">
               Calculadoras de Precificação — {regimeLabel}
             </h3>
           </div>
           <div className="flex items-center gap-2">
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
@@ -612,8 +612,8 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
         {/* ── Auto-detection recommendation banner ── */}
         {deteccao && calcTab !== deteccao.tipo && (
-          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-start gap-2">
-            <Lightbulb className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+          <div className="mt-3 bg-muted border border-border rounded-lg p-3 flex items-start gap-2">
+            <Lightbulb className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-xs text-foreground font-medium">Sugestão automática com base no CNAE da empresa</p>
               <p className="text-xs text-muted-foreground mt-0.5">{deteccao.motivo}</p>
@@ -629,8 +629,8 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           </div>
         )}
         {deteccao && calcTab === deteccao.tipo && usouSugestao && (
-          <div className="mt-3 bg-accent/10 border border-accent/30 rounded-lg p-2 flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-accent shrink-0" />
+          <div className="mt-3 bg-muted border border-border rounded-lg p-2 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <p className="text-xs text-muted-foreground">
               Tipo selecionado automaticamente: <strong className="text-foreground">{deteccao.motivo}</strong>
             </p>
@@ -639,10 +639,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
         {/* ── Regime filter badges ── */}
         <div className="flex flex-wrap gap-2 mt-3">
-          <Badge className="bg-accent/10 text-accent border-accent/20">
+          <Badge variant="secondary" className="border-border">
             <Building2 className="w-3 h-3 mr-1" /> {regimeLabel}
           </Badge>
-          <Badge className="bg-primary/10 text-primary border-primary/20">
+          <Badge variant="secondary" className="border-border">
             <MapPin className="w-3 h-3 mr-1" /> {ufCalculo} — ICMS {icmsUF}%
           </Badge>
           {cnae && (
@@ -718,7 +718,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-accent" /> Anexo do Simples Nacional
+              <BookOpen className="w-4 h-4 text-muted-foreground" /> Anexo do Simples Nacional
             </h4>
             <Badge variant="outline" className="text-xs">Resolução CGSN nº 140/2018</Badge>
           </div>
@@ -751,7 +751,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                     const rbt12Val = parseCurrencyInput(rbt12);
                     const isActive = rbt12Val >= f.min && rbt12Val <= f.max;
                     return (
-                      <TableRow key={f.faixaNum} className={isActive ? 'bg-accent/10 font-semibold' : ''}>
+                      <TableRow
+                        key={f.faixaNum}
+                        className={isActive ? 'bg-muted font-semibold hover:bg-muted [&>td]:border-y [&>td]:border-muted-foreground/40' : ''}
+                      >
                         <TableCell className="text-xs py-1.5">{f.faixaNum}ª Faixa</TableCell>
                         <TableCell className="text-xs py-1.5 text-right">{f.aliquota.toFixed(2)}%</TableCell>
                         <TableCell className="text-xs py-1.5 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '—'}</TableCell>
@@ -769,7 +772,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {/* ── Parâmetros do Cálculo (shared) ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-accent" /> Parâmetros do Cálculo
+          <Calculator className="w-4 h-4 text-muted-foreground" /> Parâmetros do Cálculo
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
@@ -792,7 +795,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Label className="text-xs">RBT12 (Faturamento 12m)</Label>
               <Input value={rbt12} onChange={e => setRbt12(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
               {rbt12Auto && rbt12Auto > 0 && (
-                <p className="text-xs text-accent mt-1 flex items-center gap-1">
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                   <Lightbulb className="w-3 h-3" />
                   Preenchido automaticamente via Configurações ({rbt12Auto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
                 </p>
@@ -826,7 +829,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {/* ── Alíquotas ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-          <TrendingUp className="w-4 h-4 text-accent" /> Alíquotas Tributárias — {regimeLabel} / {ufCalculo}
+          <TrendingUp className="w-4 h-4 text-muted-foreground" /> Alíquotas Tributárias — {regimeLabel} / {ufCalculo}
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {tributosAtivos.map((t: any) => (
@@ -836,7 +839,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                   <span className="text-xs font-medium">{t.nome}</span>
                   <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger><TooltipContent side="bottom" className="max-w-xs"><p className="text-xs">{t.info}</p></TooltipContent></Tooltip></TooltipProvider>
                 </div>
-                <span className="text-sm font-bold text-accent">{t.aliquota.toFixed(2)}%</span>
+                <span className="text-sm font-bold text-foreground">{t.aliquota.toFixed(2)}%</span>
               </div>
             </div>
           ))}
@@ -847,7 +850,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <h4 className="font-semibold text-sm flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-accent" /> Resultado da Simulação — Tributos & Lucro
+            <TrendingUp className="w-5 h-5 text-muted-foreground" /> Resultado da Simulação — Tributos & Lucro
           </h4>
 
           {/* KPI Cards - Row 1: Receita, Tributos, Carga */}
@@ -862,7 +865,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Carga Efetiva</p>
-              <p className="text-sm font-bold text-accent">
+              <p className="text-sm font-bold text-foreground">
                 {regime === 'simples_nacional' ? `${resultado.aliquotaEfetiva.toFixed(2)}%` : `${resultado.cargaEfetiva.toFixed(2)}%`}
               </p>
             </div>
@@ -870,9 +873,9 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* KPI Cards - Row 2: Lucro */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
+            <div className="bg-muted/30 rounded-lg p-3 text-center border border-border/50">
               <p className="text-xs text-muted-foreground">Lucro Bruto</p>
-              <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
+              <p className="text-sm font-bold text-foreground">{formatCurrency(resultado.lucroBruto)}</p>
               <p className="text-xs text-muted-foreground">Receita − Tributos</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
@@ -880,16 +883,16 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <p className="text-sm font-bold">{formatCurrency(resultado.totalCustosOp)}</p>
               <p className="text-xs text-muted-foreground">Frete + Desp. Adm.</p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
+            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-success/15 border-success/30' : 'bg-destructive/15 border-destructive/30'}`}>
               <p className="text-xs text-muted-foreground">Lucro Líquido</p>
-              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {formatCurrency(resultado.lucroLiquido)}
               </p>
               <p className="text-xs text-muted-foreground">L. Bruto − Custos Op.</p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
+            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-success/15 border-success/30' : resultado.margemLiquidaPct >= 0 ? 'bg-warning/15 border-warning/30' : 'bg-destructive/15 border-destructive/30'}`}>
               <p className="text-xs text-muted-foreground">Margem Líquida</p>
-              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
+              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-success' : resultado.margemLiquidaPct >= 0 ? 'text-warning' : 'text-destructive'}`}>
                 {resultado.margemLiquidaPct.toFixed(2)}%
               </p>
               <p className="text-xs text-muted-foreground">
@@ -903,7 +906,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <h5 className="text-xs font-semibold text-muted-foreground">Detalhamento dos Tributos</h5>
             {resultado.tributos.map((t: any) => (
               <div key={t.nome} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                <span className="text-xs font-medium">{t.nome} <span className="text-accent">({t.aliquota.toFixed(2)}%)</span></span>
+                <span className="text-xs font-medium">{t.nome} <span className="text-muted-foreground">({t.aliquota.toFixed(2)}%)</span></span>
                 <span className="text-xs font-bold">{formatCurrency(t.valor)}</span>
               </div>
             ))}
@@ -942,7 +945,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
             <div className="border-t border-border/30 my-1" />
             <div className="flex justify-between text-xs font-semibold">
               <span>= Lucro Bruto</span>
-              <span className="font-mono text-accent">{formatCurrency(resultado.lucroBruto)}</span>
+              <span className="font-mono text-foreground">{formatCurrency(resultado.lucroBruto)}</span>
             </div>
             {resultado.totalCustosOp > 0 && (
               <>
@@ -953,7 +956,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                 <div className="border-t border-border/30 my-1" />
               </>
             )}
-            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
               <span>= Lucro Líquido</span>
               <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
             </div>
@@ -965,10 +968,10 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
           {/* Alerta de inexequibilidade */}
           {resultado.margemLiquidaPct < 5 && resultado.margemLiquidaPct >= 0 && (
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
+              <Info className="w-4 h-4 text-warning mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-primary">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
+                <p className="text-xs font-semibold text-warning">Alerta de Inexequibilidade — Art. 59, Lei 14.133/2021</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Margem líquida abaixo de 5% pode configurar proposta inexequível. Revise os custos ou aumente a margem de lucro.
                 </p>
@@ -1023,7 +1026,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-accent" /> Itens de Produto
+                <FileText className="w-4 h-4 text-muted-foreground" /> Itens de Produto
               </h4>
               <Button variant="outline" size="sm" onClick={addItemRow}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item

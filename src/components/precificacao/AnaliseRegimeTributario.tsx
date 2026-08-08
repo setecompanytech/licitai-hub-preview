@@ -336,7 +336,7 @@ Formato: texto estruturado com tópicos numerados.`;
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-accent" />
+            <Scale className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-semibold text-sm">
               Análise de Regime Tributário — {ufCalculo}
             </h3>
@@ -377,7 +377,7 @@ Formato: texto estruturado com tópicos numerados.`;
             className="w-full flex items-center justify-between group"
           >
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-4 h-4 text-muted-foreground" />
               Panorama Tributário — {ufCalculo} ({ufNome})
             </h4>
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${panoramaOpen ? 'rotate-0' : '-rotate-90'}`} />
@@ -437,7 +437,7 @@ Formato: texto estruturado com tópicos numerados.`;
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Search className="w-4 h-4 text-accent" />
+              <Search className="w-4 h-4 text-muted-foreground" />
               Classificação NCM dos Itens
             </h4>
             <Button
@@ -481,7 +481,7 @@ Formato: texto estruturado com tópicos numerados.`;
                 {autoResult && !resultadoIA && (
                   <div className="bg-background/50 rounded-lg p-3 space-y-2 border border-border/30">
                     <div className="flex items-center gap-2 mb-1">
-                      <Globe className="w-3.5 h-3.5 text-accent" />
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-xs font-semibold text-foreground">
                         Consulta Automática — Fontes Oficiais
                       </span>
@@ -525,7 +525,7 @@ Formato: texto estruturado com tópicos numerados.`;
                               {autoResult.icms.isento ? 'Isento' : `${autoResult.icms.aliquota_interna || 0}%`}
                             </p>
                             {autoResult.icms.reducao_bc && (
-                              <p className="text-xs text-accent">Red. BC: {autoResult.icms.reducao_bc}%</p>
+                              <p className="text-xs text-muted-foreground">Red. BC: {autoResult.icms.reducao_bc}%</p>
                             )}
                           </div>
                         )}
@@ -560,7 +560,7 @@ Formato: texto estruturado com tópicos numerados.`;
                     {/* Benefícios fiscais */}
                     {autoResult.beneficios_fiscais && autoResult.beneficios_fiscais.length > 0 && (
                       <div className="flex items-start gap-1.5">
-                        <CheckCircle2 className="w-3 h-3 text-accent mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-3 h-3 text-success mt-0.5 shrink-0" />
                         <p className="text-xs text-muted-foreground">
                           <strong className="text-foreground">Benefícios:</strong>{' '}
                           {autoResult.beneficios_fiscais.join('; ')}
@@ -665,7 +665,7 @@ Formato: texto estruturado com tópicos numerados.`;
       {/* ── Consulta manual NCM/Produto ── */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <Bot className="w-4 h-4 text-accent" />
+          <Bot className="w-4 h-4 text-muted-foreground" />
           Consulta Tributária por NCM/Produto
         </h4>
         <p className="text-xs text-muted-foreground">

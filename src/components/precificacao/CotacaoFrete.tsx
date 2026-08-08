@@ -101,8 +101,8 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Truck className="w-4 h-4 text-primary" />
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+            <Truck className="w-4 h-4 text-muted-foreground" />
           </div>
           <div className="text-left">
             <h4 className="text-sm font-semibold text-foreground">Cotação de Frete</h4>
@@ -110,7 +110,7 @@ export function CotacaoFrete({ onFreteCalculado, precoProduto, compact = false }
               <p className="text-xs text-muted-foreground">
                 {resultado.origem.cidade}/{resultado.origem.uf} → {resultado.destino.cidade}/{resultado.destino.uf}
                 {selectedFrete && (
-                  <span className="ml-1 text-primary font-medium">
+                  <span className="ml-1 text-foreground font-medium">
                     · {selectedFrete.modalidade}: {selectedFrete.valor === 0 ? 'Grátis' : formatCurrency(selectedFrete.valor)} ({selectedFrete.prazo_dias} dias)
                   </span>
                 )}
@@ -279,7 +279,7 @@ export function FreteInlineDisplay({ frete }: { frete: FreteOpcao | null }) {
 
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <Truck className="w-3 h-3 text-primary" />
+      <Truck className="w-3 h-3 text-muted-foreground" />
       {frete.valor === 0 ? (
         <span className="text-success font-semibold">Frete grátis</span>
       ) : (

@@ -409,7 +409,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       {/* Tipo de Serviço */}
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <div className="flex items-center gap-2 mb-1">
-          <HardHat className="w-5 h-5 text-accent" />
+          <HardHat className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold text-sm">Serviços de Engenharia — Composição BDI</h3>
           <Badge variant="outline" className="text-xs ml-auto">{bdiConfig.ref}</Badge>
         </div>
@@ -426,7 +426,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
             </Select>
           </div>
           <div className="flex items-end">
-            <Badge className="bg-accent/10 text-accent border-accent/20 mb-1">
+            <Badge className="bg-muted text-foreground border-border mb-1">
               BDI Calculado: {fmtPerc(bdiCalc.bdiPercentual)}
             </Badge>
           </div>
@@ -547,7 +547,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-accent" /> Itens de Custo Direto
+            <FileText className="w-4 h-4 text-muted-foreground" /> Itens de Custo Direto
           </h4>
           <Button variant="outline" size="sm" onClick={addItem}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Item
@@ -623,9 +623,9 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
               <p className="text-xs text-muted-foreground">BDI ({fmtPerc(resultado.bdiPerc)})</p>
               <p className="text-sm font-bold text-warning">{fmtCur(resultado.totalBDI)}</p>
             </div>
-            <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
-              <p className="text-xs text-accent font-medium">PREÇO TOTAL</p>
-              <p className="text-sm font-bold text-accent">{fmtCur(resultado.totalPreco)}</p>
+            <div className="bg-muted rounded-lg p-3 text-center border-2 border-border">
+              <p className="text-xs text-muted-foreground font-medium">PREÇO TOTAL</p>
+              <p className="text-base font-bold text-foreground">{fmtCur(resultado.totalPreco)}</p>
             </div>
           </div>
 
@@ -659,13 +659,13 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
                     <TableCell className="text-xs py-1.5 text-right font-bold">{fmtCur(item.precoTotal)}</TableCell>
                   </TableRow>
                 ))}
-                <TableRow className="bg-accent/5 font-bold">
+                <TableRow className="bg-muted/40 font-bold">
                   <TableCell colSpan={4} className="text-xs py-2">TOTAL</TableCell>
                   <TableCell className="text-xs py-2 text-right">{fmtCur(resultado.totalCusto)}</TableCell>
                   <TableCell className="text-xs py-2 text-right text-info">{fmtCur(resultado.totalEncargos)}</TableCell>
                   <TableCell className="text-xs py-2 text-right text-warning">{fmtCur(resultado.totalBDI)}</TableCell>
                   <TableCell className="text-xs py-2 text-right"></TableCell>
-                  <TableCell className="text-xs py-2 text-right text-accent">{fmtCur(resultado.totalPreco)}</TableCell>
+                  <TableCell className="text-xs py-2 text-right text-foreground">{fmtCur(resultado.totalPreco)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -682,7 +682,7 @@ export default function ServicoEngenhariaCalculadora({ regimeLabel, regime, ufCa
             <p className="text-xs text-muted-foreground font-mono">
               BDI = [(1 + {fmtPerc(bdiCalc.ac)} + {fmtPerc(bdiCalc.sg)} + {fmtPerc(bdiCalc.risco)}) × (1 + {fmtPerc(bdiCalc.df)}) × (1 + {fmtPerc(bdiCalc.lucro)})] / (1 - {fmtPerc(bdiCalc.totalTributosPerc)}) - 1
             </p>
-            <p className="text-xs text-accent font-bold">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
+            <p className="text-xs text-foreground font-bold">BDI = {fmtPerc(bdiCalc.bdiPercentual)}</p>
           </div>
         </div>
       )}

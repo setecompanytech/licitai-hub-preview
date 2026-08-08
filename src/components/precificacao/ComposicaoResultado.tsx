@@ -88,11 +88,11 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
       <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-accent" />
+            <Bot className="w-5 h-5 text-muted-foreground" />
             <h4 className="font-semibold text-sm">Composição de Custo Gerada</h4>
           </div>
           <div className="flex gap-2">
-            <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
+            <Badge className="bg-muted text-foreground border-border text-xs">{regimeLabel} • {ufCalculo}</Badge>
             <Button variant="outline" size="sm" onClick={copyResult}>
               <Download className="w-3.5 h-3.5 mr-1" /> Copiar
             </Button>
@@ -110,16 +110,16 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
   const parecer = parsed.parecer || { viabilidade: 'N/A', margemLiquida: 0, alertaInexequibilidade: false, observacoes: '' };
 
   const viabilidadeIcon = parecer.viabilidade === 'VIÁVEL'
-    ? <CheckCircle className="w-4 h-4 text-accent" />
+    ? <CheckCircle className="w-4 h-4 text-success" />
     : parecer.viabilidade === 'INVIÁVEL'
     ? <XCircle className="w-4 h-4 text-destructive" />
-    : <AlertTriangle className="w-4 h-4 text-primary" />;
+    : <AlertTriangle className="w-4 h-4 text-warning" />;
 
   const viabilidadeColor = parecer.viabilidade === 'VIÁVEL'
-    ? 'bg-accent/10 text-accent border-accent/20'
+    ? 'bg-success/10 text-success border-success/20'
     : parecer.viabilidade === 'INVIÁVEL'
     ? 'bg-destructive/10 text-destructive border-destructive/20'
-    : 'bg-primary/10 text-primary border-primary/20';
+    : 'bg-warning/10 text-warning border-warning/20';
 
   return (
     <div className="space-y-4">
@@ -127,11 +127,11 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-accent" />
+            <Bot className="w-5 h-5 text-muted-foreground" />
             <h4 className="font-semibold text-sm">Planilha de Composição de Custo — IA Contábil</h4>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-accent/10 text-accent text-xs">{regimeLabel} • {ufCalculo}</Badge>
+            <Badge className="bg-muted text-foreground border-border text-xs">{regimeLabel} • {ufCalculo}</Badge>
             <Button variant="outline" size="sm" onClick={copyResult}>
               <Download className="w-3.5 h-3.5 mr-1" /> Copiar
             </Button>
@@ -144,10 +144,10 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
             <FileText className="w-3.5 h-3.5 mr-1 text-destructive" /> PDF
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportWord} className="text-xs">
-            <FileText className="w-3.5 h-3.5 mr-1 text-primary" /> Word
+            <FileText className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Word
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportExcel} className="text-xs">
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-accent" /> Excel
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Excel
           </Button>
           <div className="flex-1" />
           <Button size="sm" onClick={enviarParaProposta} className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs">
@@ -193,19 +193,19 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                   ))}
                 </TableBody>
                 <TableFooter>
-                  <TableRow className="bg-accent/5 border-t-2 border-accent/20">
+                  <TableRow className="bg-muted/40 border-t-2 border-border">
                     <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Unitário Formado
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-foreground">
                       {fmt(item.precoUnitarioFormado)}
                     </TableCell>
                   </TableRow>
-                  <TableRow className="bg-accent/10">
+                  <TableRow className="bg-muted">
                     <TableCell colSpan={3} className="text-xs py-2 font-bold">
                       Preço Total ({item.quantidade} {item.unidade})
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-accent">
+                    <TableCell className="text-xs py-2 text-right font-mono font-bold text-foreground">
                       {fmt(item.precoTotal)}
                     </TableCell>
                   </TableRow>
@@ -257,9 +257,9 @@ export default function ComposicaoResultado({ iaResult, regimeLabel, ufCalculo, 
                 </TableRow>
               </TableBody>
               <TableFooter>
-                <TableRow className="bg-accent/10 border-t-2 border-accent/20">
+                <TableRow className="bg-muted border-t-2 border-border">
                   <TableCell className="text-[12px] py-2.5 font-bold">PREÇO TOTAL FORMADO</TableCell>
-                  <TableCell className="text-[12px] py-2.5 text-right font-mono font-bold text-accent">{fmt(resumo.precoTotalFormado)}</TableCell>
+                  <TableCell className="text-[12px] py-2.5 text-right font-mono font-bold text-foreground">{fmt(resumo.precoTotalFormado)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

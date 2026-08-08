@@ -128,7 +128,7 @@ export default function ListasCompras() {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-primary" />
+          <ShoppingCart className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold">Listas de Compras</h3>
           <Badge variant="outline">{lists.length}</Badge>
         </div>
@@ -154,7 +154,7 @@ export default function ListasCompras() {
         {/* Lists panel */}
         <div className="lg:col-span-1 space-y-2">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : lists.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma lista criada ainda.</p>
           ) : (
@@ -208,7 +208,7 @@ export default function ListasCompras() {
               )}
 
               {loadingItems ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Lista vazia. Adicione itens para começar.</p>
               ) : (

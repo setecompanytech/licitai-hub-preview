@@ -347,7 +347,7 @@ export default function LicitacaoSelector({
     <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h4 className="text-sm font-semibold flex items-center gap-2">
-          <FileText className="w-4 h-4 text-accent" />
+          <FileText className="w-4 h-4 text-muted-foreground" />
           Vincular à Licitação (preenchimento automático)
         </h4>
         {selectedId && (
@@ -366,7 +366,7 @@ export default function LicitacaoSelector({
           {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
         {licitacaoId && (
-          <Badge className="text-xs bg-accent/15 text-accent border-0">
+          <Badge className="text-xs bg-success/15 text-success border-0">
             Processo vinculado sincronizado
           </Badge>
         )}
@@ -450,7 +450,7 @@ export default function LicitacaoSelector({
                     <Badge variant="outline" className="text-xs h-5">{l.modalidade}</Badge>
                   )}
                   {l.valor_estimado && l.valor_estimado > 0 && (
-                    <span className="text-xs font-medium text-accent">
+                    <span className="text-xs font-medium text-foreground">
                       R$ {l.valor_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   )}
@@ -468,12 +468,12 @@ export default function LicitacaoSelector({
       )}
 
       {selectedId && (
-        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-2">
+        <div className="bg-muted/40 border border-border rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             {extracting ? (
-              <Loader2 className="w-4 h-4 text-accent shrink-0 animate-spin" />
+              <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
             ) : (
-              <CheckCircle className="w-4 h-4 text-accent shrink-0" />
+              <CheckCircle className="w-4 h-4 text-success shrink-0" />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">
@@ -484,22 +484,22 @@ export default function LicitacaoSelector({
               </p>
             </div>
             {extracting ? (
-              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+              <Badge className="bg-muted text-muted-foreground border-border shrink-0">
                 <Brain className="w-3 h-3 mr-1" /> Extraindo...
               </Badge>
             ) : (
-              <Badge className="bg-accent/20 text-accent border-accent/30 shrink-0">
+              <Badge className="bg-muted text-foreground border-border shrink-0">
                 {itensCount} {itensCount === 1 ? 'item' : 'itens'}
               </Badge>
             )}
           </div>
           {extracting && (
-            <p className="text-xs text-accent">
+            <p className="text-xs text-muted-foreground">
               🤖 A IA está extraindo os itens do edital automaticamente. Aguarde...
             </p>
           )}
           {!extracting && itensCount > 0 && (
-            <p className="text-xs text-accent">
+            <p className="text-xs text-success">
               ✓ Itens preenchidos automaticamente. Você pode editar, adicionar ou excluir itens livremente.
             </p>
           )}

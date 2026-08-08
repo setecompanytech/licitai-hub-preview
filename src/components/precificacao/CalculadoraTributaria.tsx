@@ -190,7 +190,7 @@ export default function CalculadoraTributaria() {
       <div className="bg-card rounded-xl border border-border/50 p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-accent" />
+            <Calculator className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-semibold text-sm">Calculadora Tributária — {config.label}</h3>
           </div>
           <a
@@ -285,7 +285,7 @@ export default function CalculadoraTributaria() {
       {resultado && (
         <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-accent" />
+            <TrendingUp className="w-5 h-5 text-muted-foreground" />
             <h4 className="font-semibold text-sm">Resultado da Simulação — Tributos & Lucro</h4>
           </div>
 
@@ -300,7 +300,7 @@ export default function CalculadoraTributaria() {
             </div>
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Carga Efetiva</p>
-              <p className="text-sm font-bold text-accent">
+              <p className="text-sm font-bold text-foreground">
                 {regime === 'simples_nacional'
                   ? `${resultado.aliquotaEfetiva.toFixed(2)}%`
                   : `${resultado.cargaEfetiva.toFixed(2)}%`}
@@ -310,20 +310,20 @@ export default function CalculadoraTributaria() {
 
           {/* Lucro KPIs */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-accent/10 rounded-lg p-3 text-center border border-accent/20">
+            <div className="bg-muted/30 rounded-lg p-3 text-center border border-border/50">
               <p className="text-xs text-muted-foreground">Lucro Bruto</p>
-              <p className="text-sm font-bold text-accent">{formatCurrency(resultado.lucroBruto)}</p>
+              <p className="text-sm font-bold text-foreground">{formatCurrency(resultado.lucroBruto)}</p>
               <p className="text-xs text-muted-foreground">Receita − Tributos</p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-accent/15 border-accent/30' : 'bg-destructive/15 border-destructive/30'}`}>
+            <div className={`rounded-lg p-3 text-center border ${resultado.lucroLiquido >= 0 ? 'bg-success/15 border-success/30' : 'bg-destructive/15 border-destructive/30'}`}>
               <p className="text-xs text-muted-foreground">Lucro Líquido</p>
-              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+              <p className={`text-sm font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {formatCurrency(resultado.lucroLiquido)}
               </p>
             </div>
-            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-accent/15 border-accent/30' : resultado.margemLiquidaPct >= 0 ? 'bg-primary/15 border-primary/30' : 'bg-destructive/15 border-destructive/30'}`}>
+            <div className={`rounded-lg p-3 text-center border ${resultado.margemLiquidaPct >= 5 ? 'bg-success/15 border-success/30' : resultado.margemLiquidaPct >= 0 ? 'bg-warning/15 border-warning/30' : 'bg-destructive/15 border-destructive/30'}`}>
               <p className="text-xs text-muted-foreground">Margem Líquida</p>
-              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-accent' : resultado.margemLiquidaPct >= 0 ? 'text-primary' : 'text-destructive'}`}>
+              <p className={`text-sm font-bold ${resultado.margemLiquidaPct >= 5 ? 'text-success' : resultado.margemLiquidaPct >= 0 ? 'text-warning' : 'text-destructive'}`}>
                 {resultado.margemLiquidaPct.toFixed(2)}%
               </p>
               <p className="text-xs text-muted-foreground">
@@ -333,7 +333,7 @@ export default function CalculadoraTributaria() {
           </div>
 
           {regime === 'simples_nacional' && resultado.faixa && (
-            <div className="bg-accent/5 rounded-lg p-3 text-xs">
+            <div className="bg-muted/40 rounded-lg p-3 text-xs">
               <p><strong>Faixa:</strong> RBT12 de {formatCurrency(resultado.faixa.min)} a {formatCurrency(resultado.faixa.max)}</p>
               <p><strong>Alíquota nominal:</strong> {resultado.faixa.aliquota}% | <strong>Dedução:</strong> {formatCurrency(resultado.faixa.deducao)}</p>
               <p><strong>Alíquota efetiva:</strong> {resultado.aliquotaEfetiva.toFixed(2)}%</p>
@@ -379,7 +379,7 @@ export default function CalculadoraTributaria() {
               <span className="font-mono font-semibold">({formatCurrency(resultado.totalTributos)})</span>
             </div>
             <div className="border-t border-border/30 my-1" />
-            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-accent' : 'text-destructive'}`}>
+            <div className={`flex justify-between text-xs font-bold ${resultado.lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
               <span>= Lucro Líquido</span>
               <span className="font-mono">{formatCurrency(resultado.lucroLiquido)}</span>
             </div>
@@ -472,7 +472,7 @@ Ao final, adicione nota de que os valores são estimativas baseadas nas alíquot
     <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-accent" />
+          <Bot className="w-5 h-5 text-muted-foreground" />
           <h4 className="font-semibold text-sm">Simulação IA — CBS/IBS (Reforma Tributária)</h4>
         </div>
         <a

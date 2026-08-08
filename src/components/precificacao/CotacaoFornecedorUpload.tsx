@@ -233,7 +233,7 @@ ${truncated}`
       <div className="flex gap-2 items-end">
         {file ? (
           <div className="flex items-center gap-3 flex-1 bg-muted/30 rounded-lg p-3 border border-border/50">
-            <FileText className="w-6 h-6 text-accent flex-shrink-0" />
+            <FileText className="w-6 h-6 text-muted-foreground flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
@@ -288,7 +288,7 @@ ${truncated}`
             onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <FileText className="w-5 h-5 text-accent flex-shrink-0" />
+              <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{cotacao.nome_fornecedor}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

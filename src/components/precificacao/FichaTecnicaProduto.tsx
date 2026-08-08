@@ -94,7 +94,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
       <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Extraindo ficha técnica do produto...</p>
           </div>
         ) : (
@@ -170,7 +170,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
                         <span className="text-xs text-muted-foreground">{produto.loja}</span>
                       </div>
                       {produto.vendedor_qualificado && (
-                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                        <Badge className="bg-success/10 text-success border-success/20 text-xs">
                           <ShieldCheck className="w-3 h-3 mr-0.5" /> Vendedor Qualificado
                         </Badge>
                       )}
@@ -244,7 +244,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
               {ficha?.especificacoes && ficha.especificacoes.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-primary" />
+                    <ClipboardList className="w-4 h-4 text-muted-foreground" />
                     Especificações Técnicas
                   </h4>
                   <div className="border border-border/40 rounded-lg overflow-hidden">
@@ -268,7 +268,7 @@ export default function FichaTecnicaProduto({ open, onOpenChange, produto }: Fic
               {images.length > 2 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-primary" />
+                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
                     Galeria de Imagens ({images.length})
                   </h4>
                   <div className="grid grid-cols-4 md:grid-cols-6 gap-2">

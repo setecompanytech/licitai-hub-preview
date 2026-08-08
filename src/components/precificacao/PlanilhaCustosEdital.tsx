@@ -679,7 +679,7 @@ export default function PlanilhaCustosEdital({
       {!file ? (
         <div className="space-y-3">
           {licitacaoId && (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
               <div>
                 <p className="text-xs font-medium text-foreground">Processo vinculado pronto para uso</p>
                 <p className="text-xs text-muted-foreground">
@@ -714,8 +714,8 @@ export default function PlanilhaCustosEdital({
             onClick={() => fileRef.current?.click()}
             className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-accent/50 hover:bg-muted/30 transition-colors"
           >
-            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-accent" />
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <Upload className="w-6 h-6 text-muted-foreground" />
             </div>
             <span className="text-sm font-semibold text-foreground">
               Envie o Edital, Termo de Referência ou Anexo
@@ -731,13 +731,13 @@ export default function PlanilhaCustosEdital({
       ) : (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
           <div className="flex items-center gap-3">
-            <FileText className="w-8 h-8 text-accent shrink-0" />
+            <FileText className="w-8 h-8 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">
                 {(file.size / 1024).toFixed(0)} KB
                 {itens.length > 0 && (
-                  <span className="text-accent ml-2">✓ {itens.length} itens extraídos</span>
+                  <span className="text-success ml-2">✓ {itens.length} itens extraídos</span>
                 )}
               </p>
             </div>
@@ -765,7 +765,7 @@ export default function PlanilhaCustosEdital({
           {/* Actions bar */}
           <div className="flex items-center justify-between flex-wrap gap-2 bg-card border border-border/40 rounded-lg p-3">
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-accent" />
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm font-semibold">{itens.length} itens</span>
             {sourceLabel && (
               <Badge variant="outline" className="text-xs">
@@ -791,7 +791,7 @@ export default function PlanilhaCustosEdital({
                 </Badge>
               )}
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                 {saving ? 'Salvando...' : `Salvo ${lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
@@ -890,14 +890,14 @@ export default function PlanilhaCustosEdital({
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-16">Qtd</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-20">Unidade</th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground w-28">
-                    <span className="text-accent">Vlr Unit Ref</span>
+                    <span className="text-muted-foreground">Vlr Unit Ref</span>
                   </th>
                   <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground w-28">
-                    <span className="text-accent">Vlr Total Ref</span>
+                    <span className="text-muted-foreground">Vlr Total Ref</span>
                   </th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Marca</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Unitário</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-primary w-28">Vlr Total</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-foreground w-28">Vlr Unitário</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-foreground w-28">Vlr Total</th>
                   <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[110px]">Fonte</th>
                   <th className="px-3 py-2 text-xs font-semibold text-muted-foreground min-w-[140px]">Avaliação</th>
                   <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground w-10"></th>
@@ -943,10 +943,10 @@ export default function PlanilhaCustosEdital({
                         className="h-7 text-xs text-center w-20 mx-auto"
                       />
                     </td>
-                    <td className="px-3 py-2 text-right text-xs text-accent">
+                    <td className="px-3 py-2 text-right text-xs text-muted-foreground">
                       {it.valorUnitarioRef != null ? formatCurrency(it.valorUnitarioRef) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-xs text-accent">
+                    <td className="px-3 py-2 text-right text-xs text-muted-foreground">
                       {it.valorTotalRef != null ? formatCurrency(it.valorTotalRef) : '—'}
                     </td>
                     <td className="px-3 py-2">
@@ -968,13 +968,13 @@ export default function PlanilhaCustosEdital({
                       <MoneyInput
                         value={it.valorUnitario ?? 0}
                         onValueChange={(v) => updateItem(idx, 'valorUnitario', v || null)}
-                        className="h-7 text-xs w-28 ml-auto bg-primary/5 border-primary/20 font-medium"
+                        className="h-7 text-xs w-28 ml-auto bg-muted/40 border-border font-medium"
                       />
                     </td>
                     <td className="px-3 py-2 text-right text-xs font-semibold">
                       {it.valorTotal != null && it.valorTotal > 0 ? (
                         <div className="flex flex-col items-end gap-0.5">
-                          <span className="text-primary">{formatCurrency(it.valorTotal)}</span>
+                          <span className="text-foreground">{formatCurrency(it.valorTotal)}</span>
                           {it.valorUnitarioRef != null && it.valorUnitarioRef > 0 && it.valorUnitario != null && it.valorUnitario > 0 && (() => {
                             const diff = ((it.valorUnitario - it.valorUnitarioRef) / it.valorUnitarioRef) * 100;
                             const isLower = diff < -1;
@@ -1071,15 +1071,15 @@ export default function PlanilhaCustosEdital({
                   <td colSpan={4} className="px-3 py-2 text-right text-xs text-muted-foreground">
                     TOTAL GERAL →
                   </td>
-                  <td className="px-3 py-2 text-right text-xs text-accent">
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground">
                     {/* empty */}
                   </td>
-                  <td className="px-3 py-2 text-right text-xs text-accent font-bold">
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground font-bold">
                     {totalRef > 0 ? formatCurrency(totalRef) : '—'}
                   </td>
                   <td className="px-3 py-2">{/* marca col */}</td>
                   <td className="px-3 py-2">{/* unit price col */}</td>
-                  <td className={`px-3 py-2 text-right text-sm font-bold ${totalRef > 0 && totalGeral > totalRef ? 'text-destructive' : 'text-primary'}`}>
+                  <td className={`px-3 py-2 text-right text-sm font-bold ${totalRef > 0 && totalGeral > totalRef ? 'text-destructive' : 'text-foreground'}`}>
                     {totalGeral > 0 ? (
                       <div className="flex flex-col items-end leading-tight">
                         <span>{formatCurrency(totalGeral)}</span>
@@ -1101,7 +1101,7 @@ export default function PlanilhaCustosEdital({
           {itens.some(it => it.fontes && it.fontes.length > 0) && (
             <div className="border border-border/40 rounded-lg overflow-hidden">
               <div className="bg-muted/40 px-3 py-2 border-b border-border/40 flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-accent" />
+                <Link2 className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs font-semibold text-foreground">Fontes de Referência — Links das Cotações</span>
               </div>
               <div className="overflow-x-auto">
@@ -1175,9 +1175,9 @@ export default function PlanilhaCustosEdital({
           {/* Instructions */}
           <div className="bg-muted/20 border border-border/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground text-xs mb-1">📋 Instruções</p>
-            <p>• Use <strong className="text-primary">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
+            <p>• Use <strong className="text-foreground">"Cotar Todos"</strong> para o sistema buscar preços automaticamente no Google Shopping, Mercado Livre e demais plataformas.</p>
             <p>• A cotação preenche <strong>Marca</strong>, <strong>Valor Unitário</strong> e <strong>Valor Total</strong> automaticamente, exibindo a <strong>% de diferença</strong> vs referência.</p>
-            <p>• Os valores de referência do edital (quando disponíveis) são exibidos em <strong className="text-accent">laranja</strong>.</p>
+            <p>• Os valores de referência do edital (quando disponíveis) são exibidos nas colunas <strong className="text-foreground">"Vlr Unit Ref"</strong> e <strong className="text-foreground">"Vlr Total Ref"</strong>.</p>
             <p>• A tabela <strong>"Fontes de Referência"</strong> exibe os links de onde cada preço e marca foram extraídos.</p>
             <p>• Use <strong>"Exportar Excel"</strong> para baixar a planilha e <strong>"Enviar à Proposta"</strong> para transferir os itens.</p>
           </div>

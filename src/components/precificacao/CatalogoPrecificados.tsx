@@ -314,7 +314,7 @@ Responda APENAS em JSON:
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Package className="w-5 h-5 text-accent flex-shrink-0" />
+          <Package className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <h3 className="font-semibold text-xs sm:text-sm whitespace-nowrap">Catálogo de Itens Precificados</h3>
           <Badge variant="outline" className="text-xs">{items.length} itens</Badge>
         </div>
@@ -344,9 +344,9 @@ Responda APENAS em JSON:
 
       {/* ── Consulta Inteligente Panel ── */}
       {showConsulta && (
-        <div className="bg-accent/5 border border-accent/20 rounded-xl p-5 space-y-4">
+        <div className="bg-muted/30 border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5 text-accent" />
+            <Globe className="w-5 h-5 text-muted-foreground" />
             <h4 className="font-semibold text-sm">Consulta Inteligente — Extração de Itens do Edital</h4>
             <Badge variant="outline" className="text-xs ml-auto">IA + Pesquisa Real</Badge>
           </div>
@@ -465,7 +465,7 @@ Responda APENAS em JSON:
 
       {/* Selection actions */}
       {selectedItems.size > 0 && (
-        <div className="flex items-center justify-between bg-accent/10 border border-accent/20 rounded-lg px-4 py-2.5">
+        <div className="flex items-center justify-between bg-muted border border-border rounded-lg px-4 py-2.5">
           <span className="text-xs font-medium">
             {selectedItems.size} item(ns) selecionado(s) · Total: {formatCurrency(totalSelecionado)}
           </span>
@@ -530,7 +530,7 @@ Responda APENAS em JSON:
                   <TableCell className="text-xs py-1.5">{item.marca || '—'}</TableCell>
                   <TableCell className="text-xs py-1.5 text-right">{formatCurrency(item.custo_unitario)}</TableCell>
                   <TableCell className="text-xs py-1.5 text-right font-medium">{formatCurrency(item.preco_unitario)}</TableCell>
-                  <TableCell className="text-xs py-1.5 text-right font-semibold text-accent">{formatCurrency(item.preco_total)}</TableCell>
+                  <TableCell className="text-xs py-1.5 text-right font-semibold text-foreground">{formatCurrency(item.preco_total)}</TableCell>
                   <TableCell className="py-1.5">
                     <Badge variant="outline" className="text-xs">
                       {TIPO_LABELS[item.tipo_calculo] || item.tipo_calculo}
