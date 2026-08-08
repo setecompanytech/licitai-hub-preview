@@ -6,6 +6,27 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-08] Todo push em `main` publica em produção — com clean-slate
+
+**Fato:** `.github/workflows/deploy-hostgator.yml` roda em `on: push: branches: [main]`,
+builda e sobe o `dist/` por FTP com **`dangerous-clean-slate: true`** — o diretório remoto é
+limpo antes do upload. Não existe branch de homologação nem gate manual.
+
+**Consequências práticas, aprendidas nesta sessão:**
+
+- **não há commit barato.** Corrigir uma vírgula custa um deploy completo. Agrupe mudanças
+  pequenas e envie junto com algo que valha a publicação;
+- **o que está em `main` está no ar.** Não dá para "commitar agora e validar depois" —
+  validar tem de vir antes do push. No rollout da régua, os 8 lotes ficaram commitados
+  localmente até a validação humana, justamente por isto;
+- **`git log origin/main..HEAD`** mostra o que está retido localmente. Vale conferir antes
+  de assumir que o repositório está sincronizado.
+
+**Se um dia isso incomodar:** trocar o gatilho para `workflow_dispatch` (deploy manual) ou
+exigir tag, e manter `main` como integração. Decisão de processo, não urgente.
+
+---
+
 ## [2026-08-08] Screenshot NÃO serve de regressão visual em Licitações Estratégicas
 
 **Fato medido:** duas capturas da MESMA tela, com o MESMO código, minutos de diferença,
