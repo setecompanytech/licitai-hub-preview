@@ -1,0 +1,41 @@
+name: CI
+
+# Verificacao automatica de main. Existe porque o deploy deixou de rodar em push
+# (ver deploy-hostgator.yml): sem isto, um commit que quebra o build so seria
+# descoberto na hora de publicar, quando ja e urgente.
+# `npm run lint` fica de fora ate o debito cair — hoje sao ~2.064 problemas e o
+# job nasceria vermelho e permanente, que e o mesmo que nao ter job.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Build e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+
+      - name: Testes
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
