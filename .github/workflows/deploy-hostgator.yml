@@ -1,9 +1,14 @@
 name: Deploy Frontend via FTP
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+
+# Publicacao virou manual: um push em main nao vai mais ao ar sozinho.
+# Como os tres passos de FTP usam dangerous-clean-slate, duas execucoes
+# simultaneas limpariam o public_html uma da outra — a fila serializa.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
