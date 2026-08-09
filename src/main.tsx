@@ -29,7 +29,7 @@ try {
   const projectRef = supabaseUrl ? supabaseUrl.replace(/https?:\/\//, "").split(".")[0] : "NÃO DEFINIDA";
   const anonKeyTail = anonKey ? `…${anonKey.slice(-8)}` : "(unset)";
 
-  // eslint-disable-next-line no-console
+   
   console.info(
     `%c[PRAEFECTUS] Build ${__BUILD_ID__}\n%cBuild time: ${__BUILD_TIME__}\nSupabase project: ${projectRef}.supabase.co\nAnon key: ${anonKey ? `Sim (${anonKey.length} chars, tail ${anonKeyTail})` : "AUSENTE"}`,
     "background:#0F172A;color:#3B82F6;font-weight:bold;padding:2px 6px;border-radius:3px;",

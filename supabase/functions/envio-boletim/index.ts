@@ -308,7 +308,7 @@ async function filterByCnpj(supabase: any, sub: any, filtered: LicitacaoUnificad
     empresa.nome_fantasia?.toLowerCase(),
   ].filter(Boolean) as string[];
 
-  let result = filtered.filter(l => {
+  const result = filtered.filter(l => {
     const texto = `${l.titulo} ${l.orgao} ${l.objeto}`.toLowerCase();
     return searchTerms.some(term => texto.includes(term));
   });

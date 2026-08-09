@@ -91,7 +91,7 @@ export default function AuditoriaAdmin() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchRows(); /* eslint-disable-next-line */ }, [tab, periodoFilter, operacaoFilter, empresaAtiva?.id]);
+  useEffect(() => { fetchRows();   }, [tab, periodoFilter, operacaoFilter, empresaAtiva?.id]);
 
   const filtered = useMemo(() => {
     if (!search) return rows;

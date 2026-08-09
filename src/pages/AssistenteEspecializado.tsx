@@ -167,7 +167,7 @@ export default function AssistenteEspecializado() {
 
       // Flush
       if (buffer.trim()) {
-        for (let raw of buffer.split('\n')) {
+        for (const raw of buffer.split('\n')) {
           if (!raw?.startsWith('data: ')) continue;
           const jsonStr = raw.slice(6).trim();
           if (jsonStr === '[DONE]') continue;

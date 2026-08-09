@@ -55,7 +55,7 @@ serve(async (req) => {
     for (const edital of editais ?? []) {
       // In test mode, use the provided contacts
       if (testMode) {
-        let pdfSignedUrl = await obterPdfUrl(edital, supabase);
+        const pdfSignedUrl = await obterPdfUrl(edital, supabase);
 
         if (testWhatsapp) {
           await enviarWhatsApp(edital, testWhatsapp, pdfSignedUrl, supabase, "teste");
@@ -103,7 +103,7 @@ serve(async (req) => {
       }
 
       // Download PDF if available
-      let pdfSignedUrl = await obterPdfUrl(edital, supabase);
+      const pdfSignedUrl = await obterPdfUrl(edital, supabase);
 
       // Distribute to each matching user
       for (const pref of prefsComUF) {

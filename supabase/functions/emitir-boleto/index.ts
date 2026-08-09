@@ -123,9 +123,9 @@ serve(async (req) => {
     });
 
     // Extract boleto details from next_action
-    let linhaDigitavel = null;
-    let codigoBarras = null;
-    let urlPdf = null;
+    const linhaDigitavel = null;
+    const codigoBarras = null;
+    const urlPdf = null;
     let urlPagamento = null;
 
     if (confirmedIntent.next_action?.type === "boleto_display_details") {

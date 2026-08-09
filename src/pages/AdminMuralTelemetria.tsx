@@ -55,7 +55,7 @@ export default function AdminMuralTelemetria() {
     }
   };
 
-  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [horas]);
+  useEffect(() => { carregar();   }, [horas]);
 
   const taxaDivergencia = data && data.total_buscas > 0
     ? Math.round((data.com_divergencia / data.total_buscas) * 100)

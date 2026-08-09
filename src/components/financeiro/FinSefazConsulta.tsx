@@ -79,7 +79,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
     setLogs(data ?? []);
   };
 
-  useEffect(() => { carregarLogs(); /* eslint-disable-next-line */ }, [empresaId]);
+  useEffect(() => { carregarLogs();   }, [empresaId]);
 
   const consultar = async () => {
     if (!empresaId) { toast.error("Selecione uma empresa"); return; }

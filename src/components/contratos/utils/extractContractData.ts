@@ -13,7 +13,7 @@ export async function extractContractDataFromFile(
   try {
     const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     let texto = '';
-    let images: { dataUrl: string }[] = [];
+    const images: { dataUrl: string }[] = [];
 
     if (isPdf) {
       const pdfjsLib = await import('pdfjs-dist');

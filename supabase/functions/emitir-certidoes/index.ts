@@ -381,7 +381,7 @@ Responda APENAS com JSON:
     if (!resp.ok) { await resp.text(); return null; }
 
     const aiData = await resp.json();
-    let content = (aiData.choices?.[0]?.message?.content || "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const content = (aiData.choices?.[0]?.message?.content || "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(content);
 
     console.log(`IA ${tipoCertidao} extraction:`, JSON.stringify(parsed));

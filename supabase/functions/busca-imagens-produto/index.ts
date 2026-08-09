@@ -62,7 +62,7 @@ serve(async (req) => {
 
     // Buscar fotos em alta resolução via multi-get (até 20 IDs por request)
     const ids = results.map((r: any) => r.id);
-    let picturesMap: Record<string, Array<{ url: string; secure_url: string }>> = {};
+    const picturesMap: Record<string, Array<{ url: string; secure_url: string }>> = {};
 
     try {
       const detailRes = await fetch(

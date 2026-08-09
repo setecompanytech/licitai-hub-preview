@@ -87,7 +87,7 @@ export default function FinPedidosAFaturar() {
 
       // 2. Fetch kanban status for linked pedidos
       const linkedIds = all.map(r => r.pedido_id).filter(Boolean) as string[];
-      let kMap: Record<string, string> = {};
+      const kMap: Record<string, string> = {};
       if (linkedIds.length > 0) {
         const { data: kRows } = await supabase
           .from('pedidos' as never)

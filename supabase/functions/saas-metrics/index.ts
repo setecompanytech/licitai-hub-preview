@@ -110,7 +110,7 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ limit: 1 });
     // Get total from count header workaround
     const allCustomers = await stripe.customers.list({ limit: 100 });
-    let totalCustomers = allCustomers.data.length;
+    const totalCustomers = allCustomers.data.length;
 
     // Get total users from DB
     const { count: totalUsers } = await supabaseClient

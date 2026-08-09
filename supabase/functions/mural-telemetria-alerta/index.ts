@@ -138,7 +138,7 @@ Acesse o painel: ${publicUrl()}/admin/mural-telemetria`
     }
 
     // Slack (opcional)
-    let slack: { tentado: boolean; ok?: boolean; status?: number; erro?: string } = { tentado: false }
+    const slack: { tentado: boolean; ok?: boolean; status?: number; erro?: string } = { tentado: false }
     if (SLACK_WEBHOOK_URL) {
       slack.tentado = true
       try {

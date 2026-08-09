@@ -419,7 +419,7 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════
     // CAMADA 3: Extração via Gemini (texto puro) — fallback
     // ══════════════════════════════════════════════
-    let textoParaIA = texto_edital;
+    const textoParaIA = texto_edital;
 
     // If no text and we have PNCP params, try downloading archives for Gemini Vision fallback
     if ((!textoParaIA || textoParaIA.trim().length < 50) && cnpj && ano && seq) {

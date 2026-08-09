@@ -105,12 +105,12 @@ export function useDashboardData() {
 
   /** Helper to build a filtered query on licitacoes */
   function licitacoesQuery() {
-    let q = supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
+    const q = supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
     return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
   }
 
   function licitacoesDataQuery(selectCols: string) {
-    let q = supabase.from('licitacoes').select(selectCols).eq('user_id', user!.id);
+    const q = supabase.from('licitacoes').select(selectCols).eq('user_id', user!.id);
     return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
   }
 

@@ -100,7 +100,7 @@ export function drawCoverPage(doc: jsPDF, chapterCount: number) {
   doc.text(introLines, 45, 118);
 
   // Metadata
-  let metaY = 170;
+  const metaY = 170;
   doc.setFont('times', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.muted);

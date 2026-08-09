@@ -327,7 +327,7 @@ serve(async (req) => {
     });
 
     // Se modo imagens, buscar fotos em alta resolução
-    let picturesMap: Record<string, Array<{ url: string; secure_url: string }>> = {};
+    const picturesMap: Record<string, Array<{ url: string; secure_url: string }>> = {};
 
     if ((modo === "imagens" || modo === "completo" || incluir_imagens) && mlData.results.length > 0) {
       const ids = mlData.results.map((r) => r.id);

@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
     // Se o usuário selecionou UF, combina cnpj+uf para escopo mais estreito.
     // Se não selecionou UF, busca sem filtro de UF (retorna todas as unidades do órgão).
     let ufEfetiva = uf;
-    let cnpjUasg = cnpjsParam.length > 0 ? cnpjsParam[0] : '';
+    const cnpjUasg = cnpjsParam.length > 0 ? cnpjsParam[0] : '';
 
     if (cnpjUasg && !ufEfetiva) {
       // Tenta descobrir UF pelo cache (útil para órgãos de UF única como prefeituras)
@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
       if (allItems.length > 0) {
         // PNCP funcionou — salva no cache e retorna dados ao vivo
         await salvarNoCache(allRaw);
-        let filtrados = aplicarFiltroSituacao(allItems, situacao);
+        const filtrados = aplicarFiltroSituacao(allItems, situacao);
         filtrados.sort((a, b) => new Date(b.dataPublicacao || '').getTime() - new Date(a.dataPublicacao || '').getTime());
         const inicio = (paginaAtual - 1) * pageSize;
         return new Response(JSON.stringify({

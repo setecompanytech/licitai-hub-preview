@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
 
       // ── Also search by UFs without keywords (catch-all for configured UFs) ──
       if (palavrasChave.length === 0 && ufs.length > 0) {
-        let query = supabase
+        const query = supabase
           .from('pncp_editais_cache')
           .select('*')
           .gte('updated_at', since)

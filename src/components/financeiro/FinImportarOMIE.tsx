@@ -338,7 +338,7 @@ export default function FinImportarOMIE() {
     const docs = Array.from(new Set(
       validas.map(({ data: d }) => d.pessoa_documento).filter(Boolean)
     ));
-    let pessoaPorDoc: Record<string, string> = {};
+    const pessoaPorDoc: Record<string, string> = {};
     if (docs.length) {
       const { data: ps } = await supabase
         .from("financeiro_pessoas")

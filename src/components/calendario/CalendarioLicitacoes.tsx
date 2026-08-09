@@ -176,7 +176,7 @@ export default function CalendarioLicitacoes() {
     const [h, m] = (backupConfig.hora_execucao || '03:00').split(':').map(Number);
 
     if (freq === 'diario') {
-      let cur = new Date(start);
+      const cur = new Date(start);
       cur.setHours(h, m, 0, 0);
       if (cur <= start) cur.setDate(cur.getDate() + 1);
       while (cur <= end) {
@@ -185,7 +185,7 @@ export default function CalendarioLicitacoes() {
       }
     } else if (freq === 'semanal') {
       const targetDay = backupConfig.dia_semana ?? 1;
-      let cur = new Date(start);
+      const cur = new Date(start);
       const daysAhead = ((targetDay - cur.getDay()) + 7) % 7 || 7;
       cur.setDate(cur.getDate() + daysAhead);
       cur.setHours(h, m, 0, 0);
@@ -195,7 +195,7 @@ export default function CalendarioLicitacoes() {
       }
     } else if (freq === 'mensal') {
       const targetDia = backupConfig.dia_mes ?? 1;
-      let cur = new Date(start);
+      const cur = new Date(start);
       cur.setDate(targetDia);
       cur.setHours(h, m, 0, 0);
       if (cur <= start) cur.setMonth(cur.getMonth() + 1);

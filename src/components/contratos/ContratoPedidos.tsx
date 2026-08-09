@@ -356,7 +356,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       }
 
       // PDF escaneado: fallback para visão (imagens)
-      let images: { dataUrl: string }[] = [];
+      const images: { dataUrl: string }[] = [];
       if (fullText.trim().length < 30) {
         toast.info('PDF escaneado detectado — usando visão por IA...');
         const canvas = document.createElement('canvas');

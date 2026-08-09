@@ -52,7 +52,7 @@ export default function FinPixCobranca() {
     setLoading(false);
   };
 
-  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [empresaAtiva?.id]);
+  useEffect(() => { carregar();   }, [empresaAtiva?.id]);
 
   const emitir = async () => {
     if (!empresaAtiva?.id) return toast.error("Selecione uma empresa");

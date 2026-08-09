@@ -116,7 +116,7 @@ function extrairNumeroDocumento(memo: string): string {
 
 function extrairFavorecido(memo: string): string {
   // Remove códigos numéricos e palavras-chave ruidosas, devolve nome em Title Case
-  let s = memo
+  const s = memo
     .replace(/\b\d{5,}\b/g, " ")
     .replace(
       /\b(PIX|TED|DOC|BOLETO|TAR|TARIFA|ENVIADO|RECEBIDO|TRANSF|TRANSFERENCIA|CR[ÉE]DITO|D[ÉE]BITO|QR\s?CODE|PLANO|ADAPT|LIQ|EST[AÁ]TICO|EM|DE|PARA|DA|DO|N[ºO°]?)\b/gi,
