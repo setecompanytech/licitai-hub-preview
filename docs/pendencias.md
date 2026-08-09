@@ -51,9 +51,24 @@ está em `scratchpad/diff.mjs` (pixelmatch + pngjs, com `diffMask` e contagem po
 
 ---
 
-## [2026-08-08] Barra de progresso das Metas ligada à severidade
+## ~~[2026-08-08] Barra de progresso das Metas ligada à severidade~~ — RESOLVIDO no mesmo dia
 
-**Hoje:** a barra de "Progresso" do painel de Metas é laranja fixo, em qualquer situação —
+**Entregue:** `estadoDaBarra` em `src/lib/metas/progresso.ts` traduz a severidade que o painel
+já calcula em cor e rótulo — verde com a meta batida (vence a severidade), âmbar em atenção,
+vermelho em risco e crítico. 9 testes, incluindo o caso que motivou a nota: 24% e 98% no fim
+do mês não podem mais ter a mesma cor.
+
+Dois desvios do que a nota previa, ambos deliberados:
+
+- **O `Progress` deste repo NÃO aceitava `className` no indicador** — o `bg-primary` estava
+  fixo. Foi adicionada a prop opcional `indicatorClassName`, que mantém o comportamento
+  anterior quando omitida, então nenhum outro uso do componente muda.
+- **Cor sozinha não comunica.** Cada estado carrega um rótulo, aplicado em `aria-label`,
+  `title` e num `sr-only` — sem isso a informação sumiria para quem não distingue as cores.
+
+Registro do que era antes, para contexto histórico:
+
+**Era:** a barra de "Progresso" do painel de Metas era laranja fixo, em qualquer situação —
 exceção documentada à regra de cor, decidida em 2026-08-08 (medidor não é ação nem estado,
 as duas categorias que a régua governa). O comentário está em `PainelMetas.tsx`, na própria
 barra.

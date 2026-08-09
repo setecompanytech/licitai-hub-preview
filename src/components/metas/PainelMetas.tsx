@@ -25,6 +25,7 @@ import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
 import { filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
 import { filtrarFeriadosPorPraca } from '@/lib/metas/praca';
 import { avaliarAlerta, projetarMeta, type Severidade } from '@/lib/metas/projecao';
+import { estadoDaBarra } from '@/lib/metas/progresso';
 import { rotuloModalidade } from '@/lib/metas/modalidades';
 import DefinirMetaDialog from './DefinirMetaDialog';
 
@@ -177,6 +178,12 @@ export default function PainelMetas() {
     return { projecao, severidade, tickets, historico, feriadosNoMes };
   }, [config, selecionado, meta, realizado, contratos, valoresAlvo, feriados, colaborador, ano, mes, hoje]);
 
+  // Barra de progresso: mesma severidade do alerta, para não divergirem
+  const barra = estadoDaBarra(
+    analise?.severidade ?? 'nenhum',
+    !!analise && analise.projecao.metaCent > 0 && analise.projecao.restanteCent === 0,
+  );
+
   const anos = [anoRef - 2, anoRef - 1, anoRef, anoRef + 1];
   const carregando = carregandoColaboradores || carregandoRealizado;
 
@@ -328,11 +335,10 @@ export default function PainelMetas() {
             />
           </div>
 
-          {/* EXCEÇÃO DOCUMENTADA à regra de cor (decisão de 2026-08-08): a
-              barra segue no laranja da marca. Medidor de progresso não é ação
-              nem estado — as duas categorias que a régua governa. Ligá-la à
-              severidade que o painel já calcula seria melhor, mas é mudança de
-              comportamento; está registrado em docs/pendencias.md. */}
+          {/* A barra usa a MESMA severidade do alerta (estadoDaBarra), para as
+              duas não contarem histórias diferentes. Antes era laranja fixa,
+              igual com 24% e com 98% — exceção à régua de cor encerrada em
+              2026-08-08. */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -341,7 +347,14 @@ export default function PainelMetas() {
                   {formatPercent(analise.projecao.percentualRealizado, 1)}
                 </span>
               </div>
-              <Progress value={Math.min(100, analise.projecao.percentualRealizado * 100)} className="h-2" />
+              <Progress
+                value={Math.min(100, analise.projecao.percentualRealizado * 100)}
+                className="h-2"
+                indicatorClassName={barra.cor}
+                aria-label={barra.rotulo}
+                title={barra.rotulo}
+              />
+              <p className="sr-only">{barra.rotulo}</p>
             </CardContent>
           </Card>
 
