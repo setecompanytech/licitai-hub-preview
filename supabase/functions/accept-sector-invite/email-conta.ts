@@ -15,6 +15,10 @@
  *
  * Sem imports de proposito — assim o vitest importa este arquivo direto e
  * testa a regra de verdade, em vez de uma copia que pode divergir.
+ *
+ * Fica ao lado do index.ts, e nao em _shared/, porque o editor do Dashboard
+ * do Supabase publica arquivos soltos dentro da propria function: import com
+ * subpasta quebraria o deploy feito por ali.
  */
 
 /** Reservado pela RFC 2606: nunca resolve, entao nunca entrega a terceiros. */

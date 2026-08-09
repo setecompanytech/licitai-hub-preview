@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
-import { emailDaConta } from '../_shared/email-conta.ts'
+// Vizinho de pasta, nao em _shared/: o editor do Dashboard publica arquivos
+// soltos na propria function, e um import com subpasta quebraria o deploy
+// feito por ali.
+import { emailDaConta } from './email-conta.ts'
 
 /**
  * Aceite do convite por setor.

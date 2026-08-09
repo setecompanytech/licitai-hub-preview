@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   emailDaConta, ehEmailSintetico, DOMINIO_SINTETICO,
-} from '../../supabase/functions/_shared/email-conta';
+} from '../../supabase/functions/accept-sector-invite/email-conta';
 
 /**
  * Importa o arquivo REAL da edge function, não uma cópia. Ele não tem imports
