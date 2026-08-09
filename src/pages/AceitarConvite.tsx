@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lock, Mail, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
@@ -28,18 +28,59 @@ interface ConviteData {
   empresa_id: string;
   expires_at: string;
   accepted_at: string | null;
+  usos: number | null;
+  max_usos: number | null;
   empresa_nome: string;
+}
+
+/** Mesma regra da edge function — as duas precisam recusar o mesmo. */
+const REGRA_LOGIN = /^[A-Za-z0-9._-]{3,30}$/;
+
+/** Erro da edge function vem no corpo; o `message` do supabase-js é genérico. */
+async function mensagemDoErro(error: unknown, doCorpo?: string): Promise<string> {
+  if (doCorpo) return doCorpo;
+  const ctx = (error as { context?: { response?: Response } })?.context;
+  if (ctx?.response) {
+    const body = await ctx.response.clone().json().catch(() => null);
+    if (body?.error) return String(body.error);
+  }
+  return (error as Error)?.message || 'Erro ao criar o acesso.';
 }
 
 export default function AceitarConvite() {
   const [status, setStatus] = useState<ConviteStatus>('loading');
   const [convite, setConvite] = useState<ConviteData | null>(null);
   const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
+  /** null = ainda não checado; a checagem é contra a RPC, liberada para anon. */
+  const [loginLivre, setLoginLivre] = useState<boolean | null>(null);
+  const [checandoLogin, setChecandoLogin] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Disponibilidade do login enquanto digita. Recusar antes do envio é melhor
+  // que recusar depois — o colaborador já teria escolhido a senha.
+  useEffect(() => {
+    const valor = login.trim();
+    if (!REGRA_LOGIN.test(valor)) { setLoginLivre(null); return; }
+
+    let cancelado = false;
+    setChecandoLogin(true);
+    const t = setTimeout(async () => {
+      // Cast até o types.ts ser regenerado com a migration 20260809000001
+      const { data, error } = await supabase.rpc(
+        'username_disponivel' as never,
+        { p_username: valor } as never,
+      );
+      if (cancelado) return;
+      setLoginLivre(error ? null : Boolean(data));
+      setChecandoLogin(false);
+    }, 450);
+
+    return () => { cancelado = true; clearTimeout(t); setChecandoLogin(false); };
+  }, [login]);
 
   useEffect(() => {
     const token = new URL(window.location.href).searchParams.get('token');
@@ -51,7 +92,7 @@ export default function AceitarConvite() {
     const fetchConvite = async () => {
       const { data, error } = await (supabase as any)
         .from('empresa_convites')
-        .select('id, equipe, papel, email_setor, empresa_id, expires_at, accepted_at, empresas(nome_fantasia, razao_social)')
+        .select('id, equipe, papel, email_setor, empresa_id, expires_at, accepted_at, usos, max_usos, empresas(nome_fantasia, razao_social)')
         .eq('token', token)
         .maybeSingle();
 
@@ -60,7 +101,10 @@ export default function AceitarConvite() {
         return;
       }
 
-      if (data.accepted_at) {
+      // `accepted_at` NÃO invalida mais o convite: o link é do setor inteiro e
+      // vários colaboradores criam acesso com ele. Quem limita é `max_usos`,
+      // conferido na edge function, que é quem sabe o número real de usos.
+      if (data.max_usos !== null && (data.usos ?? 0) >= data.max_usos) {
         setStatus('used');
         return;
       }
@@ -74,7 +118,9 @@ export default function AceitarConvite() {
       const empresa_nome = emp?.nome_fantasia || emp?.razao_social || 'sua empresa';
 
       setConvite({ ...data, empresa_nome });
-      setEmail(data.email_setor);
+      // O e-mail do setor NÃO vai mais para o formulário. Quando ia, o primeiro
+      // colaborador criava a conta com o endereço compartilhado e o queimava
+      // como conta individual — ninguém mais do setor conseguia se cadastrar.
       setStatus('valid');
     };
 
@@ -88,8 +134,12 @@ export default function AceitarConvite() {
       toast.error('Informe seu nome completo');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Informe um e-mail válido');
+    if (!REGRA_LOGIN.test(login.trim())) {
+      toast.error('Login inválido. Use de 3 a 30 caracteres: letras, números, ponto, hífen ou sublinhado.');
+      return;
+    }
+    if (loginLivre === false) {
+      toast.error('Esse login já está em uso. Escolha outro.');
       return;
     }
     if (password.length < 8) {
@@ -105,27 +155,30 @@ export default function AceitarConvite() {
     try {
       const token = new URL(window.location.href).searchParams.get('token')!;
 
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        toast.error(signUpError.message);
-        return;
-      }
-
-      const user_id = signUpData.user?.id;
-      if (!user_id) {
-        toast.error('Erro ao criar conta. Tente novamente.');
-        return;
-      }
-
-      const { error: acceptError } = await supabase.functions.invoke('accept-sector-invite', {
-        body: { token, user_id, email, nome },
+      // A conta é criada NA EDGE FUNCTION, não aqui: só ela pode usar
+      // `email_confirm`, e o e-mail sintético nunca receberia a confirmação.
+      const { data, error: acceptError } = await supabase.functions.invoke('accept-sector-invite', {
+        body: { token, login: login.trim(), senha: password, nome: nome.trim() },
       });
-      if (acceptError) {
-        toast.error((acceptError as any)?.message || 'Erro ao aceitar convite');
+
+      if (acceptError || !data?.success) {
+        toast.error(await mensagemDoErro(acceptError, data?.error));
         return;
       }
+
+      // A function devolve o e-mail sintético; o colaborador nunca precisa vê-lo
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password,
+      });
 
       setStatus('success');
+      if (signInError) {
+        toast.success('Acesso criado! Entre com o seu login e senha.');
+        setTimeout(() => navigate('/auth'), 1800);
+        return;
+      }
+
       toast.success('Conta criada com sucesso! Bem-vindo ao PRAEFECTUS.');
       setTimeout(() => navigate('/dashboard'), 1500);
     } finally {
@@ -227,16 +280,33 @@ export default function AceitarConvite() {
                     autoFocus
                   />
                 </div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="Seu e-mail pessoal"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
+                <div className="space-y-1">
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Crie seu login de acesso (ex.: COMERCIAL-01)"
+                      value={login}
+                      onChange={(e) => setLogin(e.target.value)}
+                      className="pl-10 pr-10"
+                      required
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    {checandoLogin && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                    )}
+                    {!checandoLogin && loginLivre === true && (
+                      <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-success" />
+                    )}
+                    {!checandoLogin && loginLivre === false && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />
+                    )}
+                  </div>
+                  <p className={`text-xs ${loginLivre === false ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {loginLivre === false
+                      ? 'Esse login já está em uso. Escolha outro.'
+                      : 'É com ele que você vai entrar no sistema. De 3 a 30 caracteres: letras, números, ponto, hífen ou sublinhado.'}
+                  </p>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

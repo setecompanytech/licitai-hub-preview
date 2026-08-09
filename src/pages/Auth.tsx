@@ -162,7 +162,10 @@ export default function Auth() {
       const { data: emailFound } = await supabase.rpc('buscar_email_por_username', { p_username: loginEmail });
       if (!emailFound) {
         setLoading(false);
-        toast.error('Usuário não encontrado. Verifique o usuário ou use seu e-mail.');
+        toast.error(
+          'Login não encontrado. Confira a digitação — ou, se você ainda não criou um login, '
+          + 'entre com o e-mail e defina-o em Meu Perfil.',
+        );
         return;
       }
       loginEmail = emailFound as string;

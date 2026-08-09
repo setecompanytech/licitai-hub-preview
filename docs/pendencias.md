@@ -6,6 +6,37 @@ adiadas de propósito.
 
 ---
 
+## [2026-08-09] PRIORIZADA — redefinição de senha para acesso por login
+
+**Contexto:** com o setor usando um e-mail compartilhado, o acesso individual passou a ter
+e-mail sintético (`<login>@praefectus.invalid`). É o que torna possível vários colaboradores
+no mesmo setor — mas o endereço não existe como caixa postal.
+
+**O que quebra:** o "Esqueceu a senha?" da tela de login envia para o vazio. O colaborador
+não recebe nada e não tem como saber por quê. Hoje ele fica sem acesso até alguém intervir
+no banco.
+
+**Quem é afetado:** só quem entrou por convite de setor a partir de 09/08/2026. Quem tem
+e-mail real continua recuperando a senha normalmente.
+
+**Solução proposta:**
+
+1. A tela de login detecta que o identificador digitado resolve para um e-mail
+   `@praefectus.invalid` e, em vez de oferecer o envio, orienta a procurar o administrador;
+2. Tela do admin em Equipe & Colaboradores: **Redefinir senha** para um membro, gerando
+   senha temporária com troca obrigatória no primeiro acesso. Usa
+   `auth.admin.updateUserById` numa edge function com `service_role`;
+3. Registrar a redefinição em `atividades_colaborador` — é ação sensível e precisa de trilha.
+
+**Por que não entrou junto:** é feature própria, com tela e edge function novas. Misturá-la
+na correção do convite aumentaria o risco de um trabalho que já mexe em autenticação em
+produção. A correção do convite é útil sozinha; esta é o complemento.
+
+**Contorno até lá:** o admin redefine a senha pelo Dashboard do Supabase, em Authentication →
+Users → o usuário → *Reset password*.
+
+---
+
 ## [2026-08-08] Todo push em `main` publica em produção — com clean-slate
 
 **Fato:** `.github/workflows/deploy-hostgator.yml` roda em `on: push: branches: [main]`,

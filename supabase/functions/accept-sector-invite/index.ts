@@ -1,6 +1,22 @@
 // @ts-nocheck
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
 
+/**
+ * Aceite do convite por setor.
+ *
+ * O e-mail do setor e ponto de DISTRIBUICAO do link: varios colaboradores do
+ * mesmo setor usam o mesmo convite, cada um criando o proprio acesso. Como o
+ * setor tem um unico e-mail compartilhado e o Supabase Auth exige e-mail unico
+ * por conta, a identidade passa a ser o LOGIN, e o e-mail da conta e sintetico.
+ *
+ * Por que a conta e criada AQUI e nao no navegador:
+ *   - `admin.createUser({ email_confirm: true })` pula a confirmacao por
+ *     e-mail, que nunca chegaria num endereco @praefectus.invalid;
+ *   - a checagem de login disponivel e a criacao ficam na mesma transacao
+ *     logica, sem janela para dois colaboradores fecharem o mesmo login;
+ *   - se qualquer passo seguinte falhar, da para desfazer a conta criada.
+ */
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -18,76 +34,135 @@ const equipeLabels: Record<string, string> = {
   documentos: 'Documentos',
 }
 
+/**
+ * Dominio reservado pela RFC 2606 para nomes garantidamente invalidos.
+ * Usar um dominio real aqui arriscaria entregar mensagem a terceiros.
+ */
+const DOMINIO_SINTETICO = 'praefectus.invalid'
+
+const REGRA_LOGIN = /^[A-Za-z0-9._-]{3,30}$/
+
 function capitalizar(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  })
+}
+
+/** O e-mail da conta e derivado do login, que ja e unico sem distinguir caixa. */
+function emailSintetico(login: string): string {
+  return `${login.trim().toLowerCase()}@${DOMINIO_SINTETICO}`
+}
+
 Deno.serve(async (req) => {
-  const cors = CORS_HEADERS
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: cors })
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
   }
 
+  let usuarioCriado: string | null = null
+  const adminClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
   try {
-    // Sem verificação de JWT — chamada logo após signUp, antes de sessão confirmada.
-    // Segurança garantida pelo token criptográfico do convite (64-char hex).
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const adminClient = createClient(supabaseUrl, serviceRoleKey)
+    // Sem verificacao de JWT: a chamada acontece antes de existir sessao.
+    // A seguranca vem do token do convite (64 hex) e da sua expiracao.
+    const { token, login, senha, nome } = await req.json()
 
-    const { token, user_id, email, nome } = await req.json()
-
-    if (!token || !user_id || !email || !nome) {
-      return new Response(JSON.stringify({ error: 'token, user_id, email e nome são obrigatórios' }), {
-        status: 400,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
+    if (!token || !login || !senha || !nome) {
+      return json({ error: 'token, login, senha e nome são obrigatórios' }, 400)
+    }
+    if (!REGRA_LOGIN.test(String(login).trim())) {
+      return json({
+        error: 'Login inválido. Use de 3 a 30 caracteres, apenas letras, números, ponto, hífen ou sublinhado.',
+      }, 422)
+    }
+    if (String(senha).length < 8) {
+      return json({ error: 'A senha deve ter pelo menos 8 caracteres.' }, 422)
     }
 
-    // 2. Buscar o convite pelo token
+    const loginLimpo = String(login).trim()
+
+    // ── 1. Convite valido? ────────────────────────────────────────────────
     const { data: convite, error: conviteError } = await adminClient
       .from('empresa_convites')
-      .select('id, empresa_id, equipe, papel, email_setor, expires_at, accepted_at')
+      .select('id, empresa_id, equipe, papel, email_setor, expires_at, usos, max_usos')
       .eq('token', token)
       .maybeSingle()
 
-    if (conviteError || !convite) {
-      return new Response(JSON.stringify({ error: 'Convite não encontrado' }), {
-        status: 404,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (convite.accepted_at) {
-      return new Response(JSON.stringify({ error: 'Convite já utilizado' }), {
-        status: 409,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
-    }
+    if (conviteError || !convite) return json({ error: 'Convite não encontrado' }, 404)
 
     if (new Date(convite.expires_at) < new Date()) {
-      return new Response(JSON.stringify({ error: 'Convite expirado' }), {
-        status: 410,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
+      return json({ error: 'Convite expirado' }, 410)
     }
 
-    // Verificar conflito antes do insert para retornar mensagem clara
-    const { data: existingMember } = await adminClient
-      .from('empresa_membros')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('empresa_id', convite.empresa_id)
-      .maybeSingle()
-
-    if (existingMember) {
-      return new Response(JSON.stringify({ error: 'Este usuário já é membro desta empresa' }), {
-        status: 409,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
+    // accepted_at NAO bloqueia mais: o link e do setor inteiro. Quem limita
+    // e max_usos, quando o admin define um teto.
+    if (convite.max_usos !== null && convite.usos >= convite.max_usos) {
+      return json({
+        error: `Este convite já criou o número máximo de acessos (${convite.max_usos}).`,
+      }, 409)
     }
 
-    // 3. Inserir em empresa_membros
+    // ── 2. Login livre? ───────────────────────────────────────────────────
+    const { data: livre, error: erroDisponibilidade } = await adminClient
+      .rpc('username_disponivel', { p_username: loginLimpo })
+
+    if (erroDisponibilidade) {
+      return json({ error: `Erro ao verificar o login: ${erroDisponibilidade.message}` }, 500)
+    }
+    if (!livre) {
+      return json({ error: `O login "${loginLimpo}" já está em uso. Escolha outro.` }, 409)
+    }
+
+    // ── 3. Cria a conta ───────────────────────────────────────────────────
+    const email = emailSintetico(loginLimpo)
+    const { data: criado, error: erroCriacao } = await adminClient.auth.admin.createUser({
+      email,
+      password: senha,
+      email_confirm: true, // endereco .invalid nunca receberia a confirmacao
+      user_metadata: { nome_completo: nome, login: loginLimpo, email_setor: convite.email_setor },
+    })
+
+    if (erroCriacao || !criado?.user) {
+      const msg = erroCriacao?.message ?? 'Erro ao criar a conta'
+      // Colisao de e-mail sintetico = login ja usado por conta orfa
+      const conflito = msg.toLowerCase().includes('already')
+      return json({
+        error: conflito ? `O login "${loginLimpo}" já está em uso. Escolha outro.` : msg,
+      }, conflito ? 409 : 500)
+    }
+
+    const user_id = criado.user.id
+    usuarioCriado = user_id
+
+    // ── 4. Login no perfil — e o que a tela de acesso consulta ────────────
+    // O perfil nasce por trigger no signup; garantimos a linha com upsert
+    // para nao depender da ordem de execucao.
+    const { error: erroPerfil } = await adminClient
+      .from('profiles')
+      .upsert(
+        { user_id, username: loginLimpo, nome_completo: nome },
+        { onConflict: 'user_id' },
+      )
+
+    if (erroPerfil) {
+      await adminClient.auth.admin.deleteUser(user_id)
+      usuarioCriado = null
+      const duplicado = erroPerfil.code === '23505'
+      return json({
+        error: duplicado
+          ? `O login "${loginLimpo}" já está em uso. Escolha outro.`
+          : `Erro ao gravar o login: ${erroPerfil.message}`,
+      }, duplicado ? 409 : 500)
+    }
+
+    // ── 5. Vinculo com a empresa ──────────────────────────────────────────
     const nomeSetor = `Setor ${equipeLabels[convite.equipe] ?? capitalizar(convite.equipe)}`
     const { error: memberError } = await adminClient
       .from('empresa_membros')
@@ -98,60 +173,61 @@ Deno.serve(async (req) => {
         papel: convite.papel,
         nome: nomeSetor,
         email: convite.email_setor,
-        login_individual: email,
+        // O login vive em profiles.username; aqui fica o espelho para as telas
+        // de equipe. Antes este campo recebia o e-mail, que nunca foi login.
+        login_individual: loginLimpo,
         nome_individual: nome,
         identificacao_completa: true,
       })
 
     if (memberError) {
-      // 23505 = unique_violation (race condition: user_id + empresa_id duplicado)
-      if (memberError.code === '23505') {
-        return new Response(JSON.stringify({ error: 'Este usuário já é membro desta empresa' }), {
-          status: 409,
-          headers: { ...cors, 'Content-Type': 'application/json' },
-        })
-      }
-      // 22P02 = invalid_text_representation (papel inválido para o ENUM empresa_papel)
+      await adminClient.auth.admin.deleteUser(user_id)
+      usuarioCriado = null
       if (memberError.code === '22P02') {
-        return new Response(JSON.stringify({ error: `Papel inválido no convite: "${convite.papel}". Valores aceitos: admin, operador, viewer.` }), {
-          status: 422,
-          headers: { ...cors, 'Content-Type': 'application/json' },
-        })
+        return json({
+          error: `Papel inválido no convite: "${convite.papel}". Valores aceitos: admin, operador, viewer.`,
+        }, 422)
       }
-      return new Response(JSON.stringify({ error: `Erro ao vincular membro: ${memberError.message}` }), {
-        status: 500,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
+      return json({ error: `Erro ao vincular membro: ${memberError.message}` }, 500)
     }
 
-    // 4. Marcar o convite como aceito
-    const { error: updateError } = await adminClient
+    // ── 6. Registro do aceite e contador ──────────────────────────────────
+    // Uma linha por colaborador: accepted_by_email guardava um valor so e era
+    // sobrescrito, o que nao serve para link usado por varias pessoas.
+    await adminClient.from('empresa_convite_aceites').insert({
+      convite_id: convite.id,
+      empresa_id: convite.empresa_id,
+      user_id,
+      username: loginLimpo,
+      nome,
+    })
+
+    const { error: erroConvite } = await adminClient
       .from('empresa_convites')
       .update({
+        usos: (convite.usos ?? 0) + 1,
         accepted_at: new Date().toISOString(),
-        accepted_by_email: email,
+        accepted_by_email: convite.email_setor,
       })
-      .eq('token', token)
+      .eq('id', convite.id)
 
-    if (updateError) {
-      // Membro já vinculado com sucesso; falha ao marcar o convite não é crítica.
-      // Loga para diagnóstico, mas não reverte o vínculo.
-      console.error('[accept-sector-invite] falha ao marcar convite como aceito:', updateError.message)
+    if (erroConvite) {
+      // Acesso ja criado com sucesso; falhar aqui so afeta a contagem.
+      console.error('[accept-sector-invite] falha ao atualizar o convite:', erroConvite.message)
     }
 
-    // 5. Retornar sucesso
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       empresa_id: convite.empresa_id,
       equipe: convite.equipe,
-    }), {
-      status: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      login: loginLimpo,
+      email, // o cliente precisa dele para abrir a sessao
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    })
+    // Nao deixa conta orfa se algo estourar depois da criacao
+    if (usuarioCriado) {
+      try { await adminClient.auth.admin.deleteUser(usuarioCriado) } catch { /* ignora */ }
+    }
+    return json({ error: err?.message ?? 'Erro interno' }, 500)
   }
 })
