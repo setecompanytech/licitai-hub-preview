@@ -502,3 +502,101 @@ export function useContratosAssinados(params: { desde: string; userId?: string }
     },
   });
 }
+
+// ─── Insumos dos relatórios ───────────────────────────────────────────────────
+
+/** Perdas do período, já agrupadas por motivo. */
+export function usePerdasPorMotivo(inicio: string, fim: string, userId?: string) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ['comercial-perdas-motivo', empresaId, inicio, fim, userId],
+    enabled: !!empresaId && !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('comercial_perdas')
+        .select('motivo_id, comercial_motivos_perda(label)')
+        .eq('empresa_id', empresaId!)
+        .eq('user_id', userId!)
+        .gte('data_perda', inicio)
+        .lte('data_perda', fim);
+      if (error) throw error;
+
+      const contagem = new Map<string, number>();
+      for (const p of (data ?? []) as { comercial_motivos_perda: { label: string } | null }[]) {
+        const label = p.comercial_motivos_perda?.label ?? 'Não informado';
+        contagem.set(label, (contagem.get(label) ?? 0) + 1);
+      }
+      return [...contagem.entries()]
+        .map(([label, quantidade]) => ({ label, quantidade }))
+        .sort((a, b) => b.quantidade - a.quantidade);
+    },
+  });
+}
+
+/**
+ * Trabalhos do colaborador no período, agrupados por módulo.
+ * É o "registro dos trabalhos no sistema" que os relatórios pedem, e vem do
+ * log que já existe — nada é instrumentado de novo para isso.
+ */
+export function useAtividadesPorModulo(inicio: string, fim: string, userId?: string) {
+  const empresaId = useEmpresaId();
+  return useQuery({
+    queryKey: ['comercial-atividades', empresaId, inicio, fim, userId],
+    enabled: !!empresaId && !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('atividades_colaborador')
+        .select('modulo')
+        .eq('empresa_id', empresaId!)
+        .eq('user_id', userId!)
+        .gte('created_at', `${inicio}T00:00:00`)
+        .lte('created_at', `${fim}T23:59:59`)
+        .limit(2000);
+      if (error) throw error;
+
+      const contagem = new Map<string, number>();
+      for (const a of (data ?? []) as { modulo: string }[]) {
+        contagem.set(a.modulo, (contagem.get(a.modulo) ?? 0) + 1);
+      }
+      return [...contagem.entries()]
+        .map(([modulo, quantidade]) => ({ modulo, quantidade }))
+        .sort((a, b) => b.quantidade - a.quantidade);
+    },
+  });
+}
+
+/**
+ * Grava o snapshot do relatório emitido.
+ * Guarda indicadores E premissas: sem as premissas, o número de hoje seria
+ * irreproduzível assim que a taxa de conversão mudasse.
+ */
+export function useSalvarSnapshot() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: {
+      user_id: string; ano: number; mes: number;
+      referencia: 'Q1' | 'Q2' | 'MES';
+      indicadores: unknown; premissas: unknown;
+    }) => {
+      if (!empresaId) throw new Error('Selecione uma empresa ativa.');
+      const { error } = await supabase
+        .from('comercial_meta_snapshots')
+        .upsert(
+          {
+            empresa_id: empresaId,
+            user_id: input.user_id,
+            ano: input.ano,
+            mes: input.mes,
+            referencia: input.referencia,
+            indicadores: input.indicadores as never,
+            premissas: input.premissas as never,
+          },
+          { onConflict: 'empresa_id,user_id,ano,mes,referencia' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comercial-snapshots'] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}

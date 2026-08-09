@@ -1,10 +1,11 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, SlidersHorizontal, LayoutDashboard, Lock } from 'lucide-react';
+import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
 import PainelMetas from '@/components/metas/PainelMetas';
+import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
 
 /**
  * Metas do Comercial.
@@ -32,6 +33,9 @@ export default function MetasComercial() {
           <TabsTrigger value="painel" className="gap-1.5">
             <LayoutDashboard className="w-3.5 h-3.5" /> Painel
           </TabsTrigger>
+          <TabsTrigger value="relatorios" className="gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Relatórios
+          </TabsTrigger>
           <TabsTrigger value="parametros" className="gap-1.5">
             <SlidersHorizontal className="w-3.5 h-3.5" /> Parametrização
           </TabsTrigger>
@@ -39,6 +43,10 @@ export default function MetasComercial() {
 
         <TabsContent value="painel">
           <PainelMetas />
+        </TabsContent>
+
+        <TabsContent value="relatorios">
+          <RelatoriosMetas />
         </TabsContent>
 
         <TabsContent value="parametros">
