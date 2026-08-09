@@ -251,9 +251,11 @@ limpeza grande, ou começar com a regra `no-explicit-any` rebaixada a `warn`.
 
 ---
 
-## [2026-08-03] PRIORIZADA — dia útil por praça do colaborador (metas)
+## ~~[2026-08-03] PRIORIZADA — dia útil por praça do colaborador (metas)~~ — CÓDIGO CONCLUÍDO em 2026-08-08
 
-**Prazo-alvo:** implementar antes do fechamento de setembro/2026.
+**Prazo-alvo:** implementar antes do fechamento de setembro/2026. **Cumprido** — as duas
+fases estão entregues. Resta só o passo operacional: cadastrar os feriados de setembro na
+tela nova, começando por 07/09.
 
 **Contexto:** a equipe comercial é distribuída em todas as UFs, então o dia útil varia por
 pessoa. Hoje `comercial_feriados` é só por empresa, e o motor trata todo mundo com o mesmo
@@ -283,9 +285,19 @@ que exercita a regra é setembro (07/09, segunda) — daí o prazo-alvo.
 `EquipeColaboradores.tsx` e contador de feriados visível no painel (ressalva 3).
 Feriados estaduais/municipais entram por SQL até a Fase 2.
 
-**Fase 2 — CRUD de feriados na Parametrização.** Hoje **não existe** tela nenhuma de
-feriados: tabela, formulário e exclusão saem do zero. É a maior parte do esforço e a única
-que não é pré-requisito de nada.
+**Fase 2 — CRUD de feriados na Parametrização.** ✅ **ENTREGUE em 2026-08-08** — commit
+`c7287729`. `FeriadosManager.tsx` em Metas do Comercial → Parametrização, com cadastro,
+edição e exclusão; `useSalvarFeriado`/`useExcluirFeriado`; regras isoladas em
+`src/lib/metas/feriados.ts` com 15 testes.
+
+Saiu **sem migration**: as três ressalvas abaixo já tinham sido resolvidas na Fase 1
+(`20260804000001`). A abrangência é derivada de `uf`/`municipio`, nunca digitada, espelhando
+o CHECK `comercial_feriados_abrangencia_praca`. Dois avisos não bloqueantes cobrem os erros
+silenciosos: data em fim de semana e feriado que não atinge praça nenhuma.
+
+**Falta operacional:** cadastrar **07/09/2026 (nacional)** antes de setembro. Sem isso o mês
+conta 22 dias úteis em vez de 21 e infla o ritmo diário de todo o comercial — é a própria
+razão do prazo-alvo desta pendência.
 
 ### Tamanho estimado
 
