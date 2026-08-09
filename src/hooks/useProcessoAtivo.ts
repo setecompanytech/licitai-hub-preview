@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useProcessoAtivoContext } from '@/contexts/ProcessoAtivoContext';
 
 export interface ProcessoResumo {
@@ -20,6 +21,7 @@ export interface ProcessoResumo {
  */
 export function useProcessoAtivo() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { processoId, processo, loading, setProcessoId, refreshProcesso, registerDirty } = useProcessoAtivoContext();
 
   const fetchProcessos = useCallback(async (): Promise<ProcessoResumo[]> => {
@@ -42,6 +44,9 @@ export function useProcessoAtivo() {
       .from('licitacoes')
       .insert({
         user_id: user.id,
+        // Sem empresa, o processo some do realizado do módulo de metas —
+        // a view de participações filtra por empresa_id.
+        empresa_id: empresaAtiva?.id ?? null,
         numero: seed.numero || 'Processo Manual',
         orgao: seed.orgao || '',
         objeto: seed.objeto || '',
@@ -54,7 +59,7 @@ export function useProcessoAtivo() {
     if (error || !data) { console.error('Erro ao criar processo:', error); return null; }
     setProcessoId(data.id, { force: true });
     return data.id;
-  }, [user, setProcessoId]);
+  }, [user, empresaAtiva?.id, setProcessoId]);
 
   const ensureProcesso = useCallback(async (seed: {
     numero?: string; orgao?: string; objeto?: string; modalidade?: string; valorEstimado?: number;

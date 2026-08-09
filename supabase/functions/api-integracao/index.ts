@@ -40,6 +40,38 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
   const url = new URL(req.url)
+
+  /**
+   * Empresa do usuario, na mesma ordem de confianca do backfill
+   * (migration 20260808000004): empresa ativa do perfil, mas so se ele for
+   * mesmo membro dela — um empresa_ativa_id defasado apontaria para uma
+   * empresa da qual a pessoa ja saiu. Na falta, a unica empresa do usuario.
+   * Usuario ambiguo devolve null e o POST e recusado com mensagem clara,
+   * em vez de gravar um vinculo chutado.
+   */
+  async function resolverEmpresaDoUsuario(
+    client: ReturnType<typeof createClient>,
+    uid: string,
+  ): Promise<string | null> {
+    const { data: membros } = await client
+      .from('empresa_membros')
+      .select('empresa_id')
+      .eq('user_id', uid)
+
+    const empresas = [...new Set((membros ?? []).map((m: { empresa_id: string }) => m.empresa_id))]
+    if (empresas.length === 0) return null
+
+    const { data: perfil } = await client
+      .from('profiles')
+      .select('empresa_ativa_id')
+      .eq('user_id', uid)
+      .maybeSingle()
+
+    const ativa = (perfil as { empresa_ativa_id: string | null } | null)?.empresa_ativa_id
+    if (ativa && empresas.includes(ativa)) return ativa
+
+    return empresas.length === 1 ? empresas[0] : null
+  }
   const path = url.pathname.replace('/api-integracao', '').replace(/^\/+/, '')
   const segments = path.split('/').filter(Boolean)
   const resource = segments[0] || ''
@@ -82,9 +114,21 @@ Deno.serve(async (req) => {
 
       if (req.method === 'POST') {
         const body = await req.json()
+        // A empresa e resolvida no servidor, nao aceita do corpo: o cliente da
+        // API nao pode escolher em qual empresa a licitacao cai. Sem isso ela
+        // nasce orfa e some do realizado do modulo de metas, que filtra por
+        // empresa_id — foi o que aconteceu com as 33 primeiras do banco.
+        delete body.empresa_id
+        const empresaId = await resolverEmpresaDoUsuario(supabase, userId)
+        if (!empresaId) {
+          return jsonError(
+            'Não foi possível determinar a empresa do usuário. Defina a empresa ativa no perfil.',
+            400,
+          )
+        }
         const { data, error } = await supabase
           .from('licitacoes')
-          .insert({ ...body, user_id: userId })
+          .insert({ ...body, user_id: userId, empresa_id: empresaId })
           .select()
           .single()
         if (error) return jsonError(error.message, 400)
