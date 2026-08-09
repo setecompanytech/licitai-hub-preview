@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { normalizarModalidade } from '@/lib/metas/modalidades';
@@ -26,6 +27,7 @@ type EditalData = {
 
 export function useLicitacaoIntegration() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const navigate = useNavigate();
 
   /** Create a licitação from edital data and optionally navigate */
@@ -55,6 +57,10 @@ export function useLicitacaoIntegration() {
         .from('licitacoes')
         .insert({
           user_id: user.id,
+          // Sem isto a licitação nasce órfã de empresa, e a view de realizado
+          // do módulo de metas (que filtra empresa_id) deixa de contá-la como
+          // participação. Foi o que aconteceu com as 33 primeiras.
+          empresa_id: empresaAtiva?.id ?? null,
           numero: edital.numero,
           orgao: edital.orgao,
           objeto: edital.objeto,
@@ -111,7 +117,7 @@ export function useLicitacaoIntegration() {
       toast.error('Erro ao iniciar processo.');
       return null;
     }
-  }, [user, navigate]);
+  }, [user, navigate, empresaAtiva?.id]);
 
   /**
    * Auto-create or reuse a compromisso (processos_interesse) linked to a licitação.
