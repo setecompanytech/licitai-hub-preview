@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
 import ComissoesColaborador from '@/components/equipe/ComissoesColaborador';
+import ConvitesPendentes from '@/components/equipe/ConvitesPendentes';
 import { MODULOS_SISTEMA, useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -358,6 +359,12 @@ export default function EquipeColaboradores() {
             </TabsList>
 
             <TabsContent value="membros">
+              {/* Convites ativos — sem isto, perder o e-mail do convite deixava
+                  o admin preso: a criação bloqueia enquanto houver um válido. */}
+              <div className="mb-6">
+                <ConvitesPendentes />
+              </div>
+
               {/* Equipe summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
                 {EQUIPES.map(eq => {

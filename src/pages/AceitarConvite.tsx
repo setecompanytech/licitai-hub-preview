@@ -90,12 +90,13 @@ export default function AceitarConvite() {
     }
 
     const fetchConvite = async () => {
-      const { data, error } = await (supabase as any)
-        .from('empresa_convites')
-        .select('id, equipe, papel, email_setor, empresa_id, expires_at, accepted_at, usos, max_usos, empresas(nome_fantasia, razao_social)')
-        .eq('token', token)
-        .maybeSingle();
+      // Via RPC, e não pela tabela: a leitura pública de `empresa_convites`
+      // era `USING (true)` e expunha os tokens de todas as empresas a quem
+      // tivesse a chave anon. A função exige o token e devolve uma linha só.
+      const { data: linhas, error } = await (supabase as any)
+        .rpc('convite_por_token', { p_token: token });
 
+      const data = Array.isArray(linhas) ? linhas[0] : linhas;
       if (error || !data) {
         setStatus('invalid');
         return;
@@ -114,10 +115,9 @@ export default function AceitarConvite() {
         return;
       }
 
-      const emp = data.empresas as { nome_fantasia?: string | null; razao_social?: string | null } | null;
-      const empresa_nome = emp?.nome_fantasia || emp?.razao_social || 'sua empresa';
-
-      setConvite({ ...data, empresa_nome });
+      // A RPC já resolve o nome da empresa — o front não precisa mais do join,
+      // que era o que exigia leitura direta da tabela.
+      setConvite({ ...data, empresa_nome: data.empresa_nome ?? 'sua empresa' });
       // O e-mail do setor NÃO vai mais para o formulário. Quando ia, o primeiro
       // colaborador criava a conta com o endereço compartilhado e o queimava
       // como conta individual — ninguém mais do setor conseguia se cadastrar.

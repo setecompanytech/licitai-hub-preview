@@ -83,20 +83,33 @@ Deno.serve(async (req) => {
       })
     }
 
-    // 3. Verificar se já existe convite pendente para empresa_id + equipe
-    const { data: existingConvite } = await adminClient
+    // 3. Ja existe convite VALIDO para empresa_id + equipe?
+    //
+    // A condicao era `accepted_at IS NULL`, herdada do modelo de uso unico.
+    // Com o convite reutilizavel isso se inverteria: assim que o primeiro
+    // colaborador usasse o link, accepted_at deixaria de ser nulo, a trava
+    // pararia de bloquear e o admin criaria um SEGUNDO link valido para o
+    // mesmo setor — o oposto do que a regra pretende.
+    //
+    // Agora conta o que importa: nao expirado e ainda com capacidade.
+    const { data: existentes } = await adminClient
       .from('empresa_convites')
-      .select('id')
+      .select('id, usos, max_usos')
       .eq('empresa_id', empresa_id)
       .eq('equipe', equipe)
-      .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
 
-    if (existingConvite) {
+    const aindaUtil = (existentes ?? []).find(
+      (c: { usos: number | null; max_usos: number | null }) =>
+        c.max_usos === null || (c.usos ?? 0) < c.max_usos,
+    )
+
+    if (aindaUtil) {
       const equipeLabel = equipeLabels[equipe] ?? equipe
       return new Response(JSON.stringify({
-        error: `Já existe um convite pendente para o setor ${equipeLabel}. Aguarde ele expirar ou cancele-o antes de criar um novo.`,
+        error: `Já existe um convite ativo para o setor ${equipeLabel}. `
+          + `O mesmo link serve para todos os colaboradores do setor — copie-o em `
+          + `Equipe & Colaboradores. Para gerar outro, cancele o atual.`,
       }), {
         status: 409,
         headers: { ...cors, 'Content-Type': 'application/json' },
