@@ -1,9 +1,56 @@
 // @ts-nocheck
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
-// Vizinho de pasta, nao em _shared/: o editor do Dashboard publica arquivos
-// soltos na propria function, e um import com subpasta quebraria o deploy
-// feito por ali.
-import { emailDaConta } from './email-conta.ts'
+
+// ─── copia de ./email-conta.ts ───────────────────────────────────────────────
+//
+// Por que copiada e nao importada: publicar esta function pelo editor do
+// Dashboard exige criar CADA arquivo a mao antes do deploy. Esquecer o
+// segundo arquivo derruba o bundle inteiro com "Module not found" — aconteceu
+// em 09/08/2026. Com um arquivo so, publicar e colar e clicar.
+//
+// O original continua existindo porque o vitest nao consegue importar este
+// index.ts (`npm:` e `Deno.serve`). A divergencia entre os dois e barrada por
+// src/test/auth-email-conta.test.ts, que compara os blocos caractere a
+// caractere. Se voce editar um lado, copie o outro inteiro — os marcadores
+// abaixo delimitam exatamente o trecho.
+//
+// <<<email-conta:inicio>>>
+/** Reservado pela RFC 2606: nunca resolve, entao nunca entrega a terceiros. */
+export const DOMINIO_SINTETICO = 'praefectus.invalid'
+
+/**
+ * Deriva o e-mail da conta a partir do login e do e-mail do setor.
+ *
+ * Cai no dominio sintetico quando o e-mail do setor nao serve de base — sem
+ * isso, um cadastro com e-mail malformado geraria um endereco invalido e o
+ * Auth recusaria a criacao, travando o convite inteiro.
+ */
+export function emailDaConta(login: string, emailSetor: string | null | undefined): string {
+  const slug = (login ?? '').trim().toLowerCase()
+  if (!slug) throw new Error('login vazio')
+
+  const setor = (emailSetor ?? '').trim().toLowerCase()
+  const arroba = setor.lastIndexOf('@')
+  if (arroba <= 0) return `${slug}@${DOMINIO_SINTETICO}`
+
+  // Tag anterior e descartada: comercial+antigo@x vira comercial+novo@x, e nao
+  // comercial+antigo+novo@x, que muitos servidores recusam.
+  const local = setor.slice(0, arroba).split('+')[0]
+  const dominio = setor.slice(arroba + 1)
+
+  // Dominio precisa de ponto: "01" ou "localhost" seriam recusados pelo Auth
+  if (!local || !dominio.includes('.') || dominio.startsWith('.') || dominio.endsWith('.')) {
+    return `${slug}@${DOMINIO_SINTETICO}`
+  }
+
+  return `${local}+${slug}@${dominio}`
+}
+
+/** O endereco e sintetico? Serve para a interface avisar que nao ha caixa postal. */
+export function ehEmailSintetico(email: string | null | undefined): boolean {
+  return (email ?? '').trim().toLowerCase().endsWith(`@${DOMINIO_SINTETICO}`)
+}
+// <<<email-conta:fim>>>
 
 /**
  * Aceite do convite por setor.

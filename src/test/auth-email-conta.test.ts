@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   emailDaConta, ehEmailSintetico, DOMINIO_SINTETICO,
 } from '../../supabase/functions/accept-sector-invite/email-conta';
 
 /**
- * Importa o arquivo REAL da edge function, não uma cópia. Ele não tem imports
- * do Deno justamente para permitir isto — a regra testada aqui é a que roda
- * em produção.
+ * Importa `email-conta.ts`, que não tem imports do Deno justamente para
+ * permitir isto. O `index.ts` da edge function carrega uma cópia literal do
+ * mesmo bloco — ver a paridade no fim deste arquivo.
  */
 
 describe('emailDaConta — sub-endereçamento no e-mail do setor', () => {
@@ -85,5 +87,45 @@ describe('ehEmailSintetico', () => {
   it('trata nulo e vazio', () => {
     expect(ehEmailSintetico(null)).toBe(false);
     expect(ehEmailSintetico('')).toBe(false);
+  });
+});
+
+describe('paridade entre email-conta.ts e a cópia dentro do index.ts', () => {
+  /**
+   * O index.ts da edge function não importa email-conta.ts: ele repete o bloco.
+   * Isso existe para que a function tenha UM arquivo só — publicar pelo editor
+   * do Dashboard obriga a recriar cada arquivo à mão, e esquecer o segundo
+   * quebra o bundle com "Module not found".
+   *
+   * O preço é a chance de divergirem. Este teste cobra o preço: os testes acima
+   * exercitam email-conta.ts, e este garante que o que roda em produção é
+   * exatamente o mesmo texto.
+   */
+  const MARCADOR_INICIO = '// <<<email-conta:inicio>>>';
+  const MARCADOR_FIM = '// <<<email-conta:fim>>>';
+
+  // A partir da raiz do projeto: `import.meta.url` não é uma URL file: sob a
+  // config de teste daqui, e readFileSync recusa qualquer outro esquema.
+  const caminho = (arquivo: string) =>
+    resolve(process.cwd(), 'supabase/functions/accept-sector-invite', arquivo);
+
+  const bloco = (arquivo: string): string => {
+    const texto = readFileSync(caminho(arquivo), 'utf8');
+    const inicio = texto.indexOf(MARCADOR_INICIO);
+    const fim = texto.indexOf(MARCADOR_FIM);
+    if (inicio < 0 || fim < 0) {
+      throw new Error(`Marcadores email-conta ausentes em ${arquivo} — não remova.`);
+    }
+    return texto.slice(inicio + MARCADOR_INICIO.length, fim).trim();
+  };
+
+  it('os dois blocos são idênticos caractere a caractere', () => {
+    expect(bloco('index.ts')).toBe(bloco('email-conta.ts'));
+  });
+
+  it('o index.ts não voltou a importar email-conta.ts', () => {
+    // O import é o que derrubava o deploy pelo Dashboard.
+    const index = readFileSync(caminho('index.ts'), 'utf8');
+    expect(index).not.toMatch(/from\s+['"]\.\/email-conta/);
   });
 });
