@@ -2069,5 +2069,5 @@ COMMENT ON COLUMN public.profiles.username IS
   'setor — e o que mantem a redefinicao de senha funcionando. Quando o e-mail '
   'do setor nao serve de base, cai em <login>@praefectus.invalid, dominio '
   'reservado pela RFC 2606, e ai a redefinicao fica indisponivel. Regra em '
-  'supabase/functions/_shared/email-conta.ts. Unico sem distinguir maiusculas.';
+  'supabase/functions/accept-sector-invite/email-conta.ts. Unico sem distinguir maiusculas.';
 ```
