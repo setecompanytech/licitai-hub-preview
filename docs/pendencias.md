@@ -53,9 +53,27 @@ Users → o usuário → *Reset password*.
 
 ---
 
-## [2026-08-08] Todo push em `main` publica em produção — com clean-slate
+## ~~[2026-08-08] Todo push em `main` publica em produção — com clean-slate~~ — DESATUALIZADA
 
-**Fato:** `.github/workflows/deploy-hostgator.yml` roda em `on: push: branches: [main]`,
+**Verificado em 2026-08-09:** o gatilho virou `workflow_dispatch`. **Push em `main` não publica
+mais nada** — a publicação é manual, em Actions → *Deploy Frontend via FTP* → *Run workflow*.
+O comentário no próprio arquivo registra a mudança.
+
+**O que isso inverte:** o cuidado deixou de ser "não commite sem validar" e passou a ser
+**"não esqueça de publicar"**. O código pode estar em `main` e fora do ar por tempo
+indeterminado — foi o que aconteceu em 09/08 com a correção do convite por setor: a edge
+function foi publicada, o front não, e o fluxo ficou quebrado no intervalo entre os dois.
+
+**Regra prática que sai daí:** quando uma mudança tem front **e** edge function, publique o
+**front primeiro**. O front novo conversando com a function antiga costuma degradar; a
+function nova com o front antigo rejeita a requisição inteira.
+
+**Cache:** publicar não basta para ver. O app tem service worker; use "Limpar cache e
+recarregar" na tela de login, ou `Ctrl+Shift+R`.
+
+Registro do que valia antes:
+
+**Fato (08/08):** `.github/workflows/deploy-hostgator.yml` rodava em `on: push: branches: [main]`,
 builda e sobe o `dist/` por FTP com **`dangerous-clean-slate: true`** — o diretório remoto é
 limpo antes do upload. Não existe branch de homologação nem gate manual.
 
