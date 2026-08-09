@@ -193,9 +193,20 @@ corrigidos pela causa raiz em 9 arquivos — incluindo um bug de runtime real
 (`LancamentoDialog` gravava `"movimentacao"`, valor de outro enum). `npx tsc --noEmit`
 sai **zerado** no app inteiro. A entrada original segue abaixo para histórico.
 
-## [2026-08-03] 14 erros de tipo fora do módulo de metas
+## ~~[2026-08-03] 14 erros de tipo fora do módulo de metas~~ — RESOLVIDO em 2026-08-09
 
-**Situação:** `npx tsc --noEmit -p tsconfig.app.json` acusa 14 erros, todos anteriores ao
+**Verificado em 09/08/2026:** `npx tsc --noEmit -p tsconfig.app.json` sai com **exit code 0**
+— zero erros. A causa apontada abaixo estava certa: era o `types.ts` defasado. A regeneração
+feita em `45351dc4` (após o DROP da tabela `precificacao`) trouxe `produtos`,
+`itens_pedido_compra`, `estoque_movimentos`, `pedidos_compra`, `fornecedores` e
+`nfe_recebidas`, e os 14 erros sumiram junto — nenhum deles precisou de correção manual.
+
+**Lição para a próxima vez:** erro de tipo em massa apontando para tabela ausente é sintoma,
+não doença. Antes de corrigir arquivo por arquivo, checar se o `types.ts` está atualizado.
+
+Registro do diagnóstico original:
+
+**Situação (03/08):** `npx tsc --noEmit -p tsconfig.app.json` acusava 14 erros, todos anteriores ao
 módulo de Metas do Comercial e concentrados em cinco arquivos:
 
 | Arquivo | Erros | Natureza |
@@ -263,6 +274,42 @@ repo.
 **Efeito colateral a considerar:** o mesmo alerta das outras pendências — se entrar
 verificação em CI ou hook de commit, `npm run lint` barra tudo. Ligar isso exige antes uma
 limpeza grande, ou começar com a regra `no-explicit-any` rebaixada a `warn`.
+
+### Atualização de 2026-08-09 — o que foi feito e o que não dá para fazer
+
+**Feito:** `eslint --fix` aplicado no repo. Saiu de **2.049 → 2.015 problemas**. As 34
+correções foram 29 `let` → `const` e 5 remoções de `/* eslint-disable-next-line */` inertes
+(escritos no meio da linha, onde não suprimiam nada). Nenhuma tocou lógica; 414 testes e
+`tsc` continuam limpos.
+
+**Medição atual, por regra:**
+
+| Regra | Total | Corrigível com `--fix` |
+| --- | --- | --- |
+| `@typescript-eslint/no-explicit-any` | 1.714 (85%) | **0** |
+| `no-useless-escape` | 119 | 0 |
+| `react-hooks/exhaustive-deps` | 100 | 0 |
+| `@typescript-eslint/ban-ts-comment` | 28 | 0 |
+| `react-refresh/only-export-components` | 27 | 0 |
+| demais | ~27 | 0 |
+
+**Por que não dá para "só corrigir":** os 1.714 `any` estão em 381 dos 720 arquivos. Tipar
+caso a caso produziria um diff que toca metade do repositório, irrevisável, em código sem
+cobertura de teste (a suíte cobre 19 arquivos). O risco de regressão silenciosa é alto e o
+ganho para o usuário final é zero.
+
+**O problema real não é o número, é o lint não servir de sinal.** Com 1.917 erros de fundo,
+ninguém distingue uma regressão nova do ruído. As saídas, em ordem de custo:
+
+| Opção | O que faz | Custo | Risco |
+| --- | --- | --- | --- |
+| **A** | `no-explicit-any` vira `warn`; lint passa a falhar só nos ~200 erros reais | horas | baixo |
+| **B** | Baseline congelando a dívida atual; qualquer erro novo quebra | horas | baixo |
+| **C** | Tipar os 1.714 `any` | semanas | alto |
+
+**Recomendação:** **A**, com a dívida pagando-se incrementalmente — cada arquivo que alguém
+for mexer, tipa de passagem. É mudança de política do projeto, então precisa de decisão
+explícita: não foi aplicada.
 
 ---
 
