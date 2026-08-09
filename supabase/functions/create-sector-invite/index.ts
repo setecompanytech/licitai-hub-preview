@@ -48,8 +48,27 @@ Deno.serve(async (req) => {
     const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } },
     })
-    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser()
+
+    // O token vai EXPLICITO. Sem argumento, getUser() procura a sessao no
+    // armazenamento local do cliente — que nao existe numa edge function — e
+    // pode devolver usuario nulo mesmo com o cabecalho Authorization presente.
+    // O sintoma e um 401 "Nao autorizado" sem nenhum erro no log, porque a
+    // funcao retorna pelo caminho normal. Mesmo padrao de ai-chat,
+    // busca-diarios-oficiais e pncp-arquivos-edital.
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser(token)
+
     if (authError || !caller) {
+      // Sem isto o 401 sai pelo caminho normal e o log fica MUDO — foi o que
+      // impediu o diagnostico em 09/08. Nao registra o token, so o suficiente
+      // para distinguir token expirado, malformado ou chave errada.
+      console.error('[create-sector-invite] auth falhou:', {
+        motivo: authError?.message ?? 'getUser devolveu usuario nulo',
+        status: (authError as { status?: number } | null)?.status ?? null,
+        token_tamanho: token.length,
+        token_partes: token.split('.').length, // JWT tem 3; chave anon tambem
+        anon_key_presente: !!Deno.env.get('SUPABASE_ANON_KEY'),
+      })
       return new Response(JSON.stringify({ error: 'Não autorizado' }), {
         status: 401,
         headers: { ...cors, 'Content-Type': 'application/json' },
