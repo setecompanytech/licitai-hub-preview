@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useMetasComercial';
 import { UFS_BRASIL } from '@/lib/ibge-municipios';
 import { atingeAlgumaPraca } from '@/lib/metas/feriados';
+import { filtrarColaboradoresDoPainel } from '@/lib/metas/colaboradores';
 import { ehFimDeSemana } from '@/lib/metas/dias-uteis';
 
 const NACIONAL = '__nacional__';
@@ -52,6 +53,16 @@ export default function FeriadosManager() {
   const excluir = useExcluirFeriado();
 
   /**
+   * Só as praças de quem está no painel de metas: feriado só afeta o cálculo
+   * de quem tem meta, então listar a praça de um administrativo qualquer daria
+   * a impressão errada de que aquela UF importa.
+   */
+  const doPainel = useMemo(
+    () => filtrarColaboradoresDoPainel(colaboradores ?? []),
+    [colaboradores],
+  );
+
+  /**
    * Praças em uso. A regra do projeto é cadastrar só os feriados das UFs e
    * cidades onde há colaborador — sem isso, o admin não tem como saber quais
    * importam.
@@ -59,12 +70,12 @@ export default function FeriadosManager() {
   const pracas = useMemo(() => {
     const ufs = new Set<string>();
     const municipios = new Set<string>();
-    for (const c of colaboradores ?? []) {
+    for (const c of doPainel) {
       if (c.praca_uf) ufs.add(c.praca_uf);
       if (c.praca_uf && c.praca_municipio) municipios.add(`${c.praca_municipio}/${c.praca_uf}`);
     }
     return { ufs: [...ufs].sort(), municipios: [...municipios].sort() };
-  }, [colaboradores]);
+  }, [doPainel]);
 
   const ufEscolhida = rascunho.uf === NACIONAL ? '' : rascunho.uf;
   const podeSalvar = rascunho.data !== '' && rascunho.descricao.trim() !== '';
@@ -77,7 +88,7 @@ export default function FeriadosManager() {
     ufEscolhida !== '' &&
     !atingeAlgumaPraca(
       { uf: ufEscolhida, municipio: rascunho.municipio.trim() || null },
-      colaboradores ?? [],
+      doPainel,
     );
 
   const limpar = () => { setRascunho(VAZIO); setEditando(null); };

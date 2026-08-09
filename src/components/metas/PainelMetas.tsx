@@ -24,6 +24,7 @@ import { apurarTickets } from '@/lib/metas/tickets';
 import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
 import { filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
 import { filtrarFeriadosPorPraca } from '@/lib/metas/praca';
+import { filtrarColaboradoresDoPainel } from '@/lib/metas/colaboradores';
 import { avaliarAlerta, projetarMeta, type Severidade } from '@/lib/metas/projecao';
 import { estadoDaBarra } from '@/lib/metas/progresso';
 import { rotuloModalidade } from '@/lib/metas/modalidades';
@@ -92,7 +93,7 @@ export default function PainelMetas() {
   const { user } = useAuth();
 
   const { data: config } = useMetasConfig();
-  const { data: colaboradores, isLoading: carregandoColaboradores } = useColaboradores();
+  const { data: membros, isLoading: carregandoColaboradores } = useColaboradores();
   const { data: valoresAlvo } = useValoresAlvo();
   const { data: realizado, isLoading: carregandoRealizado } = useRealizadoMensal({ ano });
   const { data: feriados } = useFeriados(ano);
@@ -100,6 +101,16 @@ export default function PainelMetas() {
 
   const janelaMeses = config?.janela_historica_meses ?? 6;
   const desde = inicioDaJanela(ano, mes, janelaMeses);
+
+  // Só o comercial e quem tem meta no período — sem isto o painel listava todo
+  // membro da empresa, inclusive contas administrativas sem nome.
+  const colaboradores = useMemo(
+    () => filtrarColaboradoresDoPainel(
+      membros ?? [],
+      (metas ?? []).map((m) => m.user_id),
+    ),
+    [membros, metas],
+  );
 
   // Colaborador fica preso a si mesmo; admin, sem escolha feita, cai no primeiro da lista.
   const selecionado = isAdmin

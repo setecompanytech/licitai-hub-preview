@@ -446,6 +446,9 @@ export type Colaborador = {
   user_id: string;
   nome: string | null;
   email: string | null;
+  /** Setor do membro. O painel de metas só lista quem é do comercial. */
+  equipe: string | null;
+  papel: string | null;
   /** Praça para o cálculo de dias úteis; NULL = só feriados nacionais. */
   praca_uf: string | null;
   praca_municipio: string | null;
@@ -459,7 +462,7 @@ export function useColaboradores() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresa_membros')
-        .select('user_id, nome, email, praca_uf, praca_municipio')
+        .select('user_id, nome, email, equipe, papel, praca_uf, praca_municipio')
         .eq('empresa_id', empresaId!)
         .order('nome', { ascending: true });
       if (error) throw error;

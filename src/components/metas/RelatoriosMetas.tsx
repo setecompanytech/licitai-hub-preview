@@ -24,6 +24,7 @@ import { apurarTickets } from '@/lib/metas/tickets';
 import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
 import { filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
 import { filtrarFeriadosPorPraca } from '@/lib/metas/praca';
+import { filtrarColaboradoresDoPainel, nomeDoColaborador } from '@/lib/metas/colaboradores';
 import { paraCentavos } from '@/lib/metas/dinheiro';
 import { projetarMeta } from '@/lib/metas/projecao';
 import { montarRelatorio, periodoDoRelatorio, type TipoRelatorio } from '@/lib/metas/relatorio';
@@ -73,11 +74,15 @@ export default function RelatoriosMetas() {
   const { data: feriados } = useFeriados(ano);
   const salvarSnapshot = useSalvarSnapshot();
 
-  // Colaborador vê só o seu; admin escolhe. O default evita tela vazia.
+  // Só o comercial e quem tem meta; depois disso, colaborador vê só o seu e
+  // admin escolhe. O default evita tela vazia.
   const disponiveis = useMemo(() => {
-    const lista = colaboradores ?? [];
-    return isAdmin ? lista : lista.filter((c) => c.user_id === user?.id);
-  }, [colaboradores, isAdmin, user?.id]);
+    const doPainel = filtrarColaboradoresDoPainel(
+      colaboradores ?? [],
+      (metas ?? []).map((m) => m.user_id),
+    );
+    return isAdmin ? doPainel : doPainel.filter((c) => c.user_id === user?.id);
+  }, [colaboradores, metas, isAdmin, user?.id]);
 
   const selecionado = colaboradorId || disponiveis[0]?.user_id || '';
   const desde = inicioDaJanela(ano, mes, config?.janela_historica_meses ?? 6);
@@ -130,7 +135,7 @@ export default function RelatoriosMetas() {
 
     return montarRelatorio({
       tipo, ano, mes, hoje,
-      colaborador: colaborador.nome ?? colaborador.email ?? 'Colaborador',
+      colaborador: nomeDoColaborador(colaborador),
       projecao,
       realizado: {
         participados: doMes?.participados ?? 0,
@@ -187,7 +192,7 @@ export default function RelatoriosMetas() {
                 <SelectContent>
                   {disponiveis.map((c) => (
                     <SelectItem key={c.user_id} value={c.user_id}>
-                      {c.nome ?? c.email ?? 'Sem nome'}
+                      {nomeDoColaborador(c)}
                     </SelectItem>
                   ))}
                 </SelectContent>
