@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2'
+import { emailDaConta } from '../_shared/email-conta.ts'
 
 /**
  * Aceite do convite por setor.
@@ -34,12 +35,6 @@ const equipeLabels: Record<string, string> = {
   documentos: 'Documentos',
 }
 
-/**
- * Dominio reservado pela RFC 2606 para nomes garantidamente invalidos.
- * Usar um dominio real aqui arriscaria entregar mensagem a terceiros.
- */
-const DOMINIO_SINTETICO = 'praefectus.invalid'
-
 const REGRA_LOGIN = /^[A-Za-z0-9._-]{3,30}$/
 
 function capitalizar(str: string): string {
@@ -53,10 +48,6 @@ function json(body: unknown, status = 200) {
   })
 }
 
-/** O e-mail da conta e derivado do login, que ja e unico sem distinguir caixa. */
-function emailSintetico(login: string): string {
-  return `${login.trim().toLowerCase()}@${DOMINIO_SINTETICO}`
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -121,7 +112,9 @@ Deno.serve(async (req) => {
     }
 
     // ── 3. Cria a conta ───────────────────────────────────────────────────
-    const email = emailSintetico(loginLimpo)
+    // Sub-endereçamento no e-mail do setor: mantem a redefinicao de senha
+    // funcionando, porque a mensagem chega na caixa compartilhada.
+    const email = emailDaConta(loginLimpo, convite.email_setor)
     const { data: criado, error: erroCriacao } = await adminClient.auth.admin.createUser({
       email,
       password: senha,

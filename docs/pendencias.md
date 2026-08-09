@@ -6,18 +6,34 @@ adiadas de propósito.
 
 ---
 
-## [2026-08-09] PRIORIZADA — redefinição de senha para acesso por login
+## ~~[2026-08-09] PRIORIZADA — redefinição de senha para acesso por login~~ — RESOLVIDO no mesmo dia
 
-**Contexto:** com o setor usando um e-mail compartilhado, o acesso individual passou a ter
-e-mail sintético (`<login>@praefectus.invalid`). É o que torna possível vários colaboradores
+**Como foi resolvido:** trocando o e-mail sintético pelo **sub-endereçamento** do e-mail do
+setor. A conta de `COMERCIAL-01` passou a ser `comercial+comercial-01@gruposantarosa.com.br`
+— endereço único para o Auth e, ao mesmo tempo, entregue na caixa compartilhada do setor.
+A recuperação de senha voltou a funcionar sem intervenção do admin.
+
+**Confirmado empiricamente** em 09/08/2026: mensagem enviada para
+`comercial+01@gruposantarosa.com.br` chegou na **caixa de entrada** do HostGator
+(cPanel/Dovecot), não numa subpasta — que era o risco real desse provedor.
+
+**O que sobrou como salvaguarda:** `emailDaConta` cai no domínio sintético
+(`@praefectus.invalid`) quando o e-mail do setor não serve de base (sem arroba, domínio sem
+ponto). Nesses casos a recuperação continua indisponível, mas o cadastro não trava — 15
+testes cobrem essas quedas.
+
+**Efeito colateral inerente ao modelo, não à solução:** o e-mail de redefinição chega na
+caixa do setor, então todos que a acessam veem o pedido. Isso decorre de o setor compartilhar
+uma caixa, e vale para qualquer mensagem que ela receba.
+
+Registro do problema original:
+
+**Contexto:** com o setor usando um e-mail compartilhado, o acesso individual teria e-mail
+sintético (`<login>@praefectus.invalid`). É o que torna possível vários colaboradores
 no mesmo setor — mas o endereço não existe como caixa postal.
 
-**O que quebra:** o "Esqueceu a senha?" da tela de login envia para o vazio. O colaborador
-não recebe nada e não tem como saber por quê. Hoje ele fica sem acesso até alguém intervir
-no banco.
-
-**Quem é afetado:** só quem entrou por convite de setor a partir de 09/08/2026. Quem tem
-e-mail real continua recuperando a senha normalmente.
+**O que quebrava:** o "Esqueceu a senha?" da tela de login enviaria para o vazio. O
+colaborador não receberia nada e não teria como saber por quê.
 
 **Solução proposta:**
 

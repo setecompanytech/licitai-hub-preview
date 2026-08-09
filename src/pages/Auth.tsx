@@ -287,7 +287,21 @@ export default function Auth() {
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await resetPassword(email);
+
+    // O campo aceita login ou e-mail. Sem resolver o login aqui, quem entra
+    // por login digitaria o mesmo valor de sempre e o envio falharia.
+    let alvo = email.trim();
+    if (!alvo.includes('@')) {
+      const { data: emailFound } = await supabase.rpc('buscar_email_por_username', { p_username: alvo });
+      if (!emailFound) {
+        setLoading(false);
+        toast.error('Login não encontrado. Confira a digitação ou informe o e-mail.');
+        return;
+      }
+      alvo = emailFound as string;
+    }
+
+    const { error } = await resetPassword(alvo);
     setLoading(false);
     if (error) {
       toast.error(error.message);

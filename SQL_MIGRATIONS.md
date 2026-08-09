@@ -1899,13 +1899,14 @@ COMMENT ON COLUMN public.licitacoes.empresa_id IS
 > 3. ninguém gravava `profiles.username`, que é o único campo consultado no login por usuário.
 >
 > **Arquitetura escolhida** (o setor tem um e-mail compartilhado, e o Supabase Auth exige
-> e-mail único por conta): a identidade passa a ser o **login**. O e-mail da conta é sintético
-> (`<login>@praefectus.invalid`, domínio reservado pela RFC 2606) e nunca recebe mensagem; o
-> e-mail do setor fica como contato.
+> e-mail único por conta): a identidade passa a ser o **login**, e o e-mail da conta usa
+> **sub-endereçamento** do e-mail do setor — `comercial+comercial-01@gruposantarosa.com.br`.
+> É único para o Auth e entregue na caixa compartilhada, o que mantém a recuperação de senha
+> funcionando. Confirmado empiricamente no HostGator em 09/08/2026: chegou na caixa de
+> entrada, não em subpasta.
 >
-> ⚠️ **Consequência declarada:** "Esqueceu a senha?" não funciona para esses colaboradores —
-> não há caixa postal. A redefinição precisa ser feita pelo admin, e **essa tela ainda não
-> existe**. Registrado em `docs/pendencias.md`.
+> Quando o e-mail do setor não serve de base (sem arroba, domínio sem ponto), cai no domínio
+> `@praefectus.invalid` — reservado pela RFC 2606 — para o cadastro não travar.
 >
 > Requer redeploy da edge function `accept-sector-invite`.
 
