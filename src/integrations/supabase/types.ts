@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       agent_acoes_log: {
@@ -13426,68 +13451,6 @@ export type Database = {
           },
         ]
       }
-      precificacao: {
-        Row: {
-          bdi_percentual: number | null
-          created_at: string
-          custo_unitario: number | null
-          descricao: string | null
-          fonte_preco: string | null
-          id: string
-          item: string
-          licitacao_id: string | null
-          preco_total: number | null
-          preco_unitario: number | null
-          quantidade: number | null
-          referencia_sinapi: string | null
-          unidade: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          bdi_percentual?: number | null
-          created_at?: string
-          custo_unitario?: number | null
-          descricao?: string | null
-          fonte_preco?: string | null
-          id?: string
-          item: string
-          licitacao_id?: string | null
-          preco_total?: number | null
-          preco_unitario?: number | null
-          quantidade?: number | null
-          referencia_sinapi?: string | null
-          unidade?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          bdi_percentual?: number | null
-          created_at?: string
-          custo_unitario?: number | null
-          descricao?: string | null
-          fonte_preco?: string | null
-          id?: string
-          item?: string
-          licitacao_id?: string | null
-          preco_total?: number | null
-          preco_unitario?: number | null
-          quantidade?: number | null
-          referencia_sinapi?: string | null
-          unidade?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "precificacao_licitacao_id_fkey"
-            columns: ["licitacao_id"]
-            isOneToOne: false
-            referencedRelation: "licitacoes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       preferencias_alertas: {
         Row: {
           ativo: boolean | null
@@ -17611,6 +17574,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "user", "viewer"],
