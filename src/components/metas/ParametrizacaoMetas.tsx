@@ -19,6 +19,7 @@ import {
 import { MODALIDADES, rotuloModalidade } from '@/lib/metas/modalidades';
 import { formatBRL } from '@/lib/financeiro/formatters';
 import { MoneyInput } from '@/components/ui/money-input';
+import FeriadosManager from './FeriadosManager';
 
 export default function ParametrizacaoMetas() {
   const { data: config } = useMetasConfig();
@@ -300,6 +301,9 @@ export default function ParametrizacaoMetas() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* ── Feriados (dias úteis por praça) ── */}
+      <FeriadosManager />
     </div>
   );
 }

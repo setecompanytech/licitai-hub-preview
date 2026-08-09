@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
+import { normalizarFeriado } from '@/lib/metas/feriados';
 
 /**
  * Acesso às tabelas do módulo de Metas do Comercial.
@@ -379,6 +380,63 @@ export function useFeriados(ano: number) {
       if (error) throw error;
       return (data ?? []) as unknown as Feriado[];
     },
+  });
+}
+
+export type FeriadoEntrada = {
+  id?: string;
+  data: string;
+  descricao: string;
+  /** Vazio = nacional. Preenchida = estadual; com município = municipal. */
+  uf?: string | null;
+  municipio?: string | null;
+};
+
+export function useSalvarFeriado() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (entrada: FeriadoEntrada) => {
+      if (!empresaId) throw new Error('Selecione uma empresa ativa.');
+
+      // A abrangência é derivada de uf/municipio, nunca digitada — regra em
+      // src/lib/metas/feriados.ts, testada, espelhando o CHECK do banco.
+      const payload = { empresa_id: empresaId, ...normalizarFeriado(entrada) };
+
+      const q = entrada.id
+        ? supabase.from('comercial_feriados').update(payload).eq('id', entrada.id)
+        : supabase.from('comercial_feriados').insert(payload);
+
+      const { error } = await q;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comercial-feriados'] });
+      toast.success('Feriado salvo.');
+    },
+    onError: (e: { code?: string; message: string }) => {
+      // ux_comercial_feriados_data_praca: mesma data e mesma praça
+      toast.error(
+        e.code === '23505'
+          ? 'Já existe um feriado nessa data para essa praça.'
+          : e.message,
+      );
+    },
+  });
+}
+
+export function useExcluirFeriado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('comercial_feriados').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comercial-feriados'] });
+      toast.success('Feriado removido.');
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
