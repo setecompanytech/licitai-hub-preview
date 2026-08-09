@@ -2034,3 +2034,40 @@ COMMENT ON FUNCTION public.username_disponivel(text) IS
   'na tela de aceite do convite, antes de haver sessao. Retorna apenas o '
   'booleano, sem revelar a quem pertence um login ocupado.';
 ```
+
+## [2026-08-09] Corrige o comentário de `profiles.username`
+
+> Ajuste só de documentação — **nenhuma mudança de estrutura ou dado**.
+>
+> O comentário gravado pela `20260809000001` descreve o e-mail da conta como sempre sintético.
+> Ficou desatualizado no mesmo dia: o teste no HostGator confirmou que o sub-endereçamento é
+> entregue na caixa do setor, e ele virou o padrão — o domínio reservado passou a ser apenas
+> a queda.
+>
+> Comentário de coluna é documentação que vive no banco: quem ler o schema daqui a seis meses
+> lê isto, não o commit. Errado, induz à conclusão de que a recuperação de senha não funciona.
+
+```sql
+-- =============================================================================
+-- MIGRATION: corrige o comentario de profiles.username
+-- Data: 2026-08-09
+-- Objetivo: o comentario gravado pela 20260809000001 descreve o e-mail da conta
+--           como sempre sintetico. Isso ficou desatualizado no mesmo dia: o
+--           teste no HostGator confirmou que o sub-enderecamento e entregue na
+--           caixa do setor, e ele virou o padrao — o dominio reservado passou a
+--           ser apenas a queda.
+--
+-- Comentario de coluna e documentacao que vive no banco: quem for ler o schema
+-- daqui a seis meses le isto, nao o commit. Errado, induz a conclusao de que
+-- recuperacao de senha nao funciona.
+-- =============================================================================
+
+COMMENT ON COLUMN public.profiles.username IS
+  'Login individual do colaborador e identidade de acesso quando o setor usa '
+  'um e-mail compartilhado. O e-mail da conta em auth.users e derivado dele '
+  'por sub-enderecamento (comercial+<login>@dominio), entregue na caixa do '
+  'setor — e o que mantem a redefinicao de senha funcionando. Quando o e-mail '
+  'do setor nao serve de base, cai em <login>@praefectus.invalid, dominio '
+  'reservado pela RFC 2606, e ai a redefinicao fica indisponivel. Regra em '
+  'supabase/functions/_shared/email-conta.ts. Unico sem distinguir maiusculas.';
+```
