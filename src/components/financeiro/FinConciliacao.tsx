@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useContas,
   useExtratosImportados,
@@ -83,9 +83,12 @@ import {
   XCircle,
   Wallet,
   Trash2,
+  Pencil,
+  Filter,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
+import { Input } from "@/components/ui/input";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
@@ -1794,6 +1797,27 @@ function DialogVincularManual({
   onConfirm: (lancamentoId: string) => void;
 }) {
   const { data: lancamentos } = useLancamentos({ status: "todos" });
+
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroValorMin, setFiltroValorMin] = useState("");
+  const [filtroValorMax, setFiltroValorMax] = useState("");
+  const [filtroDataDe, setFiltroDataDe] = useState("");
+  const [filtroDataAte, setFiltroDataAte] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [editando, setEditando] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    if (!info) {
+      setFiltroTexto("");
+      setFiltroValorMin("");
+      setFiltroValorMax("");
+      setFiltroDataDe("");
+      setFiltroDataAte("");
+      setFiltroStatus("todos");
+      setEditando(null);
+    }
+  }, [info]);
+
   if (!info) return null;
 
   const elegiveis = (lancamentos ?? []).filter(
@@ -1803,68 +1827,185 @@ function DialogVincularManual({
       l.status !== "cancelado"
   );
 
-  const sugeridos = elegiveis.filter(
+  const temFiltro =
+    !!filtroTexto || !!filtroValorMin || !!filtroValorMax ||
+    !!filtroDataDe || !!filtroDataAte || filtroStatus !== "todos";
+
+  const filtrados = elegiveis.filter((l) => {
+    if (filtroTexto && !l.descricao?.toLowerCase().includes(filtroTexto.toLowerCase())) return false;
+    const v = Number(l.valor);
+    if (filtroValorMin !== "" && !isNaN(Number(filtroValorMin)) && v < Number(filtroValorMin)) return false;
+    if (filtroValorMax !== "" && !isNaN(Number(filtroValorMax)) && v > Number(filtroValorMax)) return false;
+    const dataRef = l.data_vencimento ?? l.data_competencia ?? "";
+    if (filtroDataDe && dataRef < filtroDataDe) return false;
+    if (filtroDataAte && dataRef > filtroDataAte) return false;
+    if (filtroStatus !== "todos" && l.status !== filtroStatus) return false;
+    return true;
+  });
+
+  const sugeridos = filtrados.filter(
     (l) => info.valor > 0 && Math.abs(Number(l.valor) - info.valor) / info.valor < 0.02
   );
-  const outros = elegiveis.filter((l) => !sugeridos.includes(l));
+  const outros = filtrados.filter((l) => !sugeridos.includes(l));
+
+  const limparFiltros = () => {
+    setFiltroTexto(""); setFiltroValorMin(""); setFiltroValorMax("");
+    setFiltroDataDe(""); setFiltroDataAte(""); setFiltroStatus("todos");
+  };
 
   const renderItem = (l: (typeof elegiveis)[number], destaque = false) => (
-    <button
-      key={l.id}
-      onClick={() => onConfirm(l.id)}
-      className="w-full text-left border rounded-md p-2.5 hover:bg-accent transition-colors mb-1.5"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-sm ${destaque ? "font-semibold" : ""} truncate`}>{l.descricao}</span>
-        <span className="text-sm font-mono whitespace-nowrap tabular-nums">{formatBRL(Number(l.valor))}</span>
-      </div>
-      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-        <span>{statusLabel[l.status] ?? l.status}</span>
-        <span>·</span>
-        <span>
-          {l.data_vencimento
-            ? `Venc.: ${formatDate(l.data_vencimento)}`
-            : `Comp.: ${formatDate(l.data_competencia)}`}
-        </span>
-      </div>
-    </button>
+    <div key={l.id} className="flex items-stretch gap-1 mb-1.5">
+      <button
+        onClick={() => onConfirm(l.id)}
+        className="flex-1 text-left border rounded-md p-2.5 hover:bg-accent transition-colors min-w-0"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className={`text-sm ${destaque ? "font-semibold" : ""} truncate`}>{l.descricao}</span>
+          <span className="text-sm font-mono whitespace-nowrap tabular-nums shrink-0">{formatBRL(Number(l.valor))}</span>
+        </div>
+        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+          <span>{statusLabel[l.status] ?? l.status}</span>
+          <span>·</span>
+          <span>
+            {l.data_vencimento
+              ? `Venc.: ${formatDate(l.data_vencimento)}`
+              : `Comp.: ${formatDate(l.data_competencia)}`}
+          </span>
+        </div>
+      </button>
+      <button
+        onClick={() => setEditando(l as Record<string, unknown>)}
+        className="shrink-0 w-8 border rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        title="Editar lançamento"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 
   return (
-    <Dialog open={!!info} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Vincular a um lançamento</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          {sugeridos.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                Sugestões (valor próximo)
+    <>
+      <Dialog open={!!info} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vincular a um lançamento</DialogTitle>
+          </DialogHeader>
+
+          {/* ── Filtros ── */}
+          <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Filter className="w-3 h-3" />
+              Filtros
+              {temFiltro && (
+                <button
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                  onClick={limparFiltros}
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+            <Input
+              placeholder="Buscar por descrição..."
+              value={filtroTexto}
+              onChange={(e) => setFiltroTexto(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Input
+                type="number"
+                placeholder="Valor mínimo"
+                value={filtroValorMin}
+                onChange={(e) => setFiltroValorMin(e.target.value)}
+                className="h-8 text-xs flex-1 min-w-[100px]"
+              />
+              <Input
+                type="number"
+                placeholder="Valor máximo"
+                value={filtroValorMax}
+                onChange={(e) => setFiltroValorMax(e.target.value)}
+                className="h-8 text-xs flex-1 min-w-[100px]"
+              />
+              <div className="flex items-center gap-1 flex-1 min-w-[160px]">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">De</span>
+                <Input
+                  type="date"
+                  value={filtroDataDe}
+                  onChange={(e) => setFiltroDataDe(e.target.value)}
+                  className="h-8 text-xs flex-1"
+                />
               </div>
-              {sugeridos.map((l) => renderItem(l, true))}
-            </div>
-          )}
-          {outros.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                Outros lançamentos {info.natureza === "receita" ? "a receber" : "a pagar"} ({outros.length})
+              <div className="flex items-center gap-1 flex-1 min-w-[160px]">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">até</span>
+                <Input
+                  type="date"
+                  value={filtroDataAte}
+                  onChange={(e) => setFiltroDataAte(e.target.value)}
+                  className="h-8 text-xs flex-1"
+                />
               </div>
-              {outros.slice(0, 50).map((l) => renderItem(l))}
+              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="previsto">Previsto</SelectItem>
+                  <SelectItem value="realizado">Realizado</SelectItem>
+                  <SelectItem value="em_atraso">Em atraso</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-          {sugeridos.length === 0 && outros.length === 0 && (
-            <div className="text-sm text-muted-foreground text-center py-8 space-y-2">
-              <p>Nenhum lançamento disponível para vincular.</p>
-              <p className="text-xs">
-                Crie primeiro um lançamento em <strong>Lançamentos → Novo lançamento</strong>{" "}
-                ({info.natureza === "receita" ? "a receber" : "a pagar"}) com valor de{" "}
-                <strong>{formatBRL(info.valor)}</strong> e tente vincular novamente.
-              </p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </div>
+
+          {/* ── Lista ── */}
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            {sugeridos.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                  Sugestões (valor próximo)
+                </div>
+                {sugeridos.map((l) => renderItem(l, true))}
+              </div>
+            )}
+            {outros.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                  {sugeridos.length > 0 ? "Outros lançamentos" : `Lançamentos ${info.natureza === "receita" ? "a receber" : "a pagar"}`}
+                  {" "}({outros.length})
+                </div>
+                {outros.map((l) => renderItem(l))}
+              </div>
+            )}
+            {filtrados.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-8 space-y-2">
+                {temFiltro ? (
+                  <p>Nenhum lançamento encontrado com esses filtros.</p>
+                ) : (
+                  <>
+                    <p>Nenhum lançamento disponível para vincular.</p>
+                    <p className="text-xs">
+                      Crie primeiro um lançamento em <strong>Lançamentos → Novo lançamento</strong>{" "}
+                      ({info.natureza === "receita" ? "a receber" : "a pagar"}) com valor de{" "}
+                      <strong>{formatBRL(info.valor)}</strong> e tente vincular novamente.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de edição do lançamento selecionado */}
+      {editando && (
+        <LancamentoDialog
+          open={!!editando}
+          onOpenChange={(v) => !v && setEditando(null)}
+          initial={editando as never}
+          onSaved={() => setEditando(null)}
+        />
+      )}
+    </>
   );
 }
