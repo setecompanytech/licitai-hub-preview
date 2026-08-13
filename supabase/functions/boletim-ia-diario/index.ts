@@ -4,6 +4,7 @@
 // IA é usada apenas para escrever um resumo executivo curto (contagens), não para escolher.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -195,10 +196,31 @@ serve(async (req) => {
     const { user_id, test_mode } = body;
 
     const authHeader = req.headers.get('authorization') || '';
-    const isCron = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
+    const isCron = autorizadoComoCron(req);
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     if (test_mode && user_id) {
+      // Esta função passou a ter `verify_jwt = false` para o cron conseguir
+      // chegar até aqui. Antes, o gateway do Supabase é que barrava quem não
+      // estivesse autenticado — este caminho não checava nada.
+      //
+      // Duas coisas são validadas agora, e a segunda já era um furo antes:
+      //   1. o token precisa ser de um usuário real;
+      //   2. o `user_id` do corpo precisa ser o DONO do token. Sem isso,
+      //      qualquer usuário logado podia disparar o boletim de qualquer
+      //      outro e ler as preferências dele passando um uuid alheio.
+      if (!isCron) {
+        const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+        const { data: auth } = token
+          ? await supabase.auth.getUser(token)
+          : { data: { user: null } };
+
+        if (!auth?.user || auth.user.id !== user_id) {
+          return new Response(JSON.stringify({ error: 'Não autorizado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       const { data: pref } = await supabase
         .from('boletim_preferencias').select('*').eq('user_id', user_id).maybeSingle();
       if (!pref) {

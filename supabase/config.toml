@@ -99,3 +99,26 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = true
   [functions.reconciliation-engine]
     verify_jwt = false
+
+  # ---------------------------------------------------------------------------
+  # Funcoes chamadas por pg_cron (2026-08-13).
+  #
+  # Elas recebem o CRON_SECRET no header `Authorization`, que nao e um JWT.
+  # Sem `verify_jwt = false`, o gateway do Supabase rejeita antes de a funcao
+  # rodar, com {"code":"UNAUTHORIZED_INVALID_JWT_FORMAT"} — e o pg_cron marca o
+  # job como `succeeded`, porque net.http_post e assincrono. Foi assim que essas
+  # rotinas ficaram quebradas por meses sem ninguem notar.
+  #
+  # Liberar o gateway NAO as deixa abertas: cada uma valida o CRON_SECRET no
+  # proprio codigo e devolve 401 sem ele.
+  # ---------------------------------------------------------------------------
+  [functions.mural-telemetria-alerta]
+    verify_jwt = false
+  [functions.boletim-ia-diario]
+    verify_jwt = false
+  [functions.crawler-pncp]
+    verify_jwt = false
+  [functions.pncp-sync-diario]
+    verify_jwt = false
+  [functions.pesquisa-tempo-real]
+    verify_jwt = false

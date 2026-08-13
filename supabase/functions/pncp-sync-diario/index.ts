@@ -4,6 +4,7 @@
 // Modo "worker": processa um grupo de UFs.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { autorizadoComoCron, respostaNaoAutorizado } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -182,6 +183,11 @@ async function processarUf(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Esta função não é chamada pelo app — só pelo cron e por ela mesma (fan-out
+  // dos workers, com o service_role). Com `verify_jwt = false` no config.toml,
+  // a autorização passou a ser responsabilidade dela.
+  if (!autorizadoComoCron(req)) return respostaNaoAutorizado(corsHeaders);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,

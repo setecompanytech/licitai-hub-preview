@@ -457,3 +457,36 @@ existe, inflando o denominador do ritmo diário. Normalizar no mesmo padrão do 
 **3. A tela precisa mostrar quantos feriados entraram no cálculo.** Praça errada ou feriado
 não cadastrado não gera erro, só distorce a projeção. Sem esse número visível no painel do
 colaborador, ninguém descobre que está errado.
+
+---
+
+## [2026-08-13] A automação de editais estava parada há 7 semanas
+
+**Situação:** nenhum dos jobs de `cron.job` alcançava as edge functions. A causa se dividia
+em três, e todas passaram despercebidas pelo mesmo motivo — `net.http_post` é assíncrono, e
+o `cron.job_run_details` só registra se o comando SQL rodou, não se o HTTP chegou.
+
+| Causa | Jobs afetados | Sintoma no `job_run_details` |
+| --- | --- | --- |
+| URL fixa em `sbnlovigyifvrkgsoalj` (projeto inexistente) | `boletim-ia-diario-06h`, `pncp-sync-madrugada`, `pncp-sync-meiodia`, `mural-telemetria-alerta-15min` | **`succeeded`** — verde falso |
+| Vault sem `SUPABASE_URL` → `NULL \|\| '/functions/...'` = NULL | `coletar-portais-cron`, `distribuir-editais-cron`, `pesquisa-tempo-real-30min`, `pncp-sync-diario` | `failed` |
+| Edge functions sem `CRON_SECRET` | as 9 que validam o token | 401 |
+
+**A pegadinha das duas grafias:** o vault é *case-sensitive* e as migrations usam as duas.
+`coletar-portais` e `distribuir-editais` procuram `SUPABASE_URL`; `crawler-pncp`,
+`pesquisa-tempo-real` e `pncp-sync-diario` procuram `supabase_url`. Criar só uma conserta
+metade dos jobs e a outra metade continua falhando, o que confunde o diagnóstico. Hoje as
+duas existem, com o mesmo valor.
+
+**Evidência do impacto:** `pncp_sync_log` sem uma linha desde 2026-06-25 e 0 syncs em 7 dias,
+enquanto `pncp_editais_cache` recebia dados no mesmo dia — porque o app chama as funções
+direto do navegador quando alguém abre a tela. **A coleta só acontecia com gente usando o
+sistema.**
+
+**Mitigação aplicada:** a migration `20260813000005` criou `public.supabase_project_url()` e
+`public.cron_auth_header()`, para que a URL e o token existam em um lugar só. Foi a
+duplicação em quatro migrations que permitiu ao erro sobreviver meses.
+
+**Pendente:** padronizar as migrations antigas para usarem os dois helpers, e decidir o que
+fazer com `crawler-pncp-30min` — está nas migrations mas não em `cron.job`, o que sugere
+remoção deliberada quando o `pncp-sync-diario` assumiu a coleta.
