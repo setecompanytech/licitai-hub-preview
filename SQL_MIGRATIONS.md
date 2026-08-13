@@ -2172,3 +2172,372 @@ COMMENT ON FUNCTION public.convite_por_token(text) IS
   'de outras empresas — a qualquer portador da chave anon. Exige o token e '
   'devolve no maximo uma linha, sem ecoar o proprio token.';
 ```
+
+---
+
+## [2026-08-13] Agenda o arquivamento de processos licitatórios
+
+A edge function `licitacoes-cleanup` existe desde fevereiro e nunca teve
+agendamento — nenhum dos 12 jobs em `cron.job` aponta para ela. A retenção de
+120 dias declarada no `COMMENT` da coluna `licitacoes.arquivado_em` nunca rodou.
+
+A URL vem do vault: quatro migrations antigas fixaram o host de um projeto que
+não é mais o atual (`sbnlovigyifvrkgsoalj` vs. `uwtyuwktxalnpgrcbbgk`).
+
+```sql
+-- =============================================================================
+-- Onda 1 — Agendar o arquivamento/expurgo de processos licitatórios
+--
+-- A edge function `licitacoes-cleanup` existe desde 20260223030808 e nunca teve
+-- agendamento: nenhum dos 12 jobs em cron.job aponta para ela. A política de
+-- retenção declarada no próprio COMMENT da coluna `licitacoes.arquivado_em`
+-- ("Após 120 dias, será excluído automaticamente") nunca executou.
+--
+-- A URL vem do vault em vez de literal. Quatro migrations antigas fixaram
+-- 'https://sbnlovigyifvrkgsoalj.supabase.co', que não é o projeto atual
+-- (uwtyuwktxalnpgrcbbgk, conforme supabase/config.toml e .env) — aqueles jobs
+-- provavelmente estão batendo em host errado desde a migração de projeto.
+-- Aceita as duas grafias de chave em uso no vault ('SUPABASE_URL' e
+-- 'supabase_url').
+-- =============================================================================
+
+-- Idempotência: derruba o agendamento anterior antes de recriar.
+SELECT cron.unschedule('licitacoes-cleanup-diario')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'licitacoes-cleanup-diario');
+
+SELECT cron.schedule(
+  'licitacoes-cleanup-diario',
+  '20 6 * * *', -- 06:20 UTC = 03:20 BRT, fora do horário de operação
+  $$
+  SELECT net.http_post(
+    url := COALESCE(
+             (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'SUPABASE_URL' LIMIT 1),
+             (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'supabase_url' LIMIT 1),
+             -- Último recurso: o vault do projeto de produção não tem essas
+             -- chaves (verificado em 2026-08-13), e sem fallback a URL vira
+             -- NULL — o job seria criado e falharia toda madrugada em silêncio.
+             -- O literal aqui é o projeto ao qual o app está preso em quatro
+             -- lugares (client.ts:5, vite.config.ts:12, .env, config.toml).
+             'https://uwtyuwktxalnpgrcbbgk.supabase.co'
+           ) || '/functions/v1/licitacoes-cleanup',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'CRON_SECRET' LIMIT 1)
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+-- Índice que o novo cleanup usa: ele passou a filtrar por `updated_at` para
+-- respeitar a carência de 30 dias entre o desfecho e o arquivamento.
+CREATE INDEX IF NOT EXISTS idx_licitacoes_pendente_arquivamento
+  ON public.licitacoes (updated_at)
+  WHERE arquivado_em IS NULL;
+```
+
+---
+
+## [2026-08-13] Separa os eixos `fase` e `desfecho` de `status`
+
+A coluna `status` respondia a três perguntas ao mesmo tempo (fase do funil,
+desfecho e visibilidade), e escrever uma apagava as outras. Caso concreto:
+`arquivarProcesso()` gravava `status = 'Arquivada'` sobre `'Homologada'`, e
+restaurar devolvia `'Monitorando'` — apagando o desfecho que alimenta os KPIs
+"Ganhas" e "Valor Ganho" do painel.
+
+`status` continua sendo a coluna de escrita; `fase` e `desfecho` são derivadas
+por trigger. Os triggers de metas (20260803000002) comparam `NEW.status` com
+literais exatos, e o Lovable escreve direto no `main` — um modelo que exige do
+app lembrar de preencher três colunas voltaria a divergir na primeira tela nova.
+
+```sql
+-- =============================================================================
+-- Onda 2 — Separar os três eixos que disputavam a coluna `status`
+--
+-- `status` respondia a três perguntas ao mesmo tempo:
+--   1. em que fase do funil o processo está   (muda várias vezes)
+--   2. como ele terminou                       (escrito uma vez, nunca muda)
+--   3. se ainda ocupa a mesa de trabalho       (arquivado_em)
+--
+-- Como as três dividiam o mesmo campo, escrever uma apagava as outras. O caso
+-- concreto: `arquivarProcesso()` gravava status='Arquivada' sobre 'Homologada',
+-- e restaurar devolvia 'Monitorando' — apagando o fato de a empresa ter ganhado
+-- a licitação, que alimenta os KPIs "Ganhas" e "Valor Ganho" do painel.
+--
+-- DECISÃO DE DESENHO: `status` continua sendo a coluna de escrita. `fase` e
+-- `desfecho` são DERIVADAS por trigger, nunca escritas pelo app.
+-- Motivo: os triggers `comercial_marcar_proposta_enviada` e
+-- `comercial_exigir_motivo_perda` (migration 20260803000002) comparam
+-- `NEW.status` com literais exatos, e o Lovable escreve direto no `main` sem
+-- passar por revisão. Um modelo em que o app precisa lembrar de preencher três
+-- colunas volta a divergir na primeira tela nova. Derivar no banco não tem essa
+-- exposição.
+-- =============================================================================
+
+ALTER TABLE public.licitacoes
+  ADD COLUMN IF NOT EXISTS fase text,
+  ADD COLUMN IF NOT EXISTS desfecho text;
+
+COMMENT ON COLUMN public.licitacoes.fase IS
+  'DERIVADA de status. Posição no funil operacional: Monitorando, Em Análise, '
+  'Proposta Enviada, Em Disputa, Encerrada. Não escrever pelo app.';
+
+COMMENT ON COLUMN public.licitacoes.desfecho IS
+  'DERIVADA de status + resultado. Como o processo terminou: Ganho, Perdido, '
+  'Deserto, Fracassado, Revogado, Anulado, Desclassificada. NULL enquanto '
+  'estiver em andamento. Não escrever pelo app.';
+
+-- -----------------------------------------------------------------------------
+-- Derivação — ESPELHO de src/lib/licitacao/status.ts (normalizarStatus).
+-- As duas versões precisam mudar juntas.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.licitacoes_derivar_eixos()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_status text := lower(coalesce(NEW.status, ''));
+  v_result text := lower(coalesce(NEW.resultado, ''));
+BEGIN
+  -- ---- Desfecho ----------------------------------------------------------
+  -- Vem primeiro porque, uma vez definido, ele congela a fase em 'Encerrada'.
+  IF v_result IN ('deserto', 'fracassado', 'revogado', 'anulado', 'desclassificada') THEN
+    NEW.desfecho := initcap(v_result);
+  ELSIF v_status LIKE '%homolog%' OR v_status LIKE '%vencid%'
+        OR v_status LIKE '%adjudic%' OR v_result = 'vencedor' THEN
+    NEW.desfecho := 'Ganho';
+  ELSIF v_status LIKE '%perdid%' OR v_result = 'perdedor' THEN
+    NEW.desfecho := 'Perdido';
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- Desfecho não se apaga: um processo que já terminou e voltou ao Kanban
+    -- por engano continua tendo terminado. Mesma lógica de
+    -- `comercial_marcar_proposta_enviada`, que também é irreversível.
+    -- (OLD só existe em UPDATE — referenciá-lo em INSERT levanta
+    -- 'record "old" is not assigned yet'.)
+    NEW.desfecho := OLD.desfecho;
+  ELSE
+    NEW.desfecho := NULL;
+  END IF;
+
+  -- ---- Fase --------------------------------------------------------------
+  IF NEW.desfecho IS NOT NULL THEN
+    NEW.fase := 'Encerrada';
+  ELSIF v_status LIKE '%disputa%' THEN
+    NEW.fase := 'Em Disputa';
+  ELSIF v_status LIKE '%proposta%' OR v_status = 'enviada' THEN
+    NEW.fase := 'Proposta Enviada';
+  ELSIF v_status LIKE '%anális%' OR v_status LIKE '%analis%' THEN
+    NEW.fase := 'Em Análise';
+  ELSE
+    -- 'Publicado', 'novo', 'monitorando' e qualquer desconhecido entram pelo
+    -- topo do funil: é o único destino que não afirma nada de errado.
+    NEW.fase := 'Monitorando';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS licitacoes_derivar_eixos ON public.licitacoes;
+CREATE TRIGGER licitacoes_derivar_eixos
+  BEFORE INSERT OR UPDATE ON public.licitacoes
+  FOR EACH ROW EXECUTE FUNCTION public.licitacoes_derivar_eixos();
+
+-- -----------------------------------------------------------------------------
+-- Backfill — reprocessa todas as linhas existentes pelo trigger.
+-- O UPDATE no-op dispara o BEFORE UPDATE e preenche fase/desfecho.
+-- -----------------------------------------------------------------------------
+UPDATE public.licitacoes SET status = status WHERE fase IS NULL;
+
+-- -----------------------------------------------------------------------------
+-- Higiene do legado: linhas cujo `status` é 'Arquivada' perderam o desfecho
+-- real na gravação antiga e não há como recuperá-lo do próprio campo. O que dá
+-- para recuperar vem de `resultado`, `vencedor` e `data_homologacao`, que o
+-- arquivamento nunca tocou. As demais ficam sem desfecho — honesto é registrar
+-- que não se sabe, não inventar 'Perdido'.
+-- -----------------------------------------------------------------------------
+UPDATE public.licitacoes
+   SET desfecho = 'Ganho', fase = 'Encerrada'
+ WHERE desfecho IS NULL
+   AND (vencedor IS TRUE OR data_homologacao IS NOT NULL);
+
+-- Marca o arquivamento das que estavam com status='Arquivada' mas sem a data,
+-- para que a Onda 1 (que decide a faixa por `arquivado_em`) não as mostre como
+-- ativas no painel.
+UPDATE public.licitacoes
+   SET arquivado_em = COALESCE(arquivado_em, updated_at, now())
+ WHERE lower(coalesce(status, '')) LIKE '%arquiv%'
+   AND arquivado_em IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_licitacoes_fase
+  ON public.licitacoes (empresa_id, fase) WHERE arquivado_em IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_licitacoes_desfecho
+  ON public.licitacoes (empresa_id, desfecho) WHERE desfecho IS NOT NULL;
+```
+
+---
+
+## [2026-08-13] Trilha de auditoria aceita eventos de sessão
+
+As policies de `atividades_colaborador` exigiam `is_empresa_member(uid, empresa_id)`
+no INSERT e no SELECT. Com `empresa_id IS NULL` a linha é recusada — e é
+exatamente esse o caso de login e logout, que acontecem fora de qualquer empresa.
+Sem isto, a trilha de sessão seria escrita, recusada pelo RLS, e ninguém notaria.
+
+```sql
+-- =============================================================================
+-- Onda 3 — Permitir eventos de sessão na trilha de auditoria
+--
+-- As policies originais de `atividades_colaborador` (migration 20260310202304)
+-- exigem `is_empresa_member(auth.uid(), empresa_id)` tanto no INSERT quanto no
+-- SELECT. Com `empresa_id IS NULL` a função não retorna verdadeiro, então a
+-- linha é recusada.
+--
+-- Isso inviabiliza justamente os eventos que a auditoria mais precisa:
+-- login e logout acontecem fora de qualquer empresa — no login a empresa ativa
+-- ainda não carregou, e no logout ela já foi descartada. Sem esta migration, a
+-- trilha de sessão seria escrita, recusada pelo RLS e ninguém notaria: o mesmo
+-- padrão de falha silenciosa que deixou a tabela vazia desde que foi criada.
+--
+-- O escopo é estreito de propósito: `empresa_id IS NULL` só é aceito para o
+-- próprio usuário. Ninguém passa a enxergar atividade de outra pessoa.
+-- =============================================================================
+
+DROP POLICY IF EXISTS "Members can view empresa activities" ON public.atividades_colaborador;
+CREATE POLICY "Members can view empresa activities"
+ON public.atividades_colaborador FOR SELECT TO authenticated
+USING (
+  public.is_empresa_member(auth.uid(), empresa_id)
+  OR (empresa_id IS NULL AND user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Users can insert own activities" ON public.atividades_colaborador;
+CREATE POLICY "Users can insert own activities"
+ON public.atividades_colaborador FOR INSERT TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+  AND (empresa_id IS NULL OR public.is_empresa_member(auth.uid(), empresa_id))
+);
+
+-- A policy de DELETE continua exigindo admin da empresa, o que significa que
+-- eventos de sessão (empresa_id nulo) não são apagáveis pela interface. É o
+-- comportamento desejado para uma trilha de acesso — a limpeza por retenção
+-- continua acontecendo pela rotina de expurgo, que roda com service_role.
+
+-- A aba Histórico do prontuário filtra por metadata->>'licitacao_id'.
+-- Sem este índice a consulta faz varredura completa da trilha, que cresce
+-- rápido por ser escrita em toda operação de processo.
+CREATE INDEX IF NOT EXISTS idx_atividades_licitacao
+  ON public.atividades_colaborador ((metadata->>'licitacao_id'))
+  WHERE metadata ? 'licitacao_id';
+
+-- Consulta "o que esta pessoa fez nesta sessão", que é a leitura natural de
+-- uma auditoria de acesso.
+CREATE INDEX IF NOT EXISTS idx_atividades_sessao
+  ON public.atividades_colaborador ((metadata->>'sessao_id'))
+  WHERE metadata ? 'sessao_id';
+```
+
+---
+
+## [2026-08-13] Processo licitatório passa a ser da empresa
+
+As policies de `licitacoes` eram estritamente `auth.uid() = user_id` desde a
+criação da tabela. O painel anunciava "Resultados de: <empresa>" e entregava só
+os processos do usuário logado — dois colaboradores da mesma empresa viam
+painéis diferentes, e um processo iniciado por quem saiu ficava invisível para
+todos, inclusive para o admin.
+
+O risco clássico (processos legados sem `empresa_id` sumirem) não existe: a
+coluna é NOT NULL desde 2026-08-08, com backfill feito.
+
+```sql
+-- =============================================================================
+-- Onda 4 — Processo licitatório passa a ser da EMPRESA, não do colaborador
+--
+-- O painel anuncia "Resultados de: <empresa>" e entrega apenas os processos do
+-- usuário logado: as policies de `licitacoes` são estritamente
+-- `auth.uid() = user_id` desde a criação da tabela (20260222151544). O efeito é
+-- que dois colaboradores da mesma empresa veem painéis diferentes, nenhum vê o
+-- do outro, e um processo iniciado por quem saiu da empresa fica invisível para
+-- todos — inclusive para o admin. O Kanban, apresentado como quadro de equipe,
+-- nunca foi colaborativo.
+--
+-- O risco clássico desta mudança — processos legados sem `empresa_id` sumirem
+-- do painel de todo mundo — não existe aqui: a coluna é NOT NULL desde
+-- 2026-08-08 (20260808000005), com backfill feito em 20260808000004.
+--
+-- Papéis preservados:
+--   user_id     — quem criou o processo
+--   operador_id — quem responde por ele hoje (passou a ser preenchido na Onda 3)
+-- Nenhum dos dois deixa de enxergar o próprio processo, mesmo que saia da
+-- empresa: as cláusulas por usuário continuam no OR.
+-- =============================================================================
+
+-- ---- SELECT -----------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can view own licitacoes" ON public.licitacoes;
+DROP POLICY IF EXISTS "Operadores can view assigned licitacoes" ON public.licitacoes;
+CREATE POLICY "Membros da empresa veem os processos"
+ON public.licitacoes FOR SELECT TO authenticated
+USING (
+  public.is_empresa_member(auth.uid(), empresa_id)
+  OR user_id = auth.uid()
+  OR operador_id = auth.uid()
+);
+
+-- ---- INSERT -----------------------------------------------------------------
+-- Continua exigindo que a pessoa assine o próprio INSERT (`user_id`), e agora
+-- também que ela seja membro da empresa que está recebendo o processo — sem
+-- isso, seria possível criar processo dentro de empresa alheia.
+DROP POLICY IF EXISTS "Users can insert own licitacoes" ON public.licitacoes;
+CREATE POLICY "Membros da empresa criam processos"
+ON public.licitacoes FOR INSERT TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+  AND public.is_empresa_member(auth.uid(), empresa_id)
+);
+
+-- ---- UPDATE -----------------------------------------------------------------
+-- O WITH CHECK impede mover um processo para outra empresa como forma de
+-- exfiltrá-lo: o destino também precisa ser uma empresa da qual se é membro.
+DROP POLICY IF EXISTS "Users can update own licitacoes" ON public.licitacoes;
+CREATE POLICY "Membros da empresa atualizam os processos"
+ON public.licitacoes FOR UPDATE TO authenticated
+USING (
+  public.is_empresa_member(auth.uid(), empresa_id)
+  OR user_id = auth.uid()
+  OR operador_id = auth.uid()
+)
+WITH CHECK (
+  public.is_empresa_member(auth.uid(), empresa_id)
+  OR user_id = auth.uid()
+);
+
+-- ---- DELETE -----------------------------------------------------------------
+-- Convenção do repo: delete via `is_empresa_admin`. O criador continua podendo
+-- excluir o que criou — tirar isso removeria uma capacidade que ele já tem hoje,
+-- e a exclusão agora fica registrada na trilha (Onda 3).
+DROP POLICY IF EXISTS "Users can delete own licitacoes" ON public.licitacoes;
+CREATE POLICY "Admin da empresa ou autor excluem o processo"
+ON public.licitacoes FOR DELETE TO authenticated
+USING (
+  public.is_empresa_admin(auth.uid(), empresa_id)
+  OR user_id = auth.uid()
+);
+
+-- ---- Índices ----------------------------------------------------------------
+-- As telas passam a filtrar por empresa_id em vez de user_id; o índice antigo
+-- (idx_licitacoes_user) deixa de atender a consulta principal do painel.
+CREATE INDEX IF NOT EXISTS idx_licitacoes_empresa_recentes
+  ON public.licitacoes (empresa_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_licitacoes_operador
+  ON public.licitacoes (operador_id) WHERE operador_id IS NOT NULL;
+
+COMMENT ON COLUMN public.licitacoes.operador_id IS
+  'Colaborador responsável pelo processo hoje, que pode não ser quem o criou '
+  '(user_id). Preenchido desde a Onda 3 em iniciarProcesso(). Usado para '
+  'redistribuir carteira e para manter acesso de quem toca o processo.';
+```

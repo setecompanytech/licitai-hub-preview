@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import { normalizarStatus as normalizeStatus } from '@/lib/licitacao/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
@@ -25,7 +27,16 @@ type LicitacaoKanban = {
   uf: string | null;
   municipio: string | null;
   data_encerramento: string | null;
+  arquivado_em: string | null;
 };
+
+/**
+ * Em qual coluna o card aparece. `arquivado_em` vence o status: um processo
+ * homologado e arquivado mostra-se em Arquivada e continua homologado por baixo
+ * — que é exatamente o que a gravação antiga destruía.
+ */
+const colunaDe = (lic: { status: string; arquivado_em: string | null }): string =>
+  lic.arquivado_em ? 'Arquivada' : normalizeStatus(lic.status);
 
 type Column = {
   id: string;
@@ -47,18 +58,9 @@ const columns: Column[] = [
   { id: 'Arquivada', title: 'Arquivada', color: 'hsl(var(--muted-foreground))', description: 'Processos encerrados' },
 ];
 
-const normalizeStatus = (s: string): string => {
-  const lower = s.toLowerCase();
-  if (lower === 'publicado' || lower === 'monitorando' || lower === 'novo') return 'Monitorando';
-  if (lower.includes('analis') || lower.includes('análise')) return 'Em Análise';
-  if (lower.includes('proposta')) return 'Proposta Enviada';
-  if (lower.includes('disputa') || lower === 'em disputa') return 'Em Disputa';
-  if (lower.includes('homolog')) return 'Homologada';
-  if (lower.includes('vencid') || lower.includes('adjudic') || lower === 'vencedor') return 'Vencida';
-  if (lower.includes('perdid') || lower.includes('cancel') || lower.includes('revog') || lower === 'perdedor') return 'Perdida';
-  if (lower.includes('arquiv')) return 'Arquivada';
-  return 'Monitorando';
-};
+// A normalização mora em @/lib/licitacao/status — este arquivo tinha a sua
+// própria cópia, uma das três listas divergentes que faziam o arquivamento
+// automático nunca encontrar nada.
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
@@ -68,7 +70,12 @@ type DragState = { id: string; offsetX: number; offsetY: number } | null;
 export default function KanbanPage() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
-  const { atualizarStatus, registrarPerda } = useLicitacaoIntegration();
+  const { atualizarStatus, registrarPerda, arquivarProcesso } = useLicitacaoIntegration();
+  // `?focus=<id>` vem do painel: destaca e rola até o card em vez de largar o
+  // usuário num quadro de oito colunas para procurar o processo na mão.
+  const [searchParams] = useSearchParams();
+  const focoId = searchParams.get('focus');
+  const focoRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<LicitacaoKanban[]>([]);
   const [loading, setLoading] = useState(true);
   const [editItem, setEditItem] = useState<LicitacaoKanban | null>(null);
@@ -97,7 +104,25 @@ export default function KanbanPage() {
   // Move card (usado pelo drag e pelo dropdown)
   const moverCard = useCallback(async (id: string, toColId: string) => {
     const item = itemsRef.current.find(i => i.id === id);
-    if (!item || item.status === toColId) return;
+    if (!item || colunaDe(item) === toColId) return;
+
+    // Arquivar deixou de ser um status e virou o eixo de visibilidade
+    // (`arquivado_em`). Arrastar para a coluna Arquivada arquiva; arrastar para
+    // fora restaura o processo com o status real que ele tinha, em vez de
+    // reescrevê-lo como Monitorando.
+    if (toColId === 'Arquivada') {
+      const ok = await arquivarProcesso(id, true);
+      if (ok) setItems(prev => prev.map(i => i.id === id ? { ...i, arquivado_em: new Date().toISOString() } : i));
+      return;
+    }
+    if (item.arquivado_em) {
+      const ok = await arquivarProcesso(id, false);
+      if (!ok) return;
+      setItems(prev => prev.map(i => i.id === id ? { ...i, arquivado_em: null } : i));
+      // Restaurar já devolve o status original; só segue adiante se o usuário
+      // pediu uma coluna diferente dela.
+      if (item.status === toColId) return;
+    }
 
     // "Perdida" exige motivo: o banco recusa a mudança de status sem registro
     // em comercial_perdas, então o card só se move depois do diálogo.
@@ -114,7 +139,7 @@ export default function KanbanPage() {
 
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: toColId } : i));
     await atualizarStatus(id, toColId, `Status alterado de "${item.status}" para "${toColId}" via Kanban.`);
-  }, [atualizarStatus]);
+  }, [atualizarStatus, arquivarProcesso]);
 
   const confirmarPerda = useCallback(async ({ motivoId, observacao }: { motivoId: string; observacao: string }) => {
     if (!perdaAlvo || !empresaAtiva) return;
@@ -199,19 +224,37 @@ export default function KanbanPage() {
   useEffect(() => {
     if (!user) return;
     const loadData = async () => {
-      const { data } = await supabase
+      // Quadro da equipe: escopo por empresa, não por usuário. O RLS já limita
+      // às empresas das quais a pessoa é membro.
+      let q = supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento, arquivado_em');
+      if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
+      const { data } = await q.order('created_at', { ascending: false });
       setItems((data || []).map(item => ({ ...item, status: normalizeStatus(item.status) })));
       setLoading(false);
     };
     loadData();
 
+    return undefined;
+  }, [user, empresaAtiva]);
+
+  // Rola até o card destacado assim que ele existe no DOM.
+  useEffect(() => {
+    if (!focoId || loading) return;
+    focoRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+  }, [focoId, loading, items.length]);
+
+  useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
-      .channel(`kanban-licitacoes-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` }, (payload) => {
+      // Canal por empresa: mover um card precisa aparecer para o colega em
+      // tempo real, que é o ponto de um quadro de equipe.
+      .channel(`kanban-licitacoes-${empresaAtiva?.id ?? user.id}`)
+      .on('postgres_changes', empresaAtiva
+        ? { event: '*', schema: 'public', table: 'licitacoes', filter: `empresa_id=eq.${empresaAtiva.id}` }
+        : { event: '*', schema: 'public', table: 'licitacoes' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setItems(prev => [{ ...(payload.new as LicitacaoKanban), status: normalizeStatus((payload.new as LicitacaoKanban).status) }, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
@@ -224,7 +267,7 @@ export default function KanbanPage() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   const totalValor = items.reduce((sum, i) => sum + (i.valor_estimado || 0), 0);
 
@@ -262,7 +305,7 @@ export default function KanbanPage() {
           ) : (
             <div className={cn('flex gap-3 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
-                const colItems = items.filter((i) => i.status === col.id);
+                const colItems = items.filter((i) => colunaDe(i) === col.id);
                 const isOver = overColId === col.id;
                 return (
                   <div
@@ -294,9 +337,11 @@ export default function KanbanPage() {
                       {colItems.map((lic) => (
                         <div
                           key={lic.id}
+                          ref={lic.id === focoId ? focoRef : undefined}
                           className={cn(
                             'bg-card rounded-lg border border-border/50 p-3 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
-                            draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-grab'
+                            draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-grab',
+                            lic.id === focoId && 'ring-2 ring-accent border-accent/50'
                           )}
                           onPointerDown={(e) => handlePointerDown(e, lic.id)}
                         >
@@ -317,7 +362,7 @@ export default function KanbanPage() {
                                       </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-44">
-                                      {columns.filter(c => c.id !== lic.status).map(c => (
+                                      {columns.filter(c => c.id !== colunaDe(lic)).map(c => (
                                         <DropdownMenuItem key={c.id} onClick={() => moverCard(lic.id, c.id)}>
                                           <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ background: c.color }} />
                                           {c.title}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,10 +17,15 @@ import { cn } from '@/lib/utils';
 import {
   Search, Filter, RefreshCw, ExternalLink, Calendar, MapPin,
   ArrowUpDown, ChevronLeft, ChevronRight, Eye, Kanban, Crosshair,
-  FileText, Loader2, MessageSquare,
+  FileText, Loader2, MessageSquare, Archive, RotateCcw, AlertTriangle, Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  STATUS_PROCESSO, FAIXAS, FAIXAS_PADRAO, type Faixa,
+  faixaDe, aparenciaStatus, rotuloStatus, prazoPerdidoNoRadar,
+} from '@/lib/licitacao/status';
+import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 
 type Licitacao = {
   id: string;
@@ -36,20 +42,8 @@ type Licitacao = {
   portal: string | null;
   url_edital: string | null;
   created_at: string;
-};
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  Publicado: { label: 'Publicado', className: 'bg-info/10 text-info border-info/20' },
-  monitorando: { label: 'Monitorando', className: 'bg-info/10 text-info border-info/20' },
-  analisando: { label: 'Analisando', className: 'bg-warning/10 text-warning border-warning/20' },
-  proposta: { label: 'Proposta', className: 'bg-primary/10 text-primary border-primary/20' },
-  'Proposta Enviada': { label: 'Enviada', className: 'bg-accent/10 text-accent border-accent/20' },
-  enviada: { label: 'Enviada', className: 'bg-accent/10 text-accent border-accent/20' },
-  Vencida: { label: 'Vencida', className: 'bg-success/10 text-success border-success/20' },
-  vencida: { label: 'Vencida', className: 'bg-success/10 text-success border-success/20' },
-  Homologada: { label: 'Homologada', className: 'bg-success/10 text-success border-success/20' },
-  Perdida: { label: 'Perdida', className: 'bg-destructive/10 text-destructive border-destructive/20' },
-  perdida: { label: 'Perdida', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+  arquivado_em: string | null;
+  updated_at: string | null;
 };
 
 const formatCurrency = (v: number) =>
@@ -59,13 +53,18 @@ const PAGE_SIZE = 10;
 
 export default function PainelLicitacoes() {
   const { user } = useAuth();
+  const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const navigate = useNavigate();
+  const { arquivarProcesso } = useLicitacaoIntegration();
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
+  // Faixas do ciclo de vida. Arquivo fica fora por padrão: era justamente a
+  // ausência dessa separação que fazia a lista só crescer.
+  const [faixasAtivas, setFaixasAtivas] = useState<Faixa[]>(FAIXAS_PADRAO);
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [modalidadeFilter, setModalidadeFilter] = useState<string>('todos');
   const [ufFilter, setUfFilter] = useState<string>('todos');
@@ -77,11 +76,15 @@ export default function PainelLicitacoes() {
     if (!user) return;
     loadLicitacoes();
 
+    // O realtime segue a empresa, não o usuário: o painel de um colaborador
+    // precisa reagir ao que o colega mexeu.
     const channel = supabase
       .channel('painel-licitacoes-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'licitacoes', filter: `user_id=eq.${user.id}` },
+        empresaAtiva
+          ? { event: '*', schema: 'public', table: 'licitacoes', filter: `empresa_id=eq.${empresaAtiva.id}` }
+          : { event: '*', schema: 'public', table: 'licitacoes' },
         () => loadLicitacoes()
       )
       .subscribe();
@@ -89,15 +92,23 @@ export default function PainelLicitacoes() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, empresaAtiva?.id, todasSelecionadas]);
 
   async function loadLicitacoes() {
     setLoading(true);
-    const { data, error } = await supabase
+    // Escopo por empresa: o processo é da empresa, não do colaborador que o
+    // cadastrou. O RLS já garante que só chegam empresas das quais se é membro,
+    // então "Todas as Empresas" é simplesmente a ausência de filtro.
+    let query = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_abertura, data_encerramento, portal, url_edital, created_at')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false });
+      .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_abertura, data_encerramento, portal, url_edital, created_at, arquivado_em, updated_at');
+
+    if (!todasSelecionadas && empresaAtiva) {
+      query = query.eq('empresa_id', empresaAtiva.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       toast.error('Erro ao carregar licitações');
@@ -118,8 +129,10 @@ export default function PainelLicitacoes() {
     const { error } = await supabase
       .from('licitacoes')
       .update({ status: newStatus })
-      .eq('id', id)
-      .eq('user_id', user!.id);
+      .eq('id', id);
+    // Sem `.eq('user_id')`: o processo é da empresa e o RLS já barra o que não
+    // pertence a ela. Manter o filtro faria a edição falhar silenciosamente no
+    // processo de um colega.
 
     if (error) {
       toast.error('Erro ao atualizar status');
@@ -131,6 +144,19 @@ export default function PainelLicitacoes() {
     }
   }
 
+  /**
+   * Arquivar/restaurar pelo mesmo hook que o Kanban e os Compromissos usam,
+   * para os três não discordarem entre si. O painel era a única tela que
+   * mostrava o problema e não oferecia a ação.
+   */
+  async function handleArquivar(lic: Licitacao) {
+    const restaurar = !!lic.arquivado_em;
+    const ok = await arquivarProcesso(lic.id, !restaurar);
+    if (!ok) return;
+    toast.success(restaurar ? 'Processo restaurado' : 'Processo arquivado');
+    loadLicitacoes();
+  }
+
   // Derived unique values for filters
   const uniqueStatus = useMemo(() => [...new Set(licitacoes.map((l) => l.status))], [licitacoes]);
   const uniqueModalidades = useMemo(() => [...new Set(licitacoes.map((l) => l.modalidade))], [licitacoes]);
@@ -139,6 +165,8 @@ export default function PainelLicitacoes() {
   // Filtered & sorted
   const filtered = useMemo(() => {
     let result = [...licitacoes];
+
+    result = result.filter((l) => faixasAtivas.includes(faixaDe(l.status, l.arquivado_em)));
 
     if (search) {
       const q = search.toLowerCase();
@@ -164,7 +192,14 @@ export default function PainelLicitacoes() {
     });
 
     return result;
-  }, [licitacoes, search, statusFilter, modalidadeFilter, ufFilter, sortField, sortAsc]);
+  }, [licitacoes, faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter, sortField, sortAsc]);
+
+  /** Quantos processos existem em cada faixa — independente dos demais filtros. */
+  const contagemPorFaixa = useMemo(() => {
+    const acc = { radar: 0, em_jogo: 0, decidido: 0, arquivo: 0 } as Record<Faixa, number>;
+    licitacoes.forEach((l) => { acc[faixaDe(l.status, l.arquivado_em)] += 1; });
+    return acc;
+  }, [licitacoes]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -172,19 +207,28 @@ export default function PainelLicitacoes() {
   // Reset page on filter change
   useEffect(() => {
     setPage(0);
-  }, [search, statusFilter, modalidadeFilter, ufFilter]);
+  }, [faixasAtivas, search, statusFilter, modalidadeFilter, ufFilter]);
 
   // Summary stats
   const stats = useMemo(() => {
     const total = filtered.length;
-    const ativas = filtered.filter((l) => !['Perdida', 'perdida', 'Vencida', 'vencida', 'Homologada'].includes(l.status)).length;
+    // "Ativas" passa a significar o que ainda ocupa a mesa: Radar + Em jogo.
+    // A conta antiga comparava strings de status e não reconhecia 'Arquivada'
+    // nem as grafias minúsculas, contando processo encerrado como ativo.
+    const ativas = filtered.filter((l) => {
+      const f = faixaDe(l.status, l.arquivado_em);
+      return f === 'radar' || f === 'em_jogo';
+    }).length;
     const valorTotal = filtered.reduce((s, l) => s + (l.valor_estimado || 0), 0);
     const urgentes = filtered.filter((l) => {
-      if (!l.data_encerramento) return false;
+      if (!l.data_encerramento || l.arquivado_em) return false;
       const diff = new Date(l.data_encerramento).getTime() - Date.now();
       return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
     }).length;
-    return { total, ativas, valorTotal, urgentes };
+    const prazoPerdido = filtered.filter((l) =>
+      prazoPerdidoNoRadar(l.status, l.data_encerramento, l.arquivado_em)
+    ).length;
+    return { total, ativas, valorTotal, urgentes, prazoPerdido };
   }, [filtered]);
 
   function toggleSort(field: typeof sortField) {
@@ -204,18 +248,53 @@ export default function PainelLicitacoes() {
   return (
     <div className="space-y-4">
       {/* Summary stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'Total', value: stats.total.toString(), color: 'text-foreground' },
-          { label: 'Ativas', value: stats.ativas.toString(), color: 'text-info' },
+          { label: 'Ativas', value: stats.ativas.toString(), color: 'text-foreground' },
           { label: 'Valor Estimado', value: formatCurrency(stats.valorTotal), color: 'text-accent' },
           { label: 'Urgentes (≤3d)', value: stats.urgentes.toString(), color: stats.urgentes > 0 ? 'text-destructive' : 'text-muted-foreground' },
+          { label: 'Prazo perdido', value: stats.prazoPerdido.toString(), color: stats.prazoPerdido > 0 ? 'text-warning' : 'text-muted-foreground' },
         ].map((s) => (
           <div key={s.label} className="bg-card rounded-xl border border-border/50 p-3 text-center">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{s.label}</p>
             <p className={cn('text-lg font-bold mt-0.5', s.color)}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Faixas do ciclo de vida — a triagem que o sistema passa a fazer pelo usuário */}
+      <div className="bg-card rounded-xl border border-border/50 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {FAIXAS.map((f) => {
+            const ativa = faixasAtivas.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                title={f.descricao}
+                aria-pressed={ativa}
+                onClick={() =>
+                  setFaixasAtivas((prev) =>
+                    prev.includes(f.id) ? prev.filter((x) => x !== f.id) : [...prev, f.id]
+                  )
+                }
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  ativa
+                    ? 'bg-accent/10 border-accent/30 text-accent font-medium'
+                    : 'bg-transparent border-border/60 text-muted-foreground hover:bg-muted'
+                )}
+              >
+                {f.label}
+                <span className="text-xs tabular-nums opacity-70">{contagemPorFaixa[f.id]}</span>
+              </button>
+            );
+          })}
+          <span className="text-xs text-muted-foreground ml-auto hidden sm:block">
+            O Arquivo fica oculto por padrão
+          </span>
+        </div>
       </div>
 
       {/* Filters */}
@@ -238,7 +317,7 @@ export default function PainelLicitacoes() {
             <SelectContent>
               <SelectItem value="todos">Todos Status</SelectItem>
               {uniqueStatus.map((s) => (
-                <SelectItem key={s} value={s}>{statusConfig[s]?.label || s}</SelectItem>
+                <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -313,14 +392,15 @@ export default function PainelLicitacoes() {
                   <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Local</th>
                   <th className="text-right p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Valor Est.</th>
                   <th className="text-center p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th className="text-center p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-[180px]">Ações</th>
+                  <th className="text-center p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-[240px]">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 <AnimatePresence>
                   {paginated.map((lic, i) => {
-                    const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground' };
-                    const isUrgent = lic.data_encerramento && (new Date(lic.data_encerramento).getTime() - Date.now()) < 3 * 24 * 60 * 60 * 1000 && (new Date(lic.data_encerramento).getTime() - Date.now()) > 0;
+                    const st = aparenciaStatus(lic.status);
+                    const isUrgent = !lic.arquivado_em && lic.data_encerramento && (new Date(lic.data_encerramento).getTime() - Date.now()) < 3 * 24 * 60 * 60 * 1000 && (new Date(lic.data_encerramento).getTime() - Date.now()) > 0;
+                    const perdeuPrazo = prazoPerdidoNoRadar(lic.status, lic.data_encerramento, lic.arquivado_em);
                     return (
                       <motion.tr
                         key={lic.id}
@@ -328,9 +408,11 @@ export default function PainelLicitacoes() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ delay: i * 0.03 }}
+                        onClick={() => navigate(`/processo/${lic.id}`)}
                         className={cn(
-                          'border-b border-border/30 hover:bg-muted/40 transition-colors',
-                          isUrgent && 'bg-destructive/5'
+                          'border-b border-border/30 hover:bg-muted/40 transition-colors cursor-pointer',
+                          isUrgent && 'bg-destructive/5',
+                          lic.arquivado_em && 'opacity-60'
                         )}
                       >
                         <td className="p-3">
@@ -342,6 +424,14 @@ export default function PainelLicitacoes() {
                               <span className={cn('flex items-center gap-0.5', isUrgent && 'text-destructive font-semibold')}>
                                 <Calendar className="w-3 h-3" />
                                 {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                              </span>
+                            )}
+                            {/* Sinaliza a falha operacional em vez de escondê-la:
+                                arquivar automaticamente aqui apagaria a evidência. */}
+                            {perdeuPrazo && (
+                              <span className="flex items-center gap-0.5 text-warning font-semibold">
+                                <AlertTriangle className="w-3 h-3" />
+                                Prazo perdido
                               </span>
                             )}
                           </div>
@@ -358,7 +448,9 @@ export default function PainelLicitacoes() {
                         <td className="p-3 text-right font-semibold text-sm">
                           {lic.valor_estimado ? formatCurrency(lic.valor_estimado) : '—'}
                         </td>
-                        <td className="p-3 text-center">
+                        {/* stopPropagation: a linha inteira abre o prontuário, então
+                            os controles precisam impedir a navegação. */}
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={lic.status}
                             onValueChange={(val) => handleStatusChange(lic.id, val)}
@@ -369,20 +461,20 @@ export default function PainelLicitacoes() {
                               </Badge>
                             </SelectTrigger>
                             <SelectContent>
-                              {Object.entries(statusConfig).map(([key, cfg]) => (
-                                <SelectItem key={key} value={key} className="text-xs">{cfg.label}</SelectItem>
+                              {STATUS_PROCESSO.map((s) => (
+                                <SelectItem key={s} value={s} className="text-xs">{rotuloStatus(s)}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0"
-                              title="Ver detalhes"
-                              onClick={() => navigate('/licitacoes-estrategicas')}
+                              title="Abrir processo"
+                              onClick={() => navigate(`/processo/${lic.id}`)}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
@@ -391,7 +483,7 @@ export default function PainelLicitacoes() {
                               variant="ghost"
                               className="h-7 w-7 p-0"
                               title="Kanban"
-                              onClick={() => navigate('/kanban')}
+                              onClick={() => navigate(`/kanban?focus=${lic.id}`)}
                             >
                               <Kanban className="w-3.5 h-3.5" />
                             </Button>
@@ -399,10 +491,19 @@ export default function PainelLicitacoes() {
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0"
-                              title="Proposta Técnica"
-                              onClick={() => navigate('/proposta-tecnica')}
+                              title="Documentos e proposta"
+                              onClick={() => navigate(`/processo/${lic.id}?aba=documentos`)}
                             >
                               <FileText className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="Precificação"
+                              onClick={() => navigate(`/processo/${lic.id}?aba=precificacao`)}
+                            >
+                              <Calculator className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               size="sm"
@@ -418,9 +519,20 @@ export default function PainelLicitacoes() {
                               variant="ghost"
                               className="h-7 w-7 p-0"
                               title="Robô de Lances"
-                              onClick={() => navigate('/robo-lances')}
+                              onClick={() => navigate(`/robo-lances?licitacao=${lic.id}`)}
                             >
                               <Crosshair className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title={lic.arquivado_em ? 'Restaurar processo' : 'Arquivar processo'}
+                              onClick={() => handleArquivar(lic)}
+                            >
+                              {lic.arquivado_em
+                                ? <RotateCcw className="w-3.5 h-3.5" />
+                                : <Archive className="w-3.5 h-3.5" />}
                             </Button>
                             {lic.url_edital && (
                               <Button

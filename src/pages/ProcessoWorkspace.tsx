@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +11,7 @@ import {
   ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
   TrendingUp, Clock, Package
 } from 'lucide-react';
+import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
 import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
@@ -54,6 +55,10 @@ export default function ProcessoWorkspace() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const ABAS_VALIDAS = ['visao', 'documentos', 'anexos', 'precificacao', 'modulos', 'historico'];
+  const abaPedida = searchParams.get('aba') || '';
+  const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -135,6 +140,13 @@ export default function ProcessoWorkspace() {
     setLoadingPrec(false);
   };
 
+  // Abrir direto em ?aba=precificacao não passa por onValueChange, então a
+  // carga precisa ser disparada aqui — senão a aba abre vazia.
+  useEffect(() => {
+    if (abaInicial === 'precificacao' && id && user) loadPrecificacao();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaInicial, id, user]);
+
   if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   if (!lic) return (
     <div className="p-8 text-center">
@@ -171,7 +183,10 @@ export default function ProcessoWorkspace() {
       </div>
 
       <div className="max-w-[1440px] mx-auto px-4 py-6">
-        <Tabs defaultValue="visao" className="w-full" onValueChange={v => { if (v === 'precificacao') loadPrecificacao(); }}>
+        {/* `?aba=` deixa o painel abrir direto na aba certa — é o que faz o
+            ícone de Precificação da linha levar o processo junto, em vez de
+            despejar o usuário numa tela em branco. */}
+        <Tabs defaultValue={abaInicial} className="w-full" onValueChange={v => { if (v === 'precificacao') loadPrecificacao(); }}>
           <TabsList className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-6 h-auto">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -596,10 +611,7 @@ export default function ProcessoWorkspace() {
 
           {/* Histórico */}
           <TabsContent value="historico">
-            <Card className="p-8 text-center">
-              <History className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-              <p className="text-base text-muted-foreground">O histórico completo de movimentações será exibido aqui (próxima fase).</p>
-            </Card>
+            <HistoricoProcesso licitacaoId={lic.id} />
           </TabsContent>
 
         </Tabs>

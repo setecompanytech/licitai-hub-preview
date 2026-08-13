@@ -5,6 +5,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { normalizarModalidade } from '@/lib/metas/modalidades';
+import { useActivityLog } from '@/hooks/useActivityLog';
 
 type EditalData = {
   numero: string;
@@ -29,6 +30,10 @@ export function useLicitacaoIntegration() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const navigate = useNavigate();
+  // A trilha mora aqui, no ponto único de escrita, e não nas telas: é o que
+  // faz auditoria ser consequência estrutural em vez de disciplina de quem
+  // escreve a próxima tela.
+  const { registrar } = useActivityLog();
 
   /** Create a licitação from edital data and optionally navigate */
   const iniciarProcesso = useCallback(async (edital: EditalData, navigateTo?: string) => {
@@ -38,17 +43,21 @@ export function useLicitacaoIntegration() {
     }
 
     try {
-      // Check if already exists
-      const { data: existing } = await supabase
+      // Duplicidade agora é por EMPRESA, não por pessoa: com o processo sendo
+      // da empresa, dois colegas puxando o mesmo edital do monitoramento
+      // criariam dois processos concorrentes para a mesma licitação.
+      let dedup = supabase
         .from('licitacoes')
         .select('id')
-        .eq('user_id', user.id)
         .eq('numero', edital.numero)
-        .eq('orgao', edital.orgao)
-        .maybeSingle();
+        .eq('orgao', edital.orgao);
+      dedup = empresaAtiva
+        ? dedup.eq('empresa_id', empresaAtiva.id)
+        : dedup.eq('user_id', user.id);
+      const { data: existing } = await dedup.maybeSingle();
 
       if (existing) {
-        toast.info('Esta licitação já está na sua gestão.');
+        toast.info('Esta licitação já está na gestão da empresa.');
         if (navigateTo) navigate(navigateTo);
         return existing.id;
       }
@@ -61,6 +70,10 @@ export function useLicitacaoIntegration() {
           // do módulo de metas (que filtra empresa_id) deixa de contá-la como
           // participação. Foi o que aconteceu com as 33 primeiras.
           empresa_id: empresaAtiva?.id ?? null,
+          // Dono operacional do processo. A coluna existia desde sempre e nunca
+          // era preenchida — sem ela não há como responder "quem está tocando
+          // este processo?" nem redistribuir carteira quando alguém sai.
+          operador_id: user.id,
           numero: edital.numero,
           orgao: edital.orgao,
           objeto: edital.objeto,
@@ -81,6 +94,15 @@ export function useLicitacaoIntegration() {
         .single();
 
       if (error) throw error;
+
+      await registrar({
+        acao: 'processo_iniciado',
+        modulo: 'licitacoes',
+        descricao: `Processo ${edital.numero} — ${edital.orgao} iniciado a partir do monitoramento.`,
+        licitacaoId: data.id,
+        para: edital.status || 'Monitorando',
+        metadata: { portal: edital.portal ?? null, modalidade: edital.modalidade ?? null },
+      });
 
       // Create notification
       await criarNotificacao(
@@ -117,7 +139,7 @@ export function useLicitacaoIntegration() {
       toast.error('Erro ao iniciar processo.');
       return null;
     }
-  }, [user, navigate, empresaAtiva?.id]);
+  }, [user, navigate, empresaAtiva, registrar]);
 
   /**
    * Auto-create or reuse a compromisso (processos_interesse) linked to a licitação.
@@ -205,13 +227,31 @@ export function useLicitacaoIntegration() {
     if (!user) return;
 
     try {
+      // Lê o valor anterior antes de sobrescrever: sem o "de", a trilha registra
+      // que algo mudou mas não o quê, que é metade de uma auditoria.
+      const { data: antes } = await supabase
+        .from('licitacoes')
+        .select('status')
+        .eq('id', licitacaoId)
+
+        .maybeSingle();
+
       const { error } = await supabase
         .from('licitacoes')
         .update({ status: novoStatus })
         .eq('id', licitacaoId)
-        .eq('user_id', user.id);
+;
 
       if (error) throw error;
+
+      await registrar({
+        acao: 'status_alterado',
+        modulo: 'licitacoes',
+        descricao: detalhes,
+        licitacaoId,
+        de: antes?.status ?? null,
+        para: novoStatus,
+      });
 
       // Arquivar/desarquivar no Kanban reflete no compromisso
       const arquivada = novoStatus === 'Arquivada';
@@ -245,7 +285,7 @@ export function useLicitacaoIntegration() {
       console.error(err);
       toast.error('Erro ao atualizar status.');
     }
-  }, [user, sincronizarCompromisso]);
+  }, [user, sincronizarCompromisso, registrar]);
 
   /**
    * Registra a perda e só então move o processo para "Perdida".
@@ -294,7 +334,7 @@ export function useLicitacaoIntegration() {
       .from('licitacoes')
       .update({ status: 'Perdida', resultado: 'Perdedor' })
       .eq('id', params.licitacaoId)
-      .eq('user_id', user.id);
+;
 
     if (erroStatus) {
       // Desfaz para não deixar os dois módulos discordando entre si
@@ -311,13 +351,29 @@ export function useLicitacaoIntegration() {
       tipo: 'sistema',
     });
 
+    await registrar({
+      acao: 'perda_registrada',
+      modulo: 'licitacoes',
+      descricao: params.observacao || 'Perda registrada com motivo.',
+      licitacaoId: params.licitacaoId,
+      para: 'Perdida',
+      metadata: { motivo_id: params.motivoId ?? null },
+    });
+
     toast.success('Perda registrada.');
     return true;
-  }, [user]);
+  }, [user, registrar]);
 
   /**
    * Arquiva (ou restaura) um processo a partir de qualquer uma das telas,
    * mantendo Kanban e Compromissos na mesma situação.
+   *
+   * Arquivamento é o eixo de VISIBILIDADE e mora só em `arquivado_em`. A versão
+   * anterior também gravava status='Arquivada' ao arquivar e 'Monitorando' ao
+   * restaurar — ou seja, um processo Homologado arquivado e restaurado voltava
+   * como Monitorando, apagando silenciosamente o desfecho que alimenta os KPIs
+   * "Ganhas" e "Valor Ganho" do painel. Não tocar em `status` torna a operação
+   * reversível de verdade.
    */
   const arquivarProcesso = useCallback(async (
     licitacaoId: string,
@@ -327,13 +383,19 @@ export function useLicitacaoIntegration() {
     try {
       const { error } = await supabase
         .from('licitacoes')
-        .update({
-          status: arquivar ? 'Arquivada' : 'Monitorando',
-          arquivado_em: arquivar ? new Date().toISOString() : null,
-        })
+        .update({ arquivado_em: arquivar ? new Date().toISOString() : null })
         .eq('id', licitacaoId)
-        .eq('user_id', user.id);
+;
       if (error) throw error;
+
+      await registrar({
+        acao: arquivar ? 'processo_arquivado' : 'processo_restaurado',
+        modulo: 'licitacoes',
+        descricao: arquivar
+          ? 'Processo arquivado — sai do painel e continua consultável no histórico.'
+          : 'Processo restaurado ao painel com o desfecho preservado.',
+        licitacaoId,
+      });
 
       await sincronizarCompromisso(licitacaoId, arquivar);
       return true;
@@ -342,7 +404,7 @@ export function useLicitacaoIntegration() {
       toast.error(arquivar ? 'Erro ao arquivar processo.' : 'Erro ao restaurar processo.');
       return false;
     }
-  }, [user, sincronizarCompromisso]);
+  }, [user, sincronizarCompromisso, registrar]);
 
   /**
    * Remove a licitação e o compromisso vinculado. Sem isso o compromisso fica
@@ -352,6 +414,16 @@ export function useLicitacaoIntegration() {
   const excluirProcesso = useCallback(async (licitacaoId: string) => {
     if (!user) return false;
     try {
+      // Guarda a identificação antes de apagar: depois do DELETE não há de onde
+      // tirar "qual processo foi excluído", e é a pergunta mais provável de uma
+      // auditoria de exclusão.
+      const { data: alvo } = await supabase
+        .from('licitacoes')
+        .select('numero, orgao, status')
+        .eq('id', licitacaoId)
+
+        .maybeSingle();
+
       await supabase
         .from('processos_interesse')
         .delete()
@@ -362,14 +434,24 @@ export function useLicitacaoIntegration() {
         .from('licitacoes')
         .delete()
         .eq('id', licitacaoId)
-        .eq('user_id', user.id);
+;
       if (error) throw error;
+
+      await registrar({
+        acao: 'processo_excluido',
+        modulo: 'licitacoes',
+        descricao: alvo ? `Processo ${alvo.numero} — ${alvo.orgao} excluído.` : 'Processo excluído.',
+        licitacaoId,
+        de: alvo?.status ?? null,
+        metadata: { numero: alvo?.numero ?? null, orgao: alvo?.orgao ?? null },
+      });
+
       return true;
     } catch (err) {
       console.error('[excluirProcesso]', err);
       return false;
     }
-  }, [user]);
+  }, [user, registrar]);
 
   /** Record dispute result from Robô de Lances */
   const registrarResultadoDisputa = useCallback(async (
@@ -410,7 +492,7 @@ export function useLicitacaoIntegration() {
         .from('licitacoes')
         .update(updateData)
         .eq('id', licitacaoId)
-        .eq('user_id', user.id);
+;
 
       // System message
       await supabase.from('licitacao_mensagens').insert({

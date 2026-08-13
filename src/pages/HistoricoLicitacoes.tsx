@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { ehDecidido } from '@/lib/licitacao/status';
 import {
   Search, Archive, Trophy, XCircle, Download, Calendar, Building2, MapPin,
   TrendingUp, CheckCircle, AlertTriangle, BarChart3, Clock,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 
@@ -56,6 +58,7 @@ type Licitacao = {
 
 export default function HistoricoLicitacoes() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -73,16 +76,19 @@ export default function HistoricoLicitacoes() {
 
   const fetchData = async () => {
     if (!user) return;
-    const { data } = await supabase
+    // Histórico da empresa: o resultado de uma licitação é patrimônio da
+    // empresa, não do colaborador que a cadastrou.
+    let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, resultado, vencedor, data_homologacao, data_encerramento, arquivado_em, uf, municipio, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, resultado, vencedor, data_homologacao, data_encerramento, arquivado_em, uf, municipio, created_at');
+    if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
+    const { data } = await q.order('created_at', { ascending: false });
     setLicitacoes(data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [user, empresaAtiva?.id]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -121,8 +127,11 @@ export default function HistoricoLicitacoes() {
   const handleSave = async () => {
     if (!editingLic) return;
     setSaving(true);
-    const finalStatuses = ['Homologado', 'Contrato Assinado', 'Deserto', 'Fracassado', 'Revogado', 'Anulado'];
-    const shouldArchive = finalStatuses.includes(editStatus) && !editingLic.arquivado_em;
+    // A lista literal que existia aqui era a mesma da edge function e usava
+    // grafias que o app nunca grava ('Homologado' no masculino). `ehDecidido`
+    // olha os dois eixos — status e resultado — que é onde os desfechos
+    // realmente estão.
+    const shouldArchive = ehDecidido(editStatus, editResultado) && !editingLic.arquivado_em;
 
     const { error } = await supabase
       .from('licitacoes')

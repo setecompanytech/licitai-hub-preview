@@ -35,11 +35,15 @@ type LicitacaoKanban = {
   uf: string | null;
   municipio: string | null;
   data_encerramento: string | null;
+  arquivado_em?: string | null;
 };
 
+// 'Arquivada' saiu da lista: arquivar não é mais um status, é o botão
+// Arquivar/Restaurar no rodapé do diálogo. Deixá-la aqui permitiria gravar
+// status='Arquivada' e voltar a apagar o desfecho.
 const STATUS_OPTIONS = [
   'Monitorando', 'Em Análise', 'Proposta Enviada', 'Em Disputa',
-  'Vencida', 'Homologada', 'Perdida', 'Arquivada',
+  'Vencida', 'Homologada', 'Perdida',
 ];
 
 const UFS = [
@@ -224,12 +228,14 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
 
   const handleArquivar = async () => {
     if (!licitacao) return;
-    const restaurar = licitacao.status === 'Arquivada';
+    // Arquivamento mora em `arquivado_em`, não em `status` — restaurar devolve
+    // o processo com o desfecho que ele já tinha.
+    const restaurar = !!licitacao.arquivado_em;
     setArquivando(true);
     const ok = await arquivarProcesso(licitacao.id, !restaurar);
     setArquivando(false);
     if (!ok) return;
-    onSaved({ ...licitacao, status: restaurar ? 'Monitorando' : 'Arquivada' });
+    onSaved({ ...licitacao, arquivado_em: restaurar ? null : new Date().toISOString() });
     toast.success(restaurar ? 'Processo restaurado.' : 'Processo arquivado no Kanban e nos Compromissos.');
     onOpenChange(false);
   };
@@ -378,10 +384,10 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             >
               {arquivando
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : licitacao.status === 'Arquivada'
+                : licitacao.arquivado_em
                 ? <ArchiveRestore className="w-3.5 h-3.5" />
                 : <Archive className="w-3.5 h-3.5" />}
-              {licitacao.status === 'Arquivada' ? 'Restaurar' : 'Arquivar'}
+              {licitacao.arquivado_em ? 'Restaurar' : 'Arquivar'}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

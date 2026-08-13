@@ -1,5 +1,11 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  STATUS_DECIDIDOS,
+  RESULTADOS_ENCERRADORES,
+  DIAS_CARENCIA_ARQUIVAMENTO,
+  DIAS_RETENCAO_ARQUIVO,
+} from "../_shared/licitacao-status.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,9 +34,9 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Delete licitacoes archived more than 120 days ago
+    // Expurgo: arquivados há mais de 120 dias saem do banco.
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 120);
+    cutoffDate.setDate(cutoffDate.getDate() - DIAS_RETENCAO_ARQUIVO);
 
     const { data: deleted, error } = await supabase
       .from('licitacoes')
@@ -41,22 +47,48 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Auto-archive: licitacoes with final status that don't have arquivado_em yet
-    const finalStatuses = ['Homologado', 'Contrato Assinado', 'Deserto', 'Fracassado', 'Revogado', 'Anulado'];
-    const { data: archived, error: archiveError } = await supabase
+    // Arquivamento automático — só depois da carência, para dar tempo de
+    // Contratos e Financeiro engancharem no processo ganho.
+    //
+    // A versão anterior procurava ['Homologado', 'Contrato Assinado', 'Deserto',
+    // 'Fracassado', 'Revogado', 'Anulado'] na coluna `status`. Nenhum desses
+    // valores é escrito ali: o Kanban grava 'Homologada' (feminino) e os demais
+    // são valores da coluna `resultado`. A interseção era vazia e este bloco
+    // nunca arquivou uma linha sequer.
+    const carencia = new Date();
+    carencia.setDate(carencia.getDate() - DIAS_CARENCIA_ARQUIVAMENTO);
+    const carenciaISO = carencia.toISOString();
+
+    const { data: porStatus, error: erroStatus } = await supabase
       .from('licitacoes')
       .update({ arquivado_em: new Date().toISOString() })
-      .in('status', finalStatuses)
+      .in('status', STATUS_DECIDIDOS)
       .is('arquivado_em', null)
+      .lt('updated_at', carenciaISO)
       .select('id, numero');
 
-    if (archiveError) throw archiveError;
+    if (erroStatus) throw erroStatus;
+
+    const { data: porResultado, error: erroResultado } = await supabase
+      .from('licitacoes')
+      .update({ arquivado_em: new Date().toISOString() })
+      .in('resultado', RESULTADOS_ENCERRADORES)
+      .is('arquivado_em', null)
+      .lt('updated_at', carenciaISO)
+      .select('id, numero');
+
+    if (erroResultado) throw erroResultado;
+
+    const archived = [...(porStatus || []), ...(porResultado || [])];
 
     return new Response(
       JSON.stringify({
         deleted: deleted?.length || 0,
-        archived: archived?.length || 0,
+        archived: archived.length,
+        archived_por_status: porStatus?.length || 0,
+        archived_por_resultado: porResultado?.length || 0,
         cutoff: cutoffDate.toISOString(),
+        carencia: carenciaISO,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

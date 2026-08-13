@@ -5,6 +5,8 @@ import { stripePlans } from '@/data/stripe-config';
 import type { PlanSlug } from '@/data/plan-features';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { queryClient, invalidatePermissionCaches } from '@/lib/query-client';
+import { registrarEventoSessao } from '@/lib/auditoria/trilha';
+import { limparSessaoId } from '@/lib/auditoria/sessao';
 
 type SubscriptionState = {
   subscribed: boolean;
@@ -46,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
   const lastUserIdRef = useRef<string | null>(null);
+  /** Distingue "clicou em Sair" de "a sessão caiu" na trilha de auditoria. */
+  const logoutIntencionalRef = useRef(false);
 
   const checkSubscription = useCallback(async (accessToken?: string) => {
     const token = accessToken || (await supabase.auth.getSession()).data.session?.access_token;
@@ -133,6 +137,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         invalidatePermissionCaches();
       }
+
+      // Trilha de sessão. TOKEN_REFRESHED fica de fora de propósito: ele dispara
+      // sozinho a cada renovação e entre abas, e registrá-lo encheria a
+      // auditoria de ruído sem representar nenhuma ação de ninguém.
+      if (event === 'SIGNED_IN' && nextUserId && prevUserId !== nextUserId) {
+        void registrarEventoSessao(nextUserId, 'login');
+      }
+      if (event === 'USER_UPDATED' && nextUserId) {
+        void registrarEventoSessao(nextUserId, 'usuario_atualizado');
+      }
+      if (event === 'SIGNED_OUT' && prevUserId) {
+        // Só chega aqui o encerramento que não passou pelo botão Sair — expiração
+        // de token ou logout disparado em outra aba.
+        if (!logoutIntencionalRef.current) {
+          void registrarEventoSessao(prevUserId, 'sessao_expirada');
+        }
+        logoutIntencionalRef.current = false;
+        limparSessaoId();
+      }
       if (prevUserId && nextUserId && prevUserId !== nextUserId) {
         // Troca de usuário na mesma aba — limpa todo cache para evitar vazamento.
         queryClient.clear();
@@ -217,6 +240,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Auditar antes de encerrar: depois do signOut o RLS já recusa o INSERT na
+    // trilha, e o logout — a metade que fecha a cadeia login → ações → saída —
+    // ficaria sem registro.
+    logoutIntencionalRef.current = true;
+    const saindo = lastUserIdRef.current;
+    if (saindo) await registrarEventoSessao(saindo, 'logout');
+
     // 1. Encerrar sessão no servidor PRIMEIRO (evita estado inconsistente)
     try {
       await supabase.auth.signOut();
