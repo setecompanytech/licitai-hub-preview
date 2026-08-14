@@ -153,8 +153,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
       const { error } = await supabase
         .from('licitacoes')
         .update(updateData)
-        .eq('id', licitacao.id)
-        .eq('user_id', user.id);
+        .eq('id', licitacao.id);  // policy de UPDATE por empresa decide quem pode
 
       if (error) throw error;
 
@@ -218,8 +217,7 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
         municipio: form.municipio || null,
         data_encerramento: form.data_encerramento || null,
       })
-      .eq('id', licitacao.id)
-      .eq('user_id', user!.id);
+      .eq('id', licitacao.id);  // policy de UPDATE por empresa decide quem pode
 
     onSaved({ ...licitacao, status: 'Perdida' });
     setPerdaAlvo(null);

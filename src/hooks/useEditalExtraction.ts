@@ -106,8 +106,7 @@ export function useEditalExtraction() {
       supabase
         .from('licitacoes')
         .select('objeto')
-        .eq('id', licitacaoId)
-        .eq('user_id', user.id)
+        .eq('id', licitacaoId)  // sem user_id: RLS por empresa decide
         .maybeSingle(),
     ]);
 

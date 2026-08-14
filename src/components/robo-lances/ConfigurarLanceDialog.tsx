@@ -19,6 +19,7 @@ import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckC
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
@@ -112,6 +113,7 @@ type Props = {
 
 export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }: Props) {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
   const { resolveLinkedEditalText } = useLinkedEditalSource();
   const [open, setOpen] = useState(false);
@@ -326,11 +328,11 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     if (!user) return;
     setLoadingLicitacoes(true);
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, portal, data_encerramento, data_abertura');
+      if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
+      const { data, error } = await q.order('created_at', { ascending: false });
       if (error) throw error;
       setLicitacoes((data as LicitacaoRow[]) || []);
     } catch {
@@ -338,7 +340,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     } finally {
       setLoadingLicitacoes(false);
     }
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   useEffect(() => {
     if (open && step === 0) {

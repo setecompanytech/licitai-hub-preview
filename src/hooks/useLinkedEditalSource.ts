@@ -59,8 +59,7 @@ export function useLinkedEditalSource() {
     const { data, error } = await supabase
       .from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital')
-      .eq('id', licitacaoId)
-      .eq('user_id', user.id)
+      .eq('id', licitacaoId)  // sem user_id: vínculo vale para o processo da empresa
       .maybeSingle();
 
     if (error) {

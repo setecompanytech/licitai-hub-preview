@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import { isItemsLikelyMismatched } from '@/lib/licitacao-item-consistency';
@@ -60,6 +61,7 @@ export default function LicitacaoSelector({
   onItensLoaded,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { extrairItensIA, deleteAllItens, fetchItens } = useEditalExtraction();
   const { fetchLinkedLicitacao, findPncpCacheMatch, resolveLinkedEditalText } = useLinkedEditalSource();
   const [licitacoes, setLicitacoes] = useState<LicitacaoResumo[]>([]);
@@ -77,10 +79,9 @@ export default function LicitacaoSelector({
     setLoading(true);
 
     const [licitacoesResp, favoritosResp] = await Promise.all([
-      supabase
-        .from('licitacoes')
-        .select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital')
-        .eq('user_id', user.id)
+      (empresaAtiva
+        ? supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital').eq('empresa_id', empresaAtiva.id)
+        : supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital'))
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
@@ -106,7 +107,7 @@ export default function LicitacaoSelector({
     }
 
     setLoading(false);
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   useEffect(() => {
     fetchLicitacoes();

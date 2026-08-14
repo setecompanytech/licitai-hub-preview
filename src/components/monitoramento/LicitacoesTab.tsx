@@ -434,10 +434,9 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
       setLoading(true);
 
       const [licitacoesResp, monitoramentoResp] = await Promise.all([
-        supabase
-          .from('licitacoes')
-          .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal, url_edital')
-          .eq('user_id', user.id)
+        (empresaAtiva
+          ? supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal, url_edital').eq('empresa_id', empresaAtiva.id)
+          : supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, status, valor_estimado, uf, municipio, data_encerramento, portal, url_edital'))
           .order('created_at', { ascending: false }),
         supabase
           .from('monitoramento_editais')
@@ -484,7 +483,7 @@ Formate em Markdown. Use ⚠️ para alertas e ✅ para pontos positivos confirm
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   // ── Auto CNAE-based search on load (prioritize company's headquarters region) ──
   useEffect(() => {

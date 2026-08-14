@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useQuery } from '@tanstack/react-query';
 import { format, isWithinInterval, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -62,19 +63,20 @@ export default function CalendarioLicitacoes() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState('todos');
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const navigate = useNavigate();
   const hoje = new Date();
 
   // Fetch licitações
   const { data: licitacoes = [] } = useQuery({
-    queryKey: ['calendario-licitacoes', user?.id],
+    queryKey: ['calendario-licitacoes', user?.id, empresaAtiva?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
         .from('licitacoes')
         .select('id, numero, objeto, orgao, status, data_abertura, data_encerramento, modalidade, valor_estimado')
-        .eq('user_id', user.id)
         .order('data_abertura', { ascending: true });
+      // Agenda da empresa, como o painel que a exibe (RLS limita ao permitido)
       return (data || []) as LicitacaoEvento[];
     },
     enabled: !!user,

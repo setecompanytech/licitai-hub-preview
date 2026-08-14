@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,6 +38,7 @@ interface Props {
 
 export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitacaoId }: Props) {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { fetchProcessos } = useProcessoAtivo();
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<CatalogoItem[]>([]);
@@ -100,10 +102,12 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       // Busca todas as licitações do usuário e filtra client-side
       // porque o numero guardado pode ser "07/2026/PMPA-DL" enquanto
       // licitacaoNumero é "PREGÃO ELETRÔNICO Nº 07/2026/PMPA-DL" (ou vice-versa)
-      const { data: allLics } = await supabase
+      let qLics = supabase
         .from('licitacoes')
-        .select('id, numero')
-        .eq('user_id', user.id);
+        .select('id, numero');
+      // Processos da empresa: a proposta pode vincular ao processo de um colega
+      if (empresaAtiva) qLics = qLics.eq('empresa_id', empresaAtiva.id);
+      const { data: allLics } = await qLics;
 
       if (allLics && allLics.length > 0) {
         const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -163,7 +167,7 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
 
   useEffect(() => {
     if (expanded) loadItems();
-  }, [expanded, user, licitacaoId, licitacaoNumero]);
+  }, [expanded, user, empresaAtiva, licitacaoId, licitacaoNumero]);
 
   useEffect(() => {
     setFilterLicitacao(licitacaoId || licitacaoNumero || 'todos');

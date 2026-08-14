@@ -26,15 +26,16 @@ export function useProcessoAtivo() {
 
   const fetchProcessos = useCallback(async (): Promise<ProcessoResumo[]> => {
     if (!user) return [];
-    const { data, error } = await supabase
+    let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, updated_at')
-      .eq('user_id', user.id)
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, updated_at');
+    if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
+    const { data, error } = await q
       .order('updated_at', { ascending: false })
       .limit(100);
     if (error) { console.error('Erro ao buscar processos:', error); return []; }
     return (data || []) as ProcessoResumo[];
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   const criarProcessoManual = useCallback(async (seed: {
     numero?: string; orgao?: string; objeto?: string; modalidade?: string; valorEstimado?: number;

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -284,6 +285,7 @@ export default function MonitoramentoEditais() {
 
   // Map "numero||orgao" -> licitacao_id (processos já criados pelo usuário)
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [emGestao, setEmGestao] = useState<Map<string, string>>(new Map());
   const [emCompromissos, setEmCompromissos] = useState<Map<string, string>>(new Map());
   const [modalEdital, setModalEdital] = useState<EditalSeed | null>(null);
@@ -317,10 +319,10 @@ export default function MonitoramentoEditais() {
   const carregarEmGestao = useCallback(async () => {
     if (!user) return;
     const [{ data: lics }, { data: comps }] = await Promise.all([
-      supabase
-        .from('licitacoes')
-        .select('id, numero, orgao')
-        .eq('user_id', user.id)
+      // Por empresa: se um colega ja puxou o edital, ele conta como "em gestao"
+      (empresaAtiva
+        ? supabase.from('licitacoes').select('id, numero, orgao').eq('empresa_id', empresaAtiva.id)
+        : supabase.from('licitacoes').select('id, numero, orgao'))
         .limit(2000),
       supabase
         .from('processos_interesse')
@@ -338,7 +340,7 @@ export default function MonitoramentoEditais() {
       if (c.numero && c.orgao) mapC.set(`${c.numero}||${c.orgao}`, c.id);
     });
     setEmCompromissos(mapC);
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   useEffect(() => { carregarEmGestao(); }, [carregarEmGestao]);
 

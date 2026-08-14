@@ -91,7 +91,7 @@ export default function ProcessoWorkspace() {
     if (!id || !user) return;
     supabase.from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor')
-      .eq('id', id).eq('user_id', user.id).maybeSingle()
+      .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
 

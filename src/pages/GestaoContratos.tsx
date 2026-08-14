@@ -100,7 +100,7 @@ export default function GestaoContratos() {
     if (!user || !empresaAtiva) return;
     loadContratos();
     supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade')
-      .eq('user_id', user.id).order('created_at', { ascending: false })
+      .eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false })
       .then(({ data }) => setLicitacoes((data as Licitacao[]) || []));
     const channel = supabase
       .channel('contratos-realtime')

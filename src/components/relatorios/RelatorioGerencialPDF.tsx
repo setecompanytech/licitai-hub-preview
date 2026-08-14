@@ -38,7 +38,7 @@ export default function RelatorioGerencialPDF() {
       dataInicio.setDate(dataInicio.getDate() - parseInt(periodo));
       const inicio = dataInicio.toISOString();
 
-      let q = supabase.from('licitacoes').select('*').eq('user_id', user.id).gte('created_at', inicio);
+      let q = supabase.from('licitacoes').select('*').gte('created_at', inicio); // relatorio gerencial e da empresa
       if (!todasSelecionadas && empresaAtiva) {
         q = q.eq('empresa_id', empresaAtiva.id);
       }

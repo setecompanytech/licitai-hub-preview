@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,7 @@ function detectMismatch(objeto: string | null, descricao: string | null): boolea
 
 export default function HistoricoExtracoes() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const [data, setData] = useState<ProcessoComItens[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -64,11 +66,11 @@ export default function HistoricoExtracoes() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: licitacoes } = await supabase
+      let qLics = supabase
         .from('licitacoes')
-        .select('id, numero, orgao, objeto, status')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('id, numero, orgao, objeto, status');
+      if (empresaAtiva) qLics = qLics.eq('empresa_id', empresaAtiva.id);
+      const { data: licitacoes } = await qLics.order('created_at', { ascending: false });
 
       if (!licitacoes || licitacoes.length === 0) {
         setData([]);
@@ -142,7 +144,7 @@ export default function HistoricoExtracoes() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   useEffect(() => { load(); }, [load]);
 
