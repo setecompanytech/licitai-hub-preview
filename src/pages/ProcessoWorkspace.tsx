@@ -146,25 +146,21 @@ export default function ProcessoWorkspace() {
     if (!cnpj || !ano || !seq) return;
     pncpFetchedRef.current = true;
     setPncpErro(false);
-    const base = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
-    const hdrs = { Accept: 'application/json' };
     setPncpCarregando(true);
-    Promise.allSettled([
-      fetch(base, { headers: hdrs }),
-      fetch(`${base}/itens?pagina=1&tamanhoPagina=500`, { headers: hdrs }),
-      fetch(`${base}/arquivos?pagina=1&tamanhoPagina=100`, { headers: hdrs }),
-    ]).then(async ([rDet, rItens, rArqs]) => {
-      if (rDet.status === 'fulfilled' && rDet.value.ok) setPncpDetalhe(await rDet.value.json());
-      else setPncpErro(true); // PNCP fora do ar ou limitando — mostrar, não sumir
-      if (rItens.status === 'fulfilled' && rItens.value.ok) {
-        const j = await rItens.value.json();
-        setPncpItens(Array.isArray(j) ? j : (j?.data ?? []));
-      }
-      if (rArqs.status === 'fulfilled' && rArqs.value.ok) {
-        const j = await rArqs.value.json();
-        setPncpArquivos(Array.isArray(j) ? j : (j?.data ?? []));
-      }
-    }).finally(() => setPncpCarregando(false));
+    // Via edge function detalhe-licitacao-pncp: o fetch direto do navegador ao
+    // PNCP falhava SEMPRE por CORS — por isso Amparo/Modo de disputa/Fonte
+    // nunca apareciam e o card dizia "Indisponível" com o portal no ar.
+    supabase.functions
+      .invoke('detalhe-licitacao-pncp', {
+        body: { cnpjOrgao: cnpj, anoCompra: ano, sequencialCompra: seq },
+      })
+      .then(({ data, error }) => {
+        if (error || !data?.success) { setPncpErro(true); return; }
+        setPncpDetalhe(data);
+        setPncpItens(Array.isArray(data.itens) ? data.itens : []);
+      })
+      .catch(() => setPncpErro(true))
+      .finally(() => setPncpCarregando(false));
   }, [lic, pncpNonce]);
 
   const loadPrecificacao = async () => {
@@ -210,22 +206,19 @@ export default function ProcessoWorkspace() {
   // antigo gravava descricao); só exibe do cache o que parece citação legal.
   const pareceCitacao = (t: string | null) => !!t && /^(lei|lc|decreto|mp|emenda|art)\b/i.test(t.trim()) && t.length <= 90;
   const espelho = {
-    unidadeCompradora: det?.unidadeOrgao
-      ? [det.unidadeOrgao.codigoUnidade, det.unidadeOrgao.nomeUnidade].filter(Boolean).join(' — ')
-      : [cc?.codigo_unidade, cc?.unidade_orgao].filter(Boolean).join(' — ') || null,
-    amparoLegal: det?.amparoLegal?.nome || (pareceCitacao(cc?.lei_base as string | null) ? (cc?.lei_base as string) : null) || det?.amparoLegal?.descricao || null,
-    tipo: det?.tipoInstrumentoConvocatorioNome || (cc?.tipo_instrumento as string | null),
-    modoDisputa: det?.modoDisputaNome || null,
+    unidadeCompradora: det?.unidade_orgao
+      || [cc?.codigo_unidade, cc?.unidade_orgao].filter(Boolean).join(' — ') || null,
+    amparoLegal: det?.amparo_legal || (pareceCitacao(cc?.lei_base as string | null) ? (cc?.lei_base as string) : null),
+    tipo: det?.tipo_instrumento_convocatorio || (cc?.tipo_instrumento as string | null),
+    modoDisputa: det?.modo_disputa || null,
     srp: (det?.srp ?? cc?.srp) as boolean | null | undefined,
-    fonteOrcamentaria: (Array.isArray(det?.fontesOrcamentarias) && det.fontesOrcamentarias.length > 0)
-      ? det.fontesOrcamentarias.map((f: { descricao?: string; nome?: string }) => f?.descricao || f?.nome).filter(Boolean).join('; ')
-      : null,
-    divulgacaoPncp: det?.dataPublicacaoPncp || (cc?.data_publicacao_pncp as string | null),
-    situacao: det?.situacaoCompraNome || (cc?.situacao as string | null),
-    inicioPropostas: det?.dataAberturaProposta || (cc?.data_abertura_proposta as string | null),
-    fimPropostas: det?.dataEncerramentoProposta || (cc?.data_encerramento_proposta as string | null),
-    idPncp: det?.numeroControlePNCP || lic?.numero_controle_pncp || (cc?.numero_controle_pncp as string | null) || null,
-    fonte: det?.usuarioNome || null,
+    fonteOrcamentaria: det?.fonte_orcamentaria || null,
+    divulgacaoPncp: det?.data_publicacao_pncp || (cc?.data_publicacao_pncp as string | null),
+    situacao: det?.situacao || (cc?.situacao as string | null),
+    inicioPropostas: det?.data_abertura_proposta || (cc?.data_abertura_proposta as string | null),
+    fimPropostas: det?.data_encerramento_proposta || (cc?.data_encerramento_proposta as string | null),
+    idPncp: det?.numero_controle_pncp || lic?.numero_controle_pncp || (cc?.numero_controle_pncp as string | null) || null,
+    fonte: det?.fonte_sistema || null,
   };
   const temEspelho = Object.values(espelho).some((v) => v !== null && v !== undefined && v !== '');
 
@@ -427,10 +420,10 @@ export default function ProcessoWorkspace() {
                     </p>
 
                     {/* Informação complementar */}
-                    {pncpDetalhe.informacaoComplementar && (
+                    {pncpDetalhe.informacao_complementar && (
                       <div className="pt-3 border-t border-border/40">
                         <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
-                        <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacaoComplementar}</p>
+                        <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacao_complementar}</p>
                       </div>
                     )}
 
@@ -454,17 +447,17 @@ export default function ProcessoWorkspace() {
                             <tbody className="divide-y divide-border/40">
                               {pncpItens.map((item: any, i: number) => {
                                 const qtd = item.quantidade ?? item.quantidadeItens;
-                                const vUnit = item.valorUnitarioEstimado ?? item.valorUnitario;
-                                const vTotal = item.valorTotal ?? item.valorTotalEstimado
+                                const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
+                                const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
                                   ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
                                 return (
-                                  <tr key={item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
-                                    <td className="px-3 py-2 text-muted-foreground">{item.numeroItem ?? i + 1}</td>
+                                  <tr key={item.numero ?? item.numeroItem ?? i} className="hover:bg-muted/20 transition-colors">
+                                    <td className="px-3 py-2 text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
                                     <td className="px-3 py-2 text-foreground">
                                       {item.descricao || item.descricaoItem || '—'}
-                                      {item.unidadeMedida && (
+                                      {(item.unidade_medida || item.unidadeMedida) && (
                                         <span className="ml-1.5 text-xs text-muted-foreground border border-border/60 px-1 rounded">
-                                          {item.unidadeMedida}
+                                          {item.unidade_medida || item.unidadeMedida}
                                         </span>
                                       )}
                                     </td>
