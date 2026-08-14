@@ -158,7 +158,10 @@ export function useDashboardData() {
         (supabase as any)
           .from('pncp_sync_log')
           .select('concluido_em')
-          .eq('status', 'sucesso')
+          // 'parcial' também conta como sync: os workers terminam parcial quando
+          // o PNCP devolve algum 429, e o selo dizia "Aguardando sync" com a
+          // coleta funcionando.
+          .in('status', ['sucesso', 'parcial'])
           .order('concluido_em', { ascending: false })
           .limit(1)
           .maybeSingle(),

@@ -63,7 +63,19 @@ async function fetchComRetry(url: string): Promise<Response> {
   let ultimoErro: any = null;
   for (let tentativa = 0; tentativa <= MAX_RETRIES; tentativa++) {
     try {
-      return await fetchComTimeout(url);
+      const res = await fetchComTimeout(url);
+      // 429 = rate limit do PNCP. Antes era tratado como resposta final e a
+      // modalidade inteira era pulada — na primeira execução pós-correção,
+      // TODOS os 9 workers terminaram "parcial" por 429 em rajada. Espera o
+      // Retry-After (ou 2s) e tenta de novo; o teto tem folga de sobra (7s
+      // usados de 150s).
+      if (res.status === 429 && tentativa < MAX_RETRIES + 1) {
+        const retryAfter = Number(res.headers.get("Retry-After")) || 2;
+        await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+        const res2 = await fetchComTimeout(url);
+        return res2;
+      }
+      return res;
     } catch (e: any) {
       ultimoErro = e;
       if (tentativa < MAX_RETRIES) {
@@ -73,6 +85,10 @@ async function fetchComRetry(url: string): Promise<Response> {
   }
   throw ultimoErro ?? new Error("fetch falhou sem motivo");
 }
+
+// Ritmo entre páginas: 78 páginas em 4-7s era rajada — o PNCP cortava com 429.
+// 300ms de pausa ≈ 25s por worker, ainda 6× abaixo do teto, e educado com a API.
+const PAUSA_ENTRE_PAGINAS_MS = 300;
 
 async function processarUf(
   supabase: any,
@@ -178,6 +194,7 @@ async function processarUf(
         novos += batch.length;
         if (items.length < PAGE_SIZE) break;
         pagina++;
+        await new Promise((r) => setTimeout(r, PAUSA_ENTRE_PAGINAS_MS));
       }
     }
   }
