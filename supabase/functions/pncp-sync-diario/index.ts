@@ -160,7 +160,9 @@ async function processarUf(
             url_pncp: numeroControle ? `https://pncp.gov.br/app/editais/${numeroControle}` : null,
             tipo_instrumento: e.tipoInstrumentoConvocatorioNome || null,
             srp: e.srp ?? null,
-            lei_base: e.amparoLegal?.descricao || null,
+            // Citação curta ("Lei 14.133/2021, Art. 28, I"), como o painel do
+            // PNCP exibe — a descricao é o texto didático longo.
+            lei_base: e.amparoLegal?.nome || e.amparoLegal?.descricao || null,
           };
         });
 

@@ -195,12 +195,25 @@ export default function ProcessoWorkspace() {
   // Espelho PNCP mesclado — prioridade: consulta ao vivo > cache local > processo.
   const det = pncpDetalhe as Record<string, any> | null;
   const cc = pncpCache;
-  const dataHora = (v: unknown) => v ? new Date(String(v)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+  // "Hora de parede": o PNCP envia horário de Brasília SEM fuso; o banco
+  // armazena como UTC e o new Date() desconta 3h de novo — todo horário de
+  // edital aparecia errado (PNCP: 10:00 → tela: 07:00). Lê direto da string.
+  const dataHora = (v: unknown) => {
+    const m = String(v ?? '').match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}, ${m[4]}:${m[5]}` : null;
+  };
+  const dataSo = (v: unknown) => {
+    const m = String(v ?? '').match(/(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+  };
+  // Amparo do cache legado pode conter a descrição didática longa (o sync
+  // antigo gravava descricao); só exibe do cache o que parece citação legal.
+  const pareceCitacao = (t: string | null) => !!t && /^(lei|lc|decreto|mp|emenda|art)\b/i.test(t.trim()) && t.length <= 90;
   const espelho = {
     unidadeCompradora: det?.unidadeOrgao
       ? [det.unidadeOrgao.codigoUnidade, det.unidadeOrgao.nomeUnidade].filter(Boolean).join(' — ')
       : [cc?.codigo_unidade, cc?.unidade_orgao].filter(Boolean).join(' — ') || null,
-    amparoLegal: det?.amparoLegal?.nome || det?.amparoLegal?.descricao || (cc?.lei_base as string | null),
+    amparoLegal: det?.amparoLegal?.nome || (pareceCitacao(cc?.lei_base as string | null) ? (cc?.lei_base as string) : null) || det?.amparoLegal?.descricao || null,
     tipo: det?.tipoInstrumentoConvocatorioNome || (cc?.tipo_instrumento as string | null),
     modoDisputa: det?.modoDisputaNome || null,
     srp: (det?.srp ?? cc?.srp) as boolean | null | undefined,
@@ -245,7 +258,7 @@ export default function ProcessoWorkspace() {
           <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
             {lic.modalidade && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {lic.modalidade}</span>}
             {lic.uf && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {lic.municipio}/{lic.uf}</span>}
-            {lic.data_encerramento && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Encerra: {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}</span>}
+            {lic.data_encerramento && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Encerra: {dataSo(lic.data_encerramento)}</span>}
             {lic.valor_estimado != null && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> R$ {Number(lic.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>}
           </div>
         </div>
@@ -282,14 +295,14 @@ export default function ProcessoWorkspace() {
                 {lic.data_abertura && (
                   <>
                     <span className="text-border select-none">|</span>
-                    <span><span className="text-xs text-muted-foreground">Abertura:</span> <span className="font-semibold">{new Date(lic.data_abertura).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></span>
+                    <span><span className="text-xs text-muted-foreground">Abertura:</span> <span className="font-semibold">{dataHora(lic.data_abertura)}</span></span>
                   </>
                 )}
               </div>
               {(lic.data_encerramento || lic.portal) && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   {lic.data_encerramento && (
-                    <span><span className="text-xs text-muted-foreground">Encerramento:</span> <span className="font-semibold">{new Date(lic.data_encerramento).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></span>
+                    <span><span className="text-xs text-muted-foreground">Encerramento:</span> <span className="font-semibold">{dataHora(lic.data_encerramento)}</span></span>
                   )}
                   {lic.portal && (
                     <>
@@ -352,7 +365,7 @@ export default function ProcessoWorkspace() {
               {temEspelho && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   {espelho.divulgacaoPncp && (
-                    <span><span className="text-xs text-muted-foreground">Divulgação no PNCP:</span> <span className="font-semibold">{new Date(espelho.divulgacaoPncp).toLocaleDateString('pt-BR')}</span></span>
+                    <span><span className="text-xs text-muted-foreground">Divulgação no PNCP:</span> <span className="font-semibold">{dataSo(espelho.divulgacaoPncp)}</span></span>
                   )}
                   {espelho.situacao && (
                     <span><span className="text-xs text-muted-foreground">Situação:</span> <span className="font-semibold">{espelho.situacao}</span></span>
