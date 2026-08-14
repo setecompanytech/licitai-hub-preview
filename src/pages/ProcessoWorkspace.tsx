@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
   ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
-  TrendingUp, Clock, Package
+  TrendingUp, Clock, Package, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import AnexosManager from '@/components/workspace/AnexosManager';
@@ -75,6 +75,9 @@ export default function ProcessoWorkspace() {
   const [pncpItens, setPncpItens] = useState<any[]>([]);
   const [pncpArquivos, setPncpArquivos] = useState<any[]>([]);
   const [pncpCarregando, setPncpCarregando] = useState(false);
+  // Falha no espelho PNCP era invisível: o card simplesmente não aparecia.
+  const [pncpErro, setPncpErro] = useState(false);
+  const [pncpNonce, setPncpNonce] = useState(0);
   const pncpFetchedRef = useRef(false);
 
   const handleExportarZip = async () => {
@@ -115,6 +118,7 @@ export default function ProcessoWorkspace() {
     }
     if (!cnpj || !ano || !seq) return;
     pncpFetchedRef.current = true;
+    setPncpErro(false);
     const base = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
     const hdrs = { Accept: 'application/json' };
     setPncpCarregando(true);
@@ -124,6 +128,7 @@ export default function ProcessoWorkspace() {
       fetch(`${base}/arquivos?pagina=1&tamanhoPagina=100`, { headers: hdrs }),
     ]).then(async ([rDet, rItens, rArqs]) => {
       if (rDet.status === 'fulfilled' && rDet.value.ok) setPncpDetalhe(await rDet.value.json());
+      else setPncpErro(true); // PNCP fora do ar ou limitando — mostrar, não sumir
       if (rItens.status === 'fulfilled' && rItens.value.ok) {
         const j = await rItens.value.json();
         setPncpItens(Array.isArray(j) ? j : (j?.data ?? []));
@@ -133,7 +138,7 @@ export default function ProcessoWorkspace() {
         setPncpArquivos(Array.isArray(j) ? j : (j?.data ?? []));
       }
     }).finally(() => setPncpCarregando(false));
-  }, [lic]);
+  }, [lic, pncpNonce]);
 
   const loadPrecificacao = async () => {
     if (!id || !user) return;
@@ -282,6 +287,26 @@ export default function ProcessoWorkspace() {
               )}
             </Card>
             {/* ── Dados completos do PNCP ── */}
+            {pncpErro && !pncpDetalhe && !pncpCarregando && (
+              <Card className="px-4 py-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-semibold">Espelho PNCP</span>
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <AlertTriangle className="w-3 h-3 text-warning" /> Indisponível no momento
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    O PNCP não respondeu — costuma ser instabilidade passageira do portal.
+                  </span>
+                  <Button
+                    size="sm" variant="ghost" className="h-7 ml-auto"
+                    onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente
+                  </Button>
+                </div>
+              </Card>
+            )}
+
             {(pncpCarregando || pncpDetalhe || pncpItens.length > 0 || pncpArquivos.length > 0) && (
               <Card className="p-5">
                 {pncpCarregando ? (
