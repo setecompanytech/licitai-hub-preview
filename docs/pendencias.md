@@ -513,3 +513,21 @@ remove a fila e as seis gerações de funções que o incidente deixou (`audit`,
 **Lição repetida:** é o mesmo padrão do arquivamento e dos crons do PNCP — tarefa pontual
 que vira rotina eterna porque ninguém desliga. Toda rotina temporária deveria nascer com
 condição de parada verificável (o `tick` até tinha; a tabela que a sustentava é que sumiu).
+
+---
+
+## [2026-08-14] O deploy por FTP publica num Hostgator que o domínio não serve mais
+
+**Situação:** `www.praefectus.com.br` responde com `x-deployment-id` (assinatura de hosting
+gerenciado — Lovable) e os assets subidos pelo workflow `deploy-hostgator.yml` retornam
+**404** no domínio. O run #31812541838 concluiu `success`, subiu `index-DYIQGZa1.js` por
+FTP, e o site continuou servindo outro build. Conclusão: quem publica o frontend é o
+**Lovable** (build do `main`); o FTP alimenta um `public_html` que ninguém visita.
+
+**Por que enganava:** o workflow termina verde, e o Lovable também builda o mesmo repo —
+então "rodei o FTP e o site mudou" já foi verdade por coincidência (o Lovable publicava em
+paralelo). Verificação correta de publicação: conferir no bundle serviido uma assinatura do
+commit esperado, não o status do workflow.
+
+**Pendente de decisão:** aposentar o `deploy-hostgator.yml` (e a conta FTP) ou documentar
+que ele alimenta um espelho. Enquanto isso, publicar = **Publish no Lovable**.
