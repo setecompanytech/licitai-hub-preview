@@ -75,11 +75,11 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). Analise o texto do edital e extraia TODOS os documentos exigidos para habilitação e participação. Classifique cada um. Para CADA documento, informe em artigo_referencia o número do item/subitem do edital onde a exigência aparece, exatamente como numerado no texto (ex.: '9.1.5', '5.7.1', 'item 12.3, alínea b'). Se a exigência realmente não tiver numeração no texto, use string vazia.",
+              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia.",
           },
           {
             role: "user",
-            content: `Analise o edital abaixo e extraia todos os documentos exigidos para habilitação.\n\nEDITAL:\n${String(edital_texto).slice(0, 30000)}`,
+            content: `Analise os documentos do processo abaixo e extraia todas as exigências de habilitação e participação.\n\nDOCUMENTOS DO PROCESSO:\n${String(edital_texto).slice(0, 240000)}`,
           },
         ],
         tools: [
