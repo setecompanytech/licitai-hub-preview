@@ -282,27 +282,27 @@ export default function ProcessoWorkspace() {
           <TabsContent value="visao" className="space-y-4">
             <Card className="p-5 space-y-3 text-base">
               <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
-                <span><span className="text-xs text-muted-foreground">Local:</span> <span className="font-semibold">{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
+                <span><span className="font-semibold">Local:</span> <span>{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
                 <span className="text-border select-none">|</span>
-                <span><span className="text-xs text-muted-foreground">Órgão:</span> <span className="font-semibold">{lic.orgao || '—'}</span></span>
+                <span><span className="font-semibold">Órgão:</span> <span>{lic.orgao || '—'}</span></span>
                 <span className="text-border select-none">|</span>
-                <span><span className="text-xs text-muted-foreground">Status:</span> <span className="font-semibold">{lic.status || '—'}</span></span>
+                <span><span className="font-semibold">Status:</span> <span>{lic.status || '—'}</span></span>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
-                <span><span className="text-xs text-muted-foreground">Modalidade:</span> <span className="font-semibold">{lic.modalidade || '—'}</span></span>
+                <span><span className="font-semibold">Modalidade:</span> <span>{lic.modalidade || '—'}</span></span>
                 <span className="text-border select-none">|</span>
-                <span><span className="text-xs text-muted-foreground">Valor estimado:</span> <span className="font-semibold">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
+                <span><span className="font-semibold">Valor estimado:</span> <span>{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span></span>
                 {lic.data_abertura && (
                   <>
                     <span className="text-border select-none">|</span>
-                    <span><span className="text-xs text-muted-foreground">Abertura:</span> <span className="font-semibold">{dataHora(lic.data_abertura)}</span></span>
+                    <span><span className="font-semibold">Abertura:</span> <span>{dataHora(lic.data_abertura)}</span></span>
                   </>
                 )}
               </div>
               {(lic.data_encerramento || lic.portal) && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   {lic.data_encerramento && (
-                    <span><span className="text-xs text-muted-foreground">Encerramento:</span> <span className="font-semibold">{dataHora(lic.data_encerramento)}</span></span>
+                    <span><span className="font-semibold">Encerramento:</span> <span>{dataHora(lic.data_encerramento)}</span></span>
                   )}
                   {lic.portal && (
                     <>
@@ -310,7 +310,7 @@ export default function ProcessoWorkspace() {
                       <span>
                         <span className="text-xs text-muted-foreground">Portal:</span>{' '}
                         {lic.url_edital ? (
-                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:underline inline-flex items-center gap-0.5">
+                          <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-0.5">
                             {lic.portal} <ExternalLink className="w-3 h-3" />
                           </a>
                         ) : (
@@ -331,13 +331,13 @@ export default function ProcessoWorkspace() {
                   {lic.valor_adjudicado != null && (
                     <>
                       <span className="text-border select-none">|</span>
-                      <span><span className="text-xs text-muted-foreground">Valor adjudicado:</span> <span className="font-semibold">{fmt(lic.valor_adjudicado)}</span></span>
+                      <span><span className="font-semibold">Valor adjudicado:</span> <span>{fmt(lic.valor_adjudicado)}</span></span>
                     </>
                   )}
                   {lic.data_homologacao && (
                     <>
                       <span className="text-border select-none">|</span>
-                      <span><span className="text-xs text-muted-foreground">Homologação:</span> <span className="font-semibold">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</span></span>
+                      <span><span className="font-semibold">Homologação:</span> <span>{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</span></span>
                     </>
                   )}
                 </div>
@@ -345,47 +345,47 @@ export default function ProcessoWorkspace() {
               {temEspelho && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   {espelho.unidadeCompradora && (
-                    <span><span className="text-xs text-muted-foreground">Unidade compradora:</span> <span className="font-semibold">{espelho.unidadeCompradora}</span></span>
+                    <span><span className="font-semibold">Unidade compradora:</span> <span>{espelho.unidadeCompradora}</span></span>
                   )}
                   {espelho.amparoLegal && (
-                    <span><span className="text-xs text-muted-foreground">Amparo legal:</span> <span className="font-semibold">{espelho.amparoLegal}</span></span>
+                    <span><span className="font-semibold">Amparo legal:</span> <span>{espelho.amparoLegal}</span></span>
                   )}
                   {espelho.tipo && (
-                    <span><span className="text-xs text-muted-foreground">Tipo:</span> <span className="font-semibold">{espelho.tipo}</span></span>
+                    <span><span className="font-semibold">Tipo:</span> <span>{espelho.tipo}</span></span>
                   )}
                   {espelho.modoDisputa && (
-                    <span><span className="text-xs text-muted-foreground">Modo de disputa:</span> <span className="font-semibold">{espelho.modoDisputa}</span></span>
+                    <span><span className="font-semibold">Modo de disputa:</span> <span>{espelho.modoDisputa}</span></span>
                   )}
                   {espelho.srp != null && (
-                    <span><span className="text-xs text-muted-foreground">Registro de preço:</span> <span className="font-semibold">{espelho.srp ? 'Sim' : 'Não'}</span></span>
+                    <span><span className="font-semibold">Registro de preço:</span> <span>{espelho.srp ? 'Sim' : 'Não'}</span></span>
                   )}
-                  <span><span className="text-xs text-muted-foreground">Fonte orçamentária:</span> <span className="font-semibold">{espelho.fonteOrcamentaria || 'Não informada'}</span></span>
+                  <span><span className="font-semibold">Fonte orçamentária:</span> <span>{espelho.fonteOrcamentaria || 'Não informada'}</span></span>
                 </div>
               )}
               {temEspelho && (
                 <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                   {espelho.divulgacaoPncp && (
-                    <span><span className="text-xs text-muted-foreground">Divulgação no PNCP:</span> <span className="font-semibold">{dataSo(espelho.divulgacaoPncp)}</span></span>
+                    <span><span className="font-semibold">Divulgação no PNCP:</span> <span>{dataSo(espelho.divulgacaoPncp)}</span></span>
                   )}
                   {espelho.situacao && (
-                    <span><span className="text-xs text-muted-foreground">Situação:</span> <span className="font-semibold">{espelho.situacao}</span></span>
+                    <span><span className="font-semibold">Situação:</span> <span>{espelho.situacao}</span></span>
                   )}
                   {espelho.inicioPropostas && (
-                    <span><span className="text-xs text-muted-foreground">Início das propostas:</span> <span className="font-semibold">{dataHora(espelho.inicioPropostas)}</span></span>
+                    <span><span className="font-semibold">Início das propostas:</span> <span>{dataHora(espelho.inicioPropostas)}</span></span>
                   )}
                   {espelho.fimPropostas && (
-                    <span><span className="text-xs text-muted-foreground">Fim das propostas:</span> <span className="font-semibold">{dataHora(espelho.fimPropostas)}</span></span>
+                    <span><span className="font-semibold">Fim das propostas:</span> <span>{dataHora(espelho.fimPropostas)}</span></span>
                   )}
                   {espelho.idPncp && (
-                    <span><span className="text-xs text-muted-foreground">Id contratação PNCP:</span> <span className="font-semibold tabular-nums">{espelho.idPncp}</span></span>
+                    <span><span className="font-semibold">Id contratação PNCP:</span> <span className="tabular-nums">{espelho.idPncp}</span></span>
                   )}
                   {espelho.fonte && (
-                    <span><span className="text-xs text-muted-foreground">Fonte:</span> <span className="font-semibold">{espelho.fonte}</span></span>
+                    <span><span className="font-semibold">Fonte:</span> <span>{espelho.fonte}</span></span>
                   )}
                 </div>
               )}
               <div>
-                <span className="text-xs text-muted-foreground font-medium">Objeto:</span>
+                <span className="font-semibold">Objeto:</span>
                 <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
               </div>
               {lic.observacoes && (
