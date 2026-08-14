@@ -26,6 +26,7 @@ import {
   faixaDe, aparenciaStatus, rotuloStatus, prazoPerdidoNoRadar,
 } from '@/lib/licitacao/status';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 
 type Licitacao = {
   id: string;
@@ -55,7 +56,9 @@ export default function PainelLicitacoes() {
   const { user } = useAuth();
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const navigate = useNavigate();
-  const { arquivarProcesso } = useLicitacaoIntegration();
+  const { arquivarProcesso, registrarPerda } = useLicitacaoIntegration();
+  const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -126,6 +129,22 @@ export default function PainelLicitacoes() {
   }
 
   async function handleStatusChange(id: string, newStatus: string) {
+    // "Perdida" exige motivo: o trigger do banco recusa o update sem registro
+    // em comercial_perdas (é o que alimenta as metas do comercial). Mesmo
+    // fluxo do Kanban: abre o diálogo e só então muda o status.
+    if (newStatus === 'Perdida') {
+      const lic = licitacoes.find((l) => l.id === id);
+      if (lic && lic.status !== 'Perdida') {
+        setPerdaAlvo({
+          licitacaoId: id,
+          numero: lic.numero,
+          orgao: lic.orgao,
+          modalidade: lic.modalidade ?? null,
+          valorEstimado: lic.valor_estimado,
+        });
+        return;
+      }
+    }
     const { error } = await supabase
       .from('licitacoes')
       .update({ status: newStatus })
@@ -135,13 +154,32 @@ export default function PainelLicitacoes() {
     // processo de um colega.
 
     if (error) {
-      toast.error('Erro ao atualizar status');
+      // A mensagem do trigger já vem pronta em português — mostrar a real
+      // em vez de um "erro" genérico que não diz o que fazer.
+      toast.error(error.message || 'Erro ao atualizar status');
     } else {
       setLicitacoes((prev) =>
         prev.map((l) => (l.id === id ? { ...l, status: newStatus } : l))
       );
       toast.success('Status atualizado');
     }
+  }
+
+  async function confirmarPerda({ motivoId, observacao }: { motivoId: string; observacao: string }) {
+    if (!perdaAlvo || !empresaAtiva) return;
+    setSalvandoPerda(true);
+    const ok = await registrarPerda({
+      licitacaoId: perdaAlvo.licitacaoId,
+      empresaId: empresaAtiva.id,
+      motivoId,
+      observacao,
+      modalidade: perdaAlvo.modalidade,
+      valorEstimado: perdaAlvo.valorEstimado,
+    });
+    setSalvandoPerda(false);
+    if (!ok) return;
+    setLicitacoes((prev) => prev.map((l) => (l.id === perdaAlvo.licitacaoId ? { ...l, status: 'Perdida' } : l)));
+    setPerdaAlvo(null);
   }
 
   /**
@@ -585,6 +623,13 @@ export default function PainelLicitacoes() {
           </div>
         )}
       </div>
+
+      <RegistrarPerdaDialog
+        alvo={perdaAlvo}
+        salvando={salvandoPerda}
+        onCancelar={() => setPerdaAlvo(null)}
+        onConfirmar={confirmarPerda}
+      />
     </div>
   );
 }
