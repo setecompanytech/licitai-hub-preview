@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -70,12 +71,25 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(STORAGE_KEY);
   }, [urlId]);
 
+  const { empresaAtiva } = useEmpresa();
+
+  // Trocar de empresa limpa a seleção persistida: o processo ativo fica no
+  // localStorage e sobrevivia à troca — quem mudava para a ETHOS continuava
+  // com um processo da outra empresa selecionado na barra global.
+  useEffect(() => {
+    const donoDoProcesso = (processo as { empresa_id?: string | null } | null)?.empresa_id;
+    if (empresaAtiva?.id && donoDoProcesso && donoDoProcesso !== empresaAtiva.id) {
+      applySwitch(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaAtiva?.id, processo]);
+
   const fetchProcesso = useCallback(async (id: string | null) => {
     if (!id || !user) { setProcesso(null); return; }
     setLoading(true);
     const { data, error } = await supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, updated_at')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, updated_at, empresa_id')
       .eq('id', id)  // sem user_id: processo é da empresa; RLS limita o acesso
       .maybeSingle();
     setLoading(false);

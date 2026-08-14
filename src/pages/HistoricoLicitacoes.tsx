@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { ehDecidido } from '@/lib/licitacao/status';
+import { ehDecidido, STATUS_PROCESSO, aparenciaStatus, rotuloStatus } from '@/lib/licitacao/status';
 import {
   Search, Archive, Trophy, XCircle, Download, Calendar, Building2, MapPin,
   TrendingUp, CheckCircle, AlertTriangle, BarChart3, Clock,
@@ -19,7 +19,12 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
 
-const STATUS_FLOW = ['Publicado', 'Em Disputa', 'Homologado', 'Contrato Assinado', 'Deserto', 'Fracassado', 'Revogado', 'Anulado'] as const;
+// A quarta lista de status que existia aqui ('Publicado', 'Homologado' no
+// masculino, 'Contrato Assinado'…) era a origem dos valores que nenhuma outra
+// tela reconhecia — e do arquivamento automático que nunca disparava (D1).
+// Status agora é o vocabulário canônico; Deserto/Fracassado/Revogado/Anulado
+// e Contrato Assinado são DESFECHOS e vivem no campo Resultado.
+const STATUS_FLOW = STATUS_PROCESSO;
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof Trophy }> = {
   'Publicado': { label: 'Publicado', className: 'bg-info/10 text-info border-info/20', icon: Clock },
@@ -32,7 +37,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
   'Anulado': { label: 'Anulado', className: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
 };
 
-const resultadoOptions = ['Vencida', 'Perdida', 'Desclassificada', 'Deserto', 'Fracassado', 'Revogado', 'Anulado'];
+const resultadoOptions = ['Vencida', 'Perdida', 'Desclassificada', 'Deserto', 'Fracassado', 'Revogado', 'Anulado', 'Contrato Assinado'];
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -95,7 +100,8 @@ export default function HistoricoLicitacoes() {
     const total = licitacoes.length;
     const vencidas = licitacoes.filter(l => l.vencedor === true).length;
     const perdidas = licitacoes.filter(l => l.resultado === 'Perdida').length;
-    const finalizados = licitacoes.filter(l => ['Homologado', 'Contrato Assinado', 'Deserto', 'Fracassado', 'Revogado', 'Anulado'].includes(l.status)).length;
+    // Conta pelo desfecho real (status OU resultado) — a lista masculina antiga nunca casava com o que o app grava
+    const finalizados = licitacoes.filter(l => ehDecidido(l.status, l.resultado)).length;
     const emAndamento = total - finalizados;
     const taxaSucesso = finalizados > 0 ? ((vencidas / finalizados) * 100).toFixed(1) : '0';
     const valorGanho = licitacoes
@@ -255,7 +261,7 @@ export default function HistoricoLicitacoes() {
             <SelectTrigger className="w-[170px] bg-card border-border/50"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
-              {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={resultadoFilter} onValueChange={setResultadoFilter}>
@@ -296,7 +302,7 @@ export default function HistoricoLicitacoes() {
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma licitação encontrada.</td></tr>
                 )}
                 {filtered.map((lic, i) => {
-                  const st = statusConfig[lic.status] || { label: lic.status, className: 'bg-muted text-muted-foreground', icon: Clock };
+                  const st = statusConfig[lic.status] || { ...aparenciaStatus(lic.status), icon: Clock };
                   const dias = diasRestantes(lic.arquivado_em);
                   return (
                     <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
@@ -359,11 +365,11 @@ export default function HistoricoLicitacoes() {
           <p className="text-xs font-semibold text-muted-foreground mb-2">Fluxo de Status Padronizado</p>
           <div className="flex flex-wrap items-center gap-2">
             {STATUS_FLOW.map((s, i) => {
-              const st = statusConfig[s];
+              const st = aparenciaStatus(s);
               return (
                 <div key={s} className="flex items-center gap-1">
                   <Badge variant="outline" className={cn('text-xs px-2 py-0.5', st.className)}>{st.label}</Badge>
-                  {i < STATUS_FLOW.length - 1 && i < 3 && <span className="text-muted-foreground text-xs">→</span>}
+                  {i < 3 && <span className="text-muted-foreground text-xs">→</span>}
                   {i === 3 && <span className="text-muted-foreground text-xs ml-2">|</span>}
                 </div>
               );
@@ -384,7 +390,7 @@ export default function HistoricoLicitacoes() {
               <Select value={editStatus} onValueChange={setEditStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

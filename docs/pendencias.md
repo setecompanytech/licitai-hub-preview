@@ -531,3 +531,35 @@ commit esperado, não o status do workflow.
 
 **Pendente de decisão:** aposentar o `deploy-hostgator.yml` (e a conta FTP) ou documentar
 que ele alimenta um espelho. Enquanto isso, publicar = **Publish no Lovable**.
+
+---
+
+## [2026-08-14] Rodada de decisões: FTP aposentado, vocabulário unificado, crawler decidido
+
+**Workflow de FTP — RESOLVIDO.** `deploy-hostgator.yml` removido do repositório e os
+secrets `FTP_PASSWORD`/`FTP_SERVER`/`FTP_USERNAME` apagados do GitHub. O domínio é servido
+pelo Lovable; o workflow publicava num `public_html` que ninguém visita e o verde dele já
+enganou o diagnóstico uma vez. *Recomendação residual:* trocar a senha do FTP no painel da
+Hostgator — ela circulou por um secret agora extinto.
+
+**Vocabulário do Histórico — RESOLVIDO.** A quarta lista de status (`Publicado`,
+`Homologado` no masculino, `Contrato Assinado`…) saiu dos dropdowns; a tela usa o
+vocabulário canônico de `src/lib/licitacao/status.ts`. Encerramentos neutros e contrato
+assinado viraram opções do campo **Resultado**, que é onde desfecho mora. A métrica
+"finalizados" passou a contar por `ehDecidido()` (status OU resultado) — a lista masculina
+antiga nunca casava com nada gravado pelo app.
+
+**`crawler-pncp-30min` — DECIDIDO: substituído.** O `pncp-sync-diario` (2×/dia, com
+lápides por worker) cobre a coleta; o crawler não está em `cron.job` e não será
+reagendado. As migrations antigas ficam como histórico.
+
+**Troca de empresa limpa o processo ativo — RESOLVIDO.** A seleção da barra global ficava
+no localStorage e sobrevivia à troca de empresa; agora, se o processo selecionado pertence
+a outra empresa, a seleção é limpa.
+
+**Projeto `pyizwczmmzavtujfbivd` — roteiro definido, execução pendente (só o dono pode).**
+É o projeto original de abril, abandonado na migração para São Paulo; causou 4 incidentes
+de "banco errado". Passos no dashboard: selecionar o projeto → Settings → General →
+**Pause project** (reversível) agora; se nada quebrar em ~30 dias, **Delete project** (pede
+digitar o nome). Antes de deletar, ninguém depende dele: o app está preso ao
+`uwtyuwktxalnpgrcbbgk` em quatro lugares (client.ts, vite.config, .env, config.toml).
