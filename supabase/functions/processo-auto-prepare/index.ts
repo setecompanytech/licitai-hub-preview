@@ -56,13 +56,14 @@ serve(async (req) => {
       });
     }
 
-    // Verifica licitação pertence ao usuário
-    const { data: lic } = await admin
+    // Acesso via RLS por empresa (Onda 4): colega da empresa também pode
+    // preparar a pasta do processo — a checagem por user_id devolvia 404.
+    const { data: lic } = await userClient
       .from("licitacoes")
       .select("id, user_id, numero, orgao, url_edital")
       .eq("id", licitacaoId)
       .maybeSingle();
-    if (!lic || lic.user_id !== userId) {
+    if (!lic) {
       return new Response(JSON.stringify({ error: "Licitação não encontrada" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

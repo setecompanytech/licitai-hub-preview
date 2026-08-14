@@ -25,6 +25,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const BUCKET = "processo-arquivos";
+
+/**
+ * Fetch com um retry educado no 429. O PNCP limita por IP de saída — e as
+ * sincronizações em lote saem dos MESMOS IPs desta função, então um usuário
+ * abrindo o edital logo após um sync levava o 429 alheio e via "Indisponível".
+ */
+async function fetchPncp(url: string, init: RequestInit): Promise<Response> {
+  const resp = await fetch(url, init);
+  if (resp.status !== 429) return resp;
+  const retryAfter = Math.min(Number(resp.headers.get("Retry-After")) || 2, 5);
+  await new Promise((r) => setTimeout(r, retryAfter * 1000));
+  return fetch(url, init);
+}
 const UA = "Mozilla/5.0 (compatible; LicitAI/1.0)";
 const MAX_BYTES = 45 * 1024 * 1024;
 
@@ -163,7 +176,7 @@ async function listarArquivos(cnpj: string, ano: string, seq: string) {
   for (const url of endpoints) {
     let resp: Response;
     try {
-      resp = await fetch(url, {
+      resp = await fetchPncp(url, {
         headers: { Accept: "application/json", "User-Agent": UA },
         signal: AbortSignal.timeout(25_000),
       });
@@ -291,14 +304,16 @@ serve(async (req) => {
     const action: string = body?.action || "listar";
     if (!licitacaoId) return json({ error: "licitacao_id required" }, 400);
 
-    // Ownership: o processo precisa ser do usuário autenticado
-    const { data: lic } = await admin
+    // Acesso: consulta com o JWT do usuário — o RLS por empresa (Onda 4)
+    // decide. A checagem antiga `user_id !== userId` devolvia 404 para
+    // qualquer colega abrindo processo da empresa.
+    const { data: lic } = await userClient
       .from("licitacoes")
       .select("id, user_id, url_edital, numero, orgao")
       .eq("id", licitacaoId)
       .maybeSingle();
 
-    if (!lic || lic.user_id !== userId) {
+    if (!lic) {
       return json({ error: "Licitação não encontrada" }, 404);
     }
 
