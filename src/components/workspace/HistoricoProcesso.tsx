@@ -56,12 +56,13 @@ export default function HistoricoProcesso({ licitacaoId }: { licitacaoId: string
       // que se pergunta ao abrir um histórico.
       const ids = [...new Set(lista.map((e) => e.user_id))];
       if (ids.length) {
+        // profiles chaveia por user_id (id é PK própria) — todo o app junta assim
         const { data: perfis } = await supabase
           .from('profiles')
-          .select('id, nome_completo')
-          .in('id', ids);
+          .select('user_id, nome_completo')
+          .in('user_id', ids);
         if (!cancelado && perfis) {
-          setNomes(Object.fromEntries(perfis.map((p) => [p.id, p.nome_completo || 'Colaborador'])));
+          setNomes(Object.fromEntries(perfis.map((p) => [p.user_id, p.nome_completo || 'Colaborador'])));
         }
       }
       if (!cancelado) setLoading(false);
