@@ -30,12 +30,15 @@ EDITAL (PNCP/portal)
 - Visão Geral = ficha: dados + espelho PNCP + preparação automática.
 - Atalhos de módulos só na aba Módulos (dedup já feita).
 
-### Fase 2 — In-context (uma sessão dedicada)
-- Abas Precificação e Proposta **operando dentro** do prontuário (hoje a aba
-  Precificação é histórico; o trabalho real expulsa para os módulos globais).
-- Os itens extraídos pela preparação fluem para a planilha da proposta sem
-  sair da página. Peças existentes: extração automática (processo-auto-prepare),
-  catálogo por licitação, rascunhos por licitação, wizard da proposta.
+### Fase 2 — In-context (FEITA em 2026-08-14)
+- Aba Precificação: `ItensEditalPrecificacao` — os itens do edital ganham
+  preço unitário editável ali mesmo e são salvos no catálogo
+  (`catalogo_itens_precificados`, tipo_calculo='edital'); botão "Levar para a
+  Proposta" troca de aba.
+- Aba Proposta (nova): `PropostaTab` — a PlanilhaPrecos do wizard operando
+  sobre o MESMO rascunho por licitação (editar aqui reflete no wizard), com
+  "Importar itens do edital" (licitacao_itens) e Importar do Catálogo. O PDF
+  final continua no wizard completo (link no cabeçalho da aba).
 
 ### Fase 3 — Habilitação inteligente (o projeto grande)
 Pré-requisito: migrar as tabelas-satélite (`processo_anexos`,

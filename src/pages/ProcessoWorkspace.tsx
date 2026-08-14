@@ -12,6 +12,8 @@ import {
   TrendingUp, Clock, Package, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
+import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
+import PropostaTab from '@/components/workspace/PropostaTab';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
 import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
@@ -58,7 +60,7 @@ export default function ProcessoWorkspace() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const ABAS_VALIDAS = ['visao', 'documentos', 'anexos', 'precificacao', 'modulos', 'historico'];
+  const ABAS_VALIDAS = ['visao', 'documentos', 'anexos', 'precificacao', 'proposta', 'modulos', 'historico'];
   const abaPedida = searchParams.get('aba') || '';
   const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
   const [aba, setAba] = useState(abaInicial);
@@ -266,11 +268,12 @@ export default function ProcessoWorkspace() {
             ícone de Precificação da linha levar o processo junto, em vez de
             despejar o usuário numa tela em branco. */}
         <Tabs value={aba} className="w-full" onValueChange={v => { setAba(v); if (v === 'precificacao') loadPrecificacao(); }}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-6 h-auto">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-6 h-auto">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
             <TabsTrigger value="precificacao">Precificação</TabsTrigger>
+            <TabsTrigger value="proposta">Proposta</TabsTrigger>
             <TabsTrigger value="modulos">Módulos</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
           </TabsList>
@@ -545,6 +548,13 @@ export default function ProcessoWorkspace() {
 
           {/* Precificação */}
           <TabsContent value="precificacao" className="space-y-4">
+            {/* Fase 2: precificação in-context — os itens do edital ganham
+                preço aqui e vão para o catálogo, de onde a Proposta importa. */}
+            <ItensEditalPrecificacao
+              licitacaoId={lic.id}
+              onSaved={loadPrecificacao}
+              onIrParaProposta={() => setAba('proposta')}
+            />
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold">Histórico de Precificação</h3>
@@ -655,6 +665,11 @@ export default function ProcessoWorkspace() {
                 )}
               </>
             )}
+          </TabsContent>
+
+          {/* Proposta — Fase 2: trabalhada dentro do processo */}
+          <TabsContent value="proposta">
+            <PropostaTab licitacaoId={lic.id} numeroLicitacao={lic.numero} />
           </TabsContent>
 
           {/* Módulos */}
