@@ -54,6 +54,16 @@ type ProcessoInteresse = {
   created_at: string;
 };
 
+type ExclusaoLog = {
+  id: string;
+  processo_numero: string | null;
+  processo_orgao: string | null;
+  processo_objeto: string | null;
+  acao: string;
+  motivo: string;
+  created_at: string;
+};
+
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   interessado: { label: 'Interessado', color: 'bg-info/10 text-info border-info/20', icon: ListChecks },
   analisando: { label: 'IA Analisando', color: 'bg-warning/10 text-warning border-warning/20', icon: Brain },
@@ -113,6 +123,22 @@ export default function MeusCompromissos() {
   const [iaResult, setIaResult] = useState<Record<string, string>>({});
   const [arquivando, setArquivando] = useState<string | null>(null);
   const { arquivarProcesso } = useLicitacaoIntegration();
+  // Aba "Removidos": o log de exclusões sempre existiu (processos_exclusao_log,
+  // com o motivo digitado em cada remoção) — só não tinha tela. Sem esta
+  // consulta, remover parecia "sumir sem rastro".
+  const [removidos, setRemovidos] = useState<ExclusaoLog[]>([]);
+  const [removidosCarregado, setRemovidosCarregado] = useState(false);
+
+  const carregarRemovidos = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('processos_exclusao_log' as never)
+      .select('id, processo_numero, processo_orgao, processo_objeto, acao, motivo, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    setRemovidos((data || []) as unknown as ExclusaoLog[]);
+    setRemovidosCarregado(true);
+  }, [user]);
 
   const carregarProcessos = useCallback(async () => {
     if (!user) return;
@@ -170,6 +196,11 @@ export default function MeusCompromissos() {
 
   // State for rejection/removal dialog
   const [acaoDialog, setAcaoDialog] = useState<{ tipo: 'rejeitar' | 'remover'; processo: ProcessoInteresse } | null>(null);
+  // Remover sempre foi só o acompanhamento — a licitação em gestão ficava viva e
+  // reaparecia depois, parecendo "erro no sistema" (aconteceu duas vezes com os
+  // mesmos processos). Default ligado: quem remove quase sempre quer tirar o
+  // processo da mesa também; quem não quiser, desmarca.
+  const [arquivarJunto, setArquivarJunto] = useState(true);
   const [motivoTexto, setMotivoTexto] = useState('');
   const [executandoAcao, setExecutandoAcao] = useState(false);
 
@@ -199,7 +230,14 @@ export default function MeusCompromissos() {
         toast.info('Processo rejeitado.');
       } else {
         await supabase.from('processos_interesse').delete().eq('id', processo.id);
-        toast.success('Processo removido da lista.');
+        if (arquivarJunto && processo.licitacao_id) {
+          const ok = await arquivarProcesso(processo.licitacao_id, true);
+          toast.success(ok
+            ? 'Removido da lista e arquivado na gestão.'
+            : 'Removido da lista — mas não foi possível arquivar na gestão.');
+        } else {
+          toast.success('Processo removido da lista.');
+        }
       }
       carregarProcessos();
     } catch (err) {
@@ -351,17 +389,57 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         </div>
 
         {/* Filter by status */}
-        <Tabs value={filtroStatus} onValueChange={setFiltroStatus}>
+        <Tabs value={filtroStatus} onValueChange={(v) => { setFiltroStatus(v); if (v === 'removidos' && !removidosCarregado) carregarRemovidos(); }}>
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="all">Todos</TabsTrigger>
             {Object.entries(statusConfig).map(([key, cfg]) => (
               <TabsTrigger key={key} value={key}>{cfg.label}</TabsTrigger>
             ))}
+            <TabsTrigger value="removidos">Removidos</TabsTrigger>
           </TabsList>
         </Tabs>
 
         {/* List */}
-        {loading ? (
+        {filtroStatus === 'removidos' ? (
+          removidos.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Trash2 className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">Nenhuma remoção registrada</p>
+              <p className="text-base text-muted-foreground mt-1">
+                Quando você rejeitar ou remover um processo, o registro (com o motivo) fica consultável aqui.
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {removidos.map((r) => (
+                <Card key={r.id} className="p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className={r.acao === 'rejeitar'
+                          ? 'bg-destructive/10 text-destructive border-destructive/20'
+                          : 'bg-muted text-muted-foreground border-border'}>
+                          {r.acao === 'rejeitar' ? 'Rejeitado' : 'Removido'}
+                        </Badge>
+                        <span className="font-semibold">{r.processo_numero || 's/ número'}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium mt-1">{r.processo_orgao}</p>
+                      {r.processo_objeto && (
+                        <p className="text-sm text-muted-foreground truncate max-w-[640px]">{r.processo_objeto}</p>
+                      )}
+                      <p className="text-sm mt-2">
+                        <span className="text-muted-foreground">Motivo:</span> {r.motivo}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
@@ -500,7 +578,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
         )}
 
         {/* Dialog de motivo para Rejeitar/Remover */}
-        <Dialog open={!!acaoDialog} onOpenChange={(open) => { if (!open) { setAcaoDialog(null); setMotivoTexto(''); } }}>
+        <Dialog open={!!acaoDialog} onOpenChange={(open) => { if (!open) { setAcaoDialog(null); setMotivoTexto(''); setArquivarJunto(true); } }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
@@ -509,6 +587,14 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
               <DialogDescription>
                 Processo <strong>{acaoDialog?.processo.numero}</strong> — {acaoDialog?.processo.orgao}
               </DialogDescription>
+              {acaoDialog?.tipo === 'remover' && (
+                <p className="text-sm text-muted-foreground">
+                  Remover tira o processo <strong>da sua lista de acompanhamento</strong>.
+                  {acaoDialog?.processo.licitacao_id
+                    ? ' O processo em gestão (Kanban/Painel) continua existindo — marque abaixo para arquivá-lo junto.'
+                    : ''}
+                </p>
+              )}
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div className="space-y-1.5">
@@ -522,6 +608,17 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 />
                 <p className="text-xs text-muted-foreground text-right">{motivoTexto.length}/500</p>
               </div>
+              {acaoDialog?.tipo === 'remover' && acaoDialog?.processo.licitacao_id && (
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={arquivarJunto}
+                    onChange={(e) => setArquivarJunto(e.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                  Também arquivar o processo na gestão (sai do Kanban e das listas ativas)
+                </label>
+              )}
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => { setAcaoDialog(null); setMotivoTexto(''); }}>

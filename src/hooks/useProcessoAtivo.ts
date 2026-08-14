@@ -28,7 +28,10 @@ export function useProcessoAtivo() {
     if (!user) return [];
     let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, updated_at');
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, updated_at')
+      // Seletor de trabalho: só o que ocupa a mesa. Sem este filtro, processos
+      // arquivados reapareciam aqui eternamente — e pareciam "erro no sistema".
+      .is('arquivado_em', null);
     if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
     const { data, error } = await q
       .order('updated_at', { ascending: false })
