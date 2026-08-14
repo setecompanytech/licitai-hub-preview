@@ -134,6 +134,9 @@ export default function MeusCompromissos() {
     const { data } = await supabase
       .from('processos_exclusao_log' as never)
       .select('id, processo_numero, processo_orgao, processo_objeto, acao, motivo, created_at')
+      // Só remoções: rejeições têm aba própria ("Rejeitado") e apareciam
+      // duplicadas aqui — a aba dizia "Removidos" e mostrava as duas ações.
+      .eq('acao', 'remover')
       .order('created_at', { ascending: false })
       .limit(200);
     setRemovidos((data || []) as unknown as ExclusaoLog[]);
