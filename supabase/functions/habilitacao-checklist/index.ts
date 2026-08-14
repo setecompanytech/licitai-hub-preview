@@ -75,7 +75,7 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). Analise o texto do edital e extraia TODOS os documentos exigidos para habilitação e participação. Classifique cada um.",
+              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). Analise o texto do edital e extraia TODOS os documentos exigidos para habilitação e participação. Classifique cada um. Para CADA documento, informe em artigo_referencia o número do item/subitem do edital onde a exigência aparece, exatamente como numerado no texto (ex.: '9.1.5', '5.7.1', 'item 12.3, alínea b'). Se a exigência realmente não tiver numeração no texto, use string vazia.",
           },
           {
             role: "user",
@@ -101,11 +101,14 @@ serve(async (req) => {
                           type: "string",
                           enum: ["Habilitação Jurídica", "Regularidade Fiscal", "Qualificação Técnica", "Qualif. Econômico-Financeira", "Declarações", "Proposta", "Outros"],
                         },
-                        artigo_referencia: { type: "string" },
+                        artigo_referencia: {
+                          type: "string",
+                          description: "Número do item/subitem do edital onde a exigência aparece, exatamente como no texto (ex.: '9.1.5'). String vazia apenas se o trecho não for numerado.",
+                        },
                         obrigatorio: { type: "boolean" },
                         observacao: { type: "string" },
                       },
-                      required: ["nome", "categoria", "obrigatorio"],
+                      required: ["nome", "categoria", "obrigatorio", "artigo_referencia"],
                     },
                   },
                 },
@@ -171,7 +174,7 @@ serve(async (req) => {
         tipo: taxo?.id ?? null,
         grupo: taxo?.grupo ?? GRUPO_POR_CATEGORIA[String(ex.categoria)] ?? "outro",
         exigencia: String(ex.nome || "").slice(0, 500),
-        referencia: ex.artigo_referencia ? String(ex.artigo_referencia).slice(0, 120) : null,
+        referencia: String(ex.artigo_referencia || "").trim() ? String(ex.artigo_referencia).trim().slice(0, 120) : null,
         obrigatorio: ex.obrigatorio !== false,
         observacao: ex.observacao ? String(ex.observacao).slice(0, 500) : null,
         status,

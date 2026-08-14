@@ -189,8 +189,8 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
                 <Icone className={`w-4 h-4 mt-0.5 shrink-0 ${l.status === 'ok' ? 'text-success' : l.status === 'faltante' ? 'text-destructive' : 'text-warning'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {l.referencia && <span className="text-sm font-semibold text-accent shrink-0">{l.referencia}</span>}
                     <span className="text-sm font-medium">{l.exigencia}</span>
-                    {l.referencia && <span className="text-xs text-muted-foreground">({l.referencia})</span>}
                     {!l.obrigatorio && <Badge variant="outline" className="text-xs">facultativo</Badge>}
                     {!l.conferido && <span className="text-xs text-muted-foreground italic">sugerido pela IA</span>}
                   </div>
