@@ -61,6 +61,7 @@ export default function ProcessoWorkspace() {
   const ABAS_VALIDAS = ['visao', 'documentos', 'anexos', 'precificacao', 'modulos', 'historico'];
   const abaPedida = searchParams.get('aba') || '';
   const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
+  const [aba, setAba] = useState(abaInicial);
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -198,7 +199,7 @@ export default function ProcessoWorkspace() {
         {/* `?aba=` deixa o painel abrir direto na aba certa — é o que faz o
             ícone de Precificação da linha levar o processo junto, em vez de
             despejar o usuário numa tela em branco. */}
-        <Tabs defaultValue={abaInicial} className="w-full" onValueChange={v => { if (v === 'precificacao') loadPrecificacao(); }}>
+        <Tabs value={aba} className="w-full" onValueChange={v => { setAba(v); if (v === 'precificacao') loadPrecificacao(); }}>
           <TabsList className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-6 h-auto">
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -466,7 +467,11 @@ export default function ProcessoWorkspace() {
               </Card>
             )}
 
-            <EditalOriginalCard licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
+            <EditalOriginalCard
+              licitacaoId={lic.id}
+              urlEdital={lic.url_edital ?? null}
+              onVerItens={() => { setAba('precificacao'); loadPrecificacao(); }}
+            />
             <EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ATALHOS.map(a => (
