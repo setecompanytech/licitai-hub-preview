@@ -87,10 +87,12 @@ export function useAnalyticsData() {
     if (!user) return;
     setLoading(true);
 
+    // Escopo por empresa — "Ganhas" e "Valor Ganho" são resultados da empresa,
+    // não do colaborador que cadastrou. O RLS (Onda 4) já limita às empresas
+    // das quais o usuário é membro.
     let q = supabase
       .from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, created_at, updated_at')
-      .eq('user_id', user.id);
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, valor_adjudicado, uf, municipio, data_abertura, data_encerramento, created_at, updated_at');
 
     if (!todasSelecionadas && empresaAtiva) {
       q = q.eq('empresa_id', empresaAtiva.id);

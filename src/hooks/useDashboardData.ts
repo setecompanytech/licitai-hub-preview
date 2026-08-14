@@ -104,13 +104,18 @@ export function useDashboardData() {
   }
 
   /** Helper to build a filtered query on licitacoes */
+  // Escopo por empresa, como a lista de Processos Licitatórios logo abaixo dos
+  // KPIs. O `.eq('user_id')` que havia aqui fazia o cabeçalho anunciar
+  // "Resultados de: <empresa>" mostrando só os números do usuário logado — o
+  // painel dizia 21 Monitoradas enquanto a empresa tinha 37 processos. O RLS
+  // (Onda 4) garante que só chegam empresas das quais se é membro.
   function licitacoesQuery() {
-    const q = supabase.from('licitacoes').select('*', { count: 'exact', head: true }).eq('user_id', user!.id);
+    const q = supabase.from('licitacoes').select('*', { count: 'exact', head: true });
     return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
   }
 
   function licitacoesDataQuery(selectCols: string) {
-    const q = supabase.from('licitacoes').select(selectCols).eq('user_id', user!.id);
+    const q = supabase.from('licitacoes').select(selectCols);
     return applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);
   }
 
@@ -245,7 +250,6 @@ export function useDashboardData() {
     let q = supabase
       .from('licitacoes')
       .select('id, numero, orgao, objeto, status, valor_estimado, uf, municipio, data_encerramento')
-      .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
       .limit(5);
     q = applyEmpresaFilter(q, empresaAtiva, todasSelecionadas);

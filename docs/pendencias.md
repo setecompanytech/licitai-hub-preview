@@ -490,3 +490,26 @@ duplicação em quatro migrations que permitiu ao erro sobreviver meses.
 **Pendente:** padronizar as migrations antigas para usarem os dois helpers, e decidir o que
 fazer com `crawler-pncp-30min` — está nas migrations mas não em `cron.job`, o que sugere
 remoção deliberada quando o `pncp-sync-diario` assumiu a coleta.
+
+---
+
+## [2026-08-14] Restauração de lançamentos: dois jobs órfãos do incidente de maio — RESOLVIDO
+
+**Situação:** `restaurar-lancamentos-tick` falhava a cada 2 minutos desde que a tabela
+`restauracao_lancamentos_progresso` deixou de existir (~720 falhas/dia poluindo o
+`cron.job_run_details`). Pior: `popular-fila-restauracao` seguia rodando a cada minuto e
+capturava **todo** delete de `financeiro_lancamentos` para a fila de restauração —
+misturando deleções legítimas dos usuários com o incidente antigo.
+
+**Como foi decidido:** a fila tinha 124 pendentes / 0 processados. A distribuição temporal
+dos deletes: jun=7, jul=34, ago=83, **maio=0**. Nenhum item era do incidente — todos eram
+deleções intencionais pós-incidente. Restaurá-los ressuscitaria lançamentos apagados de
+propósito. Decisão: nada a restaurar.
+
+**O que foi feito:** os dois jobs desligados (2026-08-14) e a migration `20260814000001`
+remove a fila e as seis gerações de funções que o incidente deixou (`audit`, `por_id`,
+`v2`, `v3`, `tick`, `popular`). O `financeiro_audit_log` fica intacto como fonte de verdade.
+
+**Lição repetida:** é o mesmo padrão do arquivamento e dos crons do PNCP — tarefa pontual
+que vira rotina eterna porque ninguém desliga. Toda rotina temporária deveria nascer com
+condição de parada verificável (o `tick` até tinha; a tabela que a sustentava é que sumiu).
