@@ -35,8 +35,11 @@ const MODALIDADES = [
 
 const PAGE_SIZE = 50;
 const MAX_PAGES_POR_BUSCA = 20;
-const TIMEOUT_FETCH_MS = 45_000; // PNCP pode demorar; 15s era curto demais
-const MAX_RETRIES = 2;           // tenta até 3x antes de abandonar
+// 20s/1 retry: com 45s×3 tentativas, UMA modalidade travada consumia 135s do
+// teto de ~150s da edge function e o worker morria por 504 sem processar nada
+// (diagnosticado em 2026-08-14: 5×504 aos 150s exatos, zero upserts).
+const TIMEOUT_FETCH_MS = 20_000;
+const MAX_RETRIES = 1;
 const PNCP_BASE = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao";
 
 function fmtDate(d: Date) {
@@ -215,7 +218,8 @@ serve(async (req) => {
   // ────────── MODO ORQUESTRADOR ──────────
   // Divide UFs em 6 chunks e dispara invocações paralelas fire-and-forget
   if (modo !== "worker") {
-    const CHUNKS = 6;
+    // 9×3 em vez de 6×5: metade do trabalho por worker, folga real no teto.
+    const CHUNKS = 9;
     const chunks: string[][] = Array.from({ length: CHUNKS }, () => []);
     UFS.forEach((uf, i) => chunks[i % CHUNKS].push(uf));
 
@@ -248,8 +252,15 @@ serve(async (req) => {
       }).catch((e) => console.warn(`Falha disparo chunk ${idx}: ${e.message}`))
     );
 
-    // Aguarda só o disparo (não a conclusão)
-    await Promise.allSettled(triggers);
+    // Solta os workers DE VERDADE. O await allSettled anterior esperava a
+    // RESPOSTA de cada worker (até 150s cada) — o orquestrador morria por 504
+    // junto com eles. waitUntil mantém os fetches vivos após o response.
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (runtime?.waitUntil) {
+      triggers.forEach((t) => runtime.waitUntil!(t));
+    } else {
+      await Promise.allSettled(triggers);
+    }
 
     return new Response(
       JSON.stringify({
@@ -275,6 +286,16 @@ serve(async (req) => {
     });
   }
 
+  // Lápide ANTES de processar: worker morto pelo teto de tempo deixava zero
+  // rastro (o log só era gravado no fim). Linha presa em "em_andamento" agora
+  // significa exatamente "morri no meio" — falha silenciosa vira visível.
+  const { data: lapide } = await supabase.from("pncp_sync_log").insert({
+    modo: `worker_chunk_${chunkIdx}`,
+    status: "em_andamento",
+    data_referencia: datasStr[datasStr.length - 1],
+    detalhes: { ufs, chunk_idx: chunkIdx, parent_log_id: parentLogId },
+  }).select("id").single();
+
   let novos = 0, paginas = 0, total = 0, ufsOk = 0;
   const erros: string[] = [];
 
@@ -290,11 +311,9 @@ serve(async (req) => {
 
   const duracao = Date.now() - t0;
 
-  // Log do worker
-  await supabase.from("pncp_sync_log").insert({
-    modo: `worker_chunk_${chunkIdx}`,
+  // Atualiza a lápide com o desfecho real
+  const desfecho = {
     status: erros.length ? "parcial" : "sucesso",
-    data_referencia: datasStr[datasStr.length - 1],
     novos, total_registros: total,
     ufs_processadas_count: ufsOk,
     modalidades_processadas: MODALIDADES.length,
@@ -302,7 +321,16 @@ serve(async (req) => {
     duracao_ms: duracao,
     concluido_em: new Date().toISOString(),
     detalhes: { ufs, chunk_idx: chunkIdx, parent_log_id: parentLogId, erros: erros.slice(0, 30) },
-  });
+  };
+  if (lapide?.id) {
+    await supabase.from("pncp_sync_log").update(desfecho).eq("id", lapide.id);
+  } else {
+    await supabase.from("pncp_sync_log").insert({
+      modo: `worker_chunk_${chunkIdx}`,
+      data_referencia: datasStr[datasStr.length - 1],
+      ...desfecho,
+    });
+  }
 
   return new Response(
     JSON.stringify({
