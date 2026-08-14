@@ -132,16 +132,37 @@ serve(async (req) => {
     const lista = exigidos.documentos_exigidos || [];
     if (!lista.length) return json({ error: "A IA não identificou exigências no texto enviado." }, 422);
 
-    // ── 2/3. Classificação por tipo + casamento com o cofre da empresa ──────
-    const { data: cofre } = await admin
-      .from("agent_documentos")
-      .select("id, tipo, status, validade, arquivo_url")
-      .eq("empresa_id", lic.empresa_id);
+    // ── 2/3. Classificação por tipo + casamento com os DOIS cofres ──────────
+    // agent_documentos: cofre automatizado da empresa (certidões coletadas).
+    // documentos: o módulo Jurídico → Documentos, onde o usuário anexa manualmente
+    // (hoje por user_id — RLS do requisitante decide; migração p/ empresa é F3.1).
+    const [{ data: cofreAgent }, { data: cofreJuridico }] = await Promise.all([
+      admin
+        .from("agent_documentos")
+        .select("id, tipo, validade")
+        .eq("empresa_id", lic.empresa_id),
+      userClient
+        .from("documentos")
+        .select("id, nome, tipo, validade, arquivo_path")
+        .not("arquivo_path", "is", null),
+    ]);
 
-    const cofreClassificado = (cofre || []).map((d) => ({
-      ...d,
-      taxo: classificarTipo(d.tipo),
-    }));
+    const cofreClassificado = [
+      ...(cofreAgent || []).map((d) => ({
+        id: d.id,
+        nome: d.tipo,
+        validade: d.validade,
+        origem: "agent_documentos",
+        taxo: classificarTipo(d.tipo),
+      })),
+      ...(cofreJuridico || []).map((d) => ({
+        id: d.id,
+        nome: d.nome,
+        validade: d.validade,
+        origem: "documentos",
+        taxo: classificarTipo(`${d.nome} ${d.tipo || ""}`),
+      })),
+    ];
 
     const dataSessao = lic.data_encerramento ? String(lic.data_encerramento).slice(0, 10) : null;
 
@@ -155,10 +176,18 @@ serve(async (req) => {
 
     const rows = lista.map((ex) => {
       const taxo = classificarTipo(String(ex.nome || "") + " " + String(ex.observacao || ""));
-      // Casamento POR TIPO; sem tipo, tenta o classificador sobre o nome do cofre
-      const match = taxo
-        ? cofreClassificado.find((d) => d.taxo?.id === taxo.id)
-        : null;
+      // Casamento POR TIPO. Havendo mais de um candidato, prefere o que segue
+      // válido na data da sessão; empate resolve pela validade mais distante.
+      const candidatos = taxo
+        ? cofreClassificado
+            .filter((d) => d.taxo?.id === taxo.id)
+            .sort((a, b) => String(b.validade || "").localeCompare(String(a.validade || "")))
+        : [];
+      const validoNaSessao = (d: { validade: string | null }) => {
+        const v = d.validade ? String(d.validade).slice(0, 10) : null;
+        return !v || !dataSessao || v >= dataSessao;
+      };
+      const match = candidatos.find(validoNaSessao) ?? candidatos[0] ?? null;
 
       let status = "faltante";
       let documento_validade: string | null = null;
@@ -178,9 +207,9 @@ serve(async (req) => {
         obrigatorio: ex.obrigatorio !== false,
         observacao: ex.observacao ? String(ex.observacao).slice(0, 500) : null,
         status,
-        documento_origem: match ? "agent_documentos" : null,
+        documento_origem: match?.origem ?? null,
         documento_id: match?.id ?? null,
-        documento_nome: match?.tipo ?? null,
+        documento_nome: match?.nome ?? null,
         documento_validade,
       };
     });
