@@ -1,0 +1,201 @@
+// @ts-nocheck
+// Edge Function: habilitacao-checklist — Fase 3 do prontuário integrado.
+//
+// POST { licitacao_id, edital_texto } →
+//   1. IA extrai as exigências de habilitação do edital (mesmo prompt provado
+//      do verificar-documentos-edital);
+//   2. cada exigência é classificada na taxonomia compartilhada;
+//   3. casamento com o cofre da EMPRESA (agent_documentos) por TIPO — nunca
+//      por nome de arquivo — com validade comparada à DATA DA SESSÃO
+//      (documento presente-porém-vencido = faltante na prática);
+//   4. o checklist é PERSISTIDO em processo_habilitacao_checklist (recriado a
+//      cada geração; o aceite humano acontece na UI e vai para a trilha).
+//
+// Acesso: JWT do usuário; a licitação é lida com o client do usuário — o RLS
+// por empresa decide (princípio nº 2 do CLAUDE.md).
+
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { classificarTipo } from "../_shared/habilitacao-tipos.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_KEY) return json({ error: "OPENAI_API_KEY não configurada" }, 500);
+
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData } = await userClient.auth.getUser(token);
+    const userId = userData?.user?.id;
+    if (!userId) return json({ error: "Unauthorized" }, 401);
+
+    const { licitacao_id, edital_texto } = await req.json();
+    if (!licitacao_id) return json({ error: "licitacao_id required" }, 400);
+    if (!edital_texto || String(edital_texto).trim().length < 200) {
+      return json({ error: "edital_texto insuficiente para análise (mínimo ~200 caracteres)" }, 400);
+    }
+
+    // Licitação via RLS do usuário: empresa e data da sessão
+    const { data: lic } = await userClient
+      .from("licitacoes")
+      .select("id, empresa_id, numero, orgao, data_encerramento")
+      .eq("id", licitacao_id)
+      .maybeSingle();
+    if (!lic) return json({ error: "Licitação não encontrada" }, 404);
+    if (!lic.empresa_id) return json({ error: "Processo sem empresa vinculada" }, 400);
+
+    // ── 1. Extração via IA (prompt provado do verificar-documentos-edital) ──
+    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). Analise o texto do edital e extraia TODOS os documentos exigidos para habilitação e participação. Classifique cada um.",
+          },
+          {
+            role: "user",
+            content: `Analise o edital abaixo e extraia todos os documentos exigidos para habilitação.\n\nEDITAL:\n${String(edital_texto).slice(0, 30000)}`,
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extrair_documentos_edital",
+              description: "Retorna lista de documentos exigidos pelo edital",
+              parameters: {
+                type: "object",
+                properties: {
+                  documentos_exigidos: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        nome: { type: "string" },
+                        categoria: {
+                          type: "string",
+                          enum: ["Habilitação Jurídica", "Regularidade Fiscal", "Qualificação Técnica", "Qualif. Econômico-Financeira", "Declarações", "Proposta", "Outros"],
+                        },
+                        artigo_referencia: { type: "string" },
+                        obrigatorio: { type: "boolean" },
+                        observacao: { type: "string" },
+                      },
+                      required: ["nome", "categoria", "obrigatorio"],
+                    },
+                  },
+                },
+                required: ["documentos_exigidos"],
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "extrair_documentos_edital" } },
+      }),
+    });
+
+    if (!aiResp.ok) {
+      const body = await aiResp.text();
+      return json({ error: `IA indisponível (${aiResp.status}): ${body.slice(0, 200)}` }, 502);
+    }
+    const aiJson = await aiResp.json();
+    const call = aiJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    let exigidos: { documentos_exigidos: Array<Record<string, unknown>> } = { documentos_exigidos: [] };
+    try { exigidos = JSON.parse(call || "{}"); } catch { /* segue vazio */ }
+    const lista = exigidos.documentos_exigidos || [];
+    if (!lista.length) return json({ error: "A IA não identificou exigências no texto enviado." }, 422);
+
+    // ── 2/3. Classificação por tipo + casamento com o cofre da empresa ──────
+    const { data: cofre } = await admin
+      .from("agent_documentos")
+      .select("id, tipo, status, validade, arquivo_url")
+      .eq("empresa_id", lic.empresa_id);
+
+    const cofreClassificado = (cofre || []).map((d) => ({
+      ...d,
+      taxo: classificarTipo(d.tipo),
+    }));
+
+    const dataSessao = lic.data_encerramento ? String(lic.data_encerramento).slice(0, 10) : null;
+
+    const GRUPO_POR_CATEGORIA: Record<string, string> = {
+      "Habilitação Jurídica": "juridica",
+      "Regularidade Fiscal": "fiscal",
+      "Qualificação Técnica": "tecnica",
+      "Qualif. Econômico-Financeira": "economica",
+      "Declarações": "declaracoes",
+    };
+
+    const rows = lista.map((ex) => {
+      const taxo = classificarTipo(String(ex.nome || "") + " " + String(ex.observacao || ""));
+      // Casamento POR TIPO; sem tipo, tenta o classificador sobre o nome do cofre
+      const match = taxo
+        ? cofreClassificado.find((d) => d.taxo?.id === taxo.id)
+        : null;
+
+      let status = "faltante";
+      let documento_validade: string | null = null;
+      if (match) {
+        documento_validade = match.validade ? String(match.validade).slice(0, 10) : null;
+        const vencido = documento_validade && dataSessao && documento_validade < dataSessao;
+        status = vencido ? "vence_antes_sessao" : "ok";
+      }
+
+      return {
+        empresa_id: lic.empresa_id,
+        licitacao_id,
+        tipo: taxo?.id ?? null,
+        grupo: taxo?.grupo ?? GRUPO_POR_CATEGORIA[String(ex.categoria)] ?? "outro",
+        exigencia: String(ex.nome || "").slice(0, 500),
+        referencia: ex.artigo_referencia ? String(ex.artigo_referencia).slice(0, 120) : null,
+        obrigatorio: ex.obrigatorio !== false,
+        observacao: ex.observacao ? String(ex.observacao).slice(0, 500) : null,
+        status,
+        documento_origem: match ? "agent_documentos" : null,
+        documento_id: match?.id ?? null,
+        documento_nome: match?.tipo ?? null,
+        documento_validade,
+      };
+    });
+
+    // ── 4. Persistência: recria o checklist do processo ─────────────────────
+    await admin.from("processo_habilitacao_checklist").delete().eq("licitacao_id", licitacao_id);
+    const { error: insErr } = await admin.from("processo_habilitacao_checklist").insert(rows);
+    if (insErr) return json({ error: `Falha ao gravar checklist: ${insErr.message}` }, 500);
+
+    const resumo = {
+      total: rows.length,
+      ok: rows.filter((r) => r.status === "ok").length,
+      vence_antes_sessao: rows.filter((r) => r.status === "vence_antes_sessao").length,
+      faltante: rows.filter((r) => r.status === "faltante").length,
+    };
+    return json({ success: true, licitacao_id, data_sessao: dataSessao, resumo });
+  } catch (e) {
+    console.error("[habilitacao-checklist]", e);
+    return json({ error: e instanceof Error ? e.message : "Erro interno" }, 500);
+  }
+});

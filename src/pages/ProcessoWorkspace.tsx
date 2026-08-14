@@ -14,6 +14,7 @@ import {
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
 import PropostaTab from '@/components/workspace/PropostaTab';
+import HabilitacaoChecklist from '@/components/workspace/HabilitacaoChecklist';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
 import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
@@ -528,7 +529,10 @@ export default function ProcessoWorkspace() {
           </TabsContent>
 
           {/* Documentos editáveis */}
-          <TabsContent value="documentos">
+          <TabsContent value="documentos" className="space-y-4">
+            {/* Fase 3: o checklist de habilitação abre a aba — exigências do
+                edital casadas com o cofre da empresa, com validade e aceite. */}
+            <HabilitacaoChecklist licitacaoId={lic.id} />
             <DocumentosManager
               licitacaoId={lic.id}
               numeroProcesso={lic.numero}

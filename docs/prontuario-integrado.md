@@ -40,7 +40,20 @@ EDITAL (PNCP/portal)
   "Importar itens do edital" (licitacao_itens) e Importar do Catálogo. O PDF
   final continua no wizard completo (link no cabeçalho da aba).
 
-### Fase 3 — Habilitação inteligente (o projeto grande)
+### Fase 3 — Habilitação inteligente (NÚCLEO FEITO em 2026-08-14)
+
+Entregue: taxonomia (`src/lib/habilitacao/tipos.ts` + espelho Deno, com teste
+de espelho), tabela `processo_habilitacao_checklist` (RLS por empresa),
+edge function `habilitacao-checklist` (extração IA → classificação por tipo →
+casamento com `agent_documentos` → validade × data da sessão → persistência) e
+`HabilitacaoChecklist` na aba Documentos (4 estados, aceite → trilha,
+"Gerar com a Aurélia" lendo o edital materializado do PNCP).
+
+Restante da fase (3.1): alertas multicanal de habilitação incompleta na
+máquina dos Compromissos; Exportar ZIP na ordem/numeração do edital; migrar
+`documentos`/`processo_anexos`/`licitacao_itens` para escopo de empresa.
+
+#### Desenho original:
 Pré-requisito: migrar as tabelas-satélite (`processo_anexos`,
 `processo_documentos`, `rascunhos`, `licitacao_itens`…) para escopo de
 EMPRESA, com auditoria de RLS — o cofre de habilitação é patrimônio da
