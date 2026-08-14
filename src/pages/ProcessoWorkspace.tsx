@@ -106,14 +106,27 @@ export default function ProcessoWorkspace() {
   }, [id, user]);
 
   useEffect(() => {
-    if (!lic?.numero_controle_pncp) return;
-    supabase
-      .from('pncp_editais_cache')
-      .select('situacao, tipo_instrumento, srp, lei_base, unidade_orgao, codigo_unidade, data_publicacao_pncp, data_abertura_proposta, data_encerramento_proposta, link_sistema_origem')
-      .eq('numero_controle_pncp', lic.numero_controle_pncp)
-      .maybeSingle()
-      .then(({ data }) => setPncpCache(data as Record<string, unknown> | null));
-  }, [lic?.numero_controle_pncp]);
+    if (!lic) return;
+    const COLS = 'situacao, tipo_instrumento, srp, lei_base, unidade_orgao, codigo_unidade, data_publicacao_pncp, data_abertura_proposta, data_encerramento_proposta, link_sistema_origem, numero_controle_pncp';
+    let q = null;
+    if (lic.numero_controle_pncp) {
+      q = supabase.from('pncp_editais_cache').select(COLS).eq('numero_controle_pncp', lic.numero_controle_pncp);
+    } else {
+      // Fallback por coordenadas: processos antigos (ou de portais parceiros)
+      // podem não ter o número de controle gravado — sem isto, o cache existia
+      // e a Visão Geral ficava vazia mesmo assim (caso Rondon do Pará).
+      const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+      const cnpj = m?.[1] || lic.cnpj_orgao;
+      const ano = m?.[2] || lic.ano_compra;
+      const seq = m?.[3] || lic.sequencial_compra;
+      if (cnpj && ano && seq) {
+        q = supabase.from('pncp_editais_cache').select(COLS)
+          .eq('cnpj_orgao', cnpj).eq('ano_compra', String(ano)).eq('sequencial_compra', String(Number(seq)));
+      }
+    }
+    if (!q) return;
+    q.limit(1).maybeSingle().then(({ data }) => setPncpCache(data as Record<string, unknown> | null));
+  }, [lic]);
 
   // Carrega detalhes completos do PNCP quando o processo tem url_edital do portal
   useEffect(() => {
@@ -198,7 +211,7 @@ export default function ProcessoWorkspace() {
     situacao: det?.situacaoCompraNome || (cc?.situacao as string | null),
     inicioPropostas: det?.dataAberturaProposta || (cc?.data_abertura_proposta as string | null),
     fimPropostas: det?.dataEncerramentoProposta || (cc?.data_encerramento_proposta as string | null),
-    idPncp: det?.numeroControlePNCP || lic?.numero_controle_pncp || null,
+    idPncp: det?.numeroControlePNCP || lic?.numero_controle_pncp || (cc?.numero_controle_pncp as string | null) || null,
     fonte: det?.usuarioNome || null,
   };
   const temEspelho = Object.values(espelho).some((v) => v !== null && v !== undefined && v !== '');
