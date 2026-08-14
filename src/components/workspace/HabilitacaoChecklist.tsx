@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { extractTextFromBlob } from '@/lib/pdf-text-extractor';
 import { TIPOS_HABILITACAO } from '@/lib/habilitacao/tipos';
+import { gerarChecklist, getEstadoGeracao, subscribeGeracao } from '@/lib/habilitacao/gerarChecklist';
 
 /**
  * Fase 3 do prontuário integrado — checklist de habilitação.
@@ -61,9 +61,15 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
   const { registrar } = useActivityLog();
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gerando, setGerando] = useState(false);
-  const [progresso, setProgresso] = useState('');
   const [aceitando, setAceitando] = useState(false);
+  // A geração roda FORA do React (lib/habilitacao/gerarChecklist): trocar de
+  // aba não a mata. Aqui só observamos o estado e recarregamos ao concluir.
+  const geracao = useSyncExternalStore(
+    useCallback((cb) => subscribeGeracao(licitacaoId, cb), [licitacaoId]),
+    useCallback(() => getEstadoGeracao(licitacaoId), [licitacaoId]),
+  );
+  const gerando = geracao.rodando;
+  const progresso = geracao.fase;
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -79,64 +85,14 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  /** Busca o texto do edital: PDF materializado do PNCP → extração no cliente (padrão da casa). */
-  const obterTextoDoEdital = async (): Promise<string | null> => {
-    setProgresso('Localizando o edital no PNCP…');
-    const { data: listaResp, error: listaErr } = await supabase.functions.invoke('pncp-arquivos-edital', {
-      body: { licitacao_id: licitacaoId, action: 'listar' },
-    });
-    if (listaErr || !listaResp?.success || !listaResp?.arquivos?.length) return null;
-    const edital = listaResp.arquivos.find((a: { tipo?: string }) => /edital/i.test(a.tipo || '')) || listaResp.arquivos[0];
+  // Recarrega o checklist sempre que uma geração (externa) conclui — mesmo
+  // que ela tenha rodado enquanto o usuário estava em outra aba.
+  useEffect(() => {
+    if (!geracao.rodando && geracao.concluidas > 0) carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geracao.rodando, geracao.concluidas]);
 
-    setProgresso('Baixando o edital…');
-    const { data: abrirResp } = await supabase.functions.invoke('pncp-arquivos-edital', {
-      body: { licitacao_id: licitacaoId, action: 'abrir', sequencial: edital.sequencial },
-    });
-    if (!abrirResp?.success || !abrirResp?.path) return null;
-
-    const { data: signed } = await supabase.storage
-      .from('processo-arquivos')
-      .createSignedUrl(abrirResp.path, 600);
-    if (!signed?.signedUrl) return null;
-
-    setProgresso('Lendo o edital (extração de texto)…');
-    const blob = await fetch(signed.signedUrl).then((r) => r.blob());
-    const texto = await extractTextFromBlob(blob, abrirResp.nome || 'edital.pdf', 80, true);
-    return texto && texto.trim().length >= 200 ? texto : null;
-  };
-
-  const gerar = async () => {
-    setGerando(true);
-    setProgresso('');
-    try {
-      const texto = await obterTextoDoEdital();
-      if (!texto) {
-        toast.error('Não foi possível ler o edital deste processo — confira o "Edital em tela" na aba Anexos.');
-        return;
-      }
-      setProgresso('Aurélia analisando as exigências…');
-      const { data, error } = await supabase.functions.invoke('habilitacao-checklist', {
-        body: { licitacao_id: licitacaoId, edital_texto: texto },
-      });
-      if (error || !data?.success) {
-        toast.error((data as { error?: string })?.error || 'Não foi possível gerar o checklist.');
-        return;
-      }
-      const r = data.resumo;
-      toast.success(`Checklist gerado: ${r.ok} ok · ${r.vence_antes_sessao} vencendo · ${r.faltante} faltante(s).`);
-      await registrar({
-        acao: 'habilitacao_checklist_gerado',
-        modulo: 'licitacoes',
-        descricao: `Checklist de habilitação gerado pela Aurélia: ${r.total} exigências (${r.faltante} faltantes).`,
-        licitacaoId,
-        metadata: r,
-      });
-      await carregar();
-    } finally {
-      setGerando(false);
-      setProgresso('');
-    }
-  };
+  const gerar = () => { void gerarChecklist(licitacaoId); };
 
   const aceitar = async () => {
     if (!user) return;
