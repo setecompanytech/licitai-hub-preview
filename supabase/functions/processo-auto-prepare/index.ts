@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { resolverCoordsPncp } from "../_shared/pncp-coords.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +61,7 @@ serve(async (req) => {
     // preparar a pasta do processo — a checagem por user_id devolvia 404.
     const { data: lic } = await userClient
       .from("licitacoes")
-      .select("id, user_id, numero, orgao, url_edital")
+      .select("id, user_id, numero, orgao, url_edital, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra")
       .eq("id", licitacaoId)
       .maybeSingle();
     if (!lic) {
@@ -145,15 +146,17 @@ serve(async (req) => {
           .then(async (r) => ({ kind: "pdf", ok: r.ok, data: await r.json() }))
           .catch((e) => ({ kind: "pdf", ok: false, error: String(e) })),
       );
-    } else if (lic.url_edital) {
+    } else if (resolverCoordsPncp(lic)) {
       // Caminho PNCP: busca arquivos direto na API pública e faz upload para processo-arquivos
       tasks.push(
         (async () => {
           try {
-            // Tenta extrair CNPJ/ano/seq da URL do PNCP
-            const m = lic.url_edital!.match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
-            if (!m) return { kind: "pdf", ok: false, error: "URL PNCP não reconhecida" };
-            const [, cnpj, ano, seq] = m;
+            // Coordenadas via helper compartilhado: URL, colunas do processo
+            // ou número de controle — url-only deixava portais parceiros sem
+            // extração de itens ("Itens não extraídos" eterno).
+            const coords = resolverCoordsPncp(lic);
+            if (!coords) return { kind: "pdf", ok: false, error: "Contratação sem coordenadas PNCP" };
+            const { cnpj, ano, seq } = coords;
 
             const rArqs = await fetch(
               `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=100`,

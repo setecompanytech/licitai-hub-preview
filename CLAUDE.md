@@ -74,6 +74,34 @@ Não escrever na tabela `precificacao` (singular) — é legado morto, apesar de
 **Segredos** — `.env` é versionado neste repo, então só pode conter chaves `anon`/`publishable`.
 Chave `service_role`, senha ou token de API paga nunca entram em commit.
 
+## Princípios de arquitetura
+
+Padrões firmados em 2026-08 (auditoria do painel → automação → prontuário). Toda mudança
+nova — inclusive as commitadas pelo Lovable — deve nascer alinhada a eles:
+
+1. **Vocabulário único de status** — `src/lib/licitacao/status.ts` é a autoridade (espelho
+   Deno em `functions/_shared/licitacao-status.ts`). Nunca redeclarar listas de status em
+   tela ou função: três cópias divergentes mantiveram o arquivamento automático quebrado
+   por meses (`Homologada` × `Homologado`).
+2. **Processo é da empresa** — consultas a `licitacoes` filtram por `empresa_id` (ou por
+   `id`, deixando o RLS decidir). Nunca `eq('user_id')` em licitações — nem no front, nem
+   em edge function (o `user_id !== userId → 404` barrava colegas). Pessoais de verdade:
+   `processos_interesse`, `monitoramento_editais`, `editais_favoritos`, `rascunhos`.
+3. **Falha silenciosa é proibida** — toda operação que pode falhar deixa rastro e oferece
+   retry: lápide `em_andamento` gravada ANTES de processar (workers do sync), card de erro
+   com "Tentar novamente" (espelho PNCP, viewer), mensagem real do banco no toast. Job de
+   cron "succeeded" não prova entrega: `net.http_post` é assíncrono.
+4. **Coordenadas PNCP via helper** — `functions/_shared/pncp-coords.ts` (URL → colunas do
+   processo → número de controle). Resolver só pela URL causou o mesmo defeito três vezes.
+   No front, o mesmo padrão em `ProcessoWorkspace`. Dados do espelho: cache
+   (`pncp_editais_cache`) primeiro, consulta ao vivo como complemento.
+5. **Rotina temporária nasce com condição de parada** — jobs de tarefa pontual são
+   desligados ao concluir (a restauração do financeiro rodou 3 meses à toa; o cleanup nunca
+   rodou). Cron novo usa `public.supabase_project_url()` e `public.cron_auth_header()`.
+6. **Publicação é pelo Lovable** — o domínio é servido por ele; FTP/Hostgator foi
+   aposentado. Edge functions: `npx supabase functions deploy <fn> --project-ref
+   uwtyuwktxalnpgrcbbgk` (o CLI leva o `_shared/` junto; o dashboard não).
+
 ## Estrutura
 
 ```

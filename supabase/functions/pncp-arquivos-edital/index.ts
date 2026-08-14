@@ -13,6 +13,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { resolverCoordsPncp } from "../_shared/pncp-coords.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -323,7 +324,7 @@ serve(async (req) => {
     // qualquer colega abrindo processo da empresa.
     const { data: lic } = await userClient
       .from("licitacoes")
-      .select("id, user_id, url_edital, numero, orgao")
+      .select("id, user_id, url_edital, numero, orgao, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra")
       .eq("id", licitacaoId)
       .maybeSingle();
 
@@ -334,7 +335,7 @@ serve(async (req) => {
     // A URL salva no processo costuma ser do portal de origem (ComprasNet, etc.),
     // e não do PNCP. Quando não dá para extrair cnpj/ano/sequencial dela,
     // procuramos a mesma contratação no cache do PNCP.
-    const pncp = parsePncpUrl(lic.url_edital) ??
+    const pncp = resolverCoordsPncp(lic) ??
       await resolvePeloCache(admin, lic.url_edital, lic.numero, lic.orgao);
 
     if (!pncp) {
