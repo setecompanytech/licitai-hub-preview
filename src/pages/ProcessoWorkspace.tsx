@@ -26,6 +26,8 @@ interface Licitacao {
   data_abertura: string | null; portal: string | null; url_edital: string | null;
   observacoes: string | null; resultado: string | null; valor_adjudicado: number | null;
   data_homologacao: string | null; vencedor: boolean | null;
+  numero_controle_pncp: string | null; cnpj_orgao: string | null;
+  ano_compra: string | null; sequencial_compra: string | null;
 }
 
 const ATALHOS = [
@@ -90,18 +92,28 @@ export default function ProcessoWorkspace() {
   useEffect(() => {
     if (!id || !user) return;
     supabase.from('licitacoes')
-      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor')
+      .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra')
       .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
 
   // Carrega detalhes completos do PNCP quando o processo tem url_edital do portal
   useEffect(() => {
-    if (pncpFetchedRef.current || !lic?.url_edital) return;
-    const m = lic.url_edital.match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
-    if (!m) return;
+    if (pncpFetchedRef.current || !lic) return;
+    // Coordenadas da contratação: URL do PNCP, colunas gravadas no processo,
+    // ou o número de controle — sem isso o espelho PNCP não tinha como abrir
+    // para editais vindos de portais parceiros (url_edital fora do padrão).
+    let cnpj: string | undefined, ano: string | undefined, seq: string | undefined;
+    const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+    if (m) { cnpj = m[1]; ano = m[2]; seq = m[3]; }
+    else if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra) {
+      cnpj = lic.cnpj_orgao; ano = lic.ano_compra; seq = lic.sequencial_compra;
+    } else {
+      const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+      if (n) { cnpj = n[1]; seq = String(Number(n[2])); ano = n[3]; }
+    }
+    if (!cnpj || !ano || !seq) return;
     pncpFetchedRef.current = true;
-    const [, cnpj, ano, seq] = m;
     const base = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}`;
     const hdrs = { Accept: 'application/json' };
     setPncpCarregando(true);
@@ -120,7 +132,7 @@ export default function ProcessoWorkspace() {
         setPncpArquivos(Array.isArray(j) ? j : (j?.data ?? []));
       }
     }).finally(() => setPncpCarregando(false));
-  }, [lic?.url_edital]);
+  }, [lic]);
 
   const loadPrecificacao = async () => {
     if (!id || !user) return;
@@ -282,60 +294,69 @@ export default function ProcessoWorkspace() {
                       Informações detalhadas — PNCP
                     </p>
 
-                    {/* Grade de campos */}
+                    {/* Grade de campos — espelho fiel do painel do PNCP.
+                        A versão anterior lia nomes achatados (cnpjOrgao,
+                        esferaNome, sistemaOrigem…) que a API de consulta não
+                        devolve — os dados chegavam e o card renderizava vazio.
+                        O schema real é aninhado: orgaoEntidade.*, unidadeOrgao.*,
+                        amparoLegal.* (o mesmo que o pncp-sync-diario mapeia). */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
-                      {pncpDetalhe.numeroControlePncp && (
-                        <div><p className="text-xs text-muted-foreground">ID PNCP</p>
-                          <p className="font-medium tabular-nums text-xs break-all">{pncpDetalhe.numeroControlePncp}</p></div>
+                      {(pncpDetalhe.numeroControlePNCP || pncpDetalhe.numeroControlePncp) && (
+                        <div><p className="text-xs text-muted-foreground">Id contratação PNCP</p>
+                          <p className="font-medium tabular-nums text-xs break-all">{pncpDetalhe.numeroControlePNCP || pncpDetalhe.numeroControlePncp}</p></div>
                       )}
                       {pncpDetalhe.situacaoCompraNome && (
-                        <div><p className="text-xs text-muted-foreground">Situação PNCP</p>
+                        <div><p className="text-xs text-muted-foreground">Situação</p>
                           <p className="font-medium">{pncpDetalhe.situacaoCompraNome}</p></div>
                       )}
-                      {pncpDetalhe.cnpjOrgao && (
-                        <div><p className="text-xs text-muted-foreground">CNPJ do órgão</p>
-                          <p className="font-medium tabular-nums text-xs">{pncpDetalhe.cnpjOrgao}</p></div>
-                      )}
-                      {(pncpDetalhe.codigoUnidadeOrgao || pncpDetalhe.nomeUnidadeOrgao) && (
+                      {(pncpDetalhe.unidadeOrgao?.codigoUnidade || pncpDetalhe.unidadeOrgao?.nomeUnidade) && (
                         <div><p className="text-xs text-muted-foreground">Unidade compradora</p>
                           <p className="font-medium text-xs leading-snug">
-                            {pncpDetalhe.codigoUnidadeOrgao && `${pncpDetalhe.codigoUnidadeOrgao} — `}
-                            {pncpDetalhe.nomeUnidadeOrgao}
+                            {pncpDetalhe.unidadeOrgao?.codigoUnidade && `${pncpDetalhe.unidadeOrgao.codigoUnidade} — `}
+                            {pncpDetalhe.unidadeOrgao?.nomeUnidade}
                           </p></div>
                       )}
-                      {pncpDetalhe.esferaNome && (
-                        <div><p className="text-xs text-muted-foreground">Esfera</p>
-                          <p className="font-medium">{pncpDetalhe.esferaNome}</p></div>
+                      {pncpDetalhe.orgaoEntidade?.cnpj && (
+                        <div><p className="text-xs text-muted-foreground">CNPJ do órgão</p>
+                          <p className="font-medium tabular-nums text-xs">{pncpDetalhe.orgaoEntidade.cnpj}</p></div>
                       )}
-                      {pncpDetalhe.poderNome && (
-                        <div><p className="text-xs text-muted-foreground">Poder</p>
-                          <p className="font-medium">{pncpDetalhe.poderNome}</p></div>
+                      {(pncpDetalhe.amparoLegal?.nome || pncpDetalhe.amparoLegal?.descricao) && (
+                        <div><p className="text-xs text-muted-foreground">Amparo legal</p>
+                          <p className="font-medium text-xs" title={pncpDetalhe.amparoLegal?.descricao || ''}>
+                            {pncpDetalhe.amparoLegal?.nome || pncpDetalhe.amparoLegal?.descricao}
+                          </p></div>
                       )}
                       {pncpDetalhe.tipoInstrumentoConvocatorioNome && (
-                        <div><p className="text-xs text-muted-foreground">Tipo de instrumento</p>
+                        <div><p className="text-xs text-muted-foreground">Tipo</p>
                           <p className="font-medium">{pncpDetalhe.tipoInstrumentoConvocatorioNome}</p></div>
                       )}
                       {pncpDetalhe.modoDisputaNome && (
                         <div><p className="text-xs text-muted-foreground">Modo de disputa</p>
                           <p className="font-medium">{pncpDetalhe.modoDisputaNome}</p></div>
                       )}
-                      <div><p className="text-xs text-muted-foreground">Registro de preços</p>
+                      <div><p className="text-xs text-muted-foreground">Registro de preço</p>
                         <p className="font-medium">{pncpDetalhe.srp ? 'Sim' : 'Não'}</p></div>
-                      {(pncpDetalhe.amparoLegal?.descricao || pncpDetalhe.amparoLegalDescricao) && (
-                        <div><p className="text-xs text-muted-foreground">Amparo legal</p>
-                          <p className="font-medium text-xs">{pncpDetalhe.amparoLegal?.descricao || pncpDetalhe.amparoLegalDescricao}</p></div>
-                      )}
-                      {(pncpDetalhe.fonteOrcamentaria || pncpDetalhe.fonteOrcamentariaNome) && (
-                        <div><p className="text-xs text-muted-foreground">Fonte orçamentária</p>
-                          <p className="font-medium">{pncpDetalhe.fonteOrcamentaria || pncpDetalhe.fonteOrcamentariaNome}</p></div>
-                      )}
-                      {pncpDetalhe.sistemaOrigem && (
-                        <div><p className="text-xs text-muted-foreground">Sistema de origem</p>
-                          <p className="font-medium">{pncpDetalhe.sistemaOrigem}</p></div>
-                      )}
+                      <div><p className="text-xs text-muted-foreground">Fonte orçamentária</p>
+                        <p className="font-medium text-xs">
+                          {(Array.isArray(pncpDetalhe.fontesOrcamentarias) && pncpDetalhe.fontesOrcamentarias.length > 0)
+                            ? pncpDetalhe.fontesOrcamentarias.map((f: { descricao?: string; nome?: string }) => f?.descricao || f?.nome).filter(Boolean).join('; ')
+                            : 'Não informada'}
+                        </p></div>
                       {pncpDetalhe.dataPublicacaoPncp && (
-                        <div><p className="text-xs text-muted-foreground">Publicação PNCP</p>
-                          <p className="font-medium">{new Date(pncpDetalhe.dataPublicacaoPncp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Divulgação no PNCP</p>
+                          <p className="font-medium">{new Date(pncpDetalhe.dataPublicacaoPncp).toLocaleDateString('pt-BR')}</p></div>
+                      )}
+                      {pncpDetalhe.dataAberturaProposta && (
+                        <div><p className="text-xs text-muted-foreground">Início das propostas</p>
+                          <p className="font-medium">{new Date(pncpDetalhe.dataAberturaProposta).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                      )}
+                      {pncpDetalhe.dataEncerramentoProposta && (
+                        <div><p className="text-xs text-muted-foreground">Fim das propostas</p>
+                          <p className="font-medium">{new Date(pncpDetalhe.dataEncerramentoProposta).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                      )}
+                      {pncpDetalhe.usuarioNome && (
+                        <div><p className="text-xs text-muted-foreground">Fonte</p>
+                          <p className="font-medium text-xs">{pncpDetalhe.usuarioNome}</p></div>
                       )}
                       {pncpDetalhe.dataAtualizacao && (
                         <div><p className="text-xs text-muted-foreground">Última atualização</p>
@@ -344,6 +365,13 @@ export default function ProcessoWorkspace() {
                       {pncpDetalhe.valorTotalHomologado != null && (
                         <div><p className="text-xs text-muted-foreground">Valor homologado</p>
                           <p className="font-medium text-success">{fmt(pncpDetalhe.valorTotalHomologado)}</p></div>
+                      )}
+                      {pncpDetalhe.linkSistemaOrigem && (
+                        <div><p className="text-xs text-muted-foreground">Sistema de origem</p>
+                          <a href={pncpDetalhe.linkSistemaOrigem} target="_blank" rel="noopener noreferrer"
+                             className="font-medium text-xs text-accent hover:underline break-all">
+                            {pncpDetalhe.linkSistemaOrigem.replace(/^https?:\/\//, '').slice(0, 40)}…
+                          </a></div>
                       )}
                     </div>
 
