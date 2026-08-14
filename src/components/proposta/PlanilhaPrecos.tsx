@@ -3,6 +3,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Download, Upload, Sparkles, Info, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { writeExcelFile, readExcelAsArrays } from '@/lib/excel-utils';
@@ -201,6 +212,34 @@ export default function PlanilhaPrecos({ itens, setItens }: PlanilhaPrecosProps)
           className="hidden"
           onChange={handleUpload}
         />
+        {itens.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive ml-auto">
+                <Trash2 className="w-4 h-4 mr-1" /> Limpar Itens
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Limpar a planilha de preços?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Remove os {itens.length} item(ns) da planilha desta proposta. Os itens do
+                  Catálogo de Precificação não são afetados — dá para importá-los de novo.
+                  Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => { setItens([]); toast.success('Planilha limpa.'); }}
+                >
+                  Limpar tudo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border/50">
