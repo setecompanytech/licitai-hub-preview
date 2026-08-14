@@ -77,6 +77,10 @@ export default function ProcessoWorkspace() {
   const [pncpCarregando, setPncpCarregando] = useState(false);
   // Falha no espelho PNCP era invisível: o card simplesmente não aparecia.
   const [pncpErro, setPncpErro] = useState(false);
+  // Cache local do PNCP (pncp_editais_cache): a fonte OFFLINE dos campos do
+  // espelho. O detalhe ao vivo só complementa/atualiza — com o PNCP fora do
+  // ar, a Visão Geral continua completa a partir do nosso próprio banco.
+  const [pncpCache, setPncpCache] = useState<Record<string, unknown> | null>(null);
   const [pncpNonce, setPncpNonce] = useState(0);
   const pncpFetchedRef = useRef(false);
 
@@ -100,6 +104,16 @@ export default function ProcessoWorkspace() {
       .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
       .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
   }, [id, user]);
+
+  useEffect(() => {
+    if (!lic?.numero_controle_pncp) return;
+    supabase
+      .from('pncp_editais_cache')
+      .select('situacao, tipo_instrumento, srp, lei_base, unidade_orgao, codigo_unidade, data_publicacao_pncp, data_abertura_proposta, data_encerramento_proposta, link_sistema_origem')
+      .eq('numero_controle_pncp', lic.numero_controle_pncp)
+      .maybeSingle()
+      .then(({ data }) => setPncpCache(data as Record<string, unknown> | null));
+  }, [lic?.numero_controle_pncp]);
 
   // Carrega detalhes completos do PNCP quando o processo tem url_edital do portal
   useEffect(() => {
@@ -164,6 +178,30 @@ export default function ProcessoWorkspace() {
     if (abaInicial === 'precificacao' && id && user) loadPrecificacao();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abaInicial, id, user]);
+
+  // Espelho PNCP mesclado — prioridade: consulta ao vivo > cache local > processo.
+  const det = pncpDetalhe as Record<string, any> | null;
+  const cc = pncpCache;
+  const dataHora = (v: unknown) => v ? new Date(String(v)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+  const espelho = {
+    unidadeCompradora: det?.unidadeOrgao
+      ? [det.unidadeOrgao.codigoUnidade, det.unidadeOrgao.nomeUnidade].filter(Boolean).join(' — ')
+      : [cc?.codigo_unidade, cc?.unidade_orgao].filter(Boolean).join(' — ') || null,
+    amparoLegal: det?.amparoLegal?.nome || det?.amparoLegal?.descricao || (cc?.lei_base as string | null),
+    tipo: det?.tipoInstrumentoConvocatorioNome || (cc?.tipo_instrumento as string | null),
+    modoDisputa: det?.modoDisputaNome || null,
+    srp: (det?.srp ?? cc?.srp) as boolean | null | undefined,
+    fonteOrcamentaria: (Array.isArray(det?.fontesOrcamentarias) && det.fontesOrcamentarias.length > 0)
+      ? det.fontesOrcamentarias.map((f: { descricao?: string; nome?: string }) => f?.descricao || f?.nome).filter(Boolean).join('; ')
+      : null,
+    divulgacaoPncp: det?.dataPublicacaoPncp || (cc?.data_publicacao_pncp as string | null),
+    situacao: det?.situacaoCompraNome || (cc?.situacao as string | null),
+    inicioPropostas: det?.dataAberturaProposta || (cc?.data_abertura_proposta as string | null),
+    fimPropostas: det?.dataEncerramentoProposta || (cc?.data_encerramento_proposta as string | null),
+    idPncp: det?.numeroControlePNCP || lic?.numero_controle_pncp || null,
+    fonte: det?.usuarioNome || null,
+  };
+  const temEspelho = Object.values(espelho).some((v) => v !== null && v !== undefined && v !== '');
 
   if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="w-6 h-6 animate-spin" /></div>;
   if (!lic) return (
@@ -278,6 +316,48 @@ export default function ProcessoWorkspace() {
                   )}
                 </div>
               )}
+              {temEspelho && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                  {espelho.unidadeCompradora && (
+                    <span><span className="text-xs text-muted-foreground">Unidade compradora:</span> <span className="font-semibold">{espelho.unidadeCompradora}</span></span>
+                  )}
+                  {espelho.amparoLegal && (
+                    <span><span className="text-xs text-muted-foreground">Amparo legal:</span> <span className="font-semibold">{espelho.amparoLegal}</span></span>
+                  )}
+                  {espelho.tipo && (
+                    <span><span className="text-xs text-muted-foreground">Tipo:</span> <span className="font-semibold">{espelho.tipo}</span></span>
+                  )}
+                  {espelho.modoDisputa && (
+                    <span><span className="text-xs text-muted-foreground">Modo de disputa:</span> <span className="font-semibold">{espelho.modoDisputa}</span></span>
+                  )}
+                  {espelho.srp != null && (
+                    <span><span className="text-xs text-muted-foreground">Registro de preço:</span> <span className="font-semibold">{espelho.srp ? 'Sim' : 'Não'}</span></span>
+                  )}
+                  <span><span className="text-xs text-muted-foreground">Fonte orçamentária:</span> <span className="font-semibold">{espelho.fonteOrcamentaria || 'Não informada'}</span></span>
+                </div>
+              )}
+              {temEspelho && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
+                  {espelho.divulgacaoPncp && (
+                    <span><span className="text-xs text-muted-foreground">Divulgação no PNCP:</span> <span className="font-semibold">{new Date(espelho.divulgacaoPncp).toLocaleDateString('pt-BR')}</span></span>
+                  )}
+                  {espelho.situacao && (
+                    <span><span className="text-xs text-muted-foreground">Situação:</span> <span className="font-semibold">{espelho.situacao}</span></span>
+                  )}
+                  {espelho.inicioPropostas && (
+                    <span><span className="text-xs text-muted-foreground">Início das propostas:</span> <span className="font-semibold">{dataHora(espelho.inicioPropostas)}</span></span>
+                  )}
+                  {espelho.fimPropostas && (
+                    <span><span className="text-xs text-muted-foreground">Fim das propostas:</span> <span className="font-semibold">{dataHora(espelho.fimPropostas)}</span></span>
+                  )}
+                  {espelho.idPncp && (
+                    <span><span className="text-xs text-muted-foreground">Id contratação PNCP:</span> <span className="font-semibold tabular-nums">{espelho.idPncp}</span></span>
+                  )}
+                  {espelho.fonte && (
+                    <span><span className="text-xs text-muted-foreground">Fonte:</span> <span className="font-semibold">{espelho.fonte}</span></span>
+                  )}
+                </div>
+              )}
               <div>
                 <span className="text-xs text-muted-foreground font-medium">Objeto:</span>
                 <p className="mt-1 leading-relaxed">{lic.objeto || '—'}</p>
@@ -287,7 +367,7 @@ export default function ProcessoWorkspace() {
               )}
             </Card>
             {/* ── Dados completos do PNCP ── */}
-            {pncpErro && !pncpDetalhe && !pncpCarregando && (
+            {pncpErro && !pncpDetalhe && !pncpCarregando && !temEspelho && (
               <Card className="px-4 py-3">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-sm font-semibold">Espelho PNCP</span>
@@ -317,89 +397,8 @@ export default function ProcessoWorkspace() {
                 ) : pncpDetalhe ? (
                   <div className="space-y-4">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Informações detalhadas — PNCP
+                      Complementos do PNCP — itens e arquivos
                     </p>
-
-                    {/* Grade de campos — espelho fiel do painel do PNCP.
-                        A versão anterior lia nomes achatados (cnpjOrgao,
-                        esferaNome, sistemaOrigem…) que a API de consulta não
-                        devolve — os dados chegavam e o card renderizava vazio.
-                        O schema real é aninhado: orgaoEntidade.*, unidadeOrgao.*,
-                        amparoLegal.* (o mesmo que o pncp-sync-diario mapeia). */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
-                      {(pncpDetalhe.numeroControlePNCP || pncpDetalhe.numeroControlePncp) && (
-                        <div><p className="text-xs text-muted-foreground">Id contratação PNCP</p>
-                          <p className="font-medium tabular-nums text-xs break-all">{pncpDetalhe.numeroControlePNCP || pncpDetalhe.numeroControlePncp}</p></div>
-                      )}
-                      {pncpDetalhe.situacaoCompraNome && (
-                        <div><p className="text-xs text-muted-foreground">Situação</p>
-                          <p className="font-medium">{pncpDetalhe.situacaoCompraNome}</p></div>
-                      )}
-                      {(pncpDetalhe.unidadeOrgao?.codigoUnidade || pncpDetalhe.unidadeOrgao?.nomeUnidade) && (
-                        <div><p className="text-xs text-muted-foreground">Unidade compradora</p>
-                          <p className="font-medium text-xs leading-snug">
-                            {pncpDetalhe.unidadeOrgao?.codigoUnidade && `${pncpDetalhe.unidadeOrgao.codigoUnidade} — `}
-                            {pncpDetalhe.unidadeOrgao?.nomeUnidade}
-                          </p></div>
-                      )}
-                      {pncpDetalhe.orgaoEntidade?.cnpj && (
-                        <div><p className="text-xs text-muted-foreground">CNPJ do órgão</p>
-                          <p className="font-medium tabular-nums text-xs">{pncpDetalhe.orgaoEntidade.cnpj}</p></div>
-                      )}
-                      {(pncpDetalhe.amparoLegal?.nome || pncpDetalhe.amparoLegal?.descricao) && (
-                        <div><p className="text-xs text-muted-foreground">Amparo legal</p>
-                          <p className="font-medium text-xs" title={pncpDetalhe.amparoLegal?.descricao || ''}>
-                            {pncpDetalhe.amparoLegal?.nome || pncpDetalhe.amparoLegal?.descricao}
-                          </p></div>
-                      )}
-                      {pncpDetalhe.tipoInstrumentoConvocatorioNome && (
-                        <div><p className="text-xs text-muted-foreground">Tipo</p>
-                          <p className="font-medium">{pncpDetalhe.tipoInstrumentoConvocatorioNome}</p></div>
-                      )}
-                      {pncpDetalhe.modoDisputaNome && (
-                        <div><p className="text-xs text-muted-foreground">Modo de disputa</p>
-                          <p className="font-medium">{pncpDetalhe.modoDisputaNome}</p></div>
-                      )}
-                      <div><p className="text-xs text-muted-foreground">Registro de preço</p>
-                        <p className="font-medium">{pncpDetalhe.srp ? 'Sim' : 'Não'}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Fonte orçamentária</p>
-                        <p className="font-medium text-xs">
-                          {(Array.isArray(pncpDetalhe.fontesOrcamentarias) && pncpDetalhe.fontesOrcamentarias.length > 0)
-                            ? pncpDetalhe.fontesOrcamentarias.map((f: { descricao?: string; nome?: string }) => f?.descricao || f?.nome).filter(Boolean).join('; ')
-                            : 'Não informada'}
-                        </p></div>
-                      {pncpDetalhe.dataPublicacaoPncp && (
-                        <div><p className="text-xs text-muted-foreground">Divulgação no PNCP</p>
-                          <p className="font-medium">{new Date(pncpDetalhe.dataPublicacaoPncp).toLocaleDateString('pt-BR')}</p></div>
-                      )}
-                      {pncpDetalhe.dataAberturaProposta && (
-                        <div><p className="text-xs text-muted-foreground">Início das propostas</p>
-                          <p className="font-medium">{new Date(pncpDetalhe.dataAberturaProposta).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
-                      )}
-                      {pncpDetalhe.dataEncerramentoProposta && (
-                        <div><p className="text-xs text-muted-foreground">Fim das propostas</p>
-                          <p className="font-medium">{new Date(pncpDetalhe.dataEncerramentoProposta).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
-                      )}
-                      {pncpDetalhe.usuarioNome && (
-                        <div><p className="text-xs text-muted-foreground">Fonte</p>
-                          <p className="font-medium text-xs">{pncpDetalhe.usuarioNome}</p></div>
-                      )}
-                      {pncpDetalhe.dataAtualizacao && (
-                        <div><p className="text-xs text-muted-foreground">Última atualização</p>
-                          <p className="font-medium">{new Date(pncpDetalhe.dataAtualizacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
-                      )}
-                      {pncpDetalhe.valorTotalHomologado != null && (
-                        <div><p className="text-xs text-muted-foreground">Valor homologado</p>
-                          <p className="font-medium text-success">{fmt(pncpDetalhe.valorTotalHomologado)}</p></div>
-                      )}
-                      {pncpDetalhe.linkSistemaOrigem && (
-                        <div><p className="text-xs text-muted-foreground">Sistema de origem</p>
-                          <a href={pncpDetalhe.linkSistemaOrigem} target="_blank" rel="noopener noreferrer"
-                             className="font-medium text-xs text-accent hover:underline break-all">
-                            {pncpDetalhe.linkSistemaOrigem.replace(/^https?:\/\//, '').slice(0, 40)}…
-                          </a></div>
-                      )}
-                    </div>
 
                     {/* Informação complementar */}
                     {pncpDetalhe.informacaoComplementar && (
