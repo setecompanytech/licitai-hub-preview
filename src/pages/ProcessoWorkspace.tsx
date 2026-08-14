@@ -516,27 +516,8 @@ export default function ProcessoWorkspace() {
               onVerItens={() => { setAba('precificacao'); loadPrecificacao(); }}
             />
             <EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ATALHOS.map(a => (
-                <Link key={a.label} to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
-                  <Card className="p-4 hover:border-accent transition cursor-pointer h-full">
-                    <div className="flex items-start gap-3">
-                      {/* Fundo acompanha o ícone: neutro em repouso. O card
-                          inteiro já sinaliza que é clicável no hover:border-accent. */}
-                      <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <a.icon className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm flex items-center gap-1">
-                          {a.label} <ExternalLink className="w-3 h-3 opacity-60" />
-                        </div>
-                        <p className="text-base text-muted-foreground mt-0.5">{a.descricao}</p>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+            {/* Atalhos de módulos vivem na aba "Módulos" — mantê-los também
+                aqui duplicava a mesma lista na mesma página. */}
           </TabsContent>
 
           {/* Documentos editáveis */}
