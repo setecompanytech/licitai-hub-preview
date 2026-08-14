@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ArrowRight, LayoutDashboard, Calculator, FileText, MessageSquare, Search, ListChecks } from 'lucide-react';
+import { Loader2, ArrowRight, FolderOpen, Search } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -37,13 +37,14 @@ interface Props {
   onCompromissoCreated?: (compromissoId: string) => void;
 }
 
+// Duas saídas. As seis portas antigas (Kanban, Compromissos, Precificação,
+// Proposta, Aurélia…) faziam TODAS a mesma ação e só mudavam a página de
+// destino — e o prontuário do processo (/processo/:id) já reúne tudo isso em
+// abas e atalhos. Uma topologia de navegação só: a mesma decisão da Onda 1,
+// quando o Painel deixou de despejar o usuário em módulos soltos.
 const DESTINOS = [
-  { id: 'gestao',         label: 'Gestão de Licitações',   desc: 'Acompanhar no Kanban',                   icon: LayoutDashboard, route: '/kanban' },
-  { id: 'compromissos',   label: 'Meus Compromissos',      desc: 'Gerir prazos, alertas e análise IA',     icon: ListChecks,      route: '/meus-compromissos' },
-  { id: 'precificacao',   label: 'Precificação',           desc: 'Extrair itens e calcular preços',        icon: Calculator,      route: '/precificacao' },
-  { id: 'proposta',       label: 'Proposta Comercial',     desc: 'Gerar proposta comercial',               icon: FileText,        route: '/proposta-comercial' },
-  { id: 'aurelia',        label: 'Aurélia (Análise IA)',   desc: 'Análise jurídica e estratégica',         icon: MessageSquare,   route: '/aurelia' },
-  { id: 'continuar',      label: 'Continuar pesquisando',  desc: 'Permanecer no Monitoramento',            icon: Search,          route: null },
+  { id: 'abrir',     label: 'Abrir o processo',        desc: 'Prontuário completo: Kanban, precificação, proposta, documentos e IA', icon: FolderOpen, route: '/processo' },
+  { id: 'continuar', label: 'Continuar pesquisando',   desc: 'O processo fica criado na gestão; você permanece no Monitoramento',    icon: Search,     route: null },
 ] as const;
 
 type DestinoId = typeof DESTINOS[number]['id'];
@@ -84,11 +85,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
       onOpenChange(false);
 
       if (destino.route) {
-        // Compromissos route does not use ?lid; others do.
-        const url = destino.id === 'compromissos'
-          ? destino.route
-          : `${destino.route}?lid=${licitacaoId}`;
-        navigate(url);
+        navigate(`${destino.route}/${licitacaoId}`);
       }
     } finally {
       setWorking(null);
@@ -100,7 +97,7 @@ export default function EditalActionsModal({ open, onOpenChange, edital, existin
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {existingId ? 'Abrir processo existente em…' : 'Iniciar processo e abrir em…'}
+            {existingId ? 'Este edital já está na gestão' : 'Iniciar processo'}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {edital?.numero} — {edital?.orgao}
