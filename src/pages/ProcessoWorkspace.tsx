@@ -150,14 +150,18 @@ export default function ProcessoWorkspace() {
     // Via edge function detalhe-licitacao-pncp: o fetch direto do navegador ao
     // PNCP falhava SEMPRE por CORS — por isso Amparo/Modo de disputa/Fonte
     // nunca apareciam e o card dizia "Indisponível" com o portal no ar.
-    supabase.functions
-      .invoke('detalhe-licitacao-pncp', {
+    // Teto de 15s do lado do cliente: sem ele, uma resposta presa no gateway
+    // segurava o spinner por até 2,5 minutos. Estourou → erro com retry.
+    Promise.race([
+      supabase.functions.invoke('detalhe-licitacao-pncp', {
         body: { cnpjOrgao: cnpj, anoCompra: ano, sequencialCompra: seq },
-      })
-      .then(({ data, error }) => {
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 15_000)),
+    ])
+      .then(({ data, error }: { data?: Record<string, unknown> | null; error?: unknown }) => {
         if (error || !data?.success) { setPncpErro(true); return; }
         setPncpDetalhe(data);
-        setPncpItens(Array.isArray(data.itens) ? data.itens : []);
+        setPncpItens(Array.isArray(data.itens) ? (data.itens as unknown[]) : []);
       })
       .catch(() => setPncpErro(true))
       .finally(() => setPncpCarregando(false));
@@ -406,7 +410,7 @@ export default function ProcessoWorkspace() {
               </Card>
             )}
 
-            {(pncpCarregando || pncpDetalhe || pncpItens.length > 0 || pncpArquivos.length > 0) && (
+            {((pncpCarregando && !temEspelho) || pncpDetalhe || pncpItens.length > 0 || pncpArquivos.length > 0) && (
               <Card className="p-5">
                 {pncpCarregando ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
