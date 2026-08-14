@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useProcessoWorkspace, type CategoriaAnexo, type ProcessoAnexo } from '@/hooks/useProcessoWorkspace';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,10 +24,14 @@ function formatBytes(b: number | null) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function AnexosManager({ licitacaoId }: { licitacaoId: string }) {
+export default function AnexosManager({ licitacaoId, editalViewer }: { licitacaoId: string; editalViewer?: ReactNode }) {
   const { anexos, loading, uploadAnexo, downloadAnexo, deleteAnexo } = useProcessoWorkspace(licitacaoId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoria, setCategoria] = useState<CategoriaAnexo>('outros');
+  // editalViewer: o "Edital em tela" (arquivos materializados do PNCP) mora na
+  // pasta Edital desta aba — antes vivia solto na Visão Geral, criando dois
+  // mundos de arquivo (a pasta dizia "0 arquivos" com o edital renderizando
+  // em outra aba).
   const [filtroCat, setFiltroCat] = useState<string>('todas');
   const [busca, setBusca] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -88,10 +92,15 @@ export default function AnexosManager({ licitacaoId }: { licitacaoId: string }) 
           >
             <Folder className="w-4 h-4 mb-1 text-accent" />
             <div className="text-xs font-semibold">{g.label}</div>
-            <div className="text-xs text-muted-foreground">{g.count} arquivos</div>
+            <div className="text-xs text-muted-foreground">
+              {g.count} arquivos{g.value === 'edital' && editalViewer ? ' + PNCP' : ''}
+            </div>
           </button>
         ))}
       </div>
+
+      {/* Edital em tela — arquivos oficiais da contratação no PNCP */}
+      {filtroCat === 'edital' && editalViewer}
 
       {/* Lista */}
       <Card className="divide-y divide-border">

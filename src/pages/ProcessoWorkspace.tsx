@@ -519,9 +519,9 @@ export default function ProcessoWorkspace() {
               urlEdital={lic.url_edital ?? null}
               onVerItens={() => { setAba('precificacao'); loadPrecificacao(); }}
             />
-            <EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />
-            {/* Atalhos de módulos vivem na aba "Módulos" — mantê-los também
-                aqui duplicava a mesma lista na mesma página. */}
+            {/* O Edital em tela mora em Anexos → pasta Edital (Fase 1 do
+                prontuário integrado): a Visão Geral é a ficha, e os arquivos
+                do processo — inclusive os oficiais do PNCP — vivem juntos. */}
           </TabsContent>
 
           {/* Documentos editáveis */}
@@ -537,7 +537,10 @@ export default function ProcessoWorkspace() {
 
           {/* Anexos */}
           <TabsContent value="anexos">
-            <AnexosManager licitacaoId={lic.id} />
+            <AnexosManager
+              licitacaoId={lic.id}
+              editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />}
+            />
           </TabsContent>
 
           {/* Precificação */}
