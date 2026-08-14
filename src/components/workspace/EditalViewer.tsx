@@ -92,7 +92,7 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
 
   useEffect(() => { carregarLista(); }, [carregarLista]);
 
-  const abrirArquivo = async (arq: ArquivoPncp) => {
+  const abrirArquivo = async (arq: ArquivoPncp, opts?: { force?: boolean }) => {
     setSelecionado(arq);
     setSignedUrl(null);
     setErroArquivo(null);
@@ -100,7 +100,7 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
     setAbrindo(true);
     try {
       const { data, error } = await supabase.functions.invoke('pncp-arquivos-edital', {
-        body: { licitacao_id: licitacaoId, action: 'abrir', sequencial: arq.sequencial },
+        body: { licitacao_id: licitacaoId, action: 'abrir', sequencial: arq.sequencial, force: opts?.force === true },
       });
       if (error || !data?.success || !data?.path) {
         setErroArquivo(
@@ -244,6 +244,15 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
                     <a href={signedUrl} download={arquivoAberto?.nome} title="Baixar">
                       <Download className="w-3.5 h-3.5" />
                     </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    title="Documento quebrado? Baixar novamente do PNCP"
+                    onClick={() => selecionado && abrirArquivo(selecionado, { force: true })}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
                   </Button>
                 </>
               )}

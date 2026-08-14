@@ -256,6 +256,20 @@ async function baixarArquivo(
         ultimoErro = `resposta vazia em ${url}`;
         continue;
       }
+
+      // O PNCP às vezes responde 200 com uma página HTML de erro/desafio no
+      // lugar do arquivo (visto em 2026-08-14, sob rate limit). Sem esta
+      // checagem, o HTML era gravado como ".pdf" no bucket e o cache o servia
+      // para sempre — o visualizador mostrava documento quebrado eternamente.
+      const inicio = new TextDecoder().decode(buffer.slice(0, 256)).trimStart().toLowerCase();
+      const pareceHtml = inicio.startsWith('<!doctype') || inicio.startsWith('<html');
+      const esperaPdf = /\.pdf$/i.test(arquivo.nome) ||
+        (resp.headers.get("content-type") || "").includes("pdf");
+      const ehPdf = inicio.startsWith('%pdf');
+      if (pareceHtml || (esperaPdf && !ehPdf)) {
+        ultimoErro = `PNCP devolveu conteúdo inválido (não é o arquivo) em ${url}`;
+        continue;
+      }
       if (buffer.byteLength > MAX_BYTES) {
         throw new Error("Arquivo maior que 45 MB — use o download direto.");
       }
@@ -347,6 +361,9 @@ serve(async (req) => {
     if (action === "abrir") {
       const sequencial = Number(body?.sequencial);
       if (!sequencial) return json({ error: "sequencial required" }, 400);
+      // force=true ignora e substitui o cache — o caminho de recuperação para
+      // artefatos ruins gravados antes da validação de conteúdo existir.
+      const force = body?.force === true;
 
       const arquivos = await listarArquivos(cnpj, ano, seq);
       const alvo = arquivos.find((a) => Number(a.sequencial) === sequencial);
@@ -361,7 +378,10 @@ serve(async (req) => {
       // Se já foi materializado antes, devolve direto (sem bater no PNCP de novo)
       const { data: existentes } = await admin.storage.from(BUCKET).list(pasta, { limit: 100 });
       const jaExiste = (existentes ?? []).find((f) => f.name.startsWith(`${sequencial}-`));
-      if (jaExiste) {
+      if (jaExiste && force) {
+        await admin.storage.from(BUCKET).remove([`${pasta}/${jaExiste.name}`]);
+      }
+      if (jaExiste && !force) {
         return json({
           success: true,
           cached: true,
