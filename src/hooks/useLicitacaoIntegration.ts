@@ -105,10 +105,13 @@ export function useLicitacaoIntegration() {
       });
 
       // Create notification
+      // O "Ver" da notificação leva ao prontuário do processo — '/licitacoes'
+      // era rota legada que redireciona ao Monitoramento, devolvendo o usuário
+      // exatamente à tela de onde ele veio.
       await criarNotificacao(
         'Novo processo iniciado',
         `Licitação ${edital.numero} — ${edital.orgao} foi adicionada à gestão.`,
-        '/licitacoes',
+        `/processo/${data.id}`,
         'info'
       );
 
@@ -278,7 +281,7 @@ export function useLicitacaoIntegration() {
       await criarNotificacao(
         `Status atualizado: ${novoStatus}`,
         detalhes || `Licitação teve seu status alterado para ${novoStatus}.`,
-        '/licitacoes',
+        `/processo/${licitacaoId}`,
         novoStatus === 'Vencida' || novoStatus === 'Homologada' ? 'sucesso' : 'info'
       );
     } catch (err) {
@@ -510,7 +513,7 @@ export function useLicitacaoIntegration() {
         resultado === 'venceu'
           ? `Parabéns! Você venceu a disputa${valorFinal ? ` com valor R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : ''}.`
           : 'A disputa foi encerrada sem sucesso.',
-        '/licitacoes',
+        `/processo/${licitacaoId}`,
         resultado === 'venceu' ? 'sucesso' : 'alerta'
       );
 
