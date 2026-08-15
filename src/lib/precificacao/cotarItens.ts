@@ -7,9 +7,14 @@ import { toast } from 'sonner';
  * pesquisas continua rodando se o usuário trocar de aba; os componentes
  * apenas observam o estado.
  *
- * Cada item vira uma consulta à Edge Function `pesquisa-preco-real`
- * (Google Shopping via Serper + Firecrawl), que devolve fornecedores reais
- * com preço, loja e link — a fonte fica visível para o usuário auditar.
+ * DUAS fontes por item, consultadas em paralelo:
+ *  - `consulta-painel-precos`: preços unitários HOMOLOGADOS em ATAs e
+ *    contratos reais no PNCP — a referência que a IN 65/2021 manda
+ *    priorizar (contratações públicas similares vêm antes de cotação de
+ *    mercado);
+ *  - `pesquisa-preco-real`: fornecedores de mercado (Google Shopping via
+ *    Serper + Firecrawl), com preço, loja e link.
+ * Toda fonte fica visível para o usuário auditar antes de usar o preço.
  */
 
 export type FornecedorCotado = {
@@ -17,6 +22,11 @@ export type FornecedorCotado = {
   preco: number;
   loja: string;
   url: string;
+  origem: 'internet' | 'pncp';
+  /** Só para origem 'pncp': contextualiza o preço homologado. */
+  orgao?: string;
+  data?: string;
+  situacao?: string;
 };
 
 export type CotacaoItem = {
@@ -24,8 +34,22 @@ export type CotacaoItem = {
   fornecedores: FornecedorCotado[];
   menorPreco: number;
   precoMedio: number;
+  /** Mediana dos preços homologados no PNCP — a âncora da pesquisa de preços. */
+  pncpMediana?: number;
+  pncpRegistros?: number;
   erro?: string;
 };
+
+/**
+ * Descrições de edital são burocráticas e longas; a busca do PNCP usa a frase
+ * exata, então cortamos no primeiro delimitador de complemento e limitamos o
+ * tamanho ("CADEIRA FIXA EMPILHÁVEL EM POLIPROPILENO, CONFORME..." → parte
+ * antes da vírgula).
+ */
+function termoCurto(descricao: string): string {
+  const base = descricao.split(/[,;:(]/)[0].trim();
+  return (base.length >= 12 ? base : descricao).slice(0, 80);
+}
 
 export type EstadoCotacao = {
   rodando: boolean;
@@ -78,19 +102,64 @@ export async function cotarItens(
       });
       let resultado: CotacaoItem;
       try {
-        const { data, error } = await supabase.functions.invoke('pesquisa-preco-real', {
-          body: { termo: item.descricao.slice(0, 120) },
-        });
-        const fornecedores: FornecedorCotado[] = (data?.data?.fornecedores || [])
-          .slice(0, 8)
-          .map((f: { titulo?: string; nome?: string; preco?: number; loja?: string; url?: string }) => ({
-            titulo: f.titulo || f.nome || '',
-            preco: f.preco || 0,
-            loja: f.loja || '',
-            url: f.url || '',
-          }))
-          .filter((f: FornecedorCotado) => f.preco > 0);
-        if (error || !data?.success || !fornecedores.length) {
+        const anoAtual = new Date().getFullYear();
+        const [internet, pncp] = await Promise.allSettled([
+          supabase.functions.invoke('pesquisa-preco-real', {
+            body: { termo: item.descricao.slice(0, 120) },
+          }),
+          supabase.functions.invoke('consulta-painel-precos', {
+            body: { termo: termoCurto(item.descricao), anoInicio: anoAtual - 2, anoFim: anoAtual },
+          }),
+        ]);
+
+        const fornecedores: FornecedorCotado[] = [];
+
+        // PNCP primeiro: preço homologado é a referência prioritária (IN 65/2021)
+        let pncpMediana: number | undefined;
+        let pncpRegistros: number | undefined;
+        if (pncp.status === 'fulfilled' && pncp.value.data?.success) {
+          const d = pncp.value.data as {
+            resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string }>;
+            resumo?: { mediana?: number; total_registros?: number };
+          };
+          fornecedores.push(
+            ...(d.resultados || [])
+              .filter((r) => (r.preco_unitario || 0) > 0)
+              .slice(0, 6)
+              .map((r) => ({
+                titulo: r.descricao || '',
+                preco: r.preco_unitario || 0,
+                loja: 'PNCP',
+                url: r.url || '',
+                origem: 'pncp' as const,
+                orgao: r.orgao || '',
+                data: (r.data_compra || '').slice(0, 10),
+                situacao: r.situacao || '',
+              })),
+          );
+          if (d.resumo?.mediana) {
+            pncpMediana = d.resumo.mediana;
+            pncpRegistros = d.resumo.total_registros;
+          }
+        }
+
+        if (internet.status === 'fulfilled' && internet.value.data?.success) {
+          const d = internet.value.data as { data?: { fornecedores?: Array<{ titulo?: string; nome?: string; preco?: number; loja?: string; url?: string }> } };
+          fornecedores.push(
+            ...(d.data?.fornecedores || [])
+              .slice(0, 8)
+              .map((f) => ({
+                titulo: f.titulo || f.nome || '',
+                preco: f.preco || 0,
+                loja: f.loja || '',
+                url: f.url || '',
+                origem: 'internet' as const,
+              }))
+              .filter((f) => f.preco > 0),
+          );
+        }
+
+        if (!fornecedores.length) {
           resultado = { status: 'erro', fornecedores: [], menorPreco: 0, precoMedio: 0, erro: 'Nenhum resultado na pesquisa' };
         } else {
           const precos = fornecedores.map((f) => f.preco);
@@ -99,6 +168,8 @@ export async function cotarItens(
             fornecedores,
             menorPreco: Math.min(...precos),
             precoMedio: Math.round((precos.reduce((a, b) => a + b, 0) / precos.length) * 100) / 100,
+            pncpMediana,
+            pncpRegistros,
           };
           comPreco++;
         }

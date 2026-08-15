@@ -224,7 +224,9 @@ export default function ItensEditalPrecificacao({
                         title="Ver fontes e aplicar preço"
                         onClick={() => setFontesAbertas(fontesAbertas === it.id ? null : it.id)}
                       >
-                        {brl(cot.menorPreco)} – {brl(cot.precoMedio)}
+                        {cot.pncpMediana
+                          ? <>PNCP {brl(cot.pncpMediana)} · {brl(cot.menorPreco)}–{brl(cot.precoMedio)}</>
+                          : <>{brl(cot.menorPreco)} – {brl(cot.precoMedio)}</>}
                       </button>
                     )}
                     {!cot && (
@@ -254,8 +256,13 @@ export default function ItensEditalPrecificacao({
                   <tr className="border-b border-border/40 bg-muted/10">
                     <td />
                     <td colSpan={6} className="px-3 py-2">
-                      <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="text-xs font-semibold">Fontes da cotação</span>
+                        {cot.pncpMediana != null && (
+                          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.pncpMediana!)}>
+                            Usar mediana PNCP ({brl(cot.pncpMediana)})
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.menorPreco)}>
                           Usar menor ({brl(cot.menorPreco)})
                         </Button>
@@ -263,20 +270,47 @@ export default function ItensEditalPrecificacao({
                           Usar médio ({brl(cot.precoMedio)})
                         </Button>
                       </div>
-                      <div className="space-y-0.5">
-                        {cot.fornecedores.map((f, fi) => (
-                          <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
-                            <span className="shrink-0">{f.loja}</span>
-                            <span className="truncate">{f.titulo}</span>
-                            {f.url && (
-                              <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
-                                <ExternalLink className="w-3 h-3 inline" />
-                              </a>
-                            )}
+                      {cot.fornecedores.some((f) => f.origem === 'pncp') && (
+                        <div className="mb-1.5">
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                            Homologados no PNCP (ATAs/contratos{cot.pncpRegistros ? ` · ${cot.pncpRegistros} registros` : ''})
+                          </p>
+                          <div className="space-y-0.5">
+                            {cot.fornecedores.filter((f) => f.origem === 'pncp').map((f, fi) => (
+                              <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
+                                {f.situacao && <span className="shrink-0 border border-border/60 rounded px-1">{f.situacao}</span>}
+                                <span className="truncate">{f.orgao || f.titulo}</span>
+                                {f.data && <span className="shrink-0">{f.data.split('-').reverse().join('/')}</span>}
+                                {f.url && (
+                                  <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
+                                    <ExternalLink className="w-3 h-3 inline" />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
+                      {cot.fornecedores.some((f) => f.origem === 'internet') && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">Mercado (internet)</p>
+                          <div className="space-y-0.5">
+                            {cot.fornecedores.filter((f) => f.origem === 'internet').map((f, fi) => (
+                              <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
+                                <span className="shrink-0">{f.loja}</span>
+                                <span className="truncate">{f.titulo}</span>
+                                {f.url && (
+                                  <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
+                                    <ExternalLink className="w-3 h-3 inline" />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
