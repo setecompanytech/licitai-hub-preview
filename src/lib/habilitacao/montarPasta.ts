@@ -145,7 +145,6 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
     }
 
     let copiados = 0;
-    let pulados = 0;
     let falhas = 0;
     let primeiroErro: string | null = null;
     for (let i = 0; i < casadas.length; i++) {
@@ -166,7 +165,7 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
         const chaveSegura = nomeArquivo
           .normalize('NFD')
           .replace(/[̀-ͯ]/g, '')
-          .replace(/[^\w.\-]/g, '_');
+          .replace(/[^\w.-]/g, '_');
         const path = `${u.user.id}/${licitacaoId}/habilitacao/${Date.now()}_${chaveSegura}`;
         const { error: upErr } = await supabase.storage
           .from('processo-arquivos')
@@ -205,7 +204,6 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
     }
 
     const partes = [`${copiados} copiado(s)`];
-    if (pulados) partes.push(`${pulados} já na pasta`);
     if (falhas) partes.push(`${falhas} com falha`);
     if (falhas && primeiroErro) {
       // Falha silenciosa é proibida: mostra a causa real da primeira falha
@@ -222,7 +220,7 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
       acao: 'habilitacao_pasta_montada',
       modulo: 'licitacoes',
       descricao: `Pasta de habilitação montada a partir do checklist: ${copiados} documento(s) copiado(s) do cofre.`,
-      metadata: { licitacao_id: licitacaoId, copiados, pulados, falhas },
+      metadata: { licitacao_id: licitacaoId, copiados, falhas },
     });
   } catch (e) {
     toast.error(`Montar pasta de habilitação: ${e instanceof Error ? e.message : 'erro inesperado.'}`);
