@@ -558,9 +558,9 @@ export default function ProcessoWorkspace() {
                                         </span>
                                       )}
                                     </td>
-                                    <td className="px-3 py-2 text-right">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
-                                    <td className="px-3 py-2 text-right text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
-                                    <td className="px-3 py-2 text-right font-medium text-success">{vTotal != null ? fmt(vTotal) : '—'}</td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
+                                    <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap tabular-nums">{vUnit != null ? fmt(vUnit) : '—'}</td>
+                                    <td className="px-3 py-2 text-right font-medium text-success whitespace-nowrap tabular-nums">{vTotal != null ? fmt(vTotal) : '—'}</td>
                                   </tr>
                                 );
                               })}
@@ -692,17 +692,17 @@ export default function ProcessoWorkspace() {
                                   <tr>
                                     <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
                                     <th className="text-right px-3 py-1.5 font-medium w-16">Qtde</th>
-                                    <th className="text-right px-3 py-1.5 font-medium w-24">Vl. Unit.</th>
-                                    <th className="text-right px-3 py-1.5 font-medium w-24">Total</th>
+                                    <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Vl. Unit.</th>
+                                    <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Total</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                   {itens.slice(0, 10).map((it, i) => (
                                     <tr key={i} className="hover:bg-muted/30">
                                       <td className="px-3 py-1.5 truncate max-w-[200px]">{it.descricao}</td>
-                                      <td className="px-3 py-1.5 text-right">{it.quantidade}</td>
-                                      <td className="px-3 py-1.5 text-right">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
-                                      <td className="px-3 py-1.5 text-right font-medium">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
+                                      <td className="px-3 py-1.5 text-right tabular-nums">{it.quantidade}</td>
+                                      <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
+                                      <td className="px-3 py-1.5 text-right font-medium whitespace-nowrap tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
                                     </tr>
                                   ))}
                                 </tbody>
