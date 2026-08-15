@@ -168,12 +168,12 @@ export default function EditalItensTable({
             <span className="text-xs">{item.quantidade}</span>
           )}
         </TableCell>
-        <TableCell className="w-14 text-center">
+        <TableCell className="w-24 text-center whitespace-nowrap">
           {isEditing ? (
             <Input
               value={editValues.unidade || ''}
               onChange={(e) => setEditValues(prev => ({ ...prev, unidade: e.target.value }))}
-              className="h-7 text-xs w-14"
+              className="h-7 text-xs w-20"
             />
           ) : (
             <span className="text-xs">{item.unidade}</span>
@@ -187,10 +187,10 @@ export default function EditalItensTable({
               className="h-7 text-xs w-28"
             />
           ) : (
-            <span className="text-xs font-mono">{formatCurrency(item.valor_unitario)}</span>
+            <span className="text-xs font-mono whitespace-nowrap">{formatCurrency(item.valor_unitario)}</span>
           )}
         </TableCell>
-        <TableCell className="w-28 text-right">
+        <TableCell className="w-28 text-right whitespace-nowrap">
           <span className="text-xs font-mono">
             {formatCurrency((isEditing ? (editValues.valor_unitario ?? 0) * (editValues.quantidade ?? 0) : item.valor_unitario * item.quantidade))}
           </span>
@@ -307,9 +307,9 @@ export default function EditalItensTable({
               <TableHead className="w-10 text-center text-xs">#</TableHead>
               <TableHead className="text-xs">Descrição</TableHead>
               <TableHead className="w-16 text-center text-xs">Qtd</TableHead>
-              <TableHead className="w-14 text-center text-xs">Und</TableHead>
-              <TableHead className="w-28 text-right text-xs">Vlr Unit.</TableHead>
-              <TableHead className="w-28 text-right text-xs">Vlr Total</TableHead>
+              <TableHead className="w-24 text-center text-xs whitespace-nowrap">Und</TableHead>
+              <TableHead className="w-28 text-right text-xs whitespace-nowrap">Vlr Unit.</TableHead>
+              <TableHead className="w-28 text-right text-xs whitespace-nowrap">Vlr Total</TableHead>
               <TableHead className="min-w-[140px] text-xs">Avaliação</TableHead>
               {showOrigin && <TableHead className="w-20 text-xs">Origem</TableHead>}
               {!readOnly && <TableHead className="w-20 text-xs">Ações</TableHead>}
