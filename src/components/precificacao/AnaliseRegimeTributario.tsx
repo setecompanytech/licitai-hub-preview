@@ -17,8 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   getRegrasPorNCM, getRegrasPorUF, getTratamentoLabel, getCategoriaLabel,
   temDadosDetalhados, UF_TRIBUTARIA,
-  type RegraTributariaUF, type TratamentoICMS,
-} from '@/data/regimes-tributarios-uf';
+  CATEGORIAS_FISCAIS,
+  type RegraTributariaUF, type TratamentoICMS } from '@/data/regimes-tributarios-uf';
 
 interface ItemAnalise {
   descricao: string;
@@ -175,6 +175,10 @@ export default function AnaliseRegimeTributario({ ufCalculo, ufNome, regime, reg
       `${idx + 1}. ${item.descricao}${item.ncm ? ` (NCM: ${item.ncm})` : ''}`
     ).join('\n');
 
+    // A alíquota interna real do estado (PA = 19%) já é conhecida pelo app —
+    // sem ela no prompt a IA presumia 18% e contradizia o próprio cabeçalho.
+    const aliquotaPadraoUf = ufData?.aliquota_padrao ?? 18;
+
     const prompt = `Atue como analista tributário especialista em ICMS e classificação fiscal de mercadorias. Analise cada item abaixo e determine o TRATAMENTO TRIBUTÁRIO correto para o estado ${ufCalculo} (${ufNome}), considerando o regime ${regimeLabel}.
 
 ITENS:
@@ -197,13 +201,18 @@ Para cada item, determine:
 
 REGRAS IMPORTANTES:
 - O NCM deve ser PRECISO e corresponder exatamente ao produto descrito
-- Considere o RICMS do ${ufCalculo} atualizado
-- Verifique Convênios CONFAZ vigentes (especialmente 142/18 para ST)
-- Considere reduções de base de cálculo para cesta básica conforme legislação estadual
-- Verifique isenções aplicáveis (hortifrutícolas, insumos agropecuários, etc.)
-${ufCalculo === 'PA' ? '- PA: Decreto 2.931/2023 - 55 itens da cesta básica com carga tributária reduzida (3%, 1.8%, 1% ou isento)' : ''}
-${ufCalculo === 'SP' ? '- SP: Decreto 68.492/2024 - diversos segmentos excluídos da ST' : ''}
-${ufCalculo === 'SC' ? '- SC: Lei 18.673/2024 - ICMS zero para cesta básica' : ''}
+- Considere o RICMS do ${ufCalculo} atualizado. A alíquota interna padrão de ${ufCalculo} é ${aliquotaPadraoUf}% — use-a em ALIQUOTA_CHEIA, não presuma 18%
+- Classifique cada item PELO QUE ELE É. Regime especial (cesta básica, isenção, redução de base, ST) só se o produto realmente se enquadrar na norma
+- A fundamentação deve citar a norma que DE FATO se aplica ao item. Não cite Convênio CONFAZ 142/18 para produto que não está sujeito a ST, nem decreto de cesta básica para o que não é gênero alimentício. Item no regime ordinário deve ser fundamentado como "RICMS/${ufCalculo} — alíquota interna padrão"
+- Os benefícios abaixo existem no estado, mas SOMENTE para os produtos que eles alcançam:
+${ufCalculo === 'PA' ? '  · PA: Decreto 2.931/2023 — 55 gêneros ALIMENTÍCIOS da cesta básica com carga reduzida (3%, 1,8%, 1% ou isento). Não alcança móveis, equipamentos, informática, vestuário ou serviços' : ''}
+${ufCalculo === 'SP' ? '  · SP: Decreto 68.492/2024 — segmentos específicos excluídos da ST' : ''}
+${ufCalculo === 'SC' ? '  · SC: Lei 18.673/2024 — ICMS zero para gêneros da cesta básica' : ''}
+
+CATEGORIA — use EXATAMENTE um destes valores, escolhido pela natureza do produto
+(cadeiras, mesas e armários são "mobiliario"; "cesta_basica" só para gêneros
+alimentícios listados no decreto estadual):
+${CATEGORIAS_FISCAIS.join(' | ')}
 
 Responda EXCLUSIVAMENTE em JSON:
 [
@@ -212,8 +221,8 @@ Responda EXCLUSIVAMENTE em JSON:
     "ncm": "0000.00.00",
     "tratamento": "ISENTO|ST|REDUCAO_BC|DIFERIDO|ALIQUOTA_CHEIA|ALIQUOTA_ESPECIAL",
     "aliquota_efetiva": 0.00,
-    "categoria": "cesta_basica|medicamentos|informatica|etc",
-    "fundamentacao": "Base legal exata",
+    "categoria": "um valor da lista acima",
+    "fundamentacao": "Base legal exata que se aplica a ESTE item",
     "observacoes": "Detalhes relevantes",
     "st_mva": null
   }

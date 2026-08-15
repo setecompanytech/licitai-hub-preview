@@ -697,6 +697,23 @@ export function getTratamentoLabel(tratamento: TratamentoICMS): { label: string;
   return map[tratamento];
 }
 
+/**
+ * Vocabulário fechado de categorias fiscais — a MESMA lista que alimenta o
+ * rótulo abaixo. A classificação por IA escolhe daqui: quando o prompt
+ * oferecia "cesta_basica|medicamentos|informatica|etc", cadeiras de escritório
+ * voltavam etiquetadas como cesta básica (o primeiro exemplo virava resposta).
+ */
+export const CATEGORIAS_FISCAIS: CategoriaFiscal[] = [
+  'cesta_basica', 'hortifruticolas', 'alimentos_industrializados', 'bebidas',
+  'medicamentos', 'equipamentos_hospitalares', 'cosmeticos',
+  'informatica', 'eletrodomesticos', 'mobiliario', 'material_escolar',
+  'material_limpeza', 'vestuario', 'equipamentos_seguranca',
+  'materiais_construcao', 'veiculos', 'autopecas', 'combustiveis',
+  'energia_eletrica', 'telecomunicacoes', 'cigarros', 'insumos_agropecuarios',
+  'servicos_engenharia', 'servicos_ti', 'servicos_limpeza_conservacao',
+  'servicos_vigilancia', 'servicos_manutencao',
+];
+
 /** Retorna o rótulo de categoria legível */
 export function getCategoriaLabel(categoria: CategoriaFiscal): string {
   const map: Record<CategoriaFiscal, string> = {
