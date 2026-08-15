@@ -6,6 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search } from 'lucide-react';
+import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO } from '@/lib/habilitacao/tipos';
+
+/** Estrutura da pasta Habilitação — mesma ordem e rótulos do Jurídico → Documentos. */
+const GRUPOS_HABILITACAO: { key: string; label: string }[] = [
+  { key: 'juridica', label: 'Habilitação Jurídica' },
+  { key: 'fiscal', label: 'Regularidade Fiscal, Social e Trabalhista' },
+  { key: 'economica', label: 'Qualificação Econômico-Financeira' },
+  { key: 'tecnica', label: 'Qualificação Técnica' },
+  { key: 'declaracoes', label: 'Declarações' },
+  { key: 'outros', label: 'Outros' },
+];
+
+const grupoDoAnexo = (a: ProcessoAnexo): string => {
+  const g = (a.metadata as { grupo?: string } | null)?.grupo;
+  return g && GRUPOS_HABILITACAO.some((x) => x.key === g) ? g : 'outros';
+};
 
 const CATEGORIAS: { value: CategoriaAnexo; label: string; color: string }[] = [
   { value: 'edital', label: 'Edital', color: 'bg-muted text-muted-foreground border-border' },
@@ -51,6 +67,36 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   );
 
   const grupos = CATEGORIAS.map(c => ({ ...c, count: anexos.filter(a => a.categoria === c.value).length }));
+
+  const renderAnexo = (a: ProcessoAnexo) => {
+    const cat = CATEGORIAS.find(c => c.value === a.categoria);
+    const meta = a.metadata as { segmento?: string | null; tipo?: string | null } | null;
+    return (
+      <div key={a.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+        <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{a.nome_arquivo}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={`text-xs ${cat?.color}`}>{cat?.label}</Badge>
+            {meta?.tipo === 'atestado_tecnico' && meta?.segmento && (
+              <Badge variant="outline" className="text-xs">{LABEL_SEGMENTO[meta.segmento] || meta.segmento}</Badge>
+            )}
+            <span>{formatBytes(a.tamanho_bytes)}</span>
+            <span>·</span>
+            <span>{new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
+            {a.origem === 'cofre' && <Badge variant="outline" className="text-xs">Do cofre</Badge>}
+            {a.origem !== 'upload' && a.origem !== 'cofre' && <Badge variant="outline" className="text-xs">Gerado</Badge>}
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">
+          <Download className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }} className="h-8 w-8 p-0 text-destructive">
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -117,27 +163,29 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             <p className="text-sm text-muted-foreground">Nenhum arquivo nesta pasta. Envie o primeiro acima.</p>
           </div>
         )}
-        {filtrados.map((a: ProcessoAnexo) => {
-          const cat = CATEGORIAS.find(c => c.value === a.categoria);
+        {filtroCat !== 'habilitacao' && filtrados.map((a: ProcessoAnexo) => renderAnexo(a))}
+
+        {/* Pasta Habilitação: espelha a organização do Jurídico → Documentos —
+            grupos da Lei 14.133 na ordem canônica, ordenados pela referência
+            do edital; sem classificação, cai em "Outros" (nada some). */}
+        {filtroCat === 'habilitacao' && GRUPOS_HABILITACAO.map(({ key, label }) => {
+          const doGrupo = filtrados
+            .filter((a) => grupoDoAnexo(a) === key)
+            .sort((x, y) => String((x.metadata as { referencia?: string } | null)?.referencia || x.nome_arquivo)
+              .localeCompare(String((y.metadata as { referencia?: string } | null)?.referencia || y.nome_arquivo), 'pt-BR', { numeric: true }));
+          if (!doGrupo.length) return null;
           return (
-            <div key={a.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
-              <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{a.nome_arquivo}</div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Badge variant="outline" className={`text-xs ${cat?.color}`}>{cat?.label}</Badge>
-                  <span>{formatBytes(a.tamanho_bytes)}</span>
-                  <span>·</span>
-                  <span>{new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
-                  {a.origem !== 'upload' && <Badge variant="outline" className="text-xs">Gerado</Badge>}
-                </div>
+            <div key={key}>
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/30">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+                {ARTIGO_POR_GRUPO[key] && (
+                  <Badge variant="outline" className="text-xs">{ARTIGO_POR_GRUPO[key]}</Badge>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">{doGrupo.length} arquivo(s)</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">
-                <Download className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }} className="h-8 w-8 p-0 text-destructive">
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <div className="divide-y divide-border">
+                {doGrupo.map((a) => renderAnexo(a))}
+              </div>
             </div>
           );
         })}

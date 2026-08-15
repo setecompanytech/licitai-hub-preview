@@ -16,6 +16,8 @@ export interface ProcessoAnexo {
   tamanho_bytes: number | null;
   origem: string;
   descricao: string | null;
+  /** Estrutura da pasta Habilitação: grupo da Lei, tipo, referência, segmento. */
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

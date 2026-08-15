@@ -47,17 +47,22 @@ const sanitizar = (s: string) =>
 type LinhaCasada = {
   referencia: string | null;
   exigencia: string;
+  tipo: string | null;
+  grupo: string | null;
   documento_origem: string;
   documento_id: string;
   documento_nome: string | null;
 };
 
+/** Primeira referência da lista unida pela IA ("10.4.3.b; TR 9.6.4" → "10.4.3.b"). */
+const primeiraRef = (ref: string | null) => (ref || '').split(';')[0].trim() || null;
+
 /** Busca o blob do documento casado, conforme o cofre de origem. Lança com a causa real. */
-async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: string }> {
+async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: string; segmento?: string | null }> {
   if (linha.documento_origem === 'documentos') {
     const { data: doc, error: qErr } = await supabase
       .from('documentos')
-      .select('arquivo_path')
+      .select('arquivo_path, segmento')
       .eq('id', linha.documento_id)
       .maybeSingle();
     if (qErr) throw new Error(`consulta ao cofre: ${qErr.message}`);
@@ -71,7 +76,7 @@ async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: s
     if (!resp.ok) throw new Error(`download do cofre: HTTP ${resp.status}`);
     const blob = await resp.blob();
     const ext = doc.arquivo_path.match(/\.(\w{2,5})$/)?.[1]?.toLowerCase() || 'pdf';
-    return { blob, ext };
+    return { blob, ext, segmento: doc.segmento ?? null };
   }
   if (linha.documento_origem === 'agent_documentos') {
     const { data: doc, error: qErr } = await supabase
@@ -100,25 +105,44 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
 
     const { data: linhas } = await supabase
       .from('processo_habilitacao_checklist' as never)
-      .select('referencia, exigencia, documento_origem, documento_id, documento_nome, status')
+      .select('referencia, exigencia, tipo, grupo, documento_origem, documento_id, documento_nome, status')
       .eq('licitacao_id', licitacaoId)
       .in('status', ['ok', 'vence_antes_sessao'])
       .not('documento_id', 'is', null);
 
-    const casadas = ((linhas || []) as unknown as Array<LinhaCasada & { status: string }>)
-      .filter((l) => l.documento_origem !== 'processo_anexos'); // já estão na pasta
+    // UMA cópia por documento do cofre, não por exigência: várias linhas do
+    // checklist podem casar com o mesmo arquivo (ex.: CNDT atende 10.4.3.b/c/e).
+    const porDocumento = new Map<string, LinhaCasada & { exigencias: string[]; refs: string[] }>();
+    for (const l of ((linhas || []) as unknown as Array<LinhaCasada & { status: string }>)) {
+      if (l.documento_origem === 'processo_anexos') continue; // já estão na pasta
+      const chave = `${l.documento_origem}:${l.documento_id}`;
+      const atual = porDocumento.get(chave);
+      if (atual) {
+        atual.exigencias.push(l.exigencia);
+        if (l.referencia) atual.refs.push(l.referencia);
+      } else {
+        porDocumento.set(chave, { ...l, exigencias: [l.exigencia], refs: l.referencia ? [l.referencia] : [] });
+      }
+    }
+    const casadas = [...porDocumento.values()];
     if (!casadas.length) {
       toast.info('Nenhum documento casado no checklist para copiar — gere o checklist primeiro.');
       return;
     }
 
-    // Evita duplicar: anexos já existentes na pasta Habilitação, por nome
-    const { data: existentes } = await supabase
+    // Remontar SUBSTITUI a montagem anterior: remove só as cópias de origem
+    // "cofre" (fotografias desta rotina) — anexos enviados manualmente pelo
+    // usuário na pasta jamais são tocados.
+    const { data: antigos } = await supabase
       .from('processo_anexos')
-      .select('nome_arquivo')
+      .select('id, storage_path')
       .eq('licitacao_id', licitacaoId)
-      .eq('categoria', 'habilitacao');
-    const nomesExistentes = new Set((existentes || []).map((a) => a.nome_arquivo));
+      .eq('categoria', 'habilitacao')
+      .eq('origem', 'cofre');
+    if (antigos?.length) {
+      await supabase.storage.from('processo-arquivos').remove(antigos.map((a) => a.storage_path));
+      await supabase.from('processo_anexos').delete().in('id', antigos.map((a) => a.id));
+    }
 
     let copiados = 0;
     let pulados = 0;
@@ -132,10 +156,10 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
       try {
         const fonte = await blobDoDocumento(linha);
 
-        const nomeArquivo = sanitizar(
-          `${linha.referencia ? `${linha.referencia} — ` : ''}${rotulo}`,
-        ) + `.${fonte.ext}`;
-        if (nomesExistentes.has(nomeArquivo)) { pulados++; continue; }
+        // Nome limpo: só a PRIMEIRA referência; a lista completa de exigências
+        // atendidas vai para a descrição do anexo.
+        const ref = primeiraRef(linha.refs[0] ?? linha.referencia);
+        const nomeArquivo = sanitizar(`${ref ? `${ref} — ` : ''}${rotulo}`) + `.${fonte.ext}`;
 
         // Chave do storage só aceita [\w.\-]: o nome bonito (com acentos e
         // travessões) vai para nome_arquivo; a chave é a versão ASCII segura.
@@ -158,10 +182,19 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
           mime_type: fonte.blob.type || 'application/pdf',
           tamanho_bytes: fonte.blob.size,
           origem: 'cofre',
-          descricao: `Copiado do cofre pelo checklist de habilitação (${linha.exigencia.slice(0, 140)})`,
+          descricao: `Atende: ${[...new Set(linha.refs.map(primeiraRef).filter(Boolean))].join('; ') || 'exigência do edital'} — ${linha.exigencias[0].slice(0, 120)}`,
+          // Estrutura da pasta: mesmo agrupamento do Jurídico (grupo da Lei,
+          // tipo da taxonomia, referência p/ ordenação, segmento do atestado).
+          metadata: {
+            grupo: linha.grupo,
+            tipo: linha.tipo,
+            referencia: ref,
+            documento_id: linha.documento_id,
+            documento_origem: linha.documento_origem,
+            segmento: fonte.segmento ?? null,
+          },
         });
         if (insErr) throw new Error(`registro do anexo: ${insErr.message}`);
-        nomesExistentes.add(nomeArquivo);
         copiados++;
       } catch (e) {
         falhas++;
