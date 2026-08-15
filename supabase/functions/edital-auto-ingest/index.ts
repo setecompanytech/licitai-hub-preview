@@ -52,17 +52,44 @@ function parsePNCPNumeroControle(nc: string | null | undefined) {
   return null;
 }
 
+// O PNCP aplica rate-limit por IP de saída (429) — as consultas do servidor
+// PRECISAM de retry com espera, senão "temporariamente indisponível" vira
+// "sem itens publicados" (diagnóstico errado ao usuário).
+let pncpIndisponivel = false;
+
+async function fetchPncpComRetry(url: string, timeoutMs: number): Promise<Response | null> {
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    try {
+      const r = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)" },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (r.status === 429 && tentativa === 0) {
+        const espera = Number(r.headers.get("Retry-After")) || 3;
+        await new Promise((res) => setTimeout(res, Math.min(espera, 8) * 1000));
+        continue;
+      }
+      if (!r.ok && r.status >= 500 && tentativa === 0) {
+        await new Promise((res) => setTimeout(res, 1500));
+        continue;
+      }
+      if (!r.ok) pncpIndisponivel = true;
+      return r;
+    } catch {
+      if (tentativa === 0) { await new Promise((res) => setTimeout(res, 1500)); continue; }
+      pncpIndisponivel = true;
+      return null;
+    }
+  }
+  pncpIndisponivel = true;
+  return null;
+}
+
 async function listPNCPArquivos(cnpj: string, ano: string, seq: string): Promise<AnexoLink[]> {
   const url = `https://pncp.gov.br/api/consulta/v1/orgaos/${cnpj}/compras/${ano}/${seq}/arquivos?pagina=1&tamanhoPagina=100`;
   try {
-    const r = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)",
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!r.ok) return [];
+    const r = await fetchPncpComRetry(url, 15000);
+    if (!r || !r.ok) return [];
     const data = await r.json();
     const arr: any[] = Array.isArray(data) ? data : (data?.data ?? []);
     return arr.map((a, idx) => {
@@ -212,6 +239,9 @@ async function callExtrairItensIA(supabaseUrl: string, anonKey: string, payload:
 }
 
 Deno.serve(async (req) => {
+  // O isolate persiste entre requisições — a flag de indisponibilidade do
+  // PNCP precisa começar limpa a cada request.
+  pncpIndisponivel = false;
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -331,12 +361,9 @@ Deno.serve(async (req) => {
     const urlItens = `https://pncp.gov.br/api/consulta/v1/orgaos/${pncp.cnpj}/compras/${pncp.ano}/${seqInt}/itens?pagina=1&tamanhoPagina=500`;
     console.log(`[auto-ingest] Tentando PNCP itens API: ${urlItens}`);
     try {
-      const r = await fetch(urlItens, {
-        headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; LicitAI/1.0)" },
-        signal: AbortSignal.timeout(12000),
-      });
-      console.log(`[auto-ingest] PNCP itens API HTTP ${r.status}`);
-      if (r.ok) {
+      const r = await fetchPncpComRetry(urlItens, 12000);
+      console.log(`[auto-ingest] PNCP itens API HTTP ${r?.status ?? "falhou"}`);
+      if (r && r.ok) {
         const data = await r.json();
         const pncpItens: any[] = data?.data ?? (Array.isArray(data) ? data : []);
         if (pncpItens.length > 0) {
@@ -423,6 +450,10 @@ Deno.serve(async (req) => {
     let motivo: string;
     if (!pncp) {
       motivo = "Não foi possível identificar este edital no PNCP automaticamente. Faça upload manual do arquivo (PDF ou DOCX).";
+    } else if (pncpIndisponivel) {
+      // Distinguir "portal não respondeu" de "nada publicado" — dizer que não
+      // há itens publicados quando o PNCP devolveu 429 é diagnóstico errado.
+      motivo = "O PNCP não respondeu às consultas agora (limite de acesso do portal). Aguarde alguns minutos e tente novamente — os itens podem já estar disponíveis na Visão Geral do processo.";
     } else if (anexos.length === 0) {
       motivo = "Edital localizado no PNCP mas ainda sem itens ou arquivos publicados. Tente novamente em breve ou faça upload manual.";
     } else {
@@ -437,7 +468,7 @@ Deno.serve(async (req) => {
       etapa: "done",
       finalizado_em: new Date().toISOString(),
       mensagem: motivo,
-      erro: !pncp ? "pncp_not_detected" : anexos.length === 0 ? "no_attachments_found" : "no_items_extracted",
+      erro: !pncp ? "pncp_not_detected" : pncpIndisponivel ? "pncp_rate_limited" : anexos.length === 0 ? "no_attachments_found" : "no_items_extracted",
     });
     return new Response(JSON.stringify({
       success: false,

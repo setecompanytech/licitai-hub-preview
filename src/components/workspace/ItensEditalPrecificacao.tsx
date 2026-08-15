@@ -95,6 +95,18 @@ export default function ItensEditalPrecificacao({
   const aplicarPreco = (itemId: string, valor: number) =>
     setPrecos((p) => ({ ...p, [itemId]: valor.toFixed(2).replace('.', ',') }));
 
+  // Sugestão da cotação: marca mais frequente no mercado. Aplicar grava em
+  // licitacao_itens — dali segue para o catálogo e para a Proposta.
+  const aplicarMarca = async (itemId: string, marca: string) => {
+    const { error } = await supabase
+      .from('licitacao_itens')
+      .update({ marca, fabricante: marca })
+      .eq('id', itemId);
+    if (error) { toast.error(`Não foi possível aplicar a marca: ${error.message}`); return; }
+    setItens((prev) => prev.map((it) => (it.id === itemId ? { ...it, marca, fabricante: marca } : it)));
+    toast.success(`Marca "${marca}" aplicada ao item.`);
+  };
+
   const salvar = async () => {
     if (!user) return;
     const comPreco = itens.filter((it) => parsePreco(precos[it.id] || '') > 0);
@@ -209,6 +221,11 @@ export default function ItensEditalPrecificacao({
                   <td className="px-3 py-1.5">
                     {it.descricao}
                     <span className="ml-1.5 text-muted-foreground border border-border/60 px-1 rounded">{it.unidade}</span>
+                    {it.marca && (
+                      <span className="ml-1.5 text-muted-foreground">
+                        Marca: <span className="font-medium text-foreground">{it.marca}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right text-muted-foreground tabular-nums">
@@ -258,6 +275,20 @@ export default function ItensEditalPrecificacao({
                     <td colSpan={6} className="px-3 py-2">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="text-xs font-semibold">Fontes da cotação</span>
+                        {cot.marcaSugerida && (
+                          <span className="text-xs text-muted-foreground">
+                            Sugestão de marca: <span className="font-medium text-foreground">{cot.marcaSugerida}</span>
+                            {it.marca !== cot.marcaSugerida && (
+                              <button
+                                type="button"
+                                className="ml-1.5 text-accent underline-offset-2 hover:underline"
+                                onClick={() => aplicarMarca(it.id, cot.marcaSugerida!)}
+                              >
+                                aplicar
+                              </button>
+                            )}
+                          </span>
+                        )}
                         {cot.pncpMediana != null && (
                           <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.pncpMediana!)}>
                             Usar mediana PNCP ({brl(cot.pncpMediana)})
@@ -270,6 +301,11 @@ export default function ItensEditalPrecificacao({
                           Usar médio ({brl(cot.precoMedio)})
                         </Button>
                       </div>
+                      {cot.pncpVazio && !cot.fornecedores.some((f) => f.origem === 'pncp') && (
+                        <p className="text-xs text-muted-foreground mb-1.5">
+                          Painel Gov.br (PNCP): nenhuma ATA ou contrato encontrado para este termo nos últimos 3 anos.
+                        </p>
+                      )}
                       {cot.fornecedores.some((f) => f.origem === 'pncp') && (
                         <div className="mb-1.5">
                           <p className="text-xs font-medium text-muted-foreground mb-0.5">

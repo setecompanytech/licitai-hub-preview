@@ -37,6 +37,10 @@ export type CotacaoItem = {
   /** Mediana dos preços homologados no PNCP — a âncora da pesquisa de preços. */
   pncpMediana?: number;
   pncpRegistros?: number;
+  /** O PNCP respondeu mas sem registros para o termo — sinalizado, não omitido. */
+  pncpVazio?: boolean;
+  /** Marca/fabricante do resultado de mercado mais frequente — sugestão, quem confirma é o usuário. */
+  marcaSugerida?: string;
   erro?: string;
 };
 
@@ -47,8 +51,16 @@ export type CotacaoItem = {
  * antes da vírgula).
  */
 function termoCurto(descricao: string): string {
-  const base = descricao.split(/[,;:(]/)[0].trim();
-  return (base.length >= 12 ? base : descricao).slice(0, 80);
+  // Normaliza pontuação/travessões e usa as primeiras palavras significativas:
+  // "CADEIRA PARA ESCRITORIO – TIPO DIRETOR Cadeira administrativa..." →
+  // "CADEIRA PARA ESCRITORIO TIPO DIRETOR". Frase exata longa no PNCP = zero.
+  const palavras = descricao
+    .split(/[,;:(]/)[0]
+    .replace(/[–—\-"']/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  const base = palavras.slice(0, 6).join(' ');
+  return (base.length >= 8 ? base : descricao).slice(0, 80);
 }
 
 export type EstadoCotacao = {
@@ -117,6 +129,7 @@ export async function cotarItens(
         // PNCP primeiro: preço homologado é a referência prioritária (IN 65/2021)
         let pncpMediana: number | undefined;
         let pncpRegistros: number | undefined;
+        let pncpVazio = false;
         if (pncp.status === 'fulfilled' && pncp.value.data?.success) {
           const d = pncp.value.data as {
             resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string }>;
@@ -141,13 +154,17 @@ export async function cotarItens(
             pncpMediana = d.resumo.mediana;
             pncpRegistros = d.resumo.total_registros;
           }
+          if (!(d.resultados || []).length) pncpVazio = true;
+        } else {
+          pncpVazio = true;
         }
 
+        let marcaSugerida: string | undefined;
         if (internet.status === 'fulfilled' && internet.value.data?.success) {
-          const d = internet.value.data as { data?: { fornecedores?: Array<{ titulo?: string; nome?: string; preco?: number; loja?: string; url?: string }> } };
+          const d = internet.value.data as { data?: { fornecedores?: Array<{ titulo?: string; nome?: string; preco?: number; loja?: string; url?: string; marca?: string }> } };
+          const doMercado = (d.data?.fornecedores || []).slice(0, 8);
           fornecedores.push(
-            ...(d.data?.fornecedores || [])
-              .slice(0, 8)
+            ...doMercado
               .map((f) => ({
                 titulo: f.titulo || f.nome || '',
                 preco: f.preco || 0,
@@ -157,6 +174,14 @@ export async function cotarItens(
               }))
               .filter((f) => f.preco > 0),
           );
+          // Marca mais frequente entre os resultados de mercado — a função
+          // pesquisa-preco-real já extrai a marca de cada título.
+          const contagem = new Map<string, number>();
+          for (const f of doMercado) {
+            const m = (f.marca || '').trim();
+            if (m) contagem.set(m, (contagem.get(m) || 0) + 1);
+          }
+          marcaSugerida = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
         }
 
         if (!fornecedores.length) {
@@ -170,6 +195,8 @@ export async function cotarItens(
             precoMedio: Math.round((precos.reduce((a, b) => a + b, 0) / precos.length) * 100) / 100,
             pncpMediana,
             pncpRegistros,
+            pncpVazio,
+            marcaSugerida,
           };
           comPreco++;
         }
