@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,14 +61,26 @@ const parseCurrencyInput = (v: string): number | null => {
   return isNaN(num) ? null : Math.round(num * 100) / 100;
 };
 
+/** Números reais do trabalho de precificação — alimentam os cartões do topo. */
+export interface EstatisticasPlanilha {
+  totalItens: number;
+  /** Itens que já têm cotação (fontes pesquisadas). */
+  itensPesquisados: number;
+  /** Lojas/órgãos distintos consultados nas cotações. */
+  fontesConsultadas: number;
+  /** Quanto o preço cotado fica abaixo da referência do edital (R$). */
+  economia: number;
+  atualizadoEm: Date | null;
+}
+
 interface PlanilhaCustosEditalProps {
   onAddToProposta?: (itens: PlanilhaItem[]) => void;
   licitacaoId?: string | null;
   licitacaoNumero?: string;
   licitacaoOrgao?: string;
-  /** Informa quantos itens a planilha tem — a página esconde as entradas de
-   *  extração redundantes quando os itens já chegaram do processo. */
-  onItensStatus?: (n: number) => void;
+  /** Reporta os números da planilha para a página (cartões do topo e o
+   *  recolhimento das entradas de extração quando já há itens). */
+  onItensStatus?: (stats: EstatisticasPlanilha) => void;
 }
 
 export default function PlanilhaCustosEdital({
@@ -240,7 +252,36 @@ export default function PlanilhaCustosEdital({
     autoSave({ itens, sourceLabel }, titulo);
   }, [itens, sourceLabel, licitacaoNumero, autoSave]);
 
-  useEffect(() => { onItensStatus?.(itens.length); }, [itens.length, onItensStatus]);
+  // Cartões do topo: números medidos, não literais. Antes eram "0/0/-/-"
+  // fixos no código — placeholder decorativo que o usuário lia como medição.
+  const stats = useMemo(() => {
+    const fontes = new Set<string>();
+    let itensPesquisados = 0;
+    let economia = 0;
+    for (const it of itens) {
+      if (it.fontes?.length) {
+        itensPesquisados++;
+        for (const f of it.fontes) fontes.add(f.vendedor || FONTE_LABELS[f.fonte] || f.fonte);
+      }
+      const ref = it.valorUnitarioRef ?? 0;
+      const un = it.valorUnitario ?? 0;
+      if (ref > 0 && un > 0 && ref > un) economia += (ref - un) * (it.quantidade || 0);
+    }
+    return { itensPesquisados, fontesConsultadas: fontes.size, economia };
+  }, [itens]);
+
+  useEffect(() => {
+    onItensStatus?.({
+      totalItens: itens.length,
+      itensPesquisados: stats.itensPesquisados,
+      fontesConsultadas: stats.fontesConsultadas,
+      economia: stats.economia,
+      atualizadoEm: lastSaved ?? null,
+    });
+    // Deps primitivas de propósito: emitir objeto novo a cada render do pai
+    // criaria laço. Só reporta quando um número muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens.length, stats.itensPesquisados, stats.fontesConsultadas, stats.economia, lastSaved]);
 
   const handleCotarTodos = async () => {
     if (isCotando) return;

@@ -36,7 +36,7 @@ import CotacoesUnificado from '@/components/precificacao/CotacoesUnificado';
 import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnificada';
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
-import PlanilhaCustosEdital from '@/components/precificacao/PlanilhaCustosEdital';
+import PlanilhaCustosEdital, { type EstatisticasPlanilha } from '@/components/precificacao/PlanilhaCustosEdital';
 import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
@@ -102,8 +102,10 @@ export default function Precificacao() {
   const { user } = useAuth();
   const { processoId } = useProcessoAtivo();
   const [processoMeta, setProcessoMeta] = useState({ numero: '', orgao: '' });
-  // Itens já na planilha (vindos do processo) → as entradas de extração saem do palco
-  const [itensNaPlanilha, setItensNaPlanilha] = useState(0);
+  // Números reais da planilha: alimentam os cartões do topo e decidem se as
+  // entradas de extração aparecem (itens já vindos do processo as dispensam).
+  const [statsPlanilha, setStatsPlanilha] = useState<EstatisticasPlanilha | null>(null);
+  const itensNaPlanilha = statsPlanilha?.totalItens ?? 0;
 
   useEffect(() => {
     let ativo = true;
@@ -472,17 +474,38 @@ export default function Precificacao() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Itens Pesquisados', value: '0', icon: Package },
-            { label: 'Fontes Consultadas', value: '0', icon: ShoppingCart },
-            { label: 'Economia Potencial', value: '-', icon: TrendingDown, color: 'text-success' },
-            { label: 'Última Atualização', value: '-', icon: RefreshCw },
+            {
+              label: 'Itens Pesquisados',
+              value: statsPlanilha ? `${statsPlanilha.itensPesquisados}${statsPlanilha.totalItens ? `/${statsPlanilha.totalItens}` : ''}` : '—',
+              icon: Package,
+            },
+            {
+              label: 'Fontes Consultadas',
+              value: statsPlanilha ? String(statsPlanilha.fontesConsultadas) : '—',
+              icon: ShoppingCart,
+            },
+            {
+              label: 'Economia Potencial',
+              value: statsPlanilha && statsPlanilha.economia > 0
+                ? statsPlanilha.economia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+                : '—',
+              icon: TrendingDown,
+              color: 'text-success',
+            },
+            {
+              label: 'Última Atualização',
+              value: statsPlanilha?.atualizadoEm
+                ? statsPlanilha.atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                : '—',
+              icon: RefreshCw,
+            },
           ].map((s) => (
             <div key={s.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-muted-foreground">{s.label}</span>
                 <s.icon className={`w-4 h-4 ${s.color || 'text-muted-foreground'}`} />
               </div>
-              <p className="text-2xl font-bold">{s.value}</p>
+              <p className="text-2xl font-bold whitespace-nowrap tabular-nums">{s.value}</p>
             </div>
           ))}
         </div>
@@ -669,7 +692,7 @@ export default function Precificacao() {
             </div>
           )}
           <PlanilhaCustosEdital
-            onItensStatus={setItensNaPlanilha}
+            onItensStatus={setStatsPlanilha}
             licitacaoId={processoId}
             licitacaoNumero={processoMeta.numero}
             licitacaoOrgao={processoMeta.orgao}
