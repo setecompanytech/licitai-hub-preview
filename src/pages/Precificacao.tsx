@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
+import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -438,6 +439,8 @@ export default function Precificacao() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Declara SOBRE QUAL processo as ações desta tela agem */}
+        <ProcessoContextoBanner />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">

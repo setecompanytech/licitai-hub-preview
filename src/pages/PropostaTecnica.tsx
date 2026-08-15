@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
+import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -749,6 +750,9 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
   const conteudo = (
       <div className="space-y-4">
+        {/* No modo avulso, declara sobre qual processo o wizard age; embutido,
+            o cabeçalho do prontuário já cumpre esse papel. */}
+        {!embedded && <ProcessoContextoBanner />}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
