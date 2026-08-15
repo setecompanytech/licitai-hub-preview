@@ -52,38 +52,43 @@ type LinhaCasada = {
   documento_nome: string | null;
 };
 
-/** Busca o blob do documento casado, conforme o cofre de origem. */
-async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: string } | null> {
+/** Busca o blob do documento casado, conforme o cofre de origem. Lança com a causa real. */
+async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: string }> {
   if (linha.documento_origem === 'documentos') {
-    const { data: doc } = await supabase
+    const { data: doc, error: qErr } = await supabase
       .from('documentos')
       .select('arquivo_path')
       .eq('id', linha.documento_id)
       .maybeSingle();
-    if (!doc?.arquivo_path) return null;
-    const { data: signed } = await supabase.storage
+    if (qErr) throw new Error(`consulta ao cofre: ${qErr.message}`);
+    if (!doc) throw new Error('documento não visível no cofre (permissão/RLS?)');
+    if (!doc.arquivo_path) throw new Error('documento do cofre sem arquivo anexado');
+    const { data: signed, error: sErr } = await supabase.storage
       .from('documentos-habilitacao')
       .createSignedUrl(doc.arquivo_path, 300);
-    if (!signed?.signedUrl) return null;
-    const blob = await fetch(signed.signedUrl).then((r) => (r.ok ? r.blob() : null));
-    if (!blob) return null;
+    if (sErr || !signed?.signedUrl) throw new Error(`link do arquivo: ${sErr?.message || 'não gerado'}`);
+    const resp = await fetch(signed.signedUrl);
+    if (!resp.ok) throw new Error(`download do cofre: HTTP ${resp.status}`);
+    const blob = await resp.blob();
     const ext = doc.arquivo_path.match(/\.(\w{2,5})$/)?.[1]?.toLowerCase() || 'pdf';
     return { blob, ext };
   }
   if (linha.documento_origem === 'agent_documentos') {
-    const { data: doc } = await supabase
+    const { data: doc, error: qErr } = await supabase
       .from('agent_documentos')
       .select('arquivo_url')
       .eq('id', linha.documento_id)
       .maybeSingle();
+    if (qErr) throw new Error(`consulta ao cofre automático: ${qErr.message}`);
     const url = doc?.arquivo_url;
-    if (!url || !/^https?:\/\//.test(url)) return null;
-    const blob = await fetch(url).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
-    if (!blob) return null;
+    if (!url || !/^https?:\/\//.test(url)) throw new Error('cofre automático sem URL de arquivo');
+    const resp = await fetch(url).catch(() => null);
+    if (!resp?.ok) throw new Error(`download do cofre automático: HTTP ${resp?.status ?? 'falhou'}`);
+    const blob = await resp.blob();
     const ext = url.match(/\.(\w{2,5})(?:\?|$)/)?.[1]?.toLowerCase() || 'pdf';
     return { blob, ext };
   }
-  return null;
+  throw new Error(`origem desconhecida: ${linha.documento_origem}`);
 }
 
 export async function montarPastaHabilitacao(licitacaoId: string): Promise<void> {
@@ -118,45 +123,63 @@ export async function montarPastaHabilitacao(licitacaoId: string): Promise<void>
     let copiados = 0;
     let pulados = 0;
     let falhas = 0;
+    let primeiroErro: string | null = null;
     for (let i = 0; i < casadas.length; i++) {
       const linha = casadas[i];
       const rotulo = linha.documento_nome || linha.exigencia;
       setEstado(licitacaoId, { fase: `Copiando ${i + 1}/${casadas.length}: ${rotulo.slice(0, 60)}…` });
 
-      const fonte = await blobDoDocumento(linha);
-      if (!fonte) { falhas++; continue; }
+      try {
+        const fonte = await blobDoDocumento(linha);
 
-      const nomeArquivo = sanitizar(
-        `${linha.referencia ? `${linha.referencia} — ` : ''}${rotulo}`,
-      ) + `.${fonte.ext}`;
-      if (nomesExistentes.has(nomeArquivo)) { pulados++; continue; }
+        const nomeArquivo = sanitizar(
+          `${linha.referencia ? `${linha.referencia} — ` : ''}${rotulo}`,
+        ) + `.${fonte.ext}`;
+        if (nomesExistentes.has(nomeArquivo)) { pulados++; continue; }
 
-      const path = `${u.user.id}/${licitacaoId}/habilitacao/${Date.now()}_${nomeArquivo}`;
-      const { error: upErr } = await supabase.storage
-        .from('processo-arquivos')
-        .upload(path, fonte.blob, { upsert: false });
-      if (upErr) { falhas++; continue; }
+        // Chave do storage só aceita [\w.\-]: o nome bonito (com acentos e
+        // travessões) vai para nome_arquivo; a chave é a versão ASCII segura.
+        const chaveSegura = nomeArquivo
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[^\w.\-]/g, '_');
+        const path = `${u.user.id}/${licitacaoId}/habilitacao/${Date.now()}_${chaveSegura}`;
+        const { error: upErr } = await supabase.storage
+          .from('processo-arquivos')
+          .upload(path, fonte.blob, { upsert: false });
+        if (upErr) throw new Error(`upload para o processo: ${upErr.message}`);
 
-      const { error: insErr } = await supabase.from('processo_anexos').insert({
-        licitacao_id: licitacaoId,
-        user_id: u.user.id,
-        categoria: 'habilitacao',
-        nome_arquivo: nomeArquivo,
-        storage_path: path,
-        mime_type: fonte.blob.type || 'application/pdf',
-        tamanho_bytes: fonte.blob.size,
-        origem: 'cofre',
-        descricao: `Copiado do cofre pelo checklist de habilitação (${linha.exigencia.slice(0, 140)})`,
-      });
-      if (insErr) { falhas++; continue; }
-      nomesExistentes.add(nomeArquivo);
-      copiados++;
+        const { error: insErr } = await supabase.from('processo_anexos').insert({
+          licitacao_id: licitacaoId,
+          user_id: u.user.id,
+          categoria: 'habilitacao',
+          nome_arquivo: nomeArquivo,
+          storage_path: path,
+          mime_type: fonte.blob.type || 'application/pdf',
+          tamanho_bytes: fonte.blob.size,
+          origem: 'cofre',
+          descricao: `Copiado do cofre pelo checklist de habilitação (${linha.exigencia.slice(0, 140)})`,
+        });
+        if (insErr) throw new Error(`registro do anexo: ${insErr.message}`);
+        nomesExistentes.add(nomeArquivo);
+        copiados++;
+      } catch (e) {
+        falhas++;
+        if (!primeiroErro) {
+          primeiroErro = `${rotulo.slice(0, 50)}: ${e instanceof Error ? e.message : 'erro inesperado'}`;
+        }
+      }
     }
 
     const partes = [`${copiados} copiado(s)`];
     if (pulados) partes.push(`${pulados} já na pasta`);
-    if (falhas) partes.push(`${falhas} sem arquivo legível`);
-    toast.success(`Pasta de habilitação montada: ${partes.join(' · ')}. Confira na aba Anexos.`);
+    if (falhas) partes.push(`${falhas} com falha`);
+    if (falhas && primeiroErro) {
+      // Falha silenciosa é proibida: mostra a causa real da primeira falha
+      toast.error(`Pasta de habilitação: ${partes.join(' · ')}. Primeira falha — ${primeiroErro}`, { duration: 12000 });
+    } else {
+      toast.success(`Pasta de habilitação montada: ${partes.join(' · ')}. Confira na aba Anexos.`);
+    }
 
     // Trilha de auditoria — direto, sem hook (estamos fora do React)
     const { data: lic } = await supabase.from('licitacoes').select('empresa_id').eq('id', licitacaoId).maybeSingle();
