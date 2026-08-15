@@ -1236,23 +1236,31 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               {/* Import from Catálogo */}
               <ImportarDoCatalogo
                 onImport={(catalogItems) => {
+                  // Importar RECONCILIA por descrição: item que já está na
+                  // planilha é atualizado (preço/qtd), não duplicado — importar
+                  // duas vezes não vira 8, 12 itens.
                   setItens(prev => {
                     const hasEmpty = prev.length === 1 && !prev[0].descricao.trim();
-                    const base = hasEmpty ? [] : prev;
-                    const newItens = catalogItems.map((ci, idx) => ({
-                      item: String(base.length + idx + 1),
-                      descricao: ci.descricao,
-                      quantidade: String(ci.quantidade),
-                      unidade: ci.unidade,
-                      marca: ci.marca || '',
-                      fabricante: ci.fabricante || '',
-                      modelo: ci.modelo || '',
-                      valorUnitario: ci.preco_unitario.toFixed(2).replace('.', ','),
-                      valorUnitarioExtenso: valorPorExtenso(ci.preco_unitario),
-                      valorTotal: ci.preco_total.toFixed(2).replace('.', ','),
-                      valorTotalExtenso: valorPorExtenso(ci.preco_total),
-                    }));
-                    return [...base, ...newItens];
+                    const base = hasEmpty ? [] : [...prev];
+                    const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
+                    for (const ci of catalogItems) {
+                      const novo = {
+                        descricao: ci.descricao,
+                        quantidade: String(ci.quantidade),
+                        unidade: ci.unidade,
+                        marca: ci.marca || '',
+                        fabricante: ci.fabricante || '',
+                        modelo: ci.modelo || '',
+                        valorUnitario: ci.preco_unitario.toFixed(2).replace('.', ','),
+                        valorUnitarioExtenso: valorPorExtenso(ci.preco_unitario),
+                        valorTotal: ci.preco_total.toFixed(2).replace('.', ','),
+                        valorTotalExtenso: valorPorExtenso(ci.preco_total),
+                      };
+                      const idx = base.findIndex(b => norm(b.descricao) === norm(ci.descricao));
+                      if (idx >= 0) base[idx] = { ...base[idx], ...novo };
+                      else base.push({ item: String(base.length + 1), ...novo });
+                    }
+                    return base.map((b, i) => ({ ...b, item: String(i + 1) }));
                   });
                   toast.success(`${catalogItems.length} item(ns) importado(s) do catálogo!`);
                 }}

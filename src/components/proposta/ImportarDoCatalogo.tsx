@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp, CheckSquare } from 'lucide-react';
+import { Package, ShoppingCart, Loader2, FileText, ChevronDown, ChevronUp, CheckSquare, Trash2 } from 'lucide-react';
 import { useProcessoAtivo, type ProcessoResumo } from '@/hooks/useProcessoAtivo';
 import { toast } from 'sonner';
 
@@ -154,14 +154,31 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       }
     }
 
+    // ELIMINA A DUPLICIDADE: catálogo e itens do edital são tabelas diferentes
+    // com IDs diferentes e a MESMA descrição — dedup por descrição normalizada,
+    // preferindo a linha do catálogo (tem o preço do usuário) sobre a
+    // referência do edital; entre linhas do catálogo, vence a mais recente.
+    const porDescricao = new Map<string, CatalogoItem>();
+    for (const item of catalogoData) {
+      const chave = `${item.licitacao_id || ''}|${item.descricao.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+      const atual = porDescricao.get(chave);
+      if (!atual) { porDescricao.set(chave, item); continue; }
+      if (atual._fonte === 'edital' && item._fonte === 'catalogo') porDescricao.set(chave, item);
+    }
+    catalogoData = [...porDescricao.values()];
+
     if (effectiveLicId) setResolvedLicId(effectiveLicId);
     setItems(catalogoData);
     const lics = [...new Set(catalogoData.filter(d => d.licitacao_numero).map(d => d.licitacao_numero as string))];
     setLicitacoes(lics);
 
-    // Load user processes for the filter dropdown
-    const procs = await fetchProcessos();
-    setProcessos(procs);
+    // Filtro de processos: só faz sentido SEM vínculo — vinculado, a lista
+    // trava no processo aberto (selecionar outro processo aqui era convite a
+    // importar itens da pasta errada).
+    if (!licitacaoId) {
+      const procs = await fetchProcessos();
+      setProcessos(procs);
+    }
     setLoading(false);
   };
 
@@ -208,6 +225,25 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
     setExpanded(false);
   };
 
+  const [excluindo, setExcluindo] = useState(false);
+  const handleExcluir = async () => {
+    const sel = filteredItems.filter(i => selected.has(i.id));
+    if (sel.length === 0) { toast.error('Selecione ao menos um item'); return; }
+    if (!confirm(`Excluir ${sel.length} item(ns) selecionado(s)? Itens do catálogo e da extração do edital serão removidos.`)) return;
+    setExcluindo(true);
+    try {
+      const catIds = sel.filter(i => i._fonte === 'catalogo').map(i => i.id);
+      const edIds = sel.filter(i => i._fonte === 'edital').map(i => i.id);
+      if (catIds.length) await supabase.from('catalogo_itens_precificados').delete().in('id', catIds);
+      if (edIds.length) await supabase.from('licitacao_itens').delete().in('id', edIds);
+      toast.success(`${sel.length} item(ns) excluído(s).`);
+      setSelected(new Set());
+      await loadItems();
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   return (
     <div className="border border-border/50 rounded-lg overflow-hidden">
       <button
@@ -224,31 +260,44 @@ export default function ImportarDoCatalogo({ onImport, licitacaoNumero, licitaca
       {expanded && (
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={filterLicitacao} onValueChange={(v) => { setFilterLicitacao(v); setSelected(new Set()); }}>
-              <SelectTrigger className="h-8 text-xs w-[280px]">
-                <FileText className="w-3 h-3 mr-1" />
-                <SelectValue placeholder="Filtrar por licitação" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="todos">Todas as licitações</SelectItem>
-                {processos.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <span className="font-medium">{p.numero || 'S/N'}</span>
-                    {p.orgao ? <span className="text-muted-foreground ml-1">— {p.orgao}</span> : null}
-                  </SelectItem>
-                ))}
-                {licitacoes.filter(l => !processos.some(p => p.numero === l)).map(l => (
-                  <SelectItem key={`num-${l}`} value={l}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {licitacaoId ? (
+              <Badge variant="outline" className="h-8 px-3 text-xs gap-1.5 font-normal">
+                <FileText className="w-3 h-3" />
+                Itens deste processo{licitacaoNumero ? `: ${licitacaoNumero}` : ''}
+              </Badge>
+            ) : (
+              <Select value={filterLicitacao} onValueChange={(v) => { setFilterLicitacao(v); setSelected(new Set()); }}>
+                <SelectTrigger className="h-8 text-xs w-[280px]">
+                  <FileText className="w-3 h-3 mr-1" />
+                  <SelectValue placeholder="Filtrar por licitação" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="todos">Todas as licitações</SelectItem>
+                  {processos.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="font-medium">{p.numero || 'S/N'}</span>
+                      {p.orgao ? <span className="text-muted-foreground ml-1">— {p.orgao}</span> : null}
+                    </SelectItem>
+                  ))}
+                  {licitacoes.filter(l => !processos.some(p => p.numero === l)).map(l => (
+                    <SelectItem key={`num-${l}`} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="outline" size="sm" onClick={toggleSelectAll} className="h-8 text-xs gap-1">
               <CheckSquare className="w-3 h-3" /> {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
             </Button>
             {selected.size > 0 && (
-              <Button size="sm" onClick={handleImport} className="bg-accent hover:bg-accent/90 text-accent-foreground h-8">
-                <ShoppingCart className="w-3 h-3 mr-1" /> Importar {selected.size} item(ns)
-              </Button>
+              <>
+                <Button size="sm" onClick={handleImport} className="bg-accent hover:bg-accent/90 text-accent-foreground h-8">
+                  <ShoppingCart className="w-3 h-3 mr-1" /> Importar {selected.size} item(ns)
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExcluir} disabled={excluindo} className="h-8 text-destructive border-destructive/40 hover:bg-destructive/10">
+                  {excluindo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                  Excluir selecionados
+                </Button>
+              </>
             )}
           </div>
 
