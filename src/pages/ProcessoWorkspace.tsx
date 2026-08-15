@@ -735,8 +735,8 @@ export default function ProcessoWorkspace() {
                         <thead className="bg-muted/50">
                           <tr>
                             <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-20">Custo</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-20">Preço</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Custo</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-28 whitespace-nowrap">Preço</th>
                             <th className="text-right px-3 py-1.5 font-medium w-20 whitespace-nowrap">Margem</th>
                           </tr>
                         </thead>
@@ -744,9 +744,9 @@ export default function ProcessoWorkspace() {
                           {precItems.slice(0, 15).map(it => (
                             <tr key={it.id} className="hover:bg-muted/30">
                               <td className="px-3 py-1.5 truncate max-w-[220px]">{it.descricao}</td>
-                              <td className="px-3 py-1.5 text-right text-muted-foreground">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
-                              <td className="px-3 py-1.5 text-right font-medium">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
-                              <td className="px-3 py-1.5 text-right">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
+                              <td className="px-3 py-1.5 text-right text-muted-foreground whitespace-nowrap tabular-nums">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
+                              <td className="px-3 py-1.5 text-right font-medium whitespace-nowrap tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
+                              <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
