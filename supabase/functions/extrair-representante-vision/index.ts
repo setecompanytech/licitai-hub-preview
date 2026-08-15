@@ -19,14 +19,24 @@ FORMATO DE SAÍDA — retorne APENAS este JSON puro (sem markdown, sem crases, s
   "repNacionalidade": ""
 }
 
+MAPA DE CAMPOS DA CNH (siga à risca — os rótulos numerados são padronizados):
+- Campo "2e1 NOME E SOBRENOME" → repNome.
+- Campo "4d CPF" → repCpf (normalize para 000.000.000-00).
+- Campo "4c DOC IDENTIDADE / ÓRG EMISSOR / UF" (ex: "6142740 MTE PA") → a parte
+  numérica é o repRg ("6142740") e o órgão + UF é o repOrgaoExp no formato
+  ÓRGÃO/UF ("MTE/PA").
+- Campo "3 DATA, LOCAL E UF DE NASCIMENTO" (ex: "20/12/1993, BELEM, PA") → a
+  cidade e UF são a repNaturalidade no formato Cidade/UF ("Belém/PA").
+- Campo "NACIONALIDADE" (ex: "BRASILEIRO(A)") → repNacionalidade ("Brasileira").
+- NUNCA use como RG: "5 Nº REGISTRO", RENACH, número do espelho, código de
+  segurança ou o número vertical da lateral.
+
 REGRAS CRÍTICAS:
 - Campo não identificado com segurança = "".
 - Preserve a grafia original, incluindo acentos.
 - CPF: normalize para 000.000.000-00 se visível.
-- Em CNH: use o nome do portador como repNome.
-- NÃO use número de registro da CNH, RENACH, número do espelho ou código de segurança como RG.
-- repRg: preencha SOMENTE se o RG estiver explícito no documento (campo "RG" ou "Doc. Identidade").
-- repOrgaoExp: preencha SOMENTE se houver órgão expedidor visível (ex: SSP/PA, DETRAN/PA).
+- Em RG (cédula de identidade): o número do registro geral → repRg; órgão
+  expedidor/UF → repOrgaoExp; naturalidade → repNaturalidade.
 - repCargo: preencha SOMENTE se indicar vínculo societário ou função empresarial; em documento pessoal isolado, deixe "".
 - repNaturalidade e repNacionalidade: preencha SOMENTE se visíveis no documento.
 - Se houver múltiplas pessoas, escolha o representante legal, sócio-administrador ou titular principal.

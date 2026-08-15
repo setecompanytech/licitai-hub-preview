@@ -11,8 +11,10 @@ import {
 } from './representante-extraction';
 
 const PDF_VISION_PAGE_LIMIT = 5;
-const PDF_RENDER_SCALE = 2.2;
-const PDF_MAX_RENDER_WIDTH = 1800;
+// CNH-e/RG digitais vêm como cartão pequeno dentro de uma página A4 — na
+// escala anterior (2.2/1800px) os campos do cartão ficavam ilegíveis.
+const PDF_RENDER_SCALE = 3.4;
+const PDF_MAX_RENDER_WIDTH = 2600;
 
 export type { ExtractedRepresentanteData } from './representante-extraction';
 
