@@ -129,44 +129,76 @@ Deno.serve(async (req) => {
       });
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.1,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: contentParts },
-        ],
-      }),
-    });
+    // DUAS leituras independentes (autoconsistência): dígito alucinado não se
+    // repete igual duas vezes — só entra no cadastro o campo em que as duas
+    // passadas concordam. Checksum não basta: um CPF inventado pode fechar a
+    // conta por acaso.
+    const chamarVisao = async (): Promise<Record<string, string> | null> => {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: contentParts },
+          ],
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        const status = r.status;
+        console.error('extrair-representante-vision error:', status, d);
+        throw Object.assign(new Error('vision_error'), { status });
+      }
+      const raw = d?.choices?.[0]?.message?.content || '';
+      const txt = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((p: any) => p?.text || '').join('') : '';
+      try { return JSON.parse(txt.replace(/```json|```/g, '').trim()); } catch { return null; }
+    };
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('extrair-representante-vision error:', response.status, data);
-      if (response.status === 429) {
+    let passadas: Array<Record<string, string> | null>;
+    try {
+      passadas = await Promise.all([chamarVisao(), chamarVisao()]);
+    } catch (e: any) {
+      if (e?.status === 429) {
         return new Response(JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em alguns instantes.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
+      if (e?.status === 402) {
         return new Response(JSON.stringify({ error: 'Créditos de IA insuficientes.' }), {
           status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       return new Response(JSON.stringify({ error: 'Falha ao processar documento.' }), {
-        status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: e?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const rawContent = data?.choices?.[0]?.message?.content || '';
-    let textContent = typeof rawContent === 'string' ? rawContent :
-      Array.isArray(rawContent) ? rawContent.map((p: any) => p?.text || '').join('') : '';
+    const [a, b] = passadas;
+    const CAMPOS = ['repNome', 'repCpf', 'repRg', 'repOrgaoExp', 'repCargo', 'repNaturalidade', 'repNacionalidade'];
+    const NUMERICOS = new Set(['repCpf', 'repRg']);
+    const consenso: Record<string, string> = {};
+    for (const campo of CAMPOS) {
+      const va = String(a?.[campo] ?? '').trim();
+      const vb = String(b?.[campo] ?? '').trim();
+      const na = NUMERICOS.has(campo) ? va.replace(/\D/g, '') : va.toLowerCase().replace(/\s+/g, ' ');
+      const nb = NUMERICOS.has(campo) ? vb.replace(/\D/g, '') : vb.toLowerCase().replace(/\s+/g, ' ');
+      if (va && vb && na === nb) {
+        consenso[campo] = va;
+      } else if (va && !vb) {
+        // uma passada leu, a outra absteve: em campo de TEXTO aceita; em campo
+        // NUMÉRICO (CPF/RG) a divergência é suspeita — fica vazio.
+        consenso[campo] = NUMERICOS.has(campo) ? '' : va;
+      } else if (vb && !va) {
+        consenso[campo] = NUMERICOS.has(campo) ? '' : vb;
+      } else {
+        if (va && vb) console.log(`[representante-vision] divergência em ${campo}: "${va}" x "${vb}" — descartado`);
+        consenso[campo] = '';
+      }
+    }
+    let textContent = JSON.stringify(consenso);
 
     // Pós-validação do CPF: a visão pode alucinar dígitos. Duas defesas:
     // 1) a camada de texto do PDF (CNH-e tem o CPF real como texto) é fonte
