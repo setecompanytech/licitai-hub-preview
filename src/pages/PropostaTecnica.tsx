@@ -518,6 +518,34 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     toast.info('Dados extraídos! Avance para revisá-los.');
   };
 
+  /**
+   * Lê valor em pt-BR com ou sem separador de milhar: "70.083,00", "70083,00"
+   * e "70083.00" chegam todos a 70083. O parser antigo (replace(',', '.') solto)
+   * transformava "70.083,00" em 70,083 — o Valor Global saía centenas de vezes
+   * menor no documento gerado.
+   */
+  const parseBRL = (v: string): number => {
+    const t = String(v ?? '').replace(/[^\d,.-]/g, '').trim();
+    if (!t) return 0;
+    return t.includes(',')
+      ? parseFloat(t.replace(/\./g, '').replace(',', '.')) || 0
+      : parseFloat(t) || 0;
+  };
+  const fmtBRL = (n: number) =>
+    n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Valor Global = soma da planilha de preços. Sem digitação paralela que
+  // pudesse divergir do que a própria proposta apresenta na tabela.
+  const valorGlobal = itens.reduce((acc, i) => acc + parseBRL(i.valorTotal), 0);
+
+  useEffect(() => {
+    if (valorGlobal > 0) {
+      const formatado = fmtBRL(valorGlobal);
+      setValorEstimado((prev) => (prev === formatado ? prev : formatado));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valorGlobal]);
+
   const buildContext = () => {
     const parts: string[] = [];
 
@@ -562,7 +590,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     if (orgao) parts.push(`- Órgão Gerenciador: ${orgao}`);
     parts.push(`- Modalidade: ${modalidade}`);
     if (objeto) parts.push(`- Objeto: ${objeto}`);
-    if (valorEstimado) parts.push(`- Valor Estimado: R$ ${valorEstimado}`);
+    if (valorEstimado) parts.push(`- Valor Global: R$ ${valorEstimado}`);
     if (prazoValidade) parts.push(`- Validade da Proposta Comercial: ${prazoValidade}`);
     if (prazoPagamento) parts.push(`- Prazo de Pagamento: ${prazoPagamento}`);
     if (prazoEntrega) parts.push(`- Prazo de Entrega: ${prazoEntrega}`);
@@ -576,8 +604,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
       itens.forEach(i => {
         parts.push(`| ${i.item} | ${i.descricao} | ${i.quantidade} | ${i.unidade} | ${i.marca || '-'} | ${i.fabricante || '-'} | ${i.modelo || '-'} | R$ ${i.valorUnitario} | ${i.valorUnitarioExtenso || '-'} | R$ ${i.valorTotal} | ${i.valorTotalExtenso || '-'} |`);
       });
-      const total = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
-      parts.push(`\nValor Global: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+      parts.push(`\nValor Global: R$ ${fmtBRL(valorGlobal)}`);
     }
 
     const declAtivas = DECLARACOES_PADRAO.filter(d => declaracoes[d.key]);
@@ -724,7 +751,6 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
   const completed = completedSteps();
 
   const totalItens = itens.filter(i => i.descricao.trim()).length;
-  const valorGlobal = itens.reduce((s, i) => s + (parseFloat(i.valorTotal.replace(',', '.')) || 0), 0);
 
   const declaracoesAtivasLabels = DECLARACOES_PADRAO
     .filter(d => declaracoes[d.key])
@@ -1171,8 +1197,32 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Valor Estimado (R$)</Label>
-                  <Input placeholder="500.000,00" value={valorEstimado} onChange={e => setValorEstimado(e.target.value)} />
+                  <Label>Valor Global (R$)</Label>
+                  {valorGlobal > 0 ? (
+                    <>
+                      <Input
+                        value={`R$ ${fmtBRL(valorGlobal)}`}
+                        readOnly
+                        className="bg-muted/50 font-medium tabular-nums"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Soma dos {itens.filter(i => parseBRL(i.valorTotal) > 0).length} item(ns) da planilha de preços.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        placeholder="R$ 0,00"
+                        value={valorEstimado}
+                        onChange={e => setValorEstimado(e.target.value)}
+                        onBlur={e => { const n = parseBRL(e.target.value); if (n > 0) setValorEstimado(fmtBRL(n)); }}
+                        className="tabular-nums"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Preencha a planilha de preços para o valor ser somado automaticamente.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
