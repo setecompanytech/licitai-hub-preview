@@ -57,7 +57,7 @@ export function useProcessoWorkspace(licitacaoId: string | null) {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const uploadAnexo = useCallback(async (file: File, categoria: CategoriaAnexo, descricao?: string) => {
+  const uploadAnexo = useCallback(async (file: File, categoria: CategoriaAnexo, descricao?: string, metadata?: Record<string, unknown>) => {
     if (!licitacaoId || !user) return null;
     const safeName = file.name.replace(/[^\w.\-]/g, '_');
     const path = `${user.id}/${licitacaoId}/${categoria}/${Date.now()}_${safeName}`;
@@ -66,6 +66,7 @@ export function useProcessoWorkspace(licitacaoId: string | null) {
     const { data, error } = await supabase.from('processo_anexos').insert({
       licitacao_id: licitacaoId, user_id: user.id, categoria, nome_arquivo: file.name,
       storage_path: path, mime_type: file.type, tamanho_bytes: file.size, origem: 'upload', descricao: descricao || null,
+      metadata: (metadata ?? {}) as never,
     }).select().single();
     if (error) { toast.error('Erro ao registrar anexo'); return null; }
     toast.success('Arquivo enviado');

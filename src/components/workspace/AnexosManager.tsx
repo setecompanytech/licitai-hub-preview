@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash2, FileText, Folder, Search } from 'lucide-react';
-import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO } from '@/lib/habilitacao/tipos';
+import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
 
 /** Estrutura da pasta Habilitação — mesma ordem e rótulos do Jurídico → Documentos. */
 const GRUPOS_HABILITACAO: { key: string; label: string }[] = [
@@ -44,6 +44,9 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   const { anexos, loading, uploadAnexo, downloadAnexo, deleteAnexo } = useProcessoWorkspace(licitacaoId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoria, setCategoria] = useState<CategoriaAnexo>('outros');
+  // Upload para Habilitação pergunta o grupo da Lei; 'auto' classifica pelo
+  // nome do arquivo com a mesma taxonomia do checklist.
+  const [grupoHab, setGrupoHab] = useState<string>('auto');
   // editalViewer: o "Edital em tela" (arquivos materializados do PNCP) mora na
   // pasta Edital desta aba — antes vivia solto na Visão Geral, criando dois
   // mundos de arquivo (a pasta dizia "0 arquivos" com o edital renderizando
@@ -56,7 +59,15 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
-    for (const f of files) await uploadAnexo(f, categoria);
+    for (const f of files) {
+      let metadata: Record<string, unknown> | undefined;
+      if (categoria === 'habilitacao') {
+        const taxo = classificarTipo(f.name);
+        const grupo = grupoHab === 'auto' ? (taxo?.grupo ?? 'outros') : grupoHab;
+        metadata = { grupo, tipo: taxo?.id ?? null };
+      }
+      await uploadAnexo(f, categoria, undefined, metadata);
+    }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -107,6 +118,19 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
           </Select>
+          {categoria === 'habilitacao' && (
+            <Select value={grupoHab} onValueChange={setGrupoHab}>
+              <SelectTrigger className="w-[280px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Detectar grupo pelo nome (automático)</SelectItem>
+                {GRUPOS_HABILITACAO.map(g => (
+                  <SelectItem key={g.key} value={g.key}>
+                    {g.label}{ARTIGO_POR_GRUPO[g.key] ? ` — ${ARTIGO_POR_GRUPO[g.key]}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
             <Upload className="w-4 h-4" />
             {uploading ? 'Enviando...' : 'Enviar Arquivo(s)'}
