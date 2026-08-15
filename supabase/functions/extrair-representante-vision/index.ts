@@ -1,4 +1,20 @@
-﻿const corsHeaders = {
+﻿/** Valida CPF pelos dígitos verificadores — leitura visual de número pode
+ * alucinar; o que não fecha a conta não entra no cadastro. */
+function cpfValido(cpf: string): boolean {
+  const d = (cpf || '').replace(/\D/g, '');
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const dv = (n: number) => {
+    let soma = 0;
+    for (let i = 0; i < n; i++) soma += parseInt(d[i]) * (n + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return dv(9) === parseInt(d[9]) && dv(10) === parseInt(d[10]);
+}
+
+const formatarCpf = (d: string) => `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+
+const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
@@ -21,7 +37,9 @@ FORMATO DE SAÍDA — retorne APENAS este JSON puro (sem markdown, sem crases, s
 
 MAPA DE CAMPOS DA CNH (siga à risca — os rótulos numerados são padronizados):
 - Campo "2e1 NOME E SOBRENOME" → repNome.
-- Campo "4d CPF" → repCpf (normalize para 000.000.000-00).
+- Campo "4d CPF" → repCpf (normalize para 000.000.000-00). Copie DÍGITO A
+  DÍGITO o que está impresso; se qualquer dígito estiver ilegível, retorne ""
+  — NUNCA reconstrua ou aproxime números.
 - Campo "4c DOC IDENTIDADE / ÓRG EMISSOR / UF" (ex: "6142740 MTE PA") → a parte
   numérica é o repRg ("6142740") e o órgão + UF é o repOrgaoExp no formato
   ÓRGÃO/UF ("MTE/PA").
@@ -147,8 +165,33 @@ Deno.serve(async (req) => {
     }
 
     const rawContent = data?.choices?.[0]?.message?.content || '';
-    const textContent = typeof rawContent === 'string' ? rawContent :
+    let textContent = typeof rawContent === 'string' ? rawContent :
       Array.isArray(rawContent) ? rawContent.map((p: any) => p?.text || '').join('') : '';
+
+    // Pós-validação do CPF: a visão pode alucinar dígitos. Duas defesas:
+    // 1) a camada de texto do PDF (CNH-e tem o CPF real como texto) é fonte
+    //    determinística — havendo exatamente UM CPF válido nela, ele manda;
+    // 2) CPF lido que não fecha os dígitos verificadores vira "" — o sistema
+    //    não afirma número que não passa na conta.
+    try {
+      const parsed = JSON.parse(textContent.replace(/```json|```/g, '').trim());
+      if (parsed && typeof parsed === 'object') {
+        const candidatos = [...new Set(
+          (String(text || '').match(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/g) || [])
+            .map((c: string) => c.replace(/\D/g, ''))
+            .filter(cpfValido),
+        )];
+        const lido = String(parsed.repCpf || '').replace(/\D/g, '');
+        if (candidatos.length === 1 && lido !== candidatos[0]) {
+          console.log(`[representante-vision] CPF corrigido pela camada de texto: visão="${lido}" texto="${candidatos[0]}"`);
+          parsed.repCpf = formatarCpf(candidatos[0]);
+        } else if (lido && !cpfValido(lido)) {
+          console.log(`[representante-vision] CPF lido inválido (dígitos verificadores): "${lido}" — descartado`);
+          parsed.repCpf = '';
+        }
+        textContent = JSON.stringify(parsed);
+      }
+    } catch { /* resposta fora do formato — segue como veio */ }
 
     return new Response(JSON.stringify({ result: textContent }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
