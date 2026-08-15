@@ -48,6 +48,11 @@ MAPA DE CAMPOS DA CNH (siga à risca — os rótulos numerados são padronizados
 - Campo "NACIONALIDADE" (ex: "BRASILEIRO(A)") → repNacionalidade ("Brasileira").
 - NUNCA use como RG: "5 Nº REGISTRO", RENACH, número do espelho, código de
   segurança ou o número vertical da lateral.
+- ZONA DE LEITURA MECÂNICA (MRZ): linhas com "<" no rodapé (ex:
+  "I<BRA089702888<507<<<", "NOME<<SOBRENOME<<<"). PROIBIDO extrair CPF ou RG
+  da MRZ — ela codifica o Nº de Registro da CNH e a DATA DE NASCIMENTO
+  (AAMMDD), que se parecem com CPF/RG mas NÃO são. CPF sai EXCLUSIVAMENTE do
+  campo impresso "4d CPF" no cartão; RG exclusivamente do campo "4c".
 
 REGRAS CRÍTICAS:
 - Campo não identificado com segurança = "".
@@ -76,7 +81,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { fileName = 'documento', images = [], text = '' } = await req.json();
+    const { fileName = 'documento', images = [], text: textBruto = '' } = await req.json();
+
+    // A MRZ (linhas com "<") vem na camada de texto do PDF da CNH-e e engana a
+    // extração: "0307237F..." é data de nascimento, "089702888" é o Nº de
+    // Registro — parecem CPF/RG e chegavam como "texto de apoio" com
+    // autoridade. Fora do texto de apoio, sempre.
+    const text = String(textBruto || '')
+      .split(/\r?\n/)
+      .filter((linha: string) => !/<{2,}|^\s*I<|[A-Z0-9]<[A-Z0-9]/.test(linha))
+      .join('\n');
 
     // Build message content parts
     const contentParts: any[] = [];
