@@ -10,6 +10,12 @@ interface Props {
   urlEdital: string | null;
   /** Navega para a aba/tela de precificação do processo (opcional). */
   onVerItens?: () => void;
+  /** Itens já materializados em licitacao_itens (pelo espelho PNCP ou pipeline). */
+  itensProntos?: number;
+  /** O processo tem coordenadas PNCP? Se sim, quem materializa é o ESPELHO da
+   *  Visão Geral (dado estruturado, sem IA); o pipeline do servidor só roda
+   *  como fallback para processos fora do PNCP. */
+  pncpDisponivel?: boolean;
 }
 
 /**
@@ -24,10 +30,13 @@ interface Props {
  * (baixar edital na fonte + extrair itens para a Precificação) — com status
  * honesto e retry.
  */
-export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens }: Props) {
+export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens, itensProntos, pncpDisponivel }: Props) {
+  const temItens = (itensProntos ?? 0) > 0;
   const { prepared, running, totalItens, trigger } = useProcessoAutoPrepare(
     licitacaoId,
-    { autoRun: true },
+    // Fallback, não protagonista: só auto-dispara quando o processo não tem
+    // fonte PNCP (fora do portal) — com fonte, o espelho materializa os itens.
+    { autoRun: !pncpDisponivel && !temItens },
   );
 
   const handleReprocess = async () => {
@@ -37,19 +46,25 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens 
     else toast.warning('Não foi possível concluir a preparação automática. O edital continua acessível no card "Edital em tela".');
   };
 
-  const unavailable = !prepared && !running;
+  const unavailable = !prepared && !running && !temItens;
 
   return (
     <Card className="px-4 py-3">
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-semibold">Preparação automática</span>
 
-        {running && (
+        {temItens && (
+          <Badge variant="outline" className="gap-1 text-xs">
+            <CheckCircle2 className="w-3 h-3 text-success" />
+            {itensProntos} itens prontos · espelho PNCP
+          </Badge>
+        )}
+        {!temItens && running && (
           <Badge variant="outline" className="gap-1 text-xs">
             <Loader2 className="w-3 h-3 animate-spin" /> Extraindo itens do edital…
           </Badge>
         )}
-        {prepared && (
+        {!temItens && prepared && (
           <Badge variant="outline" className="gap-1 text-xs">
             <CheckCircle2 className="w-3 h-3 text-success" />
             {totalItens != null && totalItens > 0 ? `${totalItens} itens extraídos` : 'Pronto'}
@@ -62,7 +77,7 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens 
         )}
 
         <div className="flex items-center gap-1.5 ml-auto">
-          {prepared && totalItens != null && totalItens > 0 && onVerItens && (
+          {(temItens || (prepared && totalItens != null && totalItens > 0)) && onVerItens && (
             <Button size="sm" variant="outline" className="h-7" onClick={onVerItens}>
               <Calculator className="w-3.5 h-3.5 mr-1.5" /> Ver na Precificação
             </Button>
@@ -74,10 +89,12 @@ export default function EditalOriginalCard({ licitacaoId, urlEdital, onVerItens 
               </a>
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="h-7" onClick={handleReprocess} disabled={running}>
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${running ? 'animate-spin' : ''}`} />
-            {prepared ? 'Reprocessar' : 'Tentar novamente'}
-          </Button>
+          {!temItens && (
+            <Button size="sm" variant="ghost" className="h-7" onClick={handleReprocess} disabled={running}>
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${running ? 'animate-spin' : ''}`} />
+              {prepared ? 'Reprocessar' : 'Tentar novamente'}
+            </Button>
+          )}
         </div>
       </div>
     </Card>

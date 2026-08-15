@@ -67,6 +67,10 @@ export default function ProcessoWorkspace() {
   const [aba, setAba] = useState(abaInicial);
   // Contagem dos arquivos do PNCP (Edital em tela) — soma no chip da pasta Edital
   const [pncpArquivosCount, setPncpArquivosCount] = useState<number | null>(null);
+  // O processo tem coordenadas PNCP? Decide quem materializa os itens: o
+  // espelho (fonte boa) ou o pipeline do servidor (fallback p/ fora do PNCP).
+  const [temFontePncp, setTemFontePncp] = useState(false);
+  const materializouRef = useRef(false);
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -156,6 +160,7 @@ export default function ProcessoWorkspace() {
       if (n) { cnpj = n[1]; seq = String(Number(n[2])); ano = n[3]; }
     }
     if (!cnpj || !ano || !seq) return;
+    setTemFontePncp(true);
     pncpFetchedRef.current = true;
     setPncpErro(false);
     setPncpCarregando(true);
@@ -190,6 +195,57 @@ export default function ProcessoWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lic?.id]);
 
+  type ItemPncpLive = {
+    numero?: number; numeroItem?: number;
+    descricao?: string; descricaoItem?: string;
+    quantidade?: number; quantidadeItens?: number;
+    unidade_medida?: string; unidadeMedida?: string;
+    valor_unitario_estimado?: number; valorUnitarioEstimado?: number; valorUnitario?: number;
+    valor_total?: number; valorTotal?: number;
+    marca?: string | null; marcaFabricante?: string | null;
+  };
+
+  // A INVERSÃO da preparação automática: quando o espelho traz os itens ao
+  // vivo do PNCP e licitacao_itens está vazia, materializa DAQUI — dado já
+  // fiel, sem IA, sem repetir do servidor a rota sujeita a rate-limit. O
+  // pipeline edital-auto-ingest vira fallback para processos fora do PNCP.
+  useEffect(() => {
+    if (materializouRef.current || !user || !lic?.id) return;
+    if (!pncpItens.length || itensMaterializados.length > 0) return;
+    materializouRef.current = true;
+    const rows = (pncpItens as ItemPncpLive[])
+      .map((item, i) => {
+        const qtd = Number(item.quantidade ?? item.quantidadeItens ?? 1) || 1;
+        const vUnit = Number(item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario ?? 0) || 0;
+        return {
+          licitacao_id: lic.id,
+          user_id: user.id,
+          numero: Number(item.numero ?? item.numeroItem ?? i + 1),
+          descricao: String(item.descricao ?? item.descricaoItem ?? '').trim().slice(0, 4000),
+          quantidade: qtd,
+          unidade: String(item.unidade_medida ?? item.unidadeMedida ?? 'UN').slice(0, 20),
+          valor_unitario: vUnit,
+          valor_total: (Number(item.valor_total ?? item.valorTotal ?? 0) || qtd * vUnit),
+          lote: 'Único',
+          marca: item.marca ?? item.marcaFabricante ?? null,
+          origem: 'espelho:PNCP_ITENS',
+        };
+      })
+      .filter((r) => r.descricao && r.numero > 0);
+    if (!rows.length) return;
+    supabase
+      .from('licitacao_itens')
+      .insert(rows)
+      .then(({ error }) => {
+        if (error) { console.error('[materializar-itens]', error.message); return; }
+        setItensMaterializados(rows.map((r) => ({
+          numero: r.numero, descricao: r.descricao, quantidade: r.quantidade,
+          unidade: r.unidade, valor_unitario: r.valor_unitario,
+        })));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pncpItens, itensMaterializados.length, user, lic?.id]);
+
   const loadPrecificacao = async () => {
     if (!id || !user) return;
     setLoadingPrec(true);
@@ -216,7 +272,7 @@ export default function ProcessoWorkspace() {
   }, [abaInicial, id, user]);
 
   // Espelho de ITENS — mesma prioridade do espelho de campos: ao vivo > materializado.
-  const itensEspelho: any[] = pncpItens.length > 0
+  const itensEspelho: ItemPncpLive[] = pncpItens.length > 0
     ? pncpItens
     : itensMaterializados.map((r) => ({
         numero: r.numero,
@@ -555,6 +611,8 @@ export default function ProcessoWorkspace() {
               licitacaoId={lic.id}
               urlEdital={lic.url_edital ?? null}
               onVerItens={() => { setAba('precificacao'); loadPrecificacao(); }}
+              itensProntos={itensMaterializados.length}
+              pncpDisponivel={temFontePncp}
             />
             {/* O Edital em tela mora em Anexos → pasta Edital (Fase 1 do
                 prontuário integrado): a Visão Geral é a ficha, e os arquivos
