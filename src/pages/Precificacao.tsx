@@ -102,6 +102,8 @@ export default function Precificacao() {
   const { user } = useAuth();
   const { processoId } = useProcessoAtivo();
   const [processoMeta, setProcessoMeta] = useState({ numero: '', orgao: '' });
+  // Itens já na planilha (vindos do processo) → as entradas de extração saem do palco
+  const [itensNaPlanilha, setItensNaPlanilha] = useState(0);
 
   useEffect(() => {
     let ativo = true;
@@ -657,7 +659,7 @@ export default function Precificacao() {
           <p className="text-xs text-muted-foreground">
             Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
           </p>
-          {processoId && (
+          {processoId && itensNaPlanilha === 0 && (
             <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="text-xs">
                 <p className="font-medium">Sem download/upload manual</p>
@@ -667,6 +669,7 @@ export default function Precificacao() {
             </div>
           )}
           <PlanilhaCustosEdital
+            onItensStatus={setItensNaPlanilha}
             licitacaoId={processoId}
             licitacaoNumero={processoMeta.numero}
             licitacaoOrgao={processoMeta.orgao}

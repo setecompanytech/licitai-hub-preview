@@ -66,6 +66,9 @@ interface PlanilhaCustosEditalProps {
   licitacaoId?: string | null;
   licitacaoNumero?: string;
   licitacaoOrgao?: string;
+  /** Informa quantos itens a planilha tem — a página esconde as entradas de
+   *  extração redundantes quando os itens já chegaram do processo. */
+  onItensStatus?: (n: number) => void;
 }
 
 export default function PlanilhaCustosEdital({
@@ -73,6 +76,7 @@ export default function PlanilhaCustosEdital({
   licitacaoId,
   licitacaoNumero,
   licitacaoOrgao,
+  onItensStatus,
 }: PlanilhaCustosEditalProps) {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
@@ -235,6 +239,8 @@ export default function PlanilhaCustosEdital({
     const titulo = licitacaoNumero ? `Planilha de custos — ${licitacaoNumero}` : 'Planilha de custos';
     autoSave({ itens, sourceLabel }, titulo);
   }, [itens, sourceLabel, licitacaoNumero, autoSave]);
+
+  useEffect(() => { onItensStatus?.(itens.length); }, [itens.length, onItensStatus]);
 
   const handleCotarTodos = async () => {
     if (isCotando) return;
@@ -677,6 +683,56 @@ export default function PlanilhaCustosEdital({
       />
 
       {!file ? (
+        // Com itens já na planilha (chegam sozinhos do processo vinculado), as
+        // entradas de extração saem do palco: viram "Opções avançadas". Limpar
+        // esvazia a planilha e elas voltam ao lugar — porque voltam a ser úteis.
+        licitacaoId && itens.length > 0 ? (
+          <details className="rounded-lg border border-border/60 bg-muted/20">
+            <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <span className="font-medium text-foreground">{itens.length} item(ns) na planilha</span>
+              {sourceLabel ? ` — ${sourceLabel}` : ''} · Opções avançadas de extração (reextrair, upload manual, limpar)
+            </summary>
+            <div className="p-3 space-y-3 border-t border-border/60">
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                <div>
+                  <p className="text-xs font-medium text-foreground">Processo vinculado</p>
+                  <p className="text-xs text-muted-foreground">
+                    Recarregue os itens do processo ou limpe para começar do zero.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <LimparItensExtraidosButton
+                    licitacaoId={licitacaoId}
+                    fontes={['licitacao_itens', 'catalogo_itens_precificados']}
+                    onCleared={() => { setItens([]); setSourceLabel(''); }}
+                    label="Limpar"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExtractFromLinkedProcess}
+                    disabled={isExtracting}
+                  >
+                    {isExtracting ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Carregando...</>
+                    ) : (
+                      <><Link2 className="w-3.5 h-3.5 mr-1" /> Recarregar do processo</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center gap-1.5 hover:border-accent/50 hover:bg-muted/30 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">Enviar Edital/TR/Anexo (substitui a extração)</span>
+                <span className="text-xs text-muted-foreground">PDF, Word, Excel, Imagens (JPG/PNG), TXT — Máx. 20MB</span>
+              </button>
+            </div>
+          </details>
+        ) : (
         <div className="space-y-3">
           {licitacaoId && (
             <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
@@ -728,6 +784,7 @@ export default function PlanilhaCustosEdital({
             </span>
           </button>
         </div>
+        )
       ) : (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
           <div className="flex items-center gap-3">
