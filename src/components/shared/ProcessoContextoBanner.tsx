@@ -62,7 +62,9 @@ export default function ProcessoContextoBanner() {
     );
   }
 
-  const irPara = (aba: string) => navigate(`/processo/${processoId}?aba=${aba}`);
+  // replace: voltar/ir não deve empilhar histórico — era o que fazia o botão
+  // do navegador (e o ← da pasta) girar entre módulo e prontuário.
+  const irPara = (aba: string) => navigate(`/processo/${processoId}?aba=${aba}`, { replace: true });
 
   return (
     <div className="flex items-center gap-2.5 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 text-sm flex-wrap">

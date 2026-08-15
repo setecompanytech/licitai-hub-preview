@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { registrarRota } from '@/lib/navegacao/origemProcesso';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -44,6 +45,7 @@ const ProcessoAtivoCtx = createContext<Ctx | null>(null);
 export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const urlId = searchParams.get('lid');
   const [processo, setProcesso] = useState<ProcessoAtivo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +56,11 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   // Marca uma desvinculação pedida pelo usuário, para a reidratação não
   // ressuscitar o processo que ele acabou de soltar.
   const limpezaExplicitaRef = useRef(false);
+
+  // Rastreia a última rota FORA do processo: é para lá que o ← da pasta volta.
+  useEffect(() => {
+    registrarRota(location.pathname + location.search);
+  }, [location.pathname, location.search]);
 
   // Reidrata o processo ativo SEMPRE que a URL ficar sem `lid` — não só na
   // montagem. O provider é global e não remonta na navegação interna: ir para
