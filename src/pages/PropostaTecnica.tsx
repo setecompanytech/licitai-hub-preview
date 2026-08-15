@@ -32,8 +32,6 @@ import EnvioProposta from '@/components/proposta/EnvioProposta';
 import PropostaDownload from '@/components/proposta/PropostaDownload';
 import PropostaRenderer from '@/components/proposta/PropostaRenderer';
 import PropostaLivePreview from '@/components/proposta/PropostaLivePreview';
-import DadosEmpresaUploader, { type ExtractedEmpresaData } from '@/components/proposta/DadosEmpresaUploader';
-import RepresentanteUploader from '@/components/configuracoes/RepresentanteUploader';
 import BancoSelector from '@/components/proposta/BancoSelector';
 import ImportarDoCatalogo from '@/components/proposta/ImportarDoCatalogo';
 
@@ -520,21 +518,6 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     toast.info('Dados extraídos! Avance para revisá-los.');
   };
 
-  const handleEmpresaExtracted = (data: ExtractedEmpresaData) => {
-    if (data.telefone) setTelefone(data.telefone);
-    if (data.email) setEmail(data.email);
-    if (data.repNome !== undefined) setRepNome(data.repNome ?? '');
-    if (data.repCpf !== undefined) setRepCpf(data.repCpf ?? '');
-    if (data.repRg !== undefined) setRepRg(data.repRg ?? '');
-    if (data.repOrgaoExp !== undefined) setRepOrgaoExp(data.repOrgaoExp ?? '');
-    if (data.repCargo !== undefined) setRepCargo(data.repCargo ?? '');
-    if (data.repNaturalidade !== undefined) setRepNaturalidade(data.repNaturalidade ?? '');
-    if (data.repNacionalidade !== undefined) setRepNacionalidade(data.repNacionalidade ?? '');
-    if (data.banco) setBanco(data.banco);
-    if (data.agencia) setAgencia(data.agencia);
-    if (data.conta) setConta(data.conta);
-  };
-
   const buildContext = () => {
     const parts: string[] = [];
 
@@ -974,8 +957,6 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 </div>
               )}
 
-              <DadosEmpresaUploader onExtracted={handleEmpresaExtracted} />
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Telefone</Label>
@@ -1039,28 +1020,64 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 <h2 className="font-semibold text-lg">Representante Legal</h2>
               </div>
 
-              {/* Auto-fill status / uploader */}
-              {repNome ? (
+              {/* Mesma analogia da aba Empresa: a fonte é o cadastro em
+                  Configurações — sem upload. */}
+              {empresaAtiva && (empresaAtiva as any).rep_nome ? (
+                <div className="border border-border/50 rounded-lg p-4 bg-muted/20">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="text-sm min-w-0">
+                      <p className="font-semibold">{(empresaAtiva as any).rep_nome}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {[(empresaAtiva as any).rep_cargo,
+                          (empresaAtiva as any).rep_cpf && `CPF: ${(empresaAtiva as any).rep_cpf}`,
+                          (empresaAtiva as any).rep_rg && `RG: ${(empresaAtiva as any).rep_rg}${(empresaAtiva as any).rep_orgao_expedidor ? ` ${(empresaAtiva as any).rep_orgao_expedidor}` : ''}`,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs gap-1.5"
+                      onClick={() => {
+                        const ea = empresaAtiva as any;
+                        setRepNome(ea.rep_nome || '');
+                        setRepCpf(ea.rep_cpf || '');
+                        setRepRg(ea.rep_rg || '');
+                        setRepOrgaoExp(ea.rep_orgao_expedidor || '');
+                        setRepCargo(ea.rep_cargo || '');
+                        setRepNaturalidade(ea.rep_naturalidade || '');
+                        setRepNacionalidade(ea.rep_nacionalidade || 'Brasileira');
+                        const partes = [
+                          empresaAtiva.endereco,
+                          empresaAtiva.bairro,
+                          empresaAtiva.municipio && empresaAtiva.uf
+                            ? `${empresaAtiva.municipio}/${empresaAtiva.uf}`
+                            : (empresaAtiva.municipio || empresaAtiva.uf),
+                          empresaAtiva.cep,
+                        ].filter(Boolean);
+                        if (partes.length > 0) setRepEndereco(partes.join(', '));
+                        toast.success('Dados do representante preenchidos via Configurações!');
+                      }}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      Preencher via Configurações
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-warning/5 border border-warning/40 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-warning shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum representante cadastrado nas Configurações da empresa. Cadastre em
+                    {' '}<span className="font-medium text-foreground">Configurações Gerais → Empresa</span>{' '}
+                    para preencher automaticamente — ou preencha os campos abaixo manualmente.
+                  </p>
+                </div>
+              )}
+              {repNome && (
                 <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg text-xs text-muted-foreground">
                   <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                   Dados preenchidos automaticamente do cadastro da empresa. Revise e ajuste se necessário.
-                </div>
-              ) : (
-                <div className="border border-border/50 rounded-lg p-4 bg-muted/20 space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum dado do representante encontrado no cadastro. Faça upload do contrato social ou procuração para extração automática.
-                  </p>
-                  <RepresentanteUploader
-                    onExtracted={(data) => {
-                      if (data.repNome !== undefined) setRepNome(data.repNome ?? '');
-                      if (data.repCpf !== undefined) setRepCpf(data.repCpf ?? '');
-                      if (data.repRg !== undefined) setRepRg(data.repRg ?? '');
-                      if (data.repOrgaoExp !== undefined) setRepOrgaoExp(data.repOrgaoExp ?? '');
-                      if (data.repCargo !== undefined) setRepCargo(data.repCargo ?? '');
-                      if (data.repNaturalidade !== undefined) setRepNaturalidade(data.repNaturalidade ?? '');
-                      if (data.repNacionalidade !== undefined) setRepNacionalidade(data.repNacionalidade ?? '');
-                    }}
-                  />
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
