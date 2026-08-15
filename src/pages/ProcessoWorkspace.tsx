@@ -65,6 +65,8 @@ export default function ProcessoWorkspace() {
   const abaPedida = searchParams.get('aba') || '';
   const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
   const [aba, setAba] = useState(abaInicial);
+  // Contagem dos arquivos do PNCP (Edital em tela) — soma no chip da pasta Edital
+  const [pncpArquivosCount, setPncpArquivosCount] = useState<number | null>(null);
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -545,8 +547,9 @@ export default function ProcessoWorkspace() {
           {/* Anexos */}
           <TabsContent value="anexos">
             <AnexosManager
+              pncpEditalCount={pncpArquivosCount ?? undefined}
               licitacaoId={lic.id}
-              editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} />}
+              editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} onArquivosPncp={setPncpArquivosCount} />}
             />
           </TabsContent>
 

@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Calculator, ArrowRight } from 'lucide-react';
+import { Loader2, Save, Calculator, ArrowRight, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { cotarItens, getEstadoCotacao, subscribeCotacao } from '@/lib/precificacao/cotarItens';
 
 /**
  * Fase 2 do prontuário integrado — precificação IN-CONTEXT.
@@ -48,6 +49,13 @@ export default function ItensEditalPrecificacao({
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [fontesAbertas, setFontesAbertas] = useState<string | null>(null);
+  // Cotação automática roda FORA do React (lib/precificacao/cotarItens):
+  // trocar de aba não interrompe a série de pesquisas.
+  const cotacao = useSyncExternalStore(
+    useCallback((cb) => subscribeCotacao(licitacaoId, cb), [licitacaoId]),
+    useCallback(() => getEstadoCotacao(licitacaoId), [licitacaoId]),
+  );
 
   const carregar = useCallback(async () => {
     if (!user) return;
@@ -83,6 +91,9 @@ export default function ItensEditalPrecificacao({
   const totalProposto = itens.reduce(
     (s, it) => s + parsePreco(precos[it.id] || '') * (it.quantidade || 0), 0,
   );
+
+  const aplicarPreco = (itemId: string, valor: number) =>
+    setPrecos((p) => ({ ...p, [itemId]: valor.toFixed(2).replace('.', ',') }));
 
   const salvar = async () => {
     if (!user) return;
@@ -153,7 +164,26 @@ export default function ItensEditalPrecificacao({
         <span className="text-xs text-muted-foreground">
           {itens.length} item(ns) · edite o preço unitário e salve no catálogo
         </span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto"
+          onClick={() => cotarItens(licitacaoId, itens)}
+          disabled={cotacao.rodando}
+        >
+          {cotacao.rodando
+            ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            : <Search className="w-3.5 h-3.5 mr-1.5" />}
+          Cotar todos na internet
+        </Button>
       </div>
+
+      {cotacao.rodando && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Pesquisando preço {cotacao.feitos + 1}/{cotacao.total}: {cotacao.atual}… (continua mesmo se você trocar de aba)
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded border border-border/60">
         <table className="w-full text-xs">
@@ -163,6 +193,7 @@ export default function ItensEditalPrecificacao({
               <th className="text-left px-3 py-2 font-semibold">Descrição</th>
               <th className="text-right px-3 py-2 font-semibold w-20">Qtd.</th>
               <th className="text-right px-3 py-2 font-semibold w-28">Ref. edital</th>
+              <th className="text-right px-3 py-2 font-semibold w-40">Cotação internet</th>
               <th className="text-right px-3 py-2 font-semibold w-32">Preço unit. (R$)</th>
               <th className="text-right px-3 py-2 font-semibold w-32">Total</th>
             </tr>
@@ -170,8 +201,10 @@ export default function ItensEditalPrecificacao({
           <tbody>
             {itens.map((it) => {
               const unit = parsePreco(precos[it.id] || '');
+              const cot = cotacao.cotacoes[it.id];
               return (
-                <tr key={it.id} className="border-b border-border/40 hover:bg-muted/20">
+                <Fragment key={it.id}>
+                <tr className="border-b border-border/40 hover:bg-muted/20">
                   <td className="px-3 py-1.5 text-muted-foreground tabular-nums">{it.numero}</td>
                   <td className="px-3 py-1.5">
                     {it.descricao}
@@ -180,6 +213,30 @@ export default function ItensEditalPrecificacao({
                   <td className="px-3 py-1.5 text-right tabular-nums">{it.quantidade?.toLocaleString('pt-BR')}</td>
                   <td className="px-3 py-1.5 text-right text-muted-foreground tabular-nums">
                     {it.valor_unitario > 0 ? brl(it.valor_unitario) : '—'}
+                  </td>
+                  <td className="px-2 py-1 text-right">
+                    {cot?.status === 'cotando' && <Loader2 className="w-3.5 h-3.5 animate-spin inline text-muted-foreground" />}
+                    {cot?.status === 'erro' && <span className="text-xs text-muted-foreground">sem resultado</span>}
+                    {cot?.status === 'cotado' && (
+                      <button
+                        type="button"
+                        className="text-xs text-accent underline-offset-2 hover:underline tabular-nums"
+                        title="Ver fontes e aplicar preço"
+                        onClick={() => setFontesAbertas(fontesAbertas === it.id ? null : it.id)}
+                      >
+                        {brl(cot.menorPreco)} – {brl(cot.precoMedio)}
+                      </button>
+                    )}
+                    {!cot && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => cotarItens(licitacaoId, [it])}
+                        disabled={cotacao.rodando}
+                      >
+                        <Search className="w-3 h-3 inline mr-1" />cotar
+                      </button>
+                    )}
                   </td>
                   <td className="px-2 py-1">
                     <Input
@@ -193,6 +250,37 @@ export default function ItensEditalPrecificacao({
                     {unit > 0 ? brl(unit * (it.quantidade || 1)) : '—'}
                   </td>
                 </tr>
+                {cot?.status === 'cotado' && fontesAbertas === it.id && (
+                  <tr className="border-b border-border/40 bg-muted/10">
+                    <td />
+                    <td colSpan={6} className="px-3 py-2">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-semibold">Fontes da cotação</span>
+                        <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.menorPreco)}>
+                          Usar menor ({brl(cot.menorPreco)})
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => aplicarPreco(it.id, cot.precoMedio)}>
+                          Usar médio ({brl(cot.precoMedio)})
+                        </Button>
+                      </div>
+                      <div className="space-y-0.5">
+                        {cot.fornecedores.map((f, fi) => (
+                          <div key={fi} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
+                            <span className="shrink-0">{f.loja}</span>
+                            <span className="truncate">{f.titulo}</span>
+                            {f.url && (
+                              <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">
+                                <ExternalLink className="w-3 h-3 inline" />
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>

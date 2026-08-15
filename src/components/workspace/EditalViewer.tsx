@@ -21,6 +21,8 @@ interface ArquivoPncp {
 interface Props {
   licitacaoId: string;
   urlEdital?: string;
+  /** Informa quantos arquivos existem no PNCP — a pasta Edital soma no contador. */
+  onArquivosPncp?: (n: number) => void;
 }
 
 const VISUALIZAVEL = ['pdf'];
@@ -45,7 +47,7 @@ async function mensagemDoErro(error: unknown, fallback: string): Promise<string>
  * Edge Function `pncp-arquivos-edital` — assim ele continua abrindo mesmo
  * quando o portal está fora do ar.
  */
-export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
+export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }: Props) {
   const [arquivos, setArquivos] = useState<ArquivoPncp[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [erroLista, setErroLista] = useState<string | null>(null);
@@ -83,12 +85,13 @@ export default function EditalViewer({ licitacaoId, urlEdital }: Props) {
         return;
       }
       setArquivos(data.arquivos || []);
+      onArquivosPncp?.((data.arquivos || []).length);
     } catch (e) {
       setErroLista(e instanceof Error ? e.message : 'Erro ao consultar o PNCP.');
     } finally {
       setCarregandoLista(false);
     }
-  }, [licitacaoId]);
+  }, [licitacaoId, onArquivosPncp]);
 
   useEffect(() => { carregarLista(); }, [carregarLista]);
 

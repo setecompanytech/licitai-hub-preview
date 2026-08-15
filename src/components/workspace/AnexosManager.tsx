@@ -24,7 +24,7 @@ function formatBytes(b: number | null) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function AnexosManager({ licitacaoId, editalViewer }: { licitacaoId: string; editalViewer?: ReactNode }) {
+export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCount }: { licitacaoId: string; editalViewer?: ReactNode; pncpEditalCount?: number }) {
   const { anexos, loading, uploadAnexo, downloadAnexo, deleteAnexo } = useProcessoWorkspace(licitacaoId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoria, setCategoria] = useState<CategoriaAnexo>('outros');
@@ -93,14 +93,20 @@ export default function AnexosManager({ licitacaoId, editalViewer }: { licitacao
             <Folder className="w-4 h-4 mb-1 text-accent" />
             <div className="text-xs font-semibold">{g.label}</div>
             <div className="text-xs text-muted-foreground">
-              {g.count} arquivos{g.value === 'edital' && editalViewer ? ' + PNCP' : ''}
+              {g.value === 'edital' && editalViewer
+                ? pncpEditalCount != null
+                  ? `${g.count + pncpEditalCount} arquivo(s)${pncpEditalCount > 0 ? ` · ${pncpEditalCount} do PNCP` : ''}`
+                  : `${g.count} arquivo(s) + PNCP`
+                : `${g.count} arquivos`}
             </div>
           </button>
         ))}
       </div>
 
-      {/* Edital em tela — arquivos oficiais da contratação no PNCP */}
-      {filtroCat === 'edital' && editalViewer}
+      {/* Edital em tela — arquivos oficiais da contratação no PNCP. Fica sempre
+          montado (oculto fora da pasta) para a listagem carregar uma vez só e o
+          contador da pasta refletir os arquivos do PNCP desde o início. */}
+      {editalViewer && <div className={filtroCat === 'edital' ? '' : 'hidden'}>{editalViewer}</div>}
 
       {/* Lista */}
       <Card className="divide-y divide-border">
