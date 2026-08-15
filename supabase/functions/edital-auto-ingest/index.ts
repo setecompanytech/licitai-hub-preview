@@ -52,6 +52,41 @@ function parsePNCPNumeroControle(nc: string | null | undefined) {
   return null;
 }
 
+/**
+ * Edital JÁ MATERIALIZADO no storage do processo — o "Edital em tela" e a
+ * preparação salvam o PDF em processo-arquivos. Quando o PNCP não responde,
+ * o arquivo local é a fonte: o sistema reconhece o que já tem em casa.
+ */
+async function editalMaterializado(
+  admin: any,
+  userId: string,
+  licitacaoId: string,
+  pncp: { cnpj: string; ano: string; seq: string } | null,
+): Promise<string | null> {
+  const pastas = [`${userId}/${licitacaoId}/edital`];
+  if (pncp) {
+    const seqInt = String(parseInt(pncp.seq, 10) || pncp.seq);
+    pastas.push(`${userId}/pncp/${pncp.cnpj}-${pncp.ano}-${seqInt}`);
+    if (seqInt !== pncp.seq) pastas.push(`${userId}/pncp/${pncp.cnpj}-${pncp.ano}-${pncp.seq}`);
+  }
+  for (const pasta of pastas) {
+    try {
+      const { data } = await admin.storage.from("processo-arquivos").list(pasta, { limit: 50 });
+      const pdfs = (data || []).filter((f: any) => /\.pdf$/i.test(f.name));
+      if (!pdfs.length) continue;
+      const escolhido = pdfs.find((f: any) => /edital/i.test(f.name)) || pdfs[0];
+      const { data: signed } = await admin.storage
+        .from("processo-arquivos")
+        .createSignedUrl(`${pasta}/${escolhido.name}`, 600);
+      if (signed?.signedUrl) {
+        console.log(`[auto-ingest] Edital materializado encontrado: ${pasta}/${escolhido.name}`);
+        return signed.signedUrl;
+      }
+    } catch { /* pasta inexistente — segue */ }
+  }
+  return null;
+}
+
 // O PNCP aplica rate-limit por IP de saída (429) — as consultas do servidor
 // PRECISAM de retry com espera, senão "temporariamente indisponível" vira
 // "sem itens publicados" (diagnóstico errado ao usuário).
@@ -417,7 +452,14 @@ Deno.serve(async (req) => {
       payload.ano_compra = Number(pncp.ano);
       payload.sequencial = Number(pncp.seq);
     }
-    if (pdfFirst) payload.pdf_url = pdfFirst.url;
+    if (pdfFirst) {
+      payload.pdf_url = pdfFirst.url;
+    } else {
+      // Sem anexo alcançável no PNCP (429/instabilidade): o edital que o
+      // processo JÁ TEM no storage é a fonte — não se desiste com o arquivo em casa.
+      const local = await editalMaterializado(admin, user.id, lic.id, pncp);
+      if (local) payload.pdf_url = local;
+    }
 
     const textoFallback = [lic.objeto, lic.observacoes].filter(Boolean).join("\n\n");
     if (textoFallback.length >= 50) {

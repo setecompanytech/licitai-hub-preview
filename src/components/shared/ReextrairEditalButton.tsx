@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEditalAutoIngest } from '@/hooks/useEditalAutoIngest';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface Props {
   licitacaoId: string | null;
@@ -55,10 +56,11 @@ export default function ReextrairEditalButton({ licitacaoId, label, size = 'sm',
     if (ok) onCompleted?.();
   };
 
-  const handleConfirmKeep = async () => {
+  // A extração centralizada JÁ existe — usar não precisa de servidor nenhum.
+  const handleUsarExistentes = () => {
     setConfirming(false);
-    const ok = await trigger(licitacaoId!, { replace: false });
-    if (ok) onCompleted?.();
+    toast.success(`${existingCount} itens já extraídos deste processo — prontos para uso.`);
+    onCompleted?.();
   };
 
   return (
@@ -87,21 +89,21 @@ export default function ReextrairEditalButton({ licitacaoId, label, size = 'sm',
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Já existem {existingCount} itens neste processo</AlertDialogTitle>
+            <AlertDialogTitle>Este processo já tem {existingCount} itens extraídos</AlertDialogTitle>
             <AlertDialogDescription>
-              Como deseja proceder com a nova leitura automática do edital?
+              A extração centralizada deste processo já está pronta — o normal é usá-la.
               <ul className="list-disc list-inside mt-2 text-sm space-y-1">
-                <li><strong>Substituir tudo</strong>: apaga os itens atuais e importa do edital.</li>
-                <li><strong>Manter e adicionar</strong>: mantém o que existe e acrescenta os novos.</li>
+                <li><strong>Usar itens existentes</strong>: carrega o que já foi extraído, sem nova leitura.</li>
+                <li><strong>Reextrair do zero</strong>: apaga os itens atuais e lê o edital novamente.</li>
               </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button variant="outline" onClick={handleConfirmKeep}>
-              <RefreshCw className="w-4 h-4 mr-2" />Manter e adicionar
+            <Button variant="outline" onClick={handleConfirmReplace}>
+              <RefreshCw className="w-4 h-4 mr-2" />Reextrair do zero
             </Button>
-            <AlertDialogAction onClick={handleConfirmReplace}>Substituir tudo</AlertDialogAction>
+            <AlertDialogAction onClick={handleUsarExistentes}>Usar itens existentes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
