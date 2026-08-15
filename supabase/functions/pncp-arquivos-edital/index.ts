@@ -349,9 +349,44 @@ serve(async (req) => {
 
     const { cnpj, ano, seq } = pncp;
 
+    // Os arquivos abertos ficam SALVOS no Praefectus (bucket privado). Quando o
+    // PNCP não responde, o cofre local é a fonte: lista-se o que já foi
+    // materializado em vez de falhar com os PDFs em casa.
+    const listarDoCache = async () => {
+      const pasta = `${userId}/pncp/${cnpj}-${ano}-${seq}`;
+      const { data: cacheados } = await admin.storage.from(BUCKET).list(pasta, { limit: 100 });
+      return (cacheados ?? [])
+        .filter((f) => /^\d+-/.test(f.name))
+        .map((f) => {
+          const m = f.name.match(/^(\d+)-(.+)$/)!;
+          const nome = m[2];
+          return {
+            sequencial: Number(m[1]),
+            nome,
+            titulo: nome.replace(/\.[a-z0-9]{2,5}$/i, ""),
+            tipo: "Arquivo salvo no Praefectus",
+            data_publicacao: null,
+            url: null,
+            extensao: (nome.match(/\.([a-z0-9]{2,5})$/i) || [])[1]?.toLowerCase() ?? "",
+          };
+        })
+        .sort((x, y) => x.sequencial - y.sequencial);
+    };
+
     if (action === "listar") {
-      const arquivos = await listarArquivos(cnpj, ano, seq);
+      let arquivos;
+      let origemCache = false;
+      try {
+        arquivos = await listarArquivos(cnpj, ano, seq);
+      } catch (e) {
+        const doCache = await listarDoCache();
+        if (!doCache.length) throw e;
+        console.log(`[pncp-arquivos-edital] PNCP indisponível — servindo ${doCache.length} arquivo(s) do cache`);
+        arquivos = doCache;
+        origemCache = true;
+      }
       return json({
+        origem_cache: origemCache,
         success: true,
         origem: { cnpj, ano, sequencial: seq },
         total: arquivos.length,
@@ -366,14 +401,31 @@ serve(async (req) => {
       // artefatos ruins gravados antes da validação de conteúdo existir.
       const force = body?.force === true;
 
-      const arquivos = await listarArquivos(cnpj, ano, seq);
-      const alvo = arquivos.find((a) => Number(a.sequencial) === sequencial);
-      if (!alvo) return json({ error: "Arquivo não encontrado na contratação" }, 404);
-
       // Pasta por contratação (não por registro): o mesmo edital aberto pelo
       // workspace e pelos compromissos reaproveita o arquivo já baixado.
       // O 1º segmento precisa ser o user id — é o que as policies do bucket exigem.
       const pasta = `${userId}/pncp/${cnpj}-${ano}-${seq}`;
+
+      // PNCP fora do ar + arquivo já materializado = serve do cofre direto,
+      // sem depender da listagem ao vivo.
+      let alvo;
+      try {
+        const arquivos = await listarArquivos(cnpj, ano, seq);
+        alvo = arquivos.find((a) => Number(a.sequencial) === sequencial);
+      } catch (e) {
+        const { data: cacheados } = await admin.storage.from(BUCKET).list(pasta, { limit: 100 });
+        const doCache = (cacheados ?? []).find((f) => f.name.startsWith(`${sequencial}-`));
+        if (!doCache) throw e;
+        return json({
+          success: true,
+          cached: true,
+          origem_cache: true,
+          path: `${pasta}/${doCache.name}`,
+          nome: doCache.name.replace(/^\d+-/, ""),
+          content_type: doCache.metadata?.mimetype || null,
+        });
+      }
+      if (!alvo) return json({ error: "Arquivo não encontrado na contratação" }, 404);
       const baseNome = sanitize(alvo.nome);
 
       // Se já foi materializado antes, devolve direto (sem bater no PNCP de novo)

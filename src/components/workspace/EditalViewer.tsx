@@ -33,9 +33,12 @@ const VISUALIZAVEL = ['pdf'];
  * lemos a Response anexada antes de cair no texto padrão.
  */
 async function mensagemDoErro(error: unknown, fallback: string): Promise<string> {
-  const ctx = (error as { context?: { response?: Response } })?.context;
-  if (ctx?.response) {
-    const body = await ctx.response.clone().json().catch(() => null);
+  // FunctionsHttpError.context É a Response (não um envelope) — ler direto,
+  // com tolerância à forma antiga { response }.
+  const ctx = (error as { context?: Response & { response?: Response } })?.context;
+  const resp = ctx && typeof (ctx as Response).clone === 'function' ? (ctx as Response) : ctx?.response;
+  if (resp) {
+    const body = await resp.clone().json().catch(() => null);
     if (body?.error) return String(body.error);
   }
   return (error as Error)?.message || fallback;
