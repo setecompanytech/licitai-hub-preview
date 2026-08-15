@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +46,8 @@ export default function ApoioJuridico() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Contexto do processo: quem entra pelo prontuário mantém o fio de volta */}
+        <ProcessoContextoBanner />
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">

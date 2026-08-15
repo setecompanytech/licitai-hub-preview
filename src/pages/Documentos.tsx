@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -617,6 +618,9 @@ export default function Documentos() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* O cofre é alcançado a partir do checklist de habilitação de um
+            processo — daqui o usuário volta para a pasta de onde veio. */}
+        <ProcessoContextoBanner />
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
