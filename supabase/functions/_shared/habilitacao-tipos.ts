@@ -46,6 +46,42 @@ export const TIPOS_HABILITACAO: TipoHabilitacao[] = [
   { id: 'decl_requisitos',    label: 'Declaração — requisitos edital',    grupo: 'declaracoes', keywords: ['cumprimento dos requisitos', 'declaracao de habilitacao', 'pleno conhecimento'] },
 ];
 
+/**
+ * Confronto com a Lei 14.133/2021: cada grupo da taxonomia corresponde a um
+ * artigo da lei — o mesmo mapeamento que o módulo Jurídico → Documentos usa
+ * nas pastas do cofre. Exibido no checklist e usado no desdobramento de
+ * exigências genéricas ("habilitação jurídica na forma da lei").
+ */
+export const ARTIGO_POR_GRUPO: Record<string, string> = {
+  juridica: 'Art. 66',
+  tecnica: 'Art. 67',
+  fiscal: 'Art. 68',
+  economica: 'Art. 69',
+  declaracoes: 'Art. 63, §1º',
+};
+
+/**
+ * Segmentos de atestado de capacidade técnica — MESMOS valores do cofre
+ * (AtestadosCapacidadeTecnica). A Aurélia classifica o objeto licitado neste
+ * vocabulário e o casamento prefere atestados do segmento do objeto.
+ */
+export const SEGMENTOS_OBJETO = [
+  'alimentos', 'informatica', 'limpeza', 'escritorio', 'moveis',
+  'vestuario', 'medicamentos', 'manutencao', 'outros',
+] as const;
+
+export const LABEL_SEGMENTO: Record<string, string> = {
+  alimentos: 'Gêneros Alimentícios',
+  informatica: 'Informática e Tecnologia',
+  limpeza: 'Higiene e Limpeza',
+  escritorio: 'Material de Escritório',
+  moveis: 'Móveis e Equipamentos',
+  vestuario: 'Vestuário e EPIs',
+  medicamentos: 'Medicamentos e Saúde',
+  manutencao: 'Manutenção e Serviços',
+  outros: 'Outros Segmentos',
+};
+
 /** Classifica um texto (exigência do edital ou nome de documento do cofre) na taxonomia. */
 export function classificarTipo(texto: string | null | undefined): TipoHabilitacao | null {
   const t = (texto || '')

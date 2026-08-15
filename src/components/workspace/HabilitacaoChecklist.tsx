@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { TIPOS_HABILITACAO } from '@/lib/habilitacao/tipos';
+import { TIPOS_HABILITACAO, ARTIGO_POR_GRUPO } from '@/lib/habilitacao/tipos';
 import { gerarChecklist, getEstadoGeracao, subscribeGeracao } from '@/lib/habilitacao/gerarChecklist';
 import { montarPastaHabilitacao, getEstadoMontagem, subscribeMontagem } from '@/lib/habilitacao/montarPasta';
 
@@ -203,7 +203,14 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
 
       {grupos.map((g) => (
         <div key={g} className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-1">{GRUPOS[g] || g}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-1 flex items-center gap-2">
+            {GRUPOS[g] || g}
+            {ARTIGO_POR_GRUPO[g] && (
+              <Badge variant="outline" className="text-xs font-normal normal-case tracking-normal">
+                {ARTIGO_POR_GRUPO[g]} · Lei 14.133/21
+              </Badge>
+            )}
+          </p>
           {linhas.filter((l) => (l.grupo || 'outro') === g).map((l) => {
             const est = ESTADOS[l.status];
             const Icone = est.icon;
