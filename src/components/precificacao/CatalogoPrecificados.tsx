@@ -117,7 +117,10 @@ export default function CatalogoPrecificados({
   const filteredItems = items.filter(item => {
     if (searchTerm && !item.descricao.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filterTipo !== 'todos' && item.tipo_calculo !== filterTipo) return false;
-    if (licitacaoId && item.licitacao_id === licitacaoId) return true;
+    // Dentro de uma pasta, o catálogo mostra SÓ os itens dela. Antes, itens do
+    // processo passavam por esta regra mas os de OUTROS processos também
+    // entravam pelo filtro "todos" — dados de pastas diferentes na mesma lista.
+    if (licitacaoId) return item.licitacao_id === licitacaoId;
     if (filterLicitacao !== 'todos' && item.licitacao_numero !== filterLicitacao) return false;
     return true;
   });
@@ -447,6 +450,12 @@ Responda APENAS em JSON:
             <SelectItem value="servico_mdo">Serviços MDO</SelectItem>
           </SelectContent>
         </Select>
+        {licitacaoId ? (
+          <Badge variant="outline" className="h-9 px-3 text-xs gap-1.5 font-normal">
+            <FileText className="w-3.5 h-3.5" />
+            Itens deste processo{licitacaoNumero ? `: ${licitacaoNumero}` : ''}
+          </Badge>
+        ) : (
         <Select value={filterLicitacao} onValueChange={setFilterLicitacao}>
           <SelectTrigger className="w-[220px] h-9">
             <FileText className="w-3.5 h-3.5 mr-1" />
@@ -461,6 +470,7 @@ Responda APENAS em JSON:
             ))}
           </SelectContent>
         </Select>
+        )}
       </div>
 
       {/* Selection actions */}

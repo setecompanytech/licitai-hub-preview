@@ -358,6 +358,22 @@ export default function LicitacaoSelector({
         )}
       </div>
 
+      {/* Trabalhando DENTRO de uma pasta, o seletor não oferece outros
+          processos: cada pasta é própria e não compartilha dados. O escolhedor
+          (órgão → processo) só existe no uso avulso, sem vínculo. */}
+      {licitacaoId ? (
+        <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 flex-wrap">
+          <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
+          <span className="text-xs text-muted-foreground">
+            Itens vindos <span className="font-medium text-foreground">deste processo</span> — a calculadora
+            opera apenas sobre a pasta aberta.
+          </span>
+          <Badge className="text-xs bg-success/15 text-success border-0 ml-auto">
+            Processo vinculado sincronizado
+          </Badge>
+        </div>
+      ) : (
+      <>
       <p className="text-xs text-muted-foreground">
         Selecione uma licitação marcada no sistema para preencher automaticamente os itens (descrição, quantidade, unidade e valores de referência).
       </p>
@@ -366,11 +382,6 @@ export default function LicitacaoSelector({
         <Badge variant="outline" className="text-xs">
           {licitacoesMarcadas.length} processo(s) disponível(is)
         </Badge>
-        {licitacaoId && (
-          <Badge className="text-xs bg-success/15 text-success border-0">
-            Processo vinculado sincronizado
-          </Badge>
-        )}
         {favoritosKeys.size > 0 && (
           <span className="text-xs text-muted-foreground">Editais marcados aparecem primeiro na lista.</span>
         )}
@@ -466,6 +477,8 @@ export default function LicitacaoSelector({
         <div className="text-center py-4">
           <p className="text-xs text-muted-foreground">Nenhuma licitação encontrada com os filtros aplicados.</p>
         </div>
+      )}
+      </>
       )}
 
       {selectedId && (
