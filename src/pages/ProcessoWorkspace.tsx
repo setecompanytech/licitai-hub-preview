@@ -78,6 +78,13 @@ export default function ProcessoWorkspace() {
   // Dados complementares do PNCP
   const [pncpDetalhe, setPncpDetalhe] = useState<any>(null);
   const [pncpItens, setPncpItens] = useState<any[]>([]);
+  // Fallback do espelho de itens: licitacao_itens são os MESMOS itens do PNCP,
+  // materializados pela preparação automática — camada cache do padrão nº 4
+  // (consulta ao vivo como complemento). Sem eles a tabela sumia sempre que o
+  // portal oscilava.
+  const [itensMaterializados, setItensMaterializados] = useState<Array<{
+    numero: number; descricao: string; quantidade: number; unidade: string; valor_unitario: number;
+  }>>([]);
   const [pncpArquivos, setPncpArquivos] = useState<any[]>([]);
   const [pncpCarregando, setPncpCarregando] = useState(false);
   // Falha no espelho PNCP era invisível: o card simplesmente não aparecia.
@@ -172,6 +179,17 @@ export default function ProcessoWorkspace() {
       .finally(() => setPncpCarregando(false));
   }, [lic, pncpNonce]);
 
+  useEffect(() => {
+    if (!lic?.id) return;
+    supabase
+      .from('licitacao_itens')
+      .select('numero, descricao, quantidade, unidade, valor_unitario')
+      .eq('licitacao_id', lic.id)
+      .order('numero')
+      .then(({ data }) => setItensMaterializados((data as typeof itensMaterializados) || []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lic?.id]);
+
   const loadPrecificacao = async () => {
     if (!id || !user) return;
     setLoadingPrec(true);
@@ -196,6 +214,17 @@ export default function ProcessoWorkspace() {
     if (abaInicial === 'precificacao' && id && user) loadPrecificacao();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abaInicial, id, user]);
+
+  // Espelho de ITENS — mesma prioridade do espelho de campos: ao vivo > materializado.
+  const itensEspelho: any[] = pncpItens.length > 0
+    ? pncpItens
+    : itensMaterializados.map((r) => ({
+        numero: r.numero,
+        descricao: r.descricao,
+        quantidade: r.quantidade,
+        unidade_medida: r.unidade,
+        valor_unitario_estimado: r.valor_unitario,
+      }));
 
   // Espelho PNCP mesclado — prioridade: consulta ao vivo > cache local > processo.
   const det = pncpDetalhe as Record<string, any> | null;
@@ -416,46 +445,48 @@ export default function ProcessoWorkspace() {
               </Card>
             )}
 
-            {((pncpCarregando && !temEspelho) || pncpDetalhe || pncpItens.length > 0 || pncpArquivos.length > 0) && (
+            {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0 || pncpArquivos.length > 0) && (
               <Card className="p-5">
-                {pncpCarregando ? (
+                {pncpCarregando && !itensEspelho.length ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Carregando dados completos do PNCP…
                   </div>
-                ) : pncpDetalhe ? (
+                ) : (
                   <div className="space-y-4">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Complementos do PNCP — itens e arquivos
                     </p>
 
                     {/* Informação complementar */}
-                    {pncpDetalhe.informacao_complementar && (
+                    {pncpDetalhe?.informacao_complementar && (
                       <div className="pt-3 border-t border-border/40">
                         <p className="text-xs text-muted-foreground mb-1">Informação complementar</p>
                         <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacao_complementar}</p>
                       </div>
                     )}
 
-                    {/* Itens da contratação */}
-                    {pncpItens.length > 0 && (
+                    {/* Itens da contratação — espelho fiel da aba Itens do PNCP:
+                        mesmos rótulos de coluna, descrição integral, cabeçalho em
+                        negrito como no portal. */}
+                    {itensEspelho.length > 0 && (
                       <div className="pt-3 border-t border-border/40">
                         <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          Itens da contratação ({pncpItens.length})
+                          Itens ({itensEspelho.length})
                         </p>
                         <div className="overflow-x-auto rounded border border-border/60">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-muted/40 border-b border-border text-muted-foreground">
-                                <th className="text-left px-3 py-2 font-medium w-10">Nº</th>
-                                <th className="text-left px-3 py-2 font-medium">Descrição</th>
-                                <th className="text-right px-3 py-2 font-medium w-24">Quantidade</th>
-                                <th className="text-right px-3 py-2 font-medium w-32">Vlr. unit. est.</th>
-                                <th className="text-right px-3 py-2 font-medium w-32">Vlr. total est.</th>
+                              <tr className="bg-muted/40 border-b border-border">
+                                <th className="text-left px-3 py-2 font-semibold w-16">Número</th>
+                                <th className="text-left px-3 py-2 font-semibold">Descrição</th>
+                                <th className="text-right px-3 py-2 font-semibold w-28">Quantidade</th>
+                                <th className="text-right px-3 py-2 font-semibold w-36">Valor unitário estimado</th>
+                                <th className="text-right px-3 py-2 font-semibold w-36">Valor total estimado</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border/40">
-                              {pncpItens.map((item: any, i: number) => {
+                              {itensEspelho.map((item: any, i: number) => {
                                 const qtd = item.quantidade ?? item.quantidadeItens;
                                 const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
                                 const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
@@ -516,7 +547,7 @@ export default function ProcessoWorkspace() {
                       </div>
                     )}
                   </div>
-                ) : null}
+                )}
               </Card>
             )}
 
