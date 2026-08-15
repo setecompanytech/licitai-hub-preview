@@ -51,10 +51,18 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   // Pending switch (waiting for user confirmation due to dirty state)
   const [pendingSwitch, setPendingSwitch] = useState<{ id: string | null; owners: string[] } | null>(null);
   const dirtyOwnersRef = useRef<Map<string, string>>(new Map());
+  // Marca uma desvinculação pedida pelo usuário, para a reidratação não
+  // ressuscitar o processo que ele acabou de soltar.
+  const limpezaExplicitaRef = useRef(false);
 
-  // Hydrate from localStorage if URL has no lid
+  // Reidrata o processo ativo SEMPRE que a URL ficar sem `lid` — não só na
+  // montagem. O provider é global e não remonta na navegação interna: ir para
+  // outro módulo pelo menu (URL sem ?lid=) deixava a barra dizendo "Nenhum
+  // processo vinculado" mesmo com o processo em memória.
   useEffect(() => {
     if (urlId) return;
+    // Limpeza explícita (usuário desvinculou) não deve ser desfeita.
+    if (limpezaExplicitaRef.current) { limpezaExplicitaRef.current = false; return; }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       setSearchParams(prev => {
@@ -63,12 +71,14 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
         return next;
       }, { replace: true });
     }
-  }, []); // eslint-disable-line
+  }, [urlId, setSearchParams]);
 
-  // Persist to localStorage and load full processo
+  // Persiste o processo ativo. Ausência de `lid` na URL NÃO apaga a memória:
+  // navegar para uma tela sem o parâmetro chegava a apagar o processo ativo do
+  // localStorage, e nem recarregar a página o trazia de volta. Quem apaga é a
+  // desvinculação explícita (applySwitch(null)).
   useEffect(() => {
     if (urlId) localStorage.setItem(STORAGE_KEY, urlId);
-    else localStorage.removeItem(STORAGE_KEY);
   }, [urlId]);
 
   const { empresaAtiva } = useEmpresa();
@@ -115,6 +125,11 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   }, [urlId, user, fetchProcesso]);
 
   const applySwitch = useCallback((id: string | null) => {
+    if (!id) {
+      // Desvinculação explícita: some da URL, da memória e do armazenamento.
+      limpezaExplicitaRef.current = true;
+      localStorage.removeItem(STORAGE_KEY);
+    }
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (id) next.set('lid', id);
