@@ -132,11 +132,14 @@ serve(async (req) => {
     const lista = exigidos.documentos_exigidos || [];
     if (!lista.length) return json({ error: "A IA não identificou exigências no texto enviado." }, 422);
 
-    // ── 2/3. Classificação por tipo + casamento com os DOIS cofres ──────────
+    // ── 2/3. Classificação por tipo + casamento com os TRÊS cofres ──────────
     // agent_documentos: cofre automatizado da empresa (certidões coletadas).
     // documentos: o módulo Jurídico → Documentos, onde o usuário anexa manualmente
     // (hoje por user_id — RLS do requisitante decide; migração p/ empresa é F3.1).
-    const [{ data: cofreAgent }, { data: cofreJuridico }] = await Promise.all([
+    // processo_anexos (Habilitação/Declarações): o casamento REVERSO — o que o
+    // usuário anexou direto na pasta do certame (declarações produzidas para
+    // este pregão) conta como documento presente ao regenerar o checklist.
+    const [{ data: cofreAgent }, { data: cofreJuridico }, { data: pastaCertame }] = await Promise.all([
       admin
         .from("agent_documentos")
         .select("id, tipo, validade")
@@ -145,6 +148,11 @@ serve(async (req) => {
         .from("documentos")
         .select("id, nome, tipo, validade, arquivo_path")
         .not("arquivo_path", "is", null),
+      userClient
+        .from("processo_anexos")
+        .select("id, nome_arquivo, categoria, descricao")
+        .eq("licitacao_id", licitacao_id)
+        .in("categoria", ["habilitacao", "declaracoes"]),
     ]);
 
     const cofreClassificado = [
@@ -161,6 +169,16 @@ serve(async (req) => {
         validade: d.validade,
         origem: "documentos",
         taxo: classificarTipo(`${d.nome} ${d.tipo || ""}`),
+      })),
+      // Sem validade própria: anexo do certame vale para a sessão deste certame.
+      // Classificado pelo nome do arquivo + descrição (que carrega a exigência
+      // quando o arquivo foi copiado pelo "Montar pasta de habilitação").
+      ...(pastaCertame || []).map((d) => ({
+        id: d.id,
+        nome: d.nome_arquivo,
+        validade: null as string | null,
+        origem: "processo_anexos",
+        taxo: classificarTipo(`${d.nome_arquivo} ${d.descricao || ""}`),
       })),
     ];
 

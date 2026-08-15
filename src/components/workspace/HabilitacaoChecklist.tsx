@@ -5,10 +5,11 @@ import { useActivityLog } from '@/hooks/useActivityLog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Loader2, Sparkles, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, RefreshCw, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { TIPOS_HABILITACAO } from '@/lib/habilitacao/tipos';
 import { gerarChecklist, getEstadoGeracao, subscribeGeracao } from '@/lib/habilitacao/gerarChecklist';
+import { montarPastaHabilitacao, getEstadoMontagem, subscribeMontagem } from '@/lib/habilitacao/montarPasta';
 
 /**
  * Fase 3 do prontuário integrado — checklist de habilitação.
@@ -28,6 +29,7 @@ type Linha = {
   obrigatorio: boolean;
   observacao: string | null;
   status: 'ok' | 'vence_antes_sessao' | 'faltante';
+  documento_origem: string | null;
   documento_nome: string | null;
   documento_validade: string | null;
   conferido: boolean;
@@ -70,12 +72,17 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
   );
   const gerando = geracao.rodando;
   const progresso = geracao.fase;
+  // "Montar pasta" também roda fora do React — mesmo padrão da geração.
+  const montagem = useSyncExternalStore(
+    useCallback((cb) => subscribeMontagem(licitacaoId, cb), [licitacaoId]),
+    useCallback(() => getEstadoMontagem(licitacaoId), [licitacaoId]),
+  );
 
   const carregar = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from('processo_habilitacao_checklist' as never)
-      .select('id, tipo, grupo, exigencia, referencia, obrigatorio, observacao, status, documento_nome, documento_validade, conferido')
+      .select('id, tipo, grupo, exigencia, referencia, obrigatorio, observacao, status, documento_origem, documento_nome, documento_validade, conferido')
       .eq('licitacao_id', licitacaoId)
       .order('grupo')
       .order('exigencia');
@@ -118,6 +125,10 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
     vencendo: linhas.filter((l) => l.status === 'vence_antes_sessao').length,
     faltante: linhas.filter((l) => l.status === 'faltante').length,
   };
+  // Há o que copiar do cofre para a pasta Habilitação dos Anexos?
+  const temParaMontar = linhas.some(
+    (l) => l.status !== 'faltante' && l.documento_origem && l.documento_origem !== 'processo_anexos',
+  );
   const tudoConferido = linhas.length > 0 && linhas.every((l) => l.conferido);
   const grupos = [...new Set(linhas.map((l) => l.grupo || 'outro'))];
 
@@ -149,6 +160,12 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
           </>
         )}
         <div className="flex items-center gap-2 ml-auto">
+          {temParaMontar && (
+            <Button size="sm" variant="outline" onClick={() => montarPastaHabilitacao(licitacaoId)} disabled={montagem.rodando}>
+              {montagem.rodando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FolderDown className="w-3.5 h-3.5 mr-1.5" />}
+              Montar pasta de habilitação
+            </Button>
+          )}
           {linhas.length > 0 && !tudoConferido && (
             <Button size="sm" variant="outline" onClick={aceitar} disabled={aceitando}>
               {aceitando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />}
@@ -167,6 +184,12 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
       {gerando && progresso && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Loader2 className="w-3 h-3 animate-spin" /> {progresso}
+        </p>
+      )}
+
+      {montagem.rodando && montagem.fase && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" /> {montagem.fase} (continua mesmo se você trocar de aba)
         </p>
       )}
 
@@ -201,6 +224,7 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
                       <span>
                         casado com <span className="font-medium text-foreground">{l.documento_nome}</span>
                         {l.documento_validade && <> · validade {dataBr(l.documento_validade)}</>}
+                        {l.documento_origem === 'processo_anexos' && <> · anexado na pasta do certame</>}
                       </span>
                     )}
                     {l.observacao && <> · {l.observacao}</>}
