@@ -133,6 +133,9 @@ export default function ItensEditalPrecificacao({
           custo_unitario: 0,
           preco_unitario: unit,
           preco_total: unit * (it.quantidade || 1),
+          // Sem custo informado não existe margem real — NULL explícito, senão
+          // o DEFAULT 15 do banco inventa uma margem que ninguém calculou.
+          margem_lucro: null,
           marca: it.marca,
           fabricante: it.fabricante,
           modelo: it.modelo,

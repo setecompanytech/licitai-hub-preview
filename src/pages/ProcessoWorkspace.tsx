@@ -737,7 +737,7 @@ export default function ProcessoWorkspace() {
                             <th className="text-left px-3 py-1.5 font-medium">Descrição</th>
                             <th className="text-right px-3 py-1.5 font-medium w-20">Custo</th>
                             <th className="text-right px-3 py-1.5 font-medium w-20">Preço</th>
-                            <th className="text-right px-3 py-1.5 font-medium w-16">Margem</th>
+                            <th className="text-right px-3 py-1.5 font-medium w-20 whitespace-nowrap">Margem</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
