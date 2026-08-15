@@ -70,7 +70,9 @@ Deno.serve(async (req) => {
       for (const img of validImages) {
         contentParts.push({
           type: 'image_url',
-          image_url: { url: img.dataUrl },
+          // detail high: documento de identidade tem campos pequenos (órgão
+          // expedidor, RG) que somem na resolução automática.
+          image_url: { url: img.dataUrl, detail: 'high' },
         });
       }
     }
@@ -79,6 +81,16 @@ Deno.serve(async (req) => {
       contentParts.push({
         type: 'text',
         text: `Arquivo: ${fileName}\n\nTEXTO OCR DE APOIO (pode conter ruído; confirme nas imagens sempre que possível):\n${text.slice(0, 12000)}\n\nExtraia os dados do representante legal. Retorne APENAS o JSON.`,
+      });
+    }
+
+    // Falha silenciosa é proibida: se chegaram imagens mas TODAS estouraram o
+    // limite, dizer isso — antes a extração seguia só com texto de apoio e
+    // devolvia campos vazios sem explicar o porquê.
+    if (sanitizedImages.length > 0 && validImages.length === 0 && !hasSupportText) {
+      return new Response(JSON.stringify({ error: 'Imagem grande demais para leitura. Envie uma foto menor (ou o app recomprime automaticamente na próxima tentativa).' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 

@@ -59,8 +59,11 @@ export default function RepresentanteUploader({ onExtracted }: RepresentanteUplo
       let text = '';
 
       if (isImage) {
-        // Send image directly to Vision AI — no intermediate OCR step
-        const dataUrl = await fileToDataUrl(file);
+        // Normaliza ANTES de enviar: corrige rotação EXIF (foto de celular),
+        // redimensiona e recomprime. Sem isso, fotos grandes estouravam o
+        // limite do servidor e eram DESCARTADAS em silêncio — a extração
+        // rodava só com texto de apoio (vazio para foto) e vinha incompleta.
+        const dataUrl = await normalizarImagem(file);
         images = [{ name: file.name, dataUrl }];
       } else if (isPdf) {
         // Render PDF pages to images and also send extracted text as support context
@@ -173,6 +176,34 @@ async function extractDocumentText(file: File): Promise<string> {
   } catch (error) {
     console.error('Text extraction error:', error);
     return '';
+  }
+}
+
+/**
+ * Prepara uma foto de documento para a leitura por visão: orientação EXIF
+ * aplicada, no máximo 2000px no maior lado, JPEG q0.9 (recomprime até caber
+ * no limite do servidor). Documento legível > fidelidade de bytes.
+ */
+async function normalizarImagem(file: File): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const MAX = 2000;
+    const fator = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * fator);
+    canvas.height = Math.round(bitmap.height * fator);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return fileToDataUrl(file);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    for (const q of [0.9, 0.8, 0.7]) {
+      const dataUrl = canvas.toDataURL('image/jpeg', q);
+      if (dataUrl.length <= 5_000_000) return dataUrl;
+    }
+    return canvas.toDataURL('image/jpeg', 0.6);
+  } catch {
+    // navegador sem createImageBitmap com EXIF — segue com o arquivo original
+    return fileToDataUrl(file);
   }
 }
 
