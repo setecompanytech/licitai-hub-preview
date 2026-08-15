@@ -150,6 +150,10 @@ export default function ModelosTemplatesTab() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
+  // Preview ABNT sob demanda: a metade direita ficava ocupada por uma folha em
+  // branco enquanto o usuário preenchia o pedido no espaço apertado da esquerda.
+  // Agora é um botão; abre sozinho quando a geração começa (aí há o que ver).
+  const [mostrarPreview, setMostrarPreview] = useState(false);
 
   // Pedidos jurídicos (persistência)
   const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
@@ -384,6 +388,7 @@ ${truncated}`
 
   // Build AI context with modality info and generate
   const handleGerar = async () => {
+    setMostrarPreview(true); // há resultado a mostrar — o preview entra em cena
     if (!activeModelo) return;
     if (!contexto.trim() && fatosPeticao.length === 0) {
       toast.error('Descreva o contexto ou anexe documentos para extração de fatos');
@@ -1066,6 +1071,20 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     <ArrowLeft className="w-3.5 h-3.5" />
                     Voltar para a lista de modelos
                   </Button>
+                  <Button
+                    variant={mostrarPreview ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs ml-auto"
+                    onClick={() => setMostrarPreview((v) => !v)}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    {mostrarPreview ? 'Ocultar preview ABNT' : 'Preview ABNT em tempo real'}
+                    {!mostrarPreview && resultado && (
+                      <Badge className="ml-1 text-xs gap-1 bg-success/10 text-success border-success/30">
+                        <CheckCircle className="w-2.5 h-2.5" /> pronto
+                      </Badge>
+                    )}
+                  </Button>
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -1096,9 +1115,10 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               </header>
 
               {/* Layout 2 colunas: formulário + preview live */}
-              <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] overflow-hidden">
-                {/* Coluna esquerda: formulário com scroll */}
-                <div className="overflow-y-auto px-6 py-4 space-y-4 border-r border-border/50 bg-muted/10">
+              <div className={`flex-1 grid grid-cols-1 overflow-hidden ${mostrarPreview ? 'lg:grid-cols-[minmax(0,420px)_1fr]' : ''}`}>
+                {/* Coluna esquerda: formulário com scroll. Sem preview, ocupa a
+                    largura toda (centrado) — mais espaço para preencher o pedido. */}
+                <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-muted/10 ${mostrarPreview ? 'border-r border-border/50' : 'w-full max-w-5xl mx-auto'}`}>
                   <div className="bg-card rounded-lg border border-border/50 p-4 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -1149,8 +1169,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-end gap-4">
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <div className="flex items-end gap-4 flex-wrap">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={incluirDadosEmpresa}
@@ -1160,7 +1180,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       <Building2 className="w-3 h-3 text-muted-foreground" />
                       Dados da Empresa
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={incluirRepresentante}
@@ -1355,7 +1375,8 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </div>
 
 
-                {/* Coluna direita: preview live ABNT */}
+                {/* Coluna direita: preview live ABNT — sob demanda */}
+                {mostrarPreview && (
                 <div className="flex flex-col overflow-hidden bg-background">
                   <div className="flex items-center justify-between gap-2 px-6 py-3 border-b border-border/50 shrink-0 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
@@ -1472,6 +1493,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                     </p>
                   </div>
                 </div>
+                )}
               </div>
             </>
           )}
