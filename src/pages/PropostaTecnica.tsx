@@ -62,11 +62,20 @@ const DECLARACOES_PADRAO = [
   { key: 'idoneidade', label: 'Declaração de idoneidade financeira e técnica', base: 'Lei 14.133/2021, Art. 62' },
 ];
 
-export default function PropostaTecnica() {
+export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: { embedded?: boolean; licitacaoIdEmbed?: string } = {}) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
   const { processoId, setProcessoId, ensureProcesso } = useProcessoAtivo();
+
+  // Modo embutido (aba Proposta do prontuário): o processo aberto É o processo
+  // ativo — fixa o lid para o wizard carregar este certame, não o último usado.
+  useEffect(() => {
+    if (embedded && licitacaoIdEmbed && processoId !== licitacaoIdEmbed) {
+      setProcessoId(licitacaoIdEmbed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, licitacaoIdEmbed]);
   const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -738,8 +747,7 @@ export default function PropostaTecnica() {
     .map(d => d.label)
     .concat(declaracoesCustom.filter(d => d.trim()));
 
-  return (
-    <AppLayout>
+  const conteudo = (
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1611,6 +1619,8 @@ export default function PropostaTecnica() {
           )}
         </div>{/* End split-screen */}
       </div>
-    </AppLayout>
   );
+
+  // Embutido (aba Proposta do prontuário) o layout global já existe em volta.
+  return embedded ? conteudo : <AppLayout>{conteudo}</AppLayout>;
 }

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
-import PropostaTab from '@/components/workspace/PropostaTab';
+import PropostaTecnica from '@/pages/PropostaTecnica';
 import HabilitacaoChecklist from '@/components/workspace/HabilitacaoChecklist';
 import AnexosManager from '@/components/workspace/AnexosManager';
 import DocumentosManager from '@/components/workspace/DocumentosManager';
@@ -765,7 +765,11 @@ export default function ProcessoWorkspace() {
 
           {/* Proposta — Fase 2: trabalhada dentro do processo */}
           <TabsContent value="proposta">
-            <PropostaTab licitacaoId={lic.id} numeroLicitacao={lic.numero} />
+            {/* O MESMO formato do módulo Proposta Comercial, embutido no
+                prontuário (wizard completo: edital, empresa, representante,
+                planilha, declarações, layout, preview) — mesmo rascunho, sem
+                sair do processo. */}
+            <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
           </TabsContent>
 
           {/* Módulos */}
