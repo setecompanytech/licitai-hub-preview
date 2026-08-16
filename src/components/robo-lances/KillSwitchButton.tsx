@@ -60,11 +60,36 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
         licitacaoId,
       });
 
-      const encerradas = (data as any)?.sessoes_encerradas || 0;
-      toast.warning(
-        `🛑 PARADA EMERGENCIAL — ${encerradas} sessão(ões) encerrada(s). Agentes notificados.`,
-        { duration: 10000 }
-      );
+      // O botão relata o que REALMENTE aconteceu. Antes anunciava "Agentes
+      // notificados" sem olhar a resposta: com a rota /kill-switch ausente no
+      // agente, o operador acreditava ter parado um robô que seguia dando
+      // lances. Freio que mente é pior que freio ausente.
+      const r = data as {
+        sessoes_encerradas?: number;
+        agentes_total?: number;
+        agentes_confirmaram?: number;
+        agente_parou?: boolean;
+        agentes_notificados?: Array<{ agente: string; ok: boolean; detalhe?: string | null }>;
+      };
+      const encerradas = r?.sessoes_encerradas || 0;
+      const total = r?.agentes_total ?? 0;
+      const confirmaram = r?.agentes_confirmaram ?? 0;
+
+      if (total === 0 || confirmaram === total) {
+        toast.warning(
+          `🛑 PARADA EMERGENCIAL — ${encerradas} sessão(ões) encerrada(s)` +
+          (total > 0 ? ` · ${confirmaram} de ${total} agente(s) confirmaram a parada.` : '.'),
+          { duration: 10000 }
+        );
+      } else {
+        const motivo = r?.agentes_notificados?.find((a) => !a.ok)?.detalhe || 'o agente não respondeu';
+        toast.error(
+          `🛑 ATENÇÃO — ${encerradas} sessão(ões) encerrada(s) NO SISTEMA, mas ` +
+          `${total - confirmaram} de ${total} agente(s) NÃO confirmaram a parada (${motivo}). ` +
+          `O robô pode continuar operando no portal — intervenha manualmente agora.`,
+          { duration: 30000 }
+        );
+      }
 
       onParada();
     } catch (err) {

@@ -377,9 +377,21 @@ serve(async (req) => {
             body: JSON.stringify({ motivo }),
             signal: AbortSignal.timeout(5000),
           });
-          agentResults.push({ agente: agente.nome, ok: resp.ok });
-        } catch {
-          agentResults.push({ agente: agente.nome, ok: false });
+          agentResults.push({
+            agente: agente.nome,
+            ok: resp.ok,
+            http: resp.status,
+            detalhe: resp.ok ? null : (resp.status === 404
+              ? "o agente não implementa a rota /kill-switch"
+              : `HTTP ${resp.status}`),
+          });
+        } catch (e) {
+          agentResults.push({
+            agente: agente.nome,
+            ok: false,
+            http: 0,
+            detalhe: e instanceof Error ? e.message : "sem resposta do agente",
+          });
         }
       }
 
@@ -391,14 +403,98 @@ serve(async (req) => {
         payload: { motivo, sessoes_encerradas: sessoesAtivas?.length || 0, agentResults },
       });
 
+      // Falha silenciosa é proibida — ainda mais num freio de emergência. As
+      // sessões SEMPRE são encerradas no sistema (paramos de mandar comandos),
+      // mas se nenhum agente confirmou, quem está no portal precisa saber.
+      const confirmaram = agentResults.filter((r) => r.ok).length;
       return jsonResponse({
         success: true,
         sessoes_encerradas: sessoesAtivas?.length || 0,
+        agentes_total: agentResults.length,
+        agentes_confirmaram: confirmaram,
+        agente_parou: agentResults.length > 0 && confirmaram === agentResults.length,
         agentes_notificados: agentResults,
       });
     }
 
     // ─── STATUS ───
+
+    // Healthcheck AO VIVO. Antes, o único ping acontecia ao configurar o
+    // agente: versão, RAM e "ativo" ficavam congelados no banco desde então —
+    // a tela dizia "Agente Online" lendo uma linha de meses atrás. Aqui
+    // perguntamos ao agente e atualizamos o registro. Também substitui o
+    // heartbeat que o agente nunca empurrou: puxamos o sinal de vida.
+    if (action === "healthcheck") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base")
+        .eq("user_id", user.id);
+
+      if (!agentes?.length) {
+        return jsonResponse({ configurado: false, online: false, agentes: [] });
+      }
+
+      const resultados = [];
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        let online = false;
+        let saude: Record<string, unknown> | null = null;
+        let erro: string | null = null;
+        const t0 = Date.now();
+        try {
+          const resp = await fetch(`${base}/health`, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (resp.ok) {
+            saude = await resp.json().catch(() => ({}));
+            online = true;
+          } else {
+            erro = `HTTP ${resp.status}`;
+          }
+        } catch (e) {
+          erro = e instanceof Error ? e.message : "sem resposta";
+        }
+
+        // O registro passa a refletir a realidade — inclusive quando é ruim.
+        await supabase
+          .from("agente_externo_config")
+          .update({
+            status: online ? "ativo" : "erro",
+            ultimo_heartbeat: online ? new Date().toISOString() : undefined,
+            versao_agente: (saude?.version as string) ?? undefined,
+            ram_mb: ((saude?.capacidade as Record<string, number>)?.ram_total_mb) ?? undefined,
+            sessoes_ativas: (saude?.sessoes_ativas as number) ?? undefined,
+            capacidades: saude ? (saude as never) : undefined,
+          })
+          .eq("id", agente.id);
+
+        resultados.push({
+          id: agente.id,
+          nome: agente.nome,
+          url_base: agente.url_base,
+          online,
+          erro,
+          latencia_ms: Date.now() - t0,
+          versao: saude?.version ?? null,
+          capacidade: saude?.capacidade ?? null,
+          sessoes_ativas: saude?.sessoes_ativas ?? null,
+          certificado: saude?.certificado ?? null,
+          portais_suportados: saude?.portais_suportados ?? null,
+        });
+      }
+
+      return jsonResponse({
+        configurado: true,
+        online: resultados.some((r) => r.online),
+        agentes: resultados,
+      });
+    }
 
     if (action === "status") {
       const authHeader = req.headers.get("authorization");

@@ -103,27 +103,43 @@ export default function AtivacaoChecklist() {
       icon: Server,
     });
 
+    // Healthcheck AO VIVO — a tela lia colunas gravadas na configuração
+    // (versão, RAM, heartbeat) e as exibia como se fossem de agora.
+    let saudeAoVivo: {
+      online?: boolean;
+      agentes?: Array<{ online?: boolean; erro?: string | null; versao?: string | null;
+        capacidade?: { ram_total_mb?: number; max_sessoes?: number; slots_disponiveis?: number };
+        certificado?: { carregado?: boolean; path?: string } | null }>;
+    } | null = null;
+    try {
+      const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
+      saudeAoVivo = data as typeof saudeAoVivo;
+    } catch { /* sem resposta — os itens abaixo caem para o registro do banco */ }
+    const agenteVivo = saudeAoVivo?.agentes?.[0];
+
     // 2. Verificar healthcheck do agente
     if (agenteAtivo) {
-      const heartbeatRecente = agenteAtivo.ultimo_heartbeat &&
-        (Date.now() - new Date(agenteAtivo.ultimo_heartbeat).getTime()) < 120000;
-
+      // O agente nunca empurrou heartbeat; agora PUXAMOS o sinal de vida.
       newItems.push({
         id: 'heartbeat',
-        label: 'Heartbeat Ativo',
-        descricao: heartbeatRecente
-          ? `Último sinal: ${new Date(agenteAtivo.ultimo_heartbeat!).toLocaleString('pt-BR')}`
-          : 'O agente não envia sinal de vida há mais de 2 minutos',
-        status: heartbeatRecente ? 'ok' : 'erro',
+        label: 'Sinal de vida (healthcheck)',
+        descricao: agenteVivo?.online
+          ? `Respondeu agora — ${new Date().toLocaleTimeString('pt-BR')}${agenteVivo.versao ? ` · v${agenteVivo.versao}` : ''}`
+          : `O agente não respondeu ao healthcheck${agenteVivo?.erro ? ` (${agenteVivo.erro})` : ''}`,
+        status: agenteVivo?.online ? 'ok' : 'erro',
         icon: Shield,
       });
 
       // 3. Verificar capacidade
-      const slotsLivres = (agenteAtivo.max_sessoes_paralelas || 3) - (agenteAtivo.sessoes_ativas || 0);
+      const capacidadeViva = agenteVivo?.capacidade;
+      const slotsLivres = capacidadeViva?.slots_disponiveis
+        ?? ((agenteAtivo.max_sessoes_paralelas || 3) - (agenteAtivo.sessoes_ativas || 0));
+      const slotsTotais = capacidadeViva?.max_sessoes ?? agenteAtivo.max_sessoes_paralelas;
+      const ram = capacidadeViva?.ram_total_mb ?? agenteAtivo.ram_mb;
       newItems.push({
         id: 'capacidade',
         label: 'Slots Disponíveis',
-        descricao: `${slotsLivres} de ${agenteAtivo.max_sessoes_paralelas} slots livres | ${agenteAtivo.ram_mb || '?'}MB RAM`,
+        descricao: `${slotsLivres} de ${slotsTotais} slots livres | ${ram || '?'}MB RAM`,
         status: slotsLivres > 0 ? 'ok' : 'erro',
         icon: Rocket,
       });
@@ -149,15 +165,22 @@ export default function AtivacaoChecklist() {
         setCertTokenId(null);
       }
 
+      // Duas fontes falavam do mesmo fato e discordavam: o registro de upload
+      // no banco dizia "faltando" enquanto o agente reportava o .pfx carregado
+      // na VPS. O que vale é o certificado estar onde ele é usado — no agente.
+      const certNoAgente = agenteVivo?.certificado?.carregado === true;
+
       newItems.push({
         id: 'certificado',
         label: 'Certificado Digital',
         descricao: certEnviado
           ? 'Certificado recebido e vinculado à empresa'
+          : certNoAgente
+          ? `Instalado no agente${agenteVivo?.certificado?.path ? ` (${agenteVivo.certificado.path})` : ''} — envie por aqui para o sistema também versionar e alertar o vencimento`
           : tokenPendente
           ? 'Link de upload enviado — aguardando envio do certificado'
           : 'Envie o certificado digital (.pfx) para autenticação nos portais',
-        status: certEnviado ? 'ok' : tokenPendente ? 'erro' : 'pendente',
+        status: certEnviado || certNoAgente ? 'ok' : tokenPendente ? 'erro' : 'pendente',
         icon: Award,
         acao: certEnviado
           ? () => setShowInvalidar(true)

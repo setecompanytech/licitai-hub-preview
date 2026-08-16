@@ -55,6 +55,8 @@ export default function EnvioProposta() {
   const [envioResult, setEnvioResult] = useState<EnvioResult | null>(null);
   const [temCredencial, setTemCredencial] = useState<boolean | null>(null);
   const [agenteOnline, setAgenteOnline] = useState<boolean | null>(null);
+  const [agenteConfigurado, setAgenteConfigurado] = useState<boolean | null>(null);
+  const [agenteErro, setAgenteErro] = useState<string | null>(null);
   const [anexos, setAnexos] = useState<File[]>([]);
 
   // Verificar credenciais e status do agente
@@ -72,15 +74,23 @@ export default function EnvioProposta() {
         .maybeSingle();
       setTemCredencial(!!cred);
 
-      // Verificar agente
-      if (!user) return;
-      const { data: agente } = await supabase
-        .from('agente_externo_config')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('status', 'ativo')
-        .maybeSingle();
-      setAgenteOnline(!!agente);
+      // Healthcheck REAL do agente. A checagem anterior só via se existia uma
+      // linha com status='ativo' — carimbo da configuração, que ficou parado
+      // por meses: a tela dizia "Agente Online" sem nunca ter perguntado nada
+      // ao agente. Agora ela pergunta, e distingue três estados.
+      try {
+        const { data: saude } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', {
+          body: {},
+        });
+        const s = saude as { configurado?: boolean; online?: boolean; agentes?: Array<{ erro?: string | null }> } | null;
+        setAgenteConfigurado(s?.configurado ?? false);
+        setAgenteOnline(s?.online ?? false);
+        setAgenteErro(s?.online ? null : (s?.agentes?.[0]?.erro ?? null));
+      } catch {
+        setAgenteConfigurado(true);
+        setAgenteOnline(false);
+        setAgenteErro('não foi possível consultar o agente');
+      }
     };
 
     verificar();
@@ -191,14 +201,20 @@ export default function EnvioProposta() {
           <Bot className="w-3 h-3" />
           Envio Automatizado via Agente Cloud
         </Badge>
+        {/* Três estados honestos: respondeu / configurado mas mudo / inexistente */}
         {agenteOnline === true && (
           <Badge className="bg-success/10 text-success border-success/30 gap-1 text-xs">
-            <Zap className="w-3 h-3" /> Agente Online
+            <Zap className="w-3 h-3" /> Agente respondeu agora
           </Badge>
         )}
-        {agenteOnline === false && (
-          <Badge variant="destructive" className="gap-1 text-xs">
-            <XCircle className="w-3 h-3" /> Agente Offline
+        {agenteOnline === false && agenteConfigurado === true && (
+          <Badge variant="destructive" className="gap-1 text-xs" title={agenteErro || undefined}>
+            <XCircle className="w-3 h-3" /> Agente não responde
+          </Badge>
+        )}
+        {agenteConfigurado === false && (
+          <Badge variant="outline" className="gap-1 text-xs border-warning/40 text-warning">
+            <AlertTriangle className="w-3 h-3" /> Nenhum agente configurado
           </Badge>
         )}
       </div>
