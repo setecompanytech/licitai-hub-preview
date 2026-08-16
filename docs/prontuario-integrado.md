@@ -19,6 +19,9 @@ EDITAL (PNCP/portal)
                  ├─ aceite humano → trilha de auditoria (atividades_colaborador)
                  ├─ alertas multicanal ancorados no encerramento (máquina dos Compromissos)
                  └─→ EXPORTAR ZIP na ordem exigida pelo edital
+
+DISPUTA (Robô de Lances) ──→ desfecho ──→ Fase 4: proposta readequada,
+                                          estado do processo, ata/contrato
 ```
 
 ## Fases
@@ -70,6 +73,93 @@ empresa (pendência nº 10 do backlog).
 5. Aceite humano do checklist (um clique, registrado na trilha).
 6. Alertas de habilitação incompleta na máquina multicanal dos Compromissos.
 7. Exportar ZIP na ordem/numeração do edital.
+
+### Fase 4 — Pós-disputa: fechar o ciclo (DESENHADA em 2026-08-16)
+
+Hoje o prontuário leva o processo do edital bruto até a proposta e a
+habilitação montadas. Vencer (ou perder) o pregão devolve o usuário ao mundo
+manual: o Mural anuncia o resultado e **o processo para ali**. Esta fase faz o
+desfecho continuar dentro da pasta.
+
+```
+DISPUTA encerrada (Robô de Lances)
+   │
+   ├─→ MURAL do processo recebe o resultado (JÁ EXISTE — licitacao_mensagens)
+   │      └─ mas é só aviso: nenhuma ação sai dele
+   │
+   └─→ o que precisa acontecer e hoje acontece fora do sistema:
+          ├─ PROPOSTA READEQUADA (valores finais + marca/modelo) → pasta Proposta
+          ├─ DOSSIÊ de habilitação ao pregoeiro          → pasta Habilitação (PRONTO)
+          ├─ ESTADO do processo muda (Homologada/Perdida) → Kanban, financeiro, metas
+          └─ ATA / CONTRATO assinado                      → pasta Contrato
+```
+
+**Princípio da fase:** o resultado da disputa é um **fato do processo**, não uma
+notificação. Ele deve mover o processo, gerar os documentos que a vitória exige
+e deixar rastro — sem o usuário sair da pasta.
+
+#### 4.1 — O Mural vira ponto de partida (menor esforço, maior ganho)
+
+A mensagem de encerramento hoje é texto morto. Passa a carregar as ações do
+desfecho, cada uma abrindo o lugar certo do próprio processo:
+
+- venceu → **Gerar proposta readequada** · **Ver pasta de habilitação** ·
+  **Mover para Homologada**
+- perdeu → **Registrar motivo da perda** (reaproveita o fluxo de perda do
+  Painel, que já exige motivo) · **Arquivar**
+
+Depende de: nada além do que existe. É costura de UI sobre `licitacao_mensagens`
+e a máquina de status (`src/lib/licitacao/status.ts`).
+
+#### 4.2 — Proposta readequada (a lacuna documental)
+
+O portal exige, do vencedor, a proposta com os **valores finais alcançados no
+pregão** — item a item, com marca e modelo. É o único ponto do fluxo em que
+marca/fabricante/modelo voltam a ser exigidos depois do cadastro.
+
+Todos os insumos já existem, em lugares diferentes:
+
+| Dado | Origem |
+| --- | --- |
+| Itens, quantidade, unidade | `licitacao_itens` |
+| Valores FINAIS por item | `robo_lances_disputas.itens` (a disputa encerrada) |
+| Marca, fabricante, modelo | `licitacao_itens` / `catalogo_itens_precificados` |
+| Empresa, representante, banco | cadastro (Configurações) |
+
+Falta o gerador que os combina. Reaproveita o motor de PDF da proposta inicial
+(`PropostaDownload`, jsPDF/ABNT) — muda a fonte dos valores e o rótulo do
+documento. Arquiva na **pasta Proposta** via `salvarNaPastaDoProcesso`, com o
+nome distinguindo da inicial.
+
+**Pré-requisito:** a disputa precisa estar persistida (feito em 2026-08-16,
+tabela `robo_lances_disputas`) — sem valores finais gravados não há readequada.
+
+#### 4.3 — O desfecho move o processo
+
+Vencer deveria mudar o estado do processo, e disso decorre o resto do sistema:
+Kanban, financeiro e metas leem status. Hoje o Mural anuncia e o card não anda.
+
+- Encerramento da disputa propõe a mudança de status (nunca aplica sozinho:
+  desfecho é decisão do operador — mesma disciplina do "IA propõe, gente
+  confirma").
+- Usa o vocabulário único de status; perda continua exigindo motivo.
+- Registra na trilha (`atividades_colaborador`) quem decidiu e quando.
+
+#### 4.4 — Ata e contrato
+
+A pasta **Contrato** existe e está vazia. O Apoio Jurídico já arquiva aditivos e
+reequilíbrios nela (mapeamento em `pastaDaPecaJuridica`). Falta a entrada do
+documento original — ata de registro de preços ou contrato assinado — e o gancho
+para o módulo de Contratos, que já gerencia vigência e consumo de ata.
+
+#### Ordem sugerida
+
+1. **4.1** — costura de UI, sem migration, devolve o fio ao usuário no dia
+   seguinte à disputa;
+2. **4.3** — o processo volta a andar sozinho (alimenta Kanban/financeiro/metas);
+3. **4.2** — o documento que a vitória exige (maior esforço, depende de 4.3 para
+   saber que houve vitória);
+4. **4.4** — fecha a ponte com o módulo de Contratos.
 
 ## Princípios herdados (CLAUDE.md)
 Vocabulário único · escopo por empresa · falha visível com retry · IA propõe,
