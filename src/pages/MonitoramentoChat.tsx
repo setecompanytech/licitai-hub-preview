@@ -127,7 +127,7 @@ export default function MonitoramentoChat() {
               Monitoramento de Chat e Mural
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Acompanhe em tempo real o chat e mural dos pregões eletrônicos
+              Anotações internas da equipe, chat do pregoeiro e publicações oficiais dos portais
             </p>
           </div>
           <div className="flex items-center gap-3 self-start sm:self-auto">
@@ -155,10 +155,10 @@ export default function MonitoramentoChat() {
               </TabsTrigger>
             )}
             <TabsTrigger value="chat" className="flex items-center gap-1">
-              <MessageSquare className="w-4 h-4" /> Chat ao Vivo
+              <MessageSquare className="w-4 h-4" /> Chat do Pregoeiro
             </TabsTrigger>
             <TabsTrigger value="mural" className="flex items-center gap-1">
-              <Megaphone className="w-4 h-4" /> Mural
+              <Megaphone className="w-4 h-4" /> Publicações do Portal
             </TabsTrigger>
           </TabsList>
 
@@ -179,7 +179,7 @@ export default function MonitoramentoChat() {
               <div className="flex items-start gap-3 p-4 rounded-lg border border-info/30 bg-info/5">
                 <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-info">Chat em Tempo Real de Pregões</p>
+                  <p className="text-sm font-medium text-info">Chat do pregoeiro — em tempo real</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     O chat ao vivo será ativado automaticamente quando você estiver participando de um pregão eletrônico.
                     Para monitorar um pregão, acesse o <strong>Kanban</strong> ou a <strong>Busca Inteligente</strong> e inicie o acompanhamento de uma licitação.
@@ -221,7 +221,7 @@ export default function MonitoramentoChat() {
               <div className="flex items-start gap-3 p-4 rounded-lg border border-info/30 bg-info/5">
                 <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-info">Mural de Publicações</p>
+                  <p className="text-sm font-medium text-info">Publicações do Portal</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Avisos, esclarecimentos, impugnações e retificações publicados nos portais serão exibidos aqui automaticamente 
                     quando você estiver acompanhando processos licitatórios ativos.
@@ -231,7 +231,7 @@ export default function MonitoramentoChat() {
 
               <div className="text-center py-12 text-muted-foreground">
                 <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Nenhuma publicação no mural</p>
+                <p className="text-sm">Nenhuma publicação do portal</p>
                 <p className="text-xs mt-1">Avisos, esclarecimentos e retificações aparecerão aqui quando detectados nos portais dos processos que você acompanha.</p>
               </div>
             </div>
