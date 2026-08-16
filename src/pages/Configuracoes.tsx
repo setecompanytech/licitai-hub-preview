@@ -356,7 +356,9 @@ export default function Configuracoes() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl">
+      {/* mx-auto: o max-w prendia a largura em 1024px sem centralizar, e o
+          conteúdo encostava à esquerda com a sobra toda do lado direito. */}
+      <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Configurações</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">Personalize a plataforma para sua empresa</p>

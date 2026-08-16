@@ -103,7 +103,7 @@ export default function AdminFinanceiro() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gerenciador Financeiro</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">Gerencie assinaturas, pagamentos e tickets de suporte</p>
