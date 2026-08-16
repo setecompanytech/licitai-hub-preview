@@ -63,7 +63,7 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
               key={n.nivel}
               onClick={() => !disabled && onChange(n.nivel)}
               disabled={disabled}
-              className={`text-left rounded-xl border p-4 transition-all ${
+              className={`text-left rounded-xl border p-4 transition-all min-w-0 flex flex-col ${
                 isActive ? n.corAtivo : `${n.cor} hover:shadow-sm`
               } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
