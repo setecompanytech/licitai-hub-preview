@@ -534,6 +534,45 @@ que ele alimenta um espelho. Enquanto isso, publicar = **Publish no Lovable**.
 
 ---
 
+## [2026-08-16] Processo ativo é global — abas paralelas podem se confundir
+
+O vínculo com o processo (`?lid=`) é **único por navegador**: vive na URL e é
+espelhado no `localStorage` (`praefectus.processoAtivo`). Enquanto a URL carrega
+o identificador, cada aba mantém o seu — mas ao navegar para um módulo sem o
+parâmetro, a aba **reidrata a partir do último processo tocado em qualquer aba**.
+
+**Quando incomoda:** trabalhar em dois processos ao mesmo tempo em abas
+separadas — cenário realista perto de um prazo. Precificação, Proposta, Apoio
+Jurídico e Robô de Lances agem sobre esse vínculo; herdar o processo da outra aba
+significa cotar, propor ou **disputar no pregão errado**.
+
+**Mitigação já em vigor (16/08):** toda tela que opera sobre o processo declara
+qual é, na barra de contexto — se aparecer o nome errado, é este efeito. E o
+diálogo do Robô mostra "Disputa do processo aberto: X" antes de qualquer lance.
+
+**Correção prevista:** isolar o vínculo por aba (`sessionStorage`, que é por aba,
+em vez de `localStorage`, que é por navegador), mantendo o `localStorage` apenas
+como semente para abas novas. Mexe no `ProcessoAtivoContext`, que atravessa o
+sistema inteiro — daí não ter sido feito junto com as correções do dia.
+
+**Nota:** as rotinas longas por processo (leitura do edital pela Aurélia, cotação,
+montagem da pasta de habilitação) **já são isoladas por licitação** — rodam em
+paralelo sem se atropelar. O problema é só o vínculo de navegação.
+
+---
+
+## [2026-08-16] Índice das pendências espalhadas
+
+Para não repetir a armadilha das fontes múltiplas, o mapa de onde cada coisa está:
+
+| Onde | O que contém |
+| --- | --- |
+| `docs/agente-cloud-pendencias.md` | Robô de Lances e Agente Cloud — inclui as duas rotas que faltam no agente (`/kill-switch`, `/api/proposta/enviar`) e a chave de cifra dedicada das senhas de portal |
+| `docs/prontuario-integrado.md` (Fase 3.1) | Alertas multicanal de habilitação incompleta; Exportar ZIP na ordem do edital; migrar `documentos`/`processo_anexos`/`licitacao_itens` para escopo de empresa |
+| este arquivo | Todo o restante |
+
+---
+
 ## [2026-08-14] Rodada de decisões: FTP aposentado, vocabulário unificado, crawler decidido
 
 **Workflow de FTP — RESOLVIDO.** `deploy-hostgator.yml` removido do repositório e os
