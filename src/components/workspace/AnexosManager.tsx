@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Upload, Download, Trash2, FileText, Folder, Search } from 'lucide-react';
+import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
 
 /** Estrutura da pasta Habilitação — mesma ordem e rótulos do Jurídico → Documentos. */
@@ -41,7 +42,18 @@ function formatBytes(b: number | null) {
 }
 
 export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCount }: { licitacaoId: string; editalViewer?: ReactNode; pncpEditalCount?: number }) {
-  const { anexos, loading, uploadAnexo, downloadAnexo, deleteAnexo } = useProcessoWorkspace(licitacaoId);
+  const { anexos, loading, uploadAnexo, downloadAnexo, urlVisualizacao, deleteAnexo } = useProcessoWorkspace(licitacaoId);
+  // Visualização em tela: o usuário conferia o documento só baixando — agora
+  // abre no próprio sistema, sem sair do processo.
+  const [visualizando, setVisualizando] = useState<{ anexo: ProcessoAnexo; url: string } | null>(null);
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+
+  const abrirVisualizacao = async (anexo: ProcessoAnexo) => {
+    setAbrindo(anexo.id);
+    const url = await urlVisualizacao(anexo);
+    setAbrindo(null);
+    if (url) setVisualizando({ anexo, url });
+  };
   const fileRef = useRef<HTMLInputElement>(null);
   const [categoria, setCategoria] = useState<CategoriaAnexo>('outros');
   // Upload para Habilitação pergunta o grupo da Lei; 'auto' classifica pelo
@@ -99,10 +111,20 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             {a.origem !== 'upload' && a.origem !== 'cofre' && <Badge variant="outline" className="text-xs">Gerado</Badge>}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">
+        <Button
+          variant="ghost" size="sm" title="Visualizar" aria-label={`Visualizar ${a.nome_arquivo}`}
+          onClick={() => abrirVisualizacao(a)} disabled={abrindo === a.id} className="h-8 w-8 p-0"
+        >
+          {abrindo === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+        </Button>
+        <Button variant="ghost" size="sm" title="Baixar" aria-label={`Baixar ${a.nome_arquivo}`} onClick={() => downloadAnexo(a)} className="h-8 w-8 p-0">
           <Download className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }} className="h-8 w-8 p-0 text-destructive">
+        <Button
+          variant="ghost" size="sm" title="Excluir" aria-label={`Excluir ${a.nome_arquivo}`}
+          onClick={() => { if (confirm(`Excluir "${a.nome_arquivo}"?`)) deleteAnexo(a); }}
+          className="h-8 w-8 p-0 text-destructive"
+        >
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
@@ -214,6 +236,51 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
           );
         })}
       </Card>
+
+      {/* Visualizador — PDF e imagem renderizam inline; formatos que o
+          navegador não exibe (Word, Excel) oferecem abrir/baixar. */}
+      <Dialog open={!!visualizando} onOpenChange={(o) => { if (!o) setVisualizando(null); }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-4 py-3 border-b border-border shrink-0">
+            <DialogTitle className="text-sm font-medium truncate pr-8">
+              {visualizando?.anexo.nome_arquivo}
+            </DialogTitle>
+          </DialogHeader>
+          {visualizando && (() => {
+            const nome = visualizando.anexo.nome_arquivo.toLowerCase();
+            const ehPdf = nome.endsWith('.pdf') || visualizando.anexo.mime_type === 'application/pdf';
+            const ehImagem = /\.(png|jpe?g|webp|gif)$/.test(nome) || (visualizando.anexo.mime_type || '').startsWith('image/');
+            if (ehPdf) {
+              return <iframe src={visualizando.url} title={visualizando.anexo.nome_arquivo} className="flex-1 w-full border-0" />;
+            }
+            if (ehImagem) {
+              return (
+                <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/20">
+                  <img src={visualizando.url} alt={visualizando.anexo.nome_arquivo} className="max-w-full max-h-full object-contain" />
+                </div>
+              );
+            }
+            return (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+                <FileText className="w-10 h-10 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  O navegador não exibe este formato em tela. Abra em uma nova aba ou baixe o arquivo.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={visualizando.url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir em nova aba
+                    </a>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => downloadAnexo(visualizando.anexo)}>
+                    <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

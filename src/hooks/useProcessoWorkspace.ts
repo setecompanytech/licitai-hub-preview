@@ -80,6 +80,13 @@ export function useProcessoWorkspace(licitacaoId: string | null) {
     window.open(data.signedUrl, '_blank');
   }, []);
 
+  /** URL assinada para VISUALIZAR o anexo em tela (10 min — leitura demora). */
+  const urlVisualizacao = useCallback(async (anexo: ProcessoAnexo): Promise<string | null> => {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(anexo.storage_path, 600);
+    if (error || !data) { toast.error(`Não foi possível abrir o arquivo: ${error?.message || 'link não gerado'}`); return null; }
+    return data.signedUrl;
+  }, []);
+
   const deleteAnexo = useCallback(async (anexo: ProcessoAnexo) => {
     await supabase.storage.from(BUCKET).remove([anexo.storage_path]);
     await supabase.from('processo_anexos').delete().eq('id', anexo.id);
@@ -122,5 +129,5 @@ export function useProcessoWorkspace(licitacaoId: string | null) {
     fetchAll();
   }, [fetchAll]);
 
-  return { anexos, documentos, loading, uploadAnexo, downloadAnexo, deleteAnexo, criarDocumento, salvarDocumento, deleteDocumento, refresh: fetchAll };
+  return { anexos, documentos, loading, uploadAnexo, downloadAnexo, urlVisualizacao, deleteAnexo, criarDocumento, salvarDocumento, deleteDocumento, refresh: fetchAll };
 }
