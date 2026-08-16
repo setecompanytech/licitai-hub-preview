@@ -405,8 +405,10 @@ export default function RoboLances() {
 
   return (
     <AppLayout>
-      {/* Declara a pasta de origem e devolve o caminho de volta */}
-      <div className="px-4 pt-3">
+      {/* Declara a pasta de origem e devolve o caminho de volta. Sem px-4: o
+          contêiner da página já aplica a margem lateral, e o padding extra
+          encolhia a barra em relação ao cabeçalho logo abaixo. */}
+      <div className="mb-3">
         <ProcessoContextoBanner />
       </div>
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
