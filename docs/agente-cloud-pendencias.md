@@ -19,6 +19,8 @@ corrigido para não mentir enquanto isso.
 | 8 | Painel VNC bloqueado pela CSP | Praefectus | ✅ resolvido |
 | 9 | Certificado negado apesar de instalado | Praefectus | ✅ resolvido — considera o relato do agente |
 | 10 | `CRON_SECRET` compartilhado com o cron do PNCP | Praefectus | ✅ resolvido — usa a chave do próprio agente |
+| 11 | Chave de cifra das senhas derivada da service role | Praefectus | 🕐 **planejado** — exige migração, ver seção 6 |
+| 12 | Robô de Lances não parte da pasta do processo | Praefectus | 🕐 planejado — ver seção 7 |
 
 **Enquanto o item 1 não for implementado, o envio automático (níveis 2 e 3) fica
 bloqueado pelo próprio sistema.** Nível 1 (assistente, sem envio automático)
@@ -169,6 +171,46 @@ X-Agent-Key: <api_key_hash>
 
 { "sessao_id": "<uuid>", "tipo": "heartbeat", "payload": { ...saúde... } }
 ```
+
+## 6. Chave de cifra das senhas de portal — PLANEJADO (não mudar às pressas)
+
+As senhas dos portais são cifradas com AES-256-GCM antes de ir para o banco
+(chave derivada por PBKDF2, 100 mil iterações, IV aleatório por senha) e a view
+`credenciais_portais_safe` nunca as expõe. O desenho é sólido, **com uma ressalva
+de arquitetura**: a chave de cifra é derivada da **service role key** do Supabase
+— o mesmo segredo que dá acesso administrativo ao banco inteiro. Quem obtiver
+essa chave decifra todas as senhas de portal.
+
+**O que se ganharia:** um segredo dedicado (ex.: `CREDENCIAIS_ENCRYPTION_KEY`),
+guardado à parte, cria uma segunda barreira: vazar o banco deixa de bastar.
+
+**Por que não é uma mudança rápida:** todas as senhas já cifradas precisam ser
+re-cifradas com a chave nova, sem janela em que alguma fique ilegível. Exige:
+
+1. criar o segredo dedicado;
+2. decifrar com a chave antiga e cifrar com a nova, registro a registro,
+   aceitando as duas durante a transição;
+3. só então remover o caminho antigo.
+
+Perder a chave nova **inutiliza as senhas** (não há como recuperá-las) — por isso
+merece planejamento próprio, com backup verificado antes de começar.
+
+## 7. Robô de Lances desconectado da pasta do processo — PLANEJADO
+
+Hoje o Robô de Lances não sabe em qual processo você está: a página não lê o
+processo ativo, e o vínculo com a licitação só nasce quando o operador busca e
+seleciona o edital de novo, dentro do diálogo "Configurar Lance". Também não há
+atalho para o Robô na aba **Módulos** do prontuário.
+
+O caminho natural — monitorar → mandar para o Kanban → abrir a pasta → disputar
+com os dados que já estão lá (itens, preços, valor de referência) — ainda não
+existe. Cada disputa recomeça a seleção do zero, com risco de configurar o lance
+para o processo errado.
+
+**Correção prevista:** atalho na aba Módulos, leitura do processo ativo pela
+página do Robô e pré-seleção da licitação no diálogo, com o mesmo travamento já
+aplicado à Precificação e à Proposta (dentro de uma pasta, nenhum seletor oferece
+outros processos).
 
 ## 5. VNC — verificar durante uma disputa real
 
