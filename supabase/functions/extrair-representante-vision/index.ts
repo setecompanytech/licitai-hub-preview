@@ -32,8 +32,19 @@ FORMATO DE SAÍDA — retorne APENAS este JSON puro (sem markdown, sem crases, s
   "repOrgaoExp": "",
   "repCargo": "",
   "repNaturalidade": "",
-  "repNacionalidade": ""
+  "repNacionalidade": "",
+  "mrz": "",
+  "origemCpf": "",
+  "origemRg": ""
 }
+
+CAMPOS DE AUDITORIA (obrigatórios — é assim que verificamos a leitura):
+- "mrz": transcreva LITERALMENTE as linhas da zona de leitura mecânica (as que
+  contêm "<" no rodapé do documento), tudo em uma string. Se não houver, "".
+- "origemCpf": copie o RÓTULO E O VALOR exatamente como impressos onde você leu
+  o CPF (ex.: "4d CPF 014.570.832-21"). Se leu de qualquer outro lugar que não
+  um campo rotulado como CPF, escreva "incerto".
+- "origemRg": idem para o RG (ex.: "4c DOC IDENTIDADE 6142740 PC PA").
 
 MAPA DE CAMPOS DA CNH (siga à risca — os rótulos numerados são padronizados):
 - Campo "2e1 NOME E SOBRENOME" → repNome.
@@ -212,6 +223,12 @@ Deno.serve(async (req) => {
         consenso[campo] = '';
       }
     }
+    // Campos de auditoria não passam pelo consenso (não são dado do usuário):
+    // servem para PROVAR de onde veio o número, e basta uma das leituras vê-los.
+    consenso.mrz = String(a?.mrz || b?.mrz || '');
+    consenso.origemCpf = String(a?.origemCpf || b?.origemCpf || '');
+    consenso.origemRg = String(a?.origemRg || b?.origemRg || '');
+
     let textContent = JSON.stringify(consenso);
 
     // Pós-validação do CPF: a visão pode alucinar dígitos. Duas defesas:
@@ -222,6 +239,30 @@ Deno.serve(async (req) => {
     try {
       const parsed = JSON.parse(textContent.replace(/```json|```/g, '').trim());
       if (parsed && typeof parsed === 'object') {
+        // A MRZ é visível NA IMAGEM: filtrá-la do texto de apoio não impediu a
+        // leitura. E o dígito verificador não salva — "684.270.918-00" e
+        // "030.723.703-62" fecham a conta e mesmo assim são falsos. A defesa que
+        // funciona é comparar com a própria MRZ: número cujo miolo aparece nela
+        // veio de lá (registro da CNH, data de nascimento) e NÃO é o documento.
+        const digitosMrz = String(parsed.mrz || '').replace(/\D/g, '');
+        const veioDaMrz = (valor: string) => {
+          const d = String(valor || '').replace(/\D/g, '');
+          return d.length >= 7 && digitosMrz.includes(d.slice(0, 7));
+        };
+        if (parsed.repCpf && veioDaMrz(parsed.repCpf)) {
+          console.log(`[representante-vision] CPF descartado: veio da MRZ ("${parsed.repCpf}")`);
+          parsed.repCpf = '';
+        }
+        if (parsed.repRg && veioDaMrz(parsed.repRg)) {
+          console.log(`[representante-vision] RG descartado: veio da MRZ ("${parsed.repRg}")`);
+          parsed.repRg = '';
+        }
+        // "Mostre onde leu": sem citar um campo rotulado, não afirmamos o número.
+        if (parsed.repCpf && !/cpf/i.test(String(parsed.origemCpf || ''))) {
+          console.log(`[representante-vision] CPF sem origem citada ("${parsed.origemCpf}") — descartado`);
+          parsed.repCpf = '';
+        }
+        delete parsed.mrz; delete parsed.origemCpf; delete parsed.origemRg;
         const candidatos = [...new Set(
           (String(text || '').match(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/g) || [])
             .map((c: string) => c.replace(/\D/g, ''))
