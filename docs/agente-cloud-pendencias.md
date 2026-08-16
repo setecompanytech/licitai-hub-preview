@@ -103,7 +103,7 @@ na aba Proposta).
 ```http
 POST /api/proposta/enviar
 Content-Type: application/json
-X-Agent-Key: <CRON_SECRET>
+X-Agent-Key: <api_key_hash do agente>
 
 {
   "action": "enviar_proposta",
@@ -129,9 +129,11 @@ X-Agent-Key: <CRON_SECRET>
 grava em `agent_acoes_log` e exibe "Falha ao conectar com o Agente Cloud". Nenhum
 usuário é enganado; a função simplesmente não opera até a rota existir.
 
-**Observação de segurança:** hoje esta chamada se autentica com `CRON_SECRET`, o
-mesmo segredo dos jobs de sincronização do PNCP. Convém o agente aceitar uma
-chave própria — rotacionar uma não deveria derrubar a outra.
+**Segurança — já corrigido no Praefectus:** esta chamada usava o `CRON_SECRET`,
+o mesmo segredo dos jobs de sincronização do PNCP; rotacionar o segredo do agente
+derrubaria o cron junto. Agora ela envia a chave do próprio agente
+(`agente_externo_config.api_key_hash`), como as demais chamadas. **O agente deve
+aceitar essa chave** ao implementar a rota.
 
 ## 3. Declarar as rotas no `/health` — sugestão
 
