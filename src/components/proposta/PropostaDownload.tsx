@@ -28,6 +28,8 @@ export interface PropostaDownloadProps {
   numeroLicitacao: string;
   /** Processo dono da proposta — habilita "Salvar na pasta Proposta". */
   licitacaoId?: string | null;
+  /** Avisa a página que a pasta mudou, para atualizar o espelho. */
+  onArquivado?: () => void;
   timbradoUrl?: string | null;
   empresaData?: {
     razao_social?: string;
@@ -117,7 +119,7 @@ export default function PropostaDownload({
   proposal, numeroLicitacao, timbradoUrl,
   empresaData, repData, bancData, itens, licitacaoData, telefone, email,
   inscEstadual, inscMunicipal,
-  pageOrientation = 'portrait', declaracoesAtivas, licitacaoId,
+  pageOrientation = 'portrait', declaracoesAtivas, licitacaoId, onArquivado,
 }: PropostaDownloadProps) {
   const [arquivando, setArquivando] = useState(false);
 
@@ -512,7 +514,7 @@ export default function PropostaDownload({
         descricao: 'Proposta comercial gerada pelo sistema (substitui a versão anterior de mesmo nome).',
         metadata: { origem_modulo: 'proposta_comercial', valor_global: valorGlobal },
       });
-      if (r.ok) toast.success(`Proposta arquivada na pasta Proposta: ${r.nome}`);
+      if (r.ok) { toast.success(`Proposta arquivada na pasta Proposta: ${r.nome}`); onArquivado?.(); }
       else toast.error(`Não foi possível arquivar: ${r.erro}`, { duration: 10000 });
     } finally {
       setArquivando(false);

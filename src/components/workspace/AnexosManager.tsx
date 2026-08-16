@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2 } from 'lucide-react';
+import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
 
@@ -18,6 +19,30 @@ const GRUPOS_HABILITACAO: { key: string; label: string }[] = [
   { key: 'declaracoes', label: 'Declarações' },
   { key: 'outros', label: 'Outros' },
 ];
+
+/** Pastas cujo conteúdo nasce em uma aba do processo — a vazia leva até lá. */
+const ORIGEM_DA_PASTA: Record<string, { texto: string; aba: string; botao: string }> = {
+  proposta: {
+    texto: 'A proposta comercial é montada na aba Proposta e arquivada aqui com "Salvar na pasta Proposta".',
+    aba: 'proposta',
+    botao: 'Ir para a aba Proposta',
+  },
+  recursos: {
+    texto: 'Recursos, impugnações e esclarecimentos são redigidos no Apoio Jurídico (aba Módulos) e arquivados aqui.',
+    aba: 'modulos',
+    botao: 'Ir para Módulos → Apoio Jurídico',
+  },
+  declaracoes: {
+    texto: 'As declarações são geradas no Apoio Jurídico (aba Módulos) e arquivadas aqui.',
+    aba: 'modulos',
+    botao: 'Ir para Módulos → Apoio Jurídico',
+  },
+  habilitacao: {
+    texto: 'O checklist da aba Documentos monta esta pasta com os documentos do cofre.',
+    aba: 'documentos',
+    botao: 'Ir para o checklist de habilitação',
+  },
+};
 
 const grupoDoAnexo = (a: ProcessoAnexo): string => {
   const g = (a.metadata as { grupo?: string } | null)?.grupo;
@@ -64,6 +89,7 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   // mundos de arquivo (a pasta dizia "0 arquivos" com o edital renderizando
   // em outra aba).
   const [filtroCat, setFiltroCat] = useState<string>('todas');
+  const [, setSearchParams] = useSearchParams();
   const [busca, setBusca] = useState('');
   const [uploading, setUploading] = useState(false);
 
@@ -204,9 +230,23 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
       <Card className="divide-y divide-border">
         {loading && <div className="p-8 text-center text-sm text-muted-foreground">Carregando...</div>}
         {!loading && filtrados.length === 0 && (
-          <div className="p-12 text-center">
-            <Folder className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+          <div className="p-12 text-center space-y-3">
+            <Folder className="w-10 h-10 mx-auto text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Nenhum arquivo nesta pasta. Envie o primeiro acima.</p>
+            {/* Pastas alimentadas por um módulo do processo apontam para ele —
+                a pasta e a aba que a produz são o mesmo trabalho. */}
+            {ORIGEM_DA_PASTA[filtroCat] && (
+              <div className="text-sm text-muted-foreground">
+                <p>{ORIGEM_DA_PASTA[filtroCat].texto}</p>
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set('aba', ORIGEM_DA_PASTA[filtroCat].aba);
+                  return next;
+                }, { replace: true })}>
+                  {ORIGEM_DA_PASTA[filtroCat].botao} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
         {filtroCat !== 'habilitacao' && filtrados.map((a: ProcessoAnexo) => renderAnexo(a))}

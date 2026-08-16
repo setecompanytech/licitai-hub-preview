@@ -66,6 +66,13 @@ export default function ProcessoWorkspace() {
   const abaPedida = searchParams.get('aba') || '';
   const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
   const [aba, setAba] = useState(abaInicial);
+
+  // A aba também muda por URL depois da montagem (links entre pastas e abas
+  // do próprio processo) — sem isto, ?aba= só valia no primeiro carregamento.
+  useEffect(() => {
+    if (abaInicial !== aba) setAba(abaInicial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaInicial]);
   // Contagem dos arquivos do PNCP (Edital em tela) — soma no chip da pasta Edital
   const [pncpArquivosCount, setPncpArquivosCount] = useState<number | null>(null);
   // O processo tem coordenadas PNCP? Decide quem materializa os itens: o

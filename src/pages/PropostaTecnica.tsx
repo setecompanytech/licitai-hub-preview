@@ -16,7 +16,7 @@ import {
   ShieldCheck, Stamp, Send, Calendar, MapPin, Clock, CreditCard,
   FileSignature, Upload as UploadIcon, Eye, AlertCircle, Banknote,
   PanelRightOpen, PanelRightClose
-} from 'lucide-react';
+, FolderOpen, ArrowRight } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,6 +80,11 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [proposal, setProposal] = useState('');
+  // Espelho da pasta Proposta (aba Anexos): a aba e a pasta são o mesmo
+  // trabalho visto de dois lugares — quem edita aqui precisa ver o que já
+  // está arquivado lá, e vice-versa.
+  const [naPasta, setNaPasta] = useState<{ nome: string; em: string } | null>(null);
+  const [nonceArquivo, setNonceArquivo] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(!isMobile);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -546,6 +551,21 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valorGlobal]);
 
+  useEffect(() => {
+    if (!processoId) { setNaPasta(null); return; }
+    supabase
+      .from('processo_anexos')
+      .select('nome_arquivo, created_at')
+      .eq('licitacao_id', processoId)
+      .eq('categoria', 'proposta')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        const a = data?.[0];
+        setNaPasta(a ? { nome: a.nome_arquivo, em: a.created_at } : null);
+      });
+  }, [processoId, nonceArquivo]);
+
   const buildContext = () => {
     const parts: string[] = [];
 
@@ -762,6 +782,32 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
         {/* No modo avulso, declara sobre qual processo o wizard age; embutido,
             o cabeçalho do prontuário já cumpre esse papel. */}
         {!embedded && <ProcessoContextoBanner />}
+
+        {/* Ligação com a pasta Proposta dos Anexos */}
+        {processoId && (
+          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5 text-sm flex-wrap">
+            <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+            {naPasta ? (
+              <>
+                <span className="text-muted-foreground">Arquivada na pasta Proposta:</span>
+                <span className="font-medium">{naPasta.nome}</span>
+                <span className="text-xs text-muted-foreground">
+                  · {new Date(naPasta.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                Ainda não há proposta arquivada neste processo — ao gerar, use
+                <span className="font-medium text-foreground"> Salvar na pasta Proposta</span>.
+              </span>
+            )}
+            <Button size="sm" variant="ghost" className="h-7 ml-auto" asChild>
+              <Link to={`/processo/${processoId}?aba=anexos`}>
+                Ver pasta Proposta <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Link>
+            </Button>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
@@ -1567,6 +1613,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               <div className="flex items-center gap-2 flex-wrap">
                 <PropostaDownload
                   licitacaoId={processoId}
+                  onArquivado={() => setNonceArquivo((n) => n + 1)}
                   proposal={proposal}
                   numeroLicitacao={numeroLicitacao}
                   timbradoUrl={timbradoUrl}
