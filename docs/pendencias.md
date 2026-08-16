@@ -534,6 +534,19 @@ que ele alimenta um espelho. Enquanto isso, publicar = **Publish no Lovable**.
 
 ---
 
+## [2026-08-16] Proposta readequada não existe no ciclo
+
+Ao vencer a disputa, o portal exige a **proposta readequada** — o documento com
+os valores finais alcançados no pregão, item a item, com marca e modelo. O
+Praefectus gera a proposta **inicial** (aba Proposta) e conduz a disputa (Robô),
+mas não fecha o ciclo: o documento final é montado fora do sistema.
+
+É o único ponto do fluxo em que marca/fabricante/modelo voltam a ser exigidos
+depois do cadastro. Os dados existem (`licitacao_itens`, catálogo) e os valores
+finais ficam na disputa — falta o gerador que os combina no formato do portal.
+
+---
+
 ## [2026-08-16] Processo ativo é global — abas paralelas podem se confundir
 
 O vínculo com o processo (`?lid=`) é **único por navegador**: vive na URL e é

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
@@ -100,6 +100,44 @@ export default function RoboLances() {
   // O Robô passa a saber em qual processo se está disputando — antes ele
   // ignorava a pasta de origem e obrigava a reselecionar o edital.
   const { processoId } = useProcessoAtivo();
+
+  /** Converte a linha do banco para a configuração usada na tela. */
+  const linhaParaLance = (r: Record<string, unknown>): LanceConfig => ({
+    id: String(r.id),
+    edital: String(r.edital || ''),
+    portal: String(r.portal || ''),
+    valorReferencia: Number(r.valor_referencia) || 0,
+    valorInicial: Number(r.valor_inicial) || 0,
+    valorMinimo: Number(r.valor_minimo) || 0,
+    decrementoMin: Number(r.decremento_min) || 0,
+    decrementoPercentual: Number(r.decremento_percentual) || 0,
+    intervaloSegundos: Number(r.intervalo_segundos) || 30,
+    maxLances: Number(r.max_lances) || 20,
+    modoAutomatico: !!r.modo_automatico,
+    status: (r.status as LanceConfig['status']) || 'aguardando',
+    horario: String(r.horario || ''),
+    meuLance: Number(r.meu_lance) || 0,
+    valorAtual: Number(r.valor_atual) || 0,
+    itens: (r.itens as DisputeItem[]) || [],
+    tipoDisputa: (r.tipo_disputa as 'item' | 'lote') || 'item',
+    licitacaoId: (r.licitacao_id as string) || undefined,
+  });
+
+  // As disputas passam a viver no banco. Abrindo pelo prontuário, o painel
+  // mostra as DESTA pasta; sem processo aberto, as da empresa.
+  useEffect(() => {
+    if (!user || !empresaAtiva?.id) return;
+    let q = supabase
+      .from('robo_lances_disputas' as never)
+      .select('*')
+      .eq('empresa_id', empresaAtiva.id);
+    if (processoId) q = q.eq('licitacao_id', processoId);
+    q.order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (error) { console.error('[robo-lances] carregar disputas', error.message); return; }
+      setLances(((data || []) as unknown as Record<string, unknown>[]).map(linhaParaLance));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, empresaAtiva?.id, processoId]);
 
   const handleNivelChange = async (novoNivel: NivelAutomacao) => {
     // Freio verificado é PRÉ-REQUISITO dos níveis com envio automático. O
@@ -213,6 +251,38 @@ export default function RoboLances() {
 
   /* ── handlers ── */
   const handleSaveLance = (lance: LanceConfig) => {
+    // Grava no banco — antes a disputa sumia ao recarregar a página.
+    if (user && empresaAtiva?.id) {
+      const linha = {
+        id: lance.id,
+        empresa_id: empresaAtiva.id,
+        user_id: user.id,
+        licitacao_id: lance.licitacaoId ?? processoId ?? null,
+        edital: lance.edital,
+        portal: lance.portal || null,
+        tipo_disputa: lance.tipoDisputa,
+        valor_referencia: lance.valorReferencia,
+        valor_inicial: lance.valorInicial,
+        valor_minimo: lance.valorMinimo,
+        decremento_min: lance.decrementoMin,
+        decremento_percentual: lance.decrementoPercentual,
+        intervalo_segundos: lance.intervaloSegundos,
+        max_lances: lance.maxLances,
+        modo_automatico: lance.modoAutomatico,
+        horario: lance.horario || null,
+        status: lance.status,
+        meu_lance: lance.meuLance,
+        valor_atual: lance.valorAtual,
+        itens: lance.itens as never,
+      };
+      supabase
+        .from('robo_lances_disputas' as never)
+        .upsert(linha as never, { onConflict: 'id' })
+        .then(({ error }) => {
+          if (error) toast.error(`Disputa não foi salva: ${error.message}`, { duration: 12000 });
+        });
+    }
+
     setLances((prev) => {
       const exists = prev.find((l) => l.id === lance.id);
       if (exists) {

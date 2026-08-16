@@ -51,6 +51,9 @@ export type DisputeItem = {
   situacao: 'aguardando' | 'disputando' | 'encerrado';
   melhorLance: number | null;
   seuUltimoLance: number | null;
+  /** Somente leitura: identifica o produto ofertado (fonte: licitacao_itens). */
+  marca?: string;
+  modelo?: string;
 };
 
 export type LanceConfig = {
@@ -93,6 +96,11 @@ function licitacaoItensToDispute(items: LicitacaoItem[]): DisputeItem[] {
     id: crypto.randomUUID(),
     numero: item.numero || idx + 1,
     descricao: item.descricao,
+    // Marca e modelo são do CADASTRO da proposta, não da disputa (nela só o
+    // preço muda). Viajam apenas como leitura, para o operador saber por qual
+    // produto está baixando o preço — sem virar segunda fonte do dado.
+    marca: item.marca || undefined,
+    modelo: item.modelo || undefined,
     quantidade: item.quantidade || 1,
     unidade: item.unidade || 'UN',
     valorReferencia: item.valor_unitario || 0,
@@ -1144,7 +1152,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                               {loteItens.map((item) => (
                                 <TableRow key={item.id}>
                                   <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                                  <TableCell className="text-xs max-w-[180px] truncate">{item.descricao}</TableCell>
+                                  <TableCell className="text-xs max-w-[180px]">
+                              <span className="block truncate">{item.descricao}</span>
+                              {(item.marca || item.modelo) && (
+                                <span className="block truncate text-muted-foreground">
+                                  {[item.marca, item.modelo].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </TableCell>
                                   <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
                                   <TableCell className="text-xs text-center">{item.unidade}</TableCell>
                                   <TableCell className="text-xs text-right font-mono">
@@ -1185,7 +1200,14 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                         {itens.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                            <TableCell className="text-xs max-w-[160px] truncate">{item.descricao}</TableCell>
+                            <TableCell className="text-xs max-w-[160px]">
+                              <span className="block truncate">{item.descricao}</span>
+                              {(item.marca || item.modelo) && (
+                                <span className="block truncate text-muted-foreground">
+                                  {[item.marca, item.modelo].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
                             <TableCell className="text-xs text-center">{item.unidade}</TableCell>
                             <TableCell className="text-xs text-right font-mono">
