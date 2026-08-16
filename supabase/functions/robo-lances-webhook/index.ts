@@ -432,7 +432,7 @@ serve(async (req) => {
 
       const { data: agentes } = await supabase
         .from("agente_externo_config")
-        .select("id, nome, url_base")
+        .select("id, nome, url_base, capacidades")
         .eq("user_id", user.id);
 
       if (!agentes?.length) {
@@ -445,6 +445,7 @@ serve(async (req) => {
         let online = false;
         let saude: Record<string, unknown> | null = null;
         let erro: string | null = null;
+        const capacidadesAtuais = (agente as { capacidades?: Record<string, unknown> }).capacidades;
         const t0 = Date.now();
         try {
           const resp = await fetch(`${base}/health`, {
@@ -470,7 +471,11 @@ serve(async (req) => {
             versao_agente: (saude?.version as string) ?? undefined,
             ram_mb: ((saude?.capacidade as Record<string, number>)?.ram_total_mb) ?? undefined,
             sessoes_ativas: (saude?.sessoes_ativas as number) ?? undefined,
-            capacidades: saude ? (saude as never) : undefined,
+            // Mescla: o snapshot de saúde não pode apagar o resultado do
+            // teste do freio de emergência guardado no mesmo campo.
+            capacidades: saude
+              ? ({ ...(capacidadesAtuais || {}), saude } as never)
+              : undefined,
           })
           .eq("id", agente.id);
 
@@ -486,6 +491,8 @@ serve(async (req) => {
           sessoes_ativas: saude?.sessoes_ativas ?? null,
           certificado: saude?.certificado ?? null,
           portais_suportados: saude?.portais_suportados ?? null,
+          // Freio de emergência: só o teste explícito prova que existe
+          kill_switch: (capacidadesAtuais as { kill_switch?: unknown })?.kill_switch ?? null,
         });
       }
 
@@ -493,6 +500,78 @@ serve(async (req) => {
         configurado: true,
         online: resultados.some((r) => r.online),
         agentes: resultados,
+      });
+    }
+
+    // Teste do freio de emergência. Sondar a rota por HEAD/OPTIONS não
+    // distingue "ausente" de "protegida" neste agente, e um POST às cegas
+    // durante uma disputa abortaria lances reais. Então o teste é DELIBERADO
+    // e só roda sem sessões ativas — como se testa um alarme de incêndio.
+    if (action === "testar-kill-switch") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { data: ativas } = await supabase
+        .from("sessoes_lance_real")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["ativo", "enviando"]);
+      if (ativas?.length) {
+        return jsonResponse({
+          error: `Há ${ativas.length} sessão(ões) de lance em andamento. O teste do freio abortaria disputas reais — execute com o robô parado.`,
+        }, 409);
+      }
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash, capacidades")
+        .eq("user_id", user.id);
+      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado." }, 400);
+
+      const resultados = [];
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        let ok = false, http = 0, detalhe: string | null = null;
+        try {
+          const resp = await fetch(`${base}/kill-switch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Agent-Key": agente.api_key_hash || "" },
+            body: JSON.stringify({ motivo: "Teste de verificação do freio de emergência (sem sessões ativas)", teste: true }),
+            signal: AbortSignal.timeout(8000),
+          });
+          ok = resp.ok;
+          http = resp.status;
+          if (!ok) {
+            detalhe = resp.status === 404
+              ? "o agente não implementa a rota POST /kill-switch"
+              : `HTTP ${resp.status}`;
+          }
+        } catch (e) {
+          detalhe = e instanceof Error ? e.message : "sem resposta do agente";
+        }
+
+        const registro = { ok, http, detalhe, testado_em: new Date().toISOString() };
+        const capacidades = (agente as { capacidades?: Record<string, unknown> }).capacidades || {};
+        await supabase
+          .from("agente_externo_config")
+          .update({ capacidades: { ...capacidades, kill_switch: registro } as never })
+          .eq("id", agente.id);
+
+        resultados.push({ agente: agente.nome, ...registro });
+      }
+
+      await supabase.from("webhook_log").insert({
+        user_id: user.id,
+        direcao: "saida",
+        tipo: "teste-kill-switch",
+        payload: { resultados },
+      });
+
+      return jsonResponse({
+        verificado: resultados.every((r) => r.ok),
+        resultados,
       });
     }
 

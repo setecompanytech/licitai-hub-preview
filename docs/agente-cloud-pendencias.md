@@ -5,6 +5,25 @@ diretamente. **Nada aqui depende do Praefectus** — são rotas que o sistema
 chama e que o agente ainda não implementa. O lado do Praefectus já foi
 corrigido para não mentir enquanto isso.
 
+## Situação em uma olhada
+
+| # | Pendência | Onde | Status |
+| --- | --- | --- | --- |
+| 1 | **`POST /kill-switch`** — freio de emergência | **agente** | ❌ **PENDENTE — bloqueia níveis 2 e 3** |
+| 2 | `POST /api/proposta/enviar` — envio da proposta | **agente** | ❌ pendente |
+| 3 | Declarar as rotas disponíveis no `/health` | **agente** | ⬜ sugerido |
+| 4 | Heartbeat (sinal de vida) | Praefectus | ✅ resolvido — passamos a puxar via `/health` |
+| 5 | Selo "Agente Online" mentiroso | Praefectus | ✅ resolvido — healthcheck real, três estados |
+| 6 | Kill-switch anunciando parada não confirmada | Praefectus | ✅ resolvido — relata o resultado real |
+| 7 | Níveis 2/3 sem freio comprovado | Praefectus | ✅ resolvido — bloqueados até o teste passar |
+| 8 | Painel VNC bloqueado pela CSP | Praefectus | ✅ resolvido |
+| 9 | Certificado negado apesar de instalado | Praefectus | ✅ resolvido — considera o relato do agente |
+| 10 | `CRON_SECRET` compartilhado com o cron do PNCP | Praefectus | ✅ resolvido — usa a chave do próprio agente |
+
+**Enquanto o item 1 não for implementado, o envio automático (níveis 2 e 3) fica
+bloqueado pelo próprio sistema.** Nível 1 (assistente, sem envio automático)
+segue liberado.
+
 ## O que o agente responde hoje
 
 | Rota | Método | Resposta | Situação |
@@ -62,9 +81,17 @@ pode continuar dando lances depois do "pare". A tela agora avisa o operador em
 vermelho quando o agente não confirma a parada — mas o aviso é um paliativo, não
 a solução.
 
-**Enquanto não existir:** não usar automação de nível 2 (semiautomático) ou 3
-(automação controlada). Nível 1 (assistente, sem envio automático) permanece
-seguro.
+**Enquanto não existir:** o Praefectus **bloqueia** os níveis 2 e 3. A liberação
+não é manual nem por confiança: existe a etapa "Freio de emergência verificado"
+no Checklist de Ativação, com o botão **Testar freio**, que aciona
+`POST /kill-switch` de propósito (recusado pelo servidor se houver disputa em
+andamento, para não abortar lances reais) e grava o resultado. Só depois de o
+agente confirmar a parada é que o envio automático é liberado.
+
+**Como validar do lado do agente:** implemente a rota, deixe o robô parado e peça
+ao operador para clicar em "Testar freio". A requisição chega com
+`{"motivo": "...", "teste": true}` — se preferir, trate `teste: true` como
+verificação (responder 200 sem efeito) e a ausência do campo como parada real.
 
 ## 2. `POST /api/proposta/enviar` — prioridade média
 
@@ -106,7 +133,24 @@ usuário é enganado; a função simplesmente não opera até a rota existir.
 mesmo segredo dos jobs de sincronização do PNCP. Convém o agente aceitar uma
 chave própria — rotacionar uma não deveria derrubar a outra.
 
-## 3. Heartbeat — RESOLVIDO do lado do Praefectus
+## 3. Declarar as rotas no `/health` — sugestão
+
+Sondamos `HEAD` e `OPTIONS` para descobrir automaticamente quais rotas existem:
+`HEAD` devolve 404 tanto para rota ausente quanto para rota que só aceita `POST`,
+e `OPTIONS` devolve 204 para qualquer caminho (o handler de CORS captura tudo).
+Ou seja, não há como o Praefectus saber o que o agente implementa sem tentar —
+e tentar o `/kill-switch` às cegas abortaria uma disputa real.
+
+Bastaria o `/health` incluir algo como:
+
+```json
+"rotas": ["GET /health", "POST /sessao/iniciar", "POST /kill-switch"]
+```
+
+Com isso, o sistema saberia de antemão o que está disponível, sem testes
+invasivos.
+
+## 4. Heartbeat — RESOLVIDO do lado do Praefectus
 
 O agente nunca enviou sinal de vida: a coluna `ultimo_heartbeat` estava parada em
 01/06/2026 e a tela dizia "Agente Online" lendo esse registro fóssil.
@@ -124,7 +168,7 @@ X-Agent-Key: <api_key_hash>
 { "sessao_id": "<uuid>", "tipo": "heartbeat", "payload": { ...saúde... } }
 ```
 
-## 4. VNC — verificar durante uma disputa real
+## 5. VNC — verificar durante uma disputa real
 
 `/vnc/vnc.html` carrega (200), mas o noVNC mostra "Failed to connect to server".
 Com **0 sessões ativas** não há navegador rodando para exibir, então isso pode ser

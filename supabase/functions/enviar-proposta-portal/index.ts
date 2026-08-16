@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     // Buscar URL do Agente Cloud
     const { data: agente } = await supabase
       .from('agente_externo_config')
-      .select('url_base, status, sessoes_ativas, max_sessoes_paralelas')
+      .select('url_base, status, sessoes_ativas, max_sessoes_paralelas, api_key_hash')
       .eq('user_id', user.id)
       .eq('status', 'ativo')
       .single();
@@ -148,7 +148,10 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Agent-Key': Deno.env.get('CRON_SECRET') || '',
+          // Chave do PRÓPRIO agente (como fazem as demais chamadas). Usar o
+          // CRON_SECRET aqui acoplava dois domínios de confiança: rotacionar o
+          // segredo do agente derrubaria o cron do PNCP junto.
+          'X-Agent-Key': agente.api_key_hash || Deno.env.get('CRON_SECRET') || '',
         },
         body: JSON.stringify(commandPayload),
         signal: AbortSignal.timeout(30000),

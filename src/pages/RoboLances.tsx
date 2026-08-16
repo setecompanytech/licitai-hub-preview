@@ -96,7 +96,23 @@ export default function RoboLances() {
   const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
   const [paradaEmergencial, setParadaEmergencial] = useState(false);
 
-  const handleNivelChange = (novoNivel: NivelAutomacao) => {
+  const handleNivelChange = async (novoNivel: NivelAutomacao) => {
+    // Freio verificado é PRÉ-REQUISITO dos níveis com envio automático. O
+    // próprio sistema exige "botão de parada emergencial" no nível 3 — mas
+    // exigia o botão existir na tela, não o freio funcionar do outro lado.
+    if (novoNivel > 1) {
+      const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
+      const ks = (data as { agentes?: Array<{ kill_switch?: { ok?: boolean; detalhe?: string | null } | null }> } | null)
+        ?.agentes?.[0]?.kill_switch;
+      if (!ks?.ok) {
+        toast.error(
+          `Nível ${novoNivel} bloqueado: a parada de emergência ainda não foi verificada no agente` +
+          `${ks?.detalhe ? ` (${ks.detalhe})` : ''}. Rode "Testar freio de emergência" no checklist antes de ativar envio automático.`,
+          { duration: 15000 },
+        );
+        return;
+      }
+    }
     if (novoNivel > 1) {
       // Require aceite for levels 2 and 3
       setNivelAutomacao(novoNivel);

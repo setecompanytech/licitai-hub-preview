@@ -35,6 +35,32 @@ export default function AtivacaoChecklist() {
   const [invalidando, setInvalidando] = useState(false);
   const [showInvalidar, setShowInvalidar] = useState(false);
   const [certTokenId, setCertTokenId] = useState<string | null>(null);
+  const [testandoFreio, setTestandoFreio] = useState(false);
+
+  /** Aciona a parada de emergência de propósito, com o robô parado, para
+   *  provar que o freio responde. Recusado pelo servidor se houver disputa. */
+  const testarFreio = async () => {
+    if (testandoFreio) return;
+    setTestandoFreio(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('robo-lances-webhook/testar-kill-switch', { body: {} });
+      const r = data as { verificado?: boolean; error?: string; resultados?: Array<{ detalhe?: string | null }> } | null;
+      if (error || r?.error) {
+        toast.error(r?.error || 'Não foi possível testar o freio de emergência.', { duration: 12000 });
+      } else if (r?.verificado) {
+        toast.success('Freio de emergência confirmado pelo agente. Níveis 2 e 3 liberados.');
+      } else {
+        toast.error(
+          `O agente NÃO confirmou a parada${r?.resultados?.[0]?.detalhe ? ` (${r.resultados[0].detalhe})` : ''}. ` +
+          'Envio automático permanece bloqueado — veja docs/agente-cloud-pendencias.md.',
+          { duration: 20000 },
+        );
+      }
+      await verificarStatus();
+    } finally {
+      setTestandoFreio(false);
+    }
+  };
 
   const gerarNovoLink = async () => {
     if (!user || !empresaAtiva) return;
@@ -128,6 +154,23 @@ export default function AtivacaoChecklist() {
           : `O agente não respondeu ao healthcheck${agenteVivo?.erro ? ` (${agenteVivo.erro})` : ''}`,
         status: agenteVivo?.online ? 'ok' : 'erro',
         icon: Shield,
+      });
+
+      // Freio de emergência — etapa própria: o botão existir na tela não prova
+      // que o agente para. Só o teste deliberado prova.
+      const ks = (agenteVivo as { kill_switch?: { ok?: boolean; detalhe?: string | null; testado_em?: string } | null } | undefined)?.kill_switch;
+      newItems.push({
+        id: 'kill_switch',
+        label: 'Freio de emergência verificado',
+        descricao: ks?.ok
+          ? `Parada de emergência confirmada pelo agente${ks.testado_em ? ` em ${new Date(ks.testado_em).toLocaleString('pt-BR')}` : ''}`
+          : ks
+          ? `O agente NÃO confirmou a parada${ks.detalhe ? ` (${ks.detalhe})` : ''} — níveis 2 e 3 permanecem bloqueados`
+          : 'Nunca testado — obrigatório antes de ativar envio automático (níveis 2 e 3)',
+        status: ks?.ok ? 'ok' : ks ? 'erro' : 'pendente',
+        icon: Shield,
+        acao: () => testarFreio(),
+        acaoLabel: 'Testar freio',
       });
 
       // 3. Verificar capacidade
