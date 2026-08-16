@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, File, Sheet } from 'lucide-react';
+import { FileText, File, Sheet, FolderPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { writeExcelFromJson } from '@/lib/excel-utils';
@@ -24,6 +26,8 @@ interface EditalItem {
 export interface PropostaDownloadProps {
   proposal: string;
   numeroLicitacao: string;
+  /** Processo dono da proposta — habilita "Salvar na pasta Proposta". */
+  licitacaoId?: string | null;
   timbradoUrl?: string | null;
   empresaData?: {
     razao_social?: string;
@@ -113,8 +117,9 @@ export default function PropostaDownload({
   proposal, numeroLicitacao, timbradoUrl,
   empresaData, repData, bancData, itens, licitacaoData, telefone, email,
   inscEstadual, inscMunicipal,
-  pageOrientation = 'portrait', declaracoesAtivas,
+  pageOrientation = 'portrait', declaracoesAtivas, licitacaoId,
 }: PropostaDownloadProps) {
+  const [arquivando, setArquivando] = useState(false);
 
   const validItens = (itens || []).filter(i => i.descricao.trim());
 
@@ -130,7 +135,11 @@ export default function PropostaDownload({
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   // ==================== PDF ====================
-  const handlePDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
+  const handlePDF = async (
+    orientation: 'portrait' | 'landscape' = 'portrait',
+    destino: 'download' | 'pasta' = 'download',
+  ): Promise<Blob | null> => {
+    let blobGerado: Blob | null = null;
     await withErrorAlert(async () => {
       const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -478,9 +487,36 @@ export default function PropostaDownload({
         drawTimbrado();
       }
 
-      doc.save(`${getFilename(numeroLicitacao)}.pdf`);
-      toast.success('PDF gerado com sucesso!');
+      if (destino === 'pasta') {
+        blobGerado = doc.output('blob');
+      } else {
+        doc.save(`${getFilename(numeroLicitacao)}.pdf`);
+        toast.success('PDF gerado com sucesso!');
+      }
     }, 'Geração do PDF da Proposta');
+    return blobGerado;
+  };
+
+  /** Arquiva a proposta na pasta Proposta do processo (aba Anexos). */
+  const handleArquivar = async () => {
+    if (!licitacaoId) { toast.error('Sem processo vinculado para arquivar.'); return; }
+    setArquivando(true);
+    try {
+      const blob = await handlePDF(pageOrientation, 'pasta');
+      if (!blob) { toast.error('Não foi possível gerar o PDF para arquivar.'); return; }
+      const r = await salvarNaPastaDoProcesso({
+        licitacaoId,
+        categoria: 'proposta',
+        nomeArquivo: `${getFilename(numeroLicitacao)}.pdf`,
+        blob,
+        descricao: 'Proposta comercial gerada pelo sistema (substitui a versão anterior de mesmo nome).',
+        metadata: { origem_modulo: 'proposta_comercial', valor_global: valorGlobal },
+      });
+      if (r.ok) toast.success(`Proposta arquivada na pasta Proposta: ${r.nome}`);
+      else toast.error(`Não foi possível arquivar: ${r.erro}`, { duration: 10000 });
+    } finally {
+      setArquivando(false);
+    }
   };
 
   // ==================== WORD ====================
@@ -661,6 +697,12 @@ export default function PropostaDownload({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {licitacaoId && (
+        <Button size="sm" onClick={handleArquivar} disabled={arquivando}>
+          {arquivando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FolderPlus className="w-4 h-4 mr-1" />}
+          Salvar na pasta Proposta
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={() => handlePDF(pageOrientation)}>
         <FileText className="w-4 h-4 mr-1 text-destructive" />
         PDF {pageOrientation === 'landscape' ? 'Paisagem' : 'Retrato'}

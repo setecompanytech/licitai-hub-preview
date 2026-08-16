@@ -191,8 +191,10 @@ export async function exportLegalPDF(
     rep_nome?: string;
     rep_cpf?: string;
     rep_cargo?: string;
-  }
-) {
+  },
+  /** 'pasta' devolve o Blob para arquivar no processo em vez de baixar. */
+  destino: 'download' | 'pasta' = 'download',
+): Promise<Blob | null> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const contentWidth = getContentWidth();
   const blocks = parseMarkdownToBlocks(content);
@@ -519,7 +521,9 @@ export async function exportLegalPDF(
   }
 
   const safeName = title.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').replace(/\s+/g, '-').slice(0, 60);
+  if (destino === 'pasta') return doc.output('blob');
   doc.save(`${safeName}.pdf`);
+  return null;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { salvarNaPastaDoProcesso, pastaDaPecaJuridica } from '@/lib/processo/salvarNaPasta';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +25,7 @@ import {
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
   Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash,
-  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw, ArrowLeft,
+  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw, ArrowLeft, FolderPlus,
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
@@ -154,6 +155,7 @@ export default function ModelosTemplatesTab() {
   // branco enquanto o usuário preenchia o pedido no espaço apertado da esquerda.
   // Agora é um botão; abre sozinho quando a geração começa (aí há o que ver).
   const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [arquivandoPeca, setArquivandoPeca] = useState(false);
 
   // Pedidos jurídicos (persistência)
   const { pedidos, criarPedido, salvarVersao } = useJuridicoPedidos();
@@ -1405,6 +1407,47 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       </Button>
                       {resultado && !gerando && (
                         <>
+                          {processo?.id && (
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                setArquivandoPeca(true);
+                                try {
+                                  const meta = {
+                                    empresa: selectedEmpresa?.razao_social,
+                                    cnpj: selectedEmpresa?.cnpj,
+                                    edital: editalNum || undefined,
+                                    modalidade: modalidade?.nome,
+                                    fundamentacao: activeModelo?.fundamentacao,
+                                    timbradoUrl: selectedEmpresa?.timbrado_url,
+                                    rep_nome: selectedEmpresa?.rep_nome || undefined,
+                                    rep_cpf: selectedEmpresa?.rep_cpf || undefined,
+                                  };
+                                  const blob = await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta, 'pasta');
+                                  if (!blob) { toast.error('Não foi possível gerar o PDF da peça.'); return; }
+                                  const pasta = pastaDaPecaJuridica(activeModelo?.categoria);
+                                  const rotulo = pasta === 'recursos' ? 'Recursos' : pasta === 'declaracoes' ? 'Declarações' : pasta === 'contrato' ? 'Contrato' : 'Outros';
+                                  const r = await salvarNaPastaDoProcesso({
+                                    licitacaoId: processo.id,
+                                    categoria: pasta,
+                                    nomeArquivo: `${activeModelo?.titulo || 'Peça jurídica'}.pdf`,
+                                    blob,
+                                    descricao: `${activeModelo?.titulo} — ${activeModelo?.fundamentacao || 'Apoio Jurídico'}`,
+                                    metadata: { origem_modulo: 'apoio_juridico', modelo: activeModelo?.titulo, categoria_peca: activeModelo?.categoria },
+                                  });
+                                  if (r.ok) toast.success(`Peça arquivada na pasta ${rotulo} do processo.`);
+                                  else toast.error(`Não foi possível arquivar: ${r.erro}`, { duration: 10000 });
+                                } finally {
+                                  setArquivandoPeca(false);
+                                }
+                              }}
+                              disabled={arquivandoPeca}
+                              className="h-8 text-xs shrink-0 gap-1"
+                            >
+                              {arquivandoPeca ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderPlus className="w-3 h-3" />}
+                              Salvar na pasta do processo
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" onClick={copyToClipboard} className="h-8 text-xs shrink-0">
                             <Copy className="w-3 h-3 mr-1" /> Copiar
                           </Button>

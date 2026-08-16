@@ -1566,6 +1566,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
                 <PropostaDownload
+                  licitacaoId={processoId}
                   proposal={proposal}
                   numeroLicitacao={numeroLicitacao}
                   timbradoUrl={timbradoUrl}
