@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Eye, ShieldCheck, Zap, Lock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export type NivelAutomacao = 1 | 2 | 3;
@@ -53,7 +52,7 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
         <h3 className="text-sm font-semibold">Nível de Automação</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
         {NIVEIS.map((n) => {
           const isActive = nivel === n.nivel;
           const Icon = n.icon;
@@ -97,9 +96,17 @@ export default function NivelAutomacaoSelector({ nivel, onChange, disabled }: Pr
                 ))}
               </div>
 
-              <Badge variant="outline" className={`mt-3 text-xs ${n.badge}`}>
-                {n.subtitulo}
-              </Badge>
+              {/* Não é um Badge: são frases de até 45 caracteres ("Requer base
+                  contratual + técnica + jurídica"), e o Badge é pílula de
+                  rótulo curto que não quebra linha — o texto vazava do cartão.
+                  Aqui a moldura acompanha a largura e quebra quando precisa. */}
+              <div className="mt-auto pt-3">
+                <span
+                  className={`block w-full rounded-lg border px-2.5 py-1 text-xs font-semibold leading-snug ${n.badge}`}
+                >
+                  {n.subtitulo}
+                </span>
+              </div>
             </button>
           );
         })}
