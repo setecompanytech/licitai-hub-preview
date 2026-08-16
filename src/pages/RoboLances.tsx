@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
+import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,6 +97,9 @@ export default function RoboLances() {
   const [autorizacaoOpen, setAutorizacaoOpen] = useState(false);
   const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
   const [paradaEmergencial, setParadaEmergencial] = useState(false);
+  // O Robô passa a saber em qual processo se está disputando — antes ele
+  // ignorava a pasta de origem e obrigava a reselecionar o edital.
+  const { processoId } = useProcessoAtivo();
 
   const handleNivelChange = async (novoNivel: NivelAutomacao) => {
     // Freio verificado é PRÉ-REQUISITO dos níveis com envio automático. O
@@ -304,6 +309,10 @@ export default function RoboLances() {
 
   return (
     <AppLayout>
+      {/* Declara a pasta de origem e devolve o caminho de volta */}
+      <div className="px-4 pt-3">
+        <ProcessoContextoBanner />
+      </div>
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
         {/* ── Top Header ── */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border bg-card px-4 py-2">
@@ -337,6 +346,7 @@ export default function RoboLances() {
             <div className="p-3 border-b border-border space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Disputas adicionadas</h3>
               <ConfigurarLanceDialog
+                processoAtivoId={processoId}
                 onSave={handleSaveLance}
                 trigger={
                   <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs">

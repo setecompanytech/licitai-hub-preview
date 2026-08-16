@@ -11,6 +11,7 @@ import {
   ArrowLeft, FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
   ClipboardList, History, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
   TrendingUp, Clock, Package, AlertTriangle, RefreshCw
+, Crosshair
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
@@ -41,6 +42,7 @@ const ATALHOS = [
   { label: 'AURÉLIA (IA)', path: '/aurelia', icon: Sparkles, descricao: 'Análise jurídica/contábil com IA' },
   { label: 'Apoio Jurídico', path: '/apoio-juridico', icon: Scale, descricao: 'Recursos, impugnações, esclarecimentos' },
   { label: 'Documentos', path: '/documentos', icon: Briefcase, descricao: 'Documentos de habilitação' },
+  { label: 'Robô de Lances', path: '/robo-lances', icon: Crosshair, descricao: 'Disputar a sessão com o agente de lances' },
   { label: 'Gestão Kanban', path: '/kanban', icon: ClipboardList, descricao: 'Status do processo no funil' },
 ];
 

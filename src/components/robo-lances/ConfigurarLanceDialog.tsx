@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles } from 'lucide-react';
+import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles , Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -109,9 +109,11 @@ type Props = {
   onSave: (lance: LanceConfig) => void;
   editingLance?: LanceConfig | null;
   trigger?: React.ReactNode;
+  /** Processo aberto no prontuário — a disputa nasce dele, sem reseleção. */
+  processoAtivoId?: string | null;
 };
 
-export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }: Props) {
+export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, processoAtivoId }: Props) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { fetchItens, extrairItensDoTexto, extrairItensIA } = useEditalExtraction();
@@ -126,6 +128,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
   const [selectedLicId, setSelectedLicId] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [trocarProcesso, setTrocarProcesso] = useState(false);
 
   // Step 0 – AI Extraction
   const [editalFile, setEditalFile] = useState<File | null>(null);
@@ -430,6 +433,16 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     }
   }, [step, itens.length, autoExtractTriggered, licitacaoIdRef, editalFile, handleAutoExtractItems]);
 
+  // Vindo de uma pasta, a disputa já nasce amarrada a ela: assim que a lista
+  // carrega, o processo aberto é importado sozinho. Antes o operador
+  // reselecionava o edital a cada disputa — com risco de escolher o errado.
+  useEffect(() => {
+    if (!open || editingLance || licitacaoIdRef || !processoAtivoId || !licitacoes.length) return;
+    const doProcesso = licitacoes.find((l) => l.id === processoAtivoId);
+    if (doProcesso) handleImportLicitacao(doProcesso);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, processoAtivoId, licitacoes, editingLance, licitacaoIdRef]);
+
   const handleImportLicitacao = async (lic: LicitacaoRow) => {
     setSelectedLicId(lic.id);
     setLoadingItems(true);
@@ -547,6 +560,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
     setIntervaloSegundos('30'); setMaxLances('20'); setModoAutomatico(true); setHorario('');
     setItens([]); setTipoDisputa('item'); setStep(editingLance ? 1 : 0);
     setSelectedLicId(null); setSearchLic(''); setStatusFilter('todos'); setLicitacaoIdRef(undefined);
+    setTrocarProcesso(false);
     setValorInicialInput(''); setValorMinimoInput('');
     setEditalFile(null); setShowEditalUpload(false); setAutoExtractTriggered(false);
     resetItemForm();
@@ -787,8 +801,25 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger }:
               </div>
             )}
 
+            {/* Vindo de uma pasta, a disputa é DELA. Trocar de processo aqui
+                dispararia lances no pregão errado — então a lista de outros
+                processos exige um passo explícito. */}
+            {!showEditalUpload && processoAtivoId && licitacaoIdRef === processoAtivoId && !trocarProcesso && (
+              <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 flex items-center gap-2 flex-wrap">
+                <Target className="w-4 h-4 text-accent shrink-0" />
+                <span className="text-xs text-muted-foreground">Disputa do processo aberto:</span>
+                <span className="text-xs font-semibold">{edital || '—'}</span>
+                <Button
+                  size="sm" variant="ghost" className="h-7 text-xs ml-auto"
+                  onClick={() => setTrocarProcesso(true)}
+                >
+                  Escolher outro processo
+                </Button>
+              </div>
+            )}
+
             {/* Licitações list */}
-            {!showEditalUpload && (
+            {!showEditalUpload && !(processoAtivoId && licitacaoIdRef === processoAtivoId && !trocarProcesso) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">

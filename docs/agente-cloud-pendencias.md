@@ -20,7 +20,7 @@ corrigido para não mentir enquanto isso.
 | 9 | Certificado negado apesar de instalado | Praefectus | ✅ resolvido — considera o relato do agente |
 | 10 | `CRON_SECRET` compartilhado com o cron do PNCP | Praefectus | ✅ resolvido — usa a chave do próprio agente |
 | 11 | Chave de cifra das senhas derivada da service role | Praefectus | 🕐 **planejado** — exige migração, ver seção 6 |
-| 12 | Robô de Lances não parte da pasta do processo | Praefectus | 🕐 planejado — ver seção 7 |
+| 12 | Robô de Lances não parte da pasta do processo | Praefectus | ✅ resolvido — atalho em Módulos, processo ativo e pré-seleção |
 
 **Enquanto o item 1 não for implementado, o envio automático (níveis 2 e 3) fica
 bloqueado pelo próprio sistema.** Nível 1 (assistente, sem envio automático)
@@ -207,10 +207,12 @@ com os dados que já estão lá (itens, preços, valor de referência) — ainda
 existe. Cada disputa recomeça a seleção do zero, com risco de configurar o lance
 para o processo errado.
 
-**Correção prevista:** atalho na aba Módulos, leitura do processo ativo pela
-página do Robô e pré-seleção da licitação no diálogo, com o mesmo travamento já
-aplicado à Precificação e à Proposta (dentro de uma pasta, nenhum seletor oferece
-outros processos).
+**Corrigido em 16/08/2026:** o Robô ganhou atalho na aba Módulos, passou a ler o
+processo ativo (com a barra de contexto e o caminho de volta) e o diálogo "Nova
+disputa" importa sozinho a licitação da pasta aberta. A lista de outros processos
+só aparece atrás de "Escolher outro processo" — travamento com saída deliberada,
+já que configurar disputa para outro pregão a partir do próprio Robô continua
+sendo um uso legítimo.
 
 ## 5. VNC — verificar durante uma disputa real
 
