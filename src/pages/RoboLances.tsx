@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
@@ -72,6 +73,20 @@ const statusColors: Record<string, string> = {
   encerrado: 'bg-secondary text-secondary-foreground border-border',
 };
 
+/** Falha silenciosa também vale para permissão: dizer por que não aparece. */
+function SemPermissao() {
+  return (
+    <div className="max-w-xl mx-auto text-center py-12 space-y-2">
+      <Shield className="w-8 h-8 text-muted-foreground mx-auto" />
+      <p className="text-sm font-medium">Área restrita ao administrador</p>
+      <p className="text-xs text-muted-foreground">
+        Credenciais de portal, infraestrutura do agente e nível de automação são
+        configurações da empresa. Peça a um administrador em Equipe → Permissões.
+      </p>
+    </div>
+  );
+}
+
 export default function RoboLances() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
@@ -96,7 +111,14 @@ export default function RoboLances() {
   const [limiteFinanceiro, setLimiteFinanceiro] = useState(0);
   const [autorizacaoOpen, setAutorizacaoOpen] = useState(false);
   const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
+  const { isAdmin, podeOperar } = usePapelEmpresa();
   const [paradaEmergencial, setParadaEmergencial] = useState(false);
+
+  // Sem permissão, a aba administrativa não fica selecionada de forma órfã.
+  useEffect(() => {
+    if (!isAdmin && activeMainTab !== 'disputar') setActiveMainTab('disputar');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
   // O Robô passa a saber em qual processo se está disputando — antes ele
   // ignorava a pasta de origem e obrigava a reselecionar o edital.
   const { processoId } = useProcessoAtivo();
@@ -140,6 +162,10 @@ export default function RoboLances() {
   }, [user, empresaAtiva?.id, processoId]);
 
   const handleNivelChange = async (novoNivel: NivelAutomacao) => {
+    if (!isAdmin) {
+      toast.error('Só o administrador da empresa altera o nível de automação.');
+      return;
+    }
     // Freio verificado é PRÉ-REQUISITO dos níveis com envio automático. O
     // próprio sistema exige "botão de parada emergencial" no nível 3 — mas
     // exigia o botão existir na tela, não o freio funcionar do outro lado.
@@ -397,15 +423,22 @@ export default function RoboLances() {
             <TabsTrigger value="disputar" className="text-xs">
               <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
             </TabsTrigger>
-            <TabsTrigger value="portais" className="text-xs">
-              <Globe className="w-3.5 h-3.5 mr-1" /> Portais
-            </TabsTrigger>
-            <TabsTrigger value="agente" className="text-xs">
-              <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
-            </TabsTrigger>
-            <TabsTrigger value="configuracoes" className="text-xs">
-              <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
-            </TabsTrigger>
+            {/* Credenciais da empresa, infraestrutura do agente e nível de
+                automação (decisão de risco financeiro) são do administrador.
+                Operador e visualizador ficam com a aba de trabalho. */}
+            {isAdmin && (
+              <>
+                <TabsTrigger value="portais" className="text-xs">
+                  <Globe className="w-3.5 h-3.5 mr-1" /> Portais
+                </TabsTrigger>
+                <TabsTrigger value="agente" className="text-xs">
+                  <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
+                </TabsTrigger>
+                <TabsTrigger value="configuracoes" className="text-xs">
+                  <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
         </div>
 
@@ -415,15 +448,24 @@ export default function RoboLances() {
           <div className="w-72 border-r border-border bg-card flex flex-col shrink-0">
             <div className="p-3 border-b border-border space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Disputas adicionadas</h3>
-              <ConfigurarLanceDialog
-                processoAtivoId={processoId}
-                onSave={handleSaveLance}
-                trigger={
-                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs">
-                    <Plus className="w-3.5 h-3.5" /> Nova disputa
-                  </Button>
-                }
-              />
+              {podeOperar ? (
+                <ConfigurarLanceDialog
+                  processoAtivoId={processoId}
+                  onSave={handleSaveLance}
+                  trigger={
+                    <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-xs">
+                      <Plus className="w-3.5 h-3.5" /> Nova disputa
+                    </Button>
+                  }
+                />
+              ) : (
+                /* Visualizador acompanha a sessão — vê posição, lances e
+                   resultado — mas não configura estratégia nem dispara lance. */
+                <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                  Você acompanha as disputas em modo leitura. Para configurar,
+                  peça o papel de operador em Equipe → Permissões.
+                </div>
+              )}
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
@@ -829,20 +871,25 @@ export default function RoboLances() {
 
         {/* ── PORTAIS TAB ── */}
         <TabsContent value="portais" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          {!isAdmin ? <SemPermissao /> : (<>
           <CredenciaisPortalForm />
           <PortalHealthcheck />
+          </>)}
         </TabsContent>
 
         {/* ── AGENTE CLOUD TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          {!isAdmin ? <SemPermissao /> : (<>
           <AtivacaoChecklist />
           <AgenteExternoConfig />
           <VncWebViewer />
           <PortalHealthcheck />
+          </>)}
         </TabsContent>
 
         {/* ── CONFIGURAÇÕES TAB ── */}
         <TabsContent value="configuracoes" className="flex-1 m-0 overflow-auto p-6 space-y-6">
+          {!isAdmin ? <SemPermissao /> : (<>
           <NivelAutomacaoSelector nivel={nivelAutomacao} onChange={handleNivelChange} />
           <EstrategiaIAPanel lance={selectedLance} />
           <DisputaRealtimePanel />
@@ -876,6 +923,7 @@ export default function RoboLances() {
 
           {/* Audit trail in config tab too */}
           <AuditTrailViewer />
+          </>)}
         </TabsContent>
       </Tabs>
 
