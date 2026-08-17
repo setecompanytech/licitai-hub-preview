@@ -23,7 +23,7 @@ import { formatBRL, formatPercent } from '@/lib/financeiro/formatters';
 import { paraCentavos, paraReais } from '@/lib/metas/dinheiro';
 import { apurarTickets } from '@/lib/metas/tickets';
 import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
-import { filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
+import { BASES_META, filtrarHistorico, inicioDaJanela, realizadoDoMes } from '@/lib/metas/painel';
 import { filtrarFeriadosPorPraca } from '@/lib/metas/praca';
 import { filtrarColaboradoresDoPainel } from '@/lib/metas/colaboradores';
 import { avaliarAlerta, projetarMeta, type Severidade } from '@/lib/metas/projecao';
@@ -315,7 +315,7 @@ export default function PainelMetas() {
             <Indicador
               rotulo="Meta do mês"
               valor={formatBRL(paraReais(analise.projecao.metaCent))}
-              detalhe={meta.base_meta === 'faturamento' ? 'Sobre faturamento' : 'Sobre contratos ganhos'}
+              detalhe={BASES_META[meta.base_meta]?.curto ?? 'Sobre faturamento'}
               icone={Target}
             />
             <Indicador

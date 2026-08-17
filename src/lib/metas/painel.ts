@@ -11,7 +11,21 @@ import { paraCentavos } from './dinheiro';
 import type { HistoricoMes } from './projecao';
 
 /** Base sobre a qual a meta é medida (espelha `comercial_metas.base_meta`). */
-export type BaseMeta = 'faturamento' | 'contratos_ganhos';
+export type BaseMeta = 'faturamento' | 'nf_quitada' | 'contratos_ganhos';
+
+/**
+ * Rótulos das bases — autoridade única, na ordem do ciclo comercial:
+ * assina-se o contrato, fatura-se o pedido, recebe-se a nota.
+ *
+ * Ficam aqui porque três telas escreviam o rótulo com ternário de duas pontas
+ * (`base === 'faturamento' ? … : 'Sobre contratos ganhos'`), que rotula
+ * qualquer base nova como a última opção — silenciosamente, sem erro de tipo.
+ */
+export const BASES_META: Record<BaseMeta, { label: string; curto: string }> = {
+  contratos_ganhos: { label: 'Contratos ganhos (valor assinado)', curto: 'Sobre contratos ganhos' },
+  faturamento: { label: 'Faturamento (pedido faturado)', curto: 'Sobre faturamento' },
+  nf_quitada: { label: 'NF-e Quitada (valor recebido)', curto: 'Sobre NF-e quitada' },
+};
 
 /** Linha de `vw_comercial_realizado_mensal`, com valores em REAIS. */
 export type LinhaRealizado = {
@@ -22,6 +36,7 @@ export type LinhaRealizado = {
   ganhos: number;
   valor_ganho: number;
   valor_faturado: number;
+  valor_quitado: number;
 };
 
 /** Ordena (ano, mes) como um número comparável: 2026-08 → 202608. */
@@ -88,5 +103,9 @@ export function realizadoDoMes(
   const { userId, ano, mes, base } = params;
   const linha = linhas.find((l) => l.user_id === userId && l.ano === ano && l.mes === mes);
   if (!linha) return 0;
-  return paraCentavos(base === 'faturamento' ? linha.valor_faturado : linha.valor_ganho);
+  // Faturado e quitado são valores diferentes de propósito: emitir R$ 100 e
+  // receber R$ 60 dá bases distintas, e quem define a meta escolhe qual vale.
+  if (base === 'contratos_ganhos') return paraCentavos(linha.valor_ganho);
+  if (base === 'nf_quitada') return paraCentavos(linha.valor_quitado ?? 0);
+  return paraCentavos(linha.valor_faturado);
 }

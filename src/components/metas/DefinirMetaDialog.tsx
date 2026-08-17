@@ -12,7 +12,7 @@ import {
 import { Loader2, Target } from 'lucide-react';
 import { useSalvarMeta, type Meta } from '@/hooks/useMetasComercial';
 import { MoneyInput } from '@/components/ui/money-input';
-import type { BaseMeta } from '@/lib/metas/painel';
+import { BASES_META, type BaseMeta } from '@/lib/metas/painel';
 
 const NOMES_MES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -85,8 +85,9 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
             <Select value={base} onValueChange={(v) => setBase(v as BaseMeta)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="faturamento">Faturamento (pedido faturado)</SelectItem>
-                <SelectItem value="contratos_ganhos">Contratos ganhos (valor assinado)</SelectItem>
+                <SelectItem value="faturamento">{BASES_META.faturamento.label}</SelectItem>
+                <SelectItem value="nf_quitada">{BASES_META.nf_quitada.label}</SelectItem>
+                <SelectItem value="contratos_ganhos">{BASES_META.contratos_ganhos.label}</SelectItem>
               </SelectContent>
             </Select>
           </div>

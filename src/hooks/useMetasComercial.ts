@@ -1,3 +1,4 @@
+import type { BaseMeta } from '@/lib/metas/painel';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -285,7 +286,7 @@ export type Meta = {
   meta_faturamento: number;
   meta_contratos: number | null;
   meta_participacoes: number | null;
-  base_meta: 'faturamento' | 'contratos_ganhos';
+  base_meta: BaseMeta;
   observacao: string | null;
 };
 
@@ -320,7 +321,7 @@ export function useSalvarMeta() {
       meta_faturamento: number;
       meta_contratos?: number | null;
       meta_participacoes?: number | null;
-      base_meta?: 'faturamento' | 'contratos_ganhos';
+      base_meta?: BaseMeta;
       observacao?: string | null;
     }) => {
       if (!empresaId) throw new Error('Selecione uma empresa ativa.');

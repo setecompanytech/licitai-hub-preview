@@ -13,6 +13,7 @@ const mes = (over: Partial<LinhaRealizado> & { ano: number; mes: number }): Linh
   ganhos: 0,
   valor_ganho: 0,
   valor_faturado: 0,
+  valor_quitado: 0,
   ...over,
 });
 
@@ -139,4 +140,9 @@ describe('dinheiro', () => {
     expect(parseValorBRL('300000')).toBe(300000);
     expect(parseValorBRL('')).toBe(0);
   });
+  it('base nf_quitada usa o valor recebido, nao o faturado', () => {
+    const l = [mes({ ano: 2026, mes: 8, valor_faturado: 320_000, valor_quitado: 190_000 })];
+    expect(realizadoDoMes(l, { userId: ANA, ano: 2026, mes: 8, base: 'nf_quitada' })).toBe(19_000_000);
+  });
+
 });
