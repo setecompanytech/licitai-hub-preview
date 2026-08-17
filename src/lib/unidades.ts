@@ -110,6 +110,11 @@ function chave(texto: string): string {
  * Traz uma grafia qualquer para o código canônico. Devolve o texto original em
  * maiúsculas quando não reconhece — unidade vinda de edital não pode ser
  * descartada só porque não está na lista.
+ *
+ * Os dados reais trouxeram exemplos de por que não descartar: 'Embalagem 2 L',
+ * 'Botijão 13 KG', 'Caixa 1 L' são descrição no campo errado, e 'QCG' é código
+ * que não reconhecemos. Nenhum vira outra coisa por adivinhação — quem decide
+ * o que fazer com eles é quem conhece o edital.
  */
 export function normalizarUnidade(texto: string | null | undefined): string {
   const bruto = String(texto ?? '').trim();
