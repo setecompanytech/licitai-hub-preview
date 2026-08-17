@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
+import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown
@@ -1214,6 +1215,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        {/* Kit vale antes e depois da quitação: o órgão pede a
+                            segunda via, e a fila do financeiro só mostra o que
+                            ainda não foi baixado. */}
+                        <KitFaturamento
+                          pedido={{
+                            id: p.id,
+                            numero_pedido: p.numero_pedido,
+                            valor_total: p.valor_total,
+                            nota_fiscal: p.nota_fiscal,
+                            contrato_id: contratoId,
+                          }}
+                        />
                         {p.nf_quitada ? (
                           <Badge className="text-xs bg-success/10 text-success border border-success/30 whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> NF Quitada

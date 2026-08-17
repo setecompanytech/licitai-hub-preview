@@ -46,8 +46,9 @@ type Props = {
     valor_total: number;
     nota_fiscal?: string | null;
     contrato_id: string;
-    contrato_numero: string | null;
-    orgao: string | null;
+    /** Opcionais: a aba do contrato não os tem em mãos, e o kit busca. */
+    contrato_numero?: string | null;
+    orgao?: string | null;
   };
 };
 
@@ -58,13 +59,17 @@ export default function KitFaturamento({ pedido }: Props) {
   const [gerando, setGerando] = useState<'zip' | 'pdf' | null>(null);
   const [certidoes, setCertidoes] = useState<CertidaoAvaliada[]>([]);
   const [remessa, setRemessa] = useState<number | null>(null);
+  const [contrato, setContrato] = useState<{ numero: string | null; orgao: string | null }>({
+    numero: pedido.contrato_numero ?? null,
+    orgao: pedido.orgao ?? null,
+  });
 
   useEffect(() => {
     if (!aberto || !empresaAtiva?.id) return;
     let vivo = true;
     (async () => {
       setCarregando(true);
-      const [docsRes, pedidosRes] = await Promise.all([
+      const [docsRes, pedidosRes, contratoRes] = await Promise.all([
         // `as any`: empresa_id foi criada na migration 20260818000007 e os tipos
         // gerados ainda não a conhecem — sem isso o TS estoura em recursão.
         (supabase.from('documentos') as any)
@@ -76,11 +81,20 @@ export default function KitFaturamento({ pedido }: Props) {
           .eq('contrato_id', pedido.contrato_id)
           .neq('status', 'cancelado')
           .order('data_pedido', { ascending: true }),
+        supabase.from('contratos')
+          .select('numero_contrato, orgao_contratante')
+          .eq('id', pedido.contrato_id)
+          .maybeSingle(),
       ]);
       if (!vivo) return;
       setCertidoes(avaliarCertidoes((docsRes.data as DocumentoEmpresa[]) ?? []));
       const ordem = ((pedidosRes.data as { id: string }[]) ?? []).findIndex((p) => p.id === pedido.id);
       setRemessa(ordem >= 0 ? ordem + 1 : null);
+      const c = contratoRes.data as { numero_contrato?: string; orgao_contratante?: string } | null;
+      setContrato({
+        numero: pedido.contrato_numero ?? c?.numero_contrato ?? null,
+        orgao: pedido.orgao ?? c?.orgao_contratante ?? null,
+      });
       setCarregando(false);
     })();
     return () => { vivo = false; };
@@ -103,12 +117,12 @@ export default function KitFaturamento({ pedido }: Props) {
         .limit(1).maybeSingle();
 
       const dados: DadosDoRecibo = {
-        orgao: pedido.orgao ?? '—',
+        orgao: contrato.orgao ?? '—',
         valor: Number(pedido.valor_total) || 0,
         notaFiscal: pedido.nota_fiscal ?? null,
         empenho: pedido.numero_pedido ?? null,
         remessa,
-        numeroContrato: pedido.contrato_numero,
+        numeroContrato: contrato.numero,
       };
       const recibo = gerarReciboPdf(empresa as never, (conta as never) ?? null, dados);
 
@@ -121,7 +135,7 @@ export default function KitFaturamento({ pedido }: Props) {
         const indice = indiceDoKit(certidoes, falhas, [
           `KIT DE FATURAMENTO — ${empresa?.razao_social ?? ''}`,
           `Pedido ${pedido.numero_pedido}${pedido.nota_fiscal ? ` · NF ${pedido.nota_fiscal}` : ''}`,
-          `Contrato ${pedido.contrato_numero ?? '—'} · ${pedido.orgao ?? '—'}`,
+          `Contrato ${contrato.numero ?? '—'} · ${contrato.orgao ?? '—'}`,
         ]);
         baixar(await montarZip(todas, indice), `${nomeBase}.zip`);
       } else {
@@ -156,7 +170,7 @@ export default function KitFaturamento({ pedido }: Props) {
             <DialogDescription>
               Recibo de quitação e certidões para acompanhar a NF-e do pedido{' '}
               {pedido.numero_pedido}
-              {pedido.contrato_numero ? ` · contrato ${pedido.contrato_numero}` : ''}
+              {contrato.numero ? ` · contrato ${contrato.numero}` : ''}
             </DialogDescription>
           </DialogHeader>
 
