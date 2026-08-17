@@ -165,6 +165,23 @@ serve(async (req) => {
           .maybeSingle();
 
         if (empresa?.created_by && empresa.created_by !== user.id) {
+          // O plano é da EMPRESA, não da pessoa. O dono costuma ter acesso pelo
+          // bypass de administrador (sem assinatura Stripe nenhuma) — e, nesse
+          // caso, a herança por Stripe não achava nada e o colaborador era
+          // barrado por um plano que a empresa, na prática, já tem.
+          const [{ data: ownerSystemRole }, { data: ownerAdminMembership }] = await Promise.all([
+            adminClient.from("user_roles").select("role").eq("user_id", empresa.created_by).eq("role", "admin").limit(1),
+            adminClient.from("empresa_membros").select("empresa_id").eq("user_id", empresa.created_by).eq("papel", "admin").limit(1),
+          ]);
+
+          if ((ownerSystemRole?.length ?? 0) > 0 || (ownerAdminMembership?.length ?? 0) > 0) {
+            logStep("Inheriting access from empresa owner bypass", { empresa_id: membership.empresa_id, owner: empresa.created_by });
+            return new Response(
+              JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "empresa_owner_bypass" }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            );
+          }
+
           const { data: ownerData } = await adminClient.auth.admin.getUserById(empresa.created_by);
           const ownerEmail = ownerData?.user?.email;
           if (ownerEmail) {
