@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Home } from "lucide-react";
+import { Home } from "lucide-react";
 import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinPanorama from "@/components/financeiro/FinPanorama";
@@ -191,12 +191,11 @@ export default function Financeiro() {
                 : "Hub central de operações financeiras — escolha um módulo abaixo."}
             </p>
           </div>
-          {activeView && (
-            <Button variant="outline" size="sm" onClick={() => navigateToView(null)}>
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
-              Voltar ao Hub
-            </Button>
-          )}
+          {/* O "Voltar ao Hub" saiu: com o Voltar do layout logo acima, eram
+              duas setas fazendo a mesma coisa. O caminho para o hub continua no
+              rastro de migalhas — "Financeiro" ali em cima é clicável —, que
+              serve inclusive a quem entrou direto pelo link da subtela e não
+              tem percurso para desfazer. */}
         </header>
 
         {!loading && !empresaAtiva ? (
