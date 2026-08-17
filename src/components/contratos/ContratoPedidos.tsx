@@ -664,7 +664,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const updateExtractedItem = (key: string, field: string, value: string) =>
     setExtractedItens(prev => prev.map(i => i.key === key ? { ...i, [field]: value } : i));
 
-  // NF Quitada — Fluxo do Financeiro: informa data/valor do pagamento, sistema auto-calcula comissão
+  // NF Quitada — Fluxo do Financeiro: informa data/valor do pagamento, sistema auto-calcula bonificação
   const openNfDialog = (pedido: Pedido) => {
     setNfDialog(pedido);
     setNfNumero(pedido.nota_fiscal || '');
@@ -703,14 +703,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     const empresaId = (contrato as any)?.empresa_id || empresaAtiva?.id;
 
     if (!vendedorId || !empresaId) {
-      toast.warning('NF quitada registrada, mas não há vendedor vinculado ao contrato para cálculo de comissão.');
+      toast.warning('NF quitada registrada, mas não há vendedor vinculado ao contrato para cálculo de bonificação.');
       setSolicitandoComissao(false);
       setNfDialog(null);
       load();
       return;
     }
 
-    // 3. Buscar config de comissão do vendedor
+    // 3. Buscar config de bonificação do vendedor
     const { data: comConfig } = await supabase
       .from('comissoes_config' as any)
       .select('*')
@@ -726,7 +726,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       ? valorPago * (percentual / 100)
       : valorFixo;
 
-    // 4. Criar lançamento de comissão automático
+    // 4. Criar lançamento de bonificação automático
     const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
       empresa_id: empresaId,
       user_id: vendedorId,
@@ -738,14 +738,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       nota_fiscal: nfNumero,
       status: 'pendente',
       contrato_pedido_id: nfDialog.id,
-      observacoes: `Comissão auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Comissão (${tipoComissao === 'percentual' ? percentual + '%' : 'fixo'}): ${fmt(valorComissao)}.`,
+      observacoes: `Bonificação auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Bonificação (${tipoComissao === 'percentual' ? percentual + '%' : 'fixo'}): ${fmt(valorComissao)}.`,
     } as any);
 
     if (comErr) {
-      console.error('Erro ao criar comissão:', comErr);
-      toast.warning('NF quitada, mas houve erro ao gerar comissão automaticamente.');
+      console.error('Erro ao criar bonificação:', comErr);
+      toast.warning('NF quitada, mas houve erro ao gerar bonificação automaticamente.');
     } else {
-      toast.success(`NF quitada! Comissão de ${fmt(valorComissao)} gerada para o vendedor responsável.`);
+      toast.success(`NF quitada! Bonificação de ${fmt(valorComissao)} gerada para o vendedor responsável.`);
     }
 
     setSolicitandoComissao(false);
@@ -1213,7 +1213,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               size="sm" variant="outline"
                               className="h-7 px-2 text-xs text-success border-success/30 hover:bg-success/5"
                               onClick={() => openNfDialog(p)}
-                              title="Registrar pagamento da NF-e e gerar comissão"
+                              title="Registrar pagamento da NF-e e gerar bonificação"
                             >
                               <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
                             </Button>
@@ -1317,8 +1317,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">
-                  Ao registrar o pagamento, o sistema calculará automaticamente a comissão do vendedor 
-                  responsável pelo contrato com base na configuração de comissão vigente.
+                  Ao registrar o pagamento, o sistema calculará automaticamente a bonificação do vendedor 
+                  responsável pelo contrato com base na configuração de bonificação vigente.
                 </p>
               </div>
 
@@ -1328,7 +1328,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 className="w-full bg-success hover:bg-success/90 text-success-foreground"
               >
                 {solicitandoComissao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <DollarSign className="w-4 h-4 mr-1" />}
-                Confirmar Pagamento e Gerar Comissão
+                Confirmar Pagamento e Gerar Bonificação
               </Button>
             </div>
           )}

@@ -4,7 +4,7 @@
  * Implementa o "Modelo Omie" da especificação INTERFACE FINANCEIRO 2 (seção 1):
  *   1. Clientes & Fornecedores  2. Contas a Pagar     3. Contas a Receber
  *   4. Contas Correntes         5. Previsto x Realizado  6. Atividades dos Usuários
- *   7. Comissão de Vendas       8. Movimentação Financeira (12m)  9. Meus Relatórios
+ *   7. Bonificação de Vendas       8. Movimentação Financeira (12m)  9. Meus Relatórios
  *
  * Cada card mostra um resumo numérico em tempo real e um CTA "+ Incluir" / "Abrir"
  * que dispara navegação programática via window event "fin:navigate".
@@ -205,8 +205,8 @@ export default function FinQuadroOmie() {
           </div>
         </CardOmie>
 
-        {/* 7. Comissão de Vendas */}
-        <CardOmie title="Comissão de Vendas" icon={Receipt} onOpen={() => navegar("comissoes")}>
+        {/* 7. Bonificação de Vendas */}
+        <CardOmie title="Bonificação de Vendas" icon={Receipt} onOpen={() => navegar("comissoes")}>
           <div className="space-y-1">
             <div className="text-2xl font-semibold tabular-nums">{formatBRL(data.comissoesAbertas)}</div>
             <div className="text-xs text-muted-foreground">a pagar a vendedores</div>

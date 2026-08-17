@@ -17,7 +17,7 @@ const TIPO_COMISSAO: Record<string, { label: string; desc: string }> = {
   percentual_contrato: { label: '% sobre Contrato', desc: 'Percentual sobre o valor total do contrato' },
   percentual_lucro: { label: '% sobre Lucro', desc: 'Percentual sobre o lucro líquido' },
   valor_fixo: { label: 'Valor Fixo', desc: 'Valor fixo por licitação ganha' },
-  nota_fiscal: { label: 'Por Nota Fiscal', desc: 'Comissão por nota fiscal quitada' },
+  nota_fiscal: { label: 'Por Nota Fiscal', desc: 'Bonificação por nota fiscal quitada' },
 };
 
 const STATUS_LANCAMENTO: Record<string, { label: string; color: string }> = {
@@ -169,7 +169,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
 
     if (error) toast.error('Erro: ' + error.message);
     else {
-      toast.success(`Comissão de R$ ${valorComissao.toFixed(2)} lançada`);
+      toast.success(`Bonificação de R$ ${valorComissao.toFixed(2)} lançada`);
       setShowLancDialog(false);
       setLancUserId(''); setLancValorBase(''); setLancDesconto('0'); setLancNF(''); setLancObs('');
       loadData();
@@ -198,7 +198,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     return { ...m, exibicao, cfg, totalPendente, totalAprovado, totalPago, total: totalPendente + totalAprovado + totalPago };
   }).filter(m => m.cfg || lancamentos.some(l => l.user_id === m.user_id));
 
-  if (loading) return <p className="text-center text-muted-foreground py-6">Carregando comissões...</p>;
+  if (loading) return <p className="text-center text-muted-foreground py-6">Carregando bonificações...</p>;
 
   return (
     <div className="space-y-4">
@@ -217,7 +217,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               <Settings className="w-4 h-4 mr-1" /> Configurar
             </Button>
             <Button size="sm" onClick={() => setShowLancDialog(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Plus className="w-4 h-4 mr-1" /> Lançar Comissão
+              <Plus className="w-4 h-4 mr-1" /> Lançar Bonificação
             </Button>
           </div>
         )}
@@ -249,7 +249,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
           {resumoPorColaborador.length === 0 ? (
             <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
               <DollarSign className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma comissão configurada. Configure os colaboradores comissionados.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma bonificação configurada. Configure os colaboradores bonificados.</p>
             </div>
           ) : resumoPorColaborador.map(r => (
             <div key={r.user_id} className="bg-card rounded-lg border border-border/50 p-4">
@@ -265,7 +265,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total comissões</p>
+                  <p className="text-xs text-muted-foreground">Total bonificações</p>
                   <p className="font-bold text-foreground">{fmt(r.total)}</p>
                   <div className="flex gap-2 text-xs mt-0.5">
                     <span className="text-warning">P: {fmt(r.totalPendente)}</span>
@@ -329,7 +329,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
           {configs.length === 0 ? (
             <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
               <Settings className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhum colaborador configurado. Clique em "Configurar" para definir as regras de comissão.</p>
+              <p className="text-sm text-muted-foreground">Nenhum colaborador configurado. Clique em "Configurar" para definir as regras de bonificação.</p>
             </div>
           ) : configs.map(c => (
             <div key={c.id} className="bg-card rounded-lg border border-border/50 p-4 flex items-center justify-between">
@@ -354,7 +354,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       {/* Config Dialog */}
       <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Configurar Comissão</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Configurar Bonificação</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Colaborador *</Label>
@@ -377,7 +377,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               </Select>
             </div>
             <div>
-              <Label>Tipo de Comissão</Label>
+              <Label>Tipo de Bonificação</Label>
               <Select value={cfgTipo} onValueChange={setCfgTipo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -402,14 +402,14 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             <div>
               <Label>Regra de variação por desconto</Label>
               <Textarea value={cfgRegraDesconto} onChange={e => setCfgRegraDesconto(e.target.value)}
-                placeholder="Ex: Desconto até 10% = comissão cheia. Desconto 10-30% = comissão -20%. Desconto >30% = comissão -50%."
+                placeholder="Ex: Desconto até 10% = bonificação cheia. Desconto 10-30% = bonificação -20%. Desconto >30% = bonificação -50%."
                 rows={3} />
-              <p className="text-xs text-muted-foreground mt-1">Descreva como a comissão varia com os descontos nas ofertas/lances.</p>
+              <p className="text-xs text-muted-foreground mt-1">Descreva como a bonificação varia com os descontos nas ofertas/lances.</p>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <Label>Visibilidade para equipe</Label>
-                <p className="text-xs text-muted-foreground">Outros membros poderão ver as comissões deste colaborador</p>
+                <p className="text-xs text-muted-foreground">Outros membros poderão ver as bonificações deste colaborador</p>
               </div>
               <Switch checked={cfgVisibilidade} onCheckedChange={setCfgVisibilidade} />
             </div>
@@ -426,7 +426,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       {/* Lançamento Dialog */}
       <Dialog open={showLancDialog} onOpenChange={setShowLancDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Lançar Comissão</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Lançar Bonificação</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Colaborador *</Label>
@@ -451,7 +451,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             </div>
             {lancUserId && lancValorBase && (
               <div className="bg-muted rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Comissão calculada:</p>
+                <p className="text-xs text-muted-foreground">Bonificação calculada:</p>
                 <p className="text-lg font-bold text-foreground">
                   {(() => {
                     const cfg = configs.find(c => c.user_id === lancUserId);

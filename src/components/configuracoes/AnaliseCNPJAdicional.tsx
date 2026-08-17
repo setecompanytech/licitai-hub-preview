@@ -50,7 +50,7 @@ const BENCHMARKS = [
       { nome: 'Profissional', mensal: 1190, ciclo: 'mensal' },
     ],
     cnpjAdicional: 'Não informa — atendimento personalizado',
-    obs: 'Modelo de consultoria (R$790-1.190/mês + taxa de R$2.500). Cobra 3-5% de comissão sobre contratos.',
+    obs: 'Modelo de consultoria (R$790-1.190/mês + taxa de R$2.500). Cobra 3-5% de bonificação sobre contratos.',
   },
   {
     nome: 'Effecti',

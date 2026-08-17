@@ -24,7 +24,7 @@ export const MODULOS_SISTEMA: { value: string; label: string; setores: string[] 
   { value: 'juridico', label: 'Jurídico', setores: ['juridico'] },
   { value: 'contabil', label: 'Contábil', setores: ['contabil'] },
   { value: 'dashboard_custos', label: 'Dashboard Custos/Margem', setores: ['financeiro'] },
-  { value: 'comissoes', label: 'Comissões', setores: ['financeiro', 'comercial'] },
+  { value: 'comissoes', label: 'Bonificações', setores: ['financeiro', 'comercial'] },
   { value: 'metas_comercial', label: 'Metas do Comercial', setores: ['comercial', 'financeiro'] },
 ];
 

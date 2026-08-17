@@ -350,7 +350,7 @@ export default function EquipeColaboradores() {
               </TabsTrigger>
               <TabsTrigger value="comissoes">
                 <DollarSign className="w-4 h-4 mr-1.5" />
-                Comissões
+                Bonificações
               </TabsTrigger>
               <TabsTrigger value="relatorio">
                 <FileText className="w-4 h-4 mr-1.5" />

@@ -78,7 +78,7 @@ export const HUB_ITEMS: HubItem[] = [
   { id: "saldos_abertura", label: "Saldos de Abertura", description: "Saldos iniciais por conta.", icon: Scale, group: "cadastros" },
   { id: "orcamento", label: "Orçamento", description: "Planejamento orçamentário anual.", icon: Target, group: "cadastros" },
   { id: "folha", label: "Folha de Pagamento", description: "Provisões e lançamentos da folha.", icon: Briefcase, group: "cadastros" },
-  { id: "comissoes", label: "Comissões de Vendas", description: "Cálculo e quitação de comissões.", icon: Receipt, group: "cadastros" },
+  { id: "comissoes", label: "Bonificações de Vendas", description: "Cálculo e quitação de bonificações.", icon: Receipt, group: "cadastros" },
 ];
 
 const GROUPS = [
@@ -343,7 +343,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           ref={inputRef}
-          placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, comissão)"
+          placeholder="Buscar funcionalidade... (ex: conciliação, NF-e, bonificação)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-11 pr-28 h-12 text-sm bg-card border-border/60 shadow-sm focus-visible:ring-primary/30"

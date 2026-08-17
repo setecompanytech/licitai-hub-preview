@@ -87,7 +87,7 @@ export default function ColaboradorIdentificacaoModal() {
             Identificação Individual
           </DialogTitle>
           <DialogDescription>
-            Para rastrear suas atividades (vendas, pedidos, comissões), 
+            Para rastrear suas atividades (vendas, pedidos, bonificações), 
             informe seu nome e login individual.
           </DialogDescription>
         </DialogHeader>

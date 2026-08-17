@@ -89,7 +89,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
   const [cfgValorFixo, setCfgValorFixo] = useState('');
   const [savingCfg, setSavingCfg] = useState(false);
 
-  // Solicitar comissão dialog
+  // Solicitar bonificação dialog
   const [solicitarOpen, setSolicitarOpen] = useState(false);
   const [solPedidoId, setSolPedidoId] = useState('');
   const [solValorBase, setSolValorBase] = useState('');
@@ -128,7 +128,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
     return m?.nome || m?.email || 'Usuário';
   };
 
-  // Admin configura comissão do vendedor
+  // Admin configura bonificação do vendedor
   const handleSaveCfg = async () => {
     if (!cfgUserId || !empresaId) return;
     setSavingCfg(true);
@@ -145,11 +145,11 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       : await supabase.from('comissoes_config' as any).insert(payload);
 
     if (error) toast.error('Erro: ' + error.message);
-    else { toast.success('Comissão configurada!'); setCfgDialogOpen(false); load(); }
+    else { toast.success('Bonificação configurada!'); setCfgDialogOpen(false); load(); }
     setSavingCfg(false);
   };
 
-  // Vendedor solicita comissão
+  // Vendedor solicita bonificação
   const handleSolicitar = async () => {
     if (!user || !empresaId) return;
     const valorBase = parseFloat(solValorBase) || 0;
@@ -180,7 +180,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
 
     if (error) toast.error('Erro ao solicitar: ' + error.message);
     else {
-      toast.success('Pedido de comissão enviado para aprovação!');
+      toast.success('Pedido de bonificação enviado para aprovação!');
       setSolicitarOpen(false);
       setSolPedidoId(''); setSolValorBase(''); setSolNF(''); setSolObs('');
       load();
@@ -211,10 +211,10 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-muted-foreground" /> Comissões do Contrato
+            <DollarSign className="w-4 h-4 text-muted-foreground" /> Bonificações do Contrato
           </h3>
           <p className="text-xs text-muted-foreground">
-            {podeGerenciar ? 'Gerencie comissões de todos os vendedores' : 'Visualize e solicite suas comissões'}
+            {podeGerenciar ? 'Gerencie bonificações de todos os vendedores' : 'Visualize e solicite suas bonificações'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -230,7 +230,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
             setSolPedidoId(''); setSolValorBase(''); setSolNF(''); setSolObs('');
             setSolicitarOpen(true);
           }}>
-            <Plus className="w-4 h-4 mr-1" /> Solicitar Comissão
+            <Plus className="w-4 h-4 mr-1" /> Solicitar Bonificação
           </Button>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
           <p className="text-base font-bold text-success">{fmt(totalPago)}</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xs text-muted-foreground">Minha Comissão</p>
+          <p className="text-xs text-muted-foreground">Minha Bonificação</p>
           <p className="text-base font-bold">{minhaCfg ? (minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`) : '—'}</p>
         </Card>
       </div>
@@ -259,7 +259,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       {lancamentos.length === 0 ? (
         <Card className="p-8 text-center">
           <Receipt className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhuma comissão registrada neste contrato.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma bonificação registrada neste contrato.</p>
         </Card>
       ) : (
         <div className="rounded-lg border overflow-x-auto">
@@ -270,7 +270,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                 <TableHead className="whitespace-nowrap">NF</TableHead>
                 <TableHead className="whitespace-nowrap">Valor Base</TableHead>
                 <TableHead className="whitespace-nowrap">%</TableHead>
-                <TableHead className="whitespace-nowrap">Comissão</TableHead>
+                <TableHead className="whitespace-nowrap">Bonificação</TableHead>
                 <TableHead className="whitespace-nowrap">Status</TableHead>
                 <TableHead className="whitespace-nowrap">Data</TableHead>
                 {podeGerenciar && <TableHead className="whitespace-nowrap">Ação</TableHead>}
@@ -318,7 +318,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       {/* Config Dialog (Admin) */}
       <Dialog open={cfgDialogOpen} onOpenChange={setCfgDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Configurar Comissão do Vendedor</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Configurar Bonificação do Vendedor</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Vendedor *</Label>
@@ -340,7 +340,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
               </Select>
             </div>
             <div>
-              <Label>Tipo de Comissão</Label>
+              <Label>Tipo de Bonificação</Label>
               <Select value={cfgTipo} onValueChange={setCfgTipo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -365,14 +365,14 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
         </DialogContent>
       </Dialog>
 
-      {/* Solicitar Comissão Dialog */}
+      {/* Solicitar Bonificação Dialog */}
       <Dialog open={solicitarOpen} onOpenChange={setSolicitarOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Solicitar Pedido de Comissão</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Solicitar Pedido de Bonificação</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {minhaCfg && (
               <div className="bg-muted rounded-lg p-3 text-xs">
-                <p className="font-medium">Sua comissão: <span className="font-semibold text-foreground">{minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`}</span></p>
+                <p className="font-medium">Sua bonificação: <span className="font-semibold text-foreground">{minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`}</span></p>
                 <p className="text-muted-foreground">Tipo: {TIPO_COMISSAO[minhaCfg.tipo_comissao]}</p>
               </div>
             )}
@@ -407,7 +407,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
             </div>
             {minhaCfg && solValorBase && (
               <div className="bg-success/10 rounded-lg p-3 text-sm">
-                <p className="font-medium">Valor estimado da comissão: <span className="text-success font-bold">
+                <p className="font-medium">Valor estimado da bonificação: <span className="text-success font-bold">
                   {fmt(minhaCfg.tipo_comissao === 'valor_fixo'
                     ? minhaCfg.valor_fixo
                     : (parseFloat(solValorBase) || 0) * (minhaCfg.percentual / 100)

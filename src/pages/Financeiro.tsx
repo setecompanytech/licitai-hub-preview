@@ -108,7 +108,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
 };
 
 const COMING_SOON: Record<string, { title: string; description: string }> = {
-  comissoes: { title: "Comissões de Vendas", description: "Acesse pela Gestão de Contratos → quitação de NF gera comissão automaticamente." },
+  comissoes: { title: "Bonificações de Vendas", description: "Acesse pela Gestão de Contratos → quitação de NF gera bonificação automaticamente." },
 };
 
 export default function Financeiro() {
