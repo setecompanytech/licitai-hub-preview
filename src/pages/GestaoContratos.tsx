@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
-import { noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
+import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,6 +79,11 @@ export default function GestaoContratos() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { isAdmin } = usePapelEmpresa();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // location.key === 'default' significa primeira entrada da pilha: não há para
+  // onde voltar, e navigate(-1) sairia do app.
+  const temHistorico = location.key !== 'default';
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +96,7 @@ export default function GestaoContratos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
+  const [aExcluir, setAExcluir] = useState<Contrato | null>(null);
   const [form, setForm] = useState({
     tipo_documento: 'contrato' as 'contrato' | 'ata_srp',
     tipo_estrutura: 'itens' as 'itens' | 'lotes',
@@ -222,11 +233,22 @@ export default function GestaoContratos() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from('contratos').delete().eq('id', id);
-    toast.success('Excluído');
+    const { error } = await supabase.from('contratos').delete().eq('id', id);
+    if (error) { toast.error('Não foi possível excluir: ' + error.message); return; }
+    toast.success('Contrato excluído');
     if (selectedContrato?.id === id) setSelectedContrato(null);
+    setAExcluir(null);
     loadContratos();
   };
+
+  /**
+   * Quem pode excluir: o responsável pelo contrato e o administrador.
+   *
+   * A lista agora mostra a carteira da equipe a um clique, e a lixeira ficava
+   * ativa em contrato alheio — um toque apagava trabalho de outra pessoa, sem
+   * confirmação nenhuma. Excluir é irreversível; ver não precisa dar esse poder.
+   */
+  const podeExcluir = (c: Contrato) => isAdmin || ehMeu(c as never, user?.id);
 
   const handleImportExtracted = (data: any, opts?: { tipo_estrutura?: 'itens' | 'lotes' }) => {
     const tipoEstrutura = opts?.tipo_estrutura || 'itens';
@@ -404,6 +426,14 @@ export default function GestaoContratos() {
     <AppLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-2 -ml-2"
+            onClick={() => (temHistorico ? navigate(-1) : navigate('/painel'))}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+          </Button>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Contratos e ATAs SRP</h1>
           <p className="text-sm text-muted-foreground mt-1">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
         </div>
@@ -650,6 +680,36 @@ export default function GestaoContratos() {
         </p>
       )}
 
+      <AlertDialog open={!!aExcluir} onOpenChange={(o) => !o && setAExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este contrato?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p className="text-foreground font-medium">
+                  {aExcluir?.orgao_contratante} — n. {aExcluir?.numero_contrato}
+                </p>
+                <p>{aExcluir?.objeto}</p>
+                <p>
+                  Vão junto os itens, pedidos, aditivos e arquivos deste contrato, e o valor
+                  de {formatCurrency(aExcluir?.valor_global || 0)} sai das metas e da
+                  bonificação de quem responde por ele. Não há como desfazer.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => aExcluir && handleDelete(aExcluir.id)}
+            >
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
@@ -721,7 +781,16 @@ export default function GestaoContratos() {
                     </div>
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    {podeExcluir(c) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Excluir contrato"
+                        onClick={(e) => { e.stopPropagation(); setAExcluir(c); }}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
