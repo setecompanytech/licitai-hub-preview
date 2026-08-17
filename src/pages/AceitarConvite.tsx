@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lock, User, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, User, Loader2, CheckCircle2, AlertCircle, KeyRound } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 
@@ -268,23 +269,38 @@ export default function AceitarConvite() {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Seu nome completo"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    className="pl-10"
-                    required
-                    autoFocus
-                  />
-                </div>
+                {/* Rótulos VISÍVEIS: com só texto de exemplo, o preenchimento
+                    automático do navegador apaga a única pista de qual campo é
+                    qual — foi assim que um e-mail acabou no campo de login. */}
                 <div className="space-y-1">
+                  <Label htmlFor="convite-nome" className="text-xs">Nome completo</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Crie seu login de acesso (ex.: COMERCIAL-01)"
+                      id="convite-nome"
+                      name="nome-completo"
+                      type="text"
+                      placeholder="Ex.: Maria Souza"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      className="pl-10"
+                      required
+                      autoFocus
+                      autoComplete="name"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="convite-login" className="text-xs">Login de acesso</Label>
+                  {/* name fora do vocabulário de credencial: com "login" ou
+                      "username" o Chrome injeta o e-mail salvo, ignorando o
+                      autoComplete="off". */}
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="convite-login"
+                      name="apelido-de-acesso"
+                      placeholder="Ex.: COMERCIAL-01"
                       value={login}
                       onChange={(e) => setLogin(e.target.value)}
                       className="pl-10 pr-10"
