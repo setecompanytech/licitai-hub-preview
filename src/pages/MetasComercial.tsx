@@ -2,9 +2,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText } from 'lucide-react';
+import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText , Users } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
+import EquipeMetas from '@/components/metas/EquipeMetas';
 import PainelMetas from '@/components/metas/PainelMetas';
 import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
 
@@ -17,7 +18,7 @@ import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
 export default function MetasComercial() {
   const { isAdmin, loading } = useMembroPermissoes();
   const [searchParams, setSearchParams] = useSearchParams();
-  const ABAS = ['painel', 'relatorios', 'parametros'];
+  const ABAS = ['painel', 'equipe', 'relatorios', 'parametros'];
   const pedida = searchParams.get('tab') || '';
   const aba = ABAS.includes(pedida) ? pedida : 'painel';
   const trocarAba = (valor: string) =>
@@ -46,6 +47,13 @@ export default function MetasComercial() {
           <TabsTrigger value="painel" className="gap-1.5">
             <LayoutDashboard className="w-3.5 h-3.5" /> Painel
           </TabsTrigger>
+          {/* Leitura de gestão: a equipe inteira lado a lado. Painel e
+              Relatórios continuam servindo ao acompanhamento individual. */}
+          {isAdmin && (
+            <TabsTrigger value="equipe" className="gap-1.5">
+              <Users className="w-3.5 h-3.5" /> Equipe
+            </TabsTrigger>
+          )}
           <TabsTrigger value="relatorios" className="gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Relatórios
           </TabsTrigger>
@@ -56,6 +64,21 @@ export default function MetasComercial() {
 
         <TabsContent value="painel">
           <PainelMetas />
+        </TabsContent>
+
+        <TabsContent value="equipe">
+          {loading ? null : isAdmin ? (
+            <EquipeMetas />
+          ) : (
+            <Card className="p-12 text-center">
+              <Lock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-base font-medium text-muted-foreground">Acesso restrito</p>
+              <p className="text-base text-muted-foreground mt-1">
+                O cumprimento de meta da equipe é visão do administrador. Seu próprio
+                acompanhamento está na aba Painel.
+              </p>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="relatorios">
