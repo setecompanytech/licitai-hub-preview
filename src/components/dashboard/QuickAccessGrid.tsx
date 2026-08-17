@@ -83,8 +83,18 @@ export default function QuickAccessGrid() {
     .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
     .filter((g) => g.items.length > 0);
 
+  // A grade acompanha quantos grupos SOBRARAM depois do filtro. Fixa em 6
+  // colunas, cinco cartões deixavam uma coluna vazia à direita e a fileira
+  // não alcançava a largura da linha de indicadores logo abaixo. Classes
+  // estáticas de propósito: nome de classe montado em tempo de execução não
+  // sobrevive à compilação do Tailwind.
+  const colunasXl = {
+    1: 'xl:grid-cols-1', 2: 'xl:grid-cols-2', 3: 'xl:grid-cols-3',
+    4: 'xl:grid-cols-4', 5: 'xl:grid-cols-5', 6: 'xl:grid-cols-6',
+  }[Math.min(Math.max(gruposVisiveis.length, 1), 6)] ?? 'xl:grid-cols-6';
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
+    <div className={cn('grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3', colunasXl)}>
       {gruposVisiveis.map((group) => (
         <div
           key={group.title}
