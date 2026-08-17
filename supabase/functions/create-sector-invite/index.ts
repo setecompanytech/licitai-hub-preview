@@ -113,27 +113,15 @@ Deno.serve(async (req) => {
     // Agora conta o que importa: nao expirado e ainda com capacidade.
     const { data: existentes } = await adminClient
       .from('empresa_convites')
-      .select('id, usos, max_usos')
+      .select('id, usos, max_usos, token, expires_at')
       .eq('empresa_id', empresa_id)
       .eq('equipe', equipe)
       .gt('expires_at', new Date().toISOString())
 
     const aindaUtil = (existentes ?? []).find(
-      (c: { usos: number | null; max_usos: number | null }) =>
+      (c: { usos: number | null; max_usos: number | null; token: string }) =>
         c.max_usos === null || (c.usos ?? 0) < c.max_usos,
-    )
-
-    if (aindaUtil) {
-      const equipeLabel = equipeLabels[equipe] ?? equipe
-      return new Response(JSON.stringify({
-        error: `Já existe um convite ativo para o setor ${equipeLabel}. `
-          + `O mesmo link serve para todos os colaboradores do setor — copie-o em `
-          + `Equipe & Colaboradores. Para gerar outro, cancele o atual.`,
-      }), {
-        status: 409,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-      })
-    }
+    ) as { id: string; usos: number | null; token: string; expires_at: string } | undefined
 
     // 4. Buscar nome da empresa para o e-mail
     const { data: empresa } = await adminClient
@@ -145,10 +133,18 @@ Deno.serve(async (req) => {
     const nomeEmpresa = empresa?.nome_fantasia || empresa?.razao_social || 'sua empresa'
 
     // 5. Gerar token e inserir na tabela empresa_convites
-    const inviteToken = gerarToken()
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    // O convite de setor e COLETIVO: o mesmo link cria acesso para quantos
+    // colaboradores o setor tiver (max_usos nulo = sem teto ate expirar).
+    // Recusar um segundo pedido com erro fazia o admin acreditar que so uma
+    // pessoa podia se cadastrar. Agora o link vigente e reenviado — a intencao
+    // de "convidar mais alguem" e atendida sem criar convite duplicado.
+    const reaproveitado = !!aindaUtil
+    const inviteToken = aindaUtil?.token ?? gerarToken()
+    const expiresAt = aindaUtil?.expires_at ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    const { data: novoConvite, error: insertError } = await adminClient
+    const { data: novoConvite, error: insertError } = aindaUtil
+      ? { data: { id: aindaUtil.id, token: aindaUtil.token }, error: null }
+      : await adminClient
       .from('empresa_convites')
       .insert({
         empresa_id,
@@ -238,6 +234,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       convite_id: novoConvite.id,
+      reaproveitado,
+      accept_url: acceptUrl,
+      usos: aindaUtil?.usos ?? 0,
     }), {
       status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },

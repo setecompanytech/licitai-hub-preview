@@ -156,7 +156,17 @@ export default function EquipeColaboradores() {
       } else if (data?.error) {
         toast.error(data.error);
       } else {
-        toast.success(`Convite enviado para ${sectorEmail.trim()}`);
+        // O convite de setor é coletivo: quando já existe um link vigente, o
+        // servidor reenvia esse mesmo link em vez de criar outro — a tela
+        // precisa dizer isso, senão o admin acha que gerou um convite novo.
+        if ((data as { reaproveitado?: boolean })?.reaproveitado) {
+          toast.success(
+            `Link do setor reenviado para ${sectorEmail.trim()} — é o mesmo para todos os colaboradores do setor.`,
+            { duration: 8000 },
+          );
+        } else {
+          toast.success(`Convite enviado para ${sectorEmail.trim()}`);
+        }
         setShowInvite(false);
         setSectorEmail('');
         setSectorEquipe('financeiro');
