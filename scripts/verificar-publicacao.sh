@@ -64,6 +64,8 @@ checar "vendedor fora da equipe"             "Vendedor fora da equipe"
 checar "criador da empresa entra com nome"   "nome_completo, username"
 checar "kit de faturamento"                  "Kit de faturamento"
 checar "kit em PDF único"                    "Baixar PDF único"
+checar "subtela do financeiro no caminho"    "/financeiro/lancamentos"
+checar "rótulos distintos de Voltar"         "Todos os contratos"
 
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
@@ -74,6 +76,21 @@ if grep -qE '\bpodePagar\b' "$TMP/tudo.js"; then
 else
   printf '  no ar     aba Bonificações íntegra\n'
 fi
+
+# Mais checagens invertidas: aqui o que prova a correção é o SUMIÇO do texto
+# antigo. Estes dois eram os botões que navegavam por conta própria e faziam o
+# percurso girar.
+ausente() { # ausente "<rótulo>" "<texto que só existe no código velho>"
+  if grep -qF "$2" "$TMP/tudo.js"; then
+    printf '  FALTA     %s\n' "$1"
+    falta=1
+  else
+    printf '  no ar     %s\n' "$1"
+  fi
+}
+
+ausente "pasta do processo usa o Voltar comum" "Voltar para de onde você veio"
+ausente "financeiro sem botão duplicado"       "Voltar ao Hub"
 
 echo
 if [ "$falta" -eq 0 ]; then
