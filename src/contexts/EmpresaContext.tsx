@@ -317,11 +317,25 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     }
     if (!empresa) return null;
 
-    // Add self as admin
+    // Add self as admin.
+    //
+    // `nome` e `email` são preenchidos aqui porque só o convite os preenchia:
+    // quem criava a própria empresa ficava com vínculo anônimo, e toda tela que
+    // lista membros — vendedor do contrato, metas, bonificação — mostrava
+    // "Colaborador" no lugar do dono do negócio. O nome existe em `profiles`,
+    // que cada um lê de si mesmo.
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('nome_completo, username')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     const { error: membroError } = await supabase.from('empresa_membros').insert({
       empresa_id: empresa.id,
       user_id: user.id,
       papel: 'admin',
+      nome: perfil?.nome_completo?.trim() || perfil?.username?.trim() || user.email || null,
+      email: user.email || null,
     });
 
     if (membroError) {
