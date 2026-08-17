@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { nomeExibido, iniciaisDe, type MembroExibivel } from '@/lib/equipe/nomeExibido';
 import { Link, Navigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -74,7 +75,7 @@ export default function EquipePermissoes() {
     setLoading(true);
     const { data, error } = await supabase
       .from('empresa_membros')
-      .select('id,user_id,empresa_id,papel,equipe,permissoes,nome,email')
+      .select('id,user_id,empresa_id,papel,equipe,permissoes,nome,email,nome_individual,login_individual')
       .eq('empresa_id', empresaAtiva.id)
       .order('created_at', { ascending: true });
 
@@ -332,11 +333,11 @@ export default function EquipePermissoes() {
                     <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs flex-shrink-0">
-                          {(m.nome || m.email || '?').slice(0, 2).toUpperCase()}
+                          {iniciaisDe(m as MembroExibivel)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm truncate">{m.nome || m.email || 'Colaborador'}</span>
+                            <span className="font-semibold text-sm truncate">{nomeExibido(m as MembroExibivel)}</span>
                             {isMe && <Badge variant="outline" className="text-xs">Você</Badge>}
                             {isDirty && <Badge className="text-xs bg-warning text-warning-foreground">Alterado</Badge>}
                           </div>
@@ -462,7 +463,7 @@ export default function EquipePermissoes() {
                     return (
                       <tr key={m.id} className="border-b border-border/40 hover:bg-muted/20">
                         <td className="p-2 sticky left-0 bg-card whitespace-nowrap font-medium">
-                          {m.nome || m.email || '—'}
+                          {nomeExibido(m as MembroExibivel)}
                         </td>
                         <td className="p-2 whitespace-nowrap">
                           <Badge variant="outline" className="text-xs">{d.equipe}</Badge>

@@ -361,7 +361,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {membros.map(m => (
-                    <SelectItem key={m.user_id} value={m.user_id}>{m.nome || m.email}</SelectItem>
+                    <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

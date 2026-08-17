@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -93,7 +94,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
     setLoading(true);
     const [tarefasRes, membrosRes, licitacoesRes] = await Promise.all([
       supabase.from('tarefas_colaborador' as any).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
-      supabase.from('empresa_membros').select('id, user_id, nome, email, papel').eq('empresa_id', empresaId),
+      supabase.from('empresa_membros').select('id, user_id, nome, email, papel, nome_individual, login_individual').eq('empresa_id', empresaId),
       supabase.from('licitacoes').select('id, numero, objeto').limit(50).order('created_at', { ascending: false }),
     ]);
     const tarefasList = (tarefasRes.data as any[]) || [];
@@ -200,7 +201,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
 
   const getMembroNome = (userId: string) => {
     const m = membros.find(m => m.user_id === userId);
-    return m?.nome || m?.email || 'Desconhecido';
+    return nomeExibido(m as never);
   };
 
   const filtered = filtroStatus === 'todas' ? tarefas : tarefas.filter(t => t.status === filtroStatus);
@@ -388,7 +389,7 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {membros.map(m => (
-                      <SelectItem key={m.user_id} value={m.user_id}>{m.nome || m.email || 'Colaborador'}</SelectItem>
+                      <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

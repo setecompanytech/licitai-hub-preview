@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,12 +48,12 @@ export default function RelatorioAtividades({ empresaId }: { empresaId: string }
     // Load members names
     const { data: memData } = await supabase
       .from('empresa_membros')
-      .select('user_id, nome, email')
+      .select('user_id, nome, email, nome_individual, login_individual')
       .eq('empresa_id', empresaId);
     
     const memMap: Record<string, string> = {};
     (memData as any[] || []).forEach((m: any) => {
-      memMap[m.user_id] = m.nome || m.email || 'Colaborador';
+      memMap[m.user_id] = nomeExibido(m as never);
     });
     setMembros(memMap);
 

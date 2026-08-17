@@ -117,7 +117,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
 
   const getMembroNome = (userId: string) => {
     const m = membros.find(m => m.user_id === userId);
-    return m?.nome || m?.email || 'Usuário';
+    return nomeExibido(m);
   };
 
   // Admin configura bonificação do vendedor

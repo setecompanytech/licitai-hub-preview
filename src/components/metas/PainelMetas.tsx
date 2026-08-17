@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -125,7 +126,7 @@ export default function PainelMetas() {
   // A lista de membros pode não trazer o próprio usuário conforme a RLS; o
   // e-mail da sessão é o último recurso para não exibir "Colaborador" genérico.
   const nomeColaborador =
-    colaborador?.nome || colaborador?.email || (!isAdmin ? user?.email : null) || 'Colaborador';
+    (colaborador ? nomeExibido(colaborador as never) : null) || (!isAdmin ? user?.email : null) || 'Colaborador';
 
   const meta = useMemo(
     () => (metas ?? []).find((m) => m.user_id === selecionado) ?? null,
@@ -213,7 +214,7 @@ export default function PainelMetas() {
                 <SelectContent>
                   {(colaboradores ?? []).map((c) => (
                     <SelectItem key={c.user_id} value={c.user_id}>
-                      {c.nome || c.email || c.user_id.slice(0, 8)}
+                      {nomeExibido(c as never) || c.user_id.slice(0, 8)}
                     </SelectItem>
                   ))}
                 </SelectContent>

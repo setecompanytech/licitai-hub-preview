@@ -462,7 +462,7 @@ export function useColaboradores() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('empresa_membros')
-        .select('user_id, nome, email, equipe, papel, praca_uf, praca_municipio')
+        .select('user_id, nome, email, equipe, papel, praca_uf, praca_municipio, nome_individual, login_individual')
         .eq('empresa_id', empresaId!)
         .order('nome', { ascending: true });
       if (error) throw error;
