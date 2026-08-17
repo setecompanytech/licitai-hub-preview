@@ -401,7 +401,10 @@ export default function GestaoContratos() {
     const id = c.vendedor_user_id;
     if (!id) return null;
     const m = (membrosEquipe ?? []).find((x) => x.user_id === id);
-    return m ? nomeExibido(m as never) : 'Colaborador';
+    // Id que não bate com nenhum membro da empresa ativa é problema de dado, não
+    // um nome — chamá-lo de "Colaborador" escondia o caso atrás de um rótulo
+    // plausível, e o contrato seguia sem contar meta para ninguém.
+    return m ? nomeExibido(m as never) : 'Vendedor fora da equipe';
   };
   // Os cartões de topo seguem o escopo (senão o total contradiz a lista), mas
   // ignoram busca e status, que são recortes de consulta, não de carteira.
