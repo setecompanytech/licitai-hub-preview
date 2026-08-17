@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import KitFaturamento from './KitFaturamento';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -259,13 +260,25 @@ export default function FinPedidosAFaturar() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => { setFaturando(r); setContaId(''); setParcelas('1'); }}
-                      >
-                        <DollarSign className="w-3 h-3 mr-1" /> Faturar
-                      </Button>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <KitFaturamento
+                          pedido={{
+                            id: r.id,
+                            numero_pedido: r.numero_pedido,
+                            valor_total: r.valor_total,
+                            contrato_id: r.contrato_id,
+                            contrato_numero: r.contrato_numero,
+                            orgao: r.orgao,
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => { setFaturando(r); setContaId(''); setParcelas('1'); }}
+                        >
+                          <DollarSign className="w-3 h-3 mr-1" /> Faturar
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
