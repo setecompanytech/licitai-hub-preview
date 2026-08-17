@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
-  Kanban, Shield, MessageSquare, Crosshair, TrendingUp,
+  Kanban, Shield, MessageSquare, Crosshair, TrendingUp, Building2, Settings, Plug,
   Users, DollarSign, ClipboardCheck, FileText,
   BarChart3, CalendarDays, ListChecks, Calculator, Workflow,   FileBarChart, Sparkles,
 } from 'lucide-react';
@@ -67,6 +67,19 @@ const groups: QuickGroup[] = [
       { icon: Crosshair, label: 'Robô de Lances', path: '/robo-lances' },
       { icon: ClipboardCheck, label: 'Assessoria Cadastral', path: '/assessoria-cadastral' },
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
+    ],
+  },
+  {
+    // Só administradores veem: todas as rotas aqui são administrativas, e o
+    // filtro de permissão as nega para operador/visualizador — o cartão some
+    // inteiro em vez de aparecer pela metade. Suporte não entra: é de todos e
+    // já vive no menu superior.
+    title: 'Administração',
+    items: [
+      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: Users, label: 'Equipe', path: '/equipe' },
+      { icon: Settings, label: 'Configurações', path: '/configuracoes' },
+      { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
     ],
   },
 ];
