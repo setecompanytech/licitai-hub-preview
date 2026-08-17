@@ -27,14 +27,20 @@ grep -oE '/assets/[^"]+\.js' "$TMP/index.html" | sed 's|^/||' | sort -u >"$TMP/l
 [ -s "$TMP/lista" ] || { echo "Nenhum bundle .js encontrado no HTML."; exit 1; }
 
 baixar() { # baixa em paralelo a lista recebida por stdin
-  xargs -P 8 -I{} sh -c 'curl -fsSL -o "'"$TMP"'/$(echo {} | tr / _)" "'"$SITE"'/{}" 2>/dev/null'
+  xargs -P 10 -I{} sh -c 'curl -fsSL -o "'"$TMP"'/$(echo {} | tr / _)" "'"$SITE"'/{}" 2>/dev/null'
 }
 
-baixar <"$TMP/lista"
-# Segunda passada: os pedaços que o bundle de entrada carrega sob demanda.
-cat "$TMP"/assets_*.js 2>/dev/null \
-  | grep -oE '(\./)?assets/[A-Za-z0-9_.-]+\.js' | sed 's|^\./||' | sort -u >"$TMP/lista2"
-comm -13 "$TMP/lista" "$TMP/lista2" | baixar
+# Uma passada não basta: pedaço carrega pedaço. Vai até não aparecer nome novo —
+# parar antes acusa "não publicado" para o que está no ar, só mais fundo.
+cp "$TMP/lista" "$TMP/vistos"
+for _ in 1 2 3 4 5; do
+  [ -s "$TMP/lista" ] || break
+  baixar <"$TMP/lista"
+  cat "$TMP"/assets_*.js 2>/dev/null \
+    | grep -oE '(\./)?assets/[A-Za-z0-9_.-]+\.js' | sed 's|^\./||' | sort -u >"$TMP/todos"
+  comm -13 "$TMP/vistos" "$TMP/todos" >"$TMP/lista"
+  sort -u "$TMP/vistos" "$TMP/lista" -o "$TMP/vistos"
+done
 
 cat "$TMP"/assets_*.js >"$TMP/tudo.js" 2>/dev/null
 echo "$(ls "$TMP"/assets_*.js | wc -l | tr -d ' ') arquivo(s), $(wc -c <"$TMP/tudo.js" | tr -d ' ') bytes."
@@ -56,6 +62,16 @@ checar "marco de pagamento configurável"     "Ao receber (NF-e quitada)"
 checar "confirmação de exclusão"             "Excluir definitivamente"
 checar "vendedor fora da equipe"             "Vendedor fora da equipe"
 checar "criador da empresa entra com nome"   "nome_completo, username"
+
+# Checagem invertida. Identificador que o código NÃO declara não pode ser
+# renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
+# Bonificações foi ao ar chamando podePagar() sem que a função existisse.
+if grep -qE '\bpodePagar\b' "$TMP/tudo.js"; then
+  printf '  QUEBRADO  aba Bonificações (podePagar solto no bundle)\n'
+  falta=1
+else
+  printf '  no ar     aba Bonificações íntegra\n'
+fi
 
 echo
 if [ "$falta" -eq 0 ]; then
