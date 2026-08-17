@@ -1,4 +1,5 @@
 import AppLayout from '@/components/layout/AppLayout';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText } from 'lucide-react';
@@ -15,6 +16,16 @@ import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
  */
 export default function MetasComercial() {
   const { isAdmin, loading } = useMembroPermissoes();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ABAS = ['painel', 'relatorios', 'parametros'];
+  const pedida = searchParams.get('tab') || '';
+  const aba = ABAS.includes(pedida) ? pedida : 'painel';
+  const trocarAba = (valor: string) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', valor);
+      return next;
+    }, { replace: true });
 
   return (
     <AppLayout>
@@ -28,7 +39,9 @@ export default function MetasComercial() {
         </p>
       </div>
 
-      <Tabs defaultValue="painel" className="space-y-4">
+      {/* ?tab= permite entrar direto na parametrização — é por onde o
+          administrador chega, vindo do cartão Administração do Painel. */}
+      <Tabs value={aba} onValueChange={trocarAba} className="space-y-4">
         <TabsList>
           <TabsTrigger value="painel" className="gap-1.5">
             <LayoutDashboard className="w-3.5 h-3.5" /> Painel

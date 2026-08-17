@@ -161,6 +161,49 @@ para o módulo de Contratos, que já gerencia vigência e consumo de ata.
    saber que houve vitória);
 4. **4.4** — fecha a ponte com o módulo de Contratos.
 
+### Fase 5 — Bonificação por atingimento de meta (DESENHADA em 2026-08-16)
+
+Hoje a bonificação e a meta existem sem se falar. A bonificação calcula por
+percentual sobre contrato, percentual sobre lucro ou valor fixo; a "regra de
+variação por desconto" é um **campo de texto livre que nenhum código lê** — é
+documentação, não cálculo. A meta, do outro lado, guarda `meta_faturamento`,
+`meta_contratos` e `meta_participacoes`, com o realizado apurado por view
+mensal, e ninguém consulta esse número na hora de bonificar.
+
+**Alvo:** a bonificação ganha um MULTIPLICADOR POR FAIXA DE ATINGIMENTO —
+abaixo de X% da meta reduz, na faixa alvo integral, acima amplia. As faixas são
+parametrizadas pelo administrador junto com as metas, e o cálculo do lançamento
+passa a lê-las.
+
+```
+LANÇAMENTO DE BONIFICAÇÃO
+   ├─ base (contrato / lucro / valor fixo)      ← já existe
+   └─ × multiplicador da faixa de atingimento   ← a construir
+          ↑
+      realizado ÷ meta do período (vw_comercial_realizado_mensal × comercial_metas)
+```
+
+**Decisões que dependem do product owner** (por isso a fase está desenhada e não
+implementada):
+
+1. Quais faixas e multiplicadores (ex.: <80% → 0,5×; 80–100% → 1×; >100% → 1,3×).
+2. Qual meta vale como base: faturamento, contratos ganhos ou participações.
+3. O que acontece quando não há meta definida no período — bonificação integral
+   ou bloqueada? (Recomendação: integral, para a ausência de meta não punir
+   quem vendeu.)
+4. Se o multiplicador é por período fechado (mês) ou acumulado no ano.
+
+**Pré-requisitos técnicos:** tabela de faixas por empresa; o cálculo do
+lançamento passando a consultar meta e realizado do período; e a regra de
+variação por desconto migrando de texto livre para parâmetro — ou sendo
+explicitamente aposentada, para não haver duas regras concorrentes.
+
+**Já feito (16/08):** definição de metas e parametrização restritas ao
+administrador, com entrada própria em Administração → "Definir Metas"; o
+acompanhamento (Painel e Relatórios) segue visível à equipe. Bonificações e
+Painel de Metas passaram a usar a mesma base de identidade do colaborador, então
+os dois lados já falam do mesmo sujeito.
+
 ## Princípios herdados (CLAUDE.md)
 Vocabulário único · escopo por empresa · falha visível com retry · IA propõe,
 humano confirma · uma função, um lugar.

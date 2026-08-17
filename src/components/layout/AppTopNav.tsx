@@ -20,6 +20,9 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
+  /** Exclusivo do administrador mesmo com a rota aberta à equipe — caso de
+   *  "Definir Metas": todos acompanham o painel, só o admin define o alvo. */
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -107,6 +110,7 @@ const navGroups: NavGroup[] = [
       { icon: Building2, label: 'Empresas', path: '/empresas' },
       { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: Bell, label: 'Preferências de Alertas', path: '/configuracoes/alertas' },
+      { icon: Gauge, label: 'Definir Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
@@ -146,11 +150,17 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
-  const { canAccessRoute } = useMembroPermissoes();
+  const { canAccessRoute, isAdmin: isEmpresaAdmin } = useMembroPermissoes();
 
   // Versão filtrada dos grupos: remove itens cuja rota o membro não pode acessar.
   const filteredNavGroups: NavGroup[] = navGroups
-    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) => {
+        if (it.adminOnly && !isEmpresaAdmin) return false;
+        return canAccessRoute(it.path.split('?')[0]);
+      }),
+    }))
     .filter((g) => g.items.length > 0);
 
   const filteredTopNavLinks = topNavLinks

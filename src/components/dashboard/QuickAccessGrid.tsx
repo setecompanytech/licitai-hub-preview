@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
-  Kanban, Shield, MessageSquare, Crosshair, TrendingUp, Building2, Settings, Plug,
+  Kanban, Shield, MessageSquare, Crosshair, TrendingUp, Building2, Settings, Plug, Gauge,
   Users, DollarSign, ClipboardCheck, FileText,
   BarChart3, CalendarDays, ListChecks, Calculator, Workflow,   FileBarChart, Sparkles,
 } from 'lucide-react';
@@ -10,6 +10,9 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuickItem {
+  /** Exclusivo do administrador mesmo quando a ROTA é aberta à equipe —
+   *  caso das Metas: todos acompanham, só o admin define. */
+  adminOnly?: boolean;
   icon: React.ElementType;
   label: string;
   path: string;
@@ -79,6 +82,7 @@ const groups: QuickGroup[] = [
       { icon: Building2, label: 'Empresas', path: '/empresas' },
       { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
+      { icon: Gauge, label: 'Definir Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
       { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
     ],
   },
@@ -86,14 +90,21 @@ const groups: QuickGroup[] = [
 
 export default function QuickAccessGrid() {
   const navigate = useNavigate();
-  const { canAccessRoute } = useMembroPermissoes();
+  const { canAccessRoute, isAdmin } = useMembroPermissoes();
 
   // O Painel oferecia TODOS os atalhos a qualquer pessoa, enquanto o menu
   // superior já filtrava por permissão — duas portas para o mesmo lugar com
   // regras diferentes. Aqui passa a valer a mesma regra, e grupo que esvazia
   // some em vez de virar cartão vazio.
   const gruposVisiveis = groups
-    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) => {
+        if (it.adminOnly && !isAdmin) return false;
+        // Rota com parâmetro (?tab=) é avaliada pelo caminho base.
+        return canAccessRoute(it.path.split('?')[0]);
+      }),
+    }))
     .filter((g) => g.items.length > 0);
 
   // A grade acompanha quantos grupos SOBRARAM depois do filtro. Fixa em 6
