@@ -111,10 +111,12 @@ const dedupeEmpresas = (membros: EmpresaMembro[]) => {
   const uniqueMap = new Map<string, EmpresaMembro>();
 
   for (const membro of membros) {
-    const key = normalizeCnpj(membro.empresa.cnpj) || membro.empresa_id;
+    // Sem a empresa embutida (junção barrada ou lenta), o vínculo ainda vale:
+    // a chave cai no id. Antes isto lançava e derrubava a lista inteira.
+    const key = normalizeCnpj(membro.empresa?.cnpj) || membro.empresa_id;
     const existing = uniqueMap.get(key);
 
-    if (!existing || getEmpresaScore(membro.empresa) > getEmpresaScore(existing.empresa)) {
+    if (!existing || getEmpresaScore(membro.empresa) > getEmpresaScore(existing?.empresa)) {
       uniqueMap.set(key, membro);
     }
   }
@@ -148,22 +150,46 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-    const mapped: EmpresaMembro[] = membros.map((m: any) => ({
+    let mapped: EmpresaMembro[] = membros.map((m: any) => ({
       empresa_id: m.empresa_id,
       papel: m.papel,
       empresa: m.empresas,
     }));
+
+    // A junção pode voltar sem a empresa (RLS avaliada de outro jeito no
+    // recurso embutido). Buscar direto por id resolve — e um colaborador
+    // recém-convidado deixa de ver "Nenhuma empresa" tendo vínculo.
+    const semEmpresa = mapped.filter((m) => !m.empresa).map((m) => m.empresa_id);
+    if (semEmpresa.length > 0) {
+      const { data: avulsas } = await supabase
+        .from('empresas')
+        .select('*')
+        .in('id', semEmpresa);
+      const porId = new Map((avulsas ?? []).map((e) => [e.id, e as unknown as Empresa]));
+      mapped = mapped.map((m) => (m.empresa ? m : { ...m, empresa: porId.get(m.empresa_id) }));
+      mapped = mapped.filter((m) => !!m.empresa);
+      if (mapped.length === 0) {
+        console.warn('[Empresa] Vínculos encontrados, mas nenhuma empresa legível.');
+      }
+    }
     const deduped = dedupeEmpresas(mapped);
     const mappedById = new Map(mapped.map((m) => [m.empresa_id, m]));
     setEmpresas(deduped);
 
-    // Load active empresa from profile
-      const { data: profile } = await supabase
+    // Perfil em consulta PRÓPRIA e tolerante: antes dividia o mesmo limite de
+    // 6s com a busca de empresas e, ao estourar, o catch abaixo zerava a lista
+    // que já tinha chegado — o usuário via "Nenhuma empresa" tendo empresa.
+    let profile: { empresa_ativa_id: string | null } | null = null;
+    try {
+      const { data } = await supabase
         .from('profiles')
         .select('empresa_ativa_id')
         .eq('user_id', user.id)
-        .abortSignal(request.signal)
-        .single();
+        .maybeSingle();
+      profile = data;
+    } catch (e) {
+      console.warn('[Empresa] Perfil indisponível; seguindo com a primeira empresa.', e);
+    }
 
     if (profile?.empresa_ativa_id) {
       const active = deduped.find(m => m.empresa_id === profile.empresa_ativa_id);
@@ -193,9 +219,14 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
       setLoading(false);
     } catch (error) {
-      console.warn('[Empresa] Falha ao carregar empresas; liberando interface com estado vazio.', error);
-      setEmpresas([]);
-      setEmpresaAtivaState(null);
+      // Só zera se de fato nada foi carregado. Descartar uma lista já obtida
+      // por causa de um tropeço posterior é a diferença entre "sem empresa" e
+      // "empresa invisível" — e o usuário não tem como distinguir as duas.
+      console.warn('[Empresa] Falha ao carregar empresas.', error);
+      setEmpresas((atuais) => {
+        if (atuais.length === 0) setEmpresaAtivaState(null);
+        return atuais;
+      });
       setLoading(false);
     } finally {
       request.clear();
