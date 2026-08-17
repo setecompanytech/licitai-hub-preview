@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { registrarRota } from '@/lib/navegacao/origemProcesso';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,10 +56,8 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   // ressuscitar o processo que ele acabou de soltar.
   const limpezaExplicitaRef = useRef(false);
 
-  // Rastreia a última rota FORA do processo: é para lá que o ← da pasta volta.
-  useEffect(() => {
-    registrarRota(location.pathname + location.search);
-  }, [location.pathname, location.search]);
+  // O rastreio de rotas passou para RegistroDeRota, no roteador: agora existe
+  // um histórico só, e a seta da pasta usa o mesmo Voltar do resto do sistema.
 
   // Reidrata o processo ativo SEMPRE que a URL ficar sem `lid` — não só na
   // montagem. O provider é global e não remonta na navegação interna: ir para

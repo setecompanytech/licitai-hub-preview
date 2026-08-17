@@ -50,3 +50,30 @@ describe('histórico do aplicativo', () => {
     expect(prepararVolta()).toBe('/kanban');
   });
 });
+
+describe('botões que navegam para trás por conta própria', () => {
+  it('voltar a uma tela do percurso trunca em vez de empilhar', () => {
+    // Kanban → Compromissos → Processo, e então a seta da pasta salta para o
+    // Kanban por conta própria. Sem a regra 4, o Voltar do Kanban traria o
+    // processo de volta — o pêndulo relatado.
+    ['/kanban', '/compromissos', '/processo/28'].forEach(registrarRota);
+    registrarRota('/kanban');
+    expect(_pilhaAtual()).toEqual(['/kanban']);
+    expect(destinoDoVoltar()).toBeNull();
+  });
+
+  it('trunca no ponto certo quando o salto é para o meio do percurso', () => {
+    ['/kanban', '/compromissos', '/processo/28', '/precificacao'].forEach(registrarRota);
+    registrarRota('/compromissos');
+    expect(_pilhaAtual()).toEqual(['/kanban', '/compromissos']);
+    expect(destinoDoVoltar()).toBe('/kanban');
+  });
+
+  it('tela nova depois do truque segue empilhando normalmente', () => {
+    ['/kanban', '/processo/28'].forEach(registrarRota);
+    registrarRota('/kanban');
+    registrarRota('/documentos');
+    expect(_pilhaAtual()).toEqual(['/kanban', '/documentos']);
+    expect(prepararVolta()).toBe('/kanban');
+  });
+});

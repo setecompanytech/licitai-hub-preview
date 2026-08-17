@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { origemDoProcesso } from '@/lib/navegacao/origemProcesso';
+import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -340,17 +340,11 @@ export default function ProcessoWorkspace() {
       <div className="border-b border-border bg-card sticky top-0 z-20">
         <div className="max-w-[1440px] mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
-            {/* Volta para a tela de onde a pasta foi aberta (Gestão de
-                Licitações, Painel…), não para o histórico cru do navegador —
-                que ficava em pêndulo entre prontuário e módulo. */}
-            <Button
-              variant="ghost"
-              size="sm"
-              title="Voltar para de onde você veio"
-              onClick={() => navigate(origemDoProcesso())}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
+            {/* Mesmo Voltar do resto do sistema. Ter um botão próprio aqui,
+                saltando para uma origem fixa, era o que fazia o percurso girar:
+                o salto entrava na pilha como avanço, e o Voltar da tela
+                seguinte trazia de volta para a pasta. */}
+            <BotaoVoltar somenteIcone />
             <FolderOpen className="w-6 h-6 text-muted-foreground" />
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold truncate">{lic.numero || 'Processo'} {lic.orgao && `— ${lic.orgao}`}</h1>

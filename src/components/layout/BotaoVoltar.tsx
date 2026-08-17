@@ -15,7 +15,7 @@ import { destinoDoVoltar, prepararVolta, subscribeHistorico } from '@/lib/navega
  * Não aparece quando não há de onde voltar (entrada direta, aba nova, Painel):
  * botão que não leva a lugar nenhum é pior que botão ausente.
  */
-export default function BotaoVoltar() {
+export default function BotaoVoltar({ somenteIcone = false }: { somenteIcone?: boolean }) {
   const navigate = useNavigate();
 
   const destino = useSyncExternalStore(
@@ -32,13 +32,17 @@ export default function BotaoVoltar() {
     <Button
       variant="ghost"
       size="sm"
-      className="mb-3 -ml-2 text-muted-foreground hover:text-foreground"
+      title="Voltar para a tela anterior"
+      className={somenteIcone
+        ? 'text-muted-foreground hover:text-foreground'
+        : 'mb-3 -ml-2 text-muted-foreground hover:text-foreground'}
       onClick={() => {
         const alvo = prepararVolta();
         if (alvo) navigate(alvo);
       }}
     >
-      <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar
+      <ArrowLeft className={somenteIcone ? 'w-4 h-4' : 'w-4 h-4 mr-1.5'} />
+      {!somenteIcone && 'Voltar'}
     </Button>
   );
 }

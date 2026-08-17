@@ -8,7 +8,7 @@
  * "voltam" para o mesmo lugar, independentemente de onde a pessoa estava; é o
  * que fazia o sistema parecer levar a uma página aleatória.
  *
- * Aqui a pilha é do aplicativo. Três regras que a mantêm honesta:
+ * Aqui a pilha é do aplicativo. Quatro regras que a mantêm honesta:
  *
  *  1. **Rota repetida não empilha.** Trocar `?lid=` da mesma tela não é uma
  *     navegação nova; empilhar faria o Voltar andar em falso.
@@ -16,6 +16,9 @@
  *     e o próximo Voltar traria B: o giro em círculos já relatado.
  *  3. **Entrada direta não inventa origem.** Quem abre um link em aba nova não
  *     tem para onde voltar, e o botão simplesmente não aparece.
+ *  4. **Rota já visitada trunca a pilha.** Chegar de novo a uma tela do próprio
+ *     percurso é retorno, não avanço — vale mesmo quando quem navegou foi um
+ *     botão da tela, e não o Voltar.
  *
  * Vive em módulo, não em estado de componente: o layout remonta a cada troca de
  * rota, e um `useState` perderia a pilha exatamente quando ela é necessária.
@@ -33,8 +36,19 @@ const RAIZES = new Set(['/painel', '/dashboard', '/']);
 export function registrarRota(caminho: string): void {
   if (voltando) { voltando = false; return; }          // regra 2
   if (pilha[pilha.length - 1] === caminho) return;      // regra 1
+
   // Chegar a uma raiz zera o rastro: dali não se volta para trás.
-  pilha = RAIZES.has(caminho) ? [caminho] : [...pilha, caminho];
+  if (RAIZES.has(caminho)) { pilha = [caminho]; avisar(); return; }
+
+  // Regra 4 — voltar a uma tela que já está no percurso TRUNCA a pilha ali,
+  // em vez de empilhar de novo.
+  //
+  // Sem isso, qualquer botão que navegue para trás por conta própria — a seta
+  // da pasta do processo saltando para o Kanban, o "Voltar ao Hub" do
+  // financeiro — entrava como avanço, e o Voltar seguinte trazia de volta para
+  // a tela de onde a pessoa tinha acabado de sair. Era o giro em círculos.
+  const jaVisitada = pilha.lastIndexOf(caminho);
+  pilha = jaVisitada >= 0 ? pilha.slice(0, jaVisitada + 1) : [...pilha, caminho];
   avisar();
 }
 
