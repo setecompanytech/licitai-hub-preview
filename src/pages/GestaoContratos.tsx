@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useColaboradores } from '@/hooks/useMetasComercial';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +33,7 @@ import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
   ArrowLeft, Package, ShoppingCart, BarChart3, FilePlus2, Paperclip, ScrollText, Link2
-} from 'lucide-react';
+, User as UserIcon } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
 import ContratoDashboard from '@/components/contratos/ContratoDashboard';
@@ -92,7 +94,12 @@ export default function GestaoContratos() {
     data_inicio: '', data_fim: '', vigencia_meses: '',
     status: 'vigente', modalidade: '', uf: '', municipio: '',
     fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
+    // Quem VENDEU — diferente de quem cadastrou. É por este campo que o
+    // contrato entra no realizado do colaborador (view de metas) e que a
+    // bonificação encontra o beneficiário. Sem ele, os dois ficam órfãos.
+    vendedor_user_id: '',
   });
+  const { data: membrosEquipe } = useColaboradores();
   const [pendingItens, setPendingItens] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -122,6 +129,17 @@ export default function GestaoContratos() {
     setLoading(false);
   };
 
+  /** Atribui (ou solta) o vendedor de um contrato já cadastrado. */
+  const atribuirVendedor = async (contratoId: string, vendedorId: string | null) => {
+    const { error } = await supabase
+      .from('contratos')
+      .update({ vendedor_user_id: vendedorId })
+      .eq('id', contratoId);
+    if (error) { toast.error(`Não foi possível atribuir: ${error.message}`); return; }
+    toast.success(vendedorId ? 'Contrato atribuído — passa a contar nas metas dessa pessoa.' : 'Vendedor removido do contrato.');
+    loadContratos();
+  };
+
   const atasDisponiveis = contratos.filter(c => c.tipo_documento === 'ata_srp');
 
   const resetForm = () => { setLicitacaoSearch(''); setForm({
@@ -130,7 +148,7 @@ export default function GestaoContratos() {
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
     status: 'vigente', modalidade: '', uf: '', municipio: '',
-    fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '',
+    fiscal_nome: '', fiscal_email: '', fiscal_telefone: '', observacoes: '', vendedor_user_id: '',
   }); };
 
   const handleSave = async () => {
@@ -143,6 +161,7 @@ export default function GestaoContratos() {
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
       empresa_id: empresaAtiva!.id,
+      vendedor_user_id: form.vendedor_user_id || null,
       tipo_documento: form.tipo_documento,
       tipo_estrutura: form.tipo_estrutura,
       ata_srp_id: form.tipo_documento === 'contrato' && form.ata_srp_id ? form.ata_srp_id : null,
@@ -403,6 +422,24 @@ export default function GestaoContratos() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div><Label>{isAtaForm ? 'Nº ATA *' : 'Nº Contrato *'}</Label><Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder={isAtaForm ? 'ATA-001/2025' : 'CT-001/2025'} /></div>
               <div><Label>Órgão {isAtaForm ? 'Gerenciador' : 'Contratante'} *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
+              <div>
+                <Label>Vendedor responsável</Label>
+                <Select
+                  value={form.vendedor_user_id || 'nenhum'}
+                  onValueChange={(v) => setForm(f => ({ ...f, vendedor_user_id: v === 'nenhum' ? '' : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Não atribuído</SelectItem>
+                    {(membrosEquipe ?? []).map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Conta o contrato nas metas dessa pessoa e define quem recebe a bonificação.
+                </p>
+              </div>
               <div className="md:col-span-2"><Label>Objeto *</Label><Textarea value={form.objeto} onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))} rows={2} /></div>
 
               {isAtaForm && (
@@ -592,8 +629,29 @@ export default function GestaoContratos() {
                     {/* 3º — Objeto */}
                     <p className="text-xs text-muted-foreground line-clamp-1">{c.objeto}</p>
                     {/* 4º — Data fim */}
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                       {c.data_fim && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Até {new Date(c.data_fim).toLocaleDateString('pt-BR')}</span>}
+                      {/* Vendedor na própria linha: os contratos existentes foram
+                          cadastrados pelo admin e ficaram sem dono, então metas e
+                          bonificação não os enxergavam. Aqui se atribui sem abrir o
+                          contrato. */}
+                      <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <UserIcon className="w-3 h-3" />
+                        <Select
+                          value={(c as { vendedor_user_id?: string | null }).vendedor_user_id || 'nenhum'}
+                          onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
+                        >
+                          <SelectTrigger className="h-6 text-xs border-0 bg-transparent px-1 gap-1 w-auto">
+                            <SelectValue placeholder="Sem vendedor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Sem vendedor</SelectItem>
+                            {(membrosEquipe ?? []).map((m) => (
+                              <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </span>
                     </div>
                     <div className="mt-2">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
