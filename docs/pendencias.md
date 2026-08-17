@@ -534,6 +534,24 @@ que ele alimenta um espelho. Enquanto isso, publicar = **Publish no Lovable**.
 
 ---
 
+## [2026-08-16] Bonificação não conversa com o plano de metas
+
+Renomeada de "Comissão" para "Bonificação" nas telas, mas o cálculo segue
+independente das metas: percentual sobre contrato ou nota fiscal, com uma regra
+de variação por desconto escrita em texto livre. O módulo de Metas, do outro
+lado, apura realizado × objetivo do período e ninguém lê esse número.
+
+**Alinhamento pedido pelo product owner (16/08), ainda não desenhado:** a
+bonificação considerar o ATINGIMENTO da meta — cheia ao bater 100%, reduzida
+abaixo, ampliada acima —, na mesma lógica da variação por desconto que já
+existe no formulário.
+
+Pré-requisito favorável: as telas de bonificação e o Painel de Metas passaram a
+usar a mesma base de identidade do colaborador (lib/equipe/nomeExibido), então
+os dois lados já falam do mesmo sujeito.
+
+---
+
 ## [2026-08-16] Proposta readequada não existe no ciclo
 
 Ao vencer a disputa, o portal exige a **proposta readequada** — o documento com
