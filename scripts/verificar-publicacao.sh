@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Verifica o que já está NO AR em praefectus.com.br.
+#
+# Publicar é ação manual no Lovable e a tela não confirma o que entrou. Este
+# script baixa o que o site serve e procura trechos de texto que só existem no
+# código novo. Literais de string sobrevivem à minificação; comentários não —
+# usar comentário como assinatura já deu falso negativo aqui.
+#
+# Dois cuidados que uma primeira versão errou:
+#   1. o HTML aponta só o bundle de entrada; as telas ficam em pedaços
+#      carregados sob demanda, cujos nomes aparecem DENTRO do JS de entrada.
+#      Olhar só o HTML acusa "não publicado" para tudo, mesmo estando no ar;
+#   2. são ~120 pedaços — baixar em série estoura qualquer paciência, então
+#      aqui vão em paralelo.
+#
+# Uso:  bash scripts/verificar-publicacao.sh [url]
+
+set -uo pipefail
+SITE="${1:-https://praefectus.com.br}"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+echo "Lendo $SITE ..."
+curl -fsSL "$SITE" -o "$TMP/index.html" || { echo "Falhou ao ler o site."; exit 1; }
+
+grep -oE '/assets/[^"]+\.js' "$TMP/index.html" | sed 's|^/||' | sort -u >"$TMP/lista"
+[ -s "$TMP/lista" ] || { echo "Nenhum bundle .js encontrado no HTML."; exit 1; }
+
+baixar() { # baixa em paralelo a lista recebida por stdin
+  xargs -P 8 -I{} sh -c 'curl -fsSL -o "'"$TMP"'/$(echo {} | tr / _)" "'"$SITE"'/{}" 2>/dev/null'
+}
+
+baixar <"$TMP/lista"
+# Segunda passada: os pedaços que o bundle de entrada carrega sob demanda.
+cat "$TMP"/assets_*.js 2>/dev/null \
+  | grep -oE '(\./)?assets/[A-Za-z0-9_.-]+\.js' | sed 's|^\./||' | sort -u >"$TMP/lista2"
+comm -13 "$TMP/lista" "$TMP/lista2" | baixar
+
+cat "$TMP"/assets_*.js >"$TMP/tudo.js" 2>/dev/null
+echo "$(ls "$TMP"/assets_*.js | wc -l | tr -d ' ') arquivo(s), $(wc -c <"$TMP/tudo.js" | tr -d ' ') bytes."
+echo
+
+falta=0
+checar() { # checar "<rótulo>" "<literal que só existe no código novo>"
+  if grep -qF "$2" "$TMP/tudo.js"; then
+    printf '  no ar     %s\n' "$1"
+  else
+    printf '  FALTA     %s\n' "$1"
+    falta=1
+  fi
+}
+
+checar "carteira própria (Meus contratos)"   "Ver todos da equipe"
+checar "meta sobre NF-e quitada"             "NF-e Quitada (valor recebido)"
+checar "marco de pagamento configurável"     "Ao receber (NF-e quitada)"
+checar "confirmação de exclusão"             "Excluir definitivamente"
+checar "vendedor fora da equipe"             "Vendedor fora da equipe"
+checar "criador da empresa entra com nome"   "nome_completo, username"
+
+echo
+if [ "$falta" -eq 0 ]; then
+  echo "Tudo publicado."
+else
+  echo "Há item FALTA acima: publique no Lovable e rode de novo."
+  exit 2
+fi
