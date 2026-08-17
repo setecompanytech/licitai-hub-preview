@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
+import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
+import { noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +73,7 @@ type Licitacao = { id: string; numero: string; orgao: string; objeto: string; mo
 export default function GestaoContratos() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const { isAdmin } = usePapelEmpresa();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +81,8 @@ export default function GestaoContratos() {
   const [licitacaoSearch, setLicitacaoSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [tipoFilter, setTipoFilter] = useState<'all' | 'contrato' | 'ata_srp'>('all');
+  // null = ainda não escolhido nesta sessão; o padrão sai do papel (abaixo).
+  const [escopoFilter, setEscopoFilter] = useState<EscopoResponsavel | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
@@ -359,14 +364,22 @@ export default function GestaoContratos() {
   }
 
   // ═══ LIST VIEW ═══
-  const filtered = contratos.filter(c => {
+  // Administrador abre na visão do negócio inteiro; quem opera abre na própria
+  // carteira. Nos dois casos o outro recorte fica a um clique de distância.
+  const escopo: EscopoResponsavel = escopoFilter ?? (isAdmin ? 'todos' : 'meus');
+  // Os cartões de topo seguem o escopo (senão o total contradiz a lista), mas
+  // ignoram busca e status, que são recortes de consulta, não de carteira.
+  const doEscopo = noEscopo(contratos as never[], escopo, user?.id) as typeof contratos;
+  const ocultosPorEscopo = contratos.length - doEscopo.length;
+
+  const filtered = doEscopo.filter(c => {
     const matchSearch = !search || c.objeto.toLowerCase().includes(search.toLowerCase()) || c.numero_contrato.toLowerCase().includes(search.toLowerCase()) || c.orgao_contratante.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || c.status === statusFilter;
     const matchTipo = tipoFilter === 'all' || c.tipo_documento === tipoFilter;
     return matchSearch && matchStatus && matchTipo;
   });
-  const soContratos = contratos.filter(c => c.tipo_documento !== 'ata_srp');
-  const soAtas = contratos.filter(c => c.tipo_documento === 'ata_srp');
+  const soContratos = doEscopo.filter(c => c.tipo_documento !== 'ata_srp');
+  const soAtas = doEscopo.filter(c => c.tipo_documento === 'ata_srp');
   const totalValor = soContratos.reduce((s, c) => s + c.valor_global, 0);
   const totalSaldo = soContratos.reduce((s, c) => s + (c.saldo_remanescente || 0), 0);
   const vencendo = soContratos.filter(c => { if (!c.data_fim) return false; const d = (new Date(c.data_fim).getTime() - Date.now()) / 86400000; return d > 0 && d <= 60; }).length;
@@ -592,8 +605,32 @@ export default function GestaoContratos() {
             <SelectItem value="ata_srp">Apenas ATAs SRP</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={escopo} onValueChange={(v) => setEscopoFilter(v as EscopoResponsavel)}>
+          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="meus">Meus contratos</SelectItem>
+            <SelectItem value="todos">Todos da equipe</SelectItem>
+            {isAdmin && (membrosEquipe ?? []).map((m) => (
+              <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select>
       </div>
+
+      {escopo !== 'todos' && ocultosPorEscopo > 0 && (
+        <p className="text-xs text-muted-foreground -mt-2 mb-4">
+          {ocultosPorEscopo} contrato(s) sob responsabilidade de outros colaboradores não
+          aparecem neste recorte.{' '}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-foreground"
+            onClick={() => setEscopoFilter('todos')}
+          >
+            Ver todos da equipe
+          </button>
+        </p>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
