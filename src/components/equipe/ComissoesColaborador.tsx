@@ -54,7 +54,27 @@ type Lancamento = {
   created_at: string;
 };
 
-type Membro = { user_id: string; nome: string | null; email: string | null };
+type Membro = {
+  user_id: string;
+  nome: string | null;
+  email: string | null;
+  /** Conta criada por convite de setor: `nome` é o rótulo do setor e vários
+   *  colaboradores o compartilham. Quem identifica a pessoa são estes. */
+  nome_individual: string | null;
+  login_individual: string | null;
+};
+
+/** Nome que distingue a pessoa: sem isto, três colaboradores do mesmo setor
+ *  apareciam como "Setor Comercial" e não havia como escolher entre eles. */
+const nomeExibido = (m: Membro | undefined): string => {
+  if (!m) return 'Desconhecido';
+  const pessoa = m.nome_individual?.trim();
+  const login = m.login_individual?.trim();
+  if (pessoa && login) return `${pessoa} (${login})`;
+  if (pessoa) return pessoa;
+  if (login) return login;
+  return m.nome || m.email || 'Desconhecido';
+};
 
 export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId: string; isAdmin: boolean }) {
   const { user } = useAuth();
@@ -89,7 +109,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     const [cfgRes, lancRes, membrosRes] = await Promise.all([
       supabase.from('comissoes_config' as any).select('*').eq('empresa_id', empresaId),
       supabase.from('comissoes_lancamentos' as any).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
-      supabase.from('empresa_membros').select('user_id, nome, email').eq('empresa_id', empresaId),
+      supabase.from('empresa_membros').select('user_id, nome, email, nome_individual, login_individual').eq('empresa_id', empresaId),
     ]);
     setConfigs((cfgRes.data as any[]) || []);
     setLancamentos((lancRes.data as any[]) || []);
@@ -98,8 +118,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   };
 
   const getMembroNome = (userId: string) => {
-    const m = membros.find(m => m.user_id === userId);
-    return m?.nome || m?.email || 'Desconhecido';
+    return nomeExibido(membros.find(m => m.user_id === userId));
   };
 
   const handleSaveConfig = async () => {
@@ -170,12 +189,13 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
 
   // Resumo por colaborador
   const resumoPorColaborador = membros.map(m => {
+    const exibicao = nomeExibido(m);
     const cfg = configs.find(c => c.user_id === m.user_id);
     const lancs = lancamentos.filter(l => l.user_id === m.user_id);
     const totalPendente = lancs.filter(l => l.status === 'pendente').reduce((s, l) => s + (l.valor_comissao || 0), 0);
     const totalAprovado = lancs.filter(l => l.status === 'aprovado').reduce((s, l) => s + (l.valor_comissao || 0), 0);
     const totalPago = lancs.filter(l => l.status === 'pago').reduce((s, l) => s + (l.valor_comissao || 0), 0);
-    return { ...m, cfg, totalPendente, totalAprovado, totalPago, total: totalPendente + totalAprovado + totalPago };
+    return { ...m, exibicao, cfg, totalPendente, totalAprovado, totalPago, total: totalPendente + totalAprovado + totalPago };
   }).filter(m => m.cfg || lancamentos.some(l => l.user_id === m.user_id));
 
   if (loading) return <p className="text-center text-muted-foreground py-6">Carregando comissões...</p>;
@@ -235,7 +255,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
             <div key={r.user_id} className="bg-card rounded-lg border border-border/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-sm">{r.nome || r.email}</p>
+                  <p className="font-semibold text-sm">{r.exibicao}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {r.cfg && <Badge className="text-xs bg-muted text-muted-foreground">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
                     {r.cfg && <span className="text-xs text-muted-foreground">

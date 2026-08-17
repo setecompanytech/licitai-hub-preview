@@ -43,7 +43,23 @@ type Lancamento = {
   solicitado_por: string | null;
 };
 
-type Membro = { user_id: string; nome: string | null; email: string | null };
+type Membro = {
+  user_id: string;
+  nome: string | null;
+  email: string | null;
+  nome_individual: string | null;
+  login_individual: string | null;
+};
+
+/** Contas de convite por setor compartilham o mesmo `nome` ("Setor
+ *  Comercial"); quem distingue a pessoa é o nome/login individual. */
+const nomeExibido = (m: Membro | undefined): string => {
+  if (!m) return 'Desconhecido';
+  const pessoa = m.nome_individual?.trim();
+  const login = m.login_individual?.trim();
+  if (pessoa && login) return `${pessoa} (${login})`;
+  return pessoa || login || m.nome || m.email || 'Desconhecido';
+};
 type Config = {
   id: string; user_id: string; tipo_comissao: string; percentual: number;
   valor_fixo: number; visibilidade_publica: boolean; ativo: boolean;
@@ -93,7 +109,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
 
     const [lancRes, membrosRes, cfgRes, pedidosRes] = await Promise.all([
       lancFilter,
-      supabase.from('empresa_membros').select('user_id, nome, email').eq('empresa_id', empresaId),
+      supabase.from('empresa_membros').select('user_id, nome, email, nome_individual, login_individual').eq('empresa_id', empresaId),
       supabase.from('comissoes_config' as any).select('*').eq('empresa_id', empresaId),
       supabase.from('contrato_pedidos').select('id, numero_pedido, valor_total, descricao').eq('contrato_id', contratoId).eq('status', 'entregue').order('numero_pedido', { ascending: false }),
     ]);
@@ -318,7 +334,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                 <SelectTrigger><SelectValue placeholder="Selecione o vendedor" /></SelectTrigger>
                 <SelectContent>
                   {membros.map(m => (
-                    <SelectItem key={m.user_id} value={m.user_id}>{m.nome || m.email}</SelectItem>
+                    <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
