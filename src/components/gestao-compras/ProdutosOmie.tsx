@@ -68,6 +68,12 @@ const UNIDADES_TODAS = [
   { value: 'PAR', label: 'Par (PAR)' },
   { value: 'PC', label: 'Peça (PC)' },
   { value: 'PCT', label: 'Pacote (PCT)' },
+  { value: 'FRC', label: 'Frasco (FRC)' },
+  { value: 'AMP', label: 'Ampola (AMP)' },
+  { value: 'LATA', label: 'Lata (LATA)' },
+  { value: 'RES', label: 'Resma (RES)' },
+  { value: 'BLC', label: 'Bloco (BLC)' },
+  { value: 'SACO', label: 'Saco (SACO)' },
   { value: 'POTE', label: 'Pote (POTE)' },
   { value: 'RL', label: 'Rolo (RL)' },
   { value: 'SC', label: 'Saco (SC)' },
@@ -179,10 +185,14 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
 
   useEffect(() => { setSearch(value); }, [value]);
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    // Fechar sem escolher devolve a unidade selecionada ao campo — abrir a
+    // lista não pode apagar o que já estava lá.
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(value); }
+    };
     if (open) document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [open]);
+  }, [open, value]);
 
   const topFiltered = UNIDADES_TOP.filter(u => u.label.toLowerCase().includes(search.toLowerCase()) || u.value.toLowerCase().includes(search.toLowerCase()));
   const todasFiltered = UNIDADES_TODAS.filter(u =>
@@ -195,7 +205,11 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
       <div className="relative">
         <Input
           value={search}
-          onFocus={() => setOpen(true)}
+          // Abrir a lista limpa a BUSCA, não a seleção. O campo guardava a
+          // unidade escolhida ("PC") e filtrava por ela, então a lista mostrava
+          // só "Peça (PC)" e "Pacote (PCT)" — parecia que o sistema só tinha
+          // duas unidades, quando tem 58.
+          onFocus={() => { setOpen(true); setSearch(''); }}
           onChange={e => { setSearch(e.target.value); setOpen(true); onChange(e.target.value); }}
           className="pt-1 pr-7"
           placeholder="PC"
