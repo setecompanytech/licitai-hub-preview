@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2, MapPin } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, Scale, Calculator, Settings, Search, FileText, Download, ClipboardList, DollarSign, Truck, ShoppingCart, Briefcase, Mail, Loader2, MapPin , Pencil } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import RelatorioAtividades from '@/components/equipe/RelatorioAtividades';
 import TarefasColaborador from '@/components/equipe/TarefasColaborador';
@@ -176,6 +176,32 @@ export default function EquipeColaboradores() {
       toast.error(`Erro inesperado: ${err.message}`);
     }
     setSaving(false);
+  };
+
+  // Renomear: o nome vem do que a própria pessoa digitou no cadastro, e vinha
+  // errado com frequência (duas contas do mesmo setor chamadas "COMERCIAL01").
+  // Sem isto, o administrador não tinha como corrigir.
+  const [renomeando, setRenomeando] = useState<{ id: string; atual: string } | null>(null);
+  const [novoNome, setNovoNome] = useState('');
+  const [salvandoNome, setSalvandoNome] = useState(false);
+
+  const abrirRenomear = (m: { id: string } & MembroExibivel) => {
+    setRenomeando({ id: m.id, atual: nomeExibido(m) });
+    setNovoNome(m.nome_individual?.trim() || m.nome?.trim() || '');
+  };
+
+  const salvarNome = async () => {
+    if (!renomeando || !novoNome.trim()) return;
+    setSalvandoNome(true);
+    const { error } = await supabase
+      .from('empresa_membros')
+      .update({ nome_individual: novoNome.trim() })
+      .eq('id', renomeando.id);
+    setSalvandoNome(false);
+    if (error) { toast.error(`Não foi possível renomear: ${error.message}`); return; }
+    toast.success('Nome atualizado.');
+    setRenomeando(null);
+    loadMembros();
   };
 
   const [resendingFor, setResendingFor] = useState<string | null>(null);
@@ -458,6 +484,9 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => abrirRenomear(m)} title="Corrigir nome de exibição">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)">
                               <MapPin className="w-4 h-4" />
                             </Button>
@@ -774,6 +803,36 @@ export default function EquipeColaboradores() {
           </DialogContent>
         </Dialog>
       </div>
+      {/* Corrigir nome de exibição */}
+      <Dialog open={!!renomeando} onOpenChange={(o) => { if (!o) setRenomeando(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Corrigir nome de exibição</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Aparecendo hoje como <span className="font-medium text-foreground">{renomeando?.atual}</span>.
+              O login continua o mesmo — muda só como a pessoa é identificada nas telas.
+            </p>
+            <div className="space-y-1">
+              <Label htmlFor="novo-nome" className="text-xs">Nome</Label>
+              <Input
+                id="novo-nome"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Ex.: Maria Souza"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenomeando(null)}>Cancelar</Button>
+            <Button onClick={salvarNome} disabled={salvandoNome || !novoNome.trim()}>
+              {salvandoNome ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

@@ -14,6 +14,15 @@ describe('nomeExibido — identidade do membro', () => {
       .toBe('COMERCIAL-01');
   });
 
+  it('não repete quando o nome digitado é o próprio login', () => {
+    expect(nomeExibido({
+      nome: 'Setor Comercial', nome_individual: 'COMERCIAL01', login_individual: 'COMERCIAL01',
+    })).toBe('COMERCIAL01');
+    // e a comparação ignora caixa
+    expect(nomeExibido({ nome_individual: 'comercial02', login_individual: 'COMERCIAL02' }))
+      .toBe('COMERCIAL02');
+  });
+
   it('convite direto: o nome da pessoa continua valendo', () => {
     expect(nomeExibido({ nome: 'Rubens Teste', email: 'r@x.com' })).toBe('Rubens Teste');
   });

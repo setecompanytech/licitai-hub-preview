@@ -24,6 +24,10 @@ export function nomeExibido(m: MembroExibivel | null | undefined): string {
   if (!m) return 'Colaborador';
   const pessoa = m.nome_individual?.trim();
   const login = m.login_individual?.trim();
+  // Quem se cadastra costuma repetir o login no campo de nome; "COMERCIAL01
+  // (COMERCIAL01)" não informa nada e ainda esconde a diferença entre dois
+  // colegas. Iguais, mostra uma vez só.
+  if (pessoa && login && pessoa.toLowerCase() === login.toLowerCase()) return login;
   if (pessoa && login) return `${pessoa} (${login})`;
   return pessoa || login || m.nome?.trim() || m.email?.trim() || 'Colaborador';
 }
