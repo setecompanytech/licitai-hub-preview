@@ -98,7 +98,16 @@ DISPUTA encerrada (Robô de Lances)
 notificação. Ele deve mover o processo, gerar os documentos que a vitória exige
 e deixar rastro — sem o usuário sair da pasta.
 
-#### 4.1 — O Mural vira ponto de partida (menor esforço, maior ganho)
+#### 4.1 — O desfecho vira ponto de partida (IMPLEMENTADO em 2026-08-17)
+
+Entregue como `src/components/workspace/DesfechoDaDisputa.tsx`, no topo da Visão
+Geral da pasta — e não dentro do Mural, como esta seção previa. Motivo: o Mural
+(`LicitacaoChat`) vive no Robô de Lances e no Monitoramento, não na pasta do
+processo. Pôr as ações lá contrariaria o princípio da própria fase, que é o
+desfecho ser resolvido **sem sair da pasta**. O Mural segue anunciando; a pasta
+passa a agir.
+
+Texto original da proposta:
 
 A mensagem de encerramento hoje é texto morto. Passa a carregar as ações do
 desfecho, cada uma abrindo o lugar certo do próprio processo:

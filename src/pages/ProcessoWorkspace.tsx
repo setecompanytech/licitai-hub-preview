@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import BotaoVoltar from '@/components/layout/BotaoVoltar';
+import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -382,6 +383,19 @@ export default function ProcessoWorkspace() {
 
           {/* Visão Geral */}
           <TabsContent value="visao" className="space-y-4">
+            {/* O desfecho abre a Visão Geral: encerrada a disputa, é a primeira
+                coisa que a pessoa precisa resolver. Só aparece quando há
+                desfecho — antes disso não há o que tratar. */}
+            <DesfechoDaDisputa
+              licitacaoId={lic.id}
+              numero={lic.numero}
+              orgao={lic.orgao}
+              modalidade={lic.modalidade ?? null}
+              valorEstimado={lic.valor_estimado ?? null}
+              status={lic.status}
+              irParaAba={(a) => { setAba(a); if (a === 'precificacao') loadPrecificacao(); }}
+              aoMudarStatus={(novo) => setLic(atual => (atual ? { ...atual, status: novo } : atual))}
+            />
             <Card className="p-5 space-y-3 text-base">
               <div className="flex flex-wrap gap-x-6 gap-y-1.5 pb-3 border-b border-border/40">
                 <span><span className="font-semibold">Local:</span> <span>{lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}</span></span>
