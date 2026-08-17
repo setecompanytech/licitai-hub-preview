@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TIPOS_BONIFICACAO, ehPercentual, rotuloDoValor } from '@/lib/equipe/bonificacao';
+import { TIPOS_BONIFICACAO, EVENTOS_PAGAMENTO, ehPercentual, rotuloDoValor, eventoDaConfig, type EventoPagamento } from '@/lib/equipe/bonificacao';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,7 @@ type Config = {
   tipo_comissao: string;
   percentual: number;
   valor_fixo: number;
+  evento_pagamento: string | null;
   regra_desconto: any;
   visibilidade_publica: boolean;
   ativo: boolean;
@@ -52,13 +53,19 @@ type Lancamento = {
   contrato_pedido_id: string | null;
 };
 
-/** Pedido com NF-e quitada — o fato que autoriza o pagamento da bonificação. */
-type PedidoQuitado = {
+/**
+ * Pedido que pode comprovar o marco de pagamento. Traz os dois fatos — nota
+ * emitida e nota quitada — porque qual deles vale depende da política da
+ * empresa, não do pedido.
+ */
+type PedidoElegivel = {
   id: string;
   numero_pedido: string;
   nota_fiscal: string | null;
   valor_total: number;
   data_quitacao: string | null;
+  nf_quitada: boolean;
+  data_assinatura: string | null;
   vendedor_user_id: string | null;
   orgao: string | null;
 };
@@ -88,6 +95,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   // Config form
   const [cfgUserId, setCfgUserId] = useState('');
   const [cfgTipo, setCfgTipo] = useState('percentual_contrato');
+  const [cfgEvento, setCfgEvento] = useState<EventoPagamento>('contrato_assinado');
   const [cfgPercentual, setCfgPercentual] = useState('');
   const [cfgValorFixo, setCfgValorFixo] = useState('');
   const [cfgVisibilidade, setCfgVisibilidade] = useState(false);
@@ -96,6 +104,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   const limparConfig = () => {
     setCfgUserId('');
     setCfgTipo('percentual_contrato');
+    setCfgEvento('contrato_assinado');
     setCfgPercentual('');
     setCfgValorFixo('');
     setCfgRegraDesconto('');
@@ -110,7 +119,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   const [lancNF, setLancNF] = useState('');
   const [lancObs, setLancObs] = useState('');
   const [lancPedidoId, setLancPedidoId] = useState('');
-  const [quitados, setQuitados] = useState<PedidoQuitado[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoElegivel[]>([]);
 
   useEffect(() => { loadData(); }, [empresaId]);
 
@@ -120,24 +129,26 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       supabase.from('comissoes_config' as any).select('*').eq('empresa_id', empresaId),
       supabase.from('comissoes_lancamentos' as any).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase.from('empresa_membros').select('user_id, nome, email, nome_individual, login_individual').eq('empresa_id', empresaId),
-      // A bonificação só é paga depois que o cliente quita a NF-e, então o
-      // lançamento manual precisa apontar QUAL quitação o autoriza.
+      // O lançamento manual aponta QUAL fato autoriza o pagamento. Quais
+      // pedidos servem depende do marco configurado, então vêm todos e o
+      // filtro acontece na tela.
       supabase
         .from('contrato_pedidos' as any)
-        .select('id, numero_pedido, nota_fiscal, valor_total, data_quitacao, contratos!inner(empresa_id, vendedor_user_id, orgao_contratante)')
-        .eq('nf_quitada', true)
+        .select('id, numero_pedido, nota_fiscal, valor_total, data_quitacao, nf_quitada, contratos!inner(empresa_id, vendedor_user_id, orgao_contratante, data_assinatura)')
         .eq('contratos.empresa_id', empresaId)
-        .order('data_quitacao', { ascending: false }),
+        .order('data_pedido', { ascending: false }),
     ]);
     setConfigs((cfgRes.data as any[]) || []);
     setLancamentos((lancRes.data as any[]) || []);
     setMembros((membrosRes.data as any[]) || []);
-    setQuitados(((quitRes.data as any[]) || []).map((p) => ({
+    setPedidos(((quitRes.data as any[]) || []).map((p) => ({
       id: p.id,
       numero_pedido: p.numero_pedido,
       nota_fiscal: p.nota_fiscal,
       valor_total: Number(p.valor_total) || 0,
       data_quitacao: p.data_quitacao,
+      nf_quitada: !!p.nf_quitada,
+      data_assinatura: p.contratos?.data_assinatura ?? null,
       vendedor_user_id: p.contratos?.vendedor_user_id ?? null,
       orgao: p.contratos?.orgao_contratante ?? null,
     })));
@@ -155,6 +166,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       empresa_id: empresaId,
       user_id: cfgUserId,
       tipo_comissao: cfgTipo,
+      evento_pagamento: cfgEvento,
       percentual: parseFloat(cfgPercentual) || 0,
       valor_fixo: parseFloat(cfgValorFixo) || 0,
       visibilidade_publica: cfgVisibilidade,
@@ -340,10 +352,10 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                     <span>{new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
                   {l.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{l.observacoes}</p>}
-                  {l.status !== 'pago' && !temQuitacao(l) && (
+                  {l.status !== 'pago' && !podePagar(l) && (
                     <p className="text-xs text-warning mt-0.5">
-                      Aguardando quitação da NF-e — o pagamento só é liberado depois que o
-                      cliente paga a nota.
+                      Aguardando {EVENTOS_PAGAMENTO[eventoDe(l.user_id)].exigencia} — pagamento
+                      liberado {EVENTOS_PAGAMENTO[eventoDe(l.user_id)].label.toLowerCase()}.
                     </p>
                   )}
                 </div>
@@ -354,7 +366,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                       <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(STATUS_LANCAMENTO).map(([k, v]) => (
-                          <SelectItem key={k} value={k} disabled={k === 'pago' && !temQuitacao(l)}>
+                          <SelectItem key={k} value={k} disabled={k === 'pago' && !podePagar(l)}>
                             {v.label}
                           </SelectItem>
                         ))}
@@ -385,6 +397,8 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   <span>•</span>
                   <span>{rotuloDoValor(c.tipo_comissao, c.percentual, c.valor_fixo, fmt)}</span>
                   <span>•</span>
+                  <span>{EVENTOS_PAGAMENTO[eventoDaConfig(c)].label}</span>
+                  <span>•</span>
                   <span>{c.visibilidade_publica ? 'Visível p/ equipe' : 'Somente admin'}</span>
                 </div>
               </div>
@@ -411,6 +425,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 const existing = configs.find(c => c.user_id === v);
                 if (existing) {
                   setCfgTipo(existing.tipo_comissao);
+                  setCfgEvento(eventoDaConfig(existing));
                   setCfgPercentual(String(existing.percentual));
                   setCfgValorFixo(String(existing.valor_fixo));
                   setCfgVisibilidade(existing.visibilidade_publica);
@@ -420,6 +435,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   // visibilidade ligada uma vez contaminava todos os seguintes,
                   // expondo o valor da bonificação de quem nunca foi marcado.
                   setCfgTipo('percentual_contrato');
+                  setCfgEvento('contrato_assinado');
                   setCfgPercentual('');
                   setCfgValorFixo('');
                   setCfgRegraDesconto('');
@@ -445,6 +461,18 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">{TIPO_COMISSAO[cfgTipo]?.desc}</p>
+            </div>
+            <div>
+              <Label>Quando pagar</Label>
+              <Select value={cfgEvento} onValueChange={(v) => setCfgEvento(v as EventoPagamento)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(EVENTOS_PAGAMENTO).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">{EVENTOS_PAGAMENTO[cfgEvento].desc}</p>
             </div>
             {cfgTipo === 'valor_fixo' ? (
               <div>
@@ -498,22 +526,22 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
               </Select>
             </div>
             <div>
-              <Label>NF-e quitada *</Label>
+              <Label>{lancUserId ? EVENTOS_PAGAMENTO[eventoDe(lancUserId)].exigencia : 'Comprovação'} *</Label>
               <Select
                 value={lancPedidoId}
                 onValueChange={(v) => {
                   setLancPedidoId(v);
-                  const p = quitados.find((q) => q.id === v);
-                  // O valor recebido é a base natural: foi ele que entrou.
+                  const p = pedidos.find((q) => q.id === v);
+                  // O valor do pedido é a base natural do lançamento.
                   if (p) { setLancValorBase(String(p.valor_total)); setLancNF(p.nota_fiscal ?? ''); }
                 }}
                 disabled={!lancUserId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={lancUserId ? 'Selecione a quitação' : 'Escolha o colaborador primeiro'} />
+                  <SelectValue placeholder={lancUserId ? 'Selecione o pedido' : 'Escolha o colaborador primeiro'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {quitadosDoColaborador.map((p) => (
+                  {pedidosDoColaborador.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.nota_fiscal ? `NF ${p.nota_fiscal}` : `Pedido ${p.numero_pedido}`}
                       {p.data_quitacao ? ` · ${new Date(p.data_quitacao + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}
@@ -522,10 +550,11 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   ))}
                 </SelectContent>
               </Select>
-              {lancUserId && quitadosDoColaborador.length === 0 && (
+              {lancUserId && pedidosDoColaborador.length === 0 && (
                 <p className="text-xs text-warning mt-1">
-                  Nenhuma NF-e quitada nos contratos deste colaborador. A bonificação só é
-                  lançada depois que o cliente quita a nota.
+                  Nenhum pedido com {EVENTOS_PAGAMENTO[eventoDe(lancUserId)].exigencia} nos
+                  contratos deste colaborador. A bonificação dele é liberada
+                  {' '}{EVENTOS_PAGAMENTO[eventoDe(lancUserId)].label.toLowerCase()}.
                 </p>
               )}
             </div>

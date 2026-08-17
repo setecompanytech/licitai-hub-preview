@@ -30,3 +30,49 @@ export const rotuloDoValor = (
   valorFixo: number,
   formatarMoeda: (v: number) => string,
 ): string => (ehPercentual(tipo) ? `${percentual}%` : formatarMoeda(valorFixo));
+
+/**
+ * Quando a bonificação se torna PAGÁVEL — política da empresa, não do sistema.
+ *
+ * Cada empresa remunera de um jeito: há quem pague ao ganhar o contrato, quem
+ * pague ao faturar e quem só pague depois que o cliente quita a nota. Fixar um
+ * desses no código transformaria a política comercial de um cliente em regra
+ * de todos — foi o que uma primeira versão desta trava fez, exigindo quitação
+ * de todo mundo.
+ *
+ * Distinto de `tipo_comissao`, que diz a BASE do cálculo. Uma empresa pode
+ * calcular sobre o valor do contrato e só liberar o pagamento na quitação.
+ */
+export const EVENTOS_PAGAMENTO = {
+  contrato_assinado: {
+    label: 'Ao ganhar o contrato',
+    desc: 'Bonificação liberada com o contrato assinado, antes do faturamento',
+    exigencia: 'contrato assinado',
+  },
+  nota_emitida: {
+    label: 'Ao faturar (nota emitida)',
+    desc: 'Bonificação liberada quando a nota é emitida, mesmo antes de o cliente pagar',
+    exigencia: 'nota emitida',
+  },
+  nf_quitada: {
+    label: 'Ao receber (NF-e quitada)',
+    desc: 'Bonificação liberada só depois que o cliente quita a nota',
+    exigencia: 'NF-e quitada',
+  },
+} as const;
+
+export type EventoPagamento = keyof typeof EVENTOS_PAGAMENTO;
+
+/**
+ * Evento padrão de um tipo de cálculo, para configuração antiga que nunca o
+ * declarou: acompanha o marco que o próprio tipo já pressupõe.
+ */
+export const eventoPadraoDoTipo = (tipo: string | null | undefined): EventoPagamento => {
+  const t = String(tipo ?? '');
+  if (t === 'percentual_nf_quitada' || t === 'nota_fiscal') return 'nf_quitada';
+  if (t === 'percentual_faturamento') return 'nota_emitida';
+  return 'contrato_assinado';
+};
+
+export const eventoDaConfig = (cfg: { evento_pagamento?: string | null; tipo_comissao?: string | null } | null | undefined): EventoPagamento =>
+  (cfg?.evento_pagamento as EventoPagamento) || eventoPadraoDoTipo(cfg?.tipo_comissao);

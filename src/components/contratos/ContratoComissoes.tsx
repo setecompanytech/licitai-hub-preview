@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ehPercentual, rotuloDoValor } from '@/lib/equipe/bonificacao';
+import { EVENTOS_PAGAMENTO, ehPercentual, rotuloDoValor, eventoDaConfig, type EventoPagamento } from '@/lib/equipe/bonificacao';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,6 +78,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
   const [cfgDialogOpen, setCfgDialogOpen] = useState(false);
   const [cfgUserId, setCfgUserId] = useState('');
   const [cfgTipo, setCfgTipo] = useState('percentual_contrato');
+  const [cfgEvento, setCfgEvento] = useState<EventoPagamento>('contrato_assinado');
   const [cfgPercentual, setCfgPercentual] = useState('');
   const [cfgValorFixo, setCfgValorFixo] = useState('');
   const [savingCfg, setSavingCfg] = useState(false);
@@ -129,6 +130,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
       empresa_id: empresaId,
       user_id: cfgUserId,
       tipo_comissao: cfgTipo,
+      evento_pagamento: cfgEvento,
       percentual: parseFloat(cfgPercentual) || 0,
       valor_fixo: parseFloat(cfgValorFixo) || 0,
     };
@@ -320,6 +322,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                 const existing = configs.find(c => c.user_id === v);
                 if (existing) {
                   setCfgTipo(existing.tipo_comissao);
+                  setCfgEvento(eventoDaConfig(existing));
                   setCfgPercentual(String(existing.percentual));
                   setCfgValorFixo(String(existing.valor_fixo));
                 }
@@ -342,6 +345,18 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Quando pagar</Label>
+              <Select value={cfgEvento} onValueChange={(v) => setCfgEvento(v as EventoPagamento)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(EVENTOS_PAGAMENTO).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">{EVENTOS_PAGAMENTO[cfgEvento].desc}</p>
             </div>
             {cfgTipo === 'valor_fixo' ? (
               <div><Label>Valor Fixo (R$)</Label><MoneyInput value={Number(cfgValorFixo) || 0} onValueChange={v => setCfgValorFixo(String(v))} /></div>
