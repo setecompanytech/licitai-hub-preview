@@ -134,7 +134,7 @@ export default function FinLotesAuditoria() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => navigate(`/financeiro?view=lancamentos&lote=${l.id}`)}
+                          onClick={() => navigate(`/financeiro/lancamentos?lote=${l.id}`)}
                         >
                           <ExternalLink className="w-4 h-4 mr-1" /> Ver
                         </Button>

@@ -64,19 +64,19 @@ type QuickAction = {
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-novo-lancamento', label: 'Novo lançamento', hint: 'Financeiro', icon: Plus, path: '/financeiro?view=lancamentos&new=1', keywords: 'criar adicionar receita despesa pagar receber' },
-  { id: 'qa-importar-ofx', label: 'Importar extrato OFX', hint: 'Financeiro', icon: Upload, path: '/financeiro?view=importar_ofx', keywords: 'banco extrato conciliacao upload' },
-  { id: 'qa-conciliar', label: 'Conciliação bancária', hint: 'Financeiro', icon: CheckCheck, path: '/financeiro?view=conciliacao', keywords: 'conciliar banco extrato match' },
-  { id: 'qa-emitir-nfe', label: 'Emitir NF-e', hint: 'Fiscal', icon: FileText, path: '/financeiro?view=emissor_nfe', keywords: 'nota fiscal emissao sefaz' },
-  { id: 'qa-cobranca-pix', label: 'Gerar cobrança PIX', hint: 'Fiscal', icon: QrCode, path: '/financeiro?view=pix_cobranca', keywords: 'pix qr code cobranca brcode' },
-  { id: 'qa-transferencia', label: 'Transferência entre contas', hint: 'Bancos', icon: ArrowRightLeft, path: '/financeiro?view=transferencia', keywords: 'mover saldo conta' },
-  { id: 'qa-nova-conta', label: 'Nova conta corrente', hint: 'Bancos', icon: Wallet, path: '/financeiro?view=contas&new=1', keywords: 'cadastrar banco conta corrente' },
-  { id: 'qa-baixa-lote', label: 'Baixa em lote', hint: 'Financeiro', icon: Sparkles, path: '/financeiro?view=baixa_lote', keywords: 'liquidar pagar receber multiplos' },
+  { id: 'qa-novo-lancamento', label: 'Novo lançamento', hint: 'Financeiro', icon: Plus, path: '/financeiro/lancamentos?new=1', keywords: 'criar adicionar receita despesa pagar receber' },
+  { id: 'qa-importar-ofx', label: 'Importar extrato OFX', hint: 'Financeiro', icon: Upload, path: '/financeiro/importar_ofx', keywords: 'banco extrato conciliacao upload' },
+  { id: 'qa-conciliar', label: 'Conciliação bancária', hint: 'Financeiro', icon: CheckCheck, path: '/financeiro/conciliacao', keywords: 'conciliar banco extrato match' },
+  { id: 'qa-emitir-nfe', label: 'Emitir NF-e', hint: 'Fiscal', icon: FileText, path: '/financeiro/emissor_nfe', keywords: 'nota fiscal emissao sefaz' },
+  { id: 'qa-cobranca-pix', label: 'Gerar cobrança PIX', hint: 'Fiscal', icon: QrCode, path: '/financeiro/pix_cobranca', keywords: 'pix qr code cobranca brcode' },
+  { id: 'qa-transferencia', label: 'Transferência entre contas', hint: 'Bancos', icon: ArrowRightLeft, path: '/financeiro/transferencia', keywords: 'mover saldo conta' },
+  { id: 'qa-nova-conta', label: 'Nova conta corrente', hint: 'Bancos', icon: Wallet, path: '/financeiro/contas?new=1', keywords: 'cadastrar banco conta corrente' },
+  { id: 'qa-baixa-lote', label: 'Baixa em lote', hint: 'Financeiro', icon: Sparkles, path: '/financeiro/baixa_lote', keywords: 'liquidar pagar receber multiplos' },
   { id: 'qa-buscar-edital', label: 'Buscar novo edital', hint: 'Monitoramento', icon: Search, path: '/monitoramento-editais', keywords: 'pncp licitacao busca instantanea' },
   { id: 'qa-novo-processo', label: 'Cadastrar edital manual', hint: 'Monitoramento', icon: Plus, path: '/monitoramento-editais?manual=1', keywords: 'cadastrar manual edital' },
   { id: 'qa-relatorio-gerencial', label: 'Relatório Gerencial', hint: 'Análises', icon: FileBarChart, path: '/?relatorio=1', keywords: 'pdf relatorio gerencial' },
-  { id: 'qa-fluxo-caixa', label: 'Ver Fluxo de Caixa', hint: 'Financeiro', icon: LineChart, path: '/financeiro?view=fluxo_caixa', keywords: 'fluxo caixa entradas saidas' },
-  { id: 'qa-dre', label: 'Ver DRE', hint: 'Financeiro', icon: FileBarChart, path: '/financeiro?view=dre', keywords: 'dre demonstrativo resultado' },
+  { id: 'qa-fluxo-caixa', label: 'Ver Fluxo de Caixa', hint: 'Financeiro', icon: LineChart, path: '/financeiro/fluxo_caixa', keywords: 'fluxo caixa entradas saidas' },
+  { id: 'qa-dre', label: 'Ver DRE', hint: 'Financeiro', icon: FileBarChart, path: '/financeiro/dre', keywords: 'dre demonstrativo resultado' },
 ];
 
 // Mapeia ícones do hub do Financeiro para o command palette global
@@ -87,7 +87,7 @@ const FIN_ENTRIES: FinEntry[] = HUB_ITEMS.map((i) => ({
   label: i.label,
   description: i.description,
   icon: i.icon,
-  path: `/financeiro?view=${i.id}`,
+  path: `/financeiro/${i.id}`,
   keywords: `financeiro ${i.group} ${i.label} ${i.description}`,
 }));
 

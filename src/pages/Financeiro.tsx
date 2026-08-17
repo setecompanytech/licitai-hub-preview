@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -113,24 +113,36 @@ const COMING_SOON: Record<string, { title: string; description: string }> = {
 
 export default function Financeiro() {
   const { empresaAtiva, loading } = useEmpresa();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const viewParam = searchParams.get("view");
-  const initialView = viewParam || (getResumoAutoOpen() ? "panorama" : null);
-  const [activeView, setActiveView] = useState<string | null>(initialView);
+  const [searchParams] = useSearchParams();
+  const { view: viewNaRota } = useParams<{ view?: string }>();
+  const navigate = useNavigate();
 
-  // Sync activeView <-> ?view= URL param (enables deep-link from global Ctrl+K)
-  useEffect(() => {
-    const v = searchParams.get("view");
-    if (v !== activeView) setActiveView(v);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  // A subtela é PÁGINA, então mora no caminho: /financeiro/demonstracoes.
+  // O `?lid=` fica na busca porque é contexto que atravessa módulos — o
+  // processo ativo continua vinculado ao sair do financeiro.
+  //
+  // `?view=` era o único lugar do sistema que punha subtela em parâmetro.
+  // Links antigos continuam funcionando: o efeito abaixo os traduz.
+  const viewAntigo = searchParams.get("view");
+  const activeView = viewNaRota ?? viewAntigo ?? (getResumoAutoOpen() ? "panorama" : null);
+
+  const busca = (() => {
+    const p = new URLSearchParams(searchParams);
+    p.delete("view");
+    const q = p.toString();
+    return q ? `?${q}` : "";
+  })();
 
   const navigateToView = (id: string | null) => {
-    setActiveView(id);
-    const next = new URLSearchParams(searchParams);
-    if (id) next.set("view", id); else next.delete("view");
-    setSearchParams(next, { replace: true });
+    navigate(id ? `/financeiro/${id}${busca}` : `/financeiro${busca}`);
   };
+
+  // Tradução de link antigo: `?view=x` vira `/financeiro/x`, com replace para
+  // não deixar a URL velha no histórico e virar um passo a desfazer.
+  useEffect(() => {
+    if (viewAntigo) navigate(`/financeiro/${viewAntigo}${busca}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewAntigo]);
 
   // Atalhos rápidos do FinResumoVisor disparam navegação programática
   useEffect(() => {

@@ -200,6 +200,9 @@ const App = () => (
               <Route path="/gestao-compras"   element={<PlanPages><GestaoCompras /></PlanPages>} />
               <Route path="/produtos"         element={<ProtectedPages><Produtos /></ProtectedPages>} />
               <Route path="/financeiro" element={<ProtectedPages><Financeiro /></ProtectedPages>} />
+              {/* Subtela no caminho: /financeiro/demonstracoes. Links com
+                  ?view= continuam válidos — a própria tela os traduz. */}
+              <Route path="/financeiro/:view" element={<ProtectedPages><Financeiro /></ProtectedPages>} />
               <Route path="/auditoria-bancos" element={<ProtectedPages><AuditoriaBancos /></ProtectedPages>} />
               <Route path="/equipe" element={<PlanPages><EquipeColaboradores /></PlanPages>} />
               <Route path="/equipe/permissoes" element={<PlanPages><EquipePermissoes /></PlanPages>} />
