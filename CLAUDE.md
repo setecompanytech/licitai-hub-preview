@@ -78,6 +78,13 @@ Regras que sustentam a fronteira:
 fiscal compartilhada vai em `financeiro_*`; artefato de precificação vai em `precificacao_*`.
 Não escrever na tabela `precificacao` (singular) — é legado morto, apesar de aparecer no `types.ts`.
 
+**Versão publicada** — `src/lib/versao.ts` carrega um carimbo (`AAAA-MM-DD.N`) que
+deve ser incrementado a cada leva de mudanças enviada ao Lovable.
+`bash scripts/verificar-publicacao.sh` compara o carimbo do repo com o que o
+domínio serve e diz se o Publish já saiu. Sem ele, só dá para conferir mudança
+que cria texto novo — correção de navegação ou de parâmetro de URL não deixa
+assinatura, e ficava sem verificação.
+
 **Segredos** — `.env` é versionado neste repo, então só pode conter chaves `anon`/`publishable`.
 Chave `service_role`, senha ou token de API paga nunca entram em commit.
 
