@@ -166,7 +166,6 @@ export default function GestaoContratos() {
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
       empresa_id: empresaAtiva!.id,
-      vendedor_user_id: form.vendedor_user_id || null,
       tipo_documento: form.tipo_documento,
       tipo_estrutura: form.tipo_estrutura,
       ata_srp_id: form.tipo_documento === 'contrato' && form.ata_srp_id ? form.ata_srp_id : null,
@@ -182,6 +181,10 @@ export default function GestaoContratos() {
       fiscal_email: form.fiscal_email || null, fiscal_telefone: form.fiscal_telefone || null,
       observacoes: form.observacoes || null,
       licitacao_id: form.licitacao_id || null,
+      // Contrato cadastrado por quem não é administrador nasce no nome de quem
+      // cadastrou — a alternativa seria nascer sem dono e ficar invisível para
+      // o próprio autor, que abre a tela na carteira dele.
+      vendedor_user_id: isAdmin ? (form.vendedor_user_id || null) : (user?.id ?? null),
     } as any).select('id').single();
     setSaving(false);
     if (error) { console.error('Erro ao salvar:', error); toast.error('Erro ao salvar', { description: error.message }); return; }
@@ -367,6 +370,17 @@ export default function GestaoContratos() {
   // Administrador abre na visão do negócio inteiro; quem opera abre na própria
   // carteira. Nos dois casos o outro recorte fica a um clique de distância.
   const escopo: EscopoResponsavel = escopoFilter ?? (isAdmin ? 'todos' : 'meus');
+  // Quem não é administrador lê o responsável, não o escolhe: trocar o vendedor
+  // move meta e bonificação de uma pessoa para outra.
+  const nomeDoProprio = nomeExibido(
+    (membrosEquipe ?? []).find((m) => m.user_id === user?.id) as never,
+  );
+  const nomeDoVendedor = (c: { vendedor_user_id?: string | null }) => {
+    const id = c.vendedor_user_id;
+    if (!id) return null;
+    const m = (membrosEquipe ?? []).find((x) => x.user_id === id);
+    return m ? nomeExibido(m as never) : 'Colaborador';
+  };
   // Os cartões de topo seguem o escopo (senão o total contradiz a lista), mas
   // ignoram busca e status, que são recortes de consulta, não de carteira.
   const doEscopo = noEscopo(contratos as never[], escopo, user?.id) as typeof contratos;
@@ -437,18 +451,22 @@ export default function GestaoContratos() {
               <div><Label>Órgão {isAtaForm ? 'Gerenciador' : 'Contratante'} *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
               <div>
                 <Label>Vendedor responsável</Label>
-                <Select
-                  value={form.vendedor_user_id || 'nenhum'}
-                  onValueChange={(v) => setForm(f => ({ ...f, vendedor_user_id: v === 'nenhum' ? '' : v }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nenhum">Não atribuído</SelectItem>
-                    {(membrosEquipe ?? []).map((m) => (
-                      <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isAdmin ? (
+                  <Select
+                    value={form.vendedor_user_id || 'nenhum'}
+                    onValueChange={(v) => setForm(f => ({ ...f, vendedor_user_id: v === 'nenhum' ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Não atribuído</SelectItem>
+                      {(membrosEquipe ?? []).map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={nomeDoProprio} disabled className="bg-muted/40" />
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Conta o contrato nas metas dessa pessoa e define quem recebe a bonificação.
                 </p>
@@ -674,20 +692,24 @@ export default function GestaoContratos() {
                           contrato. */}
                       <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <UserIcon className="w-3 h-3" />
-                        <Select
-                          value={(c as { vendedor_user_id?: string | null }).vendedor_user_id || 'nenhum'}
-                          onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
-                        >
-                          <SelectTrigger className="h-6 text-xs border-0 bg-transparent px-1 gap-1 w-auto">
-                            <SelectValue placeholder="Sem vendedor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="nenhum">Sem vendedor</SelectItem>
-                            {(membrosEquipe ?? []).map((m) => (
-                              <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isAdmin ? (
+                          <Select
+                            value={(c as { vendedor_user_id?: string | null }).vendedor_user_id || 'nenhum'}
+                            onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
+                          >
+                            <SelectTrigger className="h-6 text-xs border-0 bg-transparent px-1 gap-1 w-auto">
+                              <SelectValue placeholder="Sem vendedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nenhum">Sem vendedor</SelectItem>
+                              {(membrosEquipe ?? []).map((m) => (
+                                <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span>{nomeDoVendedor(c) ?? 'Sem vendedor'}</span>
+                        )}
                       </span>
                     </div>
                     <div className="mt-2">
