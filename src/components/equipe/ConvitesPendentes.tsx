@@ -44,7 +44,7 @@ type Convite = {
  * Antes não existia: o admin criava o convite, o e-mail saía, e não havia como
  * recuperar o link nem cancelar. Como a criação bloqueia enquanto houver um
  * convite válido para o setor, perder o e-mail deixava o admin preso até o
- * convite expirar — sete dias.
+ * convite expirar — cinco minutos.
  *
  * O link é o mesmo para todo o setor: quantos colaboradores quiserem criam o
  * próprio acesso com ele, cada um escolhendo o seu login.
@@ -53,6 +53,13 @@ export default function ConvitesPendentes() {
   const { empresaAtiva } = useEmpresa();
   const [convites, setConvites] = useState<Convite[]>([]);
   const [carregando, setCarregando] = useState(true);
+  // Com 5 minutos de validade, um rótulo estático mentiria em segundos: o
+  // relógio avança de 10 em 10s para o restante ser sempre verdadeiro na tela.
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [aCancelar, setACancelar] = useState<Convite | null>(null);
   const [cancelando, setCancelando] = useState(false);
@@ -96,8 +103,23 @@ export default function ConvitesPendentes() {
     carregar();
   };
 
-  const diasRestantes = (iso: string) =>
-    Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
+  /** O link do setor vale 5 minutos: contar em dias mostrava "1 dia" para um
+   *  convite que morreria em segundos. Aqui o restante é dito na unidade certa. */
+  const tempoRestante = (iso: string) => {
+    const ms = new Date(iso).getTime() - agora;
+    if (ms <= 0) return { texto: 'expirado', urgente: true, vivo: false };
+    const min = Math.floor(ms / 60_000);
+    if (min >= 1440) {
+      const d = Math.ceil(min / 1440);
+      return { texto: `${d} ${d === 1 ? 'dia' : 'dias'}`, urgente: false, vivo: true };
+    }
+    if (min >= 60) {
+      const h = Math.floor(min / 60);
+      return { texto: `${h}h${String(min % 60).padStart(2, '0')}`, urgente: false, vivo: true };
+    }
+    if (min >= 1) return { texto: `${min} min`, urgente: min <= 2, vivo: true };
+    return { texto: `${Math.ceil(ms / 1000)}s`, urgente: true, vivo: true };
+  };
 
   if (carregando) {
     return (
@@ -127,7 +149,7 @@ export default function ConvitesPendentes() {
 
         <CardContent className="p-0 divide-y">
           {convites.map((c) => {
-            const dias = diasRestantes(c.expires_at);
+            const restante = tempoRestante(c.expires_at);
             const usos = c.usos ?? 0;
             return (
               <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
@@ -148,11 +170,11 @@ export default function ConvitesPendentes() {
                     {c.max_usos !== null && ` de ${c.max_usos}`}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-1 ${dias <= 2 ? 'text-warning' : ''}`}
-                    title={`Expira em ${new Date(c.expires_at).toLocaleDateString('pt-BR')}`}
+                    className={`inline-flex items-center gap-1 ${restante.urgente ? 'text-warning' : ''}`}
+                    title={`Expira em ${new Date(c.expires_at).toLocaleString('pt-BR')}`}
                   >
                     <Clock className="w-3.5 h-3.5" />
-                    {dias === 0 ? 'expira hoje' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`}
+                    {restante.vivo ? restante.texto : 'expirado'}
                   </span>
                 </div>
 

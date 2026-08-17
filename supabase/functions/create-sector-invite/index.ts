@@ -140,7 +140,13 @@ Deno.serve(async (req) => {
     // de "convidar mais alguem" e atendida sem criar convite duplicado.
     const reaproveitado = !!aindaUtil
     const inviteToken = aindaUtil?.token ?? gerarToken()
-    const expiresAt = aindaUtil?.expires_at ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Janela curta por decisao do produto: o link do setor da acesso a criar
+    // conta na empresa, e um endereco compartilhado costuma ter varios leitores.
+    // Cinco minutos significam que o convite so serve a quem esta esperando por
+    // ele. Passou disso, o admin clica em "Enviar convite" de novo e um link
+    // novo sai na hora — o reaproveitamento so alcanca links ainda vigentes.
+    const VALIDADE_MS = 5 * 60 * 1000
+    const expiresAt = aindaUtil?.expires_at ?? new Date(Date.now() + VALIDADE_MS).toISOString()
 
     const { data: novoConvite, error: insertError } = aindaUtil
       ? { data: { id: aindaUtil.id, token: aindaUtil.token }, error: null }
@@ -191,7 +197,8 @@ Deno.serve(async (req) => {
           </p>
           <p style="margin:0 0 24px;color:#6b7280;font-size:14px">
             Clique no botão abaixo para criar sua conta e aceitar o convite.
-            Este link expira em <strong>7 dias</strong>.
+            <strong>Atenção: este link vale por 5 minutos.</strong> Se expirar,
+            peça ao administrador para enviar outro.
           </p>
           <div style="text-align:center;margin:24px 0">
             <a href="${acceptUrl}" style="display:inline-block;background:#b45309;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600">
