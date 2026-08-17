@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ehPercentual, rotuloDoValor } from '@/lib/equipe/bonificacao';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -149,7 +150,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
 
     const minhaCfg = configs.find(c => c.user_id === user.id);
     const percentual = minhaCfg?.percentual || 0;
-    const valorComissao = minhaCfg?.tipo_comissao === 'valor_fixo'
+    const valorComissao = !ehPercentual(minhaCfg?.tipo_comissao)
       ? (minhaCfg?.valor_fixo || 0)
       : valorBase * (percentual / 100);
 
@@ -243,7 +244,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Minha Bonificação</p>
-          <p className="text-base font-bold">{minhaCfg ? (minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`) : '—'}</p>
+          <p className="text-base font-bold">{minhaCfg ? rotuloDoValor(minhaCfg.tipo_comissao, minhaCfg.percentual, minhaCfg.valor_fixo, fmt) : '—'}</p>
         </Card>
       </div>
 
@@ -364,7 +365,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
           <div className="space-y-3">
             {minhaCfg && (
               <div className="bg-muted rounded-lg p-3 text-xs">
-                <p className="font-medium">Sua bonificação: <span className="font-semibold text-foreground">{minhaCfg.tipo_comissao === 'valor_fixo' ? fmt(minhaCfg.valor_fixo) : `${minhaCfg.percentual}%`}</span></p>
+                <p className="font-medium">Sua bonificação: <span className="font-semibold text-foreground">{rotuloDoValor(minhaCfg.tipo_comissao, minhaCfg.percentual, minhaCfg.valor_fixo, fmt)}</span></p>
                 <p className="text-muted-foreground">Tipo: {TIPO_COMISSAO[minhaCfg.tipo_comissao]}</p>
               </div>
             )}
@@ -400,7 +401,7 @@ export default function ContratoComissoes({ contratoId }: { contratoId: string }
             {minhaCfg && solValorBase && (
               <div className="bg-success/10 rounded-lg p-3 text-sm">
                 <p className="font-medium">Valor estimado da bonificação: <span className="text-success font-bold">
-                  {fmt(minhaCfg.tipo_comissao === 'valor_fixo'
+                  {fmt(!ehPercentual(minhaCfg.tipo_comissao)
                     ? minhaCfg.valor_fixo
                     : (parseFloat(solValorBase) || 0) * (minhaCfg.percentual / 100)
                   )}

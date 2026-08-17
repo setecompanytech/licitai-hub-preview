@@ -720,11 +720,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     const percentual = (comConfig as any)?.percentual || 0;
     const valorFixo = (comConfig as any)?.valor_fixo || 0;
-    const tipoComissao = (comConfig as any)?.tipo_comissao || 'percentual';
+    const tipoComissao = (comConfig as any)?.tipo_comissao || 'percentual_nf_quitada';
 
-    const valorComissao = tipoComissao === 'percentual'
-      ? valorPago * (percentual / 100)
-      : valorFixo;
+    // O tipo salvo é 'percentual_contrato' | 'percentual_lucro' |
+    // 'percentual_faturamento' | 'percentual_nf_quitada' | 'valor_fixo' |
+    // 'nota_fiscal'. A comparação anterior era com a string 'percentual', que
+    // NUNCA bate com nenhum deles — toda bonificação automática saía pelo valor
+    // fixo, mesmo configurada em percentual (e pagava 0 a quem não tinha fixo).
+    const ehPercentual = tipoComissao.startsWith('percentual');
+
+    // Base do percentual: 'faturamento' usa o valor da nota emitida; os demais
+    // percentuais usam o que de fato entrou. Diferente quando há pagamento
+    // parcial, e a distinção é o que o operador escolheu ao configurar.
+    const valorNota = Number(nfDialog?.valor_total) || valorPago;
+    const base = tipoComissao === 'percentual_faturamento' ? valorNota : valorPago;
+
+    const valorComissao = ehPercentual ? base * (percentual / 100) : valorFixo;
 
     // 4. Criar lançamento de bonificação automático
     const { error: comErr } = await supabase.from('comissoes_lancamentos' as any).insert({
@@ -732,13 +743,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       user_id: vendedorId,
       solicitado_por: user?.id,
       tipo: 'nota_fiscal',
-      valor_base: valorPago,
-      percentual_comissao: tipoComissao === 'percentual' ? percentual : 0,
+      valor_base: base,
+      percentual_comissao: ehPercentual ? percentual : 0,
       valor_comissao: valorComissao,
       nota_fiscal: nfNumero,
       status: 'pendente',
       contrato_pedido_id: nfDialog.id,
-      observacoes: `Bonificação auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Bonificação (${tipoComissao === 'percentual' ? percentual + '%' : 'fixo'}): ${fmt(valorComissao)}.`,
+      observacoes: `Bonificação auto-calculada pelo financeiro. NF ${nfNumero} quitada em ${nfData}. Valor pago: ${fmt(valorPago)}. Bonificação (${ehPercentual ? percentual + '% sobre ' + fmt(base) : 'valor fixo'}): ${fmt(valorComissao)}.`,
     } as any);
 
     if (comErr) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { TIPOS_BONIFICACAO, ehPercentual, rotuloDoValor } from '@/lib/equipe/bonificacao';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,12 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { DollarSign, Plus, Settings, TrendingUp, Eye, EyeOff, Receipt } from 'lucide-react';
 
-const TIPO_COMISSAO: Record<string, { label: string; desc: string }> = {
-  percentual_contrato: { label: '% sobre Contrato', desc: 'Percentual sobre o valor total do contrato' },
-  percentual_lucro: { label: '% sobre Lucro', desc: 'Percentual sobre o lucro líquido' },
-  valor_fixo: { label: 'Valor Fixo', desc: 'Valor fixo por licitação ganha' },
-  nota_fiscal: { label: 'Por Nota Fiscal', desc: 'Bonificação por nota fiscal quitada' },
-};
+const TIPO_COMISSAO = TIPOS_BONIFICACAO as Record<string, { label: string; desc: string }>;
 
 const STATUS_LANCAMENTO: Record<string, { label: string; color: string }> = {
   pendente: { label: 'Pendente', color: 'bg-warning/15 text-warning' },
@@ -141,7 +137,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     const valorBase = parseFloat(lancValorBase);
     const desconto = parseFloat(lancDesconto) || 0;
     const percentual = cfg?.percentual || 0;
-    const valorComissao = cfg?.tipo_comissao === 'valor_fixo'
+    const valorComissao = !ehPercentual(cfg?.tipo_comissao)
       ? cfg.valor_fixo
       : valorBase * (1 - desconto / 100) * (percentual / 100);
 
@@ -249,7 +245,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   <div className="flex items-center gap-2 mt-1">
                     {r.cfg && <Badge className="text-xs bg-muted text-muted-foreground">{TIPO_COMISSAO[r.cfg.tipo_comissao]?.label}</Badge>}
                     {r.cfg && <span className="text-xs text-muted-foreground">
-                      {r.cfg.tipo_comissao === 'valor_fixo' ? fmt(r.cfg.valor_fixo) : `${r.cfg.percentual}%`}
+                      {rotuloDoValor(r.cfg.tipo_comissao, r.cfg.percentual, r.cfg.valor_fixo, fmt)}
                     </span>}
                     {r.cfg?.visibilidade_publica ? <Eye className="w-3 h-3 text-muted-foreground" /> : <EyeOff className="w-3 h-3 text-muted-foreground" />}
                   </div>
@@ -328,7 +324,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <span>{TIPO_COMISSAO[c.tipo_comissao]?.label}</span>
                   <span>•</span>
-                  <span>{c.tipo_comissao === 'valor_fixo' ? fmt(c.valor_fixo) : `${c.percentual}%`}</span>
+                  <span>{rotuloDoValor(c.tipo_comissao, c.percentual, c.valor_fixo, fmt)}</span>
                   <span>•</span>
                   <span>{c.visibilidade_publica ? 'Visível p/ equipe' : 'Somente admin'}</span>
                 </div>
@@ -448,7 +444,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                     if (!cfg) return 'R$ 0,00';
                     const base = parseFloat(lancValorBase) || 0;
                     const desc = parseFloat(lancDesconto) || 0;
-                    const val = cfg.tipo_comissao === 'valor_fixo' ? cfg.valor_fixo : base * (1 - desc / 100) * (cfg.percentual / 100);
+                    const val = !ehPercentual(cfg.tipo_comissao) ? cfg.valor_fixo : base * (1 - desc / 100) * (cfg.percentual / 100);
                     return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                   })()}
                 </p>
