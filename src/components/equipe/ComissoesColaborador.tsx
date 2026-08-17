@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -64,17 +65,6 @@ type Membro = {
   login_individual: string | null;
 };
 
-/** Nome que distingue a pessoa: sem isto, três colaboradores do mesmo setor
- *  apareciam como "Setor Comercial" e não havia como escolher entre eles. */
-const nomeExibido = (m: Membro | undefined): string => {
-  if (!m) return 'Desconhecido';
-  const pessoa = m.nome_individual?.trim();
-  const login = m.login_individual?.trim();
-  if (pessoa && login) return `${pessoa} (${login})`;
-  if (pessoa) return pessoa;
-  if (login) return login;
-  return m.nome || m.email || 'Desconhecido';
-};
 
 export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId: string; isAdmin: boolean }) {
   const { user } = useAuth();

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nomeExibido, iniciaisDe, type MembroExibivel } from '@/lib/equipe/nomeExibido';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -398,11 +399,11 @@ export default function EquipeColaboradores() {
                           {/* Avatar é identidade, não ação: sai do laranja da marca
                               para o neutro elevado (regra da auditoria). */}
                           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-sm flex-shrink-0">
-                            {((m as any).nome || (m as any).email || '?').slice(0, 2).toUpperCase()}
+                            {iniciaisDe(m as MembroExibivel)}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm truncate">{(m as any).nome || (m as any).email || 'Colaborador'}</span>
+                              <span className="font-semibold text-sm truncate">{nomeExibido(m as MembroExibivel)}</span>
                               {isCurrentUser && <Badge variant="outline" className="text-xs">Você</Badge>}
                               <Badge className={`text-xs ${eq.color}`}>{eq.label}</Badge>
                               <Badge variant="secondary" className="text-xs">{m.papel}</Badge>
@@ -468,7 +469,7 @@ export default function EquipeColaboradores() {
                               </Button>
                             )}
                             {!isCurrentUser && (
-                              <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, (m as any).nome || 'Colaborador')} title="Remover colaborador">
+                              <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, nomeExibido(m as MembroExibivel))} title="Remover colaborador">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
@@ -665,7 +666,7 @@ export default function EquipeColaboradores() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-muted-foreground" />
-                Praça de {pracaDialog?.nome || pracaDialog?.email || 'Colaborador'}
+                Praça de {nomeExibido(pracaDialog as MembroExibivel)}
               </DialogTitle>
             </DialogHeader>
             <p className="text-base text-muted-foreground">
@@ -714,7 +715,7 @@ export default function EquipeColaboradores() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-muted-foreground" />
-                Permissões de {(permDialog as any)?.nome || 'Colaborador'}
+                Permissões de {nomeExibido(permDialog as MembroExibivel)}
               </DialogTitle>
             </DialogHeader>
             <p className="text-xs text-muted-foreground mb-2">

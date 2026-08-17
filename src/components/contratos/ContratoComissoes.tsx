@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -51,15 +52,6 @@ type Membro = {
   login_individual: string | null;
 };
 
-/** Contas de convite por setor compartilham o mesmo `nome` ("Setor
- *  Comercial"); quem distingue a pessoa é o nome/login individual. */
-const nomeExibido = (m: Membro | undefined): string => {
-  if (!m) return 'Desconhecido';
-  const pessoa = m.nome_individual?.trim();
-  const login = m.login_individual?.trim();
-  if (pessoa && login) return `${pessoa} (${login})`;
-  return pessoa || login || m.nome || m.email || 'Desconhecido';
-};
 type Config = {
   id: string; user_id: string; tipo_comissao: string; percentual: number;
   valor_fixo: number; visibilidade_publica: boolean; ativo: boolean;
