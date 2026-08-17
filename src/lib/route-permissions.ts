@@ -8,7 +8,30 @@ import type { Setor } from '@/hooks/useMembroPermissoes';
  * - 'geral' aparece quando o item está disponível para qualquer setor (ex.: dashboard, suporte).
  * - Admin global e ADMIN da empresa ignoram todos os bloqueios no hook de permissões.
  * - Operadores e visualizadores seguem o setor configurado.
+ * - Rotas de ADMINISTRAÇÃO (abaixo) não dependem de setor: são do administrador
+ *   da empresa, qualquer que seja o setor da pessoa.
  */
+
+/**
+ * Rotas que administram a EMPRESA, não o trabalho do dia.
+ *
+ * Estavam liberadas para todos os setores, então um operador via — e abria —
+ * cadastro de empresas, gestão de equipe, plano/assinatura e chaves de
+ * integração. O banco impedia o estrago (RLS), mas a navegação oferecia o que
+ * a pessoa não deve operar: ela entrava, tentava e tomava um erro sem
+ * explicação. Mesmo critério já aplicado às abas do Robô de Lances.
+ */
+export const ROTAS_ADMINISTRATIVAS: string[] = [
+  '/empresas',
+  '/equipe',
+  '/equipe/permissoes',
+  '/configuracoes',
+  '/configuracoes/alertas',
+  '/api-integracao',
+];
+
+export const ehRotaAdministrativa = (path: string): boolean =>
+  ROTAS_ADMINISTRATIVAS.some((r) => path === r || path.startsWith(`${r}?`) || path.startsWith(`${r}/`));
 export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   // --- Painel (todos veem)
   '/dashboard': ['geral', 'financeiro', 'comercial', 'logistica', 'juridico', 'contabil', 'licitacoes', 'documentos'],

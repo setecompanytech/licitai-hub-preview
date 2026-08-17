@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Download, Bell, Target, Archive, Bot, Search, Scale, BookOpen,
-  Kanban, Shield, Building2, MessageSquare, Crosshair, TrendingUp,
-  Users, DollarSign, ClipboardCheck, HeadphonesIcon, FileText,
-  BarChart3, CalendarDays, ListChecks, Calculator, Workflow, Plug,
-  FileBarChart, Sparkles,
+  Kanban, Shield, MessageSquare, Crosshair, TrendingUp,
+  Users, DollarSign, ClipboardCheck, FileText,
+  BarChart3, CalendarDays, ListChecks, Calculator, Workflow,   FileBarChart, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuickItem {
@@ -69,23 +69,23 @@ const groups: QuickGroup[] = [
       { icon: MessageSquare, label: 'WhatsApp CRM', path: '/whatsapp-crm' },
     ],
   },
-  {
-    title: 'Configuração',
-    items: [
-      { icon: Building2, label: 'Empresas', path: '/empresas' },
-      { icon: Users, label: 'Equipe', path: '/equipe' },
-      { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
-      { icon: Plug, label: 'API & Integração', path: '/api-integracao' },
-    ],
-  },
 ];
 
 export default function QuickAccessGrid() {
   const navigate = useNavigate();
+  const { canAccessRoute } = useMembroPermissoes();
+
+  // O Painel oferecia TODOS os atalhos a qualquer pessoa, enquanto o menu
+  // superior já filtrava por permissão — duas portas para o mesmo lugar com
+  // regras diferentes. Aqui passa a valer a mesma regra, e grupo que esvazia
+  // some em vez de virar cartão vazio.
+  const gruposVisiveis = groups
+    .map((g) => ({ ...g, items: g.items.filter((it) => canAccessRoute(it.path)) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-      {groups.map((group) => (
+      {gruposVisiveis.map((group) => (
         <div
           key={group.title}
           className={cn(

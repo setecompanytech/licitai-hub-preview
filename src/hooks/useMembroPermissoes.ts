@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { isSectorAllowedForRoute } from '@/lib/route-permissions';
+import { isSectorAllowedForRoute, ehRotaAdministrativa } from '@/lib/route-permissions';
 
 const withTimeoutSignal = (ms = 6000) => {
   const controller = new AbortController();
@@ -133,6 +133,8 @@ export function useMembroPermissoes() {
    */
   const canAccessRoute = (path: string): boolean => {
     if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
+    // Administração da empresa é do administrador — setor não abre essa porta.
+    if (ehRotaAdministrativa(path)) return false;
     if (!membro) return false;
     // Setor 'geral' (não classificado) — limitar a rotas marcadas como 'geral'.
     return isSectorAllowedForRoute(membro.setor, path);
