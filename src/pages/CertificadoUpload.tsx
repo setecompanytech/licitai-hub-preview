@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,6 +127,7 @@ export default function CertificadoUpload() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
+        <BotaoVoltar />
         {/* Header */}
         <div className="text-center mb-8">
           <PraefectusLogo className="h-10 mx-auto mb-4" />

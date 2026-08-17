@@ -12,6 +12,7 @@ import AureliaChat from '@/components/aurelia/AureliaChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import MaintenanceBanner from '@/components/layout/MaintenanceBanner';
+import BotaoVoltar from './BotaoVoltar';
 import ExportarDados from '@/components/export/ExportarDados';
 import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 
@@ -212,6 +213,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       <main className="max-w-[1440px] mx-auto px-3 py-3 sm:p-6">
         <MaintenanceBanner showModal />
         <AlertaVencimentoBanner />
+        {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
+        <BotaoVoltar />
         {children}
       </main>
 

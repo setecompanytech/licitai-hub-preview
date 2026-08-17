@@ -1,3 +1,4 @@
+import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,6 +154,7 @@ export default function PainelDistribuicao() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      <BotaoVoltar />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Painel de Distribuição</h1>

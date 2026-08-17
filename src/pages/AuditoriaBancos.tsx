@@ -1,3 +1,4 @@
+import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -71,6 +72,7 @@ export default function AuditoriaBancos() {
   return (
     <div className="min-h-screen bg-background p-6 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
+        <BotaoVoltar />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

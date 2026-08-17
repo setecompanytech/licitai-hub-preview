@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
@@ -82,11 +81,6 @@ export default function GestaoContratos() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { isAdmin } = usePapelEmpresa();
-  const navigate = useNavigate();
-  const location = useLocation();
-  // location.key === 'default' significa primeira entrada da pilha: não há para
-  // onde voltar, e navigate(-1) sairia do app.
-  const temHistorico = location.key !== 'default';
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -432,14 +426,6 @@ export default function GestaoContratos() {
     <AppLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mb-2 -ml-2"
-            onClick={() => (temHistorico ? navigate(-1) : navigate('/painel'))}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
-          </Button>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Contratos e ATAs SRP</h1>
           <p className="text-sm text-muted-foreground mt-1">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
         </div>

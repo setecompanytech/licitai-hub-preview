@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RegistroDeRota from "@/components/layout/RegistroDeRota";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { PropostaCartProvider } from "@/contexts/PropostaCartContext";
@@ -132,6 +133,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <RegistroDeRota />
         <AuthProvider>
           <EmpresaProvider>
           <PropostaCartProvider>
