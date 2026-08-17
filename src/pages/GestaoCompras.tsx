@@ -933,7 +933,15 @@ export default function GestaoCompras() {
           />
         </div>
       ) : (
-        <Tabs value={mainTab} onValueChange={setMainTab}>
+        <Tabs
+          value={mainTab}
+          onValueChange={(v) => {
+            setMainTab(v);
+            // Rede de segurança: mesmo que alguma alteração escape do aviso,
+            // entrar na aba de Estoque busca os produtos de novo.
+            if (v === 'estoque' || v === 'produtos') void loadAll();
+          }}
+        >
           <TabsList className="mb-4">
             <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Pedidos</TabsTrigger>
             <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
@@ -945,7 +953,7 @@ export default function GestaoCompras() {
 
           {/* ══ ABA PRODUTOS ══ */}
           <TabsContent value="produtos">
-            <ProdutosOmie />
+            <ProdutosOmie aoMudar={loadAll} />
           </TabsContent>
 
           {/* ══ ABA PEDIDOS ══ */}

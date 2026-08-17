@@ -198,7 +198,14 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-export default function ProdutosOmie() {
+/**
+ * @param aoMudar  Avisa a tela mãe que a lista de produtos mudou.
+ *
+ * Sem isso, cadastrar um produto aqui não aparecia na aba Estoque: as duas
+ * carregam `produtos` em estados separados, e a de Estoque só se atualizava se
+ * a pessoa recarregasse a página.
+ */
+export default function ProdutosOmie({ aoMudar }: { aoMudar?: () => void } = {}) {
   const { empresaAtiva } = useEmpresa();
   const { data: todasPessoas = [] } = usePessoas();
   const fornecedoresDisp = todasPessoas.filter(p => p.tipo === 'fornecedor' || p.tipo === 'ambos');
@@ -321,6 +328,7 @@ export default function ProdutosOmie() {
 
     setSaving(false);
     toast.success(editingId ? 'Produto atualizado' : 'Produto cadastrado');
+    aoMudar?.();
     await loadProdutos();
     closeForm();
   }
@@ -329,6 +337,7 @@ export default function ProdutosOmie() {
     const { error } = await supabase.from('produtos').delete().eq('id', id);
     if (error) { toast.error('Erro ao excluir'); return; }
     toast.success('Produto excluído');
+    aoMudar?.();
     if (selected === id) setSelected(null);
     await loadProdutos();
   }
@@ -339,6 +348,7 @@ export default function ProdutosOmie() {
     const { error } = await supabase.from('produtos').update({ ativo: !p.ativo } as never).eq('id', id);
     if (error) { toast.error('Erro ao atualizar status'); return; }
     toast.success(p.ativo ? 'Produto inativado' : 'Produto reativado');
+    aoMudar?.();
     await loadProdutos();
   }
 
