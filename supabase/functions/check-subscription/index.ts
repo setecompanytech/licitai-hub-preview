@@ -15,6 +15,53 @@ const logStep = (step: string, details?: any) => {
 
 const ENTERPRISE_PRODUCT_ID = "prod_UFFzoFGvapTwRU";
 
+/** Espelho de src/data/stripe-config.ts — assinatura do banco vira plano no front. */
+const PRODUCT_POR_SLUG: Record<string, string> = {
+  basico: "prod_UFFzXlzGK8OfWy",
+  profissional: "prod_UFFziPdCfP3rTw",
+  enterprise: ENTERPRISE_PRODUCT_ID,
+};
+
+/**
+ * Assinatura registrada no banco — teste ou liberação manual — para a empresa
+ * de que a pessoa participa. É a fonte que faltava: `assinaturas` existia mas
+ * nenhuma decisão de acesso a consultava, então criar um teste ali não teria
+ * efeito nenhum.
+ */
+const assinaturaDoBanco = async (adminClient: any, userId: string) => {
+  const { data: membros } = await adminClient
+    .from("empresa_membros").select("empresa_id").eq("user_id", userId);
+  const empresaIds = (membros ?? []).map((m: any) => m.empresa_id);
+  if (empresaIds.length === 0) return null;
+
+  const { data: assinaturas } = await adminClient
+    .from("assinaturas")
+    .select("status, data_fim, planos(slug, nome)")
+    .in("empresa_id", empresaIds)
+    .in("status", ["trial", "ativa"]);
+
+  const agora = Date.now();
+  const vigentes = (assinaturas ?? []).filter(
+    (a: any) => !a.data_fim || new Date(a.data_fim).getTime() > agora,
+  );
+  if (vigentes.length === 0) return null;
+
+  // Participando de mais de uma empresa, vale o maior plano vigente.
+  const ordem = ["basico", "profissional", "enterprise"];
+  vigentes.sort((a: any, b: any) =>
+    ordem.indexOf(b.planos?.slug ?? "") - ordem.indexOf(a.planos?.slug ?? ""));
+
+  const melhor = vigentes[0];
+  const productId = PRODUCT_POR_SLUG[melhor.planos?.slug ?? ""];
+  if (!productId) return null;
+
+  return {
+    productId,
+    subscriptionEnd: melhor.data_fim ?? null,
+    status: melhor.status as string,
+  };
+};
+
 const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
   let timeoutId: number | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -116,15 +163,35 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const [{ data: systemRoles }, { data: adminMembership }] = await Promise.all([
-      adminClient.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1),
-      adminClient.from("empresa_membros").select("empresa_id").eq("user_id", user.id).eq("papel", "admin").limit(1),
-    ]);
+    // Bypass só para o administrador DO SISTEMA (operação do Praefectus).
+    //
+    // Antes, `empresa_membros.papel = 'admin'` também liberava tudo — e como
+    // quem cria a própria empresa vira admin dela, o bloqueio de plano nunca
+    // alcançava justamente quem assinaria. Seis empresas usavam sem assinatura
+    // nenhuma. O acesso do cliente agora sai da assinatura (teste ou paga).
+    const { data: systemRoles } = await adminClient
+      .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").limit(1);
 
-    if ((systemRoles?.length ?? 0) > 0 || (adminMembership?.length ?? 0) > 0) {
-      logStep("Admin bypass granted", { userId: user.id, systemAdmin: (systemRoles?.length ?? 0) > 0, empresaAdmin: (adminMembership?.length ?? 0) > 0 });
+    if ((systemRoles?.length ?? 0) > 0) {
+      logStep("Admin bypass granted", { userId: user.id, systemAdmin: true });
       return new Response(
         JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "admin_bypass" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Assinatura do banco primeiro: período de teste e liberação manual não
+    // existem no Stripe, e são hoje o caminho normal de quem acabou de entrar.
+    const doBanco = await assinaturaDoBanco(adminClient, user.id);
+    if (doBanco) {
+      logStep("Access from database subscription", doBanco);
+      return new Response(
+        JSON.stringify({
+          subscribed: true,
+          product_id: doBanco.productId,
+          subscription_end: doBanco.subscriptionEnd,
+          inherited_from: doBanco.status === "trial" ? "trial" : "assinatura_registrada",
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
@@ -169,12 +236,13 @@ serve(async (req) => {
           // bypass de administrador (sem assinatura Stripe nenhuma) — e, nesse
           // caso, a herança por Stripe não achava nada e o colaborador era
           // barrado por um plano que a empresa, na prática, já tem.
-          const [{ data: ownerSystemRole }, { data: ownerAdminMembership }] = await Promise.all([
-            adminClient.from("user_roles").select("role").eq("user_id", empresa.created_by).eq("role", "admin").limit(1),
-            adminClient.from("empresa_membros").select("empresa_id").eq("user_id", empresa.created_by).eq("papel", "admin").limit(1),
-          ]);
+          // Mesma correção: só o administrador do sistema propaga passe livre.
+          // Herdar do dono por ele ser admin da própria empresa era o mesmo
+          // buraco, uma casa adiante.
+          const { data: ownerSystemRole } = await adminClient
+            .from("user_roles").select("role").eq("user_id", empresa.created_by).eq("role", "admin").limit(1);
 
-          if ((ownerSystemRole?.length ?? 0) > 0 || (ownerAdminMembership?.length ?? 0) > 0) {
+          if ((ownerSystemRole?.length ?? 0) > 0) {
             logStep("Inheriting access from empresa owner bypass", { empresa_id: membership.empresa_id, owner: empresa.created_by });
             return new Response(
               JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "empresa_owner_bypass" }),

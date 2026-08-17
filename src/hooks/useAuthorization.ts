@@ -58,14 +58,21 @@ export function useAuthorization(): AuthorizationAPI {
     const isAdmin = isSystemAdmin || isCompanyAdmin;
 
     const canAccessByPlan = (path: string) => {
-      if (isAdmin) return true;
+      // Só o administrador DO SISTEMA passa por cima do plano. Admin de empresa
+      // administra a empresa dele — não decide o que a empresa contratou. Como
+      // quem cria a própria empresa vira admin dela, essa distinção era a
+      // diferença entre cobrar e não cobrar de ninguém.
+      if (isSystemAdmin) return true;
       // Sem dados de plano ainda → libera (guard mostra loading separadamente).
       if (subscription.loading) return true;
       return hasAccessToRoute(subscription.planSlug, path);
     };
 
     const isAllowed = (path: string) => {
-      if (isAdmin) return true;
+      // Admin de empresa passa por cima do recorte por SETOR — ele administra a
+      // empresa e alcança todo módulo dela. O plano continua valendo: sair pelo
+      // atalho aqui reabriria, por outra porta, o mesmo passe livre.
+      if (isAdmin) return canAccessByPlan(path);
       return canAccessRoute(path) && canAccessByPlan(path);
     };
 

@@ -15,7 +15,7 @@ interface PlanGuardProps {
  */
 export default function PlanGuard({ children }: PlanGuardProps) {
   const { subscription } = useAuth();
-  const { loading, isAdmin, canAccessByPlan } = useAuthorization();
+  const { loading, isSystemAdmin, canAccessByPlan } = useAuthorization();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,8 +27,8 @@ export default function PlanGuard({ children }: PlanGuardProps) {
     );
   }
 
-  // Bypass total para qualquer admin.
-  if (isAdmin) return <>{children}</>;
+  // Bypass total só para o administrador do sistema — ver canAccessByPlan.
+  if (isSystemAdmin) return <>{children}</>;
 
   if (subscription.loading) {
     return (
