@@ -49,6 +49,18 @@ type Lancamento = {
   status: string;
   observacoes: string | null;
   created_at: string;
+  contrato_pedido_id: string | null;
+};
+
+/** Pedido com NF-e quitada — o fato que autoriza o pagamento da bonificação. */
+type PedidoQuitado = {
+  id: string;
+  numero_pedido: string;
+  nota_fiscal: string | null;
+  valor_total: number;
+  data_quitacao: string | null;
+  vendedor_user_id: string | null;
+  orgao: string | null;
 };
 
 type Membro = {
@@ -97,19 +109,38 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   const [lancDesconto, setLancDesconto] = useState('0');
   const [lancNF, setLancNF] = useState('');
   const [lancObs, setLancObs] = useState('');
+  const [lancPedidoId, setLancPedidoId] = useState('');
+  const [quitados, setQuitados] = useState<PedidoQuitado[]>([]);
 
   useEffect(() => { loadData(); }, [empresaId]);
 
   const loadData = async () => {
     setLoading(true);
-    const [cfgRes, lancRes, membrosRes] = await Promise.all([
+    const [cfgRes, lancRes, membrosRes, quitRes] = await Promise.all([
       supabase.from('comissoes_config' as any).select('*').eq('empresa_id', empresaId),
       supabase.from('comissoes_lancamentos' as any).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
       supabase.from('empresa_membros').select('user_id, nome, email, nome_individual, login_individual').eq('empresa_id', empresaId),
+      // A bonificação só é paga depois que o cliente quita a NF-e, então o
+      // lançamento manual precisa apontar QUAL quitação o autoriza.
+      supabase
+        .from('contrato_pedidos' as any)
+        .select('id, numero_pedido, nota_fiscal, valor_total, data_quitacao, contratos!inner(empresa_id, vendedor_user_id, orgao_contratante)')
+        .eq('nf_quitada', true)
+        .eq('contratos.empresa_id', empresaId)
+        .order('data_quitacao', { ascending: false }),
     ]);
     setConfigs((cfgRes.data as any[]) || []);
     setLancamentos((lancRes.data as any[]) || []);
     setMembros((membrosRes.data as any[]) || []);
+    setQuitados(((quitRes.data as any[]) || []).map((p) => ({
+      id: p.id,
+      numero_pedido: p.numero_pedido,
+      nota_fiscal: p.nota_fiscal,
+      valor_total: Number(p.valor_total) || 0,
+      data_quitacao: p.data_quitacao,
+      vendedor_user_id: p.contratos?.vendedor_user_id ?? null,
+      orgao: p.contratos?.orgao_contratante ?? null,
+    })));
     setLoading(false);
   };
 
@@ -140,6 +171,15 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     setSaving(false);
   };
 
+  // Só as quitações dos contratos do próprio colaborador: bonificar alguém
+  // pela nota que outro vendeu seria o mesmo erro de carteira compartilhada.
+  // Lançamento antigo, feito antes desta regra, não tem vínculo com quitação —
+  // e sem o vínculo não há como provar que o cliente pagou.
+  const temQuitacao = (l: Lancamento) =>
+    !!l.contrato_pedido_id && quitados.some((q) => q.id === l.contrato_pedido_id);
+
+  const quitadosDoColaborador = quitados.filter((q) => q.vendedor_user_id === lancUserId);
+
   const handleLancar = async () => {
     if (!lancUserId || !lancValorBase) return;
     setSaving(true);
@@ -161,13 +201,14 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       valor_comissao: valorComissao,
       nota_fiscal: lancNF || null,
       observacoes: lancObs || null,
+      contrato_pedido_id: lancPedidoId || null,
     } as any);
 
     if (error) toast.error('Erro: ' + error.message);
     else {
       toast.success(`Bonificação de R$ ${valorComissao.toFixed(2)} lançada`);
       setShowLancDialog(false);
-      setLancUserId(''); setLancValorBase(''); setLancDesconto('0'); setLancNF(''); setLancObs('');
+      setLancUserId(''); setLancValorBase(''); setLancDesconto('0'); setLancNF(''); setLancObs(''); setLancPedidoId('');
       loadData();
     }
     setSaving(false);
@@ -299,6 +340,12 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                     <span>{new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
                   {l.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{l.observacoes}</p>}
+                  {l.status !== 'pago' && !temQuitacao(l) && (
+                    <p className="text-xs text-warning mt-0.5">
+                      Aguardando quitação da NF-e — o pagamento só é liberado depois que o
+                      cliente paga a nota.
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-bold text-foreground">{fmt(l.valor_comissao)}</span>
@@ -307,7 +354,9 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                       <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(STATUS_LANCAMENTO).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                          <SelectItem key={k} value={k} disabled={k === 'pago' && !temQuitacao(l)}>
+                            {v.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -448,6 +497,38 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>NF-e quitada *</Label>
+              <Select
+                value={lancPedidoId}
+                onValueChange={(v) => {
+                  setLancPedidoId(v);
+                  const p = quitados.find((q) => q.id === v);
+                  // O valor recebido é a base natural: foi ele que entrou.
+                  if (p) { setLancValorBase(String(p.valor_total)); setLancNF(p.nota_fiscal ?? ''); }
+                }}
+                disabled={!lancUserId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={lancUserId ? 'Selecione a quitação' : 'Escolha o colaborador primeiro'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {quitadosDoColaborador.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.nota_fiscal ? `NF ${p.nota_fiscal}` : `Pedido ${p.numero_pedido}`}
+                      {p.data_quitacao ? ` · ${new Date(p.data_quitacao + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}
+                      {` · ${fmt(p.valor_total)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {lancUserId && quitadosDoColaborador.length === 0 && (
+                <p className="text-xs text-warning mt-1">
+                  Nenhuma NF-e quitada nos contratos deste colaborador. A bonificação só é
+                  lançada depois que o cliente quita a nota.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Valor Base (R$) *</Label>
@@ -484,7 +565,7 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLancDialog(false)}>Cancelar</Button>
-            <Button onClick={handleLancar} disabled={saving || !lancUserId || !lancValorBase} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button onClick={handleLancar} disabled={saving || !lancUserId || !lancValorBase || !lancPedidoId} className="bg-accent hover:bg-accent/90 text-accent-foreground">
               {saving ? 'Lançando...' : 'Lançar'}
             </Button>
           </DialogFooter>
