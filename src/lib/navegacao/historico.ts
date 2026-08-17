@@ -8,7 +8,7 @@
  * "voltam" para o mesmo lugar, independentemente de onde a pessoa estava; é o
  * que fazia o sistema parecer levar a uma página aleatória.
  *
- * Aqui a pilha é do aplicativo. Quatro regras que a mantêm honesta:
+ * Aqui a pilha é do aplicativo. Cinco regras que a mantêm honesta:
  *
  *  1. **Rota repetida não empilha.** Trocar `?lid=` da mesma tela não é uma
  *     navegação nova; empilhar faria o Voltar andar em falso.
@@ -19,6 +19,9 @@
  *  4. **Rota já visitada trunca a pilha.** Chegar de novo a uma tela do próprio
  *     percurso é retorno, não avanço — vale mesmo quando quem navegou foi um
  *     botão da tela, e não o Voltar.
+ *  5. **Parâmetro de contexto não conta.** `?lid=` identifica o processo ativo,
+ *     não a página, e o sistema o reescreve na URL sozinho. Contá-lo fazia cada
+ *     navegação virar dois passos, e o Voltar ir para a MESMA tela.
  *
  * Vive em módulo, não em estado de componente: o layout remonta a cada troca de
  * rota, e um `useState` perderia a pilha exatamente quando ela é necessária.
@@ -33,7 +36,31 @@ const avisar = () => ouvintes.forEach((f) => f());
 /** Rotas que são destino final: estar nelas não é ter vindo de algum lugar. */
 const RAIZES = new Set(['/painel', '/dashboard', '/']);
 
-export function registrarRota(caminho: string): void {
+/**
+ * Parâmetros que são CONTEXTO, não página. Ficam de fora da identidade da rota.
+ *
+ * `lid` é o processo ativo, e o sistema o reescreve na URL logo depois que a
+ * tela carrega. Sem esta exclusão, cada navegação gravava DOIS passos —
+ * `/documentos` e, um instante depois, `/documentos?lid=…` — e o Voltar
+ * consumia o primeiro indo para a mesma tela. Clicava-se e nada acontecia,
+ * porque de fato nada mudava.
+ *
+ * Guardar a rota sem o `lid` também não perde o processo: quem o recoloca é o
+ * ProcessoAtivoContext, no destino.
+ */
+const PARAMETROS_DE_CONTEXTO = ['lid'];
+
+export function chaveDaRota(caminho: string): string {
+  const [base, busca] = caminho.split('?');
+  if (!busca) return base;
+  const p = new URLSearchParams(busca);
+  PARAMETROS_DE_CONTEXTO.forEach((k) => p.delete(k));
+  const resto = p.toString();
+  return resto ? `${base}?${resto}` : base;
+}
+
+export function registrarRota(caminhoCru: string): void {
+  const caminho = chaveDaRota(caminhoCru);
   if (voltando) { voltando = false; return; }          // regra 2
   if (pilha[pilha.length - 1] === caminho) return;      // regra 1
 

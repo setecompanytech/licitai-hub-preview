@@ -77,3 +77,22 @@ describe('botões que navegam para trás por conta própria', () => {
     expect(prepararVolta()).toBe('/kanban');
   });
 });
+
+describe('o ?lid= que o sistema reescreve sozinho', () => {
+  it('não vira um passo a mais: o Voltar ia para a mesma tela', () => {
+    registrarRota('/kanban?lid=abc');
+    // O ProcessoAtivoContext reescreve a URL logo depois de carregar a tela.
+    registrarRota('/documentos');
+    registrarRota('/documentos?lid=abc');
+    expect(_pilhaAtual()).toEqual(['/kanban', '/documentos']);
+    expect(prepararVolta()).toBe('/kanban');
+  });
+
+  it('parâmetro que define a página continua contando', () => {
+    registrarRota('/financeiro/lancamentos?lid=abc');
+    registrarRota('/financeiro/lancamentos?lid=abc&lote=7');
+    expect(_pilhaAtual()).toEqual([
+      '/financeiro/lancamentos', '/financeiro/lancamentos?lote=7',
+    ]);
+  });
+});
