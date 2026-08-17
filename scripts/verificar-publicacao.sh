@@ -62,6 +62,8 @@ checar "marco de pagamento configurável"     "Ao receber (NF-e quitada)"
 checar "confirmação de exclusão"             "Excluir definitivamente"
 checar "vendedor fora da equipe"             "Vendedor fora da equipe"
 checar "criador da empresa entra com nome"   "nome_completo, username"
+checar "kit de faturamento"                  "Kit de faturamento"
+checar "kit em PDF único"                    "Baixar PDF único"
 
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
