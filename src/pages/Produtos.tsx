@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { UNIDADES, unidadesMaisUsadas } from '@/lib/unidades';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,60 +25,9 @@ import {
 } from 'lucide-react';
 
 // ── Unidades ───────────────────────────────────────────────────────────────
-const UNIDADES_TOP = [
-  { value: 'PC', label: 'Peça (PC)' },
-  { value: 'UN', label: 'Unidade (UN)' },
-  { value: 'CX', label: 'Caixa (CX)' },
-  { value: 'KG', label: 'Quilograma (KG)' },
-  { value: 'L', label: 'Litro (L)' },
-];
-const UNIDADES_TODAS = [
-  { value: 'AM', label: 'Ampola (AM)' },
-  { value: 'BD', label: 'Balde (BD)' },
-  { value: 'BJ', label: 'Bandeja (BJ)' },
-  { value: 'BAR', label: 'Barril (BAR)' },
-  { value: 'BIS', label: 'Bisnaga (BIS)' },
-  { value: 'BL', label: 'Bloco (BL)' },
-  { value: 'BO', label: 'Bobina (BO)' },
-  { value: 'BSA', label: 'Bolsa (BSA)' },
-  { value: 'BOMB', label: 'Bombona (BOMB)' },
-  { value: 'CPS', label: 'Cápsula (CPS)' },
-  { value: 'CRT', label: 'Cartela (CRT)' },
-  { value: 'CJ', label: 'Conjunto (CJ)' },
-  { value: 'CT', label: 'Cento (CT)' },
-  { value: 'CX', label: 'Caixa (CX)' },
-  { value: 'CXE', label: 'Caixa com embalagem (CXE)' },
-  { value: 'DZ', label: 'Dúzia (DZ)' },
-  { value: 'EMB', label: 'Embalagem (EMB)' },
-  { value: 'EN', label: 'Envelope (EN)' },
-  { value: 'FARDO', label: 'Fardo (FARDO)' },
-  { value: 'FR', label: 'Frasco (FR)' },
-  { value: 'GL', label: 'Galão (GL)' },
-  { value: 'GF', label: 'Garrafa (GF)' },
-  { value: 'G', label: 'Grama (G)' },
-  { value: 'GR', label: 'Grosa (GR)' },
-  { value: 'KG', label: 'Quilograma (KG)' },
-  { value: 'KIT', label: 'Kit (KIT)' },
-  { value: 'L', label: 'Litro (L)' },
-  { value: 'LT', label: 'Lata (LT)' },
-  { value: 'M', label: 'Metro (M)' },
-  { value: 'M2', label: 'Metro quadrado (M²)' },
-  { value: 'M3', label: 'Metro cúbico (M³)' },
-  { value: 'MG', label: 'Miligrama (MG)' },
-  { value: 'ML', label: 'Mililitro (ML)' },
-  { value: 'MM', label: 'Milímetro (MM)' },
-  { value: 'PAR', label: 'Par (PAR)' },
-  { value: 'PC', label: 'Peça (PC)' },
-  { value: 'PCT', label: 'Pacote (PCT)' },
-  { value: 'POTE', label: 'Pote (POTE)' },
-  { value: 'RL', label: 'Rolo (RL)' },
-  { value: 'SC', label: 'Saco (SC)' },
-  { value: 'SERV', label: 'Serviço (SERV)' },
-  { value: 'TB', label: 'Tubo (TB)' },
-  { value: 'TON', label: 'Tonelada (TON)' },
-  { value: 'UN', label: 'Unidade (UN)' },
-  { value: 'VIDRO', label: 'Vidro (VIDRO)' },
-];
+// Mesma autoridade das outras telas — ver src/lib/unidades.ts.
+const UNIDADES_TOP = unidadesMaisUsadas().map(u => ({ value: u.codigo, label: `${u.nome} (${u.codigo})` }));
+const UNIDADES_TODAS = UNIDADES.map(u => ({ value: u.codigo, label: `${u.nome} (${u.codigo})` }));
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Produto = {
@@ -180,10 +130,13 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
 
   useEffect(() => { setSearch(value); }, [value]);
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    // Fechar sem escolher devolve a unidade selecionada ao campo.
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(value); }
+    };
     if (open) document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [open]);
+  }, [open, value]);
 
   const topFiltered = UNIDADES_TOP.filter(u => u.label.toLowerCase().includes(search.toLowerCase()) || u.value.toLowerCase().includes(search.toLowerCase()));
   const todasFiltered = UNIDADES_TODAS.filter(u =>
@@ -196,7 +149,9 @@ function UnidadeCombobox({ value, onChange }: { value: string; onChange: (v: str
       <div className="relative">
         <Input
           value={search}
-          onFocus={() => setOpen(true)}
+          // Abrir a lista limpa a BUSCA, não a seleção: com "PC" no campo, o
+          // filtro deixava só "Peça (PC)" e "Pacote (PCT)" à vista.
+          onFocus={() => { setOpen(true); setSearch(''); }}
           onChange={e => { setSearch(e.target.value); setOpen(true); onChange(e.target.value); }}
           className="pt-1 pr-7"
           placeholder="PC"

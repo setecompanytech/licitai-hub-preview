@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { UNIDADES } from '@/lib/unidades';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1051,7 +1052,7 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                   <Select value={item.unidade} onValueChange={v => updateItem(idx, 'unidade', v)}>
                     <SelectTrigger className="mt-0.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {['UN', 'KG', 'M', 'M²', 'M³', 'L', 'CX', 'PCT', 'PAR', 'JG', 'GL', 'SC', 'TB', 'RL', 'FD', 'BL'].map(u => (
+                      {UNIDADES.map(u => u.codigo).map(u => (
                         <SelectItem key={u} value={u}>{u}</SelectItem>
                       ))}
                     </SelectContent>

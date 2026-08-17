@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { UNIDADES } from '@/lib/unidades';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -504,7 +505,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   <Select value={form.unidade} onValueChange={v => setForm(f => ({ ...f, unidade: v }))} disabled={isContratoComATA && !!form.ata_item_id}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {['UN', 'CX', 'KG', 'L', 'M', 'M²', 'M³', 'PCT', 'HR', 'DIA', 'MÊS', 'SV'].map(u => (
+                      {UNIDADES.map(u => u.codigo).map(u => (
                         <SelectItem key={u} value={u}>{u}</SelectItem>
                       ))}
                     </SelectContent>

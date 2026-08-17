@@ -21,68 +21,13 @@ import {
   ClipboardList, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Upload, Package, Search, Filter, ChevronsUpDown, Link, X,
 } from 'lucide-react';
+import { UNIDADES, unidadesMaisUsadas } from '@/lib/unidades';
 
-// ── Unidades ───────────────────────────────────────────────────────────────
-const UNIDADES_TOP = [
-  { value: 'PC', label: 'Peça (PC)' },
-  { value: 'UN', label: 'Unidade (UN)' },
-  { value: 'CX', label: 'Caixa (CX)' },
-  { value: 'KG', label: 'Quilograma (KG)' },
-  { value: 'L', label: 'Litro (L)' },
-];
-const UNIDADES_TODAS = [
-  { value: 'AM', label: 'Ampola (AM)' },
-  { value: 'BD', label: 'Balde (BD)' },
-  { value: 'BJ', label: 'Bandeja (BJ)' },
-  { value: 'BAR', label: 'Barril (BAR)' },
-  { value: 'BIS', label: 'Bisnaga (BIS)' },
-  { value: 'BL', label: 'Bloco (BL)' },
-  { value: 'BO', label: 'Bobina (BO)' },
-  { value: 'BSA', label: 'Bolsa (BSA)' },
-  { value: 'BOMB', label: 'Bombona (BOMB)' },
-  { value: 'CPS', label: 'Cápsula (CPS)' },
-  { value: 'CRT', label: 'Cartela (CRT)' },
-  { value: 'CJ', label: 'Conjunto (CJ)' },
-  { value: 'CT', label: 'Cento (CT)' },
-  { value: 'CX', label: 'Caixa (CX)' },
-  { value: 'CXE', label: 'Caixa com embalagem (CXE)' },
-  { value: 'DZ', label: 'Dúzia (DZ)' },
-  { value: 'EMB', label: 'Embalagem (EMB)' },
-  { value: 'EN', label: 'Envelope (EN)' },
-  { value: 'FARDO', label: 'Fardo (FARDO)' },
-  { value: 'FR', label: 'Frasco (FR)' },
-  { value: 'GL', label: 'Galão (GL)' },
-  { value: 'GF', label: 'Garrafa (GF)' },
-  { value: 'G', label: 'Grama (G)' },
-  { value: 'GR', label: 'Grosa (GR)' },
-  { value: 'KG', label: 'Quilograma (KG)' },
-  { value: 'KIT', label: 'Kit (KIT)' },
-  { value: 'L', label: 'Litro (L)' },
-  { value: 'LT', label: 'Lata (LT)' },
-  { value: 'M', label: 'Metro (M)' },
-  { value: 'M2', label: 'Metro quadrado (M²)' },
-  { value: 'M3', label: 'Metro cúbico (M³)' },
-  { value: 'MG', label: 'Miligrama (MG)' },
-  { value: 'ML', label: 'Mililitro (ML)' },
-  { value: 'MM', label: 'Milímetro (MM)' },
-  { value: 'PAR', label: 'Par (PAR)' },
-  { value: 'PC', label: 'Peça (PC)' },
-  { value: 'PCT', label: 'Pacote (PCT)' },
-  { value: 'FRC', label: 'Frasco (FRC)' },
-  { value: 'AMP', label: 'Ampola (AMP)' },
-  { value: 'LATA', label: 'Lata (LATA)' },
-  { value: 'RES', label: 'Resma (RES)' },
-  { value: 'BLC', label: 'Bloco (BLC)' },
-  { value: 'SACO', label: 'Saco (SACO)' },
-  { value: 'POTE', label: 'Pote (POTE)' },
-  { value: 'RL', label: 'Rolo (RL)' },
-  { value: 'SC', label: 'Saco (SC)' },
-  { value: 'SERV', label: 'Serviço (SERV)' },
-  { value: 'TB', label: 'Tubo (TB)' },
-  { value: 'TON', label: 'Tonelada (TON)' },
-  { value: 'UN', label: 'Unidade (UN)' },
-  { value: 'VIDRO', label: 'Vidro (VIDRO)' },
-];
+// Unidades: a lista vive em src/lib/unidades.ts, junto com os sinônimos e o
+// que a NF-e aceita. Havia cinco listas divergentes no sistema, e a unidade
+// escolhida aqui podia não existir na Calculadora nem no Contrato.
+const UNIDADES_TOP = unidadesMaisUsadas().map(u => ({ value: u.codigo, label: `${u.nome} (${u.codigo})` }));
+const UNIDADES_TODAS = UNIDADES.map(u => ({ value: u.codigo, label: `${u.nome} (${u.codigo})` }));
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Produto = {
