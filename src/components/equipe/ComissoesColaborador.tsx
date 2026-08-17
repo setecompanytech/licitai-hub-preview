@@ -79,6 +79,16 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
   const [cfgPercentual, setCfgPercentual] = useState('');
   const [cfgValorFixo, setCfgValorFixo] = useState('');
   const [cfgVisibilidade, setCfgVisibilidade] = useState(false);
+
+  /** Zera o formulário — nada do colaborador anterior sobra na próxima vez. */
+  const limparConfig = () => {
+    setCfgUserId('');
+    setCfgTipo('percentual_contrato');
+    setCfgPercentual('');
+    setCfgValorFixo('');
+    setCfgRegraDesconto('');
+    setCfgVisibilidade(false);
+  };
   const [cfgRegraDesconto, setCfgRegraDesconto] = useState('');
 
   // Lançamento form
@@ -338,7 +348,10 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
       )}
 
       {/* Config Dialog */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+      <Dialog
+        open={showConfigDialog}
+        onOpenChange={(aberto) => { if (!aberto) limparConfig(); setShowConfigDialog(aberto); }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Configurar Bonificação</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -352,6 +365,16 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
                   setCfgPercentual(String(existing.percentual));
                   setCfgValorFixo(String(existing.valor_fixo));
                   setCfgVisibilidade(existing.visibilidade_publica);
+                } else {
+                  // Colaborador ainda sem configuração: volta ao padrão. Antes,
+                  // os campos do colaborador anterior permaneciam — e a
+                  // visibilidade ligada uma vez contaminava todos os seguintes,
+                  // expondo o valor da bonificação de quem nunca foi marcado.
+                  setCfgTipo('percentual_contrato');
+                  setCfgPercentual('');
+                  setCfgValorFixo('');
+                  setCfgRegraDesconto('');
+                  setCfgVisibilidade(false);
                 }
               }}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
