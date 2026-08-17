@@ -1,4 +1,7 @@
 import { useCallback } from 'react';
+// Extração traz o que o órgão escreveu: 'UNIDADE', 'UND', 'Unidade'. Sem
+// normalizar na entrada, o mesmo conceito vira três no banco.
+import { normalizarUnidade } from '@/lib/unidades';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -158,7 +161,7 @@ export function useEditalExtraction() {
       numero: item.numero ?? idx + 1,
       descricao: item.descricao || '',
       quantidade: item.quantidade ?? 1,
-      unidade: item.unidade || 'UN',
+      unidade: normalizarUnidade(item.unidade) || 'UN',
       valor_unitario: item.valor_unitario ?? 0,
       valor_total: item.valor_total ?? 0,
       lote: item.lote || 'Único',
@@ -360,7 +363,7 @@ export function useEditalExtraction() {
       numero: parseInt(String(p.item ?? idx + 1), 10) || (idx + 1),
       descricao: p.descricao || '',
       quantidade: p.quantidade || 1,
-      unidade: p.unidade || 'UN',
+      unidade: normalizarUnidade(p.unidade) || 'UN',
       valor_unitario: p.valor_unitario || 0,
       valor_total: p.valor_total || (p.valor_unitario || 0) * (p.quantidade || 1),
       lote: p.lote || 'Único',

@@ -1,4 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
+// Extração traz o que o órgão escreveu: 'UNIDADE', 'UND', 'Unidade'. Sem
+// normalizar na entrada, o mesmo conceito vira três no banco.
+import { normalizarUnidade } from '@/lib/unidades';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -116,7 +119,7 @@ export default function RevisaoItensExtraidos({
         numero_lote: item.numero_lote ?? null,
         codigo_catmat: item.codigo_catmat ?? item.catmat ?? null,
         descricao: item.descricao || '',
-        unidade: item.unidade || 'UN',
+        unidade: normalizarUnidade(item.unidade) || 'UN',
         quantidade: item.quantidade ?? 1,
         valor_unitario: item.valor_unitario ?? 0,
         valor_total: item.valor_total ?? 0,
