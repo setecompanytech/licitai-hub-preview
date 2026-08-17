@@ -51,6 +51,14 @@ select 'marco de pagamento (20260818000003)',
 Só cole as que aparecerem como **PENDENTE**. Todas são idempotentes — colar de
 novo não quebra nada —, mas conferir antes evita susto.
 
+## Atalho — um único bloco
+
+Quem preferir uma colagem só: `docs/aplicar-20260818-bloco-unico.sql` traz as
+quatro em um `BEGIN … COMMIT`, terminando pela conferência do Passo 1. É cópia
+consolidada, **não** é migration — a fonte de verdade continua em
+`supabase/migrations/`. Falhando qualquer parte, a transação inteira volta atrás
+e nada fica pela metade.
+
 ## Passo 2 — colar, na ordem
 
 Uma por vez: cole o arquivo inteiro, execute, confira o "Success", só então
