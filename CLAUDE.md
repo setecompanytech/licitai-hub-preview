@@ -101,6 +101,17 @@ nova — inclusive as commitadas pelo Lovable — deve nascer alinhada a eles:
 6. **Publicação é pelo Lovable** — o domínio é servido por ele; FTP/Hostgator foi
    aposentado. Edge functions: `npx supabase functions deploy <fn> --project-ref
    uwtyuwktxalnpgrcbbgk` (o CLI leva o `_shared/` junto; o dashboard não).
+7. **Política de cliente não vira regra de produto** — isto é SaaS: quando uma
+   prática soa como "o certo" (bônus só após a NF quitada, meta medida sobre
+   faturamento, prazo de convite de 7 dias), quase sempre é a prática de UM
+   assinante. Vira coluna de configuração com padrão explícito, não `IF` no
+   código nem `CHECK` no banco. Sinais de que a linha foi cruzada: a regra
+   chegou por um caso concreto do dono do produto; escrevê-la exige a palavra
+   "sempre"; nenhuma tela permite desligá-la. Duas obrigações ao configurar:
+   registro existente herda o valor que reproduz o comportamento atual (mudança
+   de política é decisão de alguém, nunca efeito colateral de migration), e
+   ausência de configuração não é barrada por um padrão inventado — quem ainda
+   não escolheu não pode ser bloqueado pela escolha alheia.
 
 ## Estrutura
 
