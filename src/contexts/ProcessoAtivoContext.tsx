@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
+import { usaProcessoAtivo } from '@/lib/navegacao/rotasDoProcesso';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -46,6 +47,16 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const urlId = searchParams.get('lid');
+  // Fonte da verdade do processo ativo: a memória, não a URL.
+  //
+  // Enquanto o `lid` estava em todo endereço, dava para tratar a URL como
+  // fonte. Agora ele só aparece nas telas que usam o processo — e nas outras a
+  // barra global diria "nenhum processo vinculado" mesmo com um vinculado.
+  // A URL passa a REFLETIR o processo ativo onde ele significa algo.
+  const [idPersistido, setIdPersistido] = useState<string | null>(
+    () => localStorage.getItem(STORAGE_KEY),
+  );
+  const processoId = urlId ?? idPersistido;
   const [processo, setProcesso] = useState<ProcessoAtivo | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -64,26 +75,41 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   // outro módulo pelo menu (URL sem ?lid=) deixava a barra dizendo "Nenhum
   // processo vinculado" mesmo com o processo em memória.
   useEffect(() => {
+    const daqui = usaProcessoAtivo(location.pathname);
+
+    // Tela que não usa o processo não carrega o parâmetro. Ele some da URL sem
+    // desfazer o vínculo: a memória local continua guardando, e ele reaparece
+    // assim que a pessoa entra numa tela que o usa.
+    if (!daqui) {
+      if (urlId) {
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev);
+          next.delete('lid');
+          return next;
+        }, { replace: true });
+      }
+      return;
+    }
+
     if (urlId) return;
     // Limpeza explícita (usuário desvinculou) não deve ser desfeita.
     if (limpezaExplicitaRef.current) { limpezaExplicitaRef.current = false; return; }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    if (idPersistido) {
       setSearchParams(prev => {
         const next = new URLSearchParams(prev);
-        next.set('lid', stored);
+        next.set('lid', idPersistido);
         return next;
       }, { replace: true });
     }
-  }, [urlId, setSearchParams]);
+  }, [urlId, idPersistido, location.pathname, setSearchParams]);
 
   // Persiste o processo ativo. Ausência de `lid` na URL NÃO apaga a memória:
   // navegar para uma tela sem o parâmetro chegava a apagar o processo ativo do
   // localStorage, e nem recarregar a página o trazia de volta. Quem apaga é a
   // desvinculação explícita (applySwitch(null)).
   useEffect(() => {
-    if (urlId) localStorage.setItem(STORAGE_KEY, urlId);
-  }, [urlId]);
+    if (processoId) localStorage.setItem(STORAGE_KEY, processoId);
+  }, [processoId]);
 
   const { empresaAtiva } = useEmpresa();
 
@@ -111,57 +137,64 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
     setProcesso(data as ProcessoAtivo);
   }, [user]);
 
-  useEffect(() => { fetchProcesso(urlId); }, [urlId, fetchProcesso]);
+  useEffect(() => { fetchProcesso(processoId); }, [processoId, fetchProcesso]);
 
   // Realtime: keep processo data fresh + react to status updates from other modules
   useEffect(() => {
-    if (!urlId || !user) return;
+    if (!processoId || !user) return;
     const channel = supabase
-      .channel(`processo-ativo-${urlId}`)
+      .channel(`processo-ativo-${processoId}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'licitacoes',
-        filter: `id=eq.${urlId}`,
-      }, () => { fetchProcesso(urlId); })
+        filter: `id=eq.${processoId}`,
+      }, () => { fetchProcesso(processoId); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [urlId, user, fetchProcesso]);
+  }, [processoId, user, fetchProcesso]);
 
   const applySwitch = useCallback((id: string | null) => {
     if (!id) {
       // Desvinculação explícita: some da URL, da memória e do armazenamento.
       limpezaExplicitaRef.current = true;
       localStorage.removeItem(STORAGE_KEY);
+    } else {
+      // Vincular grava na hora: em tela sem `lid` na URL, esperar o parâmetro
+      // aparecer significaria nunca guardar.
+      localStorage.setItem(STORAGE_KEY, id);
     }
+    setIdPersistido(id);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (id) next.set('lid', id);
+      // Vincular a partir de uma tela que não usa o processo (o Kanban, por
+      // exemplo) guarda em memória sem sujar o endereço.
+      if (id && usaProcessoAtivo(location.pathname)) next.set('lid', id);
       else next.delete('lid');
       return next;
     }, { replace: true });
     dirtyOwnersRef.current.clear();
-  }, [setSearchParams]);
+  }, [setSearchParams, location.pathname]);
 
   const setProcessoId = useCallback((id: string | null, opts?: { force?: boolean }) => {
-    if (id === urlId) return;
+    if (id === processoId) return;
     if (opts?.force || dirtyOwnersRef.current.size === 0) {
       applySwitch(id);
       return;
     }
     setPendingSwitch({ id, owners: Array.from(dirtyOwnersRef.current.values()) });
-  }, [urlId, applySwitch]);
+  }, [processoId, applySwitch]);
 
   const registerDirty = useCallback((owner: DirtyOwner) => {
     dirtyOwnersRef.current.set(owner.id, owner.label);
     return () => { dirtyOwnersRef.current.delete(owner.id); };
   }, []);
 
-  const refreshProcesso = useCallback(() => fetchProcesso(urlId), [urlId, fetchProcesso]);
+  const refreshProcesso = useCallback(() => fetchProcesso(processoId), [processoId, fetchProcesso]);
 
   return (
     <ProcessoAtivoCtx.Provider value={{
-      processoId: urlId,
+      processoId,
       processo,
       loading,
       setProcessoId,
