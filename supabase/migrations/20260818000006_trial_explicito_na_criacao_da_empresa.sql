@@ -16,9 +16,12 @@
 -- gatilho, SECURITY DEFINER, cobre todo caminho de criação de empresa, hoje e
 -- amanhã.
 --
--- Qual plano o teste oferece: o de maior `trial_dias` entre os ativos, com
--- desempate pelo maior preço. É o plano que alguém configurou explicitamente
--- para teste; sem nenhum configurado, nada é criado (melhor não inventar).
+-- Qual plano o teste oferece: BÁSICO, por decisão do dono do produto. Os três
+-- planos têm teste configurado e Profissional/Enterprise empatam em 14 dias —
+-- escolher pelo maior preço seria critério inventado aqui, não política dele.
+-- O prazo sai do próprio plano (`trial_dias`), hoje 7 dias.
+--
+-- Trocar o plano de teste = trocar o slug em `plano_de_teste()`, um lugar só.
 -- =============================================================================
 
 -- ── 1. O plano de teste, resolvido em um lugar só ────────────────────────────
@@ -33,13 +36,16 @@ AS $$
     FROM public.planos p
    WHERE COALESCE(p.ativo, true) IS TRUE
      AND COALESCE(p.trial_dias, 0) > 0
-   ORDER BY p.trial_dias DESC, p.preco_mensal DESC
+   -- 'basico' primeiro; se ele sair do ar ou perder o trial, cai no mais
+   -- barato que ainda tenha teste — nunca no mais caro por acidente.
+   ORDER BY (p.slug = 'basico') DESC, p.preco_mensal ASC
    LIMIT 1;
 $$;
 
 COMMENT ON FUNCTION public.plano_de_teste() IS
-  'Plano usado no período de teste: o de maior trial_dias entre os ativos. '
-  'Sem plano com trial_dias > 0, não devolve linha e nenhum teste é criado.';
+  'Plano usado no período de teste: básico, por decisão do dono do produto. '
+  'Sem ele, o mais barato ainda com trial_dias > 0. Sem nenhum, não devolve '
+  'linha e nenhum teste é criado — melhor não inventar prazo.';
 
 -- ── 2. Empresa nova nasce em teste ───────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.criar_trial_da_empresa()
