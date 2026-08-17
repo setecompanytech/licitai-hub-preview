@@ -312,8 +312,11 @@ export default function GestaoContratos() {
     return (
       <AppLayout>
         <div className="mb-4">
+          {/* Rótulo distinto do Voltar do layout, que fica logo acima: este
+              fecha o contrato aberto e devolve à lista; aquele sai da tela. Dois
+              "Voltar" iguais lado a lado não deixam escolher. */}
           <Button variant="ghost" size="sm" onClick={() => setSelectedContrato(null)} className="mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+            <ArrowLeft className="w-4 h-4 mr-1" /> Todos os contratos
           </Button>
           <div className="flex items-start justify-between">
             <div>

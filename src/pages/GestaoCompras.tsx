@@ -778,8 +778,10 @@ export default function GestaoCompras() {
     return (
       <AppLayout>
         <div className="mb-4">
+          {/* Ver comentário equivalente em GestaoContratos: este devolve à
+              lista, o Voltar do layout sai da tela. */}
           <Button variant="ghost" size="sm" onClick={() => setSelectedPedido(null)} className="mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+            <ArrowLeft className="w-4 h-4 mr-1" /> Todos os pedidos
           </Button>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
