@@ -413,7 +413,7 @@ async function sendWhatsApp(supabase: any, supabaseUrl: string, serviceKey: stri
     lic.portal ? `Portal: ${lic.portal}` : '',
     linkEdital ? `Edital: ${linkEdital}` : '',
     ``,
-    `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
+    `Acesse: https://praefectus.com.br/monitoramento-editais`,
   ].filter(Boolean).join('\n');
 
   try {

@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     // Detecta o estado do usuário e escolhe o fluxo apropriado.
-    const redirectUrl = 'https://app.praefectus.com.br/reset-password'
+    const redirectUrl = 'https://praefectus.com.br/reset-password'
     const { data: existingUsers } = await adminClient.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find(u => u.email === email)
 

@@ -282,7 +282,7 @@ serve(async (req) => {
               lic.data_abertura ? `Abertura: ${lic.data_abertura}` : '',
               linkEdital ? `Edital: ${linkEdital}` : '',
               ``,
-              `Acesse: https://app.praefectus.com.br/monitoramento-editais`,
+              `Acesse: https://praefectus.com.br/monitoramento-editais`,
             ].filter(Boolean).join('\n');
 
             try {

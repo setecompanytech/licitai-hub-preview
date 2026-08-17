@@ -11,7 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 
-const SITE_URL = 'https://app.praefectus.com.br';
+// Endereço do sistema em produção. Apontava para app.praefectus.com.br —
+// implantação antiga que não conhece a função convite_por_token e devolvia
+// "convite inválido" a quem clicasse.
+const SITE_URL = 'https://praefectus.com.br';
 
 const equipeLabels: Record<string, string> = {
   geral: 'Geral',

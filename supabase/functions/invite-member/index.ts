@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     let userId: string
     let emailFlow: 'invite' | 'recovery' | 'none' = 'none'
 
-    const redirectUrl = 'https://app.praefectus.com.br/reset-password'
+    const redirectUrl = 'https://praefectus.com.br/reset-password'
 
     // For confirmed users: generateLink via admin API (no rate limit) then email via Resend.
     // /auth/v1/recover (public endpoint) has strict Supabase rate limits — avoided here.

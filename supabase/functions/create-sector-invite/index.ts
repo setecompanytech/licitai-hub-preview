@@ -7,7 +7,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SITE_URL = 'https://app.praefectus.com.br'
+const SITE_URL = 'https://praefectus.com.br'
 
 const equipeLabels: Record<string, string> = {
   geral: 'Geral',

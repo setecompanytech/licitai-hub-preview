@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
             Essas alterações já estão em vigor. Caso você tenha dúvidas sobre suas novas permissões, entre em contato com o administrador da empresa.
           </p>
           <div style="text-align:center">
-            <a href="https://app.praefectus.com.br" style="display:inline-block;background:#b45309;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600">Acessar plataforma</a>
+            <a href="https://praefectus.com.br" style="display:inline-block;background:#b45309;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600">Acessar plataforma</a>
           </div>
           <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;padding-top:16px">
             Você recebeu este e-mail porque é membro da empresa <strong>${empresa_nome}</strong> no PRAEFECTUS.

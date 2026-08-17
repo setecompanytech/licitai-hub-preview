@@ -142,7 +142,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 // Configuration
 const SITE_NAME = "PRAEFECTUS"
 const SENDER_DOMAIN = "praefectus.com.br"
-const ROOT_DOMAIN = "app.praefectus.com.br"
+const ROOT_DOMAIN = "praefectus.com.br"
 const FROM_DOMAIN = "praefectus.com.br"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
