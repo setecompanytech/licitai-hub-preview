@@ -27,6 +27,30 @@ describe('emailDaConta — sub-endereçamento no e-mail do setor', () => {
     expect(emailDaConta('Joao.Silva', setor)).toBe('comercial+joao.silva@gruposantarosa.com.br');
   });
 
+  it('aceita nome com espaço — vira ponto na etiqueta', () => {
+    expect(emailDaConta('Maria Souza', setor))
+      .toBe('comercial+maria.souza@gruposantarosa.com.br');
+  });
+
+  it('aceita acento — a etiqueta usa a letra simples', () => {
+    expect(emailDaConta('João Antônio', setor))
+      .toBe('comercial+joao.antonio@gruposantarosa.com.br');
+  });
+
+  it('descarta o que não cabe num endereço, sem quebrar', () => {
+    expect(emailDaConta('Compras & Cia!', setor))
+      .toBe('comercial+compras.cia@gruposantarosa.com.br');
+  });
+
+  it('não deixa a etiqueta começar ou terminar em separador', () => {
+    expect(emailDaConta('  .Ana-  ', setor))
+      .toBe('comercial+ana@gruposantarosa.com.br');
+  });
+
+  it('recusa login sem nenhum caractere aproveitável', () => {
+    expect(() => emailDaConta('!!!', setor)).toThrow();
+  });
+
   it('dois logins diferentes geram endereços diferentes', () => {
     expect(emailDaConta('01', setor)).not.toBe(emailDaConta('02', setor));
   });

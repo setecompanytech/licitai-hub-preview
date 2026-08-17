@@ -37,9 +37,31 @@ export const DOMINIO_SINTETICO = 'praefectus.invalid'
  * isso, um cadastro com e-mail malformado geraria um endereco invalido e o
  * Auth recusaria a criacao, travando o convite inteiro.
  */
+/**
+ * Converte o login digitado na etiqueta do e-mail. O usuario escreve como
+ * quiser — "Joao Silva", "Compras & Cia", "MARIA-01" —; a etiqueta precisa
+ * caber na parte local de um endereco, entao acentos viram letras simples,
+ * espacos viram ponto e o que sobra fora de [a-z0-9._-] e descartado.
+ *
+ * O login digitado continua guardado inteiro em profiles.username, que e o
+ * que a entrada no sistema compara. Esta normalizacao so existe para o
+ * endereco interno, que ninguem digita.
+ */
+export function etiquetaDoLogin(login: string): string {
+  const base = (login ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // tira acentos: Joao, nao Jo~ao
+    .toLowerCase()
+    .replace(/\s+/g, '.')               // espaco vira ponto
+    .replace(/[^a-z0-9._-]/g, '')       // resto do que nao cabe some
+    .replace(/[.]{2,}/g, '.')           // pontos repetidos colapsam
+    .replace(/^[._-]+|[._-]+$/g, '')    // nao comeca nem termina em separador
+  return base
+}
+
 export function emailDaConta(login: string, emailSetor: string | null | undefined): string {
-  const slug = (login ?? '').trim().toLowerCase()
-  if (!slug) throw new Error('login vazio')
+  const slug = etiquetaDoLogin(login)
+  if (!slug) throw new Error('login sem caracteres aproveitaveis')
 
   const setor = (emailSetor ?? '').trim().toLowerCase()
   const arroba = setor.lastIndexOf('@')

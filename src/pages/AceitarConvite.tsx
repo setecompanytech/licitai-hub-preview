@@ -35,7 +35,21 @@ interface ConviteData {
 }
 
 /** Mesma regra da edge function — as duas precisam recusar o mesmo. */
-const REGRA_LOGIN = /^[A-Za-z0-9._-]{3,30}$/;
+/**
+ * O login é livre: nome com acento, espaço, ponto — o que o usuário preferir.
+ * Ele é guardado inteiro em `profiles.username`, que é o que a entrada no
+ * sistema compara. O endereço interno da conta usa uma etiqueta normalizada
+ * (ver etiquetaDoLogin na edge function), invisível para quem usa.
+ *
+ * Só barramos o que impediria a conta de existir: menos de 3 caracteres
+ * aproveitáveis, mais de 60, ou "@" — que confundiria login com e-mail na
+ * própria tela de entrada, onde o "@" decide entre um e outro.
+ */
+const REGRA_LOGIN = /^[^@]{3,60}$/;
+
+/** Sobra alguma coisa depois de tirar acento, espaço e pontuação? */
+const temBaseAproveitavel = (v: string) =>
+  v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]/g, '').length >= 3;
 
 /** Erro da edge function vem no corpo; o `message` do supabase-js é genérico. */
 async function mensagemDoErro(error: unknown, doCorpo?: string): Promise<string> {
@@ -65,7 +79,7 @@ export default function AceitarConvite() {
   // que recusar depois — o colaborador já teria escolhido a senha.
   useEffect(() => {
     const valor = login.trim();
-    if (!REGRA_LOGIN.test(valor)) { setLoginLivre(null); return; }
+    if (!REGRA_LOGIN.test(valor) || !temBaseAproveitavel(valor)) { setLoginLivre(null); return; }
 
     let cancelado = false;
     setChecandoLogin(true);
@@ -135,8 +149,8 @@ export default function AceitarConvite() {
       toast.error('Informe seu nome completo');
       return;
     }
-    if (!REGRA_LOGIN.test(login.trim())) {
-      toast.error('Login inválido. Use de 3 a 30 caracteres: letras, números, ponto, hífen ou sublinhado.');
+    if (!REGRA_LOGIN.test(login.trim()) || !temBaseAproveitavel(login)) {
+      toast.error('Login inválido. Use de 3 a 60 caracteres, com pelo menos 3 letras ou números, e sem "@".');
       return;
     }
     if (loginLivre === false) {
@@ -300,7 +314,7 @@ export default function AceitarConvite() {
                     <Input
                       id="convite-login"
                       name="apelido-de-acesso"
-                      placeholder="Ex.: COMERCIAL-01"
+                      placeholder="Ex.: COMERCIAL-01 ou Maria Souza"
                       value={login}
                       onChange={(e) => setLogin(e.target.value)}
                       className="pl-10 pr-10"
@@ -321,7 +335,7 @@ export default function AceitarConvite() {
                   <p className={`text-xs ${loginLivre === false ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {loginLivre === false
                       ? 'Esse login já está em uso. Escolha outro.'
-                      : 'É com ele que você vai entrar no sistema. De 3 a 30 caracteres: letras, números, ponto, hífen ou sublinhado.'}
+                      : 'É com ele que você vai entrar no sistema. Use o que preferir — nome, apelido ou código — sem "@".'}
                   </p>
                 </div>
                 <div className="relative">
