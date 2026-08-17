@@ -183,14 +183,27 @@ export default function ComissoesColaborador({ empresaId, isAdmin }: { empresaId
     setSaving(false);
   };
 
-  // Só as quitações dos contratos do próprio colaborador: bonificar alguém
-  // pela nota que outro vendeu seria o mesmo erro de carteira compartilhada.
-  // Lançamento antigo, feito antes desta regra, não tem vínculo com quitação —
-  // e sem o vínculo não há como provar que o cliente pagou.
-  const temQuitacao = (l: Lancamento) =>
-    !!l.contrato_pedido_id && quitados.some((q) => q.id === l.contrato_pedido_id);
+  /** O pedido comprova o marco que a empresa escolheu para aquele colaborador. */
+  const comprova = (p: PedidoElegivel, evento: EventoPagamento) =>
+    evento === 'nf_quitada' ? p.nf_quitada
+      : evento === 'nota_emitida' ? !!p.nota_fiscal
+      : !!p.data_assinatura;
 
-  const quitadosDoColaborador = quitados.filter((q) => q.vendedor_user_id === lancUserId);
+  const eventoDe = (userId: string): EventoPagamento =>
+    eventoDaConfig(configs.find((c) => c.user_id === userId));
+
+  // Lançamento sem vínculo não tem como comprovar marco nenhum — inclusive os
+  // antigos, feitos quando nada era exigido.
+  const podePagar = (l: Lancamento) => {
+    const p = pedidos.find((q) => q.id === l.contrato_pedido_id);
+    return !!p && comprova(p, eventoDe(l.user_id));
+  };
+
+  // Só os pedidos dos contratos do próprio colaborador: bonificar alguém pela
+  // nota que outro vendeu seria o mesmo erro de carteira compartilhada.
+  const pedidosDoColaborador = pedidos.filter(
+    (q) => q.vendedor_user_id === lancUserId && comprova(q, eventoDe(lancUserId)),
+  );
 
   const handleLancar = async () => {
     if (!lancUserId || !lancValorBase) return;

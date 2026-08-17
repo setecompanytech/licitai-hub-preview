@@ -17,6 +17,12 @@ App de gestão de licitações. Vite + React 18 + TypeScript + Tailwind + shadcn
 
 Fora do Claude: `npm run run-local` ou `run-local.cmd` na raiz.
 
+> ⚠️ `npm run build` passa com **identificador inexistente** — o Vite não checa tipos, e
+> `tsc -p tsconfig.json` também não (a raiz tem `"files": []`, só referências). A checagem
+> que pega isso é `npx tsc --noEmit -p tsconfig.app.json`, e ela é obrigatória antes de
+> commitar edição feita por script: uma substituição que não casa falha em silêncio, o
+> build passa e a tela quebra em branco no navegador.
+
 ## Comandos
 
 ```sh
@@ -24,7 +30,8 @@ npm run run-local   # install (se preciso) + dev server na porta 8080
 npm run dev         # dev server
 npm run test        # vitest
 npm run lint        # eslint
-npm run build       # build de produção
+npm run build       # build de produção — NÃO faz checagem de tipos
+npx tsc --noEmit -p tsconfig.app.json   # a checagem de tipos de verdade
 npm run preview     # servir o build
 ```
 

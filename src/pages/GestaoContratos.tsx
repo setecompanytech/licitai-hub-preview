@@ -71,6 +71,9 @@ type Contrato = {
   validade_ata_meses: number | null;
   permite_carona: boolean | null;
   licitacao_id: string | null;
+  /** Responsável: define carteira, meta e bonificação. */
+  vendedor_user_id: string | null;
+  user_id: string | null;
 };
 
 type Licitacao = { id: string; numero: string; orgao: string; objeto: string; modalidade: string | null };
@@ -757,7 +760,7 @@ export default function GestaoContratos() {
                         <UserIcon className="w-3 h-3" />
                         {isAdmin ? (
                           <Select
-                            value={(c as { vendedor_user_id?: string | null }).vendedor_user_id || 'nenhum'}
+                            value={c.vendedor_user_id || 'nenhum'}
                             onValueChange={(v) => atribuirVendedor(c.id, v === 'nenhum' ? null : v)}
                           >
                             <SelectTrigger className="h-6 text-xs border-0 bg-transparent px-1 gap-1 w-auto">
