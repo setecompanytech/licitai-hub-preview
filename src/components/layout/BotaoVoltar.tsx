@@ -15,7 +15,19 @@ import { destinoDoVoltar, prepararVolta, subscribeHistorico } from '@/lib/navega
  * Não aparece quando não há de onde voltar (entrada direta, aba nova, Painel):
  * botão que não leva a lugar nenhum é pior que botão ausente.
  */
-export default function BotaoVoltar({ somenteIcone = false }: { somenteIcone?: boolean }) {
+export default function BotaoVoltar({
+  somenteIcone = false,
+  padrao,
+}: {
+  somenteIcone?: boolean;
+  /**
+   * Destino quando não há percurso — recarregar a página zera o histórico do
+   * aplicativo, e a tela ficava sem saída visível. Só as telas que têm um
+   * "lugar de origem" óbvio passam este valor; onde não há, o botão continua
+   * sumindo, porque botão que não leva a lugar nenhum é pior que ausente.
+   */
+  padrao?: string;
+}) {
   const navigate = useNavigate();
 
   const destino = useSyncExternalStore(
@@ -26,7 +38,8 @@ export default function BotaoVoltar({ somenteIcone = false }: { somenteIcone?: b
   // Quem anota as rotas é o RegistroDeRota, no roteador — telas fora deste
   // layout (a pasta do processo) também precisam entrar na pilha.
 
-  if (!destino) return null;
+  const alvoFinal = destino ?? padrao ?? null;
+  if (!alvoFinal) return null;
 
   return (
     <Button
@@ -37,7 +50,8 @@ export default function BotaoVoltar({ somenteIcone = false }: { somenteIcone?: b
         ? 'text-muted-foreground hover:text-foreground'
         : 'mb-3 -ml-2 text-muted-foreground hover:text-foreground'}
       onClick={() => {
-        const alvo = prepararVolta();
+        // Com percurso, despila. Sem percurso, vai ao destino padrão da tela.
+        const alvo = prepararVolta() ?? padrao;
         if (alvo) navigate(alvo);
       }}
     >

@@ -345,7 +345,7 @@ export default function ProcessoWorkspace() {
                 saltando para uma origem fixa, era o que fazia o percurso girar:
                 o salto entrava na pilha como avanço, e o Voltar da tela
                 seguinte trazia de volta para a pasta. */}
-            <BotaoVoltar somenteIcone />
+            <BotaoVoltar somenteIcone padrao="/kanban" />
             <FolderOpen className="w-6 h-6 text-muted-foreground" />
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold truncate">{lic.numero || 'Processo'} {lic.orgao && `— ${lic.orgao}`}</h1>
