@@ -8,7 +8,7 @@
  * "voltam" para o mesmo lugar, independentemente de onde a pessoa estava; é o
  * que fazia o sistema parecer levar a uma página aleatória.
  *
- * Aqui a pilha é do aplicativo. Cinco regras que a mantêm honesta:
+ * Aqui a pilha é do aplicativo. Seis regras que a mantêm honesta:
  *
  *  1. **Rota repetida não empilha.** Trocar `?lid=` da mesma tela não é uma
  *     navegação nova; empilhar faria o Voltar andar em falso.
@@ -19,7 +19,10 @@
  *  4. **Rota já visitada trunca a pilha.** Chegar de novo a uma tela do próprio
  *     percurso é retorno, não avanço — vale mesmo quando quem navegou foi um
  *     botão da tela, e não o Voltar.
- *  5. **Parâmetro de contexto não conta.** `?lid=` identifica o processo ativo,
+ *  5. **Salto para a origem redefine a pilha.** Sem percurso, algumas telas
+ *     oferecem um destino conhecido (a pasta do processo oferece o Kanban).
+ *     Isso é recomeçar, não voltar — empilhar recriava o pêndulo.
+ *  6. **Parâmetro de contexto não conta.** `?lid=` identifica o processo ativo,
  *     não a página, e o sistema o reescreve na URL sozinho. Contá-lo fazia cada
  *     navegação virar dois passos, e o Voltar ir para a MESMA tela.
  *
@@ -95,6 +98,20 @@ export function prepararVolta(): string | null {
   voltando = true;
   avisar();
   return destino;
+}
+
+/**
+ * Salto para a origem declarada da tela — usado quando NÃO há percurso.
+ *
+ * Não é um passo atrás no percurso: é recomeçar dali. Empilhar esse salto foi o
+ * que recriou o giro em círculos — o Kanban passava a "voltar" para a pasta, e
+ * a pasta para o Kanban, sem fim. Redefinir a pilha encerra o assunto: quem
+ * chega assim não tem de onde voltar, e o botão some, corretamente.
+ */
+export function redefinirPara(destino: string): void {
+  pilha = [chaveDaRota(destino)];
+  voltando = false;
+  avisar();
 }
 
 export function subscribeHistorico(cb: () => void): () => void {

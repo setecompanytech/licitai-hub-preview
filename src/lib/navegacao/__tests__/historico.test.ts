@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  registrarRota, destinoDoVoltar, prepararVolta, _reiniciarHistorico, _pilhaAtual,
+  registrarRota, destinoDoVoltar, prepararVolta, redefinirPara,
+  _reiniciarHistorico, _pilhaAtual,
 } from '../historico';
 
 beforeEach(() => _reiniciarHistorico());
@@ -94,5 +95,25 @@ describe('o ?lid= que o sistema reescreve sozinho', () => {
     expect(_pilhaAtual()).toEqual([
       '/financeiro/lancamentos', '/financeiro/lancamentos?lote=7',
     ]);
+  });
+});
+
+describe('salto para a origem quando não há percurso', () => {
+  it('não vira pêndulo entre a pasta e o Kanban', () => {
+    // Entrada direta na pasta (link, recarregar a página): sem percurso.
+    registrarRota('/processo/28');
+    expect(destinoDoVoltar()).toBeNull();
+
+    // A seta da pasta oferece o Kanban como origem. Isso é recomeçar, não voltar.
+    redefinirPara('/kanban');
+    registrarRota('/kanban');
+    expect(_pilhaAtual()).toEqual(['/kanban']);
+    // No Kanban não há para onde voltar — era aqui que nascia o giro.
+    expect(destinoDoVoltar()).toBeNull();
+  });
+
+  it('percurso real continua tendo prioridade sobre a origem declarada', () => {
+    ['/kanban', '/compromissos', '/processo/28'].forEach(registrarRota);
+    expect(prepararVolta()).toBe('/compromissos');
   });
 });

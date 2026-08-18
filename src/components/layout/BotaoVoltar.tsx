@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { destinoDoVoltar, prepararVolta, subscribeHistorico } from '@/lib/navegacao/historico';
+import { destinoDoVoltar, prepararVolta, redefinirPara, subscribeHistorico } from '@/lib/navegacao/historico';
 
 /**
  * Voltar de verdade — para a tela anterior, não para uma rota fixa.
@@ -50,9 +50,11 @@ export default function BotaoVoltar({
         ? 'text-muted-foreground hover:text-foreground'
         : 'mb-3 -ml-2 text-muted-foreground hover:text-foreground'}
       onClick={() => {
-        // Com percurso, despila. Sem percurso, vai ao destino padrão da tela.
-        const alvo = prepararVolta() ?? padrao;
-        if (alvo) navigate(alvo);
+        const doPercurso = prepararVolta();
+        if (doPercurso) { navigate(doPercurso); return; }
+        // Sem percurso: o salto para a origem RECOMEÇA a pilha ali. Empilhá-lo
+        // fazia a origem "voltar" para esta tela, e esta para a origem.
+        if (padrao) { redefinirPara(padrao); navigate(padrao); }
       }}
     >
       <ArrowLeft className={somenteIcone ? 'w-4 h-4' : 'w-4 h-4 mr-1.5'} />
