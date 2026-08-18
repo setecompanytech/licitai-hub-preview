@@ -30,7 +30,15 @@ const profileMenuItems = [
   { label: 'Aparência', icon: Palette, path: '/configuracoes', hash: '#aparencia' },
 ];
 
-const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
+/**
+ * @param amplo  Solta o limite de 1.440px para telas que precisam de largura.
+ *
+ * O quadro do Kanban tem sete colunas; em 1.440px elas não cabem e a última
+ * saía cortada, sem barra de rolagem à vista. Espremer as colunas resolveria a
+ * conta e pioraria a leitura dos cartões — em tela larga havia 500px de sobra
+ * fora do limite, que é o que este modo aproveita.
+ */
+const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: boolean }>(function AppLayout({ children, amplo = false }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
@@ -211,7 +219,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       </header>
 
       {/* Main content */}
-      <main className="max-w-[1440px] mx-auto px-3 py-3 sm:p-6">
+      <main className={`${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
         <MaintenanceBanner showModal />
         <AlertaVencimentoBanner />
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}

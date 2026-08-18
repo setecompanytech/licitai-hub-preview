@@ -276,7 +276,7 @@ export default function KanbanPage() {
   const ds = dragStateRef.current;
 
   return (
-    <AppLayout>
+    <AppLayout amplo>
       <div className="mb-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Licitações</h1>
         <p className="text-base text-muted-foreground mt-1">
@@ -303,7 +303,7 @@ export default function KanbanPage() {
               </p>
             </div>
           ) : (
-            <div className={cn('flex gap-3 overflow-x-auto pb-4', isDragging && 'select-none')}>
+            <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
                 const colItems = items.filter((i) => colunaDe(i) === col.id);
                 const isOver = overColId === col.id;
@@ -312,11 +312,11 @@ export default function KanbanPage() {
                     key={col.id}
                     ref={(el) => { columnRefs.current[col.id] = el; }}
                     className={cn(
-                      // Colunas elásticas em vez de 240px fixos. Seis colunas
-                      // fixas somavam 1500px numa área de ~1390px: a última
-                      // ficava cortada pela metade, sem barra de rolagem à
-                      // vista — parecia layout quebrado, e era só falta de 60px.
-                      // Em tela estreita o min-w devolve a rolagem horizontal.
+                      // Colunas elásticas em vez de 240px fixos. São SETE
+                      // colunas — Perdida inclusive —, e em 1.440px elas não
+                      // cabiam: a última saía cortada, sem barra de rolagem à
+                      // vista, e o quadro parecia quebrado. O layout amplo dá o
+                      // espaço; o min-w devolve a rolagem em tela estreita.
                       'flex-1 min-w-[200px] rounded-xl bg-muted/20 border border-border/40 p-3 transition-colors',
                       isOver && isDragging && 'ring-2 ring-accent/60 bg-accent/5'
                     )}
