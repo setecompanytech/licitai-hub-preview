@@ -291,6 +291,17 @@ const buildDocumentAnalysisPayload = async (file: File): Promise<DocumentAnalysi
   return { images: [], supportText: '' };
 };
 
+/**
+ * Nome do arquivo sem o caminho interno do armazenamento.
+ *
+ * O caminho gravado inclui a pasta do usuário — um identificador de 36
+ * caracteres que a tela mostrava por inteiro antes do nome. Ele não diz nada a
+ * quem confere documento e empurrava o nome real para fora da vista.
+ */
+function nomeDoArquivo(caminho: string): string {
+  return caminho.split('/').pop() || caminho;
+}
+
 export default function Documentos() {
   const [filter, setFilter] = useState<DocStatus | 'todos'>('todos');
   const [activeTab, setActiveTab] = useState('documentos');
@@ -701,17 +712,18 @@ export default function Documentos() {
                           <div key={doc.nome} className="flex items-center justify-between px-5 py-3">
                             <div className="flex items-center gap-3">
                               <Icon className={`w-4 h-4 ${cfg.color}`} />
-                              <div>
-                                <p className="text-sm font-medium">{doc.nome}</p>
+                              <div className="min-w-0">
+                                <p className="text-base font-medium">{doc.nome}</p>
                                 {doc.validade && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <CalendarDays className="w-3 h-3" />
+                                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                    <CalendarDays className="w-3.5 h-3.5 shrink-0" />
                                     Validade: {new Date(doc.validade).toLocaleDateString('pt-BR')}
                                   </p>
                                 )}
                                 {doc.arquivo && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <FileText className="w-3 h-3" /> {doc.arquivo}
+                                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{nomeDoArquivo(doc.arquivo)}</span>
                                   </p>
                                 )}
                               </div>
