@@ -312,16 +312,21 @@ export default function KanbanPage() {
                     key={col.id}
                     ref={(el) => { columnRefs.current[col.id] = el; }}
                     className={cn(
-                      'min-w-[240px] w-[240px] flex-shrink-0 rounded-xl bg-muted/20 border border-border/40 p-3 transition-colors',
+                      // Colunas elásticas em vez de 240px fixos. Seis colunas
+                      // fixas somavam 1500px numa área de ~1390px: a última
+                      // ficava cortada pela metade, sem barra de rolagem à
+                      // vista — parecia layout quebrado, e era só falta de 60px.
+                      // Em tela estreita o min-w devolve a rolagem horizontal.
+                      'flex-1 min-w-[200px] rounded-xl bg-muted/20 border border-border/40 p-3 transition-colors',
                       isOver && isDragging && 'ring-2 ring-accent/60 bg-accent/5'
                     )}
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
-                      <h3 className="text-xs font-semibold truncate">{col.title}</h3>
+                      <h3 className="text-xs font-semibold leading-tight">{col.title}</h3>
                       <Badge variant="outline" className="text-xs ml-auto px-1.5 py-0">{colItems.length}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3 leading-tight">{col.description}</p>
+                    <p className="text-xs text-muted-foreground mb-3 leading-tight line-clamp-2">{col.description}</p>
 
                     <div className="space-y-2 min-h-[120px]">
                       {colItems.length === 0 && (
