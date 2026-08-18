@@ -94,8 +94,16 @@ export default function KanbanPage() {
   const [ghostPos, setGhostPos] = useState({ x: 0, y: 0 });
   const [overColId, setOverColId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // Colunas sem nenhum processo ficam recolhidas por padrão: são oito ao todo,
+  // e em notebook comum elas não cabem abertas.
+  const [mostrarVazias, setMostrarVazias] = useState(false);
 
   useEffect(() => { itemsRef.current = items; }, [items]);
+
+  // Quantas colunas estão sem processo — define se o atalho de expandir aparece.
+  const vazias = columns.filter(
+    (c) => !items.some((i) => colunaDe(i) === c.id),
+  ).length;
 
   const handleEdit = (lic: LicitacaoKanban) => { setEditItem(lic); setEditOpen(true); };
   const handleSaved = (updated: LicitacaoKanban) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
@@ -303,24 +311,56 @@ export default function KanbanPage() {
               </p>
             </div>
           ) : (
+            <>
+            {vazias > 0 && (
+              <button
+                onClick={() => setMostrarVazias(v => !v)}
+                className="mb-2 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+              >
+                {mostrarVazias
+                  ? 'Recolher colunas vazias'
+                  : `Mostrar ${vazias} coluna(s) vazia(s)`}
+              </button>
+            )}
             <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
                 const colItems = items.filter((i) => colunaDe(i) === col.id);
                 const isOver = overColId === col.id;
+                // Enquanto se arrasta, tudo abre: esconder o destino seria pior
+                // que ocupar espaço.
+                const recolhida = !mostrarVazias && !isDragging && colItems.length === 0;
                 return (
                   <div
                     key={col.id}
                     ref={(el) => { columnRefs.current[col.id] = el; }}
+                    onClick={() => recolhida && setMostrarVazias(true)}
+                    title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
                     className={cn(
-                      // Colunas elásticas em vez de 240px fixos. São SETE
-                      // colunas — Perdida inclusive —, e em 1.440px elas não
-                      // cabiam: a última saía cortada, sem barra de rolagem à
-                      // vista, e o quadro parecia quebrado. O layout amplo dá o
-                      // espaço; o min-w devolve a rolagem em tela estreita.
-                      'flex-1 min-w-[200px] rounded-xl bg-muted/20 border border-border/40 p-3 transition-colors',
+                      'rounded-xl bg-muted/20 border border-border/40 transition-all',
+                      // Coluna vazia vira uma faixa estreita em vez de ocupar a
+                      // largura de uma cheia. São oito colunas: em notebook de
+                      // 1.366px elas nunca caberiam abertas, e a última saía
+                      // cortada. Recolher as vazias devolve o espaço a quem tem
+                      // trabalho — e elas continuam recebendo cartão arrastado.
+                      recolhida
+                        ? 'w-11 flex-shrink-0 p-2 cursor-pointer hover:bg-muted/40'
+                        : 'flex-1 min-w-[190px] p-3',
                       isOver && isDragging && 'ring-2 ring-accent/60 bg-accent/5'
                     )}
                   >
+                    {recolhida ? (
+                      <div className="flex flex-col items-center gap-2 py-1">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
+                        <span
+                          className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap"
+                          style={{ writingMode: 'vertical-rl' }}
+                        >
+                          {col.title}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums">0</span>
+                      </div>
+                    ) : (
+                    <>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.color }} />
                       <h3 className="text-xs font-semibold leading-tight">{col.title}</h3>
@@ -412,10 +452,13 @@ export default function KanbanPage() {
                         </div>
                       ))}
                     </div>
+                    </>
+                    )}
                   </div>
                 );
               })}
             </div>
+            </>
           )}
         </TabsContent>
 
