@@ -76,7 +76,7 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO (Lei 14.133/2021): quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Classifique também o objeto licitado no campo segmento_objeto.",
+              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO (Lei 14.133/2021): quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Para CADA exigência, transcreva em trecho_edital o texto ORIGINAL do órgão, literalmente — quem confere precisa das palavras do edital, não da sua paráfrase. Nunca invente trecho: se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico que a originou. Classifique também o objeto licitado no campo segmento_objeto.",
           },
           {
             role: "user",
@@ -111,10 +111,14 @@ serve(async (req) => {
                           type: "string",
                           description: "Número do item/subitem do edital onde a exigência aparece, exatamente como no texto (ex.: '9.1.5'). String vazia apenas se o trecho não for numerado.",
                         },
+                        trecho_edital: {
+                          type: "string",
+                          description: "TRANSCRIÇÃO LITERAL do trecho do edital que cria a exigência — as palavras do órgão, sem resumir, sem reescrever, sem corrigir. Copie do item citado em artigo_referencia, começando pela numeração. Se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico. Máximo de 600 caracteres; se o trecho for maior, corte no fim de uma frase. String vazia só se o texto não estiver nos documentos analisados.",
+                        },
                         obrigatorio: { type: "boolean" },
                         observacao: { type: "string" },
                       },
-                      required: ["nome", "categoria", "obrigatorio", "artigo_referencia"],
+                      required: ["nome", "categoria", "obrigatorio", "artigo_referencia", "trecho_edital"],
                     },
                   },
                 },
@@ -249,6 +253,10 @@ serve(async (req) => {
         grupo: taxo?.grupo ?? GRUPO_POR_CATEGORIA[String(ex.categoria)] ?? "outro",
         exigencia: String(ex.nome || "").slice(0, 500),
         referencia: String(ex.artigo_referencia || "").trim() ? String(ex.artigo_referencia).trim().slice(0, 120) : null,
+        // Transcrição literal, para quem confere não precisar abrir o PDF.
+        trecho_edital: String(ex.trecho_edital || "").trim()
+          ? String(ex.trecho_edital).trim().replace(/\s+/g, " ").slice(0, 700)
+          : null,
         obrigatorio: ex.obrigatorio !== false,
         observacao: [ex.observacao ? String(ex.observacao).slice(0, 400) : null, avisoSegmento]
           .filter(Boolean)

@@ -26,6 +26,7 @@ type Linha = {
   grupo: string | null;
   exigencia: string;
   referencia: string | null;
+  trecho_edital: string | null;
   obrigatorio: boolean;
   observacao: string | null;
   status: 'ok' | 'vence_antes_sessao' | 'faltante';
@@ -82,7 +83,7 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
     setLoading(true);
     const { data } = await supabase
       .from('processo_habilitacao_checklist' as never)
-      .select('id, tipo, grupo, exigencia, referencia, obrigatorio, observacao, status, documento_origem, documento_nome, documento_validade, conferido')
+      .select('id, tipo, grupo, exigencia, referencia, trecho_edital, obrigatorio, observacao, status, documento_origem, documento_nome, documento_validade, conferido')
       .eq('licitacao_id', licitacaoId)
       .order('grupo')
       .order('exigencia');
@@ -224,7 +225,16 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
                     {!l.obrigatorio && <Badge variant="outline" className="text-xs">facultativo</Badge>}
                     {!l.conferido && <span className="text-xs text-muted-foreground italic">sugerido pela IA</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  {/* Texto do órgão, literal. A linha acima é a leitura da IA;
+                      esta é a fonte — quem confere não precisa abrir o PDF para
+                      saber quem pode emitir o atestado ou o que conta como
+                      objeto similar. */}
+                  {l.trecho_edital && (
+                    <blockquote className="mt-1.5 border-l-2 border-accent/40 pl-2.5 text-xs leading-relaxed text-foreground/80 italic">
+                      “{l.trecho_edital}”
+                    </blockquote>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
                     {rotuloTipo(l.tipo) && <span>{rotuloTipo(l.tipo)} · </span>}
                     {l.status === 'faltante' && <span>nenhum documento do tipo no cofre da empresa</span>}
                     {l.status !== 'faltante' && l.documento_nome && (
