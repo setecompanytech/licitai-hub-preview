@@ -637,7 +637,7 @@ export default function Documentos() {
             <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
             Controle de Documentos
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Conformidade com a Lei 14.133/2021 e legislação vigente
           </p>
         </div>
@@ -664,8 +664,8 @@ export default function Documentos() {
             {/* Progress */}
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Conformidade Geral</span>
-                <span className="text-sm font-bold text-foreground">{progress}%</span>
+                <span className="text-base font-medium">Conformidade Geral</span>
+                <span className="text-base font-bold text-foreground">{progress}%</span>
               </div>
               <Progress value={progress} className="h-2" />
               <div className="flex gap-4 mt-3">
@@ -676,7 +676,7 @@ export default function Documentos() {
                     <button
                       key={s}
                       onClick={() => setFilter(filter === s ? 'todos' : s)}
-                      className={`flex items-center gap-1 text-xs ${cfg.color} ${filter === s ? 'font-bold underline' : ''}`}
+                      className={`flex items-center gap-1.5 text-sm ${cfg.color} ${filter === s ? 'font-bold underline' : ''}`}
                     >
                       <cfg.icon className="w-3 h-3" />
                       {count} {cfg.label}
@@ -695,8 +695,8 @@ export default function Documentos() {
                   <div key={cat} className="bg-card rounded-xl border border-border/50 shadow-sm">
                     <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50">
                       <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold">{cat}</h3>
-                      <Badge variant="outline" className="ml-auto text-xs">
+                      <h3 className="text-base font-semibold">{cat}</h3>
+                      <Badge variant="outline" className="ml-auto text-sm">
                         {docs[0]?.artigo}
                       </Badge>
                     </div>
@@ -729,7 +729,7 @@ export default function Documentos() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={`text-xs ${cfg.color}`}>
+                              <Badge variant="outline" className={`text-sm ${cfg.color}`}>
                                 {cfg.label}
                               </Badge>
                               {doc.arquivo ? (
@@ -802,7 +802,7 @@ export default function Documentos() {
               <div className="text-center py-10 text-muted-foreground text-sm space-y-2">
                 <Bot className="w-10 h-10 mx-auto opacity-40" />
                 <p>Selecione um <strong>Processo Ativo</strong> (parâmetro <code>?lid=</code>) para usar a Conferência Documental por IA.</p>
-                <p className="text-xs">A IA lê o edital vinculado ao processo, extrai os documentos exigidos e cruza com os já anexados no sistema.</p>
+                <p className="text-sm">A IA lê o edital vinculado ao processo, extrai os documentos exigidos e cruza com os já anexados no sistema.</p>
               </div>
             ) : loadingEdital ? (
               <div className="text-center py-10 text-muted-foreground text-sm">
@@ -813,7 +813,7 @@ export default function Documentos() {
               <div className="text-center py-10 text-muted-foreground text-sm space-y-2">
                 <FileText className="w-10 h-10 mx-auto opacity-40" />
                 <p>Nenhum edital encontrado para este processo.</p>
-                <p className="text-xs">Faça upload do edital na aba <strong>Documentos</strong> ou vincule um edital ao processo.</p>
+                <p className="text-sm">Faça upload do edital na aba <strong>Documentos</strong> ou vincule um edital ao processo.</p>
               </div>
             ) : (
               <VerificadorDocumentos
@@ -890,7 +890,7 @@ export default function Documentos() {
 
               {/* Or manual text input */}
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
+                <Label className="text-sm text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
                 <Input
                   placeholder="DD/MM/AAAA"
                   value={pendingManualDate ? (() => {

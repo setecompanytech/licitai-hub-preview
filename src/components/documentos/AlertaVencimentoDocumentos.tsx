@@ -43,17 +43,17 @@ export default function AlertaVencimentoDocumentos({ documentos }: Props) {
         <div className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm animate-fade-in">
           <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-destructive">
+            <p className="text-base font-semibold text-destructive">
               {vencidos.length} documento{vencidos.length > 1 ? 's' : ''} vencido{vencidos.length > 1 ? 's' : ''}
             </p>
             <ul className="mt-1 space-y-0.5">
               {vencidos.map(d => (
-                <li key={d.nome} className="text-xs text-destructive/80">
+                <li key={d.nome} className="text-sm text-destructive/80">
                   • {d.nome} {d.validade && `— venceu em ${new Date(d.validade).toLocaleDateString('pt-BR')}`}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-destructive/70 mt-1.5">
+            <p className="text-sm text-destructive/70 mt-1.5">
               ⚠️ Documentos vencidos impedem a habilitação em licitações. Regularize imediatamente.
             </p>
           </div>
@@ -64,14 +64,14 @@ export default function AlertaVencimentoDocumentos({ documentos }: Props) {
         <div className="flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/20 rounded-lg text-sm animate-fade-in">
           <Clock className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-warning">
+            <p className="text-base font-semibold text-warning">
               {proximos.length} documento{proximos.length > 1 ? 's' : ''} próximo{proximos.length > 1 ? 's' : ''} do vencimento
             </p>
             <ul className="mt-1 space-y-0.5">
               {proximos.map(d => {
                 const diffDias = Math.ceil((new Date(d.validade!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
                 return (
-                  <li key={d.nome} className="text-xs text-warning/80">
+                  <li key={d.nome} className="text-sm text-warning/80">
                     • {d.nome} — vence em <strong>{diffDias} dia{diffDias > 1 ? 's' : ''}</strong> ({new Date(d.validade!).toLocaleDateString('pt-BR')})
                   </li>
                 );
@@ -85,12 +85,12 @@ export default function AlertaVencimentoDocumentos({ documentos }: Props) {
         <div className="flex items-start gap-3 px-4 py-3 bg-info/10 border border-info/20 rounded-lg text-sm animate-fade-in">
           <AlertTriangle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-info">
+            <p className="text-base font-semibold text-info">
               {ausentes.length} documento{ausentes.length > 1 ? 's' : ''} pendente{ausentes.length > 1 ? 's' : ''}/ausente{ausentes.length > 1 ? 's' : ''}
             </p>
             <ul className="mt-1 space-y-0.5">
               {ausentes.map(d => (
-                <li key={d.nome} className="text-xs text-info/80">• {d.nome}</li>
+                <li key={d.nome} className="text-sm text-info/80">• {d.nome}</li>
               ))}
             </ul>
           </div>
