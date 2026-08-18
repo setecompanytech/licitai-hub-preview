@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FolderOpen, AlertTriangle, ArrowLeft, ChevronDown, Unlink } from 'lucide-react';
+import { FolderOpen, ArrowLeft, ChevronDown, Unlink } from 'lucide-react';
 
 /**
  * Barra de contexto e navegação dos módulos que operam sobre o "processo ativo"
@@ -55,17 +55,13 @@ export default function ProcessoContextoBanner() {
     return () => { ativo = false; };
   }, [processoId]);
 
-  if (!processoId) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/5 px-4 py-2.5 text-sm">
-        <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-        <span className="text-muted-foreground">
-          <span className="font-medium text-foreground">Nenhum processo vinculado</span> — as ações
-          desta tela não serão associadas a uma pasta de processo. Abra um processo no Painel para trabalhar dentro dele.
-        </span>
-      </div>
-    );
-  }
+  // Sem processo vinculado, a barra não aparece.
+  //
+  // Ela avisava que as ações "não serão associadas a uma pasta" — mas isso
+  // virou o normal de quem entra pelo menu, e alarme que toca o tempo todo
+  // deixa de ser alarme. O vínculo só existe quando a pessoa veio da pasta, e é
+  // nesse caso que dizer QUAL pasta importa.
+  if (!processoId) return null;
 
   // replace: voltar/ir não deve empilhar histórico — era o que fazia o botão
   // do navegador (e o ← da pasta) girar entre módulo e prontuário.
