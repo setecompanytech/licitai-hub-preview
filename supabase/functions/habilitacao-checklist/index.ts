@@ -66,74 +66,99 @@ serve(async (req) => {
     if (!lic.empresa_id) return json({ error: "Processo sem empresa vinculada" }, 400);
 
     // ── 1. Extração via IA (prompt provado do verificar-documentos-edital) ──
-    const aiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        // Objeto ajuda a IA a classificar o segmento (Movimento C)
-      messages: [
-          {
-            role: "system",
-            content:
-              "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO (Lei 14.133/2021): quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Para CADA exigência, transcreva em trecho_edital o texto ORIGINAL do órgão, literalmente — quem confere precisa das palavras do edital, não da sua paráfrase. Nunca invente trecho: se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico que a originou. Classifique também o objeto licitado no campo segmento_objeto.",
-          },
-          {
-            role: "user",
-            content: `Objeto da licitação: ${String(lic.objeto || "não informado").slice(0, 500)}\n\nAnalise os documentos do processo abaixo e extraia todas as exigências de habilitação e participação.\n\nDOCUMENTOS DO PROCESSO:\n${String(edital_texto).slice(0, 240000)}`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extrair_documentos_edital",
-              description: "Retorna lista de documentos exigidos pelo edital",
-              parameters: {
-                type: "object",
-                properties: {
-                  segmento_objeto: {
-                    type: "string",
-                    enum: ["alimentos", "informatica", "limpeza", "escritorio", "moveis", "vestuario", "medicamentos", "manutencao", "outros"],
-                    description: "Segmento do OBJETO licitado (para casar atestados de capacidade técnica do mesmo segmento)",
-                  },
-                  documentos_exigidos: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        nome: { type: "string" },
-                        categoria: {
-                          type: "string",
-                          enum: ["Habilitação Jurídica", "Regularidade Fiscal", "Qualificação Técnica", "Qualif. Econômico-Financeira", "Declarações", "Proposta", "Outros"],
+    //
+    // O 429 do provedor é limite POR MINUTO, não falta de crédito: o edital
+    // inteiro consome ~30 mil tokens, e basta outra geração ter rodado há
+    // pouco para estourar a cota do minuto. Mandar o usuário "tentar de novo"
+    // num erro que passa sozinho em segundos é empurrar trabalho para ele.
+    const chamarIA = async (tentativa = 1): Promise<Response> => {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          // Objeto ajuda a IA a classificar o segmento (Movimento C)
+          messages: [
+            {
+              role: "system",
+              content:
+                "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO (Lei 14.133/2021): quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Para CADA exigência, transcreva em trecho_edital o texto ORIGINAL do órgão, literalmente — quem confere precisa das palavras do edital, não da sua paráfrase. Nunca invente trecho: se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico que a originou. Classifique também o objeto licitado no campo segmento_objeto.",
+            },
+            {
+              role: "user",
+              content: `Objeto da licitação: ${String(lic.objeto || "não informado").slice(0, 500)}\n\nAnalise os documentos do processo abaixo e extraia todas as exigências de habilitação e participação.\n\nDOCUMENTOS DO PROCESSO:\n${String(edital_texto).slice(0, 240000)}`,
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "extrair_documentos_edital",
+                description: "Retorna lista de documentos exigidos pelo edital",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    segmento_objeto: {
+                      type: "string",
+                      enum: ["alimentos", "informatica", "limpeza", "escritorio", "moveis", "vestuario", "medicamentos", "manutencao", "outros"],
+                      description: "Segmento do OBJETO licitado (para casar atestados de capacidade técnica do mesmo segmento)",
+                    },
+                    documentos_exigidos: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          nome: { type: "string" },
+                          categoria: {
+                            type: "string",
+                            enum: ["Habilitação Jurídica", "Regularidade Fiscal", "Qualificação Técnica", "Qualif. Econômico-Financeira", "Declarações", "Proposta", "Outros"],
+                          },
+                          artigo_referencia: {
+                            type: "string",
+                            description: "Número do item/subitem do edital onde a exigência aparece, exatamente como no texto (ex.: '9.1.5'). String vazia apenas se o trecho não for numerado.",
+                          },
+                          trecho_edital: {
+                            type: "string",
+                            description: "TRANSCRIÇÃO LITERAL do trecho do edital que cria a exigência — as palavras do órgão, sem resumir, sem reescrever, sem corrigir. Copie do item citado em artigo_referencia, começando pela numeração. Se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico. Máximo de 600 caracteres; se o trecho for maior, corte no fim de uma frase. String vazia só se o texto não estiver nos documentos analisados.",
+                          },
+                          obrigatorio: { type: "boolean" },
+                          observacao: { type: "string" },
                         },
-                        artigo_referencia: {
-                          type: "string",
-                          description: "Número do item/subitem do edital onde a exigência aparece, exatamente como no texto (ex.: '9.1.5'). String vazia apenas se o trecho não for numerado.",
-                        },
-                        trecho_edital: {
-                          type: "string",
-                          description: "TRANSCRIÇÃO LITERAL do trecho do edital que cria a exigência — as palavras do órgão, sem resumir, sem reescrever, sem corrigir. Copie do item citado em artigo_referencia, começando pela numeração. Se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico. Máximo de 600 caracteres; se o trecho for maior, corte no fim de uma frase. String vazia só se o texto não estiver nos documentos analisados.",
-                        },
-                        obrigatorio: { type: "boolean" },
-                        observacao: { type: "string" },
+                        required: ["nome", "categoria", "obrigatorio", "artigo_referencia", "trecho_edital"],
                       },
-                      required: ["nome", "categoria", "obrigatorio", "artigo_referencia", "trecho_edital"],
                     },
                   },
+                  required: ["documentos_exigidos", "segmento_objeto"],
                 },
-                required: ["documentos_exigidos", "segmento_objeto"],
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extrair_documentos_edital" } },
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "extrair_documentos_edital" } },
+        }),
+      });
+
+      // Espera o que o provedor mandar esperar; sem cabeçalho, 20s e 40s —
+      // a janela do limite é de um minuto.
+      if (r.status === 429 && tentativa <= 2) {
+        const sugerido = Number(r.headers.get("retry-after")) * 1000;
+        const espera = Number.isFinite(sugerido) && sugerido > 0
+          ? Math.min(sugerido, 45_000)
+          : tentativa * 20_000;
+        await new Promise((ok) => setTimeout(ok, espera));
+        return chamarIA(tentativa + 1);
+      }
+      return r;
+    };
+
+    const aiResp = await chamarIA();
 
     if (!aiResp.ok) {
       const body = await aiResp.text();
-      return json({ error: `IA indisponível (${aiResp.status}): ${body.slice(0, 200)}` }, 502);
+      // Mensagem em português para o caso mais comum, preservando o original.
+      const detalhe = aiResp.status === 429
+        ? "limite de uso por minuto do provedor de IA atingido, mesmo após duas novas tentativas. Aguarde um minuto e gere de novo."
+        : body.slice(0, 200);
+      return json({ error: `IA indisponível (${aiResp.status}): ${detalhe}` }, 502);
     }
     const aiJson = await aiResp.json();
     const call = aiJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
