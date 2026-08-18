@@ -32,14 +32,12 @@ const ETAPAS = [
 ];
 
 export default function ProcessoContextoBanner() {
-  const { processoId, setProcessoId, fetchProcessos } = useProcessoAtivo();
-  const [processos, setProcessos] = useState<{ id: string; numero: string | null; orgao: string | null }[]>([]);
+  const { processoId, setProcessoId } = useProcessoAtivo();
 
-  // A lista é a mesma do Kanban: processos da empresa, sem os arquivados.
-  // Trocar de processo aqui evita o vaivém de sair do módulo, abrir a pasta
-  // certa e voltar — que era o que fazia o vínculo parecer um histórico
-  // grudado em vez de uma escolha.
-  useEffect(() => { fetchProcessos().then(setProcessos); }, [fetchProcessos, processoId]);
+  // Sem seletor de processos aqui, por decisão do dono do produto: quem opera
+  // dezenas de certames ao mesmo tempo não quer poder TROCAR a pasta de dentro
+  // de um módulo — é assim que documento de um processo vai parar em outro. A
+  // troca acontece onde ela é consciente: abrindo a pasta desejada.
   const navigate = useNavigate();
   const [meta, setMeta] = useState<{ numero: string; orgao: string } | null>(null);
 
@@ -61,15 +59,10 @@ export default function ProcessoContextoBanner() {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/5 px-4 py-2.5 text-sm">
         <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-        <span className="text-muted-foreground flex-1">
+        <span className="text-muted-foreground">
           <span className="font-medium text-foreground">Nenhum processo vinculado</span> — as ações
-          desta tela não serão associadas a uma pasta de processo.
+          desta tela não serão associadas a uma pasta de processo. Abra um processo no Painel para trabalhar dentro dele.
         </span>
-        <SeletorDeProcesso
-          processos={processos}
-          onEscolher={setProcessoId}
-          rotulo="Escolher processo"
-        />
       </div>
     );
   }
@@ -86,11 +79,6 @@ export default function ProcessoContextoBanner() {
         {meta ? `${meta.numero}${meta.orgao ? ` — ${meta.orgao}` : ''}` : '…'}
       </span>
       <div className="flex items-center gap-1.5 ml-auto">
-        <SeletorDeProcesso
-          processos={processos.filter((p) => p.id !== processoId)}
-          onEscolher={setProcessoId}
-          rotulo="Trocar"
-        />
         <Button size="sm" variant="ghost" className="h-7" onClick={() => irPara('visao')}>
           <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Voltar ao prontuário
         </Button>
@@ -122,42 +110,5 @@ export default function ProcessoContextoBanner() {
         </DropdownMenu>
       </div>
     </div>
-  );
-}
-
-/**
- * Lista de processos para vincular — a mesma do Kanban.
- *
- * Fica aqui, e não só na aba Compromissos onde já existia, porque é no módulo
- * que a pessoa percebe que está no processo errado. Fazê-la sair, abrir a pasta
- * certa e voltar era o percurso que transformava conveniência em incômodo.
- */
-function SeletorDeProcesso({
-  processos, onEscolher, rotulo,
-}: {
-  processos: { id: string; numero: string | null; orgao: string | null }[];
-  onEscolher: (id: string) => void;
-  rotulo: string;
-}) {
-  if (processos.length === 0) return null;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 text-xs">
-          <FolderOpen className="w-3.5 h-3.5 mr-1.5" /> {rotulo}
-          <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-[340px] overflow-y-auto w-[340px]">
-        <DropdownMenuLabel className="text-xs">Processos do Kanban</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {processos.map((p) => (
-          <DropdownMenuItem key={p.id} onClick={() => onEscolher(p.id)} className="text-sm">
-            <span className="font-medium mr-2 shrink-0">{p.numero || 'S/N'}</span>
-            <span className="text-muted-foreground truncate">{p.orgao || ''}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
