@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
-import GlobalProcessoBar from '@/components/layout/GlobalProcessoBar';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { toast } from 'sonner';
 
@@ -149,7 +148,10 @@ export default function CompromissosResumo() {
     <div className="space-y-3">
       {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-        <GlobalProcessoBar />
+        {/* A barra de "processo ativo" saiu junto com a memória entre telas:
+            ela servia para eleger um processo que acompanharia a pessoa pelos
+            módulos, e é justamente isso que deixou de existir. Abrir a pasta é
+            o caminho. */}
       </div>
 
       <div className="flex items-center justify-between gap-2 flex-wrap">

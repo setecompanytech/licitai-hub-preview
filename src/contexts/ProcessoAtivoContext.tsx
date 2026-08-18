@@ -9,7 +9,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 
-const STORAGE_KEY = 'praefectus.processoAtivo';
 
 export interface ProcessoAtivo {
   id: string;
@@ -47,16 +46,15 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const urlId = searchParams.get('lid');
-  // Fonte da verdade do processo ativo: a memória, não a URL.
+  // O processo ativo vem SÓ da URL, e a URL só o carrega quando a pessoa veio
+  // da pasta. Por decisão do dono do produto: quem administra dezenas de
+  // certames não quer que um vínculo o siga pelos módulos — é assim que
+  // documento de um processo vai parar na pasta de outro, e o erro só aparece
+  // depois, no envio ao órgão.
   //
-  // Enquanto o `lid` estava em todo endereço, dava para tratar a URL como
-  // fonte. Agora ele só aparece nas telas que usam o processo — e nas outras a
-  // barra global diria "nenhum processo vinculado" mesmo com um vinculado.
-  // A URL passa a REFLETIR o processo ativo onde ele significa algo.
-  const [idPersistido, setIdPersistido] = useState<string | null>(
-    () => localStorage.getItem(STORAGE_KEY),
-  );
-  const processoId = urlId ?? idPersistido;
+  // Antes o vínculo era reidratado da memória local a cada tela, e por isso
+  // reaparecia ao entrar num módulo pelo menu, horas depois, sem ninguém pedir.
+  const processoId = urlId;
   const [processo, setProcesso] = useState<ProcessoAtivo | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,46 +68,18 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   // O rastreio de rotas passou para RegistroDeRota, no roteador: agora existe
   // um histórico só, e a seta da pasta usa o mesmo Voltar do resto do sistema.
 
-  // Reidrata o processo ativo SEMPRE que a URL ficar sem `lid` — não só na
-  // montagem. O provider é global e não remonta na navegação interna: ir para
-  // outro módulo pelo menu (URL sem ?lid=) deixava a barra dizendo "Nenhum
-  // processo vinculado" mesmo com o processo em memória.
+  // Tela que não usa o processo tampouco carrega o parâmetro: um `lid` que
+  // sobrou de uma URL colada não deve vincular nada por acidente.
   useEffect(() => {
-    const daqui = usaProcessoAtivo(location.pathname);
+    if (!urlId || usaProcessoAtivo(location.pathname)) return;
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('lid');
+      return next;
+    }, { replace: true });
+  }, [urlId, location.pathname, setSearchParams]);
 
-    // Tela que não usa o processo não carrega o parâmetro. Ele some da URL sem
-    // desfazer o vínculo: a memória local continua guardando, e ele reaparece
-    // assim que a pessoa entra numa tela que o usa.
-    if (!daqui) {
-      if (urlId) {
-        setSearchParams(prev => {
-          const next = new URLSearchParams(prev);
-          next.delete('lid');
-          return next;
-        }, { replace: true });
-      }
-      return;
-    }
-
-    if (urlId) return;
-    // Limpeza explícita (usuário desvinculou) não deve ser desfeita.
-    if (limpezaExplicitaRef.current) { limpezaExplicitaRef.current = false; return; }
-    if (idPersistido) {
-      setSearchParams(prev => {
-        const next = new URLSearchParams(prev);
-        next.set('lid', idPersistido);
-        return next;
-      }, { replace: true });
-    }
-  }, [urlId, idPersistido, location.pathname, setSearchParams]);
-
-  // Persiste o processo ativo. Ausência de `lid` na URL NÃO apaga a memória:
-  // navegar para uma tela sem o parâmetro chegava a apagar o processo ativo do
-  // localStorage, e nem recarregar a página o trazia de volta. Quem apaga é a
-  // desvinculação explícita (applySwitch(null)).
-  useEffect(() => {
-    if (processoId) localStorage.setItem(STORAGE_KEY, processoId);
-  }, [processoId]);
+  // Sem memória entre telas, de propósito: o vínculo dura o percurso, não o dia.
 
   const { empresaAtiva } = useEmpresa();
 
@@ -155,16 +125,7 @@ export function ProcessoAtivoProvider({ children }: { children: ReactNode }) {
   }, [processoId, user, fetchProcesso]);
 
   const applySwitch = useCallback((id: string | null) => {
-    if (!id) {
-      // Desvinculação explícita: some da URL, da memória e do armazenamento.
-      limpezaExplicitaRef.current = true;
-      localStorage.removeItem(STORAGE_KEY);
-    } else {
-      // Vincular grava na hora: em tela sem `lid` na URL, esperar o parâmetro
-      // aparecer significaria nunca guardar.
-      localStorage.setItem(STORAGE_KEY, id);
-    }
-    setIdPersistido(id);
+    if (!id) limpezaExplicitaRef.current = true;
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       // Vincular a partir de uma tela que não usa o processo (o Kanban, por
