@@ -1,19 +1,23 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { destinoDoVoltar, prepararVolta, redefinirPara, subscribeHistorico } from '@/lib/navegacao/historico';
+import {
+  avancar, destinoDoAvancar, destinoDoVoltar, subscribeHistorico, voltar,
+} from '@/lib/navegacao/historico';
 
 /**
- * Voltar de verdade — para a tela anterior, não para uma rota fixa.
+ * Voltar e avançar, como no explorador de arquivos.
  *
- * Fica no AppLayout, então vale para todas as telas de uma vez: das 83 páginas
- * do sistema, apenas 9 tinham botão, e a maioria apontava para `/painel` ou
- * `/kanban` fixos. Era isso que fazia o sistema parecer levar a uma página
- * aleatória — ele levava sempre à mesma, qualquer que fosse a origem.
+ * Antes havia só o voltar, e ele DESTRUÍA o passo — por isso não existia
+ * avançar, e por isso o percurso girava. Com lista e cursor (ver
+ * `lib/navegacao/historico.ts`), os dois nascem do mesmo mecanismo: um anda
+ * para a esquerda, o outro para a direita.
  *
- * Não aparece quando não há de onde voltar (entrada direta, aba nova, Painel):
- * botão que não leva a lugar nenhum é pior que botão ausente.
+ * As setas ficam visíveis e DESABILITADAS quando não há para onde ir, em vez de
+ * sumir. É o comportamento do sistema operacional, e é o que torna evidente que
+ * existe caminho à frente depois de voltar. Somem juntas só na primeira tela da
+ * sessão, onde nenhuma das duas serve.
  */
 export default function BotaoVoltar({
   somenteIcone = false,
@@ -21,44 +25,57 @@ export default function BotaoVoltar({
 }: {
   somenteIcone?: boolean;
   /**
-   * Destino quando não há percurso — recarregar a página zera o histórico do
-   * aplicativo, e a tela ficava sem saída visível. Só as telas que têm um
-   * "lugar de origem" óbvio passam este valor; onde não há, o botão continua
-   * sumindo, porque botão que não leva a lugar nenhum é pior que ausente.
+   * Destino quando não há de onde voltar — entrada direta por link ou após
+   * recarregar a página. Vale como navegação normal: vira um passo, e o avançar
+   * segue funcionando a partir dali.
    */
   padrao?: string;
 }) {
   const navigate = useNavigate();
 
-  const destino = useSyncExternalStore(
-    useCallback((cb) => subscribeHistorico(cb), []),
-    useCallback(() => destinoDoVoltar(), []),
-  );
+  const assinar = useCallback((cb: () => void) => subscribeHistorico(cb), []);
+  const atras = useSyncExternalStore(assinar, useCallback(() => destinoDoVoltar(), []));
+  const frente = useSyncExternalStore(assinar, useCallback(() => destinoDoAvancar(), []));
 
-  // Quem anota as rotas é o RegistroDeRota, no roteador — telas fora deste
-  // layout (a pasta do processo) também precisam entrar na pilha.
+  const alvoAtras = atras ?? padrao ?? null;
+  if (!alvoAtras && !frente) return null;
 
-  const alvoFinal = destino ?? padrao ?? null;
-  if (!alvoFinal) return null;
+  const irAtras = () => {
+    const doPercurso = voltar();
+    if (doPercurso) { navigate(doPercurso); return; }
+    if (padrao) navigate(padrao);   // entrada direta: origem declarada da tela
+  };
+
+  const irFrente = () => {
+    const destino = avancar();
+    if (destino) navigate(destino);
+  };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      title="Voltar para a tela anterior"
-      className={somenteIcone
-        ? 'text-muted-foreground hover:text-foreground'
-        : 'mb-3 -ml-2 text-muted-foreground hover:text-foreground'}
-      onClick={() => {
-        const doPercurso = prepararVolta();
-        if (doPercurso) { navigate(doPercurso); return; }
-        // Sem percurso: o salto para a origem RECOMEÇA a pilha ali. Empilhá-lo
-        // fazia a origem "voltar" para esta tela, e esta para a origem.
-        if (padrao) { redefinirPara(padrao); navigate(padrao); }
-      }}
-    >
-      <ArrowLeft className={somenteIcone ? 'w-4 h-4' : 'w-4 h-4 mr-1.5'} />
-      {!somenteIcone && 'Voltar'}
-    </Button>
+    <div className={`flex items-center gap-0.5 ${somenteIcone ? '' : 'mb-3 -ml-2'}`}>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!alvoAtras}
+        title={alvoAtras ? 'Voltar' : 'Não há para onde voltar'}
+        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+        onClick={irAtras}
+      >
+        <ArrowLeft className={somenteIcone ? 'w-4 h-4' : 'w-4 h-4 mr-1.5'} />
+        {!somenteIcone && 'Voltar'}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!frente}
+        title={frente ? 'Avançar' : 'Não há para onde avançar'}
+        className="text-muted-foreground hover:text-foreground disabled:opacity-30 px-2"
+        onClick={irFrente}
+      >
+        <ArrowRight className="w-4 h-4" />
+        <span className="sr-only">Avançar</span>
+      </Button>
+    </div>
   );
 }

@@ -1,55 +1,49 @@
 /**
- * Histórico de navegação DENTRO do aplicativo — autoridade única do "Voltar".
+ * Histórico de navegação DENTRO do aplicativo — modelo do explorador de arquivos.
  *
- * O botão do navegador não serve aqui, e as tentativas anteriores mostraram por
- * quê. `navigate(-1)` volta para o que estiver na pilha do navegador: um
- * redirecionamento de login, uma rota que já se auto-substituiu, ou nada — e aí
- * sai do aplicativo. Botões com rota fixa (`navigate('/painel')`) sempre
- * "voltam" para o mesmo lugar, independentemente de onde a pessoa estava; é o
- * que fazia o sistema parecer levar a uma página aleatória.
+ * A primeira versão tratava "voltar" como DESEMPILHAR: o passo era destruído ao
+ * voltar. Nenhum sistema operacional faz isso, e é por isso que o Windows
+ * Explorer tem *avançar* e nunca gira em círculos. Sem cursor, voltar apaga o
+ * caminho, a chegada regrava, e o pêndulo nasce sozinho — foi o que aconteceu
+ * aqui três vezes seguidas, com causas diferentes e a mesma raiz.
  *
- * Aqui a pilha é do aplicativo. Seis regras que a mantêm honesta:
+ * Agora o modelo é o mesmo do Explorer: uma LISTA de rotas visitadas e um
+ * CURSOR apontando onde a pessoa está.
  *
- *  1. **Rota repetida não empilha.** Trocar `?lid=` da mesma tela não é uma
- *     navegação nova; empilhar faria o Voltar andar em falso.
- *  2. **Voltar despila, não empilha.** Sem isso, A→B→Voltar gravaria A de novo
- *     e o próximo Voltar traria B: o giro em círculos já relatado.
- *  3. **Entrada direta não inventa origem.** Quem abre um link em aba nova não
- *     tem para onde voltar, e o botão simplesmente não aparece.
- *  4. **Rota já visitada trunca a pilha.** Chegar de novo a uma tela do próprio
- *     percurso é retorno, não avanço — vale mesmo quando quem navegou foi um
- *     botão da tela, e não o Voltar.
- *  5. **Salto para a origem redefine a pilha.** Sem percurso, algumas telas
- *     oferecem um destino conhecido (a pasta do processo oferece o Kanban).
- *     Isso é recomeçar, não voltar — empilhar recriava o pêndulo.
- *  6. **Parâmetro de contexto não conta.** `?lid=` identifica o processo ativo,
- *     não a página, e o sistema o reescreve na URL sozinho. Contá-lo fazia cada
- *     navegação virar dois passos, e o Voltar ir para a MESMA tela.
+ *   entradas:  /kanban → /processo/28 → /precificacao
+ *   cursor:                  ▲
+ *
+ *   voltar   → cursor anda para a esquerda (o que fica à direita vira avançar)
+ *   avançar  → cursor anda para a direita
+ *   navegar  → descarta o que estava à direita do cursor e acrescenta ao fim
+ *
+ * O último ponto é o que separa caminhos sem misturá-los: abrir uma pasta nova
+ * depois de ter voltado apaga o ramo antigo, exatamente como o explorador faz.
+ *
+ * Duas regras que o sistema operacional não precisa e este aplicativo sim:
+ *
+ *  - **Rota repetida não entra.** O `?lid=` é reescrito pelo próprio sistema
+ *    logo depois que a tela carrega; sem ignorar isso, cada navegação viraria
+ *    dois passos e voltar levaria à MESMA tela.
+ *  - **Parâmetro de contexto fica fora da identidade.** `lid` diz qual processo
+ *    está ativo, não qual página é — e ele é recolocado no destino pelo
+ *    ProcessoAtivoContext.
  *
  * Vive em módulo, não em estado de componente: o layout remonta a cada troca de
- * rota, e um `useState` perderia a pilha exatamente quando ela é necessária.
+ * rota, e um `useState` perderia a lista exatamente quando ela é necessária.
  */
 
-let pilha: string[] = [];
-let voltando = false;
+let entradas: string[] = [];
+let cursor = -1;
+/** Marca a navegação disparada pelos próprios botões, para não virar entrada nova. */
+let emTransito = false;
 const ouvintes = new Set<() => void>();
 
 const avisar = () => ouvintes.forEach((f) => f());
 
-/** Rotas que são destino final: estar nelas não é ter vindo de algum lugar. */
-const RAIZES = new Set(['/painel', '/dashboard', '/']);
-
 /**
- * Parâmetros que são CONTEXTO, não página. Ficam de fora da identidade da rota.
- *
- * `lid` é o processo ativo, e o sistema o reescreve na URL logo depois que a
- * tela carrega. Sem esta exclusão, cada navegação gravava DOIS passos —
- * `/documentos` e, um instante depois, `/documentos?lid=…` — e o Voltar
- * consumia o primeiro indo para a mesma tela. Clicava-se e nada acontecia,
- * porque de fato nada mudava.
- *
- * Guardar a rota sem o `lid` também não perde o processo: quem o recoloca é o
- * ProcessoAtivoContext, no destino.
+ * Parâmetros que são CONTEXTO, não página — ficam fora da identidade da rota.
+ * `lid` é o processo ativo, reescrito na URL depois que a tela carrega.
  */
 const PARAMETROS_DE_CONTEXTO = ['lid'];
 
@@ -62,56 +56,50 @@ export function chaveDaRota(caminho: string): string {
   return resto ? `${base}?${resto}` : base;
 }
 
+/** Chegada a uma rota. Só vira entrada nova quando a pessoa de fato navegou. */
 export function registrarRota(caminhoCru: string): void {
   const caminho = chaveDaRota(caminhoCru);
-  if (voltando) { voltando = false; return; }          // regra 2
-  if (pilha[pilha.length - 1] === caminho) return;      // regra 1
 
-  // Chegar a uma raiz zera o rastro: dali não se volta para trás.
-  if (RAIZES.has(caminho)) { pilha = [caminho]; avisar(); return; }
+  // Chegada provocada pelos botões: o cursor já foi movido por quem chamou.
+  if (emTransito) { emTransito = false; return; }
 
-  // Regra 4 — voltar a uma tela que já está no percurso TRUNCA a pilha ali,
-  // em vez de empilhar de novo.
-  //
-  // Sem isso, qualquer botão que navegue para trás por conta própria — a seta
-  // da pasta do processo saltando para o Kanban, o "Voltar ao Hub" do
-  // financeiro — entrava como avanço, e o Voltar seguinte trazia de volta para
-  // a tela de onde a pessoa tinha acabado de sair. Era o giro em círculos.
-  const jaVisitada = pilha.lastIndexOf(caminho);
-  pilha = jaVisitada >= 0 ? pilha.slice(0, jaVisitada + 1) : [...pilha, caminho];
+  // Mesma tela (reescrita do `?lid=`, por exemplo): não é navegação.
+  if (entradas[cursor] === caminho) return;
+
+  // Navegar descarta o ramo à frente — é o que impede caminhos de se misturarem
+  // quando a pessoa volta e toma outro rumo.
+  entradas = [...entradas.slice(0, cursor + 1), caminho];
+  cursor = entradas.length - 1;
   avisar();
 }
 
-/** Caminho para onde o Voltar leva, ou null quando não há de onde voltar. */
-export function destinoDoVoltar(): string | null {
-  return pilha.length >= 2 ? pilha[pilha.length - 2] : null;
+export const podeVoltar = (): boolean => cursor > 0;
+export const podeAvancar = (): boolean => cursor >= 0 && cursor < entradas.length - 1;
+
+/** Caminho à esquerda do cursor, sem mover nada. */
+export const destinoDoVoltar = (): string | null =>
+  podeVoltar() ? entradas[cursor - 1] : null;
+
+/** Caminho à direita do cursor, sem mover nada. */
+export const destinoDoAvancar = (): string | null =>
+  podeAvancar() ? entradas[cursor + 1] : null;
+
+/** Move o cursor para trás e devolve o destino. Quem chama navega. */
+export function voltar(): string | null {
+  if (!podeVoltar()) return null;
+  cursor -= 1;
+  emTransito = true;
+  avisar();
+  return entradas[cursor];
 }
 
-/**
- * Prepara a volta e devolve o destino. Quem chama navega — assim o hook não
- * precisa conhecer o roteador e a lógica continua testável sem React.
- */
-export function prepararVolta(): string | null {
-  const destino = destinoDoVoltar();
-  if (!destino) return null;
-  pilha = pilha.slice(0, -1);
-  voltando = true;
+/** Move o cursor para frente e devolve o destino. Quem chama navega. */
+export function avancar(): string | null {
+  if (!podeAvancar()) return null;
+  cursor += 1;
+  emTransito = true;
   avisar();
-  return destino;
-}
-
-/**
- * Salto para a origem declarada da tela — usado quando NÃO há percurso.
- *
- * Não é um passo atrás no percurso: é recomeçar dali. Empilhar esse salto foi o
- * que recriou o giro em círculos — o Kanban passava a "voltar" para a pasta, e
- * a pasta para o Kanban, sem fim. Redefinir a pilha encerra o assunto: quem
- * chega assim não tem de onde voltar, e o botão some, corretamente.
- */
-export function redefinirPara(destino: string): void {
-  pilha = [chaveDaRota(destino)];
-  voltando = false;
-  avisar();
+  return entradas[cursor];
 }
 
 export function subscribeHistorico(cb: () => void): () => void {
@@ -119,12 +107,13 @@ export function subscribeHistorico(cb: () => void): () => void {
   return () => { ouvintes.delete(cb); };
 }
 
-/** Só para os testes: a pilha é global de propósito. */
+/** Só para os testes: a lista é global de propósito. */
 export function _reiniciarHistorico(): void {
-  pilha = [];
-  voltando = false;
+  entradas = [];
+  cursor = -1;
+  emTransito = false;
 }
 
-export function _pilhaAtual(): string[] {
-  return [...pilha];
+export function _estadoAtual(): { entradas: string[]; cursor: number } {
+  return { entradas: [...entradas], cursor };
 }

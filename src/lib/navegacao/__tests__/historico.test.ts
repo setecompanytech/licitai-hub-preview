@@ -1,119 +1,79 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  registrarRota, destinoDoVoltar, prepararVolta, redefinirPara,
-  _reiniciarHistorico, _pilhaAtual,
+  registrarRota, voltar, avancar, destinoDoVoltar, destinoDoAvancar,
+  podeVoltar, podeAvancar, _reiniciarHistorico, _estadoAtual,
 } from '../historico';
 
 beforeEach(() => _reiniciarHistorico());
 
-describe('histórico do aplicativo', () => {
-  it('sem origem, não há para onde voltar', () => {
-    registrarRota('/precificacao');
-    expect(destinoDoVoltar()).toBeNull();
+/** Encadeia uma navegação real: move o cursor e registra a chegada. */
+const clicarVoltar = () => { const d = voltar(); if (d) registrarRota(d); return d; };
+const clicarAvancar = () => { const d = avancar(); if (d) registrarRota(d); return d; };
+
+describe('modelo do explorador de arquivos', () => {
+  it('primeira tela da sessão não tem para onde ir', () => {
+    registrarRota('/processo/28');
+    expect(podeVoltar()).toBe(false);
+    expect(podeAvancar()).toBe(false);
   });
 
-  it('volta para a tela anterior de verdade, não para uma rota fixa', () => {
-    registrarRota('/kanban');
-    registrarRota('/processo/123');
-    expect(destinoDoVoltar()).toBe('/kanban');
-  });
-
-  it('não gira em círculos: voltar despila em vez de empilhar', () => {
-    registrarRota('/kanban');
-    registrarRota('/precificacao');
-    const destino = prepararVolta();
-    expect(destino).toBe('/kanban');
-    registrarRota(destino!);            // o roteador navega e a rota é registrada
-    expect(_pilhaAtual()).toEqual(['/kanban']);
-    expect(destinoDoVoltar()).toBeNull();
-  });
-
-  it('mesma rota repetida não empilha', () => {
-    registrarRota('/processo/1?lid=a');
-    registrarRota('/processo/1?lid=a');
-    expect(_pilhaAtual()).toHaveLength(1);
-  });
-
-  it('chegar ao Painel zera o rastro — dali não se volta', () => {
-    registrarRota('/kanban');
-    registrarRota('/precificacao');
-    registrarRota('/painel');
-    expect(_pilhaAtual()).toEqual(['/painel']);
-    expect(destinoDoVoltar()).toBeNull();
-  });
-
-  it('percurso longo volta um passo por vez', () => {
-    ['/kanban', '/processo/1', '/precificacao', '/proposta-tecnica'].forEach(registrarRota);
-    expect(prepararVolta()).toBe('/precificacao');
-    registrarRota('/precificacao');
-    expect(prepararVolta()).toBe('/processo/1');
-    registrarRota('/processo/1');
-    expect(prepararVolta()).toBe('/kanban');
-  });
-});
-
-describe('botões que navegam para trás por conta própria', () => {
-  it('voltar a uma tela do percurso trunca em vez de empilhar', () => {
-    // Kanban → Compromissos → Processo, e então a seta da pasta salta para o
-    // Kanban por conta própria. Sem a regra 4, o Voltar do Kanban traria o
-    // processo de volta — o pêndulo relatado.
-    ['/kanban', '/compromissos', '/processo/28'].forEach(registrarRota);
-    registrarRota('/kanban');
-    expect(_pilhaAtual()).toEqual(['/kanban']);
-    expect(destinoDoVoltar()).toBeNull();
-  });
-
-  it('trunca no ponto certo quando o salto é para o meio do percurso', () => {
-    ['/kanban', '/compromissos', '/processo/28', '/precificacao'].forEach(registrarRota);
-    registrarRota('/compromissos');
-    expect(_pilhaAtual()).toEqual(['/kanban', '/compromissos']);
-    expect(destinoDoVoltar()).toBe('/kanban');
-  });
-
-  it('tela nova depois do truque segue empilhando normalmente', () => {
+  it('voltar não destrói o passo — ele vira avançar', () => {
     ['/kanban', '/processo/28'].forEach(registrarRota);
-    registrarRota('/kanban');
-    registrarRota('/documentos');
-    expect(_pilhaAtual()).toEqual(['/kanban', '/documentos']);
-    expect(prepararVolta()).toBe('/kanban');
+    expect(clicarVoltar()).toBe('/kanban');
+    expect(destinoDoAvancar()).toBe('/processo/28');
+    expect(clicarAvancar()).toBe('/processo/28');
+    expect(destinoDoVoltar()).toBe('/kanban');
   });
-});
 
-describe('o ?lid= que o sistema reescreve sozinho', () => {
-  it('não vira um passo a mais: o Voltar ia para a mesma tela', () => {
+  it('não gira em círculos: no início da lista, voltar fica indisponível', () => {
+    // O pêndulo relatado: pasta → Kanban → pasta → Kanban, sem fim.
+    registrarRota('/processo/28');
+    registrarRota('/kanban');          // seta da pasta, navegação normal
+    expect(clicarVoltar()).toBe('/processo/28');
+    expect(podeVoltar()).toBe(false);  // aqui o giro morre
+    expect(destinoDoAvancar()).toBe('/kanban');
+  });
+
+  it('percurso longo anda passo a passo nos dois sentidos', () => {
+    ['/kanban', '/compromissos', '/processo/28', '/precificacao'].forEach(registrarRota);
+    expect(clicarVoltar()).toBe('/processo/28');
+    expect(clicarVoltar()).toBe('/compromissos');
+    expect(clicarVoltar()).toBe('/kanban');
+    expect(podeVoltar()).toBe(false);
+    expect(clicarAvancar()).toBe('/compromissos');
+    expect(clicarAvancar()).toBe('/processo/28');
+  });
+
+  it('novo rumo depois de voltar descarta o ramo à frente', () => {
+    // Duas tarefas distintas: a segunda não herda o caminho da primeira.
+    ['/kanban', '/processo/28', '/precificacao'].forEach(registrarRota);
+    clicarVoltar();                    // volta ao /processo/28
+    clicarVoltar();                    // volta ao /kanban
+    registrarRota('/processo/91');     // abre OUTRA pasta
+    expect(_estadoAtual().entradas).toEqual(['/kanban', '/processo/91']);
+    expect(podeAvancar()).toBe(false); // o ramo antigo não sobrevive
+    expect(destinoDoVoltar()).toBe('/kanban');
+  });
+
+  it('o ?lid= reescrito pelo sistema não vira um passo', () => {
     registrarRota('/kanban?lid=abc');
-    // O ProcessoAtivoContext reescreve a URL logo depois de carregar a tela.
     registrarRota('/documentos');
-    registrarRota('/documentos?lid=abc');
-    expect(_pilhaAtual()).toEqual(['/kanban', '/documentos']);
-    expect(prepararVolta()).toBe('/kanban');
+    registrarRota('/documentos?lid=abc');   // reescrita do ProcessoAtivoContext
+    expect(_estadoAtual().entradas).toEqual(['/kanban', '/documentos']);
+    expect(clicarVoltar()).toBe('/kanban');
   });
 
   it('parâmetro que define a página continua contando', () => {
     registrarRota('/financeiro/lancamentos?lid=abc');
     registrarRota('/financeiro/lancamentos?lid=abc&lote=7');
-    expect(_pilhaAtual()).toEqual([
+    expect(_estadoAtual().entradas).toEqual([
       '/financeiro/lancamentos', '/financeiro/lancamentos?lote=7',
     ]);
   });
-});
 
-describe('salto para a origem quando não há percurso', () => {
-  it('não vira pêndulo entre a pasta e o Kanban', () => {
-    // Entrada direta na pasta (link, recarregar a página): sem percurso.
-    registrarRota('/processo/28');
-    expect(destinoDoVoltar()).toBeNull();
-
-    // A seta da pasta oferece o Kanban como origem. Isso é recomeçar, não voltar.
-    redefinirPara('/kanban');
-    registrarRota('/kanban');
-    expect(_pilhaAtual()).toEqual(['/kanban']);
-    // No Kanban não há para onde voltar — era aqui que nascia o giro.
-    expect(destinoDoVoltar()).toBeNull();
-  });
-
-  it('percurso real continua tendo prioridade sobre a origem declarada', () => {
-    ['/kanban', '/compromissos', '/processo/28'].forEach(registrarRota);
-    expect(prepararVolta()).toBe('/compromissos');
+  it('voltar à mesma tela pelo menu é um passo novo, como no Explorer', () => {
+    ['/kanban', '/processo/28', '/kanban'].forEach(registrarRota);
+    expect(_estadoAtual().entradas).toEqual(['/kanban', '/processo/28', '/kanban']);
+    expect(clicarVoltar()).toBe('/processo/28');
   });
 });
