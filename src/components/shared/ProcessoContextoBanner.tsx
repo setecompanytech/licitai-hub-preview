@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FolderOpen, AlertTriangle, ArrowLeft, ChevronDown } from 'lucide-react';
+import { FolderOpen, AlertTriangle, ArrowLeft, ChevronDown, Unlink } from 'lucide-react';
 
 /**
  * Barra de contexto e navegação dos módulos que operam sobre o "processo ativo"
@@ -32,7 +32,7 @@ const ETAPAS = [
 ];
 
 export default function ProcessoContextoBanner() {
-  const { processoId } = useProcessoAtivo();
+  const { processoId, setProcessoId } = useProcessoAtivo();
   const navigate = useNavigate();
   const [meta, setMeta] = useState<{ numero: string; orgao: string } | null>(null);
 
@@ -91,6 +91,16 @@ export default function ProcessoContextoBanner() {
                 {e.label}
               </DropdownMenuItem>
             ))}
+            {/* Quem entra pelo menu — e não pela pasta — pode não querer
+                processo nenhum atrelado. O vínculo é conveniência, não
+                imposição, e desfazê-lo precisava estar à mão. */}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setProcessoId(null)}
+              className="text-sm text-muted-foreground"
+            >
+              <Unlink className="w-3.5 h-3.5 mr-2" /> Desvincular processo
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
