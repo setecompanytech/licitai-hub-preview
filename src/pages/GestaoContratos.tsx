@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
+import { INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA } from '@/lib/contratos/instrumentos';
+import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -97,6 +99,10 @@ export default function GestaoContratos() {
   const [saving, setSaving] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [aExcluir, setAExcluir] = useState<Contrato | null>(null);
+  // Documento assinado anexado no próprio cadastro: sem isso era preciso salvar,
+  // reabrir o contrato e ir à aba Arquivos — três passos para guardar o papel
+  // que motivou o cadastro.
+  const [arquivoAssinado, setArquivoAssinado] = useState<File | null>(null);
   /**
    * Cadastro vindo de um processo vencido: `?novo_de=<licitacaoId>`.
    *
@@ -242,6 +248,41 @@ export default function GestaoContratos() {
     } as any).select('id').single();
     setSaving(false);
     if (error) { console.error('Erro ao salvar:', error); toast.error('Erro ao salvar', { description: error.message }); return; }
+
+    // Documento assinado, quando anexado no cadastro. Falha aqui não desfaz o
+    // contrato: ele já existe, e o arquivo pode ser reenviado pela aba Arquivos.
+    if (inserted && arquivoAssinado && user) {
+      const ext = arquivoAssinado.name.split('.').pop() || 'pdf';
+      const caminho = `${user.id}/${inserted.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('contratos-docs').upload(caminho, arquivoAssinado);
+      if (upErr) {
+        toast.warning('Contrato salvo, mas o arquivo não subiu. Anexe pela aba Arquivos.');
+      } else {
+        await supabase.from('contrato_arquivos').insert({
+          contrato_id: inserted.id,
+          user_id: user.id,
+          nome_arquivo: arquivoAssinado.name,
+          storage_path: caminho,
+          tipo: isAtaForm ? 'ata_srp' : 'contrato_original',
+          tamanho_bytes: arquivoAssinado.size,
+        } as never);
+
+        // Espelho na pasta do certame, quando há elo — mesmo critério da aba
+        // Arquivos: o que o órgão assinou vive também na pasta do processo.
+        if (form.licitacao_id) {
+          await salvarNaPastaDoProcesso({
+            licitacaoId: form.licitacao_id,
+            categoria: 'contrato',
+            nomeArquivo: arquivoAssinado.name,
+            blob: arquivoAssinado,
+            descricao: `Anexado no cadastro do ${isAtaForm ? 'ATA SRP' : 'contrato'}`,
+            metadata: { contrato_id: inserted.id },
+          });
+        }
+      }
+      setArquivoAssinado(null);
+    }
 
     if (inserted && pendingItens.length > 0) {
       const itensToInsert = pendingItens.map(item => ({
@@ -498,7 +539,7 @@ export default function GestaoContratos() {
         </div>
         <div className="flex gap-2">
           <ImportarContratoPDF onExtracted={handleImportExtracted} />
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); } }}>
+          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); setArquivoAssinado(null); } }}>
             <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Cadastrar {isAtaForm ? 'ATA SRP' : 'Contrato Administrativo'}</DialogTitle></DialogHeader>
@@ -524,15 +565,50 @@ export default function GestaoContratos() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground md:col-span-2">
-                {isAtaForm
-                  ? 'A ATA SRP funciona como base de preços/quantidades. Contratos derivados (incluindo carona) consumirão seu saldo automaticamente.'
-                  : 'Contrato administrativo. Pode opcionalmente vincular-se a uma ATA SRP cadastrada.'}
-                {' '}
-                {form.tipo_estrutura === 'lotes'
-                  ? 'Modo Lotes: itens serão agrupados por lote, permitindo controle de pedidos por lote.'
-                  : 'Modo Itens: cada item é gerenciado individualmente.'}
-              </p>
+              {/* O que cada instrumento é, com o amparo legal — cadastrar ATA
+                  como contrato quebra o controle de saldo, porque a ATA não
+                  obriga a comprar e o contrato sim. */}
+              <div className="md:col-span-2 rounded-lg bg-muted/40 border border-border/60 p-3 space-y-1.5">
+                <p className="text-sm font-medium">
+                  {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].nome}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].amparo}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].resumo}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {INSTRUMENTOS[isAtaForm ? 'ata_srp' : 'contrato'].papel}
+                </p>
+                {isAtaForm && (
+                  <p className="text-xs text-muted-foreground">{VIGENCIA_ATA.observacao}</p>
+                )}
+                <p className="text-xs text-muted-foreground pt-1 border-t border-border/60">
+                  Alteração de contrato em execução é <strong>Termo Aditivo</strong>, lançado dentro
+                  do próprio contrato — não um cadastro novo. {LIMITES_ADITIVO.observacao}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {form.tipo_estrutura === 'lotes'
+                    ? 'Modo Lotes: itens agrupados por lote, com controle de pedidos por lote.'
+                    : 'Modo Itens: cada item é gerenciado individualmente.'}
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>{isAtaForm ? 'ATA SRP assinada (opcional)' : 'Contrato assinado (opcional)'}</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="mt-1"
+                  onChange={(e) => setArquivoAssinado(e.target.files?.[0] ?? null)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Fica guardado na aba Arquivos deste {isAtaForm ? 'registro' : 'contrato'}
+                  {form.licitacao_id ? ' e também na pasta Contrato do processo de origem.' : '.'}
+                  {' '}Pode ser anexado depois, se ainda não estiver assinado.
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
