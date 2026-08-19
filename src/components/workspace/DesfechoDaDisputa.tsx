@@ -3,8 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Trophy, XCircle, FileText, FolderCheck, Archive, CheckCircle2, Loader2,
+  Trophy, XCircle, FileText, FolderCheck, Archive, CheckCircle2, Loader2, FileSignature,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -42,6 +43,7 @@ export default function DesfechoDaDisputa({
   licitacaoId, numero, orgao, modalidade, valorEstimado, status, irParaAba, aoMudarStatus,
 }: Props) {
   const { empresaAtiva } = useEmpresa();
+  const navigate = useNavigate();
   const { registrarPerda, arquivarProcesso } = useLicitacaoIntegration();
   const [perdaAberta, setPerdaAberta] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
@@ -121,6 +123,13 @@ export default function DesfechoDaDisputa({
                     <FolderCheck className="w-3.5 h-3.5 mr-1.5" /> Pasta de habilitação
                   </Button>
                 </>
+              )}
+
+              {(venceu || homologada) && (
+                <Button size="sm" variant="outline" className="h-8 text-xs"
+                  onClick={() => navigate(`/gestao-contratos?novo_de=${licitacaoId}`)}>
+                  <FileSignature className="w-3.5 h-3.5 mr-1.5" /> Cadastrar contrato
+                </Button>
               )}
 
               {venceu && (

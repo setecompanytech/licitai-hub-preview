@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
@@ -81,6 +82,7 @@ export default function GestaoContratos() {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const { isAdmin } = usePapelEmpresa();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,49 @@ export default function GestaoContratos() {
   const [saving, setSaving] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
   const [aExcluir, setAExcluir] = useState<Contrato | null>(null);
+  /**
+   * Cadastro vindo de um processo vencido: `?novo_de=<licitacaoId>`.
+   *
+   * O contrato passa a nascer com o processo de origem gravado, em vez de
+   * depender de alguém lembrar de vincular. Sem esse elo, diante de um impasse
+   * — o órgão cobra algo que o contrato não prevê — achar o edital é busca
+   * manual, e o histórico de "quanto do que disputamos virou contrato" não
+   * existe.
+   *
+   * O cadastro manual continua intacto: é a porta para os certames de
+   * plataformas que o sistema ainda não lê.
+   */
+  useEffect(() => {
+    const de = searchParams.get('novo_de');
+    if (!de) return;
+    let vivo = true;
+    (async () => {
+      const { data } = await supabase
+        .from('licitacoes')
+        .select('id, numero, orgao, objeto, valor_estimado, modalidade, uf, municipio')
+        .eq('id', de)
+        .maybeSingle();
+      if (!vivo || !data) return;
+      setForm((f) => ({
+        ...f,
+        licitacao_id: data.id,
+        orgao_contratante: data.orgao || '',
+        objeto: data.objeto || '',
+        // Estimado é ponto de partida, não valor final: quem cadastra corrige
+        // com o valor homologado.
+        valor_global: data.valor_estimado ? String(data.valor_estimado) : '',
+        modalidade: data.modalidade || '',
+        uf: data.uf || '',
+        municipio: data.municipio || '',
+      }));
+      setDialogOpen(true);
+      // Some da URL para um F5 não reabrir o diálogo já preenchido.
+      setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('novo_de'); return n; }, { replace: true });
+    })();
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const [form, setForm] = useState({
     tipo_documento: 'contrato' as 'contrato' | 'ata_srp',
     tipo_estrutura: 'itens' as 'itens' | 'lotes',
