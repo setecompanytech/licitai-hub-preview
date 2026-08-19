@@ -22,7 +22,14 @@ export default function StatCard({ label, value, change, changeType = 'neutral',
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">{label}</p>
-          <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1 tracking-tight break-all">{value}</p>
+          {/* `break-all` quebrava em QUALQUER ponto, inclusive no meio da palavra:
+              "R$ 540 mil" virava "R$ 540 m" / "il". Valor de dinheiro não se
+              parte — se não couber, encolhe. Daí o tamanho responsivo e o
+              nowrap, com a fonte tabular para os dígitos alinharem entre
+              cartões. */}
+          <p className="text-base sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 tracking-tight leading-tight whitespace-nowrap tabular-nums">
+            {value}
+          </p>
           {change && (
             <p
               className={cn(
