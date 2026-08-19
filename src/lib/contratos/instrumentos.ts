@@ -91,3 +91,66 @@ export const rotuloInstrumento = (i: Instrumento): string => INSTRUMENTOS[i].nom
 export function instrumentoDoTipo(tipo: string | null | undefined): Instrumento {
   return String(tipo ?? '') === 'ata_srp' ? 'ata_srp' : 'contrato';
 }
+
+/**
+ * Como a ATA será executada — e o que a lei exige de cada caminho.
+ *
+ * O art. 95 permite substituir o termo de contrato pela nota de empenho, mas só
+ * em duas hipóteses. Fora delas — entrega parcelada, serviço contínuo, qualquer
+ * obrigação que se estenda no tempo — o contrato formal é obrigatório, e usar
+ * só o empenho é falha grave do processo administrativo.
+ *
+ * Declarar a forma é o que permite ao sistema perceber a contradição depois:
+ * uma ATA registrada como entrega imediata e integral que acumula pedidos ao
+ * longo dos meses está sendo executada de forma parcelada.
+ */
+export type FormaExecucao = 'contrato_formal' | 'empenho';
+
+export const FORMAS_EXECUCAO: Record<FormaExecucao, { nome: string; desc: string }> = {
+  contrato_formal: {
+    nome: 'Termo de contrato',
+    desc: 'O caminho padrão. Obrigatório quando houver entrega parcelada, serviço contínuo ou qualquer obrigação futura do fornecedor.',
+  },
+  empenho: {
+    nome: 'Nota de empenho (sem contrato)',
+    desc: 'Substitui o termo de contrato nas hipóteses do art. 95. Exige que a execução se esgote no ato.',
+  },
+};
+
+export type FundamentoArt95 = 'entrega_imediata' | 'valor_dispensa';
+
+export const FUNDAMENTOS_ART95: Record<FundamentoArt95, { nome: string; desc: string }> = {
+  entrega_imediata: {
+    nome: 'Entrega imediata e integral',
+    desc: 'Bens entregues de uma só vez, com pagamento imediato e SEM obrigação futura — nem assistência técnica, nem garantia de execução continuada.',
+  },
+  valor_dispensa: {
+    nome: 'Valor dentro do limite de dispensa',
+    desc: 'O valor total cabe no limite de dispensa por valor, ainda que o preço venha de licitação maior.',
+  },
+};
+
+export const AMPARO_ART95 = 'Lei 14.133/2021, art. 95';
+
+/**
+ * A contradição que o sistema pode detectar: execução declarada como imediata e
+ * integral, mas com mais de um pedido — o que caracteriza parcelamento.
+ *
+ * Devolve o aviso, ou null quando não há o que apontar. Não bloqueia: quem
+ * conhece o processo pode ter razão que o sistema não vê, e travar aqui
+ * empurraria a pessoa para registrar fora do sistema.
+ */
+export function avisoDeExecucaoIncompativel(params: {
+  formaExecucao: string | null | undefined;
+  fundamento: string | null | undefined;
+  quantidadePedidos: number;
+}): string | null {
+  if (params.formaExecucao !== 'empenho') return null;
+  if (params.fundamento !== 'entrega_imediata') return null;
+  if (params.quantidadePedidos <= 1) return null;
+  return (
+    `Esta ATA foi declarada como entrega imediata e integral, mas já tem ` +
+    `${params.quantidadePedidos} pedidos. Entrega parcelada exige termo de contrato ` +
+    `(${AMPARO_ART95}) — confira se a hipótese ainda se aplica.`
+  );
+}

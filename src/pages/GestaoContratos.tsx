@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
-import { INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA } from '@/lib/contratos/instrumentos';
+import { AMPARO_ART95, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA } from '@/lib/contratos/instrumentos';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
@@ -153,6 +153,8 @@ export default function GestaoContratos() {
     numero_ata: '',
     validade_ata_meses: '',
     permite_carona: true,
+    forma_execucao: 'contrato_formal',
+    art95_fundamento: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '',
     valor_global: '', valor_consumido: '0', data_assinatura: '',
@@ -209,6 +211,7 @@ export default function GestaoContratos() {
 
   const resetForm = () => { setLicitacaoSearch(''); setForm({
     tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
+    forma_execucao: 'contrato_formal', art95_fundamento: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
@@ -232,6 +235,11 @@ export default function GestaoContratos() {
       numero_ata: form.tipo_documento === 'ata_srp' ? (form.numero_ata || form.numero_contrato) : null,
       validade_ata_meses: form.tipo_documento === 'ata_srp' && form.validade_ata_meses ? parseInt(form.validade_ata_meses) : null,
       permite_carona: form.tipo_documento === 'ata_srp' ? form.permite_carona : null,
+      // Só a ATA declara forma de execução: no contrato, o termo é o próprio
+      // instrumento e a pergunta não faria sentido.
+      forma_execucao: form.tipo_documento === 'ata_srp' ? form.forma_execucao : null,
+      art95_fundamento: form.tipo_documento === 'ata_srp' && form.forma_execucao === 'empenho'
+        ? (form.art95_fundamento || null) : null,
       numero_contrato: form.numero_contrato, objeto: form.objeto,
       orgao_contratante: form.orgao_contratante, valor_global: val, valor_global_original: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
@@ -645,6 +653,59 @@ export default function GestaoContratos() {
                     <Switch id="permite-carona" checked={form.permite_carona} onCheckedChange={v => setForm(f => ({ ...f, permite_carona: v }))} />
                     <Label htmlFor="permite-carona" className="text-sm cursor-pointer">Permite carona / adesão</Label>
                   </div>
+
+                  {/* Como esta ATA será executada. Declarar isso é o que permite
+                      ao sistema perceber, depois, que uma execução declarada como
+                      imediata virou entrega parcelada — caso em que o contrato
+                      formal é obrigatório. */}
+                  <div className="md:col-span-2">
+                    <Label>Forma de execução *</Label>
+                    <Select
+                      value={form.forma_execucao}
+                      onValueChange={(v) => setForm(f => ({
+                        ...f, forma_execucao: v,
+                        art95_fundamento: v === 'empenho' ? f.art95_fundamento : '',
+                      }))}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(FORMAS_EXECUCAO).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {FORMAS_EXECUCAO[form.forma_execucao as keyof typeof FORMAS_EXECUCAO]?.desc}
+                    </p>
+                  </div>
+
+                  {form.forma_execucao === 'empenho' && (
+                    <div className="md:col-span-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+                      <Label>Hipótese que dispensa o contrato *</Label>
+                      <Select
+                        value={form.art95_fundamento}
+                        onValueChange={(v) => setForm(f => ({ ...f, art95_fundamento: v }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Selecione a hipótese do art. 95" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FUNDAMENTOS_ART95).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>{v.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.art95_fundamento && (
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          {FUNDAMENTOS_ART95[form.art95_fundamento as keyof typeof FUNDAMENTOS_ART95]?.desc}
+                        </p>
+                      )}
+                      <p className="text-xs text-warning mt-2">
+                        Fora dessas hipóteses, entrega parcelada ou serviço contínuo exige termo de
+                        contrato. {AMPARO_ART95}.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

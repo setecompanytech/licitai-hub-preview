@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
+import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
@@ -151,6 +152,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
   const [ataSrpId, setAtaSrpId] = useState<string | null>(null);
+  // Forma de execução declarada da ATA — é o que permite apontar o parcelamento.
+  const [dadosExecucao, setDadosExecucao] = useState<{ forma: string | null; fundamento: string | null }>(
+    { forma: null, fundamento: null },
+  );
   const [itensAta, setItensAta] = useState<ContratoItem[]>([]);
   const [fonteItens, setFonteItens] = useState<'contrato' | 'ata'>('contrato');
   const [ataItemSelecionado, setAtaItemSelecionado] = useState('');
@@ -171,7 +176,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('ata_srp_id').eq('id', contratoId).single(),
+      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento').eq('id', contratoId).single(),
     ]);
     const pedidosData = (pedidosRes.data as any[]) || [];
     setPedidos(pedidosData);
@@ -190,6 +195,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setPreNotas((preNotasRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
+    setDadosExecucao({
+      forma: (contratoRes.data as any)?.forma_execucao ?? null,
+      fundamento: (contratoRes.data as any)?.art95_fundamento ?? null,
+    });
     setLoading(false);
   };
 
@@ -786,8 +795,23 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     return s + qty * unit;
   }, 0);
 
+  // Contradição entre a hipótese declarada e o uso real. Aviso, não trava: quem
+  // conhece o processo pode ter razão que o sistema não vê, e bloquear aqui
+  // empurraria o registro para fora do sistema.
+  const avisoExecucao = avisoDeExecucaoIncompativel({
+    formaExecucao: dadosExecucao.forma,
+    fundamento: dadosExecucao.fundamento,
+    quantidadePedidos: pedidos.filter((p) => p.status !== 'cancelado').length,
+  });
+
   return (
     <div className="space-y-4">
+      {avisoExecucao && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/5 px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">{avisoExecucao}</p>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">

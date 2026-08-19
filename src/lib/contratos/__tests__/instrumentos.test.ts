@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   INSTRUMENTOS, SEQUENCIA, LIMITES_ADITIVO, VIGENCIA_ATA, instrumentoDoTipo,
+  avisoDeExecucaoIncompativel,
 } from '../instrumentos';
 
 describe('vocabulário dos instrumentos da contratação', () => {
@@ -36,5 +37,40 @@ describe('vocabulário dos instrumentos da contratação', () => {
   it('vigência da ATA é de um ano, prorrogável', () => {
     expect(VIGENCIA_ATA.mesesPadrao).toBe(12);
     expect(VIGENCIA_ATA.observacao).toMatch(/prorrogá/);
+  });
+});
+
+describe('execução da ATA por empenho (art. 95)', () => {
+  it('não avisa quando a execução é por contrato formal', () => {
+    expect(avisoDeExecucaoIncompativel({
+      formaExecucao: 'contrato_formal', fundamento: null, quantidadePedidos: 9,
+    })).toBeNull();
+  });
+
+  it('não avisa no primeiro pedido — entrega integral tem um pedido só', () => {
+    expect(avisoDeExecucaoIncompativel({
+      formaExecucao: 'empenho', fundamento: 'entrega_imediata', quantidadePedidos: 1,
+    })).toBeNull();
+  });
+
+  it('avisa quando a entrega declarada como integral vira parcelada', () => {
+    const aviso = avisoDeExecucaoIncompativel({
+      formaExecucao: 'empenho', fundamento: 'entrega_imediata', quantidadePedidos: 4,
+    });
+    expect(aviso).toMatch(/4 pedidos/);
+    expect(aviso).toMatch(/art\. 95/);
+  });
+
+  it('valor de dispensa não é hipótese de entrega única — não avisa por parcelamento', () => {
+    // O limite ali é de VALOR; parcelar não contradiz a hipótese.
+    expect(avisoDeExecucaoIncompativel({
+      formaExecucao: 'empenho', fundamento: 'valor_dispensa', quantidadePedidos: 5,
+    })).toBeNull();
+  });
+
+  it('registro antigo, sem declaração, não gera alarme', () => {
+    expect(avisoDeExecucaoIncompativel({
+      formaExecucao: null, fundamento: null, quantidadePedidos: 12,
+    })).toBeNull();
   });
 });
