@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { normalizarStatus as normalizeStatus } from '@/lib/licitacao/status';
+import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
@@ -428,6 +428,18 @@ export default function KanbanPage() {
                               <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
                                 {lic.objeto}
                               </p>
+                              {/* Arquivar guarda o processo, não apaga o que
+                                  aconteceu com ele. A coluna Arquivada nasce de
+                                  `arquivado_em`, que SOBREPÕE o status na tela —
+                                  então um processo vencido e arquivado perdia,
+                                  aos olhos de quem lê, o fato de ter sido
+                                  vencido. O dado sempre esteve lá; faltava
+                                  mostrá-lo. */}
+                              {lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizeStatus(lic.status) as never) && (
+                                <span className="inline-block mt-1 text-xs text-muted-foreground">
+                                  desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
+                                </span>
+                              )}
                               <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
                                 {lic.municipio && lic.uf && (
                                   <span className="flex items-center gap-0.5">

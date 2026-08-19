@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { toast } from 'sonner';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import ArquivarProcessoDialog, { type DesfechoArquivamento } from '@/components/gestao/ArquivarProcessoDialog';
+import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
 
 type Item = {
   id: string;
@@ -43,12 +46,17 @@ function diasAte(iso: string | null): number | null {
 export default function CompromissosResumo() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { iniciarProcesso, arquivarProcesso } = useLicitacaoIntegration();
+  const { iniciarProcesso, arquivarProcesso, registrarPerda } = useLicitacaoIntegration();
+  const { empresaAtiva } = useEmpresa();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState<string | null>(null);
   const [arquivando, setArquivando] = useState<string | null>(null);
   const [verArquivados, setVerArquivados] = useState(false);
+  // Arquivar deixou de ser um gesto mudo: sem desfecho registrado, pergunta.
+  const [aArquivar, setAArquivar] = useState<Item | null>(null);
+  const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
 
   const abrirPasta = useCallback(async (p: Item) => {
     if (p.licitacao_id) { navigate(`/processo/${p.licitacao_id}`); return; }
@@ -86,6 +94,7 @@ export default function CompromissosResumo() {
   }, [user]);
 
   /** Arquivar aqui também move o card no Kanban, quando há licitação vinculada. */
+  /** Arquiva de fato — chamado depois de o desfecho estar resolvido. */
   const alternarArquivo = useCallback(async (p: Item) => {
     const restaurar = p.status === 'arquivado';
     setArquivando(p.id);
@@ -106,6 +115,53 @@ export default function CompromissosResumo() {
       setArquivando(null);
     }
   }, [arquivarProcesso, carregar]);
+
+  /**
+   * Aplica o desfecho escolhido e arquiva.
+   *
+   * "Vencemos" grava o status antes de arquivar — a ordem importa: o Kanban
+   * mostra `arquivado_em` por cima do status, então o desfecho precisa existir
+   * para aparecer no cartão arquivado.
+   */
+  const resolverDesfecho = useCallback(async (desfecho: DesfechoArquivamento) => {
+    const p = aArquivar;
+    if (!p) return;
+    setAArquivar(null);
+
+    if (desfecho === 'perdida') {
+      // O fluxo de perda é o mesmo do Kanban: motivo obrigatório, e o gatilho
+      // do banco recusa a mudança sem registro em comercial_perdas.
+      setPerdaAlvo({
+        licitacaoId: p.licitacao_id!,
+        numero: p.numero,
+        orgao: p.orgao,
+        modalidade: p.modalidade,
+        valorEstimado: p.valor_estimado,
+      });
+      return;
+    }
+
+    if (desfecho === 'vencida' && p.licitacao_id) {
+      const { error } = await supabase
+        .from('licitacoes').update({ status: 'Vencida' }).eq('id', p.licitacao_id);
+      if (error) { toast.error(error.message || 'Erro ao registrar o desfecho.'); return; }
+    }
+    await alternarArquivo(p);
+  }, [aArquivar, alternarArquivo]);
+
+  const confirmarPerda = useCallback(async ({ motivoId, observacao }: { motivoId: string; observacao: string }) => {
+    if (!perdaAlvo || !empresaAtiva) return;
+    setSalvandoPerda(true);
+    const ok = await registrarPerda({
+      licitacaoId: perdaAlvo.licitacaoId, empresaId: empresaAtiva.id, motivoId, observacao,
+      modalidade: perdaAlvo.modalidade, valorEstimado: perdaAlvo.valorEstimado,
+    });
+    setSalvandoPerda(false);
+    if (!ok) return;
+    const alvo = items.find((i) => i.licitacao_id === perdaAlvo.licitacaoId);
+    setPerdaAlvo(null);
+    if (alvo) await alternarArquivo(alvo);
+  }, [perdaAlvo, empresaAtiva, registrarPerda, items, alternarArquivo]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -145,6 +201,7 @@ export default function CompromissosResumo() {
   }
 
   return (
+    <>
     <div className="space-y-3">
       {/* Processo Ativo — seletor e atalho para a Pasta do Processo */}
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
@@ -243,7 +300,11 @@ export default function CompromissosResumo() {
                   size="sm"
                   variant="ghost"
                   className="text-xs text-muted-foreground"
-                  onClick={() => alternarArquivo(p)}
+                  onClick={() => {
+                    // Restaurar não precisa de pergunta; arquivar precisa.
+                    if (p.status === 'arquivado') { alternarArquivo(p); return; }
+                    setAArquivar(p);
+                  }}
                   disabled={arquivando === p.id}
                   title={p.licitacao_id ? 'Sincroniza com o Kanban' : undefined}
                 >
@@ -260,5 +321,21 @@ export default function CompromissosResumo() {
         );
       })}
     </div>
+
+      <ArquivarProcessoDialog
+        aberto={!!aArquivar}
+        numero={aArquivar?.numero ?? null}
+        objeto={aArquivar?.objeto ?? null}
+        onFechar={() => setAArquivar(null)}
+        onEscolher={resolverDesfecho}
+      />
+
+      <RegistrarPerdaDialog
+        alvo={perdaAlvo}
+        onCancelar={() => setPerdaAlvo(null)}
+        onConfirmar={confirmarPerda}
+        salvando={salvandoPerda}
+      />
+    </>
   );
 }
