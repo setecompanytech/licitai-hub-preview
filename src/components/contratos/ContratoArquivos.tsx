@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import {
   Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw
 } from 'lucide-react';
@@ -98,6 +99,16 @@ const emptyAditivoForm = {
   justificativa: '',
   observacoes: '',
 };
+
+/**
+ * Tipos que valem espelhar na pasta do processo: o documento original e seus
+ * aditivos. Planilha de custos e anexos internos ficam só no contrato — a pasta
+ * do certame é para o que o órgão emitiu ou assinou.
+ */
+const DOCUMENTOS_DO_CERTAME = [
+  'contrato_original', 'ata_srp', 'aditivo_valor', 'aditivo_prazo',
+  'aditivo_quantidade', 'aditivo_reequilibrio', 'apostilamento',
+];
 
 export default function ContratoArquivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
@@ -369,6 +380,23 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         tamanho_bytes: file.size,
       } as any).select('id, nome_arquivo').single();
       if (dbError) throw dbError;
+
+      // O documento assinado também vai para a pasta Contrato do processo, quando
+      // há elo. Quem procura o contrato meses depois costuma partir da pasta do
+      // certame — é lá que estão o edital e o Termo de Referência com que ele
+      // precisa ser confrontado. Falha aqui não derruba o upload: o arquivo já
+      // está guardado no contrato, e o espelho é conveniência.
+      if (parentContrato?.licitacao_id && DOCUMENTOS_DO_CERTAME.includes(tipo)) {
+        const r = await salvarNaPastaDoProcesso({
+          licitacaoId: parentContrato.licitacao_id,
+          categoria: 'contrato',
+          nomeArquivo: file.name,
+          blob: file,
+          descricao: `Anexado em Gestão de Contratos · ${TIPOS_ARQUIVO[tipo]?.label || tipo}`,
+          metadata: { contrato_id: contratoId, tipo },
+        });
+        if (!r.ok) toast.warning('Arquivo salvo no contrato, mas não foi copiado para a pasta do processo.');
+      }
 
       // If aditivo type, also create the aditivo record
       if (aditivoData && isAditivoType(tipo)) {

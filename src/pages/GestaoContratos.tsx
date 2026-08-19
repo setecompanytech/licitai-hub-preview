@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
@@ -83,6 +83,7 @@ export default function GestaoContratos() {
   const { empresaAtiva } = useEmpresa();
   const { isAdmin } = usePapelEmpresa();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -385,13 +386,31 @@ export default function GestaoContratos() {
                     Oriundo da ATA {ataOrigem.numero_ata || ataOrigem.numero_contrato}
                   </button>
                 )}
+                {/* O caminho de volta ao certame. Diante de uma dúvida sobre
+                    cláusula, a resposta está no edital ou no Termo de
+                    Referência — e eles vivem na pasta do processo. O vínculo
+                    era exibido como texto morto; agora leva lá. */}
                 {c.licitacao_id && (() => {
                   const l = licitacoes.find(x => x.id === c.licitacao_id);
                   return l ? (
-                    <span className="flex items-center gap-1 text-foreground">
-                      <Link2 className="w-3 h-3" />
-                      Processo: {l.numero}
-                    </span>
+                    <>
+                      <button
+                        onClick={() => navigate(`/processo/${c.licitacao_id}`)}
+                        className="flex items-center gap-1 text-accent hover:underline"
+                        title="Abrir a pasta do processo de origem"
+                      >
+                        <Link2 className="w-3 h-3" />
+                        Processo {l.numero}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/processo/${c.licitacao_id}?aba=anexos`)}
+                        className="flex items-center gap-1 text-accent hover:underline"
+                        title="Edital, Termo de Referência e demais anexos do certame"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Edital e anexos
+                      </button>
+                    </>
                   ) : null;
                 })()}
               </div>
