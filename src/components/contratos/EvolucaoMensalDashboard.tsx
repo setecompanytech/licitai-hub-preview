@@ -9,10 +9,22 @@ import {
   CartesianGrid, Tooltip, Legend, BarChart
 } from 'recharts';
 
-const fmtBRL = (v: number) =>
+/**
+ * Sem centavos — SÓ para eixo de gráfico, onde o rótulo compete com o espaço e
+ * a precisão não muda a leitura da curva.
+ */
+const fmtBRLEixo = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v || 0);
-const fmtBRLFull = (v: number) =>
+
+/**
+ * Valor de dinheiro que a pessoa lê como número, e não como tendência: cartão,
+ * tabela, tooltip. Arredondar aqui fazia o mesmo contrato aparecer como
+ * R$ 65.270,38 num cartão e R$ 65.270 no cartão ao lado — e quem confere
+ * faturamento nota a diferença de 38 centavos antes de qualquer outra coisa.
+ */
+const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+const fmtBRLFull = fmtBRL;
 const fmtNum = (v: number) => new Intl.NumberFormat('pt-BR').format(v || 0);
 
 type Pedido = {
@@ -224,7 +236,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
             <ComposedChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis yAxisId="left" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRL(v)} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
               <Tooltip
                 formatter={tooltipFmt}
@@ -241,7 +253,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
             <BarChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRL(v)} />
+              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
               <Tooltip
                 formatter={tooltipFmt}
                 contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
@@ -261,7 +273,7 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRL(v)} />
+              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => fmtBRLEixo(v)} />
               <Tooltip
                 formatter={(v: any) => fmtBRLFull(v)}
                 contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}

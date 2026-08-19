@@ -957,7 +957,20 @@ export default function GestaoContratos() {
                         : <span className="text-xs font-medium text-foreground">Contrato n. {c.numero_contrato}</span>}
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
                       {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
-                      {!isAta && pct >= 80 && <Badge variant="outline" className="text-xs text-destructive border-destructive/30">Saldo baixo</Badge>}
+                      {/* Consumo total não é "saldo baixo" — é fim do contrato.
+                          O aviso servia para antecipar o esgotamento; depois
+                          dele, dizer que o saldo está baixo descreve o passado
+                          e sugere que ainda há o que consumir. */}
+                      {!isAta && pct >= 100 && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-border">
+                          Saldo esgotado
+                        </Badge>
+                      )}
+                      {!isAta && pct >= 80 && pct < 100 && (
+                        <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
+                          Saldo baixo
+                        </Badge>
+                      )}
                       {c.ata_srp_id && <Badge variant="outline" className="text-xs text-muted-foreground border-border">Origem: ATA</Badge>}
                     </div>
                     {/* 3º — Objeto */}
