@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
-import { AMPARO_ART95, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA } from '@/lib/contratos/instrumentos';
+import { AMPARO_ART95, ESPECIES_OBJETO, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA, avisoDeVigencia } from '@/lib/contratos/instrumentos';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
@@ -155,6 +155,7 @@ export default function GestaoContratos() {
     permite_carona: true,
     forma_execucao: 'contrato_formal',
     art95_fundamento: '',
+    especie_objeto: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '',
     valor_global: '', valor_consumido: '0', data_assinatura: '',
@@ -211,7 +212,7 @@ export default function GestaoContratos() {
 
   const resetForm = () => { setLicitacaoSearch(''); setForm({
     tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
-    forma_execucao: 'contrato_formal', art95_fundamento: '',
+    forma_execucao: 'contrato_formal', art95_fundamento: '', especie_objeto: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
@@ -240,6 +241,7 @@ export default function GestaoContratos() {
       forma_execucao: form.tipo_documento === 'ata_srp' ? form.forma_execucao : null,
       art95_fundamento: form.tipo_documento === 'ata_srp' && form.forma_execucao === 'empenho'
         ? (form.art95_fundamento || null) : null,
+      especie_objeto: form.especie_objeto || null,
       numero_contrato: form.numero_contrato, objeto: form.objeto,
       orgao_contratante: form.orgao_contratante, valor_global: val, valor_global_original: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
@@ -537,6 +539,8 @@ export default function GestaoContratos() {
   const vencendo = soContratos.filter(c => { if (!c.data_fim) return false; const d = (new Date(c.data_fim).getTime() - Date.now()) / 86400000; return d > 0 && d <= 60; }).length;
 
   const isAtaForm = form.tipo_documento === 'ata_srp';
+  // Dez anos só cabem em serviço contínuo; compra imediata se esgota no ato.
+  const avisoVigencia = avisoDeVigencia(form.especie_objeto, parseInt(form.vigencia_meses) || null);
 
   return (
     <AppLayout>
@@ -793,6 +797,25 @@ export default function GestaoContratos() {
               }} /></div>
               <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted/50" /></div>
               <div><Label>Data Fim</Label><Input type="date" value={form.data_fim} readOnly className="bg-muted/50" /></div>
+              <div className="md:col-span-2">
+                <Label>Espécie do objeto</Label>
+                <Select value={form.especie_objeto} onValueChange={v => setForm(f => ({ ...f, especie_objeto: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Define o prazo máximo possível" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ESPECIES_OBJETO).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.especie_objeto && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ESPECIES_OBJETO[form.especie_objeto as keyof typeof ESPECIES_OBJETO].desc}
+                    {' · '}
+                    {ESPECIES_OBJETO[form.especie_objeto as keyof typeof ESPECIES_OBJETO].amparo}
+                  </p>
+                )}
+                {avisoVigencia && <p className="text-xs text-warning mt-1">{avisoVigencia}</p>}
+              </div>
               <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => {
                 const meses = e.target.value;
                 const updates: any = { vigencia_meses: meses };

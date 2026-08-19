@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { NATUREZA_DO_VALOR, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
 import {
   Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp,
   AlertTriangle, CheckCircle2, ShieldAlert
@@ -71,6 +73,13 @@ const emptyForm = {
   data_assinatura: '',
   justificativa: '',
   observacoes: '',
+  // Revisão/reequilíbrio: o que sustenta o pedido.
+  data_fato_gerador: '',
+  // Reajuste/repactuação: o que o calcula.
+  indice_reajuste: '',
+  data_base_reajuste: '',
+  // Prorrogação: preserva ou não o direito ao reequilíbrio.
+  com_ressalva: false,
 };
 
 const TIPOS_SEM_LIMITE = ['reequilibrio', 'revisao', 'repactuacao', 'reajuste'];
@@ -151,6 +160,10 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
       nova_data_fim: a.nova_data_fim || '',
       data_assinatura: a.data_assinatura || a.data_aditivo || '',
       justificativa: a.justificativa || '',
+      data_fato_gerador: (a as { data_fato_gerador?: string }).data_fato_gerador || '',
+      indice_reajuste: (a as { indice_reajuste?: string }).indice_reajuste || '',
+      data_base_reajuste: (a as { data_base_reajuste?: string }).data_base_reajuste || '',
+      com_ressalva: !!(a as { com_ressalva?: boolean }).com_ressalva,
       observacoes: a.observacoes || '',
     });
     setDialogOpen(true);
@@ -191,6 +204,12 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         data_aditivo: form.data_assinatura || null,
         justificativa: form.justificativa || null,
         observacoes: form.observacoes || null,
+        // Cada natureza grava o que lhe cabe: guardar índice em revisão, ou
+        // fato gerador em reajuste, faria o registro afirmar o que não é.
+        data_fato_gerador: naturezaDoTipo(form.tipo) === 'revisao' ? (form.data_fato_gerador || null) : null,
+        indice_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.indice_reajuste || null) : null,
+        data_base_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.data_base_reajuste || null) : null,
+        com_ressalva: form.tipo === 'prazo' ? form.com_ressalva : null,
       };
 
       payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
@@ -225,6 +244,20 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const totalAcrescimo = aditivos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
   const totalSupressao = aditivos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
   const saldoAditivos = totalAcrescimo - totalSupressao;
+  // Cruza o fato gerador com as prorrogações já assinadas — dado que o sistema
+  // sempre teve e nunca leu junto.
+  const avisoPreclusao = naturezaDoTipo(form.tipo) === 'revisao'
+    ? avisoDePreclusao({
+        dataFatoGerador: form.data_fato_gerador,
+        prorrogacoes: aditivos
+          .filter((a) => a.tipo === 'prazo')
+          .map((a) => ({
+            data_assinatura: a.data_assinatura ?? null,
+            com_ressalva: (a as { com_ressalva?: boolean }).com_ressalva ?? false,
+          })),
+      })
+    : null;
+
   const totalQtyAcrescimo = aditivos.reduce((s, a) => s + (a.quantidade_acrescimo || 0), 0);
   const totalQtySupressao = aditivos.reduce((s, a) => s + (a.quantidade_supressao || 0), 0);
   const saldoQty = totalQtyAcrescimo - totalQtySupressao;
@@ -530,6 +563,77 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
               <Label className="text-xs">Data Assinatura</Label>
               <Input type="date" value={form.data_assinatura} onChange={(e) => setForm(f => ({ ...f, data_assinatura: e.target.value }))} />
             </div>
+            {/* O que sustenta o pedido, por natureza. Reajuste se calcula;
+                revisão se prova. Pedir os campos errados faz o pedido nascer
+                sem o que o ampara, e a falta só aparece no indeferimento. */}
+            {naturezaDoTipo(form.tipo) === 'revisao' && (
+              <div className="sm:col-span-2 rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-2">
+                <p className="text-sm font-medium">{NATUREZA_DO_VALOR.revisao.nome}</p>
+                <p className="text-xs text-muted-foreground">{NATUREZA_DO_VALOR.revisao.amparo}</p>
+                <div>
+                  <Label className="text-xs">Data do fato gerador *</Label>
+                  <Input
+                    type="date"
+                    value={form.data_fato_gerador}
+                    onChange={(e) => setForm(f => ({ ...f, data_fato_gerador: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Precisa ser posterior à apresentação da proposta.
+                  </p>
+                </div>
+                <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                  {NATUREZA_DO_VALOR.revisao.exige.map((e) => <li key={e}>{e}</li>)}
+                </ul>
+                {avisoPreclusao && (
+                  <p className="text-xs text-warning border-t border-warning/30 pt-2">{avisoPreclusao}</p>
+                )}
+              </div>
+            )}
+
+            {naturezaDoTipo(form.tipo) === 'reajuste' && (
+              <div className="sm:col-span-2 rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-sm font-medium">{NATUREZA_DO_VALOR.reajuste.nome}</p>
+                <p className="text-xs text-muted-foreground">{NATUREZA_DO_VALOR.reajuste.desc}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Índice contratual</Label>
+                    <Input
+                      value={form.indice_reajuste}
+                      onChange={(e) => setForm(f => ({ ...f, indice_reajuste: e.target.value }))}
+                      placeholder="INPC, IPCA, IGP-M…"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Data-base</Label>
+                    <Input
+                      type="date"
+                      value={form.data_base_reajuste}
+                      onChange={(e) => setForm(f => ({ ...f, data_base_reajuste: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {form.tipo === 'prazo' && (
+              <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-border p-3">
+                <Switch
+                  id="com-ressalva"
+                  checked={form.com_ressalva}
+                  onCheckedChange={(v) => setForm(f => ({ ...f, com_ressalva: v }))}
+                />
+                <div>
+                  <Label htmlFor="com-ressalva" className="text-sm cursor-pointer">
+                    Assinado com ressalva quanto aos preços
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Prorrogar sem ressalvar pode ser lido como aceitação dos valores antigos e
+                    renúncia ao reequilíbrio. Marque se o termo trouxe a ressalva.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="sm:col-span-2">
               <Label className="text-xs">Justificativa / Fundamentação</Label>
               <Textarea value={form.justificativa} onChange={(e) => setForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />

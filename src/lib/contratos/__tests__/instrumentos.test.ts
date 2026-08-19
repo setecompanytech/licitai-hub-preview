@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   INSTRUMENTOS, SEQUENCIA, LIMITES_ADITIVO, VIGENCIA_ATA, instrumentoDoTipo,
-  avisoDeExecucaoIncompativel,
+  avisoDeExecucaoIncompativel, naturezaDoTipo, NATUREZA_DO_VALOR,
+  avisoDePreclusao, avisoDeVigencia,
 } from '../instrumentos';
 
 describe('vocabulário dos instrumentos da contratação', () => {
@@ -72,5 +73,75 @@ describe('execução da ATA por empenho (art. 95)', () => {
     expect(avisoDeExecucaoIncompativel({
       formaExecucao: null, fundamento: null, quantidadePedidos: 12,
     })).toBeNull();
+  });
+});
+
+describe('reajuste × revisão', () => {
+  it('classifica cada tipo de aditivo pela natureza certa', () => {
+    expect(naturezaDoTipo('reajuste')).toBe('reajuste');
+    expect(naturezaDoTipo('repactuacao')).toBe('reajuste');
+    expect(naturezaDoTipo('reequilibrio')).toBe('revisao');
+    expect(naturezaDoTipo('revisao')).toBe('revisao');
+    // Acréscimo de valor não é nem um nem outro — sujeita-se ao teto do art. 125.
+    expect(naturezaDoTipo('valor')).toBeNull();
+    expect(naturezaDoTipo('prazo')).toBeNull();
+  });
+
+  it('a revisão exige o que o reajuste não exige', () => {
+    const rev = NATUREZA_DO_VALOR.revisao.exige.join(' ');
+    expect(rev).toMatch(/imprevisível/);
+    expect(rev).toMatch(/APÓS a apresentação da proposta/);
+    expect(rev).toMatch(/culpa/);
+    expect(NATUREZA_DO_VALOR.reajuste.exige.join(' ')).toMatch(/Índice/);
+  });
+});
+
+describe('preclusão lógica do reequilíbrio', () => {
+  const fato = '2026-03-10';
+
+  it('avisa quando há prorrogação sem ressalva depois do fato gerador', () => {
+    const aviso = avisoDePreclusao({
+      dataFatoGerador: fato,
+      prorrogacoes: [{ data_assinatura: '2026-05-02', com_ressalva: false }],
+    });
+    expect(aviso).toMatch(/02\/05\/2026/);
+    expect(aviso).toMatch(/renúncia/);
+  });
+
+  it('prorrogação COM ressalva não gera aviso — a ressalva preserva o direito', () => {
+    expect(avisoDePreclusao({
+      dataFatoGerador: fato,
+      prorrogacoes: [{ data_assinatura: '2026-05-02', com_ressalva: true }],
+    })).toBeNull();
+  });
+
+  it('prorrogação anterior ao fato gerador é irrelevante', () => {
+    expect(avisoDePreclusao({
+      dataFatoGerador: fato,
+      prorrogacoes: [{ data_assinatura: '2026-01-15', com_ressalva: false }],
+    })).toBeNull();
+  });
+
+  it('sem data do fato gerador não há o que cruzar', () => {
+    expect(avisoDePreclusao({
+      dataFatoGerador: null,
+      prorrogacoes: [{ data_assinatura: '2026-05-02', com_ressalva: false }],
+    })).toBeNull();
+  });
+});
+
+describe('vigência por espécie do objeto', () => {
+  it('dez anos cabem em serviço contínuo, não em compra imediata', () => {
+    expect(avisoDeVigencia('servico_continuo', 120)).toBeNull();
+    expect(avisoDeVigencia('compra_entrega_imediata', 120)).toMatch(/ultrapassa/);
+  });
+
+  it('informática tem teto de quatro anos', () => {
+    expect(avisoDeVigencia('informatica', 48)).toBeNull();
+    expect(avisoDeVigencia('informatica', 60)).toMatch(/art\. 109/);
+  });
+
+  it('espécie não declarada não gera aviso', () => {
+    expect(avisoDeVigencia(null, 200)).toBeNull();
   });
 });
