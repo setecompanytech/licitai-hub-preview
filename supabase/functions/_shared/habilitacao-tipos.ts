@@ -104,3 +104,80 @@ export function classificarTipo(texto: string | null | undefined): TipoHabilitac
   }
   return melhor?.tipo ?? null;
 }
+
+/**
+ * Rótulos de CATEGORIA, que não nomeiam documento nenhum.
+ *
+ * O edital costuma abrir a seção com "Habilitação Fiscal, Social e Trabalhista"
+ * e só depois listar os documentos. Quando a IA devolve esse rótulo como se
+ * fosse a exigência, classificar por ele produz um casamento por acaso: a
+ * palavra "Trabalhista" dentro do título fazia uma exigência de CNPJ casar com a
+ * CNDT — e a tela dizia "casado", que é pior do que dizer "faltante". Faltante
+ * manda buscar; um casamento errado manda enviar o documento errado.
+ */
+const ROTULOS_DE_CATEGORIA = [
+  'habilitacao juridica',
+  'habilitacao fiscal',
+  'habilitacao fiscal social e trabalhista',
+  'habilitacao social',
+  'habilitacao trabalhista',
+  'regularidade fiscal',
+  'regularidade fiscal social e trabalhista',
+  'qualificacao tecnica',
+  'qualificacao economico financeira',
+  'qualificacao economica',
+  'documentos de habilitacao',
+  'documentacao de habilitacao',
+  'habilitacao',
+  'declaracoes',
+];
+
+const chaveTexto = (t: string) =>
+  (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** O texto é só o nome de uma seção do edital, sem documento identificável? */
+export function ehRotuloDeCategoria(texto: string | null | undefined): boolean {
+  const t = chaveTexto(String(texto ?? ''));
+  if (!t) return true;
+  return ROTULOS_DE_CATEGORIA.includes(t);
+}
+
+/** Todos os tipos que o texto menciona — para detectar exigência que cobre vários. */
+export function tiposMencionados(texto: string | null | undefined): TipoHabilitacao[] {
+  const t = chaveTexto(String(texto ?? ''));
+  if (!t) return [];
+  return TIPOS_HABILITACAO.filter((tipo) => tipo.keywords.some((k) => t.includes(chaveTexto(k))));
+}
+
+export type ClassificacaoExigencia = {
+  tipo: TipoHabilitacao | null;
+  /** A exigência cobre mais de um documento — precisa ser desdobrada. */
+  ambigua: boolean;
+};
+
+/**
+ * Classifica uma exigência do checklist usando, nesta ordem, o que de fato
+ * identifica o documento:
+ *
+ *  1. o TRECHO transcrito do edital, que nomeia o documento exigido;
+ *  2. o nome que a IA deu, quando não for apenas o rótulo da seção.
+ *
+ * Devolve `ambigua` quando o trecho menciona vários documentos ("tributos
+ * federais, estaduais e municipais, bem como FGTS"): casar isso com um único
+ * arquivo afirmaria uma cobertura que não existe.
+ */
+export function classificarExigencia(params: {
+  nome?: string | null;
+  trecho?: string | null;
+  observacao?: string | null;
+}): ClassificacaoExigencia {
+  const doTrecho = tiposMencionados(params.trecho);
+  if (doTrecho.length > 1) return { tipo: null, ambigua: true };
+  if (doTrecho.length === 1) return { tipo: doTrecho[0], ambigua: false };
+
+  const nome = String(params.nome ?? '');
+  if (ehRotuloDeCategoria(nome)) return { tipo: null, ambigua: false };
+
+  return { tipo: classificarTipo(`${nome} ${params.observacao ?? ''}`), ambigua: false };
+}

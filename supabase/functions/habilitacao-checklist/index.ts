@@ -16,7 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { classificarTipo, LABEL_SEGMENTO, SEGMENTOS_OBJETO } from "../_shared/habilitacao-tipos.ts";
+import { classificarExigencia, classificarTipo, LABEL_SEGMENTO, SEGMENTOS_OBJETO } from "../_shared/habilitacao-tipos.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +82,7 @@ serve(async (req) => {
             {
               role: "system",
               content:
-                "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO (Lei 14.133/2021): quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Para CADA exigência, transcreva em trecho_edital o texto ORIGINAL do órgão, literalmente — quem confere precisa das palavras do edital, não da sua paráfrase. Nunca invente trecho: se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico que a originou. Classifique também o objeto licitado no campo segmento_objeto.",
+                "Você é um especialista em licitações brasileiras (Lei 14.133/2021). O texto contém um ou mais documentos do processo (edital, Termo de Referência e demais anexos), delimitados por linhas '===== DOCUMENTO: <nome> ====='. Analise TODOS os documentos e extraia TODAS as exigências de documentos para habilitação e participação, de qualquer um deles. Classifique cada uma. Para CADA exigência, informe em artigo_referencia o número do item/subitem exatamente como numerado no texto (ex.: '9.1.5', '5.7.1'); quando a exigência vier de um anexo (não do edital principal), prefixe com a sigla do documento (ex.: 'TR 9.6.4' para o Termo de Referência). A mesma exigência repetida em documentos diferentes deve virar UMA entrada só, unindo as referências (ex.: '5.4.2; TR 9.6.4'). Se a exigência não tiver numeração no texto, use string vazia. REGRA DE DESDOBRAMENTO — A MAIS IMPORTANTE DESTA TAREFA. NUNCA devolva como exigência o TÍTULO de uma seção do edital ('Habilitação Jurídica', 'Habilitação Fiscal, Social e Trabalhista', 'Qualificação Técnica'): esses são rótulos de categoria, não documentos, e uma linha assim é inútil para quem monta a pasta. O campo `nome` tem de conter SEMPRE um documento específico e nomeável ('Cartão CNPJ', 'CND Federal', 'CNDT', 'Balanço patrimonial'). Se um único item do edital exigir VÁRIOS documentos ('certidão negativa de tributos federais, estaduais e municipais, bem como do FGTS'), crie UMA LINHA POR DOCUMENTO, todas com a mesma referência e o mesmo trecho. Quando o edital exigir uma categoria genericamente ('habilitação jurídica na forma da lei', 'regularidade fiscal', 'qualificação econômico-financeira'), NÃO crie uma linha genérica — desdobre nos documentos padrão do artigo correspondente, todos com a mesma referência do item genérico: Art. 66 (jurídica) → ato constitutivo/contrato social, documentos de identificação dos sócios/administradores, inscrição no registro comercial; Art. 68 (fiscal) → CNPJ, CND Federal/União, CND Estadual, CND Municipal, CRF/FGTS, CNDT; Art. 69 (econômico-financeira) → balanço patrimonial, certidão negativa de falência; Art. 67 (técnica) → atestado(s) de capacidade técnica. Crie a linha genérica apenas se a categoria não se desdobrar nesses padrões. Para CADA exigência, transcreva em trecho_edital o texto ORIGINAL do órgão, literalmente — quem confere precisa das palavras do edital, não da sua paráfrase. Nunca invente trecho: se a exigência foi desdobrada de uma categoria genérica, transcreva o trecho genérico que a originou. Classifique também o objeto licitado no campo segmento_objeto.",
             },
             {
               role: "user",
@@ -244,7 +244,15 @@ serve(async (req) => {
     };
 
     const rows = lista.map((ex) => {
-      const taxo = classificarTipo(String(ex.nome || "") + " " + String(ex.observacao || ""));
+      // O TRECHO do edital manda: ele nomeia o documento exigido. O nome que a
+      // IA deu vem depois, e é ignorado quando é só o rótulo da seção — era daí
+      // que vinha o casamento por acaso ("Habilitação Fiscal, Social e
+      // Trabalhista" casando com a CNDT por causa da palavra no título).
+      const { tipo: taxo, ambigua } = classificarExigencia({
+        nome: String(ex.nome || ""),
+        trecho: String(ex.trecho_edital || ""),
+        observacao: String(ex.observacao || ""),
+      });
       // Casamento POR TIPO. Havendo mais de um candidato, prefere o que segue
       // válido na data da sessão; empate resolve pela validade mais distante.
       let candidatos = taxo
@@ -290,7 +298,13 @@ serve(async (req) => {
           ? String(ex.trecho_edital).trim().replace(/\s+/g, " ").slice(0, 700)
           : null,
         obrigatorio: ex.obrigatorio !== false,
-        observacao: [ex.observacao ? String(ex.observacao).slice(0, 400) : null, avisoSegmento]
+        observacao: [
+          ex.observacao ? String(ex.observacao).slice(0, 400) : null,
+          // Exigência que cobre vários documentos não casa com um só arquivo:
+          // dizer "casado" ali afirmaria uma cobertura inexistente.
+          ambigua ? "Esta exigência cobre mais de um documento — confira um a um" : null,
+          avisoSegmento,
+        ]
           .filter(Boolean)
           .join(" · ") || null,
         status,
