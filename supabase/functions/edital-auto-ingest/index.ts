@@ -190,6 +190,11 @@ function pickHeader(row: any[], patterns: RegExp[]): number {
   return -1;
 }
 
+/** Lê o conteúdo de uma entrada de zip como ArrayBuffer. */
+async function f_arrayBuffer(entrada: any): Promise<ArrayBuffer> {
+  return await entrada.async("arraybuffer");
+}
+
 /** Extrai itens de uma planilha .xlsx com heurística de cabeçalhos brasileiros. */
 function parseXlsxItens(buf: ArrayBuffer): any[] {
   try {
@@ -424,6 +429,75 @@ Deno.serve(async (req) => {
       }
     } catch (e) {
       console.warn("[auto-ingest] PNCP itens API erro:", String(e));
+    }
+  }
+
+  // Estratégia 0: abrir os .zip e promover o que vem dentro.
+  //
+  // O PNCP publica a maior parte dos editais empacotada — planilha de itens,
+  // edital e anexos num arquivo só. O pipeline classificava o zip e parava ali:
+  // sem planilha nem PDF "à vista", caía no diagnóstico "Itens não extraídos",
+  // que descreve o sintoma e esconde a causa.
+  //
+  // Abrir aqui vale mais do que parece: a planilha de itens quase sempre está
+  // DENTRO do pacote, e ela é a fonte mais confiável — dado estruturado, sem IA.
+  const zips = anexos.filter((a) => a.tipo === "zip");
+  for (const z of zips) {
+    if (itens.length > 0) break;
+    await updateStatus({ etapa: "classify", mensagem: `Abrindo pacote: ${z.nome}` });
+    const dl = await downloadBinary(z.url);
+    if (!dl) continue;
+    try {
+      const mod = await import("https://esm.sh/jszip@3.10.1");
+      const JSZip = (mod as unknown as { default: typeof mod }).default ?? mod;
+      const zip = await JSZip.loadAsync(dl.buf);
+      const dentro = Object.values(zip.files).filter(
+        (f: any) => !f.dir && !/(^|\/)__MACOSX/i.test(f.name),
+      ) as any[];
+
+      // Planilha primeiro; depois o edital; depois o resto.
+      dentro.sort((a, b) => {
+        const peso = (n: string) =>
+          /\.xlsx?$/i.test(n) ? 0 : /edital/i.test(n) ? 1 : /\.pdf$/i.test(n) ? 2 : 3;
+        return peso(a.name) - peso(b.name);
+      });
+
+      for (const f of dentro) {
+        if (/\.xlsx?$/i.test(f.name)) {
+          const buf = await f.async("arraybuffer");
+          const achados = parseXlsxItens(buf);
+          if (achados.length > 0) {
+            itens = achados;
+            fonteUsada = "XLSX (dentro do pacote)";
+            console.log(`[auto-ingest] planilha ${f.name} dentro do zip: ${achados.length} itens`);
+            break;
+          }
+        }
+      }
+
+      // Sem planilha aproveitável, o PDF de dentro entra na lista de anexos e
+      // segue pela estratégia de IA, como qualquer outro edital.
+      if (itens.length === 0) {
+        const pdfInterno = dentro.find((f) => /\.pdf$/i.test(f.name));
+        if (pdfInterno) {
+          const buf = await f_arrayBuffer(pdfInterno);
+          const nomeInterno = String(pdfInterno.name).split("/").pop() || "edital.pdf";
+          const caminho = `${lic.user_id}/zip-extraido/${lic.id}/${nomeInterno}`;
+          const { error: upErr } = await admin.storage
+            .from("processo-arquivos")
+            .upload(caminho, new Blob([buf], { type: "application/pdf" }), { upsert: true });
+          if (!upErr) {
+            const { data: signed } = await admin.storage
+              .from("processo-arquivos").createSignedUrl(caminho, 3600);
+            if (signed?.signedUrl) {
+              anexos.push({ nome: nomeInterno, url: signed.signedUrl, tipo: "pdf" });
+              console.log(`[auto-ingest] PDF ${nomeInterno} extraído do zip e promovido`);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[auto-ingest] falha ao abrir zip:", String(e));
     }
   }
 
