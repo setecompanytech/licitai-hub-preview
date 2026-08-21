@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   FileText, Loader2, RefreshCw, AlertTriangle, ExternalLink, Download, Maximize2,
 } from 'lucide-react';
+import ConteudoDoZip from '@/components/workspace/ConteudoDoZip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -293,7 +294,15 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
                 />
               )}
 
-              {signedUrl && !podeExibirNoFrame && (
+              {/* ZIP é o formato em que o PNCP publica a maior parte dos
+                  editais. Mandar baixar e descompactar para ler o edital era
+                  transferir trabalho ao usuário por uma limitação do navegador
+                  que o próprio navegador sabe resolver. */}
+              {signedUrl && !podeExibirNoFrame && arquivoAberto?.ext === 'zip' && (
+                <ConteudoDoZip url={signedUrl} nomeZip={arquivoAberto?.nome} />
+              )}
+
+              {signedUrl && !podeExibirNoFrame && arquivoAberto?.ext !== 'zip' && (
                 <div className="p-6 text-center space-y-3">
                   <FileText className="w-8 h-8 mx-auto text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">

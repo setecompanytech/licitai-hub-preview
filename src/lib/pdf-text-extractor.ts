@@ -1,5 +1,7 @@
 /**
- * Extracts readable text from files/blobs (PDF, DOC, DOCX, TXT).
+ * Extracts readable text from files/blobs (PDF, DOC, DOCX, TXT, planilhas,
+ * imagens e pacotes .zip — o formato em que o PNCP publica a maior parte dos
+ * editais).
  * Keeps more of the original line structure to improve edital item extraction fidelity.
  */
 import ExcelJS from 'exceljs';
@@ -70,7 +72,73 @@ export async function extractTextFromBlob(
     return extractTextFromImageBlob(blob, fileName);
   }
 
+  // O PNCP publica a maior parte dos editais em .zip — edital, termo de
+  // referência e anexos num pacote só. Sem abrir, o arquivo caía no fallback
+  // abaixo, virava texto binário e era descartado por ser curto demais: a
+  // leitura automática simplesmente não acontecia, sem dizer por quê.
+  if (name.endsWith('.zip') || type.includes('zip')) {
+    return extractTextFromZip(blob, fileName, maxPages, isEdital);
+  }
+
   return normalizeExtractedText(await blob.text());
+}
+
+/** Entradas que nunca contêm texto útil e só gastam tempo. */
+const IGNORADAS_NO_ZIP = /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)/i;
+const LEGIVEIS_NO_ZIP = /\.(pdf|docx?|txt|xlsx?|csv|odt)$/i;
+
+/**
+ * Abre um pacote e extrai o texto de cada arquivo legível dentro dele.
+ *
+ * Ordem importa: o edital vem primeiro, e o termo de referência logo depois —
+ * quando o conteúdo precisa ser recortado por limite de tamanho, o que fica é o
+ * que mais pesa na análise.
+ *
+ * @param profundidade Guarda contra zip dentro de zip: um pacote aninhado é
+ *   aberto uma vez; a partir daí, ignorado. Sem isso, um arquivo malicioso ou
+ *   apenas mal montado poderia recursar sem fim.
+ */
+async function extractTextFromZip(
+  blob: Blob,
+  fileName: string,
+  maxPages: number,
+  isEdital: boolean,
+  profundidade = 0,
+): Promise<string> {
+  const JSZip = (await import('jszip')).default;
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+
+  const entradas = Object.values(zip.files).filter(
+    (f) => !f.dir && !IGNORADAS_NO_ZIP.test(f.name) &&
+      (LEGIVEIS_NO_ZIP.test(f.name) || (profundidade === 0 && /\.zip$/i.test(f.name))),
+  );
+
+  // Edital primeiro, termo de referência em seguida, o resto depois.
+  const peso = (nome: string) =>
+    /edital/i.test(nome) ? 0
+    : /(termo[_\s-]*de[_\s-]*refer|^tr[_\s-]|anexo[_\s-]*i\b)/i.test(nome) ? 1
+    : 2;
+  entradas.sort((a, b) => peso(a.name) - peso(b.name) || a.name.localeCompare(b.name));
+
+  const partes: string[] = [];
+  for (const entrada of entradas) {
+    try {
+      const interno = await entrada.async('blob');
+      const nomeCurto = entrada.name.split('/').pop() || entrada.name;
+      const texto = /\.zip$/i.test(entrada.name)
+        ? await extractTextFromZip(interno, nomeCurto, maxPages, isEdital, profundidade + 1)
+        : await extractTextFromBlob(interno, nomeCurto, maxPages, isEdital);
+      if (texto && texto.trim().length >= 100) {
+        partes.push(`----- ${nomeCurto} -----\n${texto}`);
+      }
+    } catch {
+      // Um anexo ilegível não invalida o pacote: segue para o próximo.
+    }
+  }
+
+  return partes.length > 0
+    ? normalizeExtractedText(partes.join('\n\n'))
+    : '';
 }
 
 async function extractTextFromPDFData(
