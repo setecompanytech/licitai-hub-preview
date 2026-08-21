@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { TIPOS_HABILITACAO, classificarTipo } from '@/lib/habilitacao/tipos';
+import { TIPOS_HABILITACAO, classificarTipo, tiposMencionados } from '@/lib/habilitacao/tipos';
 
 describe('classificarTipo', () => {
   const CASOS: { entrada: string; esperado: string }[] = [
@@ -52,5 +52,40 @@ describe('casamento por palavra inteira', () => {
 
   it('reconhece o FGTS escrito por extenso, como no art. 68', () => {
     expect(classificarTipo('contribuições ao Fundo de Garantia do Tempo de Serviço')?.id).toBe('crf_fgts');
+  });
+});
+
+describe('doutrina: o que cada documento prova', () => {
+  // A certidão da Junta informa o que está arquivado; quem carrega o teor
+  // jurídico que habilita (objeto social, capital, poderes) é o contrato social.
+  // Tratar uma como a outra dava por atendida uma exigência do art. 66 com
+  // documento que não a atende.
+  it('não confunde certidão da Junta com o ato constitutivo', () => {
+    expect(classificarTipo('Certidão Simplificada da Junta Comercial')?.id).toBe('certidao_junta');
+    expect(classificarTipo('Certidão de Inteiro Teor')?.id).toBe('certidao_junta');
+    expect(classificarTipo('Certidão Específica')?.id).toBe('certidao_junta');
+    expect(classificarTipo('Ato Constitutivo / Contrato Social')?.id).toBe('contrato_social');
+  });
+
+  it('reconhece a inscrição cadastral pela sigla de cada ente', () => {
+    expect(classificarTipo('Ficha de Inscrição Cadastral (FIC)')?.id).toBe('inscricao_estadual');
+    expect(classificarTipo('CISC – Belém')?.id).toBe('inscricao_municipal');
+  });
+
+  // Art. 68: o inciso II prova que a empresa está cadastrada; o III, que ela
+  // nada deve. "Estadual" qualifica os dois, e sozinho não decide qual é.
+  it('separa a inscrição do inciso II da regularidade do inciso III', () => {
+    const ids = tiposMencionados(
+      'prova de inscrição no cadastro de contribuintes estadual e/ou municipal, relativo ao domicílio ou sede',
+    ).map((t) => t.id);
+    expect(ids).toContain('inscricao_estadual');
+    expect(ids).not.toContain('cnd_estadual');
+  });
+
+  it('mantém as CNDs quando a frase é de regularidade', () => {
+    const ids = tiposMencionados(
+      'Certidão negativa de débitos relativos a tributos federais, estaduais e municipais, bem como ao Fundo de Garantia do Tempo de Serviço',
+    ).map((t) => t.id);
+    expect(ids).toEqual(expect.arrayContaining(['cnd_federal', 'cnd_estadual', 'cnd_municipal', 'crf_fgts']));
   });
 });

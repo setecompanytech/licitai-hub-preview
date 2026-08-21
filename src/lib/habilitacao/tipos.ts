@@ -16,18 +16,42 @@ export interface TipoHabilitacao {
   grupo: 'juridica' | 'fiscal' | 'economica' | 'tecnica' | 'declaracoes' | 'outro';
   /** Palavras que identificam este tipo no texto da exigência OU no nome/tipo do documento do cofre. */
   keywords: string[];
+  /**
+   * Palavras que apenas QUALIFICAM o documento, sem identificá-lo. "Estadual"
+   * serve tanto à certidão de regularidade (art. 68, III) quanto à prova de
+   * inscrição (art. 68, II) — sozinha, não diz de qual se trata.
+   */
+  fracas?: string[];
 }
 
 export const TIPOS_HABILITACAO: TipoHabilitacao[] = [
   // ── Habilitação jurídica ──────────────────────────────────────────────────
-  { id: 'contrato_social',    label: 'Contrato social / Estatuto',        grupo: 'juridica',    keywords: ['contrato social', 'estatuto', 'ato constitutivo', 'requerimento de empresario', 'junta comercial', 'certidao simplificada', 'ficha cadastral', 'alteracao contratual', 'consolidacao contratual', 'registro comercial'] },
-  { id: 'cartao_cnpj',        label: 'Cartão CNPJ',                       grupo: 'juridica',    keywords: ['cnpj', 'cadastro nacional de pessoa juridica', 'cartao cnpj'] },
+  { id: 'contrato_social',    label: 'Contrato social / Estatuto',        grupo: 'juridica',    keywords: ['contrato social', 'estatuto', 'ato constitutivo', 'requerimento de empresario', 'alteracao contratual', 'consolidacao contratual', 'registro comercial'] },
+  // Documento AUXILIAR da Junta, não o ato constitutivo. A simplificada, a de
+  // inteiro teor e a específica informam o que está arquivado; o teor jurídico
+  // que habilita — objeto social, capital, poderes de representação — é o do
+  // contrato social. Tratar uma como a outra fazia o sistema dar por atendida
+  // uma exigência do art. 66 com um documento que não a atende.
+  { id: 'certidao_junta',     label: 'Certidão da Junta Comercial (auxiliar)', grupo: 'juridica', keywords: ['certidao simplificada', 'inteiro teor', 'certidao especifica', 'certidao da junta comercial', 'ficha cadastral completa', 'breve relato'] },
+  { id: 'cartao_cnpj',        label: 'Cartão CNPJ',                       grupo: 'fiscal',      keywords: ['cnpj', 'cadastro nacional de pessoa juridica', 'cartao cnpj'] },
   { id: 'doc_socios',         label: 'Documentos dos sócios (RG/CPF)',    grupo: 'juridica',    keywords: ['rg', 'cpf', 'documento de identidade', 'cedula de identidade', 'carteira de identidade', 'cnh', 'socio', 'administrador', 'representante legal'] },
   { id: 'procuracao',         label: 'Procuração / Credenciamento',       grupo: 'juridica',    keywords: ['procuracao', 'credenciamento', 'poderes'] },
   // ── Regularidade fiscal e trabalhista ─────────────────────────────────────
-  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'federais', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn', 'cnd federal', 'cpen', 'conjunta'] },
-  { id: 'cnd_estadual',       label: 'CND Estadual',                      grupo: 'fiscal',      keywords: ['estadual', 'estaduais', 'fazenda estadual', 'sefa', 'sefaz', 'icms'] },
-  { id: 'cnd_municipal',      label: 'CND Municipal',                     grupo: 'fiscal',      keywords: ['municipal', 'municipais', 'fazenda municipal', 'iss', 'tributos municipais'] },
+  // Art. 68, II — prova de INSCRIÇÃO no cadastro de contribuintes, que é coisa
+  // diferente da certidão de REGULARIDADE do inciso III: uma diz que a empresa
+  // está cadastrada e em que ramo; a outra, que não deve nada. O sistema só
+  // conhecia a segunda, então a primeira nunca virava linha do checklist.
+  //
+  // O nome muda em cada ente federativo — no Pará, Ficha de Inscrição Cadastral
+  // (FIC); em Belém, CISC. Por isso o tipo é nomeado pela função, que é
+  // nacional, e as siglas locais entram como sinônimos. A lista abaixo é semente
+  // e cresce conforme aparecerem outros entes; a frase canônica do art. 68, II
+  // continua reconhecendo quem não estiver nela.
+  { id: 'inscricao_estadual', label: 'Inscrição estadual (cadastro de contribuintes)',  grupo: 'fiscal', keywords: ['inscricao estadual', 'contribuinte estadual', 'contribuintes estadual', 'cadastro de contribuintes', 'ficha de inscricao cadastral', 'fic', 'sintegra', 'cad icms', 'cadastro icms'] },
+  { id: 'inscricao_municipal', label: 'Inscrição municipal (cadastro de contribuintes)', grupo: 'fiscal', keywords: ['inscricao municipal', 'contribuinte municipal', 'contribuintes municipal', 'cadastro de contribuintes', 'cisc', 'cadastro mobiliario', 'inscricao mobiliaria'] },
+  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'federais', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn', 'cnd federal', 'cpen', 'conjunta'] , fracas: ['federal', 'federais'] },
+  { id: 'cnd_estadual',       label: 'CND Estadual',                      grupo: 'fiscal',      keywords: ['estadual', 'estaduais', 'fazenda estadual', 'sefa', 'sefaz', 'icms'] , fracas: ['estadual', 'estaduais'] },
+  { id: 'cnd_municipal',      label: 'CND Municipal',                     grupo: 'fiscal',      keywords: ['municipal', 'municipais', 'fazenda municipal', 'iss', 'tributos municipais'] , fracas: ['municipal', 'municipais'] },
   { id: 'crf_fgts',           label: 'CRF / FGTS',                        grupo: 'fiscal',      keywords: ['fgts', 'crf', 'caixa economica', 'regularidade do fgts', 'fundo de garantia', 'fundo de garantia do tempo de servico'] },
   { id: 'cndt_trabalhista',   label: 'CNDT Trabalhista',                  grupo: 'fiscal',      keywords: ['trabalhista', 'cndt', 'debitos trabalhistas', 'justica do trabalho', 'tst'] },
   { id: 'inss_previdencia',   label: 'Regularidade previdenciária',       grupo: 'fiscal',      keywords: ['inss', 'previdencia', 'seguridade social'] },
@@ -111,3 +135,24 @@ export function classificarTipo(texto: string | null | undefined): TipoHabilitac
   return melhor?.tipo ?? null;
 }
 
+const LINGUAGEM_DE_INSCRICAO = /\b(inscricao|inscricoes|cadastro de contribuintes|contribuintes?)\b/;
+
+/**
+ * Todos os tipos que o texto menciona — para desdobrar a exigência que cobre
+ * vários documentos.
+ *
+ * Um tipo identificado APENAS por palavra fraca ("estadual") não entra quando a
+ * frase é de inscrição: senão o item que pede a FIC produziria também uma linha
+ * de CND Estadual, misturando os incisos II e III do art. 68.
+ */
+export function tiposMencionados(texto: string | null | undefined): TipoHabilitacao[] {
+  const t = chaveTexto(String(texto ?? ''));
+  if (!t) return [];
+  const deInscricao = LINGUAGEM_DE_INSCRICAO.test(t);
+  return TIPOS_HABILITACAO.filter((tipo) => {
+    const acertos = tipo.keywords.filter((k) => casaPalavra(t, k));
+    if (!acertos.length) return false;
+    const soFracas = acertos.every((k) => (tipo.fracas ?? []).includes(k));
+    return !(soFracas && deInscricao);
+  });
+}

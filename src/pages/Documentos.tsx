@@ -57,7 +57,17 @@ type DocumentAnalysisPayload = {
 const checklistDocumentos: Documento[] = [
   { nome: 'Ato Constitutivo / Contrato Social', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
   { nome: 'Cédula de Identidade dos Sócios', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
+  // Documento AUXILIAR: informa o que está arquivado na Junta, mas não substitui
+  // o teor jurídico do contrato social (objeto, capital, poderes). Vale o mesmo
+  // para a certidão de inteiro teor e a específica.
   { nome: 'Certidão Simplificada da Junta Comercial', categoria: 'Habilitação Jurídica', artigo: 'Art. 66', status: 'ausente' },
+  { nome: 'Cartão CNPJ', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, I', status: 'ausente' },
+  // Art. 68, II — prova de INSCRIÇÃO no cadastro de contribuintes, que não se
+  // confunde com a certidão de regularidade do inciso III. A sigla muda em cada
+  // ente (FIC no Pará, CISC em Belém), então a vaga é nomeada pela função e o
+  // sistema reconhece as siglas locais pelo nome do arquivo.
+  { nome: 'Inscrição Estadual (cadastro de contribuintes)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, II', status: 'ausente' },
+  { nome: 'Inscrição Municipal (cadastro de contribuintes)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68, II', status: 'ausente' },
   { nome: 'Certidão Negativa de Débitos Federais (CND)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
   { nome: 'Certidão de Regularidade do FGTS (CRF)', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
   { nome: 'Certidão Negativa de Débitos Estaduais', categoria: 'Regularidade Fiscal', artigo: 'Art. 68', status: 'ausente' },
