@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   FileText, Upload, CheckCircle2, AlertTriangle, Clock,
-  Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2,
+  Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2, Eye,
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -307,6 +307,10 @@ export default function Documentos() {
   const [activeTab, setActiveTab] = useState('documentos');
   const [documentos, setDocumentos] = useState<Documento[]>(checklistDocumentos);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  // Visualização em tela: conferir validade e assinatura de uma certidão exigia
+  // baixar o arquivo e abrir fora do sistema — para um documento que já está
+  // aqui e cuja conferência é o trabalho desta tela.
+  const [visualizando, setVisualizando] = useState<{ nome: string; url: string } | null>(null);
   const [removingIdx, setRemovingIdx] = useState<number | null>(null);
   const [analyzingIdx, setAnalyzingIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -565,6 +569,18 @@ export default function Documentos() {
     }
   };
 
+  const handleVisualizar = async (globalIdx: number) => {
+    const doc = documentos[globalIdx];
+    if (!doc.storagePath) { toast.error('Nenhum arquivo para visualizar.'); return; }
+    const { data, error } = await supabase.storage
+      .from('documentos-habilitacao').createSignedUrl(doc.storagePath, 600);
+    if (error || !data?.signedUrl) {
+      toast.error('Erro ao abrir: ' + (error?.message ?? 'arquivo não encontrado'));
+      return;
+    }
+    setVisualizando({ nome: doc.nome, url: data.signedUrl });
+  };
+
   const handleDownload = async (globalIdx: number) => {
     const doc = documentos[globalIdx];
     if (!doc.storagePath || !user) {
@@ -734,6 +750,16 @@ export default function Documentos() {
                               </Badge>
                               {doc.arquivo ? (
                                 <div className="flex gap-1">
+                                  {doc.storagePath && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleVisualizar(globalIdx)}
+                                      title="Visualizar em tela"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                   {doc.storagePath && (
                                     <Button
                                       size="sm"
@@ -946,6 +972,23 @@ export default function Documentos() {
                 Confirmar e Enviar
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Conferência em tela. O PDF abre aqui; formato que o navegador não
+            renderiza cai no download, que é o que já existia. */}
+        <Dialog open={!!visualizando} onOpenChange={(o) => !o && setVisualizando(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle className="text-base">{visualizando?.nome}</DialogTitle>
+            </DialogHeader>
+            {visualizando && (
+              <iframe
+                src={visualizando.url}
+                title={visualizando.nome}
+                className="w-full h-[70vh] border border-border rounded-lg bg-white"
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>

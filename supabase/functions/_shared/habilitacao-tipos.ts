@@ -18,30 +18,38 @@ export interface TipoHabilitacao {
   keywords: string[];
 }
 
+/**
+ * As palavras-chave nascem do que os documentos REAIS trazem no nome, não do
+ * nome canônico do tipo. "Certidão Simplificada da Junta Comercial" é ato
+ * constitutivo e não continha nenhuma palavra da lista; "Cédula de Identidade
+ * dos Sócios" não continha "RG". Documento existente e não reconhecido aparece
+ * como faltante — o pior dos erros aqui, porque manda a pessoa buscar o que ela
+ * já tem.
+ */
 export const TIPOS_HABILITACAO: TipoHabilitacao[] = [
   // ── Habilitação jurídica ──────────────────────────────────────────────────
-  { id: 'contrato_social',    label: 'Contrato social / Estatuto',        grupo: 'juridica',    keywords: ['contrato social', 'estatuto', 'ato constitutivo', 'requerimento de empresario'] },
+  { id: 'contrato_social',    label: 'Contrato social / Estatuto',        grupo: 'juridica',    keywords: ['contrato social', 'estatuto', 'ato constitutivo', 'requerimento de empresario', 'junta comercial', 'certidao simplificada', 'ficha cadastral', 'alteracao contratual', 'consolidacao contratual', 'registro comercial'] },
   { id: 'cartao_cnpj',        label: 'Cartão CNPJ',                       grupo: 'juridica',    keywords: ['cnpj', 'cadastro nacional de pessoa juridica', 'cartao cnpj'] },
-  { id: 'doc_socios',         label: 'Documentos dos sócios (RG/CPF)',    grupo: 'juridica',    keywords: ['rg', 'cpf', 'documento de identidade', 'socio', 'administrador', 'representante legal'] },
+  { id: 'doc_socios',         label: 'Documentos dos sócios (RG/CPF)',    grupo: 'juridica',    keywords: ['rg', 'cpf', 'documento de identidade', 'cedula de identidade', 'carteira de identidade', 'cnh', 'socio', 'administrador', 'representante legal'] },
   { id: 'procuracao',         label: 'Procuração / Credenciamento',       grupo: 'juridica',    keywords: ['procuracao', 'credenciamento', 'poderes'] },
   // ── Regularidade fiscal e trabalhista ─────────────────────────────────────
-  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn'] },
+  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn', 'cnd federal', 'conjunta'] },
   { id: 'cnd_estadual',       label: 'CND Estadual',                      grupo: 'fiscal',      keywords: ['estadual', 'fazenda estadual', 'sefa', 'sefaz', 'icms'] },
   { id: 'cnd_municipal',      label: 'CND Municipal',                     grupo: 'fiscal',      keywords: ['municipal', 'fazenda municipal', 'iss', 'tributos municipais'] },
   { id: 'crf_fgts',           label: 'CRF / FGTS',                        grupo: 'fiscal',      keywords: ['fgts', 'crf', 'caixa economica', 'regularidade do fgts'] },
   { id: 'cndt_trabalhista',   label: 'CNDT Trabalhista',                  grupo: 'fiscal',      keywords: ['trabalhista', 'cndt', 'debitos trabalhistas', 'justica do trabalho', 'tst'] },
   { id: 'inss_previdencia',   label: 'Regularidade previdenciária',       grupo: 'fiscal',      keywords: ['inss', 'previdencia', 'seguridade social'] },
   // ── Qualificação econômico-financeira ─────────────────────────────────────
-  { id: 'balanco',            label: 'Balanço patrimonial',               grupo: 'economica',   keywords: ['balanco patrimonial', 'demonstracoes contabeis', 'indices contabeis', 'liquidez'] },
-  { id: 'certidao_falencia',  label: 'Certidão de falência/concordata',   grupo: 'economica',   keywords: ['falencia', 'concordata', 'recuperacao judicial', 'distribuidor'] },
+  { id: 'balanco',            label: 'Balanço patrimonial',               grupo: 'economica',   keywords: ['balanco patrimonial', 'balanco', 'demonstracoes contabeis', 'dre', 'indices contabeis', 'liquidez', 'escrituracao contabil', 'ecd'] },
+  { id: 'certidao_falencia',  label: 'Certidão de falência/concordata',   grupo: 'economica',   keywords: ['falencia', 'concordata', 'recuperacao judicial', 'distribuidor', 'insolvencia civil', 'certidao judicial'] },
   { id: 'capital_social',     label: 'Capital social mínimo',             grupo: 'economica',   keywords: ['capital social', 'patrimonio liquido'] },
   // ── Qualificação técnica ─────────────────────────────────────────────────
-  { id: 'atestado_tecnico',   label: 'Atestado de capacidade técnica',    grupo: 'tecnica',     keywords: ['atestado', 'capacidade tecnica', 'aptidao', 'desempenho anterior'] },
-  { id: 'registro_conselho',  label: 'Registro em conselho de classe',    grupo: 'tecnica',     keywords: ['crea', 'cau', 'crc', 'crm', 'conselho regional', 'conselho de classe'] },
+  { id: 'atestado_tecnico',   label: 'Atestado de capacidade técnica',    grupo: 'tecnica',     keywords: ['atestado', 'capacidade tecnica', 'aptidao', 'desempenho anterior', 'cat ', 'acervo tecnico', 'declaracao de fornecimento'] },
+  { id: 'registro_conselho',  label: 'Registro em conselho de classe',    grupo: 'tecnica',     keywords: ['crea', 'cau', 'crc', 'crm', 'conselho regional', 'conselho de classe', 'registro profissional', 'quitacao anuidade'] },
   { id: 'alvara_licenca',     label: 'Alvará / Licença de funcionamento', grupo: 'tecnica',     keywords: ['alvara', 'licenca de funcionamento', 'licenca sanitaria', 'vigilancia sanitaria', 'anvisa', 'licenca ambiental'] },
   // ── Declarações ──────────────────────────────────────────────────────────
   { id: 'decl_menor',         label: 'Declaração — menor de idade',       grupo: 'declaracoes', keywords: ['menor', 'trabalho do menor', 'inciso xxxiii'] },
-  { id: 'decl_idoneidade',    label: 'Declaração — idoneidade',           grupo: 'declaracoes', keywords: ['idoneidade', 'inidone', 'impedimento de licitar', 'suspensao'] },
+  { id: 'decl_idoneidade',    label: 'Declaração — idoneidade',           grupo: 'declaracoes', keywords: ['idoneidade', 'inidone', 'impedimento de licitar', 'suspensao', 'fato impeditivo', 'inexistencia de fato'] },
   { id: 'decl_me_epp',        label: 'Declaração — ME/EPP',               grupo: 'declaracoes', keywords: ['microempresa', 'me/epp', 'epp', 'lc 123', 'complementar 123', 'porte'] },
   { id: 'decl_requisitos',    label: 'Declaração — requisitos edital',    grupo: 'declaracoes', keywords: ['cumprimento dos requisitos', 'declaracao de habilitacao', 'pleno conhecimento'] },
 ];

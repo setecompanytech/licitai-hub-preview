@@ -182,9 +182,14 @@ serve(async (req) => {
         .from("agent_documentos")
         .select("id, tipo, validade")
         .eq("empresa_id", lic.empresa_id),
+      // Filtro por empresa desde 20260818000007: `documentos` ganhou empresa_id
+      // e a RLS passou a ser por empresa. Sem o filtro, quem participa de duas
+      // empresas casaria a certidão de uma no processo da outra — e o erro só
+      // apareceria na habilitação, com o documento errado já enviado.
+      // O fallback por user_id cobre registro antigo, que ficou sem empresa.
       userClient
         .from("documentos")
-        .select("id, nome, tipo, descricao, segmento, validade, arquivo_path")
+        .select("id, nome, tipo, descricao, segmento, validade, arquivo_path, empresa_id")
         .not("arquivo_path", "is", null),
       userClient
         .from("processo_anexos")
@@ -204,7 +209,9 @@ serve(async (req) => {
       // Cofre lido por INTEIRO: descrição (objeto do atestado) e segmento
       // entram na classificação — atestados gravados como tipo "Qualificação
       // Técnica" eram invisíveis quando o nome não continha "atestado".
-      ...(cofreJuridico || []).map((d) => ({
+      ...(cofreJuridico || [])
+        .filter((d) => !d.empresa_id || d.empresa_id === lic.empresa_id)
+        .map((d) => ({
         id: d.id,
         nome: d.nome,
         validade: d.validade,
