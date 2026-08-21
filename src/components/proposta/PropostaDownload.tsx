@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { linhaDoProcessoAdministrativo, referenciaDoCertame, vocativoDoOrgao } from '@/lib/proposta/vocativo';
 import { Button } from '@/components/ui/button';
 import { FileText, File, Sheet, FolderPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -78,6 +79,10 @@ export interface PropostaDownloadProps {
     liquidacaoNfe?: string;
     garantia?: string;
     condicoesEntrega?: string;
+    /** Ano do certame — compõe "Nº 87/2026", como o edital se identifica. */
+    anoDoCertame?: number | string | null;
+    /** Nº do processo administrativo, quando o edital o traz. */
+    processoAdministrativo?: string | null;
   };
   telefone?: string;
   email?: string;
@@ -240,7 +245,7 @@ export default function PropostaDownload({
       if (licitacaoData?.orgao) {
         doc.setFont('times', 'italic');
         doc.setFontSize(14);
-        doc.text('A', mL, y);
+        doc.text(vocativoDoOrgao(licitacaoData.orgao), mL, y);
         y += lh;
         doc.setFont('times', 'bold');
         doc.setFontSize(11);
@@ -262,7 +267,12 @@ export default function PropostaDownload({
       if (numeroLicitacao) {
         doc.setFont('times', 'normal');
         doc.setFontSize(10);
-        const refText = `Ref.: ${numeroLicitacao}${licitacaoData?.modalidade ? ` - ${licitacaoData.modalidade}` : ''}`;
+        // Como o edital se identifica: "PREGÃO ELETRÔNICO Nº 87/2026".
+        const refText = referenciaDoCertame({
+          numero: numeroLicitacao,
+          modalidade: licitacaoData?.modalidade,
+          ano: licitacaoData?.anoDoCertame,
+        });
         doc.text(refText, pageWidth / 2, y, { align: 'center' });
         y += lh * 1.5;
       }
@@ -533,14 +543,20 @@ export default function PropostaDownload({
 
       // Destinatário
       if (licitacaoData?.orgao) {
-        body += `<p style="font-style:italic;font-size:14pt">A</p>`;
+        body += `<p style="font-style:italic;font-size:14pt">${vocativoDoOrgao(licitacaoData.orgao)}</p>`;
         body += `<p style="font-weight:bold">${licitacaoData.orgao}</p>`;
       }
 
       // Cabeçalho
       body += `<p style="text-align:center;margin-top:12pt"><span style="font-weight:bold;font-size:12pt;border:2px solid #000;padding:4pt 16pt">PROPOSTA COMERCIAL</span></p>`;
       if (numeroLicitacao) {
-        body += `<p style="text-align:center;font-size:10pt">Ref.: ${numeroLicitacao}${licitacaoData?.modalidade ? ` - ${licitacaoData.modalidade}` : ''}</p>`;
+        body += `<p style="text-align:center;font-size:10pt;font-weight:bold">${referenciaDoCertame({
+          numero: numeroLicitacao,
+          modalidade: licitacaoData?.modalidade,
+          ano: licitacaoData?.anoDoCertame,
+        })}</p>`;
+        const linhaProc = linhaDoProcessoAdministrativo(licitacaoData?.processoAdministrativo);
+        if (linhaProc) body += `<p style="text-align:center;font-size:10pt">${linhaProc}</p>`;
       }
 
       // Apresentação

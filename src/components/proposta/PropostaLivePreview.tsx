@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { linhaDoProcessoAdministrativo, referenciaDoCertame, vocativoDoOrgao } from '@/lib/proposta/vocativo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Eye } from 'lucide-react';
 import { valorPorExtenso } from '@/lib/numero-extenso';
@@ -34,6 +35,10 @@ interface LivePreviewProps {
   numeroLicitacao: string;
   orgao: string;
   modalidade: string;
+  /** Ano do certame — compõe "Nº 87/2026", como o edital se identifica. */
+  anoDoCertame?: number | string | null;
+  /** Nº do processo administrativo, quando o edital o traz. */
+  processoAdministrativo?: string | null;
   objeto: string;
   valorEstimado: string;
   prazoValidade: string;
@@ -64,7 +69,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
   const {
     empresa, telefone, email, inscEstadual, inscMunicipal,
     repNome, repCpf, repRg, repOrgaoExp, repCargo, repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
-    numeroLicitacao, orgao, modalidade, objeto, valorEstimado, prazoValidade, prazoPagamento, prazoEntrega, localEntrega,
+    numeroLicitacao, orgao, modalidade, anoDoCertame, processoAdministrativo, objeto, valorEstimado, prazoValidade, prazoPagamento, prazoEntrega, localEntrega,
     garantia, condicoesEntrega, liquidacaoNfe,
     itens, declaracoesAtivas, banco, agencia, conta, tipoConta, pix,
     fontFamily, fontSize, timbradoUrl, usarMarcaDagua,
@@ -140,7 +145,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
         {/* ── DESTINATÁRIO ── */}
         {orgao && (
           <div className="mb-3" style={{ lineHeight: '1.8' }}>
-            <span className="text-lg italic block mb-1">A</span>
+            <span className="text-lg italic block mb-1">{vocativoDoOrgao(orgao)}</span>
             <p className="font-bold text-xs">{orgao}</p>
           </div>
         )}
@@ -151,9 +156,14 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
             PROPOSTA COMERCIAL
           </span>
           {numeroLicitacao && (
-            <p className="text-xs mt-1.5">
-              Ref.: {numeroLicitacao}{modalidade ? ` - ${modalidade}` : ''}
-            </p>
+            <>
+              <p className="text-xs mt-1.5 font-bold">
+                {referenciaDoCertame({ numero: numeroLicitacao, modalidade, ano: anoDoCertame })}
+              </p>
+              {processoAdministrativo && (
+                <p className="text-xs">{linhaDoProcessoAdministrativo(processoAdministrativo)}</p>
+              )}
+            </>
           )}
         </div>
 

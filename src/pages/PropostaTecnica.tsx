@@ -65,7 +65,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const { pendingItems, clearPending, hasPending } = usePropostaCart();
-  const { processoId, setProcessoId, ensureProcesso } = useProcessoAtivo();
+  const { processoId, setProcessoId, ensureProcesso, processo } = useProcessoAtivo();
 
   // Modo embutido (aba Proposta do prontuário): o processo aberto É o processo
   // ativo — fixa o lid para o wizard carregar este certame, não o último usado.
@@ -95,6 +95,16 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
   // Form fields
   const [numeroLicitacao, setNumeroLicitacao] = useState('');
+  // Ano do certame — compõe "PREGÃO ELETRÔNICO Nº 87/2026", que é como o edital
+  // se identifica. Vem do encerramento do processo, o dado mais próximo do
+  // exercício; sem processo vinculado, a referência sai sem ano em vez de
+  // arriscar um errado.
+  const [anoDoCertame, setAnoDoCertame] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fim = (processo as { data_encerramento?: string | null } | null)?.data_encerramento;
+    setAnoDoCertame(fim ? new Date(fim).getFullYear() : null);
+  }, [processo]);
   const [orgao, setOrgao] = useState('');
   const [modalidade, setModalidade] = useState('Pregão Eletrônico');
   const [objeto, setObjeto] = useState('');
@@ -1643,6 +1653,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     liquidacaoNfe,
                     garantia,
                     condicoesEntrega,
+                    anoDoCertame,
                   }}
                   telefone={telefone}
                   email={email}
@@ -1718,6 +1729,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     numeroLicitacao={numeroLicitacao}
                     orgao={orgao}
                     modalidade={modalidade}
+                    anoDoCertame={anoDoCertame}
                     objeto={objeto}
                     valorEstimado={valorEstimado}
                     prazoValidade={prazoValidade}
