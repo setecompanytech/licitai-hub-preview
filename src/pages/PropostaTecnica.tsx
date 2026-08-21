@@ -100,6 +100,11 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
   // exercício; sem processo vinculado, a referência sai sem ano em vez de
   // arriscar um errado.
   const [anoDoCertame, setAnoDoCertame] = useState<number | null>(null);
+  // Transcritos da capa do edital pela leitura automática. Têm precedência
+  // sobre a montagem a partir de modalidade e número: o certame se chama como o
+  // órgão o nomeou, e reconstruir é aproximação.
+  const [identificacaoEdital, setIdentificacaoEdital] = useState('');
+  const [processoAdministrativo, setProcessoAdministrativo] = useState('');
 
   useEffect(() => {
     const fim = (processo as { data_encerramento?: string | null } | null)?.data_encerramento;
@@ -479,6 +484,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
   const handleEditalExtracted = async (data: ExtractedEditalData) => {
     if (data.numeroLicitacao) setNumeroLicitacao(data.numeroLicitacao);
+    if (data.identificacaoEdital) setIdentificacaoEdital(data.identificacaoEdital);
+    if (data.processoAdministrativo) setProcessoAdministrativo(data.processoAdministrativo);
     if (data.orgao) setOrgao(data.orgao);
     if (data.modalidade) setModalidade(data.modalidade);
     if (data.objeto) setObjeto(data.objeto);
@@ -1654,6 +1661,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     garantia,
                     condicoesEntrega,
                     anoDoCertame,
+                    identificacaoEdital,
+                    processoAdministrativo,
                   }}
                   telefone={telefone}
                   email={email}
@@ -1730,6 +1739,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     orgao={orgao}
                     modalidade={modalidade}
                     anoDoCertame={anoDoCertame}
+                    identificacaoEdital={identificacaoEdital}
+                    processoAdministrativo={processoAdministrativo}
                     objeto={objeto}
                     valorEstimado={valorEstimado}
                     prazoValidade={prazoValidade}

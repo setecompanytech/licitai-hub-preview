@@ -39,6 +39,8 @@ interface LivePreviewProps {
   anoDoCertame?: number | string | null;
   /** Nº do processo administrativo, quando o edital o traz. */
   processoAdministrativo?: string | null;
+  /** Identificação transcrita da capa do edital — tem precedência. */
+  identificacaoEdital?: string | null;
   objeto: string;
   valorEstimado: string;
   prazoValidade: string;
@@ -69,7 +71,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
   const {
     empresa, telefone, email, inscEstadual, inscMunicipal,
     repNome, repCpf, repRg, repOrgaoExp, repCargo, repNaturalidade, repNacionalidade, repEstadoCivil, repEndereco,
-    numeroLicitacao, orgao, modalidade, anoDoCertame, processoAdministrativo, objeto, valorEstimado, prazoValidade, prazoPagamento, prazoEntrega, localEntrega,
+    numeroLicitacao, orgao, modalidade, anoDoCertame, processoAdministrativo, identificacaoEdital, objeto, valorEstimado, prazoValidade, prazoPagamento, prazoEntrega, localEntrega,
     garantia, condicoesEntrega, liquidacaoNfe,
     itens, declaracoesAtivas, banco, agencia, conta, tipoConta, pix,
     fontFamily, fontSize, timbradoUrl, usarMarcaDagua,
@@ -158,7 +160,7 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
           {numeroLicitacao && (
             <>
               <p className="text-xs mt-1.5 font-bold">
-                {referenciaDoCertame({ numero: numeroLicitacao, modalidade, ano: anoDoCertame })}
+                {referenciaDoCertame({ numero: numeroLicitacao, modalidade, ano: anoDoCertame, identificacaoDoEdital: identificacaoEdital })}
               </p>
               {processoAdministrativo && (
                 <p className="text-xs">{linhaDoProcessoAdministrativo(processoAdministrativo)}</p>

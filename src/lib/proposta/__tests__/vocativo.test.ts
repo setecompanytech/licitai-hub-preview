@@ -61,3 +61,30 @@ describe('referência do certame', () => {
     expect(linhaDoProcessoAdministrativo(null)).toBe('');
   });
 });
+
+describe('a identificação vem do edital, não da montagem', () => {
+  it('a linha transcrita da capa tem precedência', () => {
+    expect(referenciaDoCertame({
+      numero: '87',
+      modalidade: 'Pregão - Eletrônico',
+      ano: 2026,
+      identificacaoDoEdital: 'PREGÃO ELETRÔNICO Nº 87/2026',
+    })).toBe('PREGÃO ELETRÔNICO Nº 87/2026');
+  });
+
+  it('preserva a grafia do órgão, mesmo divergindo do cadastro', () => {
+    // O edital pode nomear o certame de forma que a montagem não reproduziria.
+    expect(referenciaDoCertame({
+      numero: '12',
+      modalidade: 'Concorrência',
+      ano: 2026,
+      identificacaoDoEdital: 'CONCORRÊNCIA PÚBLICA N.º 012/2026 - SEMOB',
+    })).toBe('CONCORRÊNCIA PÚBLICA N.º 012/2026 - SEMOB');
+  });
+
+  it('sem extração, monta a partir do cadastro — o plano B', () => {
+    expect(referenciaDoCertame({
+      numero: '87', modalidade: 'Pregão - Eletrônico', ano: 2026, identificacaoDoEdital: '',
+    })).toBe('PREGÃO ELETRÔNICO Nº 87/2026');
+  });
+});

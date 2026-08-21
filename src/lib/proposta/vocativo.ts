@@ -83,17 +83,31 @@ export function modalidadePorExtenso(modalidade: string | null | undefined): str
 }
 
 /**
- * Linha de referência no formato do edital: "PREGÃO ELETRÔNICO Nº 87/2026".
+ * Linha de referência: "PREGÃO ELETRÔNICO Nº 87/2026".
  *
- * O ano vem da data de encerramento, que é o que o sistema tem de mais próximo
- * do exercício do certame. Sem ela, a referência sai sem o ano em vez de
- * arriscar um errado — número de edital com ano trocado é vício de forma.
+ * A fonte preferida é o próprio edital — a leitura transcreve a linha da capa,
+ * e é ela que vale. A montagem a partir de modalidade, número e ano é o plano
+ * B, para quando não houve extração ou o documento não trouxe a linha.
+ *
+ * Nesse plano B, o ano vem da data de encerramento, que é o dado mais próximo
+ * do exercício do certame. Sem ela, sai sem ano em vez de arriscar um errado —
+ * número de edital com ano trocado é vício de forma.
  */
 export function referenciaDoCertame(params: {
   numero: string | null | undefined;
   modalidade?: string | null;
   ano?: number | string | null;
+  /**
+   * Linha de identificação transcrita do próprio edital, quando a leitura a
+   * capturou. Tem precedência sobre qualquer montagem: o certame se chama como
+   * o órgão o nomeou, e reconstruir a partir de campos separados é aproximação
+   * — pode divergir na grafia, na ordem ou no ano.
+   */
+  identificacaoDoEdital?: string | null;
 }): string {
+  const doEdital = String(params.identificacaoDoEdital ?? '').trim();
+  if (doEdital) return doEdital;
+
   const modalidade = modalidadePorExtenso(params.modalidade);
   const numero = String(params.numero ?? '').trim();
   if (!numero) return modalidade;

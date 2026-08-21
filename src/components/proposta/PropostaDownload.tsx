@@ -83,6 +83,8 @@ export interface PropostaDownloadProps {
     anoDoCertame?: number | string | null;
     /** Nº do processo administrativo, quando o edital o traz. */
     processoAdministrativo?: string | null;
+    /** Identificação transcrita da capa do edital — tem precedência. */
+    identificacaoEdital?: string | null;
   };
   telefone?: string;
   email?: string;
@@ -272,6 +274,7 @@ export default function PropostaDownload({
           numero: numeroLicitacao,
           modalidade: licitacaoData?.modalidade,
           ano: licitacaoData?.anoDoCertame,
+          identificacaoDoEdital: licitacaoData?.identificacaoEdital,
         });
         doc.text(refText, pageWidth / 2, y, { align: 'center' });
         y += lh * 1.5;
@@ -554,6 +557,7 @@ export default function PropostaDownload({
           numero: numeroLicitacao,
           modalidade: licitacaoData?.modalidade,
           ano: licitacaoData?.anoDoCertame,
+          identificacaoDoEdital: licitacaoData?.identificacaoEdital,
         })}</p>`;
         const linhaProc = linhaDoProcessoAdministrativo(licitacaoData?.processoAdministrativo);
         if (linhaProc) body += `<p style="text-align:center;font-size:10pt">${linhaProc}</p>`;

@@ -18,6 +18,10 @@ interface EditalUploaderProps {
 
 export interface ExtractedEditalData {
   numeroLicitacao: string;
+  /** Identificação do certame como o edital a escreve, transcrita. */
+  identificacaoEdital?: string;
+  /** Processo administrativo, com o rótulo que o edital usa. */
+  processoAdministrativo?: string;
   orgao: string;
   modalidade: string;
   objeto: string;
@@ -184,6 +188,8 @@ ATENÇÃO ESPECIAL — busque cuidadosamente TODOS estes campos no documento:
 Retorne APENAS JSON válido, sem explicações:
 {
   "numeroLicitacao": "número completo do pregão/licitação conforme o documento",
+  "identificacaoEdital": "TRANSCRIÇÃO LITERAL da linha que identifica o certame na capa do edital, como está escrita — ex.: 'PREGÃO ELETRÔNICO Nº 87/2026'. Copie sem reescrever, sem abreviar e sem trocar a ordem. String vazia se o documento não a trouxer.",
+  "processoAdministrativo": "TRANSCRIÇÃO LITERAL do número do processo administrativo, com o rótulo que o edital usa — ex.: 'Processo Administrativo SEI n.º 0002914-89.2026.6.14.8000'. String vazia se não houver.",
   "orgao": "nome EXATO do órgão licitante conforme o documento",
   "modalidade": "modalidade EXATA (Pregão Eletrônico, Concorrência, Dispensa, etc)",
   "objeto": "descrição EXATA do objeto conforme escrito no edital",
@@ -278,6 +284,8 @@ ${truncated}`
 
             onExtracted({
               numeroLicitacao: data.numeroLicitacao || '',
+              identificacaoEdital: data.identificacaoEdital || '',
+              processoAdministrativo: data.processoAdministrativo || '',
               orgao: data.orgao || '',
               modalidade: data.modalidade || 'Pregão Eletrônico',
               objeto: data.objeto || '',
@@ -405,7 +413,8 @@ ${truncated}`
                   valorTotalExtenso: '',
                 }));
                 onExtracted({
-                  numeroLicitacao: '', orgao: '', modalidade: 'Pregão Eletrônico',
+                  numeroLicitacao: '', identificacaoEdital: '', processoAdministrativo: '',
+                  orgao: '', modalidade: 'Pregão Eletrônico',
                   objeto: '', valorEstimado: '', prazoValidade: '60 dias corridos',
                   prazoPagamento: '', prazoEntrega: '', localEntrega: '',
                   liquidacaoNfe: '', garantia: '', condicoesEntrega: '', itens, rawText: '',
