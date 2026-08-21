@@ -102,6 +102,24 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
 
   const gerar = () => { void gerarChecklist(licitacaoId); };
 
+  // Recasar é outro trabalho, e muito mais barato: reaproveita as exigências já
+  // extraídas do edital e só refaz o encontro com o cofre. Existe como botão
+  // próprio porque o cofre muda o tempo todo — anexar a certidão no Jurídico e
+  // ter de reler o edital inteiro (com IA, e sujeito ao limite por minuto) para
+  // o checklist enxergá-la era cobrar caro por um trabalho barato.
+  const [recasando, setRecasando] = useState(false);
+  const recasar = async () => {
+    setRecasando(true);
+    const { data, error } = await supabase.functions.invoke('habilitacao-checklist', {
+      body: { licitacao_id: licitacaoId, recasar: true },
+    });
+    setRecasando(false);
+    if (error) { toast.error('Não foi possível recasar com o cofre.'); return; }
+    const r = (data as { resumo?: { ok: number; faltante: number } } | null)?.resumo;
+    toast.success(r ? `Cofre reconferido: ${r.ok} casado(s), ${r.faltante} faltante(s).` : 'Cofre reconferido.');
+    await carregar();
+  };
+
   const aceitar = async () => {
     if (!user) return;
     setAceitando(true);
@@ -165,6 +183,12 @@ export default function HabilitacaoChecklist({ licitacaoId }: { licitacaoId: str
             <Button size="sm" variant="outline" onClick={() => montarPastaHabilitacao(licitacaoId)} disabled={montagem.rodando}>
               {montagem.rodando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FolderDown className="w-3.5 h-3.5 mr-1.5" />}
               Montar pasta de habilitação
+            </Button>
+          )}
+          {linhas.length > 0 && (
+            <Button size="sm" variant="outline" onClick={recasar} disabled={recasando || gerando}>
+              {recasando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+              Recasar com o cofre
             </Button>
           )}
           {linhas.length > 0 && !tudoConferido && (

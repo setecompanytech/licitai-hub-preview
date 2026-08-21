@@ -23,6 +23,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Avisos que ESTA rotina acrescenta — não são texto da IA e não se acumulam. */
+const AVISOS_DA_ROTINA = [
+  /·?\s*Esta exigência cobre mais de um documento[^·]*/g,
+  /·?\s*nenhum atestado do segmento[^·]*/g,
+];
+const limparAvisos = (obs: string) =>
+  AVISOS_DA_ROTINA.reduce((t, re) => t.replace(re, ""), obs).replace(/^\s*·\s*/, "").trim();
+
+/** Caminho inverso do GRUPO_POR_CATEGORIA, para reconstruir a exigência gravada. */
+const CATEGORIA_POR_GRUPO: Record<string, string> = {
+  juridica: "Habilitação Jurídica",
+  fiscal: "Regularidade Fiscal",
+  tecnica: "Qualificação Técnica",
+  economica: "Qualif. Econômico-Financeira",
+  declaracoes: "Declarações",
+};
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -37,7 +54,6 @@ serve(async (req) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_KEY) return json({ error: "OPENAI_API_KEY não configurada" }, 500);
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
@@ -50,9 +66,14 @@ serve(async (req) => {
     const userId = userData?.user?.id;
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
-    const { licitacao_id, edital_texto } = await req.json();
+    const { licitacao_id, edital_texto, recasar } = await req.json();
     if (!licitacao_id) return json({ error: "licitacao_id required" }, 400);
-    if (!edital_texto || String(edital_texto).trim().length < 200) {
+    // `recasar`: refaz só o CASAMENTO com o cofre, reaproveitando as exigências
+    // já extraídas. O cofre é vivo — documento anexado depois da geração não
+    // aparecia sem reler o edital inteiro, que custa ~30 mil tokens e esbarra
+    // no limite por minuto. Ler o edital e casar com o cofre são trabalhos
+    // diferentes; estavam presos um ao outro.
+    if (!recasar && (!edital_texto || String(edital_texto).trim().length < 200)) {
       return json({ error: "edital_texto insuficiente para análise (mínimo ~200 caracteres)" }, 400);
     }
 
@@ -65,7 +86,35 @@ serve(async (req) => {
     if (!lic) return json({ error: "Licitação não encontrada" }, 404);
     if (!lic.empresa_id) return json({ error: "Processo sem empresa vinculada" }, 400);
 
-    // ── 1. Extração via IA (prompt provado do verificar-documentos-edital) ──
+    // ── 1. As exigências: relidas do edital, ou reaproveitadas do checklist ──
+    //
+    // No recasamento, a fonte é a própria linha gravada: `trecho_edital` guarda
+    // a transcrição literal do órgão, que é justamente o que identifica o
+    // documento. Nada de IA aqui — a extração já foi feita e paga.
+    let listaGravada: Array<Record<string, unknown>> | null = null;
+    let segmentoGravado: string | null = null;
+    if (recasar) {
+      const { data: antigas } = await admin
+        .from("processo_habilitacao_checklist")
+        .select("exigencia, referencia, trecho_edital, obrigatorio, grupo, observacao, conferido")
+        .eq("licitacao_id", licitacao_id);
+      if (!antigas?.length) {
+        return json({ error: "Não há checklist para recasar — gere com a Aurélia primeiro." }, 422);
+      }
+      listaGravada = antigas.map((l) => ({
+        nome: l.exigencia,
+        artigo_referencia: l.referencia || "",
+        trecho_edital: l.trecho_edital || "",
+        obrigatorio: l.obrigatorio !== false,
+        categoria: CATEGORIA_POR_GRUPO[String(l.grupo)] ?? "",
+        // Avisos desta rotina não voltam como observação da IA: repetiriam a
+        // cada recasamento até virar um parágrafo de eco.
+        observacao: limparAvisos(String(l.observacao || "")),
+      }));
+      segmentoGravado = null;
+    }
+
+    // ── 1b. Extração via IA (prompt provado do verificar-documentos-edital) ──
     //
     // O 429 do provedor é limite POR MINUTO, não falta de crédito: o edital
     // inteiro consome ~30 mil tokens, e basta outra geração ter rodado há
@@ -150,9 +199,10 @@ serve(async (req) => {
       return r;
     };
 
-    const aiResp = await chamarIA();
+    if (!recasar && !OPENAI_KEY) return json({ error: "OPENAI_API_KEY não configurada" }, 500);
+    const aiResp = recasar ? null : await chamarIA();
 
-    if (!aiResp.ok) {
+    if (aiResp && !aiResp.ok) {
       const body = await aiResp.text();
       // Mensagem em português para o caso mais comum, preservando o original.
       const detalhe = aiResp.status === 429
@@ -160,15 +210,15 @@ serve(async (req) => {
         : body.slice(0, 200);
       return json({ error: `IA indisponível (${aiResp.status}): ${detalhe}` }, 502);
     }
-    const aiJson = await aiResp.json();
+    const aiJson = aiResp ? await aiResp.json() : null;
     const call = aiJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     let exigidos: { documentos_exigidos: Array<Record<string, unknown>>; segmento_objeto?: string } = { documentos_exigidos: [] };
     try { exigidos = JSON.parse(call || "{}"); } catch { /* segue vazio */ }
-    const lista = exigidos.documentos_exigidos || [];
+    const lista = listaGravada ?? (exigidos.documentos_exigidos || []);
     if (!lista.length) return json({ error: "A IA não identificou exigências no texto enviado." }, 422);
-    const segmentoObjeto = SEGMENTOS_OBJETO.includes(exigidos.segmento_objeto as never)
-      ? String(exigidos.segmento_objeto)
-      : null;
+    const segmentoObjeto = recasar
+      ? segmentoGravado
+      : (SEGMENTOS_OBJETO.includes(exigidos.segmento_objeto as never) ? String(exigidos.segmento_objeto) : null);
 
     // ── 2/3. Classificação por tipo + casamento com os TRÊS cofres ──────────
     // agent_documentos: cofre automatizado da empresa (certidões coletadas).

@@ -98,11 +98,22 @@ async function blobDoDocumento(linha: LinhaCasada): Promise<{ blob: Blob; ext: s
 
 export async function montarPastaHabilitacao(licitacaoId: string): Promise<void> {
   if (getEstadoMontagem(licitacaoId).rodando) return;
-  setEstado(licitacaoId, { rodando: true, fase: 'Lendo o checklist…' });
+  setEstado(licitacaoId, { rodando: true, fase: 'Conferindo o cofre…' });
   try {
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user) throw new Error('Sessão expirada — entre novamente.');
 
+    // O cofre é vivo: documento anexado no Jurídico depois da geração não
+    // constava no checklist, e a pasta saía incompleta sem nada avisar. Antes
+    // de copiar, refazemos o CASAMENTO — barato e sem IA, ao contrário de
+    // reler o edital. Falha aqui não impede a montagem: seguimos com o
+    // casamento que já existia, que é o comportamento antigo.
+    const { error: reErr } = await supabase.functions.invoke('habilitacao-checklist', {
+      body: { licitacao_id: licitacaoId, recasar: true },
+    });
+    if (reErr) console.warn('[montarPasta] recasamento falhou, seguindo com o checklist atual', reErr);
+
+    setEstado(licitacaoId, { fase: 'Lendo o checklist…' });
     const { data: linhas } = await supabase
       .from('processo_habilitacao_checklist' as never)
       .select('referencia, exigencia, tipo, grupo, documento_origem, documento_id, documento_nome, status')
