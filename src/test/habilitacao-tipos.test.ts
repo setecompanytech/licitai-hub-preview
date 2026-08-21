@@ -34,3 +34,23 @@ describe('espelho Deno (_shared/habilitacao-tipos.ts)', () => {
     expect(idsEspelho).toEqual(TIPOS_HABILITACAO.map((t) => t.id));
   });
 });
+
+describe('casamento por palavra inteira', () => {
+  // O 'rg' de doc_socios casava dentro de "órgão": uma declaração de
+  // inexistência de débitos com órgão público virava "Cédula de Identidade dos
+  // Sócios", e a pessoa levava o documento errado ao pregoeiro.
+  it('não confunde "órgão" com o RG dos sócios', () => {
+    expect(
+      classificarTipo('Declaração de que não possui débitos com qualquer órgão da administração pública'),
+    ).not.toBe(TIPOS_HABILITACAO.find((t) => t.id === 'doc_socios'));
+  });
+
+  it('reconhece o documento pelo plural que o edital usa', () => {
+    expect(classificarTipo('Certidão Negativa de Débitos Estaduais')?.id).toBe('cnd_estadual');
+    expect(classificarTipo('Certidão Negativa de Débitos Municipais')?.id).toBe('cnd_municipal');
+  });
+
+  it('reconhece o FGTS escrito por extenso, como no art. 68', () => {
+    expect(classificarTipo('contribuições ao Fundo de Garantia do Tempo de Serviço')?.id).toBe('crf_fgts');
+  });
+});

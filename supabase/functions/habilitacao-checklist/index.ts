@@ -16,7 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { classificarExigencia, classificarTipo, LABEL_SEGMENTO, SEGMENTOS_OBJETO } from "../_shared/habilitacao-tipos.ts";
+import { classificarExigencia, classificarTipo, tiposMencionados, LABEL_SEGMENTO, SEGMENTOS_OBJETO } from "../_shared/habilitacao-tipos.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -293,16 +293,34 @@ serve(async (req) => {
       "Declarações": "declaracoes",
     };
 
-    const rows = lista.map((ex) => {
-      // O TRECHO do edital manda: ele nomeia o documento exigido. O nome que a
-      // IA deu vem depois, e é ignorado quando é só o rótulo da seção — era daí
-      // que vinha o casamento por acaso ("Habilitação Fiscal, Social e
-      // Trabalhista" casando com a CNDT por causa da palavra no título).
-      const { tipo: taxo, ambigua } = classificarExigencia({
+    // Um item do edital pode cobrar VÁRIOS documentos numa frase só ("tributos
+    // federais, estaduais e municipais, bem como FGTS"). Sem desdobrar, não há
+    // linha para a CND Estadual — e sem linha não há o que casar: a certidão
+    // existe no cofre e nunca chega à pasta. Quem desdobra é o sistema, pela
+    // taxonomia, e não a IA: os documentos do art. 68 são conhecidos, e depender
+    // de a IA lembrar de listá-los é apostar a pasta num acerto de redação.
+    const desdobrar = (ex: Record<string, unknown>): Array<{ ex: Record<string, unknown>; taxo: unknown; ambigua: boolean }> => {
+      const trecho = String(ex.trecho_edital || "");
+      const varios = tiposMencionados(trecho);
+      if (varios.length > 1) {
+        return varios.map((t) => ({
+          // O nome passa a ser o documento; a referência e o trecho continuam
+          // sendo os do item que os originou, para a conferência bater com o PDF.
+          ex: { ...ex, nome: t.label, __desdobrada: true },
+          taxo: t,
+          ambigua: false,
+        }));
+      }
+      const c = classificarExigencia({
         nome: String(ex.nome || ""),
-        trecho: String(ex.trecho_edital || ""),
+        trecho,
         observacao: String(ex.observacao || ""),
       });
+      return [{ ex, taxo: c.tipo, ambigua: c.ambigua }];
+    };
+
+    const rows = lista.flatMap(desdobrar).map(({ ex, taxo: taxoBruto, ambigua }) => {
+      const taxo = taxoBruto as { id: string; label: string; grupo: string } | null;
       // Casamento POR TIPO. Havendo mais de um candidato, prefere o que segue
       // válido na data da sessão; empate resolve pela validade mais distante.
       let candidatos = taxo
@@ -353,6 +371,9 @@ serve(async (req) => {
           // Exigência que cobre vários documentos não casa com um só arquivo:
           // dizer "casado" ali afirmaria uma cobertura inexistente.
           ambigua ? "Esta exigência cobre mais de um documento — confira um a um" : null,
+          // Inferência do sistema, dita em voz alta: o item do edital não
+          // nomeou este documento sozinho, foi a taxonomia que o separou.
+          ex.__desdobrada ? `desdobrada pelo sistema do item ${String(ex.artigo_referencia || "").trim() || "citado"}` : null,
           avisoSegmento,
         ]
           .filter(Boolean)

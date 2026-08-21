@@ -33,10 +33,10 @@ export const TIPOS_HABILITACAO: TipoHabilitacao[] = [
   { id: 'doc_socios',         label: 'Documentos dos sócios (RG/CPF)',    grupo: 'juridica',    keywords: ['rg', 'cpf', 'documento de identidade', 'cedula de identidade', 'carteira de identidade', 'cnh', 'socio', 'administrador', 'representante legal'] },
   { id: 'procuracao',         label: 'Procuração / Credenciamento',       grupo: 'juridica',    keywords: ['procuracao', 'credenciamento', 'poderes'] },
   // ── Regularidade fiscal e trabalhista ─────────────────────────────────────
-  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn', 'cnd federal', 'conjunta'] },
-  { id: 'cnd_estadual',       label: 'CND Estadual',                      grupo: 'fiscal',      keywords: ['estadual', 'fazenda estadual', 'sefa', 'sefaz', 'icms'] },
-  { id: 'cnd_municipal',      label: 'CND Municipal',                     grupo: 'fiscal',      keywords: ['municipal', 'fazenda municipal', 'iss', 'tributos municipais'] },
-  { id: 'crf_fgts',           label: 'CRF / FGTS',                        grupo: 'fiscal',      keywords: ['fgts', 'crf', 'caixa economica', 'regularidade do fgts'] },
+  { id: 'cnd_federal',        label: 'CND Federal / União',               grupo: 'fiscal',      keywords: ['federal', 'federais', 'uniao', 'receita federal', 'divida ativa da uniao', 'tributos federais', 'pgfn', 'cnd federal', 'cpen', 'conjunta'] },
+  { id: 'cnd_estadual',       label: 'CND Estadual',                      grupo: 'fiscal',      keywords: ['estadual', 'estaduais', 'fazenda estadual', 'sefa', 'sefaz', 'icms'] },
+  { id: 'cnd_municipal',      label: 'CND Municipal',                     grupo: 'fiscal',      keywords: ['municipal', 'municipais', 'fazenda municipal', 'iss', 'tributos municipais'] },
+  { id: 'crf_fgts',           label: 'CRF / FGTS',                        grupo: 'fiscal',      keywords: ['fgts', 'crf', 'caixa economica', 'regularidade do fgts', 'fundo de garantia', 'fundo de garantia do tempo de servico'] },
   { id: 'cndt_trabalhista',   label: 'CNDT Trabalhista',                  grupo: 'fiscal',      keywords: ['trabalhista', 'cndt', 'debitos trabalhistas', 'justica do trabalho', 'tst'] },
   { id: 'inss_previdencia',   label: 'Regularidade previdenciária',       grupo: 'fiscal',      keywords: ['inss', 'previdencia', 'seguridade social'] },
   // ── Qualificação econômico-financeira ─────────────────────────────────────
@@ -91,19 +91,38 @@ export const LABEL_SEGMENTO: Record<string, string> = {
 };
 
 /** Classifica um texto (exigência do edital ou nome de documento do cofre) na taxonomia. */
+const chaveTexto = (t: string) =>
+  (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const escaparRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Palavra-chave casa como PALAVRA INTEIRA, com tolerância a plural regular.
+ *
+ * Buscar pedaço de palavra fazia estrago silencioso: a chave 'rg' (do RG dos
+ * sócios) casava dentro de "órgão", e uma declaração de inexistência de débitos
+ * com órgão público virava "Cédula de Identidade dos Sócios". As chaves curtas
+ * — rg, cpf, crf, iss, epp, cat — são as mais expostas, e são justamente as que
+ * identificam documentos muito diferentes entre si.
+ */
+export function casaPalavra(textoNormalizado: string, palavra: string): boolean {
+  const k = chaveTexto(palavra);
+  if (!k) return false;
+  return new RegExp(`\\b${escaparRegex(k)}(s|es)?\\b`).test(textoNormalizado);
+}
+
 export function classificarTipo(texto: string | null | undefined): TipoHabilitacao | null {
-  const t = (texto || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  const t = chaveTexto(String(texto ?? ''));
   if (!t) return null;
   let melhor: { tipo: TipoHabilitacao; hits: number } | null = null;
   for (const tipo of TIPOS_HABILITACAO) {
-    const hits = tipo.keywords.filter((k) => t.includes(k)).length;
+    const hits = tipo.keywords.filter((k) => casaPalavra(t, k)).length;
     if (hits > 0 && (!melhor || hits > melhor.hits)) melhor = { tipo, hits };
   }
   return melhor?.tipo ?? null;
 }
+
 
 /**
  * Rótulos de CATEGORIA, que não nomeiam documento nenhum.
@@ -132,9 +151,6 @@ const ROTULOS_DE_CATEGORIA = [
   'declaracoes',
 ];
 
-const chaveTexto = (t: string) =>
-  (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** O texto é só o nome de uma seção do edital, sem documento identificável? */
 export function ehRotuloDeCategoria(texto: string | null | undefined): boolean {
@@ -147,7 +163,7 @@ export function ehRotuloDeCategoria(texto: string | null | undefined): boolean {
 export function tiposMencionados(texto: string | null | undefined): TipoHabilitacao[] {
   const t = chaveTexto(String(texto ?? ''));
   if (!t) return [];
-  return TIPOS_HABILITACAO.filter((tipo) => tipo.keywords.some((k) => t.includes(chaveTexto(k))));
+  return TIPOS_HABILITACAO.filter((tipo) => tipo.keywords.some((k) => casaPalavra(t, k)));
 }
 
 export type ClassificacaoExigencia = {
