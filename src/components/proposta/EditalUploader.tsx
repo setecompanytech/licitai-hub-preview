@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { lerTextoDoEdital } from '@/lib/processo/textoDoEdital';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Download } from 'lucide-react';
+import { Upload, FileText, Loader2, X, CheckCircle, Sparkles, AlertCircle, Download , FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
 import { useEditalExtraction } from '@/hooks/useEditalExtraction';
@@ -87,15 +88,21 @@ export default function EditalUploader({ onExtracted, isExtracting, setIsExtract
     setExtracted(false);
   };
 
-  const handleExtract = async () => {
-    if (!editalFile) return;
+  /**
+   * @param textoPronto Texto já lido — usado quando o edital vem do próprio
+   *   processo (Anexos/PNCP) em vez de um arquivo escolhido à mão. Nesse caminho
+   *   não há OCR de páginas: os documentos do PNCP já passaram pelo extrator,
+   *   que abre inclusive os pacotes .zip.
+   */
+  const handleExtract = async (textoPronto?: string) => {
+    if (!editalFile && !textoPronto) return;
 
     setIsExtracting(true);
-    setProgress('Lendo documento...');
+    setProgress(textoPronto ? 'Preparando o que foi lido…' : 'Lendo documento...');
     let content = '';
 
-    let text = await extractTextFromFile(editalFile, 150, true);
-    if ((!text || text.trim().length < 50) && (editalFile.name.toLowerCase().endsWith('.pdf') || editalFile.type === 'application/pdf')) {
+    let text = textoPronto ?? await extractTextFromFile(editalFile!, 150, true);
+    if (!textoPronto && (!text || text.trim().length < 50) && editalFile && (editalFile.name.toLowerCase().endsWith('.pdf') || editalFile.type === 'application/pdf')) {
       try {
         const pdfjsLib = await import('pdfjs-dist');
         const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -326,8 +333,55 @@ ${truncated}`
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  /**
+   * Lê o edital que o processo JÁ tem, em vez de pedir upload.
+   *
+   * O documento está em Anexos desde que o processo foi criado — inclusive
+   * quando vem em .zip, formato em que o PNCP publica a maior parte deles.
+   * Pedir que a pessoa baixe e reenvie o que o sistema guarda é transferir a
+   * ela um trabalho que a máquina faz melhor; e, sem isso, os campos caíam nos
+   * valores padrão ("Conforme edital") em vez do que o edital diz.
+   */
+  const lerDoProcesso = async () => {
+    if (!licitacaoId) return;
+    setIsExtracting(true);
+    try {
+      const { texto, lidos } = await lerTextoDoEdital(licitacaoId, { aoProgredir: setProgress });
+      if (!texto || texto.trim().length < 200) {
+        toast.error('Nenhum documento do processo pôde ser lido (PDFs digitalizados sem OCR?).');
+        setIsExtracting(false);
+        setProgress('');
+        return;
+      }
+      toast.success(`Lido: ${lidos.join(', ')}`);
+      await handleExtract(texto);
+    } catch (e) {
+      toast.error((e as Error).message || 'Falha ao ler o edital do processo.');
+      setIsExtracting(false);
+      setProgress('');
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {licitacaoId && !extracted && (
+        <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          <FolderOpen className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">O edital deste processo já está no sistema</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Ler daqui preenche objeto, prazos, local de entrega, condições de pagamento e
+              garantia com o que o edital diz — sem upload.
+            </p>
+          </div>
+          <Button size="sm" onClick={lerDoProcesso} disabled={isExtracting} className="shrink-0">
+            {isExtracting
+              ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Lendo…</>
+              : <>Ler edital do processo</>}
+          </Button>
+        </div>
+      )}
+
       {editalFile ? (
         <div className="bg-muted/30 rounded-xl p-4 border border-border/50 space-y-3">
           <div className="flex items-center gap-4">
@@ -347,7 +401,7 @@ ${truncated}`
             </div>
             <div className="flex gap-2 shrink-0">
               {!extracted && (
-                <Button size="sm" onClick={handleExtract} disabled={isExtracting} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Button size="sm" onClick={() => handleExtract()} disabled={isExtracting} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                   {isExtracting ? (
                     <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Extraindo...</>
                   ) : (
