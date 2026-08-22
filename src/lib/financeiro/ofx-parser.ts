@@ -75,6 +75,10 @@ export function parseOFX(content: string): OFXStatement {
   const transactions: OFXTransaction[] = [];
   const trxBlocks = xml.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/g);
 
+  // Alguns bancos (Bradesco, Itaú, BB, Santander) exportam saldo diário como STMTTRN.
+  // Essas entradas não são movimentações e não devem gerar lançamentos.
+  const SALDO_RE = /^(saldo(\s|$|do dia|anterior|diario|diário|inicial|em\b)|sd\b|sdo\b)/i;
+
   for (const match of trxBlocks) {
     const block = match[1];
     const fitid = getInBlock(block, "FITID");
@@ -85,13 +89,16 @@ export function parseOFX(content: string): OFXStatement {
     const trnamt = parseFloat(getInBlock(block, "TRNAMT") ?? "0");
     const memo = getInBlock(block, "MEMO") ?? "";
     const name = getInBlock(block, "NAME") ?? "";
+    const desc = (name || memo).trim();
+
+    if (SALDO_RE.test(desc)) continue;
 
     transactions.push({
       fitid,
       type: mapType(trnType, trnamt),
       amount: trnamt,
       date: dtposted,
-      description: (name || memo).trim(),
+      description: desc,
       memo: memo !== name ? memo : undefined,
     });
   }

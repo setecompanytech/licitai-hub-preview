@@ -53,6 +53,8 @@ export default function ApuracaoRegimeTributario() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [meses, setMeses] = useState<MonthData[]>([]);
+  // raw string while the user is typing — avoids reformatting decimal mid-entry
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
 
   // Generate last 12 months
   const last12Months = useMemo(() => {
@@ -239,8 +241,17 @@ export default function ApuracaoRegimeTributario() {
                       </TableCell>
                       <TableCell className="py-2">
                         <Input
-                          value={m.valor_faturamento > 0 ? formatInputBRL(String(m.valor_faturamento)) : ''}
-                          onChange={e => handleChange(i, e.target.value)}
+                          value={drafts[i] !== undefined
+                            ? drafts[i]
+                            : (m.valor_faturamento > 0 ? formatInputBRL(String(m.valor_faturamento)) : '')}
+                          onChange={e => setDrafts(d => ({ ...d, [i]: e.target.value }))}
+                          onBlur={() => {
+                            const raw = drafts[i];
+                            if (raw !== undefined) {
+                              handleChange(i, raw);
+                              setDrafts(d => { const n = { ...d }; delete n[i]; return n; });
+                            }
+                          }}
                           placeholder="0,00"
                           className="h-8 text-xs max-w-[200px]"
                         />

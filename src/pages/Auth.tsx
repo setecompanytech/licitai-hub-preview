@@ -635,10 +635,7 @@ export default function Auth() {
 
               <div className="mt-8 pt-5 border-t border-border/50 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Não tem conta?{' '}
-                  <button onClick={() => setStep('signup')} className="text-accent hover:underline font-medium">
-                    Cadastre-se
-                  </button>
+                  Para criar uma conta, entre em contato com o administrador.
                 </p>
               </div>
             </>
@@ -716,8 +713,7 @@ export default function Auth() {
               <div className="rounded-lg bg-muted/50 border border-border/50 p-4 mb-5">
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Para acessar via certificado digital, é necessário ter uma conta vinculada.
-                  Se é seu primeiro acesso, <button onClick={() => setStep('signup')} className="text-accent hover:underline font-medium">crie sua conta</button> primeiro
-                  e depois cadastre seus certificados na área de <strong>Empresas</strong>.
+                  Faça login com e-mail e senha e depois cadastre seus certificados na área de <strong>Empresas</strong>.
                 </p>
               </div>
 
@@ -725,10 +721,6 @@ export default function Auth() {
                 <Button onClick={() => setStep('manual')} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                   <KeyRound className="w-4 h-4 mr-2" />
                   Entrar com Login e Senha
-                </Button>
-                <Button onClick={() => setStep('signup')} variant="outline" className="w-full">
-                  <User className="w-4 h-4 mr-2" />
-                  Criar conta
                 </Button>
               </div>
 

@@ -195,6 +195,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     else setNatureza("movimentacao");
   }, [tipo]);
 
+  // Quando o usuário informa a data de pagamento/recebimento, a competência
+  // deve refletir essa data (regime de caixa). O usuário pode alterar manualmente.
+  useEffect(() => {
+    if (dataRealizado) setDataCompetencia(dataRealizado);
+  }, [dataRealizado]);
+
   const valorLiquido = useMemo(
     () => Math.max(0, Number(valor) + Number(valorJuros) + Number(valorMulta) + Number(valorTarifa) - Number(valorDesconto)),
     [valor, valorJuros, valorMulta, valorDesconto, valorTarifa],
