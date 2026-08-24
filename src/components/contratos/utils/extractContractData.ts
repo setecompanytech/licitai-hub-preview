@@ -11,46 +11,25 @@ export async function extractContractDataFromFile(
   tipoArquivoHint?: string,
 ): Promise<any | null> {
   try {
-    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-    let texto = '';
-    const images: { dataUrl: string }[] = [];
+    // TODO leitor passa pelo extrator da casa — nada de loop pdfjs próprio.
+    //
+    // Esta função tinha uma CÓPIA do leitor antigo: varria a camada de texto e,
+    // só se o documento inteiro fosse fraco, mandava 5 páginas como foto. Num
+    // documento misto (processo nato-digital com a ata escaneada no meio), as
+    // páginas escaneadas ficavam invisíveis e o servidor recebia texto sem
+    // paginação — caía no recorte por caractere e devolvia fragmentos: total de
+    // uma parte, itens de outra. O importador foi reformado e este caminho não;
+    // o mesmo arquivo lia certo numa tela e errado na outra.
+    const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+    const texto = await extractTextFromFile(file, 156, false, 40);
 
-    if (isPdf) {
-      const pdfjsLib = await import('pdfjs-dist');
-      const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        texto += content.items.map((item: any) => item.str).join(' ') + '\n';
-      }
-      if (texto.trim().length < 80) {
-        const canvas = document.createElement('canvas');
-        for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 2 });
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d')!;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
-        }
-      }
-    } else {
-      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-      texto = await extractTextFromFile(file, 50);
-    }
-
-    if (texto.trim().length < 80 && images.length === 0) return null;
+    if (texto.trim().length < 80) return null;
 
     const { data, error } = await supabase.functions.invoke('extrair-contrato-pdf', {
       body: {
-        texto_pdf: texto.trim().length >= 80 ? texto : '',
+        texto_pdf: texto,
         nome_arquivo: file.name,
         tipo_arquivo: tipoArquivoHint,
-        images: images.length > 0 ? images : undefined,
       },
     });
     if (error) throw error;
