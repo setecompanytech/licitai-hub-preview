@@ -45,7 +45,10 @@ export interface AuthorizationAPI {
 
 export function useAuthorization(): AuthorizationAPI {
   const { subscription } = useAuth();
-  const { isAdmin: isSystemAdmin, loading: roleLoading } = useUserRole();
+  // `isAdmin` aqui incluía o admin de EMPRESA, então `isSystemAdmin` mentia: o
+  // AdminGuard abria rota exclusiva do SaaS e o PlanGuard dava bypass de plano
+  // a quem é apenas admin da própria empresa. Agora vem separado da origem.
+  const { isSystemAdmin, loading: roleLoading } = useUserRole();
   const {
     loading: membroLoading,
     temPermissao,

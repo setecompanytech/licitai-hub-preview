@@ -4,7 +4,26 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type Role = 'admin' | 'user' | 'viewer';
 
-async function fetchUserRole(userId: string, signal?: AbortSignal): Promise<Role> {
+/**
+ * Duas coisas diferentes que o sistema chamava pelo mesmo nome.
+ *
+ * `user_roles.role = 'admin'` é o admin do SISTEMA — quem administra o SaaS.
+ * `empresa_membros.papel = 'admin'` é o admin de UMA EMPRESA assinante, que
+ * manda na empresa dele e em mais nada.
+ *
+ * Colapsar os dois num único `isAdmin` fazia o admin de empresa passar por
+ * porta de admin do sistema: o AdminGuard o deixava entrar em rota exclusiva, o
+ * PlanGuard lhe dava bypass de plano, e o painel de contratos lhe oferecia um
+ * job global que o banco recusaria. Quem precisa de "qualquer admin" continua
+ * usando `isAdmin`; quem precisa do admin do SaaS usa `isSystemAdmin`.
+ */
+export type PapeisDoUsuario = {
+  role: Role;
+  isSystemAdmin: boolean;
+  isCompanyAdmin: boolean;
+};
+
+async function fetchUserRole(userId: string, signal?: AbortSignal): Promise<PapeisDoUsuario> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 6000);
   signal?.addEventListener('abort', () => controller.abort(), { once: true });
@@ -18,15 +37,22 @@ async function fetchUserRole(userId: string, signal?: AbortSignal): Promise<Role
   if (empresaAdminError) throw empresaAdminError;
 
   const roles = (rolesData ?? []).map((item) => String(item.role));
-  if (roles.includes('admin') || (empresaAdminData?.length ?? 0) > 0) return 'admin';
-  if (roles.includes('viewer')) return 'viewer';
-  return 'user';
+  const isSystemAdmin = roles.includes('admin');
+  const isCompanyAdmin = (empresaAdminData?.length ?? 0) > 0;
+
+  const role: Role = isSystemAdmin || isCompanyAdmin
+    ? 'admin'
+    : roles.includes('viewer') ? 'viewer' : 'user';
+
+  return { role, isSystemAdmin, isCompanyAdmin };
 }
+
+const SEM_PAPEL: PapeisDoUsuario = { role: 'user', isSystemAdmin: false, isCompanyAdmin: false };
 
 export function useUserRole() {
   const { user } = useAuth();
 
-  const { data: role = "user", isLoading } = useQuery({
+  const { data: papeis = SEM_PAPEL, isLoading } = useQuery({
     queryKey: ['user-role', user?.id],
     queryFn: ({ signal }) => fetchUserRole(user!.id, signal),
     enabled: !!user,
@@ -36,8 +62,13 @@ export function useUserRole() {
   });
 
   return {
-    role,
-    isAdmin: role === 'admin',
+    role: papeis.role,
+    /** Admin de qualquer natureza — sistema OU empresa. */
+    isAdmin: papeis.role === 'admin',
+    /** Só o admin do SaaS (user_roles). Use para porta que o banco também tranca. */
+    isSystemAdmin: papeis.isSystemAdmin,
+    /** Admin de alguma empresa (empresa_membros.papel). */
+    isCompanyAdmin: papeis.isCompanyAdmin,
     loading: !!user && isLoading,
   };
 }
