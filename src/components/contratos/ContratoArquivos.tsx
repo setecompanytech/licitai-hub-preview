@@ -993,11 +993,29 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           }
         }
 
+        let inferidas = 0;
         const itensInsert = itensExtraidos.map((it: any, idx: number) => {
           const m = matches[idx];
-          const qtd = Number(it.quantidade) || 0;
-          const vu = Number(it.valor_unitario) || (m?.ata_valor_unitario ?? 0);
-          const vt = Number(it.valor_total) || qtd * vu;
+          let qtd = Number(it.quantidade) || 0;
+          let vu = Number(it.valor_unitario) || (m?.ata_valor_unitario ?? 0);
+          let vt = Number(it.valor_total) || qtd * vu;
+          let obsInferencia: string | null = null;
+          // Scan que não rendeu a quantidade deixava o item em ZERO: o dinheiro
+          // dizia 25% da ata e os quilos diziam nada — as duas cascatas
+          // divergiam. Quando o contrato tem UM item casado e o valor global,
+          // a quantidade é DERIVÁVEL: global ÷ preço registrado. Inferência
+          // dita em voz alta (observação + auditoria), nunca calada.
+          if (isDerivado && m?.ata_item_id && itensExtraidos.length === 1 && qtd === 0) {
+            const global = Number((data as any).valor_global) || 0;
+            const precoAta = Number(m?.ata_valor_unitario) || 0;
+            if (global > 0 && precoAta > 0) {
+              qtd = Math.round((global / precoAta) * 1000) / 1000;
+              vu = precoAta;
+              vt = global;
+              inferidas++;
+              obsInferencia = `Quantidade inferida (${qtd.toLocaleString('pt-BR')}) = valor global ÷ preço registrado da ata. Confira com o contrato.`;
+            }
+          }
           if (m?.ata_item_id) vinculados++; else if (isDerivado) semMatch++;
           return {
             contrato_id: created.id,
@@ -1010,6 +1028,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             saldo_quantitativo: qtd,
             saldo_financeiro: vt,
             codigo_item: it.codigo_item || null,
+            observacoes: obsInferencia,
             numero_lote: estruturaIA === 'lotes' ? (it.numero_lote || null) : null,
             descricao_lote: estruturaIA === 'lotes' ? (it.descricao_lote || null) : null,
             estrutura: estruturaIA || null,
@@ -1036,6 +1055,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               total_itens: itensInsert.length,
               vinculados,
               sem_match: semMatch,
+              quantidades_inferidas: inferidas,
               estrutura: estruturaIA,
             }),
             origem: 'ia_extracao',

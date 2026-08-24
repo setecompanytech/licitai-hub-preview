@@ -118,16 +118,25 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     });
     
     const itensAlertaSaldo = itensComAditivo.filter((i: any) => i.quantidade_contratada_total > 0 && (i.quantidade_consumida / i.quantidade_contratada_total) * 100 >= 80);
+    // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
+    // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
+    // andando com quilos parados = contratos derivados com quantidade zerada —
+    // o scan não rendeu o número e ninguém completou. Sem este aviso, a
+    // divergência só aparecia quando o estoque "sobrava" no fim da vigência.
+    const fisicoParado = c?.tipo_documento === 'ata_srp'
+      && (c?.valor_consumido || 0) > 0
+      && data.itens.length > 0
+      && data.itens.every((i: any) => (i.quantidade_ata_consumida || 0) === 0);
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
-  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -141,7 +150,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
         </div>
       )}
-      {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo) && (
+      {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
           <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
             <AlertTriangle className="w-4 h-4" /> Alertas
@@ -153,6 +162,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </p>
           )}
           {!vigencia.vencido && vigencia.vencendo && <p className="text-xs text-warning/80">{vigencia.frase}</p>}
+          {fisicoParado && (
+            <p className="text-xs text-warning/80">
+              <strong>Consumo financeiro sem lastro físico:</strong> há contratos derivados somando
+              valor, mas nenhum quilo foi baixado dos itens da ata. Abra o contrato derivado →
+              Itens/Lotes e preencha as quantidades (o lápis edita).
+            </p>
+          )}
           {itensAlertaSaldo.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}

@@ -16,7 +16,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import {
-  Plus, Trash2, Loader2, Package, Copy, Download, Link2, History, Layers, Search
+  Plus, Trash2, Loader2, Package, Copy, Download, Link2, History, Layers, Search, Pencil
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 import EstruturaDocumentoCard from './EstruturaDocumentoCard';
@@ -339,6 +339,69 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     } finally {
       setImporting(false);
     }
+  };
+
+  /**
+   * Edição do item — que não existia: o item só nascia e morria, e uma
+   * quantidade zerada (scan que não rendeu o número) ficava presa para sempre,
+   * com o financeiro dizendo 25% da ata e os quilos dizendo nada.
+   *
+   * O preço continua travado quando o item aponta a ata (mesmo preço e
+   * condições); quantidade, custo e observações são de quem gerencia.
+   */
+  const [editItem, setEditItem] = useState<ContratoItem | null>(null);
+  const [editForm, setEditForm] = useState({ quantidade: '', valor_unitario: '', custo_unitario: '', observacoes: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const abrirEdicao = (item: ContratoItem) => {
+    setEditItem(item);
+    setEditForm({
+      quantidade: String(item.quantidade_contratada ?? ''),
+      valor_unitario: String(item.valor_unitario ?? ''),
+      custo_unitario: item.custo_unitario != null ? String(item.custo_unitario) : '',
+      observacoes: (item as { observacoes?: string | null }).observacoes ?? '',
+    });
+  };
+
+  const salvarEdicao = async () => {
+    if (!editItem) return;
+    const qtd = parseFloat(editForm.quantidade) || 0;
+    const travado = isContratoComATA && !!editItem.ata_item_id;
+    const vu = travado ? (editItem.valor_unitario || 0) : (parseFloat(editForm.valor_unitario) || 0);
+
+    // O saldo da ata vale também na edição — descontando a própria fatia
+    // antiga, senão o item não conseguiria nem manter a quantidade que já tem.
+    if (editItem.ata_item_id) {
+      const ataItem = ataItens.find(a => a.id === editItem.ata_item_id);
+      if (ataItem) {
+        const consumidoPorOutros = Math.max((ataItem.quantidade_ata_consumida || 0) - (editItem.quantidade_contratada || 0), 0);
+        const disponivel = Math.max((ataItem.quantidade_contratada || 0) - consumidoPorOutros, 0);
+        if (qtd > disponivel) {
+          toast.error(`Quantidade excede o saldo da ATA (disponível para este item: ${disponivel.toLocaleString('pt-BR')})`);
+          return;
+        }
+      }
+    }
+
+    setSavingEdit(true);
+    const vt = qtd * vu;
+    const consumidaQtd = editItem.quantidade_consumida || 0;
+    const consumidoFin = Math.max((editItem.valor_total || 0) - (editItem.saldo_financeiro || 0), 0);
+    const { error } = await supabase.from('contrato_itens').update({
+      quantidade_contratada: qtd,
+      valor_unitario: vu,
+      valor_total: vt,
+      custo_unitario: parseFloat(editForm.custo_unitario) || null,
+      observacoes: editForm.observacoes || null,
+      // Os saldos preservam o já consumido: editar a quantidade não apaga pedidos.
+      saldo_quantitativo: Math.max(qtd - consumidaQtd, 0),
+      saldo_financeiro: Math.max(vt - consumidoFin, 0),
+    } as never).eq('id', editItem.id);
+    setSavingEdit(false);
+    if (error) { toast.error('Erro ao salvar item', { description: error.message }); return; }
+    toast.success('Item atualizado — saldos da ATA recalculados.');
+    setEditItem(null);
+    loadData();
   };
 
   const handleDelete = async (id: string) => {
@@ -722,6 +785,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
                           <Copy className="w-3.5 h-3.5" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar item" onClick={() => abrirEdicao(item)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
                           <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </Button>
@@ -735,6 +801,54 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         </div>
         </TooltipProvider>
       )}
+
+      {/* Edição de item — preço travado quando aponta a ata */}
+      <Dialog open={!!editItem} onOpenChange={(v) => !v && setEditItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Editar item</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{editItem.descricao}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Quantidade</Label>
+                  <Input type="number" value={editForm.quantidade}
+                    onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Valor Unitário (R$)</Label>
+                  <Input type="number" step="0.01" value={editForm.valor_unitario}
+                    disabled={isContratoComATA && !!editItem.ata_item_id}
+                    onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                  {isContratoComATA && !!editItem.ata_item_id && (
+                    <p className="text-xs text-muted-foreground mt-1">Travado no registrado da ATA.</p>
+                  )}
+                </div>
+              </div>
+              {podeVerCustos && (
+                <div>
+                  <Label>Custo Unitário (R$)</Label>
+                  <Input type="number" step="0.01" value={editForm.custo_unitario}
+                    onChange={e => setEditForm(f => ({ ...f, custo_unitario: e.target.value }))} />
+                </div>
+              )}
+              <div>
+                <Label>Observações</Label>
+                <Textarea rows={2} value={editForm.observacoes}
+                  onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditItem(null)}>Cancelar</Button>
+                <Button onClick={salvarEdicao} disabled={savingEdit}>
+                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
