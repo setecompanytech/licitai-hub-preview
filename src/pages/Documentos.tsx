@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   FileText, Upload, Repeat, CheckCircle2, AlertTriangle,
-  Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2, Eye,
+  Shield, FolderOpen, Download, FileArchive, Trash2, Loader2, Eye,
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -26,7 +26,6 @@ import { IconeRecolher, lerRecolhida, gravarRecolhida } from '@/components/ui/se
 // traz emissão, hora e prazo juntos, e a errada manda renovar o que está bom —
 // ou leva a empresa à sessão com certidão vencida.
 import { extrairValidadeDoTexto, montarData, normalizarEspacos } from '@/lib/documentos/validade';
-import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -591,9 +590,6 @@ export default function Documentos() {
             <TabsTrigger value="merge" className="flex items-center gap-1">
               <FileArchive className="w-4 h-4" /> Juntar PDF/ZIP
             </TabsTrigger>
-            <TabsTrigger value="checklist" className="flex items-center gap-1">
-              <ClipboardList className="w-4 h-4" /> Checklist
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="documentos" className="space-y-4">
@@ -760,9 +756,6 @@ export default function Documentos() {
             <MergeDocumentos />
           </TabsContent>
 
-          <TabsContent value="checklist">
-            <ChecklistModalidade />
-          </TabsContent>
 
         </Tabs>
 
