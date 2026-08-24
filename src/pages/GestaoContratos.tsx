@@ -67,6 +67,7 @@ type Contrato = {
   id: string; numero_contrato: string; objeto: string; orgao_contratante: string;
   valor_global: number; valor_consumido: number; saldo_remanescente: number;
   data_assinatura: string | null; data_inicio: string | null; data_fim: string | null;
+  excluido_em?: string | null;
   vigencia_meses: number | null; status: string; modalidade: string | null;
   uf: string | null; municipio: string | null; fiscal_nome: string | null;
   fiscal_email: string | null; fiscal_telefone: string | null; observacoes: string | null;
@@ -90,6 +91,7 @@ export default function GestaoContratos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [excluidos, setExcluidos] = useState<Contrato[]>([]);
   const [licitacoes, setLicitacoes] = useState<Licitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -192,7 +194,10 @@ export default function GestaoContratos() {
     setLoading(true);
     const { data } = await supabase.from('contratos').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false });
     const list = (data as any[]) || [];
-    setContratos(list);
+    // A lixeira é marca, não DELETE: ativos alimentam telas e contas; os
+    // marcados vivem só na seção Lixeira, de onde se restauram.
+    setContratos(list.filter(c => !c.excluido_em));
+    setExcluidos(list.filter(c => !!c.excluido_em));
     if (selectedContrato) {
       const updated = list.find(c => c.id === selectedContrato.id);
       if (updated) setSelectedContrato(updated);
@@ -357,12 +362,36 @@ export default function GestaoContratos() {
     loadContratos();
   };
 
+  // Excluir vira MARCA: o DELETE em cascata levava itens, aditivos, arquivos e
+  // pedidos juntos, sem volta — e engano no primeiro clique era perda
+  // definitiva. O registro sai das telas e das contas (os gatilhos da ATA
+  // ignoram marcados e devolvem a fatia), mas restaurar é apagar a marca.
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('contratos').delete().eq('id', id);
+    const { error } = await supabase.from('contratos')
+      .update({ excluido_em: new Date().toISOString(), excluido_por: user?.id ?? null } as never)
+      .eq('id', id);
     if (error) { toast.error('Não foi possível excluir: ' + error.message); return; }
-    toast.success('Contrato excluído');
+    toast.success('Enviado à lixeira', { description: 'Restaurável na seção Lixeira, no fim da lista.' });
     if (selectedContrato?.id === id) setSelectedContrato(null);
     setAExcluir(null);
+    loadContratos();
+  };
+
+  const restaurar = async (id: string) => {
+    const { error } = await supabase.from('contratos')
+      .update({ excluido_em: null, excluido_por: null } as never)
+      .eq('id', id);
+    if (error) { toast.error('Não foi possível restaurar: ' + error.message); return; }
+    toast.success('Contrato restaurado — a fatia na ATA voltou a contar.');
+    loadContratos();
+  };
+
+  const excluirDefinitivo = async (c: Contrato) => {
+    // O gesto deliberado mora aqui, no segundo passo — não no ícone da lista.
+    if (!confirm(`Excluir DEFINITIVAMENTE ${c.numero_contrato}?\n\nItens, aditivos, arquivos e pedidos serão apagados juntos. Esta ação não tem volta.`)) return;
+    const { error } = await supabase.from('contratos').delete().eq('id', c.id);
+    if (error) { toast.error('Não foi possível excluir: ' + error.message); return; }
+    toast.success('Excluído definitivamente');
     loadContratos();
   };
 
@@ -1119,6 +1148,44 @@ export default function GestaoContratos() {
             );
           })}
         </div>
+      )}
+
+      {/* ── Lixeira: excluído por engano tem volta ─────────────────────────── */}
+      {!loading && excluidos.length > 0 && (
+        <Card className="mt-6 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Trash2 className="w-4 h-4 text-muted-foreground" />
+            <span className="font-semibold text-sm">Lixeira</span>
+            <Badge variant="outline" className="text-xs">{excluidos.length}</Badge>
+            <span className="text-xs text-muted-foreground">
+              Fora das telas e dos cálculos — restaurar devolve tudo, inclusive a fatia na ATA.
+            </span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {excluidos.map(c => (
+              <div key={c.id} className="flex items-center gap-3 py-2.5 flex-wrap">
+                <span className="text-sm font-medium">
+                  {c.tipo_documento === 'ata_srp' ? rotuloDaAta(c.numero_ata || c.numero_contrato) : `Contrato n. ${c.numero_contrato}`}
+                </span>
+                <span className="text-xs text-muted-foreground truncate max-w-[280px]">{c.orgao_contratante}</span>
+                {c.excluido_em && (
+                  <span className="text-xs text-muted-foreground">
+                    excluído em {new Date(c.excluido_em).toLocaleDateString('pt-BR')}
+                  </span>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => restaurar(c.id)}>
+                    Restaurar
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive"
+                    onClick={() => excluirDefinitivo(c)}>
+                    Excluir definitivamente
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
     </AppLayout>
   );

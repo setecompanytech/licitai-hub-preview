@@ -518,6 +518,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <div>
                   <Label>Valor Unitário Venda (R$)</Label>
                   <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} disabled={isContratoComATA && !!form.ata_item_id} />
+                  {isContratoComATA && !!form.ata_item_id && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Travado no preço registrado da ATA — o contrato derivado segue o mesmo preço
+                      e condições da ata. Se o registrado mudar por reequilíbrio ou reajuste, a
+                      alteração se faz no item da ATA, e o histórico de preços guarda de quanto
+                      para quanto foi.
+                    </p>
+                  )}
                 </div>
                 {podeVerCustos && (
                   <div className="col-span-2">
@@ -676,6 +684,22 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
                       {fmt(item.valor_unitario)}
+                      {(() => {
+                        // O contrato guarda o preço da CONTRATAÇÃO; a ATA evolui por
+                        // reequilíbrio/reajuste. Divergência aqui não é erro — é
+                        // história, e precisa aparecer: era X, a ata hoje registra Y.
+                        if (!item.ata_item_id) return null;
+                        const ataItem = ataItens.find(a => a.id === item.ata_item_id);
+                        if (!ataItem || ataItem.valor_unitario == null) return null;
+                        const dif = (ataItem.valor_unitario || 0) - (item.valor_unitario || 0);
+                        if (Math.abs(dif) < 0.005) return null;
+                        const pct = item.valor_unitario ? ((dif / item.valor_unitario) * 100).toFixed(2) : null;
+                        return (
+                          <div className="text-[11px] text-warning font-normal">
+                            ATA hoje: {fmt(ataItem.valor_unitario)}{pct ? ` (${dif > 0 ? '+' : ''}${pct}%)` : ''}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
                     {podeVerCustos && (

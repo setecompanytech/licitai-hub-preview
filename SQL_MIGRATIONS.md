@@ -3781,3 +3781,38 @@ atrás do primeiro.
 
 **Arquivo:** `supabase/migrations/20260824000003_contrato_itens_produto_id.sql`
 
+---
+
+## 20260824000004 — O preço do item guarda a própria história
+
+**Por quê.** O valor registrado na ATA muda legitimamente — reequilíbrio
+econômico-financeiro, reajuste por índice anual — e o sistema aceitava a edição
+ESQUECENDO o valor anterior. Impossível responder "de quanto para quanto foi, e
+por quê": exatamente o que o relatório de evolução precisa.
+
+**O que muda.** Tabela `contrato_item_precos_historico` alimentada por GATILHO
+em toda mudança de `valor_unitario` (qualquer porta deixa rastro), com
+`variacao_pct` calculada no ato. `motivo` (reequilibrio | reajuste |
+repactuacao | revisao | correcao | outro) nasce nulo — classificar é decisão de
+alguém. View `vw_evolucao_precos_itens` (security_invoker) entrega valor
+original × atual, aumento absoluto e % acumulado, nº de alterações e motivos.
+
+**Arquivo:** `supabase/migrations/20260824000004_historico_de_precos_do_item.sql`
+
+---
+
+## 20260824000005 — A lixeira passa a ter volta
+
+**Por quê.** O ícone de excluir fazia DELETE com cascata: itens, aditivos,
+arquivos e pedidos iam junto, sem restauração. Exclusão por engano era perda
+definitiva.
+
+**O que muda.** `contratos.excluido_em`/`excluido_por`: excluir vira marca; o
+registro sai das telas e dos cálculos, os filhos ficam intactos, restaurar é
+voltar a nulo. As três funções de cascata (consumo da ata, saldo quantitativo e
+financeiro do item) passam a ignorar contratos marcados; um gatilho auxiliar
+cutuca os itens da ata quando a marca muda, para a fatia ir e voltar na hora.
+Exclusão DEFINITIVA continua existindo — como segundo passo, dentro da lixeira.
+
+**Arquivo:** `supabase/migrations/20260824000005_lixeira_de_contratos.sql`
+
