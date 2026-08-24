@@ -876,6 +876,33 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       const newTipoDoc: 'ata_srp' | 'contrato' = detectedType === 'ata_srp' ? 'ata_srp' : 'contrato';
       const isDerivado = newTipoDoc === 'contrato' && parentTipoDocumento === 'ata_srp';
 
+      // ── O teto da ata é lei, não configuração ─────────────────────────────
+      // A ARP registra a quantidade MÁXIMA; os contratos derivados a fracionam
+      // até o esgotamento — a soma deles não pode passar do registrado. Este
+      // guarda também é a defesa contra OCR ruim: foi um contrato "derivado" de
+      // R$ 180 milhões, lido de um scan, que consumiu 2.126% de uma ata de
+      // R$ 8,4 milhões. O valor extraído pode mentir; o saldo da ata, não.
+      if (isDerivado) {
+        const { data: ata } = await supabase
+          .from('contratos')
+          .select('valor_global, valor_consumido, data_fim')
+          .eq('id', parentContrato.id)
+          .maybeSingle();
+        const saldoAta = (ata?.valor_global ?? 0) - (ata?.valor_consumido ?? 0);
+        const valorNovo = data.valor_global || 0;
+        if (valorNovo > saldoAta) {
+          toast.error('Contrato derivado excede o saldo da ATA', {
+            description:
+              `O documento traz ${valorNovo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, ` +
+              `mas o saldo registrado da ata é ${saldoAta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. ` +
+              'A soma dos contratos não pode passar do total registrado. Se o valor veio de leitura ' +
+              'errada do PDF (scan), confira o documento e cadastre o contrato manualmente.',
+            duration: 12000,
+          });
+          return;
+        }
+      }
+
       // Estrutura: usa o que a IA detectou (fallback para 'itens')
       const estruturaIA = (data as any).tipo_estrutura_detectado as 'itens' | 'lotes' | undefined;
       const estruturaConfianca = (data as any).tipo_estrutura_confianca as number | undefined;

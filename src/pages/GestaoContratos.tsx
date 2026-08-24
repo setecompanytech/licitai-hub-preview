@@ -236,9 +236,28 @@ export default function GestaoContratos() {
     if (!form.numero_contrato || !form.objeto || !form.orgao_contratante) {
       toast.error('Preencha os campos obrigatórios'); return;
     }
-    setSaving(true);
     const val = parseFloat(form.valor_global) || 0;
     const consumed = parseFloat(form.valor_consumido) || 0;
+
+    // A ARP registra a quantidade MÁXIMA: os contratos derivados a fracionam
+    // até o esgotamento, e a soma deles não pode passar do registrado. Barrar
+    // aqui é aplicar a lei — e é também a rede contra valor lido errado de um
+    // PDF escaneado, que já consumiu 2.126% de uma ata nesta tela.
+    if (form.tipo_documento === 'contrato' && form.ata_srp_id) {
+      const ata = contratos.find(c => c.id === form.ata_srp_id);
+      if (ata) {
+        const saldoAta = (ata.valor_global || 0) - (ata.valor_consumido || 0);
+        if (val > saldoAta) {
+          toast.error('Contrato derivado excede o saldo da ATA', {
+            description: `O contrato traz ${formatCurrency(val)}, mas o saldo registrado da ata é ${formatCurrency(saldoAta)}. A soma dos contratos derivados não pode passar do total registrado na ata.`,
+            duration: 10000,
+          });
+          return;
+        }
+      }
+    }
+
+    setSaving(true);
     const { data: inserted, error } = await supabase.from('contratos').insert({
       user_id: user!.id,
       empresa_id: empresaAtiva!.id,
@@ -561,6 +580,12 @@ export default function GestaoContratos() {
   const ocultosPorEscopo = contratos.length - doEscopo.length;
 
   const filtered = doEscopo.filter(c => {
+    // Contrato derivado mora DENTRO da pasta da ata (aba Contratos derivados):
+    // na lista principal ele aparecia como irmão da própria ata, e a hierarquia
+    // ATA → contrato → aditivo virava três cartões soltos. A busca por texto
+    // continua encontrando-o, para ninguém achar que sumiu.
+    const derivado = c.tipo_documento === 'contrato' && !!c.ata_srp_id;
+    if (derivado && !search) return false;
     const matchSearch = !search || c.objeto.toLowerCase().includes(search.toLowerCase()) || c.numero_contrato.toLowerCase().includes(search.toLowerCase()) || c.orgao_contratante.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || c.status === statusFilter;
     const matchTipo = tipoFilter === 'all' || c.tipo_documento === tipoFilter;
@@ -1005,6 +1030,16 @@ export default function GestaoContratos() {
                         ? <span className="text-xs font-medium text-foreground">{rotuloDaAta(c.numero_ata || c.numero_contrato)}</span>
                         : <span className="text-xs font-medium text-foreground">Contrato n. {c.numero_contrato}</span>}
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                      {/* Os derivados moram dentro da pasta da ata; o cartão diz
+                          quantos, senão parecem ter sumido da lista. */}
+                      {isAta && (() => {
+                        const n = doEscopo.filter(x => x.ata_srp_id === c.id && x.tipo_documento === 'contrato').length;
+                        return n > 0 ? (
+                          <Badge variant="outline" className="text-xs text-info border-info/30">
+                            <FilePlus2 className="w-3 h-3 mr-1" />{n} contrato{n > 1 ? 's' : ''} derivado{n > 1 ? 's' : ''}
+                          </Badge>
+                        ) : null;
+                      })()}
                       {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
                       {/* Consumo total não é "saldo baixo" — é fim do contrato.
                           O aviso servia para antecipar o esgotamento; depois
