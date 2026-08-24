@@ -628,23 +628,19 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               <TableRow>
                 <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
                 {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
-                {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
-                {/* Código entra na célula da descrição e a unidade na da
-                    quantidade: com quinze colunas, Saldo e o lápis de editar
-                    caíam fora da tela — e a rolagem horizontal do macOS é
-                    invisível até alguém rolar. O que a tabela existe para
-                    mostrar (saldo) e para permitir (editar) não pode depender
-                    de rolagem que ninguém vê. */}
-                <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
+                {/* Pares que são um assunto só viram UMA coluna com duas
+                    linhas (unitário em cima, total embaixo): treze colunas
+                    empurravam Saldo e o lápis para a rolagem horizontal, que o
+                    macOS esconde — a tabela parecia quebrada e a edição ficava
+                    inalcançável. O que ela existe para mostrar e permitir tem
+                    de caber SEM rolar. */}
+                <TableHead className="text-xs whitespace-nowrap">Item</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
-                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit.</TableHead>}
-                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit.</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Total</TableHead>
-                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Total</TableHead>}
+                {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo</TableHead>}
+                <TableHead className="text-xs text-right whitespace-nowrap">Valor</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
-                <TableHead className="text-xs w-10 sticky right-0 bg-card"></TableHead>
+                <TableHead className="text-xs text-right whitespace-nowrap">Saldo</TableHead>
+                <TableHead className="text-xs w-10 sticky right-0 bg-card border-l border-border"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -726,18 +722,16 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
-                    {isContratoComATA && (
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {item.ata_item_id ? (
-                          <Badge variant="outline" className="text-xs font-normal">{ataItemLabel(item.ata_item_id)}</Badge>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-xs max-w-[240px]">
+                    <TableCell className="text-xs max-w-[280px]">
                       <span className="truncate block">{item.descricao}</span>
-                      {item.codigo_item && (
-                        <span className="text-[11px] text-muted-foreground font-mono">cód. {item.codigo_item}</span>
-                      )}
+                      <span className="text-[11px] text-muted-foreground">
+                        {item.codigo_item && <span className="font-mono">cód. {item.codigo_item}</span>}
+                        {isContratoComATA && (
+                          item.ata_item_id
+                            ? <span>{item.codigo_item ? ' · ' : ''}⛓ {ataItemLabel(item.ata_item_id)}</span>
+                            : <span className="text-warning">{item.codigo_item ? ' · ' : ''}sem vínculo à ata</span>
+                        )}
+                      </span>
                       {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
                         <span className="text-xs text-muted-foreground line-through">
                           {fmt(original.valor_unitario)}/un (original)
@@ -756,11 +750,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     </TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
-                        {item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}
+                        <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-[10px]">/un</span></div>
+                        <div className="text-[11px]">{item.custo_total != null ? fmt(item.custo_total) : '—'}</div>
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
-                      {fmt(item.valor_unitario)}
+                      {fmt(item.valor_unitario)}<span className="text-[10px] text-muted-foreground">/un</span>
                       {(() => {
                         // O contrato guarda o preço da CONTRATAÇÃO; a ATA evolui por
                         // reequilíbrio/reajuste. Divergência aqui não é erro — é
@@ -777,24 +772,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </div>
                         );
                       })()}
+                      <div className="text-[11px]">{fmt(item.valor_total)}</div>
                     </TableCell>
-                    <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(item.valor_total)}</TableCell>
-                    {podeVerCustos && (
-                      <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
-                        {item.custo_total != null ? fmt(item.custo_total) : '—'}
-                      </TableCell>
-                    )}
                     <TableCell className="text-xs text-right whitespace-nowrap">
-                      {item.quantidade_consumida}
+                      {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
                       <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
                     </TableCell>
                     <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
-                      {item.saldo_quantitativo}
+                      <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {item.unidade}</div>
+                      <div className="text-[11px]">{fmt(item.saldo_financeiro)}</div>
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
-                      {fmt(item.saldo_financeiro)}
-                    </TableCell>
-                    <TableCell className="sticky right-0 bg-card">
+                    <TableCell className="sticky right-0 bg-card border-l border-border">
                       <div className="flex items-center gap-0.5">
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
                           <Copy className="w-3.5 h-3.5" />
