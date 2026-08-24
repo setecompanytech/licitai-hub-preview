@@ -557,7 +557,12 @@ export default function GestaoContratos() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
+        {/* key={c.id}: o Tabs é não-controlado e o componente NÃO remonta ao
+            trocar de registro — quem vinha da aba "Contratos derivados" da ata
+            abria o contrato com a aba interna ainda em "derivados", que não
+            existe no contrato: conteúdo em branco, nenhuma aba acesa. A chave
+            por identidade remonta e todo registro abre no Dashboard. */}
+        <Tabs key={c.id} defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
