@@ -201,7 +201,10 @@ export default function DocumentDetectionDialog({
             <div className="text-xs space-y-1">
               <div className={confronto.valorExcede ? 'text-destructive font-medium' : ''}>
                 💰 Valor do contrato {fmt(confronto.valorContrato)} × saldo da ata {fmt(confronto.saldoAta)}
-                {confronto.valorExcede ? ' — EXCEDE: a soma dos contratos não pode passar do registrado' : ' — dentro do saldo'}
+                {confronto.pctDaAta !== null && (
+                  <strong> — este contrato toma {confronto.pctDaAta.toLocaleString('pt-BR')}% da ata</strong>
+                )}
+                {confronto.valorExcede ? ' · EXCEDE: a soma dos contratos não pode passar do registrado' : ' · dentro do saldo'}
               </div>
               {confronto.dentroDaVigencia !== null && (
                 <div className={confronto.dentroDaVigencia ? '' : 'text-destructive font-medium'}>

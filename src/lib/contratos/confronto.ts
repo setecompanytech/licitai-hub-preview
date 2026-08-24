@@ -43,6 +43,8 @@ export type ConfrontoItem = {
 export type ConfrontoComAta = {
   valorContrato: number;
   saldoAta: number;
+  /** Quanto da ATA ORIGINAL este contrato toma (fração do registrado, não do saldo). */
+  pctDaAta: number | null;
   valorExcede: boolean;
   /** Nulo quando falta data de um dos lados. */
   dentroDaVigencia: boolean | null;
@@ -143,6 +145,12 @@ export function confrontarContratoComAta(
   return {
     valorContrato: contrato.valorGlobal || 0,
     saldoAta,
+    // O percentual é sobre o REGISTRADO: "este contrato toma 25% da ata" é a
+    // leitura que a doutrina do fracionamento pede — o saldo muda a cada
+    // contrato, o registrado é a régua fixa.
+    pctDaAta: (ata.valorGlobal || 0) > 0
+      ? Math.round(((contrato.valorGlobal || 0) / ata.valorGlobal) * 10000) / 100
+      : null,
     valorExcede: (contrato.valorGlobal || 0) > saldoAta,
     dentroDaVigencia,
     dataFimAta,

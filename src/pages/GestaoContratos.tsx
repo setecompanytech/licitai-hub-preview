@@ -1210,6 +1210,12 @@ export default function GestaoContratos() {
 function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string; contratos: Contrato[]; onSelect: (c: Contrato) => void }) {
   const derivados = contratos.filter(c => c.ata_srp_id === ataId && c.tipo_documento === 'contrato');
   const totalConsumido = derivados.reduce((s, c) => s + (c.valor_global || 0), 0);
+  // A régua do fracionamento é o REGISTRADO da ata: cada contrato mostra a
+  // fatia que tomou dela ("25% da ata"), e o total, quanto da ata já virou
+  // contrato. O saldo muda a cada assinatura; o registrado é fixo.
+  const ata = contratos.find(c => c.id === ataId);
+  const registradoAta = ata?.valor_global || 0;
+  const pctDaAta = (v: number) => registradoAta > 0 ? Math.round((v / registradoAta) * 1000) / 10 : null;
 
   if (derivados.length === 0) {
     return (
@@ -1234,6 +1240,11 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Valor total consumido</p>
             <p className="text-2xl font-bold text-foreground">{formatCurrency(totalConsumido)}</p>
+            {pctDaAta(totalConsumido) !== null && (
+              <p className="text-xs text-muted-foreground">
+                {pctDaAta(totalConsumido)!.toLocaleString('pt-BR')}% da ata · saldo {formatCurrency(Math.max(registradoAta - totalConsumido, 0))}
+              </p>
+            )}
           </div>
         </div>
       </Card>
@@ -1245,6 +1256,11 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-foreground">{c.numero_contrato}</span>
                   <Badge variant="outline" className="text-xs">{c.status}</Badge>
+                  {pctDaAta(c.valor_global || 0) !== null && (
+                    <Badge variant="outline" className="text-xs text-info border-info/30">
+                      {pctDaAta(c.valor_global || 0)!.toLocaleString('pt-BR')}% da ata
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.objeto}</p>
               </div>
