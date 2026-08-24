@@ -753,7 +753,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
                         <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-[10px]">/un</span></div>
-                        <div className="text-[11px]">{item.custo_total != null ? fmt(item.custo_total) : '—'}</div>
+                        {/* O "/un" rotula a primeira linha; sem rótulo na segunda,
+                            item de quantidade zero mostrava R$ 0,00 sobre R$ 0,00
+                            e parecia valor repetido, não unitário × total. */}
+                        <div className="text-[11px]"><span className="text-[10px]">total </span>{item.custo_total != null ? fmt(item.custo_total) : '—'}</div>
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
@@ -774,7 +777,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </div>
                         );
                       })()}
-                      <div className="text-[11px]">{fmt(item.valor_total)}</div>
+                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(item.valor_total)}</span></div>
                     </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">
                       {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
