@@ -351,6 +351,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
    * O preço continua travado quando o item aponta a ata (mesmo preço e
    * condições); quantidade, custo e observações são de quem gerencia.
    */
+  // Visualizador da descrição: a tabela trunca por necessidade ("CORTE PA…"),
+  // mas a especificação completa — 700 caracteres de norma técnica — precisa
+  // de um lugar para ser LIDA. Clicar no item abre a ficha, só leitura.
+  const [itemVisualizado, setItemVisualizado] = useState<ContratoItem | null>(null);
   const [editItem, setEditItem] = useState<ContratoItem | null>(null);
   const [editForm, setEditForm] = useState({ quantidade: '', valor_unitario: '', custo_unitario: '', observacoes: '' });
   const [savingEdit, setSavingEdit] = useState(false);
@@ -725,7 +729,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       </TableCell>
                     )}
                     <TableCell className="text-xs max-w-[280px]">
-                      <span className="truncate block">{item.descricao}</span>
+                      <button
+                        type="button"
+                        onClick={() => setItemVisualizado(item)}
+                        title="Ver a descrição completa do item"
+                        className="truncate block w-full text-left font-medium text-foreground hover:text-accent hover:underline"
+                      >
+                        {item.descricao}
+                      </button>
                       <span className="text-[11px] text-muted-foreground">
                         {item.codigo_item && <span className="font-mono">cód. {item.codigo_item}</span>}
                         {isContratoComATA && (
@@ -858,6 +869,59 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ficha do item — leitura integral do que a tabela trunca */}
+      <Dialog open={!!itemVisualizado} onOpenChange={(v) => !v && setItemVisualizado(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base">Descrição do item</DialogTitle>
+          </DialogHeader>
+          {itemVisualizado && (
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{itemVisualizado.descricao}</p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Código</div>
+                  <div className="font-medium">{itemVisualizado.codigo_item || '—'}</div>
+                </div>
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Quantidade</div>
+                  <div className="font-medium">{Number(itemVisualizado.quantidade_contratada || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade}</div>
+                </div>
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Valor unitário</div>
+                  <div className="font-medium">{fmt(itemVisualizado.valor_unitario || 0)}</div>
+                </div>
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Valor total</div>
+                  <div className="font-medium">{fmt(itemVisualizado.valor_total || 0)}</div>
+                </div>
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Consumido</div>
+                  <div className="font-medium">{Number(itemVisualizado.quantidade_consumida || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade}</div>
+                </div>
+                <div className="border rounded-md p-2">
+                  <div className="text-muted-foreground">Saldo</div>
+                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade} · {fmt(itemVisualizado.saldo_financeiro || 0)}</div>
+                </div>
+              </div>
+
+              {isContratoComATA && itemVisualizado.ata_item_id && (
+                <p className="text-xs text-muted-foreground">
+                  ⛓ Fraciona o item da ATA: {ataItemLabel(itemVisualizado.ata_item_id)}
+                </p>
+              )}
+              {(itemVisualizado as { observacoes?: string | null }).observacoes && (
+                <div className="border rounded-md p-3 bg-muted/30 text-xs">
+                  <div className="text-muted-foreground mb-1">Observações</div>
+                  <p className="whitespace-pre-wrap">{(itemVisualizado as { observacoes?: string | null }).observacoes}</p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
