@@ -10,6 +10,7 @@ import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
 import { toast } from 'sonner';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { abrasileirar, motivoDaRejeicao, resumoDaVinculacao } from '@/lib/contratos/auditoriaTexto';
+import { IconeRecolher, lerRecolhida, gravarRecolhida } from '@/components/ui/secao-recolhivel';
 
 const CAMPO_LABELS: Record<string, string> = {
   auto_vinculacao_ata: 'Vínculo automático com a ATA',
@@ -79,6 +80,13 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [tab, setTab] = useState('todos');
   const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
   const [reprocessando, setReprocessando] = useState(false);
+  // O diário é consulta, não leitura diária: aberto, ocupa meia tela antes do
+  // conteúdo da aba. Recolhido, sobra o cabeçalho com a contagem (e o alerta
+  // legal, quando houver) — e a preferência fica lembrada por quem fechou.
+  const [recolhido, setRecolhido] = useState(() => lerRecolhida('auditoria-contratos', false));
+  const alternarRecolhido = () => {
+    setRecolhido((atual) => { gravarRecolhida('auditoria-contratos', !atual); return !atual; });
+  };
   // `isAdmin` do useUserRole inclui ADMIN DE EMPRESA. Este botão dispara um job
   // GLOBAL — reprocessa contratos de todas as empresas —, e a função no banco
   // exige has_role(uid,'admin'), que é só o admin do SISTEMA. A tela oferecia a
@@ -229,9 +237,14 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           <Button variant="ghost" size="sm" onClick={load} disabled={loading} className="shrink-0">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
+          <Button variant="ghost" size="sm" onClick={alternarRecolhido} className="shrink-0"
+            title={recolhido ? 'Abrir a lista' : 'Recolher a lista'} aria-expanded={!recolhido}>
+            <IconeRecolher aberto={!recolhido} className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
+      {!recolhido && (
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-3">
           <TabsTrigger value="todos" className="text-xs">Todos ({counts.todos})</TabsTrigger>
@@ -256,6 +269,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           )}
         </TabsContent>
       </Tabs>
+      )}
 
       <EventoAuditoriaDetalheDialog
         evento={eventoSelecionado}
