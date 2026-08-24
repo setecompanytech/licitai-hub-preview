@@ -284,7 +284,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       valor_total: total,
       // custo_total NÃO se grava: é coluna GERADA no banco
       // (custo_unitario * quantidade_contratada) — enviar valor aqui é erro.
-      custo_unitario: custoUnit || null,
+      // E custo_unitario é NOT NULL DEFAULT 0: custo em branco é ZERO, não
+      // nulo — mandar null viola a constraint e derruba o salvar.
+      custo_unitario: custoUnit || 0,
       saldo_quantitativo: qty,
       saldo_financeiro: total,
       codigo_item: form.codigo_item || null,
@@ -391,7 +393,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       quantidade_contratada: qtd,
       valor_unitario: vu,
       valor_total: vt,
-      custo_unitario: parseFloat(editForm.custo_unitario) || null,
+      custo_unitario: parseFloat(editForm.custo_unitario) || 0,
       observacoes: editForm.observacoes || null,
       // Os saldos preservam o já consumido: editar a quantidade não apaga pedidos.
       saldo_quantitativo: Math.max(qtd - consumidaQtd, 0),
@@ -821,11 +823,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div>
                   <Label>Valor Unitário (R$)</Label>
-                  <Input type="number" step="0.01" value={editForm.valor_unitario}
-                    disabled={isContratoComATA && !!editItem.ata_item_id}
-                    onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
-                  {isContratoComATA && !!editItem.ata_item_id && (
-                    <p className="text-xs text-muted-foreground mt-1">Travado no registrado da ATA.</p>
+                  {isContratoComATA && !!editItem.ata_item_id ? (
+                    <>
+                      {/* Campo travado não é campo: é informação. Exibir o
+                          número cru do input ("15,8") num valor em reais nega
+                          a pontuação que o resto da tela promete. */}
+                      <Input value={fmt(editItem.valor_unitario || 0)} disabled />
+                      <p className="text-xs text-muted-foreground mt-1">Travado no registrado da ATA.</p>
+                    </>
+                  ) : (
+                    <Input type="number" step="0.01" value={editForm.valor_unitario}
+                      onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
                   )}
                 </div>
               </div>
