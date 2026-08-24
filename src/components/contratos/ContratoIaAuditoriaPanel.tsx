@@ -9,6 +9,7 @@ import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, Scro
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
 import { toast } from 'sonner';
 import { useAuthorization } from '@/hooks/useAuthorization';
+import { abrasileirar, motivoDaRejeicao, resumoDaVinculacao } from '@/lib/contratos/auditoriaTexto';
 
 const CAMPO_LABELS: Record<string, string> = {
   auto_vinculacao_ata: 'Vínculo automático com a ATA',
@@ -39,57 +40,6 @@ const ORIGEM_META: Record<string, { label: string; variant: 'default' | 'seconda
   recalculo_consumo_ata: { label: 'Consumo da ATA', variant: 'outline', icon: Calculator },
   alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', variant: 'destructive', icon: AlertTriangle },
 };
-
-/**
- * Rejeição da IA guarda em `valor_novo` um JSON com o motivo — texto para
- * humano, não valor de campo. Mostrar o JSON cru, ou pior, tentar formatá-lo
- * como data, escondia justamente a explicação que a linha existe para dar.
- */
-const motivoDaRejeicao = (v: string): string | null => {
-  try {
-    const o = JSON.parse(v);
-    if (o && typeof o === 'object' && typeof o.motivo === 'string') {
-      const recebido = o.valor_recebido;
-      return recebido === null || recebido === undefined || recebido === ''
-        ? o.motivo
-        : `${o.motivo} (a IA leu: ${typeof recebido === 'string' ? recebido : JSON.stringify(recebido)})`;
-    }
-  } catch { /* não é JSON — segue como texto */ }
-  return null;
-};
-
-/**
- * O resumo da auto-vinculação era gravado como JSON e exibido cru — id da ata,
- * chaves em inglês, chaves e aspas. Auditoria existe para humano conferir;
- * JSON em tela diz "houve algo técnico" e esconde exatamente o que interessa:
- * quantos itens casaram e quantos ficaram sem par.
- */
-const resumoDaVinculacao = (v: string): string | null => {
-  try {
-    const o = JSON.parse(v);
-    if (!o || typeof o !== 'object' || !('total_itens' in o)) return null;
-    const partes = [
-      `${o.total_itens} item(ns) do contrato`,
-      `${o.vinculados ?? 0} vinculado(s) à ata`,
-    ];
-    if ((o.sem_match ?? 0) > 0) partes.push(`${o.sem_match} sem par`);
-    if ((o.quantidades_inferidas ?? 0) > 0) partes.push(`${o.quantidades_inferidas} quantidade(s) inferida(s) do valor global`);
-    if (o.estrutura) partes.push(`estrutura: ${o.estrutura}`);
-    return `Vinculação automática — ${partes.join(' · ')}`;
-  } catch { return null; }
-};
-
-/**
- * Registros antigos foram gravados com número cru ("R$ 2123520", "25.00%") —
- * as migrations consertam os futuros, mas o diário não se reescreve. Na
- * EXIBIÇÃO, o que é reconhecível ganha a pontuação brasileira. Valores já
- * formatados (contêm ponto de milhar ou vírgula) passam intactos.
- */
-const abrasileirar = (t: string): string =>
-  t
-    .replace(/R\$\s?(\d{4,})(?![\d.,])/g, (_m, n: string) =>
-      `R$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-    .replace(/(\d+)\.(\d{1,2})%/g, '$1,$2%');
 
 const formatVal = (campo: string, v: string | null, origem?: string | null) => {
   if (v == null || v === '') return '—';
