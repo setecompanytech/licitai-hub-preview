@@ -65,15 +65,50 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
-// Tipos disponíveis para ATAs SRP — sem aditivos (ATA não gera aditivo, gera apostilamento ou contrato derivado)
+/**
+ * O que se anexa a uma ATA SRP, nomeado pelo instituto e pelo amparo.
+ *
+ * O seletor tinha só "Apostilamento" genérico e nada de termo aditivo — mas a
+ * ARP comporta os dois, cada um com hipóteses PRÓPRIAS na lei, e a hipótese
+ * muda o efeito no sistema: reajuste registrado por apostila (art. 136, I)
+ * mexe em valor e fica fora do teto do art. 125; mudança de razão social
+ * (art. 136, III) não mexe em número nenhum. Um rótulo genérico obrigava o
+ * sistema a tratar tudo igual.
+ *
+ * A "pergunta do tipo" é o próprio seletor: cada hipótese é uma entrada, com o
+ * artigo no nome — quem escolhe aprende a lei no caminho. As entradas com
+ * `isAditivo` abrem o sub-formulário de valores e gravam o registro em
+ * contrato_aditivos junto do upload (mesmo mecanismo do contrato).
+ *
+ * Chaves com prefixo próprio (apostilamento_*, ata_aditivo_*): o dicionário
+ * final funde contrato e ATA, e reusar `aditivo_prazo` aqui trocaria o rótulo
+ * dos arquivos de contrato já gravados.
+ */
 const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   ata_srp: { label: 'ATA SRP Original', color: 'bg-warning/10 text-warning' },
-  apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
+  // ── Apostilamento (Lei 14.133/2021, art. 136) — registro SEM termo aditivo ──
+  apostilamento_reajuste: { label: 'Apostilamento — Reajuste/repactuação previstos (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  apostilamento_financeiro: { label: 'Apostilamento — Atualização/compensação financeira (art. 136, II)', color: 'bg-warning/10 text-warning' },
+  apostilamento_razao_social: { label: 'Apostilamento — Alteração de razão social (art. 136, III)', color: 'bg-muted text-muted-foreground' },
+  apostilamento_empenho: { label: 'Apostilamento — Empenho de dotação (art. 136, IV)', color: 'bg-muted text-muted-foreground' },
+  // ── Contrato derivado: a ATA cumpre-se por contrato (ou empenho, art. 95) ──
+  contrato_derivado: { label: 'Contrato Administrativo (derivado da ATA)', color: 'bg-info/10 text-info' },
+  // ── Termo aditivo da ATA — cada hipótese com sua regra ──
+  ata_aditivo_prazo: { label: 'Termo Aditivo — Prorrogação da vigência (art. 84)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
+  ata_aditivo_adesao: { label: 'Termo Aditivo — Adesão de órgão não participante (Decreto 11.462/2023, art. 32)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'adesao' },
+  ata_aditivo_remanejamento: { label: 'Termo Aditivo — Remanejamento entre participantes', color: 'bg-muted text-muted-foreground', isAditivo: true, tipoAditivo: 'remanejamento' },
+  ata_aditivo_revisao: { label: 'Termo Aditivo — Revisão de preços registrados (Decreto 11.462/2023, arts. 26 e 27)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
-// Dicionário completo (para lookup de tipos já salvos no banco)
-const TIPOS_ARQUIVO = { ...TIPOS_ARQUIVO_CONTRATO, ...TIPOS_ARQUIVO_ATA };
+// Dicionário completo (para lookup de tipos já salvos no banco).
+// 'apostilamento' genérico saiu do seletor, mas arquivo antigo gravado com ele
+// continua existindo — sem a chave aqui, o rótulo do badge sumiria.
+const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
+  ...TIPOS_ARQUIVO_CONTRATO,
+  ...TIPOS_ARQUIVO_ATA,
+  apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
+};
 
 /** Nome do tipo de aditivo, para a confirmação dizer o que será apagado. */
 const TIPOS_ADITIVO_LABEL: Record<string, string> = {
@@ -83,10 +118,10 @@ const TIPOS_ADITIVO_LABEL: Record<string, string> = {
   adesao: 'Adesão', remanejamento: 'Remanejamento',
 };
 
-const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste'];
-const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
-const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade'].includes(tipo);
-const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade'].includes(tipo);
+const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste', 'ata_aditivo_revisao', 'apostilamento_reajuste'];
+const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
+const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento'].includes(tipo);
+const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade', 'ata_aditivo_prazo'].includes(tipo);
 const isAditivoType = (tipo: string) => TIPOS_ARQUIVO[tipo]?.isAditivo === true;
 
 function formatBytes(bytes: number | null): string {
@@ -1053,6 +1088,24 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
               <p className="text-xs text-warning mt-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+              </p>
+            )}
+            {/* Cada instituto da ATA carrega a própria regra — o seletor diz qual. */}
+            {uploadTipo === 'ata_aditivo_adesao' && (
+              <p className="text-xs text-info mt-1">
+                Somadas, as adesões não podem exceder o dobro do quantitativo registrado
+                (Decreto 11.462/2023, art. 32, §4º) — o sistema confere ao gravar.
+              </p>
+            )}
+            {uploadTipo === 'ata_aditivo_prazo' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                A ARP vale 1 ano, prorrogável por igual período — 24 meses no total (art. 84).
+              </p>
+            )}
+            {uploadTipo === 'contrato_derivado' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                O arquivo fica guardado aqui; para saldo, itens e pedidos, registre o contrato
+                na aba <strong>Contratos derivados</strong>, vinculado a esta ATA.
               </p>
             )}
           </div>
