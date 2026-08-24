@@ -353,40 +353,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     setUploading(true);
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-      for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
-      }
-
-      // PDF escaneado: fallback para visão (imagens)
-      const images: { dataUrl: string }[] = [];
+      // Leitor da casa: página por página, OCR reencaixado no lugar. Era a
+      // quarta cópia do leitor antigo — e empenho/nota ESCANEADOS são o caso
+      // comum deste upload, não a exceção.
+      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+      const fullText = await extractTextFromFile(file, 30, false, 10);
       if (fullText.trim().length < 30) {
-        toast.info('PDF escaneado detectado — usando visão por IA...');
-        const canvas = document.createElement('canvas');
-        for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 2 });
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d')!;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
-        }
-        if (images.length === 0) { toast.error('Não foi possível processar o PDF'); setUploading(false); return; }
+        toast.error('Não foi possível ler o PDF, nem por OCR.');
+        setUploading(false);
+        return;
       }
 
       const { data: result, error } = await supabase.functions.invoke('extrair-pedido-pdf', {
         body: {
-          texto_pdf: fullText.trim().length >= 30 ? fullText : '',
+          texto_pdf: fullText,
           tipo_documento: form.tipo_documento,
-          images: images.length > 0 ? images : undefined,
         },
       });
       if (error) throw error;
