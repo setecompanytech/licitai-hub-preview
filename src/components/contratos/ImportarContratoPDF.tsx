@@ -128,16 +128,51 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
       }
 
       setProgress(65);
-      const { data, error } = await supabase.functions.invoke('extrair-contrato-pdf', {
-        body: {
-          texto_pdf: texto.trim().length >= 80 ? texto : '',
-          nome_arquivo: file.name,
-          tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
-          tipo_estrutura: tipoEstrutura,
-        },
-      });
 
-      if (error) throw new Error(error.message);
+      // A reversão automática do erro de leitura mora aqui, em duas partes.
+      //
+      // 1. O MOTIVO REAL: em falha, o invoke devolve um erro genérico
+      //    ("non-2xx") e esconde a mensagem que a função escreveu com cuidado —
+      //    o corpo fica em error.context. Sem lê-lo, todo erro vira o mesmo, e
+      //    ninguém (nem o sistema) sabe se dá para tentar de novo.
+      //
+      // 2. TENTAR DE NOVO SOZINHO quando o erro é passageiro: o limite por
+      //    minuto do provedor de IA (429) é o caso típico — o OCR de um
+      //    documento grande acabou de fazer dezenas de chamadas, e a extração
+      //    chega logo atrás. Esse erro se resolve esperando; empurrá-lo para o
+      //    usuário é transferir a espera para quem não causou o problema.
+      const chamarExtracao = async () => {
+        const r = await supabase.functions.invoke('extrair-contrato-pdf', {
+          body: {
+            texto_pdf: texto.trim().length >= 80 ? texto : '',
+            nome_arquivo: file.name,
+            tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
+            tipo_estrutura: tipoEstrutura,
+          },
+        });
+        if (!r.error) return r;
+        const ctx = (r.error as { context?: Response }).context;
+        let motivo = r.error.message;
+        try {
+          const corpo = ctx ? await ctx.clone().json() : null;
+          if (corpo?.error) motivo = String(corpo.error);
+        } catch { /* corpo não era JSON — fica a mensagem genérica */ }
+        return { ...r, status: ctx?.status ?? 0, motivo };
+      };
+
+      let resposta = await chamarExtracao();
+      for (let tentativa = 1; resposta.error && tentativa <= 2; tentativa++) {
+        const st = (resposta as { status?: number }).status ?? 0;
+        const transitorio = st === 429 || st === 502 || st === 503 || st === 504;
+        if (!transitorio) break;
+        setProgress(70);
+        toast.info(`Provedor de IA ocupado — nova tentativa automática em 20s (${tentativa}/2)…`);
+        await new Promise(res => setTimeout(res, 20000));
+        resposta = await chamarExtracao();
+      }
+
+      const { data } = resposta;
+      if (resposta.error) throw new Error((resposta as { motivo?: string }).motivo || resposta.error.message);
       if (!data?.success) throw new Error(data?.error || 'Erro na extração');
 
       setProgress(100);
