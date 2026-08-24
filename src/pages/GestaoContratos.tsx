@@ -578,7 +578,22 @@ export default function GestaoContratos() {
             </TabsContent>
           )}
           <TabsContent value="contratos-aditivos">
-            <ContratoArquivos contratoId={c.id} />
+            <ContratoArquivos
+              contratoId={c.id}
+              onCadastrarDerivado={isAta ? () => {
+                resetForm();
+                setForm(f => ({
+                  ...f,
+                  tipo_documento: 'contrato',
+                  ata_srp_id: c.id,
+                  orgao_contratante: c.orgao_contratante || '',
+                  objeto: c.objeto || '',
+                  uf: c.uf || '',
+                  municipio: c.municipio || '',
+                }));
+                setDialogOpen(true);
+              } : undefined}
+            />
           </TabsContent>
         </Tabs>
       </AppLayout>

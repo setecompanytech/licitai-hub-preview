@@ -154,7 +154,7 @@ const DOCUMENTOS_DO_CERTAME = [
   'aditivo_quantidade', 'aditivo_reequilibrio', 'apostilamento',
 ];
 
-export default function ContratoArquivos({ contratoId }: { contratoId: string }) {
+export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { contratoId: string; onCadastrarDerivado?: () => void }) {
   const { user } = useAuth();
   const [arquivos, setArquivos] = useState<any[]>([]);
   const [aditivos, setAditivos] = useState<any[]>([]);
@@ -270,9 +270,18 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       setPendingFile(file);
       if (fileRef.current) fileRef.current.value = '';
-      toast.info('Analisando documento via IA…');
+      // O id fixo faz cada etapa SUBSTITUIR a anterior — uma linha de status,
+      // não uma pilha de toasts. Documento digitalizado leva minutos, e espera
+      // sem narração parece travamento.
+      const TID = 'leitura-documento';
+      toast.loading('Analisando documento via IA… Documento digitalizado pode levar 1–2 min.', { id: TID });
       try {
-        const detected = await extractContractDataFromFile(file, uploadTipo);
+        const detected = await extractContractDataFromFile(
+          file,
+          uploadTipo,
+          (msg) => toast.loading(msg, { id: TID }),
+        );
+        toast.dismiss(TID);
         // Falha de leitura NÃO pode ser silenciosa: o arquivo era guardado sem
         // análise e ninguém sabia que o confronto com a ATA não aconteceu.
         if (!detected) {
@@ -327,10 +336,21 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
           return;
         }
       } catch (err) {
+        toast.dismiss(TID);
         console.warn('IA detection skipped:', err);
       }
       // No detection → upload as chosen
       await doUpload(file, uploadTipo);
+      // O upload guarda o PDF; o CONTRATO como registro — com saldo, itens e
+      // pedidos — ainda não existe. Sem esta ponte, a aba Contratos derivados
+      // fica vazia e parece dessincronizada do upload.
+      if (uploadTipo === 'contrato_derivado' && onCadastrarDerivado) {
+        toast.info('O arquivo foi guardado — mas o contrato ainda não existe como registro.', {
+          description: 'A aba Contratos derivados só mostra registros com saldo e itens.',
+          action: { label: 'Registrar contrato derivado', onClick: onCadastrarDerivado },
+          duration: 20000,
+        });
+      }
       setPendingFile(null);
     } else {
       doUpload(file, uploadTipo);

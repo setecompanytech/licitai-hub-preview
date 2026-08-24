@@ -32,8 +32,8 @@ function normalizeExtractedText(text: string): string {
  * é digitalizado. O padrão de 5 páginas serve a certidão; não serve a uma ATA
  * de 156 páginas escaneada, onde a tabela de itens pode estar em qualquer lugar.
  */
-export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false, paginasDeOcr?: number): Promise<string> {
-  return extractTextFromBlob(file, file.name, maxPages, isEdital, paginasDeOcr);
+export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false, paginasDeOcr?: number, aoProgredir?: (msg: string) => void): Promise<string> {
+  return extractTextFromBlob(file, file.name, maxPages, isEdital, paginasDeOcr, aoProgredir);
 }
 
 export async function extractTextFromBlob(
@@ -42,6 +42,7 @@ export async function extractTextFromBlob(
   maxPages = DEFAULT_MAX_PAGES,
   isEdital = false,
   paginasDeOcr?: number,
+  aoProgredir?: (msg: string) => void,
 ): Promise<string> {
   const name = fileName.toLowerCase();
   const type = blob.type.toLowerCase();
@@ -51,7 +52,7 @@ export async function extractTextFromBlob(
   }
 
   if (name.endsWith('.pdf') || type.includes('pdf')) {
-    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital, paginasDeOcr);
+    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital, paginasDeOcr, aoProgredir);
   }
 
   if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml.document')) {
@@ -153,6 +154,7 @@ async function extractTextFromPDFData(
   fileName: string,
   isEdital = false,
   paginasDeOcr?: number,
+  aoProgredir?: (msg: string) => void,
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -216,6 +218,9 @@ async function extractTextFromPDFData(
     // volte ao lugar das suas páginas — com granularidade de lote, mas em ordem.
     for (let c = 0; c < alvos.length; c += 4) {
       const lote = alvos.slice(c, c + 4);
+      // O OCR de documento grande leva minutos; sem dizer onde está, a espera
+      // parece travamento e a pessoa desiste no meio da leitura certa.
+      aoProgredir?.(`Lendo por OCR: página ${lote[0]}${lote.length > 1 ? `–${lote[lote.length - 1]}` : ''} de ${alvos[alvos.length - 1]}…`);
       const imagens = await renderPdfPagesToVisionInputs(pdf, lote);
       if (imagens.length === 0) continue;
       const textoDoLote = await runVisionExtraction(imagens, fileName);

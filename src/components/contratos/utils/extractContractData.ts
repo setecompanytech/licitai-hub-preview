@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 export async function extractContractDataFromFile(
   file: File,
   tipoArquivoHint?: string,
+  aoProgredir?: (msg: string) => void,
 ): Promise<any | null> {
   try {
     // TODO leitor passa pelo extrator da casa — nada de loop pdfjs próprio.
@@ -21,7 +22,8 @@ export async function extractContractDataFromFile(
     // uma parte, itens de outra. O importador foi reformado e este caminho não;
     // o mesmo arquivo lia certo numa tela e errado na outra.
     const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-    const texto = await extractTextFromFile(file, 156, false, 40);
+    const texto = await extractTextFromFile(file, 156, false, 40, aoProgredir);
+    aoProgredir?.('Estruturando os dados lidos…');
 
     if (texto.trim().length < 80) {
       ultimoErroDeExtracao = 'O documento não rendeu texto legível, nem por OCR.';
