@@ -75,6 +75,14 @@ const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditiv
 // Dicionário completo (para lookup de tipos já salvos no banco)
 const TIPOS_ARQUIVO = { ...TIPOS_ARQUIVO_CONTRATO, ...TIPOS_ARQUIVO_ATA };
 
+/** Nome do tipo de aditivo, para a confirmação dizer o que será apagado. */
+const TIPOS_ADITIVO_LABEL: Record<string, string> = {
+  valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Valor e Qtde',
+  prazo: 'Prazo', escopo: 'Escopo', reequilibrio: 'Reequilíbrio',
+  revisao: 'Revisão', repactuacao: 'Repactuação', reajuste: 'Reajuste',
+  adesao: 'Adesão', remanejamento: 'Remanejamento',
+};
+
 const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste'];
 const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
 const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade'].includes(tipo);
@@ -658,11 +666,34 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   };
 
   const handleDelete = async (arquivo: any) => {
-    if (!confirm('Excluir este arquivo permanentemente?')) return;
+    // O ADITIVO é outro registro: `contrato_aditivos.arquivo_id` aponta para o
+    // arquivo com ON DELETE SET NULL, então apagar o PDF deixa o aditivo vivo e
+    // órfão — com o valor ainda somado ao contrato e ainda gerando alerta legal.
+    // Quem apagou o arquivo acredita ter apagado o aditivo, e o sistema segue
+    // acusando o que a pessoa jura ter removido.
+    const vinculados = aditivos.filter((a: any) => a.arquivo_id === arquivo.id);
+
+    if (vinculados.length > 0) {
+      const lista = vinculados.map((a: any) => `• ${a.numero_aditivo || 'sem número'} (${TIPOS_ADITIVO_LABEL[a.tipo] || a.tipo})`).join('\n');
+      const juntos = confirm(
+        `Este arquivo tem ${vinculados.length} aditivo(s) registrado(s):\n\n${lista}\n\n` +
+        'OK — excluir o arquivo E o(s) aditivo(s): os valores voltam ao contrato e os alertas legais são recalculados.\n' +
+        'Cancelar — não excluir nada.',
+      );
+      if (!juntos) return;
+      const { error: aditErr } = await supabase
+        .from('contrato_aditivos')
+        .delete()
+        .in('id', vinculados.map((a: any) => a.id));
+      if (aditErr) { toast.error('Erro ao excluir o aditivo', { description: aditErr.message }); return; }
+    } else if (!confirm('Excluir este arquivo permanentemente?')) {
+      return;
+    }
+
     try {
       await supabase.storage.from('contratos-docs').remove([arquivo.storage_path]);
       await supabase.from('contrato_arquivos').delete().eq('id', arquivo.id);
-      toast.success('Arquivo excluído');
+      toast.success(vinculados.length > 0 ? 'Arquivo e aditivo(s) excluídos' : 'Arquivo excluído');
       loadData();
     } catch (err: any) {
       toast.error('Erro ao excluir', { description: err.message });
