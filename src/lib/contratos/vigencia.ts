@@ -101,3 +101,60 @@ export function somarDias(data: string, dias: number): string | null {
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
 }
+
+/** Dias até uma data de calendário. Negativo = já passou. */
+export function diasAteData(data: string | null | undefined, hoje = new Date()): number | null {
+  const m = String(data ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const alvo = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const base = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  return Math.round((alvo - base) / 86400000);
+}
+
+export type SituacaoVigencia = {
+  dias: number | null;
+  vencido: boolean;
+  /** Vence dentro de 60 dias, ainda válido. */
+  vencendo: boolean;
+  /** Frase pronta, sem número negativo. */
+  frase: string | null;
+};
+
+/**
+ * O que dizer sobre o prazo, sem inverter o sinal.
+ *
+ * A tela imprimia os dias restantes crus e produzia "Contrato vence em −375
+ * dias" — que, além de não ser português, some com o fato: o instrumento está
+ * vencido há mais de um ano. Número negativo não é aviso, é defeito.
+ */
+export function situacaoDaVigencia(dataFim: string | null | undefined, hoje = new Date()): SituacaoVigencia {
+  const dias = diasAteData(dataFim, hoje);
+  if (dias === null) return { dias: null, vencido: false, vencendo: false, frase: null };
+
+  if (dias < 0) {
+    const n = Math.abs(dias);
+    return {
+      dias, vencido: true, vencendo: false,
+      frase: n === 1 ? 'Venceu ontem' : `Venceu há ${n} dias`,
+    };
+  }
+  if (dias === 0) return { dias, vencido: false, vencendo: true, frase: 'Vence hoje' };
+  if (dias === 1) return { dias, vencido: false, vencendo: true, frase: 'Vence amanhã' };
+  return { dias, vencido: false, vencendo: dias <= 60, frase: `Vence em ${dias} dias` };
+}
+
+/**
+ * O selo de status é uma coluna preenchida à mão e envelhece sozinha: ninguém
+ * volta ao cadastro no dia em que o prazo acaba. Quando a data de fim já passou,
+ * ela manda — dizer "Vigente" em verde sobre um instrumento vencido há 375 dias
+ * é o sistema afirmando o contrário do que ele mesmo sabe.
+ */
+export function statusEfetivo(statusGravado: string | null | undefined, dataFim: string | null | undefined, hoje = new Date()): string {
+  const s = String(statusGravado || 'vigente');
+  // Suspenso é decisão de alguém e não se dissolve com o calendário.
+  if (s === 'suspenso' || s === 'encerrado') return s;
+  const { vencido, vencendo } = situacaoDaVigencia(dataFim, hoje);
+  if (vencido) return 'encerrado';
+  if (vencendo && s === 'vigente') return 'vencendo';
+  return s;
+}

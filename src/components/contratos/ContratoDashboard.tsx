@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { supabase } from '@/integrations/supabase/client';
+import { situacaoDaVigencia } from '@/lib/contratos/vigencia';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -105,7 +106,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const valorGlobalEfetivo = c.valor_global || 0;
     const pctConsumo = valorGlobalEfetivo > 0 ? (c.valor_consumido / valorGlobalEfetivo) * 100 : 0;
     
-    const diasRestantes = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+    // Contagem por DATA e sem sinal invertido: ver lib/contratos/vigencia.
+    const vigencia = situacaoDaVigencia(c.data_fim);
+    const diasRestantes = vigencia.dias;
     
     // For items, add addendum quantities proportionally
     const itensComAditivo = data.itens.map((i: any) => {
@@ -118,13 +121,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
-  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -138,10 +141,18 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
         </div>
       )}
-      {(itensAlertaSaldo.length > 0 || (diasRestantes !== null && diasRestantes <= 60)) && (
-        <div className="bg-warning/5 border border-warning/30 rounded-xl p-4 space-y-2">
-          <h4 className="text-xs font-semibold text-warning flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Alertas</h4>
-          {diasRestantes !== null && diasRestantes <= 60 && <p className="text-xs text-warning/80">Contrato vence em <strong>{diasRestantes} dias</strong></p>}
+      {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo) && (
+        <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
+          <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
+            <AlertTriangle className="w-4 h-4" /> Alertas
+          </h4>
+          {vigencia.vencido && (
+            <p className="text-xs text-destructive/90">
+              <strong>{vigencia.frase}</strong> (em {c.data_fim ? new Date(`${c.data_fim}T12:00:00`).toLocaleDateString('pt-BR') : '—'}).
+              {' '}Se houve prorrogação, registre o aditivo de prazo para a vigência voltar a valer.
+            </p>
+          )}
+          {!vigencia.vencido && vigencia.vencendo && <p className="text-xs text-warning/80">{vigencia.frase}</p>}
           {itensAlertaSaldo.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
@@ -284,8 +295,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(c.data_assinatura).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'}</p></div>
-          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${diasRestantes !== null && diasRestantes <= 60 ? 'text-warning' : ''}`}>{c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}</p></div>
-          <div><span className="text-muted-foreground">Dias restantes:</span><p className={`font-medium ${diasRestantes !== null && diasRestantes <= 60 ? 'text-warning font-bold' : ''}`}>{diasRestantes !== null ? `${diasRestantes} dias` : '—'}</p></div>
+          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${vigencia.vencido ? 'text-destructive' : vigencia.vencendo ? 'text-warning' : ''}`}>{c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}</p></div>
+          <div>
+            <span className="text-muted-foreground">{vigencia.vencido ? 'Situação:' : 'Dias restantes:'}</span>
+            <p className={`font-medium ${vigencia.vencido ? 'text-destructive font-bold' : vigencia.vencendo ? 'text-warning font-bold' : ''}`}>
+              {vigencia.frase ?? '—'}
+            </p>
+          </div>
         </div>
       </Card>
     </div>

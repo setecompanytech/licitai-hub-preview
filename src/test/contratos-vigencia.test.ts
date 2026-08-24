@@ -2,8 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   avisoDeVigenciaAta,
   calcularVigencia,
+  situacaoDaVigencia,
   somarMeses,
+  statusEfetivo,
 } from '@/lib/contratos/vigencia';
+
+const HOJE = new Date(2026, 7, 24); // 24/08/2026
 
 describe('somarMeses', () => {
   it('soma sem passar por fuso', () => {
@@ -77,5 +81,53 @@ describe('avisoDeVigenciaAta', () => {
 
   it('acusa o que passa dos 24 meses', () => {
     expect(avisoDeVigenciaAta(30)).toContain('excede o limite');
+  });
+});
+
+describe('situacaoDaVigencia', () => {
+  // A tela imprimia os dias crus: "Contrato vence em −375 dias". Número
+  // negativo não é aviso, é defeito — e esconde o fato de estar vencido.
+  it('não inverte o sinal', () => {
+    const r = situacaoDaVigencia('2025-08-13', HOJE);
+    expect(r.vencido).toBe(true);
+    expect(r.dias).toBe(-376);
+    expect(r.frase).toBe('Venceu há 376 dias');
+  });
+
+  it('diz o prazo em português nos extremos', () => {
+    expect(situacaoDaVigencia('2026-08-24', HOJE).frase).toBe('Vence hoje');
+    expect(situacaoDaVigencia('2026-08-25', HOJE).frase).toBe('Vence amanhã');
+    expect(situacaoDaVigencia('2026-08-23', HOJE).frase).toBe('Venceu ontem');
+    expect(situacaoDaVigencia('2026-10-01', HOJE).frase).toBe('Vence em 38 dias');
+  });
+
+  it('marca vencendo só dentro dos 60 dias', () => {
+    expect(situacaoDaVigencia('2026-10-01', HOJE).vencendo).toBe(true);
+    expect(situacaoDaVigencia('2027-01-01', HOJE).vencendo).toBe(false);
+  });
+
+  it('sem data de fim, não afirma nada', () => {
+    expect(situacaoDaVigencia(null, HOJE)).toEqual({ dias: null, vencido: false, vencendo: false, frase: null });
+  });
+});
+
+describe('statusEfetivo', () => {
+  // O selo é coluna preenchida à mão e envelhece sozinha: ninguém volta ao
+  // cadastro no dia em que o prazo acaba.
+  it('a data vencida manda sobre o "Vigente" gravado', () => {
+    expect(statusEfetivo('vigente', '2025-08-13', HOJE)).toBe('encerrado');
+  });
+
+  it('promove a vencendo dentro dos 60 dias', () => {
+    expect(statusEfetivo('vigente', '2026-10-01', HOJE)).toBe('vencendo');
+  });
+
+  it('não mexe no que é decisão de alguém', () => {
+    expect(statusEfetivo('suspenso', '2025-08-13', HOJE)).toBe('suspenso');
+    expect(statusEfetivo('encerrado', '2027-01-01', HOJE)).toBe('encerrado');
+  });
+
+  it('sem data de fim, mantém o gravado', () => {
+    expect(statusEfetivo('vigente', null, HOJE)).toBe('vigente');
   });
 });

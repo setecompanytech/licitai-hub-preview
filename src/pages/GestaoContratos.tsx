@@ -5,7 +5,7 @@ import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import { AMPARO_ART95, ESPECIES_OBJETO, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA, avisoDeVigencia } from '@/lib/contratos/instrumentos';
 import { rotuloDaAta } from '@/lib/contratos/rotulos';
-import { avisoDeVigenciaAta, calcularVigencia, somarDias } from '@/lib/contratos/vigencia';
+import { avisoDeVigenciaAta, calcularVigencia, somarDias, statusEfetivo } from '@/lib/contratos/vigencia';
 import LocalDoOrgao from '@/components/contratos/LocalDoOrgao';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
@@ -416,7 +416,8 @@ export default function GestaoContratos() {
     const c = selectedContrato;
     const isAta = c.tipo_documento === 'ata_srp';
     const pct = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
-    const cfg = statusConfig[c.status] || statusConfig.vigente;
+    // O selo gravado envelhece sozinho; a data de fim manda. Ver vigencia.ts.
+    const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
     const ataOrigem = c.ata_srp_id ? contratos.find(x => x.id === c.ata_srp_id) : null;
     return (
       <AppLayout>
@@ -985,7 +986,7 @@ export default function GestaoContratos() {
           {filtered.map(c => {
             const isAta = c.tipo_documento === 'ata_srp';
             const pct = c.valor_global > 0 ? (c.valor_consumido / c.valor_global) * 100 : 0;
-            const cfg = statusConfig[c.status] || statusConfig.vigente;
+            const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
             const Icon = cfg.icon;
             const dias = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / 86400000) : null;
             return (
