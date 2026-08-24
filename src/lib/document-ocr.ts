@@ -23,9 +23,19 @@ export async function extractTextFromVisionImages(
   const partes: string[] = [];
   for (let i = 0; i < validas.length; i += PAGINAS_POR_LOTE) {
     const lote = validas.slice(i, i + PAGINAS_POR_LOTE);
-    const { data, error } = await supabase.functions.invoke('document-vision-extract', {
+    let { data, error } = await supabase.functions.invoke('document-vision-extract', {
       body: { fileName, images: lote },
     });
+    // O limite por minuto do provedor é o erro NORMAL de um documento grande:
+    // dezenas de lotes em sequência esbarram nele no meio. Sem esta espera, um
+    // 429 no lote 3 jogava fora o documento inteiro.
+    const st = (error as { context?: Response } | null)?.context?.status ?? 0;
+    if (error && (st === 429 || st === 502 || st === 503 || st === 504)) {
+      await new Promise((r) => setTimeout(r, 20000));
+      ({ data, error } = await supabase.functions.invoke('document-vision-extract', {
+        body: { fileName, images: lote },
+      }));
+    }
     if (error) {
       // Falha no meio não joga fora o que já foi lido: devolve o parcial com a
       // falha declarada, para o chamador decidir.

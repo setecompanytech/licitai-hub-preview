@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
-import { extractContractDataFromFile } from './utils/extractContractData';
+import { extractContractDataFromFile, motivoDaUltimaFalha } from './utils/extractContractData';
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
 import { createLogger } from '@/services/logger';
@@ -277,8 +277,8 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
         // análise e ninguém sabia que o confronto com a ATA não aconteceu.
         if (!detected) {
           toast.warning('Não foi possível ler o documento para o confronto com a ATA.', {
-            description: 'O arquivo será guardado sem análise. Reenvie pelo ícone de substituir para tentar de novo.',
-            duration: 10000,
+            description: `${motivoDaUltimaFalha() ?? 'Erro desconhecido na leitura.'} O arquivo será guardado sem análise — reenvie pelo ícone de substituir para tentar de novo.`,
+            duration: 12000,
           });
         }
         if (detected && detected.tipo_documento_detectado) {
