@@ -3711,3 +3711,33 @@ COMMENT ON COLUMN public.contratos.especie_objeto IS
   '(art. 111) ou informatica (art. 109, 4 anos). Espelho no front: '
   'ESPECIES_OBJETO em src/lib/contratos/instrumentos.ts.';
 ```
+
+---
+
+## 20260824000001 — Alerta legal por instrumento: ata não é contrato
+
+**Por quê.** A ATA SRP 022/2024 recebeu "acréscimos acumulados em VALOR
+atingiram 120,43% — Limite legal Lei 14.133/21, art. 125: 25%". A conta fecha
+(R$ 8.494.080 + R$ 10.229.184 = o valor global de R$ 18.723.264), mas a lei
+citada é a de outro instrumento: `recalcular_alertas_aditivos_contrato` lia
+`contratos` pelo id e nunca olhava `tipo_documento`.
+
+O art. 125 rege alteração de CONTRATO. Na Ata de Registro de Preços valem o
+art. 30 do Decreto 11.462/2023 (é vedado acrescer quantitativo registrado — não
+há teto de 25% a estourar) e o art. 32, §4º (o total das adesões não pode
+exceder o dobro do registrado).
+
+**O que muda.**
+1. `contrato_aditivos.tipo` ganha dois valores — `adesao` e `remanejamento` —
+   sem alterar constraint (a coluna nunca teve CHECK). É o dado que faltava:
+   sem ele, todo movimento na ata virava "acréscimo".
+2. A função ramifica por `tipo_documento`. Contrato segue idêntico ao de antes.
+   Ata passa a avisar conforme o Decreto.
+3. Reaplica o cálculo **apenas nas atas**, para o aviso antigo sair da tela.
+
+**Nada é reclassificado.** Enquanto ninguém disser o que os aditivos foram, a
+ata recebe um aviso que declara a dúvida e pede a classificação, em vez de
+afirmar infração sob a lei errada.
+
+**Arquivo:** `supabase/migrations/20260824000001_alerta_legal_por_instrumento.sql`
+

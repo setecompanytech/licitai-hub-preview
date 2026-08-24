@@ -14,14 +14,14 @@ import { toast } from 'sonner';
 import { NATUREZA_DO_VALOR, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
 import {
   Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp,
-  AlertTriangle, CheckCircle2, ShieldAlert
+  AlertTriangle, CheckCircle2, ShieldAlert, Users
 } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 
-const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string; semLimite?: boolean }> = {
+const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; color: string; semLimite?: boolean; soAta?: boolean }> = {
   valor: { label: 'Valor', icon: DollarSign, color: 'bg-success/10 text-success' },
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-info/10 text-info' },
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
@@ -31,6 +31,11 @@ const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; co
   revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   reajuste: { label: 'Reajuste', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
+  // Exclusivos de ATA SRP. Adesão e remanejamento não acrescem o registrado —
+  // e sem poder dizer isso, todo movimento na ata virava "acréscimo", que na
+  // ARP é conduta vedada (Decreto 11.462/2023, art. 30).
+  adesao: { label: 'Adesão de órgão não participante', icon: Users, color: 'bg-info/10 text-info', soAta: true },
+  remanejamento: { label: 'Remanejamento entre participantes', icon: Layers, color: 'bg-muted text-muted-foreground', soAta: true },
 };
 
 type Aditivo = {
@@ -83,8 +88,13 @@ const emptyForm = {
 };
 
 const TIPOS_SEM_LIMITE = ['reequilibrio', 'revisao', 'repactuacao', 'reajuste'];
-const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE].includes(tipo);
-const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo'].includes(tipo);
+// Movimentos de ATA. Não entram no teto do art. 125 porque não são alteração de
+// contrato: adesão tem teto próprio (Decreto 11.462/2023, art. 32, §4º) e
+// remanejamento redistribui entre participantes sem acrescer o registrado.
+const TIPOS_DE_ATA = ['adesao', 'remanejamento'];
+const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA];
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
+const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', ...TIPOS_DE_ATA].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
@@ -265,7 +275,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   // Compliance (art. 125 Lei 14.133/21) — excludes reequilibrio/revisao/repactuacao/reajuste
   const isObra = /reforma|engenharia|obra/i.test(objetoContrato);
   const limiteArt125 = isObra ? 50 : 25;
-  const aditivosSujeitos = aditivos.filter(a => !TIPOS_SEM_LIMITE.includes(a.tipo));
+  const aditivosSujeitos = aditivos.filter(a => !FORA_DO_ART_125.includes(a.tipo));
   const totalAcrescimoSujeito = aditivosSujeitos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
   const totalSupressaoSujeita = aditivosSujeitos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
   const pctAcrescimo = valorOriginal > 0 ? (totalAcrescimoSujeito / valorOriginal) * 100 : 0;
@@ -277,7 +287,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const aditivosComPct = (() => {
     let acc = 0;
     return aditivos.map(a => {
-      const isSujeito = !TIPOS_SEM_LIMITE.includes(a.tipo);
+      const isSujeito = !FORA_DO_ART_125.includes(a.tipo);
       if (isSujeito) acc += (a.valor_acrescimo || 0);
       const pctAcc = valorOriginal > 0 ? (acc / valorOriginal) * 100 : 0;
       return { ...a, pctCumulativo: isSujeito ? parseFloat(pctAcc.toFixed(2)) : null, isSujeito };
@@ -518,12 +528,32 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   <SelectItem value="revisao">Revisão Contratual</SelectItem>
                   <SelectItem value="repactuacao">Repactuação</SelectItem>
                   <SelectItem value="reajuste">Reajuste</SelectItem>
+                  {docAtual?.tipo_documento === 'ata_srp' && (
+                    <>
+                      <SelectItem value="adesao">Adesão de órgão não participante</SelectItem>
+                      <SelectItem value="remanejamento">Remanejamento entre participantes</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
               {TIPOS_SEM_LIMITE.includes(form.tipo) && (
                 <p className="text-xs text-warning mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+                </p>
+              )}
+              {form.tipo === 'adesao' && (
+                <p className="text-xs text-info mt-1 flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  Somadas, as adesões não podem exceder o dobro do registrado
+                  (Decreto 11.462/2023, art. 32, §4º).
+                </p>
+              )}
+              {docAtual?.tipo_documento === 'ata_srp' && ['valor', 'quantidade', 'valor_quantidade'].includes(form.tipo) && (
+                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Acrescer quantitativo registrado em ATA é vedado (Decreto 11.462/2023,
+                  art. 30). Se foi adesão de outro órgão, escolha “Adesão”.
                 </p>
               )}
             </div>
