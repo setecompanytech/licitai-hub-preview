@@ -3863,3 +3863,17 @@ Os gatilhos (já `trg_zlog_*`) continuam apontando para elas.
 
 **Arquivo:** `supabase/migrations/20260824000008_diario_escreve_em_reais.sql`
 
+---
+
+## 20260824000009 — O diário identifica o item; não o transcreve
+
+**Por quê.** Cada recálculo de saldo gravava a DESCRIÇÃO INTEIRA do item (700
+caracteres de especificação) em `valor_anterior`, repetidos a cada evento —
+parede de texto no diálogo, peso morto na tabela.
+
+**O que muda.** `log_recalc_saldo_ata_item` grava os primeiros 140 caracteres
+com reticências; a especificação completa mora no item, que o diálogo já
+mostra na seção própria. Mantém o `formatar_brl` da 20260824000008.
+
+**Arquivo:** `supabase/migrations/20260824000009_diario_nao_grava_parede_de_texto.sql`
+

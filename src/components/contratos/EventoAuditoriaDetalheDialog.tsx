@@ -5,6 +5,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { humanizarValorAuditoria } from '@/lib/contratos/auditoriaTexto';
+
+const resumir = (t: string) => (t.length > 260 ? `${t.slice(0, 260)}…` : t);
 import { Loader2, FileText, Sparkles, Calculator, AlertTriangle, ScrollText, ArrowRight, Package, FileSignature } from 'lucide-react';
 
 const CAMPO_LABELS: Record<string, string> = {
@@ -188,8 +190,12 @@ export default function EventoAuditoriaDetalheDialog({
                     <div className="text-xs text-muted-foreground mb-1">
                       {isAlerta ? 'Limite legal' : ctx?.eventoAnterior ? `Estado anterior (${fmtDate(ctx.eventoAnterior.created_at)})` : 'Valor anterior'}
                     </div>
+                    {/* Truncado: o diário de saldo carrega a DESCRIÇÃO INTEIRA
+                        do item (700 caracteres de especificação de carne moída)
+                        como "valor anterior" — o texto integral já tem casa na
+                        seção Item afetado, logo abaixo. */}
                     <div className="text-sm break-words">
-                      {humanizarValorAuditoria(evento.campo, ctx?.eventoAnterior?.valor_novo || evento.valor_anterior, evento.origem)}
+                      {resumir(humanizarValorAuditoria(evento.campo, ctx?.eventoAnterior?.valor_novo || evento.valor_anterior, evento.origem))}
                     </div>
                   </div>
                   <div className="hidden md:flex items-center justify-center text-muted-foreground">
@@ -200,7 +206,7 @@ export default function EventoAuditoriaDetalheDialog({
                       {isAlerta ? 'Situação detectada' : 'Estado atual'}
                     </div>
                     <div className={`text-sm break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
-                      {humanizarValorAuditoria(evento.campo, evento.valor_novo, evento.origem)}
+                      {resumir(humanizarValorAuditoria(evento.campo, evento.valor_novo, evento.origem))}
                     </div>
                   </div>
                 </div>
@@ -214,7 +220,7 @@ export default function EventoAuditoriaDetalheDialog({
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
                     <FileSignature className="h-3.5 w-3.5" /> Snapshot atual do registro
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                     <div className="border rounded-md p-2">
                       <div className="text-muted-foreground">Nº do registro</div>
                       <div className="font-medium">{ctx.ataAtual.numero_contrato || '—'}</div>
@@ -245,7 +251,7 @@ export default function EventoAuditoriaDetalheDialog({
                     <div className="text-sm font-medium">
                       {ctx.itemAtual.codigo_item ? `[${ctx.itemAtual.codigo_item}] ` : ''}{ctx.itemAtual.descricao || '—'}
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                       <div><div className="text-muted-foreground">Qtd contratada</div><div>{fmtNum(ctx.itemAtual.quantidade_contratada)}</div></div>
                       <div><div className="text-muted-foreground">Qtd consumida</div><div className="font-semibold text-foreground">{fmtNum(ctx.itemAtual.quantidade_ata_consumida)}</div></div>
                       <div><div className="text-muted-foreground">Valor unit.</div><div>{fmtBRL(ctx.itemAtual.valor_unitario)}</div></div>
@@ -268,8 +274,11 @@ export default function EventoAuditoriaDetalheDialog({
                           <div className="font-medium truncate">{c.numero_contrato || '(sem número)'}</div>
                           <div className="text-muted-foreground truncate">{c.objeto || '—'}</div>
                           <div className="text-muted-foreground text-xs mt-0.5">
-                            {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'} →{' '}
-                            {c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}
+                            {/* "— → —" era hieróglifo: sem nenhuma data, o que há
+                                para dizer é que a vigência não foi informada. */}
+                            {!c.data_inicio && !c.data_fim
+                              ? 'vigência não informada'
+                              : <>{c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'} → {c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}</>}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -298,7 +307,7 @@ export default function EventoAuditoriaDetalheDialog({
                           </div>
                           <span className="text-muted-foreground text-xs">{fmtDate(a.created_at)}</span>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                           {Number(a.valor_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Valor: </span><span className="text-success">{fmtBRL(a.valor_acrescimo)}</span></div>}
                           {Number(a.valor_supressao) > 0 && <div><span className="text-muted-foreground">− Valor: </span><span className="text-destructive">{fmtBRL(a.valor_supressao)}</span></div>}
                           {Number(a.quantidade_acrescimo) > 0 && <div><span className="text-muted-foreground">+ Qtd: </span><span>{fmtNum(a.quantidade_acrescimo)}</span></div>}
