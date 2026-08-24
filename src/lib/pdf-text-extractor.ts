@@ -27,8 +27,13 @@ function normalizeExtractedText(text: string): string {
     .trim();
 }
 
-export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false): Promise<string> {
-  return extractTextFromBlob(file, file.name, maxPages, isEdital);
+/**
+ * `paginasDeOcr` sobrepõe quantas páginas vão para o OCR por visão quando o PDF
+ * é digitalizado. O padrão de 5 páginas serve a certidão; não serve a uma ATA
+ * de 156 páginas escaneada, onde a tabela de itens pode estar em qualquer lugar.
+ */
+export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false, paginasDeOcr?: number): Promise<string> {
+  return extractTextFromBlob(file, file.name, maxPages, isEdital, paginasDeOcr);
 }
 
 export async function extractTextFromBlob(
@@ -36,6 +41,7 @@ export async function extractTextFromBlob(
   fileName = 'documento.pdf',
   maxPages = DEFAULT_MAX_PAGES,
   isEdital = false,
+  paginasDeOcr?: number,
 ): Promise<string> {
   const name = fileName.toLowerCase();
   const type = blob.type.toLowerCase();
@@ -45,7 +51,7 @@ export async function extractTextFromBlob(
   }
 
   if (name.endsWith('.pdf') || type.includes('pdf')) {
-    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital);
+    return extractTextFromPDFData(await blob.arrayBuffer(), maxPages, fileName, isEdital, paginasDeOcr);
   }
 
   if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml.document')) {
@@ -146,6 +152,7 @@ async function extractTextFromPDFData(
   maxPages: number,
   fileName: string,
   isEdital = false,
+  paginasDeOcr?: number,
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -178,7 +185,7 @@ async function extractTextFromPDFData(
   }
 
   // For editais or documents with insufficient text, use vision OCR with more pages
-  const visionPageLimit = isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT;
+  const visionPageLimit = paginasDeOcr ?? (isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT);
   const shouldFallback = isEdital
     ? extractedText.length < 2000
     : shouldUsePdfVisionFallback(extractedText);

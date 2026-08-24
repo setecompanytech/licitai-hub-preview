@@ -107,41 +107,22 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setProgress(10);
 
     try {
-      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
       let texto = '';
-      const images: { dataUrl: string }[] = [];
 
-      if (isPdf) {
-        const pdfjsLib = await import('pdfjs-dist');
-        const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          texto += content.items.map((item: any) => item.str).join(' ') + '\n';
-        }
-        if (texto.trim().length < 80) {
-          const canvas = document.createElement('canvas');
-          for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2 });
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d')!;
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
-          }
-        }
-      } else {
-        texto = await extractTextFromFile(file, 80);
-      }
+      // PDF nascido de scanner/JPG não tem camada de texto. O caminho antigo
+      // mandava 5 páginas como FOTO para a IA ler e estruturar de uma vez — e
+      // foi assim que uma ATA escaneada de 156 páginas virou sete itens
+      // inventados: quase nada legível chegava, e o modelo completou a lacuna.
+      // Agora todo arquivo passa pelo extrator com OCR (pdf-text-extractor):
+      // primeiro vira TEXTO, página a página, e só o texto vai à estruturação —
+      // onde a conferência contra o valor global consegue vigiar o resultado.
+      setProgress(25);
+      texto = await extractTextFromFile(file, 156, false, 40);
 
       setProgress(55);
 
-      if (texto.trim().length < 80 && images.length === 0) {
-        throw new Error('Não foi possível extrair texto legível do documento. Verifique se o arquivo está protegido ou corrompido.');
+      if (texto.trim().length < 80) {
+        throw new Error('Não foi possível ler o documento, nem por OCR. Verifique se o arquivo está protegido, corrompido ou com digitalização ilegível.');
       }
 
       setProgress(65);
@@ -151,7 +132,6 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
           nome_arquivo: file.name,
           tipo_arquivo: file.type || file.name.split('.').pop() || 'desconhecido',
           tipo_estrutura: tipoEstrutura,
-          images: images.length > 0 ? images : undefined,
         },
       });
 
