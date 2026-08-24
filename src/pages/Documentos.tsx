@@ -85,9 +85,32 @@ const checklistDocumentos: Documento[] = [
 
 const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string; label: string }> = {
   ok: { icon: CheckCircle2, color: 'text-success', label: 'Regular' },
-  pendente: { icon: Clock, color: 'text-warning', label: 'Pendente' },
+  // "Pendente" não dizia o que estava pendente, e a leitura natural é que falta
+  // alguma coisa no documento. O que há é validade curta — e quem lê precisa do
+  // prazo, não do rótulo. Na contagem do topo, que soma vários, fica o gênero;
+  // na linha do documento, o prazo em dias.
+  pendente: { icon: Clock, color: 'text-warning', label: 'Vencendo' },
   vencido: { icon: AlertTriangle, color: 'text-destructive', label: 'Vencido' },
   ausente: { icon: AlertTriangle, color: 'text-destructive', label: 'Ausente' },
+};
+
+/** Dias até a validade, contados por DATA — hora não entra, fuso não desloca. */
+const diasAteVencer = (validade: string): number | null => {
+  const m = String(validade).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const alvo = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const agora = new Date();
+  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  return Math.round((alvo - hoje) / 86400000);
+};
+
+/** O prazo dito por extenso, para a pessoa não ter de calcular de cabeça. */
+const prazoPorExtenso = (validade?: string): string | null => {
+  const d = validade ? diasAteVencer(validade) : null;
+  if (d === null || d < 0) return null;
+  if (d === 0) return 'Vence hoje';
+  if (d === 1) return 'Vence amanhã';
+  return `Vence em ${d} dias`;
 };
 
 const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
@@ -364,13 +387,11 @@ export default function Documentos() {
             return { ...doc, status: 'ausente' as DocStatus, validade: undefined, arquivo: undefined, storagePath: undefined };
           }
 
-          const hoje = new Date();
-          const validade = match.validade ? new Date(match.validade) : null;
+          const dias = match.validade ? diasAteVencer(match.validade) : null;
           let status: DocStatus = 'ok';
-          if (validade && validade < hoje) status = 'vencido';
-          else if (validade) {
-            const diff = (validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
-            if (diff <= 30) status = 'pendente';
+          if (dias !== null) {
+            if (dias < 0) status = 'vencido';
+            else if (dias <= 30) status = 'pendente';
           }
 
           return {
@@ -756,7 +777,9 @@ export default function Documentos() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className={`text-sm ${cfg.color}`}>
-                                {cfg.label}
+                                {doc.status === 'pendente'
+                                  ? prazoPorExtenso(doc.validade) ?? cfg.label
+                                  : cfg.label}
                               </Badge>
                               {doc.arquivo ? (
                                 <div className="flex gap-1">
