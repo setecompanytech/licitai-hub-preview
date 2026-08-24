@@ -210,6 +210,15 @@ export default function GestaoContratos() {
 
   const atasDisponiveis = contratos.filter(c => c.tipo_documento === 'ata_srp');
 
+  // Uma ATA cadastrada como contrato passa despercebida: a tela mostra o número
+  // que a pessoa digitou, e nada denuncia o tipo errado. Foi assim que a ATA SRP
+  // 022/2024 passou meses sendo medida pelo teto do art. 125, que não é dela.
+  // O aviso não bloqueia — quem chama "Ata de reunião" a um contrato tem razão
+  // de seguir; só não pode ser por não ter reparado.
+  const pareceAtaMasEstaComoContrato =
+    form.tipo_documento === 'contrato' &&
+    /\b(ata|registro\s+de\s+pre[çc]os|srp|arp)\b/i.test(form.numero_contrato || '');
+
   const resetForm = () => { setLicitacaoSearch(''); setForm({
     tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
     forma_execucao: 'contrato_formal', art95_fundamento: '', especie_objeto: '',
@@ -624,7 +633,21 @@ export default function GestaoContratos() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div><Label>{isAtaForm ? 'Nº ATA *' : 'Nº Contrato *'}</Label><Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder={isAtaForm ? 'ATA-001/2025' : 'CT-001/2025'} /></div>
+              <div>
+                <Label>{isAtaForm ? 'Nº ATA *' : 'Nº Contrato *'}</Label>
+                <Input value={form.numero_contrato} onChange={e => setForm(f => ({ ...f, numero_contrato: e.target.value }))} placeholder={isAtaForm ? 'ATA-001/2025' : 'CT-001/2025'} />
+                {pareceAtaMasEstaComoContrato && (
+                  <p className="text-xs text-warning mt-1 flex items-start gap-1">
+                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>
+                      O número diz “ATA”, mas o tipo está como Contrato. São instrumentos
+                      diferentes: a ata segue o Decreto 11.462/2023 (acréscimo vedado, adesão
+                      com teto próprio) e o contrato, o art. 125 da Lei 14.133/2021.
+                      Se for uma ata, mude o tipo acima.
+                    </span>
+                  </p>
+                )}
+              </div>
               <div><Label>Órgão {isAtaForm ? 'Gerenciador' : 'Contratante'} *</Label><Input value={form.orgao_contratante} onChange={e => setForm(f => ({ ...f, orgao_contratante: e.target.value }))} /></div>
               <div>
                 <Label>Vendedor responsável</Label>
