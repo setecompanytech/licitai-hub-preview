@@ -64,6 +64,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState('');
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [tipoEstrutura, setTipoEstrutura] = useState<'itens' | 'lotes'>('itens');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -93,6 +94,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
 
     setFileName(file.name);
     setStep('extracting');
+    setAviso(null);
     setProgress(10);
 
     try {
@@ -149,6 +151,12 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
 
       setProgress(100);
       setExtracted(data.data);
+      // O servidor avisa quando recortou o documento ou quando a resposta bateu
+      // no limite: sem isso, uma tabela pela metade chega como se fosse inteira.
+      if (data.aviso) setAviso(String(data.aviso));
+      if (!data.data?.itens?.length) {
+        setAviso((a) => a ?? 'Nenhum item foi identificado no documento. Cadastre-os pela aba Itens/Lotes, ou envie o anexo com a tabela.');
+      }
       setStep('done');
     } catch (err: any) {
       console.error('Extraction error:', err);
@@ -282,6 +290,12 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 {totalItens > 0 && <Badge variant="secondary" className="text-xs">{totalItens} {tipoEstrutura === 'lotes' ? 'itens em lotes' : 'itens'} encontrados</Badge>}
                 {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-xs">{extracted.vigencia_meses} meses</Badge>}
               </div>
+              {aviso && (
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-warning">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>{aviso}</span>
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end gap-2">

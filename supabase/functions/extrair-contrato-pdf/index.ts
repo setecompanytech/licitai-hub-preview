@@ -183,6 +183,37 @@ function normalizeContrato(data: DadosContrato) {
   };
 }
 
+/** Marcadores de tabela de itens em documento público brasileiro. */
+const INICIO_DE_TABELA = /(\bITEM\b|\bLOTE\s*0?1\b|DESCRI[ÇC][ÃA]O\s+DO\s+(ITEM|PRODUTO)|QUANT(IDADE)?\.?\s+(UNID|VALOR)|VALOR\s+UNIT)/i;
+
+let textoFoiRecortado = false;
+
+/**
+ * Recorta o texto para caber na análise SEM perder a tabela de itens.
+ *
+ * `slice(0, N)` corta pelo fim, e numa ATA SRP a tabela de itens costuma ficar
+ * no fim — o cabeçalho (objeto, valor, datas) vinha completo e os itens
+ * sumiam, que é exatamente o que o dono do produto viu: contrato cadastrado,
+ * aba Itens/Lotes vazia.
+ *
+ * Aqui a cabeça é preservada (é onde estão objeto e valores) e o restante do
+ * orçamento vai para a região da tabela.
+ */
+function recortarPreservandoTabela(texto: string, limite: number): string {
+  textoFoiRecortado = false;
+  if (texto.length <= limite) return texto;
+
+  textoFoiRecortado = true;
+  const cabeca = Math.min(30000, Math.floor(limite * 0.35));
+  const inicio = texto.slice(0, cabeca);
+
+  const m = texto.slice(cabeca).match(INICIO_DE_TABELA);
+  if (!m || m.index === undefined) return texto.slice(0, limite);
+
+  const tabela = texto.slice(cabeca + m.index, cabeca + m.index + (limite - cabeca));
+  return `${inicio}\n\n[...trecho intermediário omitido...]\n\n${tabela}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -203,7 +234,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
     let userContent: unknown;
     if (hasImages && !hasText) {
@@ -215,7 +246,7 @@ serve(async (req) => {
         })),
       ];
     } else {
-      const truncated = texto_pdf.slice(0, 90000);
+      const truncated = recortarPreservandoTabela(texto_pdf, 90000);
       userContent = `${promptText}\n\nTEXTO DO DOCUMENTO:\n${truncated}`;
     }
 
@@ -302,6 +333,10 @@ serve(async (req) => {
           },
         ],
         tool_choice: { type: "function", function: { name: "extrair_contrato" } },
+        // Sem teto explícito, o padrão do modelo (4k) corta a resposta no meio
+        // da lista de itens — e a lista é justamente a parte longa de uma ATA
+        // SRP. JSON cortado não é JSON: a extração inteira se perdia.
+        max_tokens: 16000,
       }),
     });
 
@@ -324,15 +359,39 @@ serve(async (req) => {
     }
 
     const result = await response.json();
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    const escolha = result.choices?.[0];
+    const toolCall = escolha?.message?.tool_calls?.[0];
 
     if (!toolCall?.function?.arguments) {
       throw new Error("IA não retornou dados estruturados");
     }
 
-    const extracted = normalizeContrato(JSON.parse(toolCall.function.arguments));
+    // Resposta cortada por limite de tamanho devolve JSON incompleto. Falhar
+    // aqui dizendo o motivo é melhor do que devolver metade da tabela como se
+    // fosse a tabela inteira — quem cadastra não teria como perceber.
+    let extracted;
+    try {
+      extracted = normalizeContrato(JSON.parse(toolCall.function.arguments));
+    } catch (_) {
+      if (escolha?.finish_reason === "length") {
+        throw new Error(
+          "O documento é longo demais para uma extração única: a resposta foi cortada. " +
+          "Envie o anexo com a tabela de itens separadamente, ou cadastre os itens pela aba Itens/Lotes.",
+        );
+      }
+      throw new Error("A IA devolveu dados que não puderam ser lidos.");
+    }
 
-    return new Response(JSON.stringify({ success: true, data: extracted }), {
+    return new Response(JSON.stringify({
+      success: true,
+      data: extracted,
+      // Rastro do que ficou de fora, para a tela poder avisar.
+      aviso: escolha?.finish_reason === "length"
+        ? "A resposta da IA atingiu o limite de tamanho — confira se todos os itens vieram."
+        : textoFoiRecortado
+          ? "O documento foi recortado para caber na análise — confira se todos os itens vieram."
+          : null,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
