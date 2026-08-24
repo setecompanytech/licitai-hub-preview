@@ -3816,3 +3816,22 @@ Exclusão DEFINITIVA continua existindo — como segundo passo, dentro da lixeir
 
 **Arquivo:** `supabase/migrations/20260824000005_lixeira_de_contratos.sql`
 
+---
+
+## 20260824000006 — Reequilíbrio no derivado não consome a ata
+
+**Por quê.** Reequilíbrio (caso fortuito/força maior, art. 124, II, "d") no
+contrato derivado subia o `valor_global` do contrato, e o consumo da ata — soma
+dos globais — encolhia o saldo. Errado: a ata registra QUANTIDADES; o
+reequilíbrio repara o preço do contrato, não toma quantidade do registrado.
+Deixar a álea extraordinária comer o saldo bloquearia contratos futuros por um
+dinheiro que não saiu da ata.
+
+**O que muda.** `recalc_consumo_ata_pai` desconta o efeito líquido dos
+institutos fora-do-objeto (reequilibrio/revisao/repactuacao/reajuste:
+acréscimos − supressões) da fatia de cada derivado. Gatilho novo em
+`contrato_aditivos` cutuca a ata quando o aditivo do derivado muda. Reaplica
+nas atas existentes ao final.
+
+**Arquivo:** `supabase/migrations/20260824000006_reequilibrio_nao_consome_a_ata.sql`
+
