@@ -24,6 +24,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
+  const [editandoVigencia, setEditandoVigencia] = useState(false);
+  const [vigForm, setVigForm] = useState({ assinatura: '', inicio: '', fim: '' });
+  const [salvandoVigencia, setSalvandoVigencia] = useState(false);
   const [globalInput, setGlobalInput] = useState('');
   const { temPermissao, isFinanceiro, isAdmin } = useMembroPermissoes();
 
@@ -307,7 +310,63 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       />
 
       <Card className="p-4">
-        <h4 className="text-xs font-semibold mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs font-semibold flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
+          {!editandoVigencia && (
+            <Button variant="ghost" size="icon" className="h-5 w-5"
+              onClick={() => {
+                setVigForm({
+                  assinatura: c.data_assinatura?.slice(0, 10) || '',
+                  inicio: c.data_inicio?.slice(0, 10) || '',
+                  fim: c.data_fim?.slice(0, 10) || '',
+                });
+                setEditandoVigencia(true);
+              }}>
+              <Pencil className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+        {/* O contrato do scan chega sem datas — o documento não as rendeu — e a
+            vigência ficava em traços SEM caminho para preencher. Sem data de
+            fim, o contrato não entra em aviso de vencimento nenhum. */}
+        {!editandoVigencia && !c.data_fim && (
+          <p className="text-xs text-warning mb-2">
+            O documento não trouxe as datas. Informe-as no lápis — sem data de fim,
+            este contrato fica fora dos avisos de vencimento.
+          </p>
+        )}
+        {editandoVigencia && (
+          <div className="flex flex-wrap items-end gap-2 mb-3">
+            {([['Assinatura', 'assinatura'], ['Início', 'inicio'], ['Fim', 'fim']] as const).map(([rot, chave]) => (
+              <div key={chave}>
+                <span className="text-xs text-muted-foreground block mb-0.5">{rot}</span>
+                <input type="date" className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  value={vigForm[chave]}
+                  onChange={e => setVigForm(f => ({ ...f, [chave]: e.target.value }))} />
+              </div>
+            ))}
+            <Button size="sm" className="h-8 text-xs" disabled={salvandoVigencia} onClick={async () => {
+              setSalvandoVigencia(true);
+              const { error } = await supabase.from('contratos').update({
+                data_assinatura: vigForm.assinatura || null,
+                data_inicio: vigForm.inicio || null,
+                data_fim: vigForm.fim || null,
+              } as any).eq('id', contratoId);
+              setSalvandoVigencia(false);
+              if (error) { toast.error('Erro ao salvar vigência', { description: error.message }); return; }
+              toast.success('Vigência atualizada.');
+              setEditandoVigencia(false);
+              // Mesmo padrão do lápis do valor: relê o contrato e atualiza o estado.
+              const res = await supabase.from('contratos').select('*').eq('id', contratoId).single();
+              if (res.data) setData(prev => prev ? { ...prev, contrato: res.data } : prev);
+            }}>
+              {salvandoVigencia ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setEditandoVigencia(false)}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(c.data_assinatura).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'}</p></div>

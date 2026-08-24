@@ -3835,3 +3835,17 @@ nas atas existentes ao final.
 
 **Arquivo:** `supabase/migrations/20260824000006_reequilibrio_nao_consome_a_ata.sql`
 
+---
+
+## 20260824000007 — O diário fotografa depois do recálculo
+
+**Por quê.** A auditoria registrava "Total consumido: R$ 0" no instante em que
+um derivado de R$ 2,1 mi acabava de entrar. Não era conta errada: era ORDEM —
+gatilhos do mesmo evento disparam em ordem alfabética, e `trg_log_...` vem
+antes de `trg_recalc_...`, fotografando o valor de antes.
+
+**O que muda.** Renomeia os três gatilhos de log para `trg_zlog_...`: passam a
+disparar por último e fotografam o estado que o recálculo deixou.
+
+**Arquivo:** `supabase/migrations/20260824000007_diario_fotografa_depois.sql`
+

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useAuthorization } from '@/hooks/useAuthorization';
 
 const CAMPO_LABELS: Record<string, string> = {
+  auto_vinculacao_ata: 'Vínculo automático com a ATA',
   alerta_ata_classificar: 'ATA — classificar aditivos',
   alerta_ata_acrescimo_vedado: 'ATA — acréscimo vedado',
   alerta_ata_adesao: 'ATA — teto de adesões',
@@ -57,8 +58,30 @@ const motivoDaRejeicao = (v: string): string | null => {
   return null;
 };
 
+/**
+ * O resumo da auto-vinculação era gravado como JSON e exibido cru — id da ata,
+ * chaves em inglês, chaves e aspas. Auditoria existe para humano conferir;
+ * JSON em tela diz "houve algo técnico" e esconde exatamente o que interessa:
+ * quantos itens casaram e quantos ficaram sem par.
+ */
+const resumoDaVinculacao = (v: string): string | null => {
+  try {
+    const o = JSON.parse(v);
+    if (!o || typeof o !== 'object' || !('total_itens' in o)) return null;
+    const partes = [
+      `${o.total_itens} item(ns) do contrato`,
+      `${o.vinculados ?? 0} vinculado(s) à ata`,
+    ];
+    if ((o.sem_match ?? 0) > 0) partes.push(`${o.sem_match} sem par`);
+    if ((o.quantidades_inferidas ?? 0) > 0) partes.push(`${o.quantidades_inferidas} quantidade(s) inferida(s) do valor global`);
+    if (o.estrutura) partes.push(`estrutura: ${o.estrutura}`);
+    return `Vinculação automática — ${partes.join(' · ')}`;
+  } catch { return null; }
+};
+
 const formatVal = (campo: string, v: string | null, origem?: string | null) => {
   if (v == null || v === '') return '—';
+  if (campo === 'auto_vinculacao_ata') return resumoDaVinculacao(v) ?? v;
   if (origem === 'ia_rejeicao') return motivoDaRejeicao(v) ?? v;
   if (campo.startsWith('valor') && !campo.startsWith('valor_consumido')) {
     const n = Number(v);
