@@ -161,6 +161,13 @@ async function extractTextFromPDFData(
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = Math.min(pdf.numPages, maxPages);
   const pages: string[] = [];
+  // Página sem camada de texto num documento que TEM texto nas demais: é o
+  // documento misto — processo nato-digital com a ata escaneada no meio. A
+  // decisão de OCR era por documento inteiro: bastava a parte nativa render
+  // "texto suficiente" para o OCR nunca rodar, e as páginas escaneadas ficarem
+  // invisíveis. Foi assim que uma ata de R$ 8.494.080 (no scan) foi cadastrada
+  // com o total do processo, R$ 180.624.304 (na parte nativa).
+  const paginasSemTexto: number[] = [];
 
   for (let i = 1; i <= totalPages; i++) {
     const page = await pdf.getPage(i);
@@ -173,29 +180,36 @@ async function extractTextFromPDFData(
       .join(' ')
       .replace(/ *\n */g, '\n');
 
-    if (text.trim()) {
+    if (text.trim().length >= 50) {
       pages.push(text);
+    } else {
+      paginasSemTexto.push(i);
+      // Marcador no lugar da página: o OCR devolve o texto dela aqui, e a
+      // ordem de leitura do documento se preserva.
+      pages.push(`\n[página ${i}: digitalizada — texto via OCR abaixo]\n`);
     }
   }
 
   const extractedText = normalizeExtractedText(pages.join('\n\n'));
 
-  if (!shouldUsePdfVisionFallback(extractedText) && !isEdital) {
-    return extractedText;
-  }
-
-  // For editais or documents with insufficient text, use vision OCR with more pages
   const visionPageLimit = paginasDeOcr ?? (isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT);
-  const shouldFallback = isEdital
+  const docInteiroFraco = isEdital
     ? extractedText.length < 2000
     : shouldUsePdfVisionFallback(extractedText);
 
-  if (!shouldFallback && !isEdital) {
+  // Sem página escaneada e com texto saudável, não há o que OCR fazer.
+  if (!docInteiroFraco && paginasSemTexto.length === 0) {
     return extractedText;
   }
 
   try {
-    const pageImages = await renderPdfPagesToVisionInputs(pdf, Math.min(totalPages, visionPageLimit));
+    // Documento inteiro fraco → OCR do começo, como antes. Documento MISTO →
+    // OCR exatamente das páginas sem texto, que são onde o conteúdo se escondeu.
+    const alvos = paginasSemTexto.length > 0 && !docInteiroFraco
+      ? paginasSemTexto.slice(0, visionPageLimit)
+      : Array.from({ length: Math.min(totalPages, visionPageLimit) }, (_, k) => k + 1);
+
+    const pageImages = await renderPdfPagesToVisionInputs(pdf, alvos);
     if (pageImages.length === 0) {
       return extractedText;
     }
@@ -259,14 +273,14 @@ function shouldUsePdfVisionFallback(text: string) {
   return normalized.length < 500 || (!hasDate && normalized.length < 2500) || (hasPlaceholder && !hasEmission && likelyAdministrativeDocument);
 }
 
-async function renderPdfPagesToVisionInputs(pdf: any, pagesToRender: number): Promise<VisionImageInput[]> {
-  if (typeof document === 'undefined' || pagesToRender <= 0) {
+async function renderPdfPagesToVisionInputs(pdf: any, paginas: number[]): Promise<VisionImageInput[]> {
+  if (typeof document === 'undefined' || paginas.length === 0) {
     return [];
   }
 
   const results: VisionImageInput[] = [];
 
-  for (let i = 1; i <= pagesToRender; i += 1) {
+  for (const i of paginas) {
     const page = await pdf.getPage(i);
     const previewViewport = page.getViewport({ scale: 2.2 });
     const scaleFactor = previewViewport.width > 1800 ? 1800 / previewViewport.width : 1;
