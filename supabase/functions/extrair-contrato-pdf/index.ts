@@ -263,7 +263,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -417,11 +417,20 @@ serve(async (req) => {
       success: true,
       data: extracted,
       // Rastro do que ficou de fora, para a tela poder avisar.
-      aviso: escolha?.finish_reason === "length"
-        ? "A resposta da IA atingiu o limite de tamanho — confira se todos os itens vieram."
-        : textoFoiRecortado
-          ? "O documento foi recortado para caber na análise — confira se todos os itens vieram."
+      aviso: [
+        escolha?.finish_reason === "length"
+          ? "A resposta da IA atingiu o limite de tamanho — confira se todos os itens vieram."
+          : textoFoiRecortado
+            ? "O documento foi recortado para caber na análise — confira se todos os itens vieram."
+            : null,
+        // Sem itens, a soma-contra-o-total não tem como vigiar o valor global:
+        // ele fica SEM conferência nenhuma, e num processo com atas de vários
+        // fornecedores é fácil o modelo pegar o total do processo. Dizer isso
+        // é a diferença entre um rascunho conferível e um número com cara de lido.
+        (!extracted.itens?.length && extracted.valor_global)
+          ? "Nenhum item foi lido: o Valor Global veio SEM conferência — compare com o VALOR TOTAL do quadro OBJETO desta ata antes de salvar."
           : null,
+      ].filter(Boolean).join(" ") || null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
