@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import {
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
+import { IconeRecolher, lerRecolhida, gravarRecolhida } from '@/components/ui/secao-recolhivel';
 // A escolha de qual data é a validade tem teste próprio: um documento fiscal
 // traz emissão, hora e prazo juntos, e a errada manda renovar o que está bom —
 // ou leva a empresa à sessão com certidão vencida.
@@ -266,6 +267,23 @@ export default function Documentos() {
   // Validade dialog state
   const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // Qual pasta está recolhida — preferência de quem lê, guardada no navegador.
+  const [categoriasRecolhidas, setCategoriasRecolhidas] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      [...new Set(checklistDocumentos.map((d) => d.categoria))].map((c) => [
+        c,
+        lerRecolhida(`documentos-categoria-${c}`, false),
+      ]),
+    ),
+  );
+  const alternarCategoria = useCallback((cat: string) => {
+    setCategoriasRecolhidas((atual) => {
+      const nova = !atual[cat];
+      gravarRecolhida(`documentos-categoria-${cat}`, nova);
+      return { ...atual, [cat]: nova };
+    });
+  }, []);
+
   const [pendingValidadeDate, setPendingValidadeDate] = useState<Date | undefined>(undefined);
   const [pendingManualDate, setPendingManualDate] = useState('');
 
@@ -634,14 +652,31 @@ export default function Documentos() {
                 if (docs.length === 0) return null;
                 return (
                   <div key={cat} className="bg-card rounded-xl border border-border/50 shadow-sm">
-                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50">
+                    {/* A pasta inteira se recolhe: quem veio tratar da regularidade
+                        fiscal não precisa rolar a habilitação jurídica antes. */}
+                    <button
+                      type="button"
+                      onClick={() => alternarCategoria(cat)}
+                      aria-expanded={!categoriasRecolhidas[cat]}
+                      title={categoriasRecolhidas[cat] ? 'Abrir a lista' : 'Recolher a lista'}
+                      className="flex w-full items-center gap-2 px-5 py-3 border-b border-border/50 text-left transition-colors hover:bg-muted/40"
+                    >
                       <FolderOpen className="w-4 h-4 text-muted-foreground" />
                       <h3 className="text-base font-semibold">{cat}</h3>
+                      {categoriasRecolhidas[cat] && (
+                        <span className="text-sm text-muted-foreground">
+                          {docs.length} documento{docs.length > 1 ? 's' : ''}
+                        </span>
+                      )}
                       <Badge variant="outline" className="ml-auto text-sm">
                         {docs[0]?.artigo}
                       </Badge>
-                    </div>
-                    <div className="divide-y divide-border/30">
+                      <IconeRecolher
+                        aberto={!categoriasRecolhidas[cat]}
+                        className="h-4 w-4 shrink-0 text-muted-foreground"
+                      />
+                    </button>
+                    <div className={`divide-y divide-border/30 ${categoriasRecolhidas[cat] ? 'hidden' : ''}`}>
                       {docs.map((doc) => {
                         const cfg = statusConfig[doc.status];
                         const Icon = cfg.icon;
