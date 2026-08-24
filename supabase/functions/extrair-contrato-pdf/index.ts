@@ -243,6 +243,80 @@ function recortarPreservandoTabela(texto: string, limite: number): string {
   return `${inicio}\n\n[...trecho intermediário omitido...]\n\n${tabela}`;
 }
 
+const MARCADOR_DE_PAGINA = /=====\s*PÁGINA\s+(\d+)\s*=====/g;
+
+/**
+ * Seleção POR PÁGINA, quando o texto vem paginado pelo extrator.
+ *
+ * O recorte por caractere fatiava o documento no meio e, num processo com as
+ * atas de vários fornecedores, entregava à IA o cabeçalho de uma parte e a
+ * tabela de outra — dela saíam um total alheio e itens de terceiros. Aqui o
+ * documento é tratado como o que ele é, uma sequência de páginas: cada uma
+ * ganha pontos por parecer da ata-alvo (nome do fornecedor vindo do arquivo,
+ * quadro OBJETO, VALOR TOTAL, cabeçalho de tabela), as primeiras entram sempre
+ * (identificação do processo), e o orçamento é gasto nas mais relevantes — EM
+ * ORDEM, com os buracos declarados.
+ */
+function selecionarPaginasRelevantes(texto: string, limite: number, nomeArquivo: string): string {
+  const partes = texto.split(MARCADOR_DE_PAGINA);
+  // split com grupo: [antes, num1, corpo1, num2, corpo2, ...]
+  if (partes.length < 3) return recortarPreservandoTabela(texto, limite);
+
+  const paginas: Array<{ num: number; corpo: string; pontos: number }> = [];
+  for (let i = 1; i + 1 < partes.length; i += 2) {
+    paginas.push({ num: Number(partes[i]), corpo: partes[i + 1], pontos: 0 });
+  }
+
+  // Tokens do fornecedor a partir do nome do arquivo: "01 - ATA SRP Nº 22.2024
+  // - 3ESERVIÇOS AS.pdf" → ["3ESERVIÇOS"]. Genéricos ficam de fora.
+  const GENERICOS = new Set(['ATA', 'SRP', 'CONTRATO', 'PDF', 'DOC', 'ANEXO', 'EDITAL', 'PROCESSO', 'REGISTRO', 'PRECOS', 'PREÇOS']);
+  const tokens = (nomeArquivo || '')
+    .replace(/\.[a-z0-9]+$/i, '')
+    .toUpperCase()
+    .split(/[^A-ZÀ-Ü0-9]+/)
+    .filter((t) => t.length >= 4 && !/^\d+$/.test(t) && !GENERICOS.has(t));
+
+  for (const p of paginas) {
+    const T = p.corpo.toUpperCase();
+    for (const t of tokens) if (T.includes(t)) p.pontos += 4;
+    if (/VALOR\s+TOTAL/i.test(p.corpo)) p.pontos += 3;
+    if (/\bOBJETO\b/i.test(p.corpo)) p.pontos += 2;
+    if (INICIO_DE_TABELA.test(p.corpo)) p.pontos += 2;
+    if (/ATA\s+DE\s+REGISTRO\s+DE\s+PRE[ÇC]OS/i.test(p.corpo)) p.pontos += 1;
+    if (p.num <= 3) p.pontos += 5; // identificação do processo mora no começo
+  }
+
+  const escolhidas = new Set<number>();
+  let usado = 0;
+  for (const p of [...paginas].sort((a, b) => b.pontos - a.pontos || a.num - b.num)) {
+    const custo = p.corpo.length + 40;
+    if (usado + custo > limite) continue;
+    escolhidas.add(p.num);
+    usado += custo;
+  }
+
+  textoFoiRecortado = escolhidas.size < paginas.length;
+
+  const saida: string[] = [];
+  let omitidas: number[] = [];
+  const descarregarOmitidas = () => {
+    if (omitidas.length) {
+      saida.push(`[páginas ${omitidas[0]}–${omitidas[omitidas.length - 1]} omitidas — sem relação com a ata-alvo]`);
+      omitidas = [];
+    }
+  };
+  for (const p of paginas) {
+    if (escolhidas.has(p.num)) {
+      descarregarOmitidas();
+      saida.push(`===== PÁGINA ${p.num} =====\n${p.corpo.trim()}`);
+    } else {
+      omitidas.push(p.num);
+    }
+  }
+  descarregarOmitidas();
+  return saida.join('\n\n');
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -263,7 +337,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -277,7 +351,7 @@ serve(async (req) => {
         })),
       ];
     } else {
-      const truncated = recortarPreservandoTabela(texto_pdf, 90000);
+      const truncated = selecionarPaginasRelevantes(texto_pdf, 90000, String(nome_arquivo || ''));
       userContent = `${promptText}\n\nTEXTO DO DOCUMENTO:\n${truncated}`;
     }
 

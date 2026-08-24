@@ -160,13 +160,12 @@ async function extractTextFromPDFData(
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = Math.min(pdf.numPages, maxPages);
-  const pages: string[] = [];
-  // Página sem camada de texto num documento que TEM texto nas demais: é o
-  // documento misto — processo nato-digital com a ata escaneada no meio. A
-  // decisão de OCR era por documento inteiro: bastava a parte nativa render
-  // "texto suficiente" para o OCR nunca rodar, e as páginas escaneadas ficarem
-  // invisíveis. Foi assim que uma ata de R$ 8.494.080 (no scan) foi cadastrada
-  // com o total do processo, R$ 180.624.304 (na parte nativa).
+  // A leitura é POR PÁGINA, e o resultado preserva isso: cada página sai
+  // delimitada por "===== PÁGINA N =====". Não é cosmético — é o que permite
+  // ao consumidor (a extração estruturada) escolher páginas RELEVANTES em vez
+  // de cortar o documento por contagem de caracteres, que fatiava no meio e
+  // misturava fornecedores num processo com várias atas.
+  const porPagina: string[] = new Array(totalPages).fill('');
   const paginasSemTexto: number[] = [];
 
   for (let i = 1; i <= totalPages; i++) {
@@ -181,44 +180,55 @@ async function extractTextFromPDFData(
       .replace(/ *\n */g, '\n');
 
     if (text.trim().length >= 50) {
-      pages.push(text);
+      porPagina[i - 1] = text;
     } else {
+      // Documento misto: página escaneada no meio de um processo nato-digital.
+      // Ela vai ao OCR e o texto volta PARA ESTE LUGAR — reconstituição, não
+      // apêndice no fim.
       paginasSemTexto.push(i);
-      // Marcador no lugar da página: o OCR devolve o texto dela aqui, e a
-      // ordem de leitura do documento se preserva.
-      pages.push(`\n[página ${i}: digitalizada — texto via OCR abaixo]\n`);
     }
   }
 
-  const extractedText = normalizeExtractedText(pages.join('\n\n'));
+  const montar = () =>
+    normalizeExtractedText(
+      porPagina
+        .map((t, idx) => (t.trim() ? `===== PÁGINA ${idx + 1} =====\n${t}` : ''))
+        .filter(Boolean)
+        .join('\n\n'),
+    );
 
+  const soNativo = montar();
   const visionPageLimit = paginasDeOcr ?? (isEdital ? PDF_VISION_PAGE_LIMIT_EDITAL : PDF_VISION_PAGE_LIMIT);
   const docInteiroFraco = isEdital
-    ? extractedText.length < 2000
-    : shouldUsePdfVisionFallback(extractedText);
+    ? soNativo.length < 2000
+    : shouldUsePdfVisionFallback(soNativo);
 
-  // Sem página escaneada e com texto saudável, não há o que OCR fazer.
   if (!docInteiroFraco && paginasSemTexto.length === 0) {
-    return extractedText;
+    return soNativo;
   }
 
   try {
-    // Documento inteiro fraco → OCR do começo, como antes. Documento MISTO →
-    // OCR exatamente das páginas sem texto, que são onde o conteúdo se escondeu.
     const alvos = paginasSemTexto.length > 0 && !docInteiroFraco
       ? paginasSemTexto.slice(0, visionPageLimit)
       : Array.from({ length: Math.min(totalPages, visionPageLimit) }, (_, k) => k + 1);
 
-    const pageImages = await renderPdfPagesToVisionInputs(pdf, alvos);
-    if (pageImages.length === 0) {
-      return extractedText;
+    // Lotes de 4 controlados AQUI (e não no cliente de OCR) para que cada lote
+    // volte ao lugar das suas páginas — com granularidade de lote, mas em ordem.
+    for (let c = 0; c < alvos.length; c += 4) {
+      const lote = alvos.slice(c, c + 4);
+      const imagens = await renderPdfPagesToVisionInputs(pdf, lote);
+      if (imagens.length === 0) continue;
+      const textoDoLote = await runVisionExtraction(imagens, fileName);
+      if (textoDoLote.trim()) {
+        const rotulo = lote.length > 1 ? `[OCR das páginas ${lote[0]}–${lote[lote.length - 1]}]` : '[OCR]';
+        porPagina[lote[0] - 1] = `${rotulo}\n${textoDoLote}\n${porPagina[lote[0] - 1] ?? ''}`;
+      }
     }
 
-    const visionText = await runVisionExtraction(pageImages, fileName);
-    const combined = normalizeExtractedText([extractedText, visionText].filter(Boolean).join('\n\n'));
-    return combined.length > extractedText.length ? combined : extractedText;
+    const reconstituido = montar();
+    return reconstituido.length > soNativo.length ? reconstituido : soNativo;
   } catch {
-    return extractedText;
+    return soNativo;
   }
 }
 
