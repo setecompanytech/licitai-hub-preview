@@ -3761,3 +3761,23 @@ igualmente.
 
 **Arquivo:** `supabase/migrations/20260824000002_alerta_legal_valores_em_reais.sql`
 
+---
+
+## 20260824000003 — contrato_itens ganha produto_id
+
+**Por quê.** O formulário "Cadastrar Item da ATA" oferece "Buscar Produto do
+Catálogo" e grava `produto_id` — mas a coluna nunca existiu em
+`contrato_itens`. Nenhuma migration a criou: a tela nasceu apostando num schema
+que não veio, e TODO cadastro manual de item morria com "Could not find the
+'produto_id' column of 'contrato_itens' in the schema cache".
+
+**O que muda.** `produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL`
+(apagar o produto não pode apagar o item de um contrato), com índice parcial.
+Nulo permitido: item antigo não tem produto e não precisa ter.
+
+Junto, no front: o insert parou de enviar `custo_total`, que é coluna GERADA
+(`custo_unitario * quantidade_contratada`) — era o segundo erro à espreita
+atrás do primeiro.
+
+**Arquivo:** `supabase/migrations/20260824000003_contrato_itens_produto_id.sql`
+

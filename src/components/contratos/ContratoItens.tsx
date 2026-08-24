@@ -239,7 +239,6 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     }
 
     const custoUnit = parseFloat(form.custo_unitario) || 0;
-    const custoTotal = qty * custoUnit;
 
     setSaving(true);
 
@@ -283,8 +282,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       quantidade_contratada: qty,
       valor_unitario: unit,
       valor_total: total,
+      // custo_total NÃO se grava: é coluna GERADA no banco
+      // (custo_unitario * quantidade_contratada) — enviar valor aqui é erro.
       custo_unitario: custoUnit || null,
-      custo_total: custoTotal || null,
       saldo_quantitativo: qty,
       saldo_financeiro: total,
       codigo_item: form.codigo_item || null,
