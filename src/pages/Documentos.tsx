@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  FileText, Upload, CheckCircle2, AlertTriangle,
+  FileText, Upload, Repeat, CheckCircle2, AlertTriangle,
   Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2, Eye,
   CalendarDays, Bot
 } from 'lucide-react';
@@ -702,7 +702,9 @@ export default function Documentos() {
                                     disabled={isUploading}
                                     title="Substituir arquivo"
                                   >
-                                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                                    {/* Trocar um documento por outro é substituição, não envio: a
+                                        seta para cima já é o botão "Enviar" da linha sem arquivo. */}
+                                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Repeat className="w-3 h-3" />}
                                   </Button>
                                   <Button
                                     size="sm"

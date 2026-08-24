@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import {
-  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw
+  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { extractContractDataFromFile } from './utils/extractContractData';
@@ -1191,7 +1191,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                     <Download className="w-4 h-4" />
                   </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
-                    {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
                   </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(arq)} title="Editar">
                     <Pencil className="w-4 h-4" />
