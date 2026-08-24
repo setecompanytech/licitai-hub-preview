@@ -4,6 +4,7 @@ import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import { AMPARO_ART95, ESPECIES_OBJETO, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA, avisoDeVigencia } from '@/lib/contratos/instrumentos';
+import { rotuloDaAta } from '@/lib/contratos/rotulos';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
@@ -976,7 +977,7 @@ export default function GestaoContratos() {
                     {/* 2º — Número + tipo + badges de status */}
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {isAta
-                        ? <span className="text-xs font-medium text-foreground">ATA SRP n. {c.numero_ata || c.numero_contrato}</span>
+                        ? <span className="text-xs font-medium text-foreground">{rotuloDaAta(c.numero_ata || c.numero_contrato)}</span>
                         : <span className="text-xs font-medium text-foreground">Contrato n. {c.numero_contrato}</span>}
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
                       {dias !== null && dias <= 60 && dias > 0 && <Badge variant="outline" className="text-xs text-warning border-warning/30"><Clock className="w-3 h-3 mr-1" />{dias}d</Badge>}
@@ -1029,7 +1030,10 @@ export default function GestaoContratos() {
                     </div>
                     <div className="mt-2">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{isAta ? 'Saldo registrado' : 'Consumido'}: {formatCurrency(c.valor_consumido)}</span>
+                        {/* Era "Saldo registrado", ao lado de um "Saldo" com outro
+                            número: dois saldos diferentes na mesma linha. Este
+                            valor é o que já saiu, não o que resta. */}
+                        <span>{isAta ? 'Consumido da ata' : 'Consumido'}: {formatCurrency(c.valor_consumido)}</span>
                         <span>Saldo: {formatCurrency(c.saldo_remanescente || 0)}</span>
                       </div>
                       <Progress value={Math.min(pct, 100)} className="h-2" />

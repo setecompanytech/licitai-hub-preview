@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileSignature, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { rotuloDaAta } from '@/lib/contratos/rotulos';
 
 /**
  * O contrato que nasceu deste processo, visto de dentro da pasta.
@@ -65,7 +66,7 @@ export default function ContratoDoProcesso({ licitacaoId }: { licitacaoId: strin
           return (
             <div key={c.id} className="flex items-center gap-3 py-2.5 flex-wrap">
               <span className="text-sm font-medium">
-                {ehAta ? `ATA SRP n. ${c.numero_ata || c.numero_contrato}` : `Contrato n. ${c.numero_contrato}`}
+                {ehAta ? rotuloDaAta(c.numero_ata || c.numero_contrato) : `Contrato n. ${c.numero_contrato}`}
               </span>
               <Badge variant="outline" className="text-xs">{c.status}</Badge>
               <span className="text-sm text-muted-foreground tabular-nums">{brl(c.valor_global)}</span>

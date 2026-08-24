@@ -163,6 +163,14 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   // Tipos disponíveis no dropdown de acordo com o tipo do documento pai
   const tiposDisponiveis = parentTipoDocumento === 'ata_srp' ? TIPOS_ARQUIVO_ATA : TIPOS_ARQUIVO_CONTRATO;
 
+  // O padrão era 'contrato_original', que não existe entre os tipos de ATA: o
+  // seletor abria VAZIO e um envio sem escolha gravava o arquivo com tipo de
+  // contrato dentro de uma ata. Ao trocar de instrumento, o tipo volta para o
+  // primeiro que aquele instrumento aceita.
+  useEffect(() => {
+    if (!tiposDisponiveis[uploadTipo]) setUploadTipo(Object.keys(tiposDisponiveis)[0]);
+  }, [tiposDisponiveis, uploadTipo]);
+
   // When upload type changes, show/hide aditivo fields
   useEffect(() => {
     const isAdt = isAditivoType(uploadTipo);

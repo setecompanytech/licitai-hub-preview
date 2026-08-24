@@ -11,6 +11,9 @@ import { toast } from 'sonner';
 import { useAuthorization } from '@/hooks/useAuthorization';
 
 const CAMPO_LABELS: Record<string, string> = {
+  alerta_ata_classificar: 'ATA — classificar aditivos',
+  alerta_ata_acrescimo_vedado: 'ATA — acréscimo vedado',
+  alerta_ata_adesao: 'ATA — teto de adesões',
   numero_contrato: 'Nº do Contrato',
   numero_ata: 'Nº da ATA',
   objeto: 'Objeto',
@@ -156,7 +159,12 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   });
 
   const renderRow = (r: AuditoriaRow) => {
-    const meta = ORIGEM_META[r.origem] || { label: r.origem, variant: 'outline' as const, icon: ScrollText };
+    // O selo dizia "Lei 14.133/21" para todo alerta legal — inclusive os de ATA,
+    // que seguem o Decreto 11.462/2023. Anunciar a lei errada no rótulo desfaz
+    // a distinção que o próprio alerta acabou de fazer.
+    const meta = r.campo?.startsWith('alerta_ata_')
+      ? { label: 'Alerta legal (Decreto 11.462/23)', variant: 'destructive' as const, icon: AlertTriangle }
+      : ORIGEM_META[r.origem] || { label: r.origem, variant: 'outline' as const, icon: ScrollText };
     const Icon = meta.icon;
     const isAlerta = r.origem === 'alerta_limite_legal';
     return (
