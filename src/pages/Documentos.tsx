@@ -21,6 +21,10 @@ import {
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
 import AtestadosCapacidadeTecnica from '@/components/documentos/AtestadosCapacidadeTecnica';
 import AlertaVencimentoDocumentos from '@/components/documentos/AlertaVencimentoDocumentos';
+// A escolha de qual data é a validade tem teste próprio: um documento fiscal
+// traz emissão, hora e prazo juntos, e a errada manda renovar o que está bom —
+// ou leva a empresa à sessão com certidão vencida.
+import { extrairValidadeDoTexto, montarData, normalizarEspacos } from '@/lib/documentos/validade';
 import VerificadorDocumentos from '@/components/documentos/VerificadorDocumentos';
 import ChecklistModalidade from '@/components/licitacoes/ChecklistModalidade';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,104 +109,6 @@ const diasAteVencer = (validade: string): number | null => {
 };
 
 
-const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
-
-const buildDate = (year: number, month: number, day: number): Date | null => {
-  const parsed = new Date(year, month - 1, day);
-
-  if (Number.isNaN(parsed.getTime())) return null;
-  if (
-    parsed.getFullYear() !== year ||
-    parsed.getMonth() !== month - 1 ||
-    parsed.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
-};
-
-const scoreDateCandidate = (sourceText: string, matchIndex: number, date: Date) => {
-  const upperSource = sourceText.toUpperCase();
-  const context = upperSource.slice(Math.max(0, matchIndex - 64), Math.min(upperSource.length, matchIndex + 64));
-  const now = new Date();
-  const diffDays = (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-
-  let score = 0;
-
-  if (/(VALID(?:ADE|O)|V[ÁA]LID[OA]\s*AT[ÉE]|VENC(?:IMENTO)?|EXPIRA(?:ÇÃO|CAO)?|PRAZO\s+DE\s+VALIDADE|DATA\s+DE\s+VALIDADE|VALIDADE\s+DA\s+CNH|VIG[ÊE]NCIA)/.test(context)) {
-    score += 12;
-  }
-
-  if (/(AT[ÉE]|ATÉ|AT\.)/.test(context)) {
-    score += 2;
-  }
-
-  if (/(NASC(?:IMENTO)?|EMISS[ÃA]O|EXPEDI[ÇC][ÃA]O|1.?\s*HABILITA[ÇC][ÃA]O|DOC(?:\.\s*IDENTIDADE|UMENTO)?|IDENTIDADE|RG\b|CPF\b|RENACH|REGISTRO)/.test(context)) {
-    score -= 8;
-  }
-
-  if (date.getFullYear() >= 2000 && date.getFullYear() <= 2100) {
-    score += 1;
-  }
-
-  if (diffDays > -3650 && diffDays < 3650 * 15) {
-    score += 1;
-  }
-
-  if (diffDays >= 0) {
-    score += 1;
-  }
-
-  return score;
-};
-
-const extractValidityDateFromText = (rawText: string): Date | null => {
-  if (!rawText?.trim()) return null;
-
-  const text = normalizeWhitespace(rawText);
-  const candidates: { date: Date; score: number }[] = [];
-  const patterns = [
-    {
-      regex: /(\d{2})\s*[\/\-.]\s*(\d{2})\s*[\/\-.]\s*(\d{4})/g,
-      build: (match: RegExpExecArray) => buildDate(Number(match[3]), Number(match[2]), Number(match[1])),
-    },
-    {
-      regex: /(\d{4})\s*[\/\-.]\s*(\d{2})\s*[\/\-.]\s*(\d{2})/g,
-      build: (match: RegExpExecArray) => buildDate(Number(match[1]), Number(match[2]), Number(match[3])),
-    },
-  ];
-
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern.regex)) {
-      if (typeof match.index !== 'number') continue;
-      const fullMatch = match[0];
-      const execMatch = Object.assign([fullMatch, ...match.slice(1)], { index: match.index }) as unknown as RegExpExecArray;
-      const parsedDate = pattern.build(execMatch);
-
-      if (!parsedDate) continue;
-
-      candidates.push({
-        date: parsedDate,
-        score: scoreDateCandidate(text, match.index, parsedDate),
-      });
-    }
-  }
-
-  if (candidates.length === 0) return null;
-
-  const positiveCandidates = candidates
-    .filter((candidate) => candidate.score > 0)
-    .sort((a, b) => b.score - a.score || b.date.getTime() - a.date.getTime());
-
-  if (positiveCandidates.length > 0) {
-    return positiveCandidates[0].date;
-  }
-
-  return candidates
-    .sort((a, b) => b.date.getTime() - a.date.getTime())[0]
-    ?.date ?? null;
-};
 
 const imageFileToVisionPayload = async (file: File): Promise<VisionImage[]> =>
   new Promise((resolve, reject) => {
@@ -251,7 +157,7 @@ const extractPdfSupportText = async (pdf: any, maxPages: number) => {
     pageTexts.push(pageText);
   }
 
-  return normalizeWhitespace(pageTexts.join('\n'));
+  return normalizarEspacos(pageTexts.join('\n'));
 };
 
 const renderPdfToVisionImages = async (pdf: any, fileName: string, maxPages: number): Promise<VisionImage[]> => {
@@ -536,7 +442,7 @@ export default function Documentos() {
     
     try {
       const { images, supportText } = await buildDocumentAnalysisPayload(pendingFile);
-      const localSuggestion = extractValidityDateFromText(supportText);
+      const localSuggestion = extrairValidadeDoTexto(supportText);
 
       if (localSuggestion) {
         setPendingValidadeDate(localSuggestion);
@@ -562,7 +468,7 @@ export default function Documentos() {
       if (error) throw error;
 
       const aiSuggestion = typeof data?.validityDate === 'string'
-        ? extractValidityDateFromText(data.validityDate)
+        ? extrairValidadeDoTexto(data.validityDate)
         : null;
 
       const fallbackText = [
@@ -571,7 +477,7 @@ export default function Documentos() {
         supportText,
       ].filter(Boolean).join('\n');
 
-      const foundDate = aiSuggestion ?? extractValidityDateFromText(fallbackText);
+      const foundDate = aiSuggestion ?? extrairValidadeDoTexto(fallbackText);
 
       if (foundDate) {
         setPendingValidadeDate(foundDate);
@@ -938,19 +844,21 @@ export default function Documentos() {
                 <Label className="text-sm text-muted-foreground">Ou digite: DD/MM/AAAA</Label>
                 <Input
                   placeholder="DD/MM/AAAA"
+                  // `new Date('2026-07-10')` é meia-noite UTC, que no horário de
+                  // Brasília é dia 09 às 21h. Era isso que fazia o seletor
+                  // mostrar 10/07 e este campo, 09/07 — e digitar 10/07/2026
+                  // gravar 2026-07-09. Data de calendário se monta por partes.
                   value={pendingManualDate ? (() => {
-                    try {
-                      const d = new Date(pendingManualDate);
-                      return isNaN(d.getTime()) ? pendingManualDate : format(d, 'dd/MM/yyyy');
-                    } catch { return pendingManualDate; }
+                    const m = pendingManualDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    const d = m ? montarData(Number(m[1]), Number(m[2]), Number(m[3])) : null;
+                    return d ? format(d, 'dd/MM/yyyy') : pendingManualDate;
                   })() : ''}
                   onChange={(e) => {
                     const val = e.target.value;
-                    // Try to parse DD/MM/YYYY
                     const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
                     if (match) {
-                      const d = new Date(`${match[3]}-${match[2]}-${match[1]}`);
-                      if (!isNaN(d.getTime())) {
+                      const d = montarData(Number(match[3]), Number(match[2]), Number(match[1]));
+                      if (d) {
                         setPendingValidadeDate(d);
                         setPendingManualDate(format(d, 'yyyy-MM-dd'));
                         return;
