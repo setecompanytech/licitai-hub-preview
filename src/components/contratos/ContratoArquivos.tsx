@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import {
-  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat
+  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { extractContractDataFromFile } from './utils/extractContractData';
@@ -488,6 +488,27 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       toast.error('Erro ao registrar aditivo', { description: err.message });
     } finally {
       setUploading(false);
+    }
+  };
+
+  /**
+   * Ver o documento sem baixá-lo.
+   *
+   * Conferir um aditivo obrigava a baixar o PDF, abrir fora do sistema e voltar
+   * — para uma checagem de trinta segundos. O link é assinado e expira em dez
+   *  minutos: o arquivo continua privado, e o endereço não sobrevive ao dia.
+   */
+  const [visualizando, setVisualizando] = useState<{ url: string; nome: string } | null>(null);
+
+  const handleVisualizar = async (arquivo: any) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('contratos-docs')
+        .createSignedUrl(arquivo.storage_path, 600);
+      if (error || !data?.signedUrl) throw error ?? new Error('link não gerado');
+      setVisualizando({ url: data.signedUrl, nome: arquivo.nome_arquivo });
+    } catch (err: any) {
+      toast.error('Não foi possível abrir o documento', { description: err?.message });
     }
   };
 
@@ -1195,6 +1216,9 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleVisualizar(arq)} title="Visualizar em tela">
+                    <Eye className="w-4 h-4" />
+                  </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDownload(arq)} title="Baixar">
                     <Download className="w-4 h-4" />
                   </Button>
@@ -1309,6 +1333,21 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       )}
 
       {/* Edit dialog */}
+      <Dialog open={!!visualizando} onOpenChange={(v) => !v && setVisualizando(null)}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base truncate pr-8">{visualizando?.nome}</DialogTitle>
+          </DialogHeader>
+          {visualizando && (
+            <iframe
+              src={visualizando.url}
+              title={visualizando.nome}
+              className="flex-1 w-full rounded-md border border-border bg-muted"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editDialog.open} onOpenChange={(v) => setEditDialog({ open: v, arquivo: v ? editDialog.arquivo : null })}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
