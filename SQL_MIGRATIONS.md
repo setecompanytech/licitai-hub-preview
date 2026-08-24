@@ -3741,3 +3741,23 @@ afirmar infração sob a lei errada.
 
 **Arquivo:** `supabase/migrations/20260824000001_alerta_legal_por_instrumento.sql`
 
+---
+
+## 20260824000002 — Alertas legais escrevem dinheiro em português
+
+**Por quê.** A mensagem saía `R$ 10229184 de acréscimos (120.43% sobre R$
+8494080)`. São oito dígitos sem separador, num aviso que a pessoa lê para
+decidir se houve infração — é assim que se confunde dez milhões com um milhão. O
+percentual vinha com ponto decimal, que em português é separador de milhar.
+
+A causa era `::TEXT` na concatenação: a representação crua do numeric.
+
+**O que muda.** Entram `formatar_brl(numeric)` e `formatar_numero(numeric, int)`,
+e as mensagens passam a chamá-las. Usam vírgula e ponto **literais** no padrão do
+`to_char` — e não `G`/`D`, que dependem do `lc_numeric` do servidor.
+
+Ao final, recalcula **todos** os registros: o texto cru afetava contrato e ata
+igualmente.
+
+**Arquivo:** `supabase/migrations/20260824000002_alerta_legal_valores_em_reais.sql`
+
