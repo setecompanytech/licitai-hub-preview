@@ -180,6 +180,35 @@ function normalizeContrato(data: DadosContrato) {
     observacoes: cleanString(data.observacoes),
     itens,
     aditivo,
+    conferencia: conferirItens(itens, parseNumber(data.valor_global)),
+  };
+}
+
+/**
+ * A tabela extraída bate com o total que o documento declara?
+ *
+ * Esta é a defesa contra a pior falha possível desta função: itens INVENTADOS.
+ * Numa ATA SRP de carne moída — um item de R$ 8.494.080,00 — a IA devolveu sete
+ * itens de cesta básica ("Arroz 5 kg", "Feijão 1 kg"…) somando R$ 29.690,00.
+ * Números redondos, descrições plausíveis, nada disso no documento. Quem
+ * cadastra não tem como desconfiar de uma lista que parece certa.
+ *
+ * Mas o documento traz o próprio total, e aritmética não é opinião: se a soma
+ * dos itens não chega perto do valor global, a extração não pode ser
+ * apresentada como leitura. Uma folga de 1% cobre arredondamento de centavo em
+ * tabela longa; o que passa disso é outra coisa.
+ */
+function conferirItens(itens: Array<{ valor_total?: number | null } | null>, valorGlobal: number | null) {
+  if (!itens.length || !valorGlobal || valorGlobal <= 0) {
+    return { soma_itens: null, valor_global: valorGlobal, confere: null, diferenca: null };
+  }
+  const soma = itens.reduce((t, i) => t + (Number(i?.valor_total) || 0), 0);
+  const diferenca = Math.abs(soma - valorGlobal);
+  return {
+    soma_itens: soma,
+    valor_global: valorGlobal,
+    confere: diferenca <= valorGlobal * 0.01,
+    diferenca,
   };
 }
 
@@ -234,7 +263,9 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+- A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
+- Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
     let userContent: unknown;
     if (hasImages && !hasText) {

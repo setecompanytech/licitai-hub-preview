@@ -26,6 +26,13 @@ type ExtractedData = {
   fiscal_email?: string;
   fiscal_telefone?: string;
   observacoes?: string;
+  /** Confronto entre a soma dos itens e o total declarado no documento. */
+  conferencia?: {
+    soma_itens: number | null;
+    valor_global: number | null;
+    confere: boolean | null;
+    diferenca: number | null;
+  };
   itens?: Array<{
     codigo_item?: string;
     descricao: string;
@@ -65,6 +72,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
   const [fileName, setFileName] = useState('');
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [itensRecusados, setItensRecusados] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [tipoEstrutura, setTipoEstrutura] = useState<'itens' | 'lotes'>('itens');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -95,6 +103,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     setFileName(file.name);
     setStep('extracting');
     setAviso(null);
+    setItensRecusados(false);
     setProgress(10);
 
     try {
@@ -157,6 +166,17 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
       if (!data.data?.itens?.length) {
         setAviso((a) => a ?? 'Nenhum item foi identificado no documento. Cadastre-os pela aba Itens/Lotes, ou envie o anexo com a tabela.');
       }
+      // Itens que não somam o total declarado não são leitura — podem ser
+      // invenção. Não entram por conta própria.
+      const conf = data.data?.conferencia;
+      if (conf?.confere === false) {
+        setItensRecusados(true);
+        setAviso(
+          `Os itens extraídos somam ${brl(conf.soma_itens)}, mas o documento declara ${brl(conf.valor_global)}. ` +
+          'A leitura não confere com o próprio documento, então os itens NÃO serão importados. ' +
+          'Confira a tabela no PDF e cadastre pela aba Itens/Lotes.',
+        );
+      }
       setStep('done');
     } catch (err: any) {
       console.error('Extraction error:', err);
@@ -167,12 +187,21 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const brl = (v: number | null | undefined) =>
+    (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
   const handleConfirm = () => {
     if (extracted) {
-      onExtracted(extracted, { tipo_estrutura: tipoEstrutura });
+      // Os campos do cabeçalho seguem: objeto, valor e datas foram conferidos
+      // contra o total do próprio documento. Os ITENS, quando não fecham, ficam
+      // de fora — importar uma tabela que não soma o contrato é gravar ficção.
+      const aplicar = itensRecusados ? { ...extracted, itens: [] } : extracted;
+      onExtracted(aplicar, { tipo_estrutura: tipoEstrutura });
       setOpen(false);
       reset();
-      toast.success('Dados extraídos aplicados ao formulário!');
+      toast.success(itensRecusados
+        ? 'Dados aplicados — itens não importados, veja o aviso.'
+        : 'Dados extraídos aplicados ao formulário!');
     }
   };
 
@@ -291,7 +320,7 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
                 {extracted.vigencia_meses != null && <Badge variant="secondary" className="text-xs">{extracted.vigencia_meses} meses</Badge>}
               </div>
               {aviso && (
-                <p className="mt-2 flex items-start gap-1.5 text-xs text-warning">
+                <p className={`mt-2 flex items-start gap-1.5 text-xs ${itensRecusados ? 'text-destructive' : 'text-warning'}`}>
                   <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>{aviso}</span>
                 </p>
