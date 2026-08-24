@@ -1,7 +1,7 @@
 import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
+type DocStatus = 'ok' | 'vencido' | 'ausente';
 
 interface Documento {
   nome: string;
@@ -26,7 +26,7 @@ export default function AlertaVencimentoDocumentos({ documentos }: Props) {
     return diffDias > 0 && diffDias <= 30;
   });
   
-  const ausentes = documentos.filter(d => d.status === 'ausente' || d.status === 'pendente');
+  const ausentes = documentos.filter(d => d.status === 'ausente');
 
   if (vencidos.length === 0 && proximos.length === 0 && ausentes.length === 0) {
     return (
@@ -86,7 +86,7 @@ export default function AlertaVencimentoDocumentos({ documentos }: Props) {
           <AlertTriangle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-base font-semibold text-info">
-              {ausentes.length} documento{ausentes.length > 1 ? 's' : ''} pendente{ausentes.length > 1 ? 's' : ''}/ausente{ausentes.length > 1 ? 's' : ''}
+              {ausentes.length} documento{ausentes.length > 1 ? 's' : ''} ausente{ausentes.length > 1 ? 's' : ''}
             </p>
             <ul className="mt-1 space-y-0.5">
               {ausentes.map(d => (

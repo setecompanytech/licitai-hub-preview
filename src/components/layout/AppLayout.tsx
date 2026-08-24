@@ -3,6 +3,7 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
+import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
@@ -222,6 +223,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
       <main className={`${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
         <MaintenanceBanner showModal />
         <AlertaVencimentoBanner />
+        {/* Vencimento de certidão não é assunto só da página de Documentos. */}
+        <LembreteDeVencimento />
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
         {/* Carimbo invisível, para conferir o que está publicado. */}
         <span data-versao={VERSAO_APP} className="hidden" />

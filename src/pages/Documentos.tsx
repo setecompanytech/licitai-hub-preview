@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  FileText, Upload, CheckCircle2, AlertTriangle, Clock,
+  FileText, Upload, CheckCircle2, AlertTriangle,
   Shield, FolderOpen, Download, FileArchive, ClipboardList, Trash2, Loader2, Eye,
   CalendarDays, Bot
 } from 'lucide-react';
@@ -30,7 +30,7 @@ import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-type DocStatus = 'ok' | 'pendente' | 'vencido' | 'ausente';
+type DocStatus = 'ok' | 'vencido' | 'ausente';
 
 type Documento = {
   nome: string;
@@ -83,13 +83,13 @@ const checklistDocumentos: Documento[] = [
   { nome: 'Declaração ME/EPP (se aplicável)', categoria: 'Declarações', artigo: 'LC 123/2006', status: 'ausente' },
 ];
 
+// O selo diz o que o documento É, não o que vai acontecer com ele. Certidão
+// válida por mais 26 dias é REGULAR — não há o que fazer com ela hoje, e marcá-la
+// como "pendente" mandava procurar um problema inexistente. O vencimento que se
+// aproxima é aviso, e vive no lembrete do canto da tela (LembreteDeVencimento),
+// que acompanha a pessoa em qualquer página e volta até o documento ser renovado.
 const statusConfig: Record<DocStatus, { icon: typeof CheckCircle2; color: string; label: string }> = {
   ok: { icon: CheckCircle2, color: 'text-success', label: 'Regular' },
-  // "Pendente" não dizia o que estava pendente, e a leitura natural é que falta
-  // alguma coisa no documento. O que há é validade curta — e quem lê precisa do
-  // prazo, não do rótulo. Na contagem do topo, que soma vários, fica o gênero;
-  // na linha do documento, o prazo em dias.
-  pendente: { icon: Clock, color: 'text-warning', label: 'Vencendo' },
   vencido: { icon: AlertTriangle, color: 'text-destructive', label: 'Vencido' },
   ausente: { icon: AlertTriangle, color: 'text-destructive', label: 'Ausente' },
 };
@@ -104,14 +104,6 @@ const diasAteVencer = (validade: string): number | null => {
   return Math.round((alvo - hoje) / 86400000);
 };
 
-/** O prazo dito por extenso, para a pessoa não ter de calcular de cabeça. */
-const prazoPorExtenso = (validade?: string): string | null => {
-  const d = validade ? diasAteVencer(validade) : null;
-  if (d === null || d < 0) return null;
-  if (d === 0) return 'Vence hoje';
-  if (d === 1) return 'Vence amanhã';
-  return `Vence em ${d} dias`;
-};
 
 const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
 
@@ -388,11 +380,7 @@ export default function Documentos() {
           }
 
           const dias = match.validade ? diasAteVencer(match.validade) : null;
-          let status: DocStatus = 'ok';
-          if (dias !== null) {
-            if (dias < 0) status = 'vencido';
-            else if (dias <= 30) status = 'pendente';
-          }
+          const status: DocStatus = dias !== null && dias < 0 ? 'vencido' : 'ok';
 
           return {
             ...doc,
@@ -716,7 +704,7 @@ export default function Documentos() {
               </div>
               <Progress value={progress} className="h-2" />
               <div className="flex gap-4 mt-3">
-                {(['ok', 'pendente', 'vencido', 'ausente'] as DocStatus[]).map((s) => {
+                {(['ok', 'vencido', 'ausente'] as DocStatus[]).map((s) => {
                   const cfg = statusConfig[s];
                   const count = documentos.filter((d) => d.status === s).length;
                   return (
@@ -777,9 +765,7 @@ export default function Documentos() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className={`text-sm ${cfg.color}`}>
-                                {doc.status === 'pendente'
-                                  ? prazoPorExtenso(doc.validade) ?? cfg.label
-                                  : cfg.label}
+                                {cfg.label}
                               </Badge>
                               {doc.arquivo ? (
                                 <div className="flex gap-1">
