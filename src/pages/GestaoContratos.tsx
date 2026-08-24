@@ -610,7 +610,10 @@ export default function GestaoContratos() {
           <p className="text-sm text-muted-foreground mt-1">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
         </div>
         <div className="flex gap-2">
-          <ImportarContratoPDF onExtracted={handleImportExtracted} />
+          <ImportarContratoPDF
+            onExtracted={handleImportExtracted}
+            onCadastroManual={() => { resetForm(); setDialogOpen(true); }}
+          />
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { resetForm(); setPendingItens([]); setArquivoAssinado(null); } }}>
             <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Novo</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

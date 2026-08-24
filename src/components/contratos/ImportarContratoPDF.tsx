@@ -45,6 +45,8 @@ type ExtractedData = {
 
 interface ImportarContratoPDFProps {
   onExtracted: (data: ExtractedData, opts: { tipo_estrutura: 'itens' | 'lotes' }) => void;
+  /** Abre o formulário de cadastro em branco — a saída quando a leitura falha. */
+  onCadastroManual?: () => void;
 }
 
 const ACCEPTED_MIME_TYPES = [
@@ -65,7 +67,7 @@ function isAcceptedDocument(file: File) {
   );
 }
 
-export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDFProps) {
+export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: ImportarContratoPDFProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'upload' | 'extracting' | 'done' | 'error'>('upload');
   const [progress, setProgress] = useState(0);
@@ -321,7 +323,18 @@ export default function ImportarContratoPDF({ onExtracted }: ImportarContratoPDF
               <span className="font-medium">Erro na extração</span>
             </div>
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
-            <Button variant="outline" onClick={reset}>Tentar Novamente</Button>
+            {/* A falha não pode ser um beco: quem chegou aqui veio CADASTRAR um
+                contrato, e a leitura automática é meio, não fim. Sem esta
+                saída, a pessoa fechava o diálogo sem saber que o "+ Novo"
+                faz o mesmo à mão. */}
+            <div className="flex flex-wrap gap-2">
+              {onCadastroManual && (
+                <Button onClick={() => { setOpen(false); reset(); onCadastroManual(); }}>
+                  Cadastrar manualmente
+                </Button>
+              )}
+              <Button variant="outline" onClick={reset}>Tentar outro arquivo</Button>
+            </div>
           </div>
         )}
       </DialogContent>
