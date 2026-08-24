@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
 import { toast } from 'sonner';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthorization } from '@/hooks/useAuthorization';
 
 const CAMPO_LABELS: Record<string, string> = {
   numero_contrato: 'Nº do Contrato',
@@ -36,14 +36,38 @@ const ORIGEM_META: Record<string, { label: string; variant: 'default' | 'seconda
   alerta_limite_legal: { label: 'Alerta legal (Lei 14.133/21)', variant: 'destructive', icon: AlertTriangle },
 };
 
-const formatVal = (campo: string, v: string | null) => {
+/**
+ * Rejeição da IA guarda em `valor_novo` um JSON com o motivo — texto para
+ * humano, não valor de campo. Mostrar o JSON cru, ou pior, tentar formatá-lo
+ * como data, escondia justamente a explicação que a linha existe para dar.
+ */
+const motivoDaRejeicao = (v: string): string | null => {
+  try {
+    const o = JSON.parse(v);
+    if (o && typeof o === 'object' && typeof o.motivo === 'string') {
+      const recebido = o.valor_recebido;
+      return recebido === null || recebido === undefined || recebido === ''
+        ? o.motivo
+        : `${o.motivo} (a IA leu: ${typeof recebido === 'string' ? recebido : JSON.stringify(recebido)})`;
+    }
+  } catch { /* não é JSON — segue como texto */ }
+  return null;
+};
+
+const formatVal = (campo: string, v: string | null, origem?: string | null) => {
   if (v == null || v === '') return '—';
+  if (origem === 'ia_rejeicao') return motivoDaRejeicao(v) ?? v;
   if (campo.startsWith('valor') && !campo.startsWith('valor_consumido')) {
     const n = Number(v);
     if (Number.isFinite(n)) return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
   }
   if (campo.startsWith('data_')) {
-    try { return new Date(v + 'T00:00:00').toLocaleDateString('pt-BR'); } catch { return v; }
+    // `toLocaleDateString` de uma data inválida devolve a string "Invalid Date"
+    // em vez de lançar — o try/catch nunca disparava, e o painel exibia isso.
+    // O nome do campo tampouco prova que há data: `data_assinatura_posterior_a_inicio`
+    // é um MOTIVO de rejeição, não um valor.
+    const d = new Date(v + 'T00:00:00');
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
   }
   return v.length > 200 ? v.slice(0, 200) + '…' : v;
 };
@@ -66,7 +90,11 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
   const [tab, setTab] = useState('todos');
   const [eventoSelecionado, setEventoSelecionado] = useState<AuditoriaRow | null>(null);
   const [reprocessando, setReprocessando] = useState(false);
-  const { isAdmin } = useUserRole();
+  // `isAdmin` do useUserRole inclui ADMIN DE EMPRESA. Este botão dispara um job
+  // GLOBAL — reprocessa contratos de todas as empresas —, e a função no banco
+  // exige has_role(uid,'admin'), que é só o admin do SISTEMA. A tela oferecia a
+  // ação a quem o banco recusaria, e a pessoa só descobria pelo erro.
+  const { isSystemAdmin } = useAuthorization();
 
   const handleReprocessarTodos = async () => {
     if (!confirm('Reprocessar TODOS os contratos com aditivos?\n\nEsta ação irá:\n• Remover alertas indevidos de aditivos de prazo/vigência\n• Recalcular alertas legais conforme art. 125 da Lei 14.133/21\n\nDeseja continuar?')) return;
@@ -166,7 +194,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           <div>
             <div className="text-muted-foreground">{isAlerta ? 'Situação detectada' : 'Valor preenchido'}</div>
             <div className={`font-mono break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
-              {formatVal(r.campo, r.valor_novo)}
+              {formatVal(r.campo, r.valor_novo, r.origem)}
             </div>
           </div>
         </div>
@@ -189,7 +217,7 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isAdmin && (
+          {isSystemAdmin && (
             <Button
               variant="outline"
               size="sm"
