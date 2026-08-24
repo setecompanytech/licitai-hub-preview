@@ -5,6 +5,8 @@ import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import { AMPARO_ART95, ESPECIES_OBJETO, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA, avisoDeVigencia } from '@/lib/contratos/instrumentos';
 import { rotuloDaAta } from '@/lib/contratos/rotulos';
+import { avisoDeVigenciaAta, calcularVigencia, somarDias } from '@/lib/contratos/vigencia';
+import LocalDoOrgao from '@/components/contratos/LocalDoOrgao';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
@@ -552,6 +554,27 @@ export default function GestaoContratos() {
   // Dez anos só cabem em serviço contínuo; compra imediata se esgota no ato.
   const avisoVigencia = avisoDeVigencia(form.especie_objeto, parseInt(form.vigencia_meses) || null);
 
+  // A vigência deixa de depender da ordem em que a pessoa preencheu. Antes, o
+  // fim só nascia se o prazo já estivesse lá quando a data foi digitada — e a
+  // extração do PDF traz data, não prazo. Aqui o fim é DERIVADO: muda qualquer
+  // das entradas, ele acompanha.
+  const vigenciaCalculada = calcularVigencia({
+    tipoDocumento: form.tipo_documento,
+    dataInicio: form.data_inicio,
+    dataAssinatura: form.data_assinatura,
+    vigenciaMeses: form.vigencia_meses,
+    validadeAtaMeses: form.validade_ata_meses,
+  });
+  const avisoAta = form.tipo_documento === 'ata_srp'
+    ? avisoDeVigenciaAta(vigenciaCalculada.meses)
+    : null;
+
+  useEffect(() => {
+    if (vigenciaCalculada.dataFim && vigenciaCalculada.dataFim !== form.data_fim) {
+      setForm(f => ({ ...f, data_fim: vigenciaCalculada.dataFim! }));
+    }
+  }, [vigenciaCalculada.dataFim, form.data_fim]);
+
   return (
     <AppLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -804,23 +827,29 @@ export default function GestaoContratos() {
 
               <div><Label>Valor Global (R$)</Label><Input inputMode="decimal" value={form.valor_global ? formatInputBRL(form.valor_global) : ''} onChange={e => setForm(f => ({ ...f, valor_global: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
               <div><Label>Valor Consumido (R$)</Label><Input inputMode="decimal" value={form.valor_consumido ? formatInputBRL(form.valor_consumido) : ''} onChange={e => setForm(f => ({ ...f, valor_consumido: parseBRLInput(e.target.value) }))} placeholder="0,00" /></div>
+              {/* O fim NÃO é calculado aqui: ele é derivado de
+                  calcularVigencia, acima. Duas fontes escrevendo o mesmo campo
+                  faziam o resultado depender da ordem de preenchimento. */}
               <div><Label>Data Assinatura</Label><Input type="date" value={form.data_assinatura} onChange={e => {
                 const assinatura = e.target.value;
-                const updates: any = { data_assinatura: assinatura };
-                if (assinatura) {
-                  const d = new Date(assinatura + 'T00:00:00');
-                  d.setDate(d.getDate() + 1);
-                  updates.data_inicio = d.toISOString().split('T')[0];
-                  if (form.vigencia_meses) {
-                    const fim = new Date(d);
-                    fim.setMonth(fim.getMonth() + parseInt(form.vigencia_meses));
-                    updates.data_fim = fim.toISOString().split('T')[0];
-                  }
-                }
+                const updates: Record<string, string> = { data_assinatura: assinatura };
+                // Início no dia seguinte à assinatura é a praxe do cadastro;
+                // continua editável pela própria data de início.
+                if (assinatura) updates.data_inicio = somarDias(assinatura, 1) ?? '';
                 setForm(f => ({ ...f, ...updates }));
               }} /></div>
               <div><Label>Data Início</Label><Input type="date" value={form.data_inicio} readOnly className="bg-muted/50" /></div>
-              <div><Label>Data Fim</Label><Input type="date" value={form.data_fim} readOnly className="bg-muted/50" /></div>
+              <div>
+                <Label>Data Fim</Label>
+                <Input type="date" value={form.data_fim} readOnly className="bg-muted/50" />
+                {vigenciaCalculada.inferido && form.data_fim && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Calculada com 1 ano de vigência da ARP (Lei 14.133/2021, art. 84).
+                    Informe a validade abaixo se o edital previr outro prazo.
+                  </p>
+                )}
+                {avisoAta && <p className="text-xs text-warning mt-1">{avisoAta}</p>}
+              </div>
               <div className="md:col-span-2">
                 <Label>Espécie do objeto</Label>
                 <Select value={form.especie_objeto} onValueChange={v => setForm(f => ({ ...f, especie_objeto: v }))}>
@@ -840,20 +869,14 @@ export default function GestaoContratos() {
                 )}
                 {avisoVigencia && <p className="text-xs text-warning mt-1">{avisoVigencia}</p>}
               </div>
-              <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => {
-                const meses = e.target.value;
-                const updates: any = { vigencia_meses: meses };
-                if (meses && form.data_inicio) {
-                  const fim = new Date(form.data_inicio + 'T00:00:00');
-                  fim.setMonth(fim.getMonth() + parseInt(meses));
-                  updates.data_fim = fim.toISOString().split('T')[0];
-                }
-                setForm(f => ({ ...f, ...updates }));
-              }} /></div>
+              <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => setForm(f => ({ ...f, vigencia_meses: e.target.value }))} /></div>
               <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select></div>
               <div><Label>Modalidade</Label><Input value={form.modalidade} onChange={e => setForm(f => ({ ...f, modalidade: e.target.value }))} placeholder="Pregão Eletrônico" /></div>
-              <div><Label>UF</Label><Input value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value }))} maxLength={2} /></div>
-              <div><Label>Município</Label><Input value={form.municipio} onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))} /></div>
+              <LocalDoOrgao
+                uf={form.uf}
+                municipio={form.municipio}
+                onChange={(patch) => setForm(f => ({ ...f, ...patch }))}
+              />
               <div><Label>Fiscal - Nome</Label><Input value={form.fiscal_nome} onChange={e => setForm(f => ({ ...f, fiscal_nome: e.target.value }))} /></div>
               <div><Label>Fiscal - E-mail</Label><Input value={form.fiscal_email} onChange={e => setForm(f => ({ ...f, fiscal_email: e.target.value }))} /></div>
               <div><Label>Fiscal - Telefone</Label><Input value={form.fiscal_telefone} onChange={e => setForm(f => ({ ...f, fiscal_telefone: e.target.value }))} /></div>

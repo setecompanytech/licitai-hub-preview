@@ -1,0 +1,81 @@
+import { describe, it, expect } from 'vitest';
+import {
+  avisoDeVigenciaAta,
+  calcularVigencia,
+  somarMeses,
+} from '@/lib/contratos/vigencia';
+
+describe('somarMeses', () => {
+  it('soma sem passar por fuso', () => {
+    expect(somarMeses('2024-08-14', 12)).toBe('2025-08-14');
+    expect(somarMeses('2024-08-14', 24)).toBe('2026-08-14');
+  });
+
+  // setMonth faz 31/01 + 1 mês virar 03/03. Ninguém entende "um mês depois"
+  // de 31 de janeiro como 3 de março.
+  it('não transborda o mês', () => {
+    expect(somarMeses('2024-01-31', 1)).toBe('2024-02-29');
+    expect(somarMeses('2025-01-31', 1)).toBe('2025-02-28');
+    expect(somarMeses('2024-05-31', 1)).toBe('2024-06-30');
+  });
+
+  it('devolve nulo para data que não é data', () => {
+    expect(somarMeses('', 12)).toBeNull();
+    expect(somarMeses('13/08/2024', 12)).toBeNull();
+  });
+});
+
+describe('calcularVigencia', () => {
+  // O caso que motivou: a extração do PDF trouxe assinatura e início, deixou o
+  // prazo em branco, e "Data Fim" ficava vazia esperando conta de cabeça.
+  it('a ATA sem prazo informado usa o 1 ano do art. 84', () => {
+    const r = calcularVigencia({ tipoDocumento: 'ata_srp', dataInicio: '2024-08-14' });
+    expect(r).toEqual({ dataFim: '2025-08-14', meses: 12, inferido: true });
+  });
+
+  it('o prazo informado manda sobre o padrão legal', () => {
+    const r = calcularVigencia({
+      tipoDocumento: 'ata_srp', dataInicio: '2024-08-14', validadeAtaMeses: '24',
+    });
+    expect(r).toEqual({ dataFim: '2026-08-14', meses: 24, inferido: false });
+  });
+
+  // Contrato não tem prazo único: o art. 105 e seguintes fazem depender da
+  // espécie do objeto. Inventar 12 meses aqui seria adivinhar.
+  it('contrato sem prazo informado não ganha fim inventado', () => {
+    const r = calcularVigencia({ tipoDocumento: 'contrato', dataInicio: '2024-08-14' });
+    expect(r).toEqual({ dataFim: null, meses: null, inferido: false });
+  });
+
+  it('contrato com prazo informado calcula normalmente', () => {
+    const r = calcularVigencia({
+      tipoDocumento: 'contrato', dataInicio: '2024-08-14', vigenciaMeses: '30',
+    });
+    expect(r.dataFim).toBe('2027-02-14');
+    expect(r.inferido).toBe(false);
+  });
+
+  it('cai para a data de assinatura quando o início ainda não existe', () => {
+    const r = calcularVigencia({ tipoDocumento: 'ata_srp', dataAssinatura: '2024-08-13' });
+    expect(r.dataFim).toBe('2025-08-13');
+  });
+
+  it('sem data alguma, não há fim', () => {
+    expect(calcularVigencia({ tipoDocumento: 'ata_srp' }).dataFim).toBeNull();
+  });
+});
+
+describe('avisoDeVigenciaAta', () => {
+  it('cala no prazo ordinário', () => {
+    expect(avisoDeVigenciaAta(12)).toBeNull();
+    expect(avisoDeVigenciaAta(null)).toBeNull();
+  });
+
+  it('lembra a prorrogação entre 12 e 24 meses', () => {
+    expect(avisoDeVigenciaAta(18)).toContain('prorrogação formal');
+  });
+
+  it('acusa o que passa dos 24 meses', () => {
+    expect(avisoDeVigenciaAta(30)).toContain('excede o limite');
+  });
+});
