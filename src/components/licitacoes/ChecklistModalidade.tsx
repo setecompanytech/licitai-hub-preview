@@ -13,6 +13,19 @@ type ChecklistItem = {
   categoria: string;
 };
 
+/**
+ * Roteiro de conduta por rito. Material de referência: não conhece processo,
+ * não lê edital e não guarda marcação — quem faz isso é o checklist de
+ * habilitação dentro da pasta do processo, que persiste e casa com o cofre.
+ *
+ * As chaves seguem a Lei 14.133/2021: as modalidades são as cinco do art. 28
+ * (pregão, concorrência, concurso, leilão e diálogo competitivo). Tomada de
+ * Preços e Convite eram da Lei 8.666, revogada — ofertá-las sob um cabeçalho
+ * que promete "conformidade com a Lei 14.133/2021" ensinava rito extinto.
+ *
+ * Dispensa e inexigibilidade entram por serem trabalho de quem vende ao poder
+ * público, mas rotuladas pelo que são: contratação DIRETA, não modalidade.
+ */
 const checklists: Record<string, ChecklistItem[]> = {
   'Pregão Eletrônico': [
     { id: 'pe-1', texto: 'Cadastro e login no portal (Compras.gov.br, BEC, BLL, etc.)', obrigatorio: true, categoria: 'Preparação' },
@@ -41,17 +54,16 @@ const checklists: Record<string, ChecklistItem[]> = {
     { id: 'co-9', texto: 'Credenciar representante para a sessão', obrigatorio: true, categoria: 'Sessão' },
     { id: 'co-10', texto: 'Procuração com poderes para recurso/desistência', obrigatorio: true, categoria: 'Sessão' },
   ],
-  'Tomada de Preços': [
-    { id: 'tp-1', texto: 'Verificar cadastro no SICAF ou CRC do órgão', obrigatorio: true, categoria: 'Preparação' },
-    { id: 'tp-2', texto: 'Certificado de Registro Cadastral atualizado', obrigatorio: true, categoria: 'Documentação' },
-    { id: 'tp-3', texto: 'Documentação complementar de habilitação', obrigatorio: true, categoria: 'Documentação' },
-    { id: 'tp-4', texto: 'Proposta de preços conforme edital', obrigatorio: true, categoria: 'Proposta' },
-    { id: 'tp-5', texto: 'Planilha orçamentária detalhada', obrigatorio: true, categoria: 'Proposta' },
-    { id: 'tp-6', texto: 'Cronograma físico-financeiro (se obras/serviços)', obrigatorio: false, categoria: 'Proposta' },
-    { id: 'tp-7', texto: 'Protocolar documentação dentro do prazo', obrigatorio: true, categoria: 'Envio' },
-    { id: 'tp-8', texto: 'Representante credenciado na sessão', obrigatorio: true, categoria: 'Sessão' },
+  // Art. 30 — escolha de trabalho técnico, científico ou artístico.
+  'Concurso': [
+    { id: 'cs-1', texto: 'Ler o regulamento do concurso e os critérios de julgamento', obrigatorio: true, categoria: 'Preparação' },
+    { id: 'cs-2', texto: 'Conferir prazo e forma de entrega do trabalho', obrigatorio: true, categoria: 'Preparação' },
+    { id: 'cs-3', texto: 'Observar o sigilo de autoria exigido pelo regulamento', obrigatorio: true, categoria: 'Documentação' },
+    { id: 'cs-4', texto: 'Verificar a cessão de direitos patrimoniais sobre o trabalho', obrigatorio: true, categoria: 'Documentação' },
+    { id: 'cs-5', texto: 'Entregar o trabalho conforme o regulamento', obrigatorio: true, categoria: 'Envio' },
   ],
-  'Dispensa': [
+  // Contratação DIRETA (art. 75). Não é modalidade — é hipótese de dispensa.
+  'Dispensa (art. 75)': [
     { id: 'di-1', texto: 'Verificar enquadramento legal da dispensa (Art. 75)', obrigatorio: true, categoria: 'Preparação' },
     { id: 'di-2', texto: 'Proposta comercial simplificada', obrigatorio: true, categoria: 'Proposta' },
     { id: 'di-3', texto: 'Documentação fiscal básica (CNPJ, certidões)', obrigatorio: true, categoria: 'Documentação' },
@@ -64,6 +76,15 @@ const checklists: Record<string, ChecklistItem[]> = {
     { id: 'le-3', texto: 'Visita e vistoria dos bens/itens', obrigatorio: false, categoria: 'Preparação' },
     { id: 'le-4', texto: 'Documento de identidade e CPF/CNPJ', obrigatorio: true, categoria: 'Documentação' },
     { id: 'le-5', texto: 'Participar da sessão de lances', obrigatorio: true, categoria: 'Sessão' },
+    { id: 'le-6', texto: 'Pagar e retirar o bem no prazo do edital', obrigatorio: true, categoria: 'Envio' },
+  ],
+  // Contratação DIRETA (art. 74): inviabilidade de competição.
+  'Inexigibilidade (art. 74)': [
+    { id: 'ix-1', texto: 'Identificar a hipótese: fornecedor exclusivo, notória especialização ou artista', obrigatorio: true, categoria: 'Preparação' },
+    { id: 'ix-2', texto: 'Carta/atestado de exclusividade emitido por entidade competente', obrigatorio: true, categoria: 'Documentação' },
+    { id: 'ix-3', texto: 'Comprovação da notória especialização, quando for o caso', obrigatorio: false, categoria: 'Documentação' },
+    { id: 'ix-4', texto: 'Justificativa de preço (art. 23) — notas fiscais de contratos anteriores', obrigatorio: true, categoria: 'Proposta' },
+    { id: 'ix-5', texto: 'Documentação de habilitação exigida pelo órgão', obrigatorio: true, categoria: 'Documentação' },
   ],
   'Diálogo Competitivo': [
     { id: 'dc-1', texto: 'Manifestação de interesse na fase de pré-qualificação', obrigatorio: true, categoria: 'Preparação' },
