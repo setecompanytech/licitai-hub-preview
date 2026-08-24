@@ -92,6 +92,14 @@ const TIPOS_SEM_LIMITE = ['reequilibrio', 'revisao', 'repactuacao', 'reajuste'];
 // contrato: adesão tem teto próprio (Decreto 11.462/2023, art. 32, §4º) e
 // remanejamento redistribui entre participantes sem acrescer o registrado.
 const TIPOS_DE_ATA = ['adesao', 'remanejamento'];
+
+/** O que a justificativa denuncia, quando contradiz o tipo escolhido. */
+const INSTITUTOS_SEM_LIMITE: Array<[RegExp, string]> = [
+  [/reequil[ií]brio/i, 'reequilíbrio econômico-financeiro'],
+  [/repactua/i, 'repactuação'],
+  [/reajust/i, 'reajuste'],
+  [/revis[ãa]o\s+(contratual|de\s+pre)/i, 'revisão contratual'],
+];
 const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA];
 const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
 const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', ...TIPOS_DE_ATA].includes(tipo);
@@ -100,6 +108,14 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const { user } = useAuth();
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [docAtual, setDocAtual] = useState<DocAlvo | null>(null);
+
+  // Só vale avisar quando o tipo escolhido ENTRA no cálculo do limite: dizer
+  // isso num aditivo já classificado como reequilíbrio seria ruído.
+  const avisoDeTipoDivergente = (() => {
+    if (!['valor', 'quantidade', 'valor_quantidade', 'escopo'].includes(form.tipo)) return null;
+    const achado = INSTITUTOS_SEM_LIMITE.find(([re]) => re.test(form.justificativa || ''));
+    return achado?.[1] ?? null;
+  })();
   const [alvosDisponiveis, setAlvosDisponiveis] = useState<DocAlvo[]>([]);
   const [valorOriginal, setValorOriginal] = useState<number>(0);
   const [objetoContrato, setObjetoContrato] = useState<string>('');
@@ -540,6 +556,22 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 <p className="text-xs text-warning mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+                </p>
+              )}
+              {/* A justificativa costuma dizer o que o aditivo é, e discordar do
+                  tipo escolhido. O 1º TA do contrato 772/2024 dizia "reequilíbrio
+                  econômico" com tipo "Valor" — e o sistema acusou 38,93% sobre um
+                  teto que não se aplica a reequilíbrio. Alerta legal falso é caro:
+                  manda tratar de uma infração que não existe. */}
+              {avisoDeTipoDivergente && (
+                <p className="text-xs text-warning mt-1 flex items-start gap-1">
+                  <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                  <span>
+                    A justificativa fala em <strong>{avisoDeTipoDivergente}</strong>, que não
+                    acresce objeto e fica fora do teto do art. 125. Classificado como
+                    “{TIPOS_ADITIVO[form.tipo]?.label ?? form.tipo}”, ele entra no cálculo
+                    do limite e pode gerar alerta legal indevido.
+                  </span>
                 </p>
               )}
               {form.tipo === 'adesao' && (
