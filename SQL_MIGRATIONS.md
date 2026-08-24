@@ -3849,3 +3849,17 @@ disparar por último e fotografam o estado que o recálculo deixou.
 
 **Arquivo:** `supabase/migrations/20260824000007_diario_fotografa_depois.sql`
 
+---
+
+## 20260824000008 — O diário da ata escreve dinheiro em português
+
+**Por quê.** "Total consumido: R$ 2123520 (25.00% do valor global)" — sete
+dígitos sem separador e percentual com ponto: a mesma doença dos alertas
+legais, corrigida na 20260824000002 e esquecida nos diários de recálculo.
+
+**O que muda.** Os corpos de `log_recalc_saldo_ata_item` e
+`log_recalc_consumo_ata_pai` passam a usar `formatar_brl`/`formatar_numero`.
+Os gatilhos (já `trg_zlog_*`) continuam apontando para elas.
+
+**Arquivo:** `supabase/migrations/20260824000008_diario_escreve_em_reais.sql`
+

@@ -79,6 +79,18 @@ const resumoDaVinculacao = (v: string): string | null => {
   } catch { return null; }
 };
 
+/**
+ * Registros antigos foram gravados com número cru ("R$ 2123520", "25.00%") —
+ * as migrations consertam os futuros, mas o diário não se reescreve. Na
+ * EXIBIÇÃO, o que é reconhecível ganha a pontuação brasileira. Valores já
+ * formatados (contêm ponto de milhar ou vírgula) passam intactos.
+ */
+const abrasileirar = (t: string): string =>
+  t
+    .replace(/R\$\s?(\d{4,})(?![\d.,])/g, (_m, n: string) =>
+      `R$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+    .replace(/(\d+)\.(\d{1,2})%/g, '$1,$2%');
+
 const formatVal = (campo: string, v: string | null, origem?: string | null) => {
   if (v == null || v === '') return '—';
   if (campo === 'auto_vinculacao_ata') return resumoDaVinculacao(v) ?? v;
@@ -95,7 +107,8 @@ const formatVal = (campo: string, v: string | null, origem?: string | null) => {
     const d = new Date(v + 'T00:00:00');
     if (!Number.isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
   }
-  return v.length > 200 ? v.slice(0, 200) + '…' : v;
+  const legivel = abrasileirar(v);
+  return legivel.length > 200 ? legivel.slice(0, 200) + '…' : legivel;
 };
 
 interface AuditoriaRow {
@@ -220,11 +233,13 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
         <div className="text-xs grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
           <div>
             <div className="text-muted-foreground">{isAlerta ? 'Limite legal' : 'Valor anterior'}</div>
-            <div className="font-mono break-words">{formatVal(r.campo, r.valor_anterior)}</div>
+            {/* Fonte comum: o diário é texto para gente ler, não trecho de
+                código — a monoespaçada gritava "técnico" e cansava a leitura. */}
+            <div className="break-words">{formatVal(r.campo, r.valor_anterior)}</div>
           </div>
           <div>
             <div className="text-muted-foreground">{isAlerta ? 'Situação detectada' : 'Valor preenchido'}</div>
-            <div className={`font-mono break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
+            <div className={`break-words ${isAlerta ? 'text-destructive font-semibold' : 'text-foreground font-medium'}`}>
               {formatVal(r.campo, r.valor_novo, r.origem)}
             </div>
           </div>
