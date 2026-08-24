@@ -629,9 +629,13 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
                 {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {isContratoComATA && <TableHead className="text-xs whitespace-nowrap">Item ATA</TableHead>}
-                <TableHead className="text-xs whitespace-nowrap">Código</TableHead>
+                {/* Código entra na célula da descrição e a unidade na da
+                    quantidade: com quinze colunas, Saldo e o lápis de editar
+                    caíam fora da tela — e a rolagem horizontal do macOS é
+                    invisível até alguém rolar. O que a tabela existe para
+                    mostrar (saldo) e para permitir (editar) não pode depender
+                    de rolagem que ninguém vê. */}
                 <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
-                <TableHead className="text-xs text-center whitespace-nowrap">UN</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
                 {podeVerCustos && <TableHead className="text-xs text-right whitespace-nowrap">Custo Unit.</TableHead>}
                 <TableHead className="text-xs text-right whitespace-nowrap">Vlr Unit.</TableHead>
@@ -640,7 +644,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <TableHead className="text-xs text-right whitespace-nowrap">Consumido</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo Qtd</TableHead>
                 <TableHead className="text-xs text-right whitespace-nowrap">Saldo R$</TableHead>
-                <TableHead className="text-xs w-10"></TableHead>
+                <TableHead className="text-xs w-10 sticky right-0 bg-card"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -729,17 +733,27 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         ) : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
-                    <TableCell className="text-xs font-mono whitespace-nowrap">{item.codigo_item || '—'}</TableCell>
-                    <TableCell className="text-xs max-w-[200px]">
+                    <TableCell className="text-xs max-w-[240px]">
                       <span className="truncate block">{item.descricao}</span>
+                      {item.codigo_item && (
+                        <span className="text-[11px] text-muted-foreground font-mono">cód. {item.codigo_item}</span>
+                      )}
                       {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
                         <span className="text-xs text-muted-foreground line-through">
                           {fmt(original.valor_unitario)}/un (original)
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-center whitespace-nowrap">{item.unidade}</TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">{item.quantidade_contratada}</TableCell>
+                    <TableCell className="text-xs text-right whitespace-nowrap">
+                      {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
+                      <span className="text-muted-foreground"> {item.unidade}</span>
+                      {/* Quantidade zerada é a fratura físico×financeiro: o
+                          scan não rendeu o número e o total fica em R$ 0,00.
+                          O aviso mora ao lado do defeito, não noutra aba. */}
+                      {(item.quantidade_contratada || 0) === 0 && (
+                        <div className="text-[11px] text-warning">sem quantidade — edite no lápis</div>
+                      )}
+                    </TableCell>
                     {podeVerCustos && (
                       <TableCell className="text-xs text-right whitespace-nowrap text-muted-foreground">
                         {item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}
@@ -780,7 +794,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
                       {fmt(item.saldo_financeiro)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="sticky right-0 bg-card">
                       <div className="flex items-center gap-0.5">
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
                           <Copy className="w-3.5 h-3.5" />
