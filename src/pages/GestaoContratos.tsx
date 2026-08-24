@@ -411,6 +411,27 @@ export default function GestaoContratos() {
     setDialogOpen(true);
   };
 
+  // A vigência deixa de depender da ordem em que a pessoa preencheu. Antes, o
+  // fim só nascia se o prazo já estivesse lá quando a data foi digitada — e a
+  // extração do PDF traz data, não prazo. Aqui o fim é DERIVADO: muda qualquer
+  // das entradas, ele acompanha.
+  const vigenciaCalculada = calcularVigencia({
+    tipoDocumento: form.tipo_documento,
+    dataInicio: form.data_inicio,
+    dataAssinatura: form.data_assinatura,
+    vigenciaMeses: form.vigencia_meses,
+    validadeAtaMeses: form.validade_ata_meses,
+  });
+  const avisoAta = form.tipo_documento === 'ata_srp'
+    ? avisoDeVigenciaAta(vigenciaCalculada.meses)
+    : null;
+
+  useEffect(() => {
+    if (vigenciaCalculada.dataFim && vigenciaCalculada.dataFim !== form.data_fim) {
+      setForm(f => ({ ...f, data_fim: vigenciaCalculada.dataFim! }));
+    }
+  }, [vigenciaCalculada.dataFim, form.data_fim]);
+
   // ═══ DETAIL VIEW ═══
   if (selectedContrato) {
     const c = selectedContrato;
@@ -555,26 +576,6 @@ export default function GestaoContratos() {
   // Dez anos só cabem em serviço contínuo; compra imediata se esgota no ato.
   const avisoVigencia = avisoDeVigencia(form.especie_objeto, parseInt(form.vigencia_meses) || null);
 
-  // A vigência deixa de depender da ordem em que a pessoa preencheu. Antes, o
-  // fim só nascia se o prazo já estivesse lá quando a data foi digitada — e a
-  // extração do PDF traz data, não prazo. Aqui o fim é DERIVADO: muda qualquer
-  // das entradas, ele acompanha.
-  const vigenciaCalculada = calcularVigencia({
-    tipoDocumento: form.tipo_documento,
-    dataInicio: form.data_inicio,
-    dataAssinatura: form.data_assinatura,
-    vigenciaMeses: form.vigencia_meses,
-    validadeAtaMeses: form.validade_ata_meses,
-  });
-  const avisoAta = form.tipo_documento === 'ata_srp'
-    ? avisoDeVigenciaAta(vigenciaCalculada.meses)
-    : null;
-
-  useEffect(() => {
-    if (vigenciaCalculada.dataFim && vigenciaCalculada.dataFim !== form.data_fim) {
-      setForm(f => ({ ...f, data_fim: vigenciaCalculada.dataFim! }));
-    }
-  }, [vigenciaCalculada.dataFim, form.data_fim]);
 
   return (
     <AppLayout>
