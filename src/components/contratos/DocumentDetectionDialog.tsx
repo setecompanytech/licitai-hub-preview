@@ -73,6 +73,8 @@ type Props = {
   }) => Promise<void> | void;
   /** User dismisses the suggestion and keeps the file as-is */
   onIgnore: () => void;
+  /** Confronto do contrato derivado com a ATA-mãe — quando o pai é uma ata. */
+  confronto?: import('@/lib/contratos/confronto').ConfrontoComAta | null;
 };
 
 export default function DocumentDetectionDialog({
@@ -84,6 +86,7 @@ export default function DocumentDetectionDialog({
   onCreateLinkedRegistry,
   onConfirmAditivo,
   onIgnore,
+  confronto,
 }: Props) {
   const [working, setWorking] = useState(false);
   const [adForm, setAdForm] = useState({
@@ -185,6 +188,46 @@ export default function DocumentDetectionDialog({
               {Array.isArray(detection.itens) && detection.itens.length > 0 && (
                 <div>📦 Itens extraídos: <strong>{detection.itens.length}</strong></div>
               )}
+            </div>
+          </Card>
+        )}
+
+        {/* Confronto com a ATA-mãe: a leitura do contrato batida contra o
+            registrado — quantidade × saldo, preço × registrado, valor × teto.
+            É a análise que o dono do produto pediu ANTES de o registro existir. */}
+        {confronto && (
+          <Card className={`p-4 space-y-2 ${confronto.valorExcede || confronto.comProblema > 0 ? 'border-destructive/40 bg-destructive/5' : 'border-success/40 bg-success/5'}`}>
+            <p className="text-xs font-semibold">Confronto com a ATA</p>
+            <div className="text-xs space-y-1">
+              <div className={confronto.valorExcede ? 'text-destructive font-medium' : ''}>
+                💰 Valor do contrato {fmt(confronto.valorContrato)} × saldo da ata {fmt(confronto.saldoAta)}
+                {confronto.valorExcede ? ' — EXCEDE: a soma dos contratos não pode passar do registrado' : ' — dentro do saldo'}
+              </div>
+              {confronto.dentroDaVigencia !== null && (
+                <div className={confronto.dentroDaVigencia ? '' : 'text-destructive font-medium'}>
+                  📅 Assinatura {confronto.dentroDaVigencia ? 'dentro' : 'FORA'} da vigência da ata
+                  {confronto.dataFimAta ? ` (até ${new Date(`${confronto.dataFimAta}T12:00:00`).toLocaleDateString('pt-BR')})` : ''}
+                </div>
+              )}
+              {confronto.itens.length > 0 && (
+                <div>
+                  📦 {confronto.casados} de {confronto.itens.length} item(ns) casado(s) com a ata
+                  {confronto.semPar > 0 && <span className="text-warning"> · {confronto.semPar} sem par</span>}
+                </div>
+              )}
+              {confronto.itens.filter(i => i.ataItem).map((i, idx) => (
+                <div key={idx} className="border-t border-border/50 pt-1">
+                  <span className="font-medium">{i.extraido.descricao.slice(0, 60)}</span>
+                  <div className={i.quantidadeExcede ? 'text-destructive' : 'text-muted-foreground'}>
+                    Qtde {Number(i.extraido.quantidade || 0).toLocaleString('pt-BR')} × saldo {Number(i.saldoDisponivel ?? 0).toLocaleString('pt-BR')} {i.ataItem?.unidade || ''}
+                    {i.quantidadeExcede ? ' — EXCEDE o saldo do item' : ' — ok'}
+                  </div>
+                  <div className={i.precoDiverge ? 'text-destructive' : 'text-muted-foreground'}>
+                    Preço {fmt(Number(i.extraido.valor_unitario || 0))} × registrado {fmt(i.ataItem?.valor_unitario || 0)}
+                    {i.precoDiverge ? ' — DIVERGE do registrado (mesmo preço e condições da ata)' : ' — mesmo preço'}
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
         )}

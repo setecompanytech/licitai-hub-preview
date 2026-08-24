@@ -16,6 +16,7 @@ import {
   Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
+import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
 import { extractContractDataFromFile } from './utils/extractContractData';
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
@@ -179,6 +180,7 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
   const [detectionOpen, setDetectionOpen] = useState(false);
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [detectionFileName, setDetectionFileName] = useState('');
+  const [confrontoAta, setConfrontoAta] = useState<ConfrontoComAta | null>(null);
   const [precificacaoMargem, setPrecificacaoMargem] = useState<number | null>(null);
   const [calcCustoNovo, setCalcCustoNovo] = useState('');
   const [calcCustoAtual, setCalcCustoAtual] = useState('');
@@ -271,6 +273,14 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       toast.info('Analisando documento via IA…');
       try {
         const detected = await extractContractDataFromFile(file, uploadTipo);
+        // Falha de leitura NÃO pode ser silenciosa: o arquivo era guardado sem
+        // análise e ninguém sabia que o confronto com a ATA não aconteceu.
+        if (!detected) {
+          toast.warning('Não foi possível ler o documento para o confronto com a ATA.', {
+            description: 'O arquivo será guardado sem análise. Reenvie pelo ícone de substituir para tentar de novo.',
+            duration: 10000,
+          });
+        }
         if (detected && detected.tipo_documento_detectado) {
           const detectedType = detected.tipo_documento_detectado;
           const isAditivoDetected = detectedType === 'aditivo';
@@ -278,6 +288,33 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
             ((parentTipoDocumento === 'contrato' && detectedType === 'ata_srp') ||
              (parentTipoDocumento === 'ata_srp' && detectedType === 'contrato'));
           if (mismatch || isAditivoDetected) {
+            // O confronto que a doutrina exige, ANTES de criar: quantidade do
+            // contrato × saldo do item da ata, preço × registrado, valor ×
+            // teto, assinatura × vigência. A leitura sozinha não basta — ela é
+            // batida contra o que a ata tem GRAVADO.
+            if (parentTipoDocumento === 'ata_srp' && detectedType === 'contrato' && parentContrato) {
+              try {
+                const [{ data: ataFresca }, { data: ataItens }] = await Promise.all([
+                  supabase.from('contratos').select('valor_global, valor_consumido, data_fim').eq('id', parentContrato.id).maybeSingle(),
+                  supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, quantidade_contratada, quantidade_ata_consumida, valor_unitario').eq('contrato_id', parentContrato.id),
+                ]);
+                setConfrontoAta(confrontarContratoComAta(
+                  {
+                    valorGlobal: Number(detected.valor_global) || 0,
+                    dataAssinatura: detected.data_assinatura ?? null,
+                    itens: Array.isArray(detected.itens) ? detected.itens : [],
+                  },
+                  {
+                    valorGlobal: Number(ataFresca?.valor_global) || 0,
+                    valorConsumido: Number(ataFresca?.valor_consumido) || 0,
+                    dataFim: ataFresca?.data_fim ?? null,
+                    itens: (ataItens as never[]) ?? [],
+                  },
+                ));
+              } catch { setConfrontoAta(null); }
+            } else {
+              setConfrontoAta(null);
+            }
             setDetection(detected as DetectionResult);
             setDetectionFileName(file.name);
             setDetectionOpen(true);
@@ -1566,10 +1603,11 @@ export default function ContratoArquivos({ contratoId }: { contratoId: string })
       {/* IA document detection dialog */}
       <DocumentDetectionDialog
         open={detectionOpen}
-        onOpenChange={(o) => { setDetectionOpen(o); if (!o) { setDetection(null); setPendingFile(null); } }}
+        onOpenChange={(o) => { setDetectionOpen(o); if (!o) { setDetection(null); setPendingFile(null); setConfrontoAta(null); } }}
         detection={detection}
         parentTipoDocumento={parentTipoDocumento}
         fileName={detectionFileName}
+        confronto={confrontoAta}
         onCreateLinkedRegistry={handleCreateLinkedRegistry}
         onConfirmAditivo={handleConfirmAditivoFromDetection}
         onIgnore={handleDetectionIgnore}
