@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
+import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
+import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -238,7 +240,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       data_emissao: d.data_emissao ?? null,
       tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
       numero_documento: d.numero_documento ?? null,
-      chave_acesso_nfe: d.chave_nfe ?? null,
+      chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
       observacoes: [
         d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
         d.emitente_cnpj ? `CNPJ emitente: ${d.emitente_cnpj}` : null,
@@ -349,7 +351,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               p_data_emissao: d.data_emissao ?? null,
               p_tipo_documento: (d.tipo_documento as any) ?? "outro",
               p_numero_documento: d.numero_documento ?? null,
-              p_chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
+              p_chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
               p_pessoa_id: null,
               p_observacoes: [
                 d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
@@ -365,8 +367,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             },
           );
           if (rpcErr) {
+            // O banco recusa estado impossível; a recusa tem de chegar em
+            // português. `violates check constraint "chk_fl_chave_nfe_44"` não
+            // diz nada a quem está lançando uma nota de carne moída.
             toast.error(
-              `Erro ao vincular${itemIds.length > 1 ? ` item ${idx + 1}/${itemIds.length}` : ""}: ${rpcErr.message}`,
+              `Não foi possível vincular${itemIds.length > 1 ? ` o item ${idx + 1}/${itemIds.length}` : ""}`,
+              { description: mensagemDeErro(rpcErr), duration: 10000 },
             );
             return;
           }
@@ -400,7 +406,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         data_emissao: d.data_emissao ?? null,
         tipo_documento: (d.tipo_documento as any) ?? "outro",
         numero_documento: d.numero_documento ?? null,
-        chave_acesso_nfe: d.chave_nfe ? String(d.chave_nfe).replace(/\D/g, "") : null,
+        chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
       } as any);
       setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: (r as any)?.id ?? "ok" } : x)));
       invalidarFinanceiro();
@@ -538,6 +544,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 {d.dados.data_vencimento && <span><b>Venc:</b> {d.dados.data_vencimento}</span>}
                                 <span className="font-semibold text-foreground"><b>Valor:</b> {fmt(d.dados.valor_total)}</span>
                               </div>
+                            )}
+                            {/* Chave descartada não pode ser descarte silencioso: quem
+                                revisa precisa saber que o campo ficou vazio de propósito,
+                                e que a leitura da IA errou ali. */}
+                            {d.status === "ok" && chaveNfeSuspeita(d.dados?.chave_nfe) && (
+                              <p className="text-xs text-warning mt-1">
+                                A leitura devolveu {String(d.dados?.chave_nfe).replace(/\D/g, "").length} dígitos
+                                onde a chave da NF-e tem 44 — provavelmente pegou o número da nota.
+                                O campo será gravado vazio; cole a chave completa se precisar dela.
+                              </p>
                             )}
                             {d.erro && <p className="text-xs text-destructive mt-1">{d.erro}</p>}
                             {d.dados?._ja_lancada && (
