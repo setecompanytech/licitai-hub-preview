@@ -27,7 +27,7 @@ const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; co
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-muted text-muted-foreground' },
-  reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
+  reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   repactuacao: { label: 'Repactuação', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   reajuste: { label: 'Reajuste', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
@@ -540,7 +540,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   <SelectItem value="valor_quantidade">Valor e Qtde</SelectItem>
                   <SelectItem value="prazo">Prazo</SelectItem>
                   <SelectItem value="escopo">Escopo</SelectItem>
-                  <SelectItem value="reequilibrio">Reequilíbrio Econômico-Financeiro</SelectItem>
+                  <SelectItem value="reequilibrio">Reequilíbrio Econômico-Financeiro (art. 124, II, “d”)</SelectItem>
                   <SelectItem value="revisao">Revisão Contratual</SelectItem>
                   <SelectItem value="repactuacao">Repactuação</SelectItem>
                   <SelectItem value="reajuste">Reajuste</SelectItem>
