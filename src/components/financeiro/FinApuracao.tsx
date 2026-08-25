@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { rotuloDoRegime, excedeTetoDoSimples, TETO_SIMPLES_NACIONAL } from "@/lib/tributario/regime";
+import { rotuloDoRegime, excedeTetoDoSimples, regimeDaEmpresa, TETO_SIMPLES_NACIONAL } from "@/lib/tributario/regime";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -123,6 +123,39 @@ export default function FinApuracao() {
 
   if (loading || !config) {
     return <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Carregando...</CardContent></Card>;
+  }
+
+  /**
+   * Cadastro sem regime não vira apuração.
+   *
+   * `regimeDaEmpresa()` devolve null quando ninguém escolheu, e aqui esse null
+   * precisa PARAR a tela. Se ele apenas caísse no valor da tabela, voltaríamos
+   * ao defeito por outra porta: a coluna `regime` tem DEFAULT 'simples', então
+   * uma empresa que nunca foi classificada seria apurada como Simples Nacional
+   * — de novo por um padrão de banco, de novo sem ninguém ter decidido nada.
+   *
+   * Imposto calculado pelo regime errado é pior do que imposto não calculado:
+   * o primeiro parece pronto.
+   */
+  if (!regimeDaEmpresa(empresaAtiva?.regime_tributario)) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center space-y-3">
+          <AlertTriangle className="w-8 h-8 mx-auto text-warning" />
+          <div>
+            <p className="text-sm font-medium">Regime tributário não definido</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              {empresaAtiva?.razao_social ? <><strong>{empresaAtiva.razao_social}</strong> ainda não tem</> : 'Esta empresa ainda não tem'}{' '}
+              regime no cadastro. Sem ele não há por qual tabela apurar — e adotar um padrão
+              aqui seria decidir no lugar de quem pode decidir.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => navigate('/configuracoes?aba=tributario')}>
+            Definir em Configurações
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
