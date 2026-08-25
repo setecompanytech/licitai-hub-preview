@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,11 +32,22 @@ export default function FinApuracao() {
   const [rbt12, setRbt12] = useState(0);
   const [despesas, setDespesas] = useState(0);
   const [creditos, setCreditos] = useState(0);
+  /**
+   * O "Limite mensal" mora num grid rotulado "Alíquotas (%)", mas é dinheiro:
+   * os R$ 20.000,00/mês acima dos quais incide o adicional de IRPJ. Digitado
+   * como número solto no meio de oito percentuais, passava por percentual aos
+   * olhos de quem edita — a máscara de R$ é o que desfaz a confusão.
+   */
+  const [limiteAdicional, setLimiteAdicional] = useState(0);
   const [carregandoReceita, setCarregandoReceita] = useState(false);
   const { validar } = useValidacaoApuracao();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [divergencias, setDivergencias] = useState<DivergenciaApuracao[] | null>(null);
   const [validando, setValidando] = useState(false);
+
+  useEffect(() => {
+    if (config) setLimiteAdicional(Number(config.limite_adicional_irpj) || 0);
+  }, [config]);
 
   const resultado = useMemo(() => {
     if (!config) return {};
@@ -150,28 +162,28 @@ export default function FinApuracao() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label>Receita — Comércio/Indústria (R$)</Label>
-                <Input type="number" value={receitaComercio} onChange={e => setReceitaComercio(Number(e.target.value) || 0)} />
+                <Label>Receita — Comércio/Indústria</Label>
+                <MoneyInput value={receitaComercio} onValueChange={setReceitaComercio} />
               </div>
               <div>
-                <Label>Receita — Serviços (R$)</Label>
-                <Input type="number" value={receitaServico} onChange={e => setReceitaServico(Number(e.target.value) || 0)} />
+                <Label>Receita — Serviços</Label>
+                <MoneyInput value={receitaServico} onValueChange={setReceitaServico} />
               </div>
               {config.regime === "simples" && (
                 <div>
-                  <Label>RBT12 — Receita 12 meses (R$)</Label>
-                  <Input type="number" value={rbt12} onChange={e => setRbt12(Number(e.target.value) || 0)} />
+                  <Label>RBT12 — Receita 12 meses</Label>
+                  <MoneyInput value={rbt12} onValueChange={setRbt12} />
                 </div>
               )}
               {config.regime === "real" && (
                 <>
                   <div>
-                    <Label>Despesas operacionais dedutíveis (R$)</Label>
-                    <Input type="number" value={despesas} onChange={e => setDespesas(Number(e.target.value) || 0)} />
+                    <Label>Despesas operacionais dedutíveis</Label>
+                    <MoneyInput value={despesas} onValueChange={setDespesas} />
                   </div>
                   <div>
-                    <Label>Créditos PIS/COFINS — insumos (R$)</Label>
-                    <Input type="number" value={creditos} onChange={e => setCreditos(Number(e.target.value) || 0)} />
+                    <Label>Créditos PIS/COFINS — insumos</Label>
+                    <MoneyInput value={creditos} onValueChange={setCreditos} />
                   </div>
                 </>
               )}
@@ -357,11 +369,13 @@ export default function FinApuracao() {
             {config.regime !== "simples" && (
               <>
                 <Separator />
-                <div className="text-sm font-medium">Alíquotas (%)</div>
+                <div className="text-sm font-medium">Alíquotas (%) e limite do adicional</div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div><Label>IRPJ</Label><Input type="number" step="0.01" defaultValue={config.aliquota_irpj} onBlur={e => salvarConfig({ aliquota_irpj: Number(e.target.value) })} /></div>
                   <div><Label>Adicional IRPJ</Label><Input type="number" step="0.01" defaultValue={config.adicional_irpj} onBlur={e => salvarConfig({ adicional_irpj: Number(e.target.value) })} /></div>
-                  <div><Label>Limite mensal</Label><Input type="number" step="0.01" defaultValue={config.limite_adicional_irpj} onBlur={e => salvarConfig({ limite_adicional_irpj: Number(e.target.value) })} /></div>
+                  <div><Label>Limite mensal do adicional</Label>
+                    <MoneyInput value={limiteAdicional} onValueChange={setLimiteAdicional}
+                      onBlur={() => salvarConfig({ limite_adicional_irpj: limiteAdicional })} /></div>
                   <div><Label>CSLL</Label><Input type="number" step="0.01" defaultValue={config.aliquota_csll} onBlur={e => salvarConfig({ aliquota_csll: Number(e.target.value) })} /></div>
                   <div><Label>PIS {config.regime === "real" ? "(NC)" : "cumul."}</Label>
                     <Input type="number" step="0.01"
