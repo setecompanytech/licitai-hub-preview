@@ -607,6 +607,8 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
    *  minutos: o arquivo continua privado, e o endereço não sobrevive ao dia.
    */
   const [visualizando, setVisualizando] = useState<{ url: string; nome: string } | null>(null);
+  /** O termo cuja justificativa está aberta para leitura integral. */
+  const [justificativaAberta, setJustificativaAberta] = useState<any | null>(null);
 
   const handleVisualizar = async (arquivo: any) => {
     try {
@@ -1428,6 +1430,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               dois níveis se confundiam. Agora ele é UM cartão de consolidado —
               filete de destaque, fundo próprio, valores maiores — e os termos
               individuais seguem abaixo, visivelmente subordinados. */}
+          {/* As métricas moram DENTRO do cartão de consolidado (um fechamento
+              errado as tinha deixado soltas na página, desalinhadas do filete)
+              e centralizadas em suas colunas — a régua ocupa a largura toda,
+              simétrica com os quadros dos termos abaixo. */}
           <Card className="p-4 border-l-4 border-l-accent bg-muted/40">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <Layers className="w-4 h-4 text-accent" />
@@ -1435,34 +1441,34 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               <span className="text-xs text-muted-foreground">
                 resumo geral das alterações contratuais · {aditivos.length} termo{aditivos.length > 1 ? 's' : ''}
               </span>
-              </div>
-          </Card>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-3">
-              <div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3">
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
                 <p className="text-base font-bold text-success">{fmt(totalAcrescimo)}</p>
               </div>
-              <div>
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
                 <p className="text-base font-bold text-destructive">{fmt(totalSupressao)}</p>
               </div>
-              <div>
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
                 <p className={`text-base font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
               </div>
-              <div>
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
                 <p className="text-base font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
               </div>
-              <div>
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
                 <p className="text-base font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
               </div>
-              <div>
+              <div className="text-center">
                 <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
                 <p className={`text-base font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
               </div>
-          </div>
+            </div>
+          </Card>
 
           {aditivos.map((a: any) => {
             const Icon = ADITIVO_ICON[a.tipo] || FilePlus2;
@@ -1488,25 +1494,65 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                       {a.nova_data_fim && <span>Nova vigência: {new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
                       {(a.data_assinatura || a.data_aditivo) && <span>Assinatura: {new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
                     </div>
-                    {a.justificativa && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.justificativa}</p>}
+                    {a.justificativa && (
+                      /* A justificativa vive cortada em duas linhas; o clique
+                         abre a leitura integral — mesmo gesto da descrição do
+                         item na aba Itens/Lotes. */
+                      <button
+                        type="button"
+                        onClick={() => setJustificativaAberta(a)}
+                        title="Ler a justificativa completa"
+                        className="mt-1 block w-full text-left text-xs text-muted-foreground line-clamp-2 hover:text-foreground hover:underline"
+                      >
+                        {a.justificativa}
+                      </button>
+                    )}
                     {(() => {
                       // "Onde está o arquivo deste aditivo?" — a pergunta que o
                       // cartão não respondia. O elo (arquivo_id) já existia no
                       // banco; faltava a tela usá-lo.
                       const arq = arquivos.find((f: any) => f.id === a.arquivo_id);
-                      return arq ? (
-                        <button
-                          type="button"
-                          onClick={() => handleVisualizar(arq)}
-                          title="Visualizar o documento deste aditivo"
-                          className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
-                        >
-                          <FileText className="w-3 h-3 shrink-0" />
-                          <span className="truncate max-w-[420px]">{arq.nome_arquivo}</span>
-                          <Eye className="w-3 h-3 shrink-0" />
-                        </button>
-                      ) : (
-                        <p className="mt-1 text-xs text-muted-foreground italic">sem arquivo vinculado</p>
+                      if (arq) {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleVisualizar(arq)}
+                            title="Visualizar o documento deste aditivo"
+                            className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                          >
+                            <FileText className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[420px]">{arq.nome_arquivo}</span>
+                            <Eye className="w-3 h-3 shrink-0" />
+                          </button>
+                        );
+                      }
+                      // Registro anterior ao elo automático (ou digitado sem
+                      // documento): dizer "sem arquivo" com o arquivo logo acima
+                      // na lista era beco — o vínculo agora se faz aqui mesmo.
+                      return (
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-muted-foreground italic">sem arquivo vinculado</span>
+                          {arquivos.length > 0 && (
+                            <Select onValueChange={async (fid) => {
+                              const { error } = await supabase.from('contrato_aditivos')
+                                .update({ arquivo_id: fid } as never).eq('id', a.id);
+                              if (error) { toast.error('Não foi possível vincular', { description: error.message }); return; }
+                              toast.success('Arquivo vinculado ao aditivo.');
+                              loadData();
+                            }}>
+                              <SelectTrigger className="h-6 w-auto max-w-[340px] text-xs px-2">
+                                <SelectValue placeholder="Vincular arquivo…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {arquivos.map((f: any) => (
+                                  <SelectItem key={f.id} value={f.id} className="text-xs">
+                                    {f.nome_arquivo}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>
@@ -1548,6 +1594,36 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       )}
 
       {/* Edit dialog */}
+      {/* Leitura integral da justificativa do termo */}
+      <Dialog open={!!justificativaAberta} onOpenChange={(v) => !v && setJustificativaAberta(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Justificativa — {justificativaAberta?.numero_aditivo || 'Termo Aditivo'}
+            </DialogTitle>
+          </DialogHeader>
+          {justificativaAberta && (
+            <div className="space-y-3">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{justificativaAberta.justificativa}</p>
+              {justificativaAberta.observacoes && (
+                <div className="border rounded-md p-3 bg-muted/30 text-xs">
+                  <div className="text-muted-foreground mb-1">Observações</div>
+                  <p className="whitespace-pre-wrap">{justificativaAberta.observacoes}</p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {justificativaAberta.nova_data_fim && (
+                  <span>Nova vigência: {new Date(justificativaAberta.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                )}
+                {(justificativaAberta.data_assinatura || justificativaAberta.data_aditivo) && (
+                  <span>Assinatura: {new Date((justificativaAberta.data_assinatura || justificativaAberta.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!visualizando} onOpenChange={(v) => !v && setVisualizando(null)}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
           <DialogHeader>
