@@ -56,6 +56,28 @@ import ImportarContratoPDF from '@/components/contratos/ImportarContratoPDF';
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+/**
+ * O número dos cartões de resumo.
+ *
+ * `text-2xl` fixo cabia em "R$ 12.352.704,00" por um fio — e por um fio não
+ * cabia: o último "0" caía sozinho na linha de baixo, e um saldo de doze
+ * milhões passava a ler-se como doze milhões e setecentos mil, com um zero
+ * órfão embaixo. Um cartão de valor não pode depender da largura da janela
+ * para dizer a verdade.
+ *
+ * Daí o tamanho fluido: teto de 1.5rem (o text-2xl de antes, preservado nas
+ * telas largas) e piso de 1.05rem, escalando com a viewport no meio. Como são
+ * cinco colunas de largura igual, a mesma classe vai nos cinco cartões — o
+ * contador ao lado do valor precisa ter o mesmo corpo, ou a fileira desalinha.
+ *
+ * `whitespace-nowrap` é a garantia dura: se algum dia um valor ainda estourar,
+ * ele corta com reticências e o `title` mostra o número inteiro — melhor um
+ * truncamento honesto do que um algarismo desgarrado que muda a ordem de
+ * grandeza aos olhos de quem lê rápido.
+ */
+const VALOR_KPI =
+  'text-[clamp(1.05rem,1.2vw,1.5rem)] font-bold whitespace-nowrap overflow-hidden text-ellipsis tabular-nums tracking-tight';
+
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   vigente: { label: 'Vigente', color: 'bg-success/10 text-success', icon: CheckCircle2 },
   vencendo: { label: 'Vencendo', color: 'bg-warning/10 text-warning', icon: AlertTriangle },
@@ -981,11 +1003,11 @@ export default function GestaoContratos() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-        <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><FileText className="w-4 h-4" /> Contratos</div><p className="text-2xl font-bold">{soContratos.length}</p></Card>
-        <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><ScrollText className="w-4 h-4" /> ATAs SRP</div><p className="text-2xl font-bold">{soAtas.length}</p></Card>
-        <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4" /> Valor Total</div><p className="text-2xl font-bold">{formatCurrency(totalValor)}</p></Card>
-        <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><TrendingUp className="w-4 h-4" /> Saldo Total</div><p className="text-2xl font-bold text-success">{formatCurrency(totalSaldo)}</p></Card>
-        <Card className="p-4"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4" /> Vencendo 60d</div><p className="text-2xl font-bold text-warning">{vencendo}</p></Card>
+        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><FileText className="w-4 h-4 shrink-0" /> Contratos</div><p className={VALOR_KPI}>{soContratos.length}</p></Card>
+        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><ScrollText className="w-4 h-4 shrink-0" /> ATAs SRP</div><p className={VALOR_KPI}>{soAtas.length}</p></Card>
+        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4 shrink-0" /> Valor Total</div><p className={VALOR_KPI} title={formatCurrency(totalValor)}>{formatCurrency(totalValor)}</p></Card>
+        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><TrendingUp className="w-4 h-4 shrink-0" /> Saldo Total</div><p className={`${VALOR_KPI} text-success`} title={formatCurrency(totalSaldo)}>{formatCurrency(totalSaldo)}</p></Card>
+        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4 shrink-0" /> Vencendo 60d</div><p className={`${VALOR_KPI} text-warning`}>{vencendo}</p></Card>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -1244,7 +1266,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Valor total consumido</p>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalConsumido)}</p>
+            <p className="text-2xl font-bold text-foreground whitespace-nowrap tabular-nums">{formatCurrency(totalConsumido)}</p>
             {pctDaAta(totalConsumido) !== null && (
               <p className="text-xs text-muted-foreground">
                 {pctDaAta(totalConsumido)!.toLocaleString('pt-BR')}% da ata · saldo {formatCurrency(Math.max(registradoAta - totalConsumido, 0))}
