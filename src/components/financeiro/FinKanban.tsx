@@ -570,8 +570,13 @@ export default function FinKanban({ tipo }: Props) {
         </Card>
       )}
 
-      {/* Quadro Kanban */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Quadro Kanban.
+          `items-start` é o que falta para a coluna vazia realmente encolher:
+          num grid os itens esticam até a altura do mais alto da fileira, então
+          encolher só a caixa interna deixava o cartão em volta do mesmo
+          tamanho. Consertar o miolo e esquecer a moldura não muda nada na
+          tela. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
         {COLUNAS.map((col) => {
           const items = lancamentosFiltrados.filter((l) => classificar(l) === col.id);
           const subtotal = items.reduce((s, l) => s + Number(l.valor), 0);
