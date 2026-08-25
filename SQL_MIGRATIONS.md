@@ -3910,3 +3910,28 @@ débitos de extrato — é a correção aparecendo.
 
 **Arquivo:** `supabase/migrations/20260825000002_movimento_bancario_respeita_natureza.sql`
 
+---
+
+## 20260825000003 — Indicadores gerenciais: a ponte Financeiro → comercial
+
+**Por quê.** O sistema já formava preço em cinco camadas, já derivava a RECEITA
+dos lançamentos e já classificava cada despesa no plano de contas (`grupo_dre`).
+Faltava a travessa: ninguém computava quanto as despesas fixas representam da
+receita — e esse percentual era **digitado à mão** na calculadora.
+
+**O que muda.** `financeiro_indicadores_gerenciais(empresa, referencia, meses)`
+devolve, por competência e em janela móvel: receita bruta, CMV, despesas
+operacionais e financeiras, médias mensais, os percentuais sobre receita e a
+**cobertura da classificação** (percentual apurado sobre lançamento sem
+categoria é palpite — a função diz quanto está classificado).
+
+Doutrina: o **CMV fica fora** do percentual (já é o custo unitário do item na
+cotação; somá-lo cobraria o produto duas vezes) e a régua é **competência**,
+igual à apuração tributária.
+
+Tabela `financeiro_indicadores_adotados` congela a versão usada para
+precificar, com data, autor e o retrato completo — proposta entregue não se
+reescreve com o percentual do mês seguinte.
+
+**Arquivo:** `supabase/migrations/20260825000003_indicadores_gerenciais.sql`
+

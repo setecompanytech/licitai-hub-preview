@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UNIDADES } from '@/lib/unidades';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useIndicadoresGerenciais } from '@/hooks/useIndicadoresGerenciais';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -288,6 +289,8 @@ export default function CalculadoraUnificada({
 
   // Auto-fill RBT12 from faturamento_mensal (Configurações → Regime Tributário)
   const [rbt12Auto, setRbt12Auto] = useState<number | null>(null);
+  // A ponte com o Financeiro (ver useIndicadoresGerenciais).
+  const { indicadores } = useIndicadoresGerenciais(12);
   useEffect(() => {
     if (!empresaAtiva?.id) return;
     supabase
@@ -1018,6 +1021,36 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                 <div>
                   <Label className="text-xs">Despesas Administrativas (%)</Label>
                   <Input type="number" value={despesasAdmin} onChange={e => setDespesasAdmin(e.target.value)} placeholder="0" className="mt-1" min={0} max={100} />
+                  {/* A ponte com o Financeiro: o percentual que a estrutura da
+                      empresa realmente consome, apurado dos lançamentos
+                      conciliados. Continua EDITÁVEL — preço é decisão
+                      comercial, e um certame pode justificar apertar a
+                      estrutura; o que não pode é o número ser inventado por
+                      falta de referência. */}
+                  {indicadores?.pct_despesa_administrativa != null && (
+                    <p className="text-xs mt-1 flex items-start gap-1">
+                      <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        O Financeiro apurou{' '}
+                        <button
+                          type="button"
+                          onClick={() => setDespesasAdmin(String(indicadores.pct_despesa_administrativa))}
+                          className="font-semibold text-accent hover:underline"
+                        >
+                          {indicadores.pct_despesa_administrativa.toLocaleString('pt-BR')}%
+                        </button>{' '}
+                        nos últimos {indicadores.periodo.meses} meses
+                        {' '}({indicadores.media_mensal.despesa_operacional.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês
+                        {' '}sobre {indicadores.media_mensal.receita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de receita).
+                        {!indicadores.confiavel && (
+                          <span className="text-warning">
+                            {' '}Atenção: {indicadores.cobertura.despesa?.toLocaleString('pt-BR') ?? 0}% das despesas
+                            têm categoria — classifique o resto na Conciliação para o número fechar.
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
             )}
