@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { humanizarValorAuditoria } from '@/lib/contratos/auditoriaTexto';
+import { statusEfetivo } from '@/lib/contratos/vigencia';
 
 const resumir = (t: string) => (t.length > 260 ? `${t.slice(0, 260)}…` : t);
 import { Loader2, FileText, Sparkles, Calculator, AlertTriangle, ScrollText, ArrowRight, Package, FileSignature } from 'lucide-react';
@@ -283,7 +284,11 @@ export default function EventoAuditoriaDetalheDialog({
                         </div>
                         <div className="text-right shrink-0">
                           <div>{fmtBRL(c.valor_global)}</div>
-                          {c.status && <Badge variant="outline" className="text-xs mt-0.5">{c.status}</Badge>}
+                          {c.status && (
+                            <Badge variant="outline" className="text-xs mt-0.5">
+                              {statusEfetivo(c.status, (c as { data_fim?: string | null }).data_fim)}
+                            </Badge>
+                          )}
                         </div>
                       </li>
                     ))}

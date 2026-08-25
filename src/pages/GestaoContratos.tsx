@@ -1260,7 +1260,13 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-foreground">{c.numero_contrato}</span>
-                  <Badge variant="outline" className="text-xs">{c.status}</Badge>
+                  {/* O status gravado envelhece sozinho; a data de fim manda — a
+                      MESMA regra do cabeçalho, senão a lista diz "vigente" para
+                      contrato vencido há um ano e as telas se contradizem. */}
+                  {(() => {
+                    const cfg = statusConfig[statusEfetivo(c.status, c.data_fim)] || statusConfig.vigente;
+                    return <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>;
+                  })()}
                   {pctDaAta(c.valor_global || 0) !== null && (
                     <Badge variant="outline" className="text-xs text-info border-info/30">
                       {pctDaAta(c.valor_global || 0)!.toLocaleString('pt-BR')}% da ata
