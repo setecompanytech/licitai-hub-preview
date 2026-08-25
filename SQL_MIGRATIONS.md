@@ -3895,3 +3895,18 @@ contratos ao final.
 
 **Arquivo:** `supabase/migrations/20260825000001_art125_base_valor_atualizado.sql`
 
+---
+
+## 20260825000002 — O movimento bancário respeita a própria natureza
+
+**Por quê.** Todos os caminhos que gravam lançamento (OFX e manual) usam a
+convenção `valor` em módulo + `natureza` (receita/despesa). A fórmula do saldo
+somava `movimento_bancario` sem olhar a natureza: um DÉBITO de extrato SOMAVA
+no saldo da conta.
+
+**O que muda.** `financeiro_recalcular_saldo_conta` passa a ler a natureza
+(`despesa` subtrai) e recalcula todas as contas ao final. Saldos mudam onde há
+débitos de extrato — é a correção aparecendo.
+
+**Arquivo:** `supabase/migrations/20260825000002_movimento_bancario_respeita_natureza.sql`
+
