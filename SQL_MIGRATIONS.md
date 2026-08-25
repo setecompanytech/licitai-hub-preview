@@ -4928,3 +4928,421 @@ GRANT EXECUTE ON FUNCTION public.financeiro_conferencia(uuid) TO authenticated;
 --     (SELECT id FROM public.empresas WHERE razao_social ILIKE 'ETHOS%')
 --   ) ORDER BY CASE severidade WHEN 'critico' THEN 1 WHEN 'atencao' THEN 2 ELSE 3 END;
 ```
+
+## 20260825000010 — O documento fiscal fica no sistema
+
+O PDF enviado em Contas a Receber era lido para a memória, virava imagem, ia para a IA e
+sumia ao fechar a tela. O XML tinha o mesmo destino. Sobrava o **registro** da nota; não
+sobrava a **nota**.
+
+`financeiro_documentos_fiscais` existe desde abril com as colunas certas — e com RLS
+habilitada e **zero políticas**, ou seja, inacessível. Não foi esquecida: foi construída
+sem porta. Os buckets `nfes-xml`, `danfes` e `capturas-ocr` também existem sem uso, e
+isolam por `auth.uid()` — por usuário. Nota fiscal é da **empresa**: com aquela regra, o
+documento que o contador subiu ficaria invisível para o sócio.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- O documento fiscal passa a ficar no sistema
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Hoje o PDF que se envia em Contas a Receber é lido para a memória, vira
+-- imagem, vai para a IA, produz um lançamento — e some quando a tela fecha.
+-- O XML tem o mesmo destino por outro caminho: a edge function extrai os
+-- campos e não guarda o arquivo. Sobra o REGISTRO da nota; não sobra a NOTA.
+--
+-- Para quem vende a órgão público isso é três problemas de uma vez:
+--
+--   • Guarda. O XML da NF-e É o documento fiscal; o DANFE em PDF é só a
+--     representação impressa dele. Guardar campos extraídos não cumpre o
+--     prazo decadencial de cinco anos.
+--   • Prova. Quando o órgão questiona uma entrega, ou quando se pede
+--     reequilíbrio, a nota é a prova. Hoje ela está no e-mail de alguém.
+--   • Auditoria da leitura. Em 25/08 a IA leu o número da nota no lugar da
+--     chave de acesso. Sem o arquivo original, não há como reconferir o que
+--     ela leu errado — e `ocr_data`, a coluna que existe exatamente para
+--     isso, está vazia.
+--
+-- ── O que já existia, e por que nunca funcionou ─────────────────────────────
+-- `financeiro_documentos_fiscais` foi criada em abril com as colunas certas,
+-- incluindo `arquivo_url`, `arquivo_xml` e `ocr_data`. Tem RLS habilitada e
+-- ZERO políticas — o que significa que ninguém, nunca, conseguiria ler ou
+-- gravar nela. Ela não foi esquecida: ela foi construída sem porta.
+--
+-- Os buckets `nfes-xml`, `danfes` e `capturas-ocr` também existem desde abril,
+-- sem uso. E as políticas deles isolam por `auth.uid()` — por USUÁRIO. Nota
+-- fiscal é da EMPRESA: com aquela regra, o documento que o contador subiu
+-- ficaria invisível para o sócio. É o mesmo defeito do princípio 2 do
+-- CLAUDE.md, e é por isso que aqui nasce um bucket novo em vez de reaproveitar
+-- os três.
+
+-- ── 1. O bucket, isolado por empresa ────────────────────────────────────────
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('financeiro-documentos', 'financeiro-documentos', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Caminho: {empresa_id}/{ano}/{uuid}.{ext}
+-- A primeira pasta é a empresa, e é ela que a política confere.
+DROP POLICY IF EXISTS "membros leem documentos fiscais" ON storage.objects;
+CREATE POLICY "membros leem documentos fiscais"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'financeiro-documentos'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[1])::uuid)
+  );
+
+DROP POLICY IF EXISTS "membros enviam documentos fiscais" ON storage.objects;
+CREATE POLICY "membros enviam documentos fiscais"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'financeiro-documentos'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[1])::uuid)
+  );
+
+-- Excluir documento fiscal é ato de administrador. Nota guardada por
+-- obrigação legal não se apaga por engano de quem estava organizando pasta.
+DROP POLICY IF EXISTS "admin exclui documentos fiscais" ON storage.objects;
+CREATE POLICY "admin exclui documentos fiscais"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'financeiro-documentos'
+    AND public.is_empresa_admin(auth.uid(), ((storage.foldername(name))[1])::uuid)
+  );
+
+-- ── 2. A tabela ganha o que faltava para servir ─────────────────────────────
+ALTER TABLE public.financeiro_documentos_fiscais
+  ADD COLUMN IF NOT EXISTS lancamento_id uuid
+    REFERENCES public.financeiro_lancamentos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS storage_path  text,
+  ADD COLUMN IF NOT EXISTS arquivo_nome  text,
+  ADD COLUMN IF NOT EXISTS arquivo_mime  text,
+  ADD COLUMN IF NOT EXISTS arquivo_bytes bigint,
+  ADD COLUMN IF NOT EXISTS enviado_por   uuid;
+
+-- `data_emissao` e `valor_total` eram NOT NULL. Isso obrigaria a esperar a
+-- leitura da IA terminar para só então gravar o documento — e era justamente
+-- a leitura que podia falhar, levando o arquivo junto. A CHEGADA do documento
+-- é um fato; o CONTEÚDO dele é uma interpretação, e interpretação pode vir
+-- depois, ou não vir.
+ALTER TABLE public.financeiro_documentos_fiscais
+  ALTER COLUMN data_emissao DROP NOT NULL,
+  ALTER COLUMN valor_total  DROP NOT NULL,
+  ALTER COLUMN valor_total  SET DEFAULT 0,
+  ALTER COLUMN tipo         SET DEFAULT 'outro';
+
+CREATE INDEX IF NOT EXISTS idx_fdf_lancamento
+  ON public.financeiro_documentos_fiscais(lancamento_id)
+  WHERE lancamento_id IS NOT NULL;
+
+-- ── 3. As políticas que nunca existiram ─────────────────────────────────────
+DROP POLICY IF EXISTS "membros leem docs fiscais" ON public.financeiro_documentos_fiscais;
+CREATE POLICY "membros leem docs fiscais"
+  ON public.financeiro_documentos_fiscais FOR SELECT TO authenticated
+  USING (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "membros gravam docs fiscais" ON public.financeiro_documentos_fiscais;
+CREATE POLICY "membros gravam docs fiscais"
+  ON public.financeiro_documentos_fiscais FOR INSERT TO authenticated
+  WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "membros atualizam docs fiscais" ON public.financeiro_documentos_fiscais;
+CREATE POLICY "membros atualizam docs fiscais"
+  ON public.financeiro_documentos_fiscais FOR UPDATE TO authenticated
+  USING (public.is_empresa_member(auth.uid(), empresa_id))
+  WITH CHECK (public.is_empresa_member(auth.uid(), empresa_id));
+
+DROP POLICY IF EXISTS "admin exclui docs fiscais" ON public.financeiro_documentos_fiscais;
+CREATE POLICY "admin exclui docs fiscais"
+  ON public.financeiro_documentos_fiscais FOR DELETE TO authenticated
+  USING (public.is_empresa_admin(auth.uid(), empresa_id));
+
+COMMENT ON TABLE public.financeiro_documentos_fiscais IS
+  'O documento fiscal em si — o arquivo, não os campos extraídos dele. '
+  'storage_path aponta para o bucket financeiro-documentos; arquivo_xml guarda '
+  'o XML da NF-e, que É o documento (o DANFE é só a representação impressa). '
+  'ocr_data guarda o que a leitura automática entendeu, para se poder conferir '
+  'depois contra o original. Nasceu em 2026-04 com RLS habilitada e nenhuma '
+  'política — inacessível — e só passou a servir em 2026-08.';
+
+COMMENT ON COLUMN public.financeiro_documentos_fiscais.ocr_data IS
+  'O que a leitura automática entendeu, cru. Em 25/08 a IA leu o número da '
+  'nota no lugar da chave de acesso; sem este campo e sem o arquivo original, '
+  'não havia como descobrir o que ela leu errado.';
+```
+
+## 20260825000011 — A conferência nota a nota sem documento
+
+Não basta permitir anexar: o sistema precisa **notar a ausência**. Campo de anexo opcional
+que ninguém preenche é indistinguível de campo que não existe — e a descoberta vem no pior
+momento, quando o documento é pedido. Vale só a partir de 25/08.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A conferência nota a nota fiscal que ficou sem documento
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Não basta permitir anexar: o sistema precisa NOTAR a ausência. Um campo de
+-- anexo opcional que ninguém preenche é indistinguível de um campo que não
+-- existe — e a descoberta vem no pior momento, quando o documento é pedido.
+--
+-- Décimo achado: lançamento de NF-e/NFS-e cujo arquivo não foi guardado.
+-- Vale só do dia 25/08 em diante, quando o arquivamento passou a existir;
+-- cobrar do que veio antes seria cobrar obrigação que ninguém podia cumprir.
+
+CREATE OR REPLACE FUNCTION public.financeiro_conferencia(p_empresa_id uuid)
+RETURNS TABLE (
+  severidade  text,   -- 'critico' | 'atencao' | 'informativo'
+  categoria   text,
+  descricao   text,
+  valor       numeric,
+  referencia  text
+)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+
+  -- ── 1. O saldo bate com os lançamentos? ───────────────────────────────────
+  -- A conferência que provou a correção de 25/08. Enquanto der zero, o saldo é
+  -- derivável a qualquer momento; qualquer valor aqui é saldo fóssil voltando.
+  WITH mov AS (
+    SELECT c.id AS conta_id,
+           COALESCE(SUM(
+             CASE
+               WHEN l.tipo = 'transferencia' AND l.natureza IN ('despesa','receita') THEN
+                 CASE WHEN l.conta_id = c.id
+                      THEN CASE WHEN l.natureza = 'despesa' THEN -l.valor ELSE l.valor END
+                      ELSE 0 END
+               WHEN l.tipo = 'transferencia' AND l.conta_id = c.id         THEN -l.valor
+               WHEN l.tipo = 'transferencia' AND l.conta_destino_id = c.id THEN  l.valor
+               WHEN l.conta_id IS DISTINCT FROM c.id THEN 0
+               WHEN l.tipo = 'a_receber' AND l.status IN ('realizado','conciliado') THEN  l.valor
+               WHEN l.tipo = 'a_pagar'   AND l.status IN ('realizado','conciliado') THEN -l.valor
+               WHEN l.tipo = 'movimento_bancario' AND l.status IS DISTINCT FROM 'cancelado' THEN
+                 CASE WHEN l.natureza = 'despesa' THEN -l.valor ELSE l.valor END
+               ELSE 0
+             END), 0) AS movimento
+      FROM public.financeiro_contas c
+      LEFT JOIN public.financeiro_lancamentos l
+             ON (l.conta_id = c.id OR l.conta_destino_id = c.id)
+     WHERE c.empresa_id = p_empresa_id
+     GROUP BY c.id
+  )
+  SELECT 'critico'::text,
+         'saldo divergente'::text,
+         'O saldo gravado de "' || c.nome || '" não corresponde aos lançamentos. '
+           || 'Gravado ' || to_char(c.saldo_atual, 'FM999G999G999D00')
+           || ', derivado ' || to_char(COALESCE(c.saldo_inicial,0) + m.movimento, 'FM999G999G999D00') || '.',
+         c.saldo_atual - (COALESCE(c.saldo_inicial,0) + m.movimento),
+         c.id::text
+    FROM public.financeiro_contas c
+    JOIN mov m ON m.conta_id = c.id
+   WHERE abs(c.saldo_atual - (COALESCE(c.saldo_inicial,0) + m.movimento)) > 0.005
+
+  UNION ALL
+
+  -- ── 2. Conta com saldo negativo ───────────────────────────────────────────
+  -- Conta corrente pode ficar negativa (cheque especial). Aplicação e caixa,
+  -- não: é sempre saldo de abertura faltando ou lançamento com sentido trocado.
+  SELECT (CASE WHEN c.nome ILIKE '%aplica%' OR c.nome ILIKE '%caix%' THEN 'critico' ELSE 'atencao' END)::text,
+         'saldo negativo'::text,
+         'A conta "' || c.nome || '" está com saldo negativo. '
+           || CASE WHEN COALESCE(c.saldo_inicial,0) = 0
+                   THEN 'O saldo de abertura está zerado — confira se ele foi informado.'
+                   ELSE 'Confira se há lançamento com origem ou sentido trocado.' END,
+         c.saldo_atual,
+         c.id::text
+    FROM public.financeiro_contas c
+   WHERE c.empresa_id = p_empresa_id
+     AND c.ativa
+     AND c.saldo_atual < 0
+
+  UNION ALL
+
+  -- ── 3. Transferência de conta que não tinha o dinheiro ────────────────────
+  -- O erro de 25/08: oito PIX lançados como saída de uma conta que abriu o ano
+  -- com R$ 39,75. A conferência olha o saldo de abertura contra o que saiu.
+  SELECT 'atencao'::text,
+         'transferência acima do saldo'::text,
+         'A conta "' || c.nome || '" registra saídas por transferência muito acima '
+           || 'do que recebeu. Confira a conta de origem desses lançamentos.',
+         t.saiu - t.entrou,
+         c.id::text
+    FROM public.financeiro_contas c
+    JOIN LATERAL (
+      SELECT COALESCE(SUM(l.valor) FILTER (WHERE l.natureza = 'despesa'), 0) AS saiu,
+             COALESCE(SUM(l.valor) FILTER (WHERE l.natureza = 'receita'), 0) AS entrou
+        FROM public.financeiro_lancamentos l
+       WHERE l.conta_id = c.id AND l.tipo = 'transferencia'
+    ) t ON true
+   WHERE c.empresa_id = p_empresa_id
+     AND t.saiu - t.entrou > COALESCE(c.saldo_inicial, 0) + 1000
+
+  UNION ALL
+
+  -- ── 4. Perna de transferência sem par ─────────────────────────────────────
+  -- O formato espelhado grava duas linhas por lote. Lote com uma perna só
+  -- significa dinheiro saindo de uma conta e não entrando em nenhuma.
+  SELECT 'critico'::text,
+         'transferência sem par'::text,
+         'Lote de transferência com ' || cnt || ' perna(s) em vez de 2. '
+           || 'O dinheiro sai de uma conta e não entra em nenhuma.',
+         valor_lote,
+         lote::text
+    FROM (
+      SELECT l.origem_lote_id AS lote, count(*) AS cnt, max(l.valor) AS valor_lote
+        FROM public.financeiro_lancamentos l
+       WHERE l.empresa_id = p_empresa_id
+         AND l.tipo = 'transferencia'
+         AND l.natureza IN ('despesa','receita')
+         AND l.origem_lote_id IS NOT NULL
+       GROUP BY l.origem_lote_id
+      HAVING count(*) <> 2
+    ) pares
+
+  UNION ALL
+
+  -- ── 5. Faturamento declarado × contabilizado ──────────────────────────────
+  -- Os dois números que não convergiam. A diferença não é erro por si: parte é
+  -- nota a receber com prazo correndo. Vira aviso quando passa de 10%.
+  SELECT 'atencao'::text,
+         'faturamento não confere'::text,
+         'O faturamento declarado em Apuração difere do que os lançamentos somam. '
+           || 'Declarado ' || to_char(d.declarado, 'FM999G999G999D00')
+           || ', contabilizado ' || to_char(d.contabilizado, 'FM999G999G999D00') || '.',
+         d.declarado - d.contabilizado,
+         NULL::text
+    FROM (
+      SELECT
+        (SELECT COALESCE(SUM(f.valor_faturamento), 0)
+           FROM public.faturamento_mensal f WHERE f.empresa_id = p_empresa_id) AS declarado,
+        (SELECT COALESCE(SUM(l.valor), 0)
+           FROM public.financeiro_lancamentos l
+           JOIN public.financeiro_categorias c ON c.id = l.categoria_id
+          WHERE l.empresa_id = p_empresa_id
+            AND c.grupo_dre = 'receita_bruta'
+            AND l.status IN ('realizado','conciliado')) AS contabilizado
+    ) d
+   WHERE d.declarado > 0
+     AND abs(d.declarado - d.contabilizado) > d.declarado * 0.10
+
+  UNION ALL
+
+  -- ── 6. Regime tributário ausente ──────────────────────────────────────────
+  -- Sem regime não há por qual tabela apurar, e o padrão do banco era
+  -- 'simples' — foi assim que uma empresa de Lucro Presumido foi apurada pela
+  -- tabela do Simples Nacional sem ninguém ter escolhido nada.
+  SELECT 'critico'::text,
+         'regime não definido'::text,
+         'A empresa não tem regime tributário no cadastro. A apuração não pode '
+           || 'ser feita, e qualquer padrão adotado seria decidir no lugar de alguém.',
+         NULL::numeric,
+         e.id::text
+    FROM public.empresas e
+   WHERE e.id = p_empresa_id
+     AND e.regime_tributario IS NULL
+
+  UNION ALL
+
+  -- ── 7. Lançamento com data implausível ────────────────────────────────────
+  SELECT 'atencao'::text,
+         'data implausível'::text,
+         count(*) || ' lançamento(s) com vencimento a mais de 15 anos da competência. '
+           || 'Provável ano digitado errado.',
+         SUM(l.valor),
+         NULL::text
+    FROM public.financeiro_lancamentos l
+   WHERE l.empresa_id = p_empresa_id
+     AND l.data_vencimento IS NOT NULL
+     AND l.data_competencia IS NOT NULL
+     AND l.data_vencimento > l.data_competencia + interval '15 years'
+  HAVING count(*) > 0
+
+  UNION ALL
+
+  -- ── 8. Lançamento sem categoria ───────────────────────────────────────────
+  -- Percentual apurado sobre lançamento sem categoria é palpite com cara de
+  -- número. A cobertura entra como informativo enquanto for pequena.
+  SELECT (CASE WHEN SUM(l.valor) > 50000 THEN 'atencao' ELSE 'informativo' END)::text,
+         'sem classificação'::text,
+         count(*) || ' lançamento(s) realizado(s) sem categoria. '
+           || 'Eles ficam fora do DRE e dos indicadores gerenciais.',
+         SUM(l.valor),
+         NULL::text
+    FROM public.financeiro_lancamentos l
+   WHERE l.empresa_id = p_empresa_id
+     AND l.categoria_id IS NULL
+     AND l.status IN ('realizado','conciliado')
+     AND l.tipo IN ('a_receber','a_pagar')
+  HAVING count(*) > 0
+
+  UNION ALL
+
+  -- ── 9. O gatilho que mantém o saldo derivado está ativo? ──────────────────
+  -- Sem ele, saldo_atual congela no último recálculo manual e passa a mentir
+  -- em silêncio. É a única checagem aqui que não olha dado, e sim o motor.
+  SELECT 'critico'::text,
+         'gatilho do saldo inativo'::text,
+         'O gatilho trg_saldo_lancamento não está ativo em financeiro_lancamentos. '
+           || 'Sem ele, o saldo das contas para de acompanhar os lançamentos: '
+           || 'continua exibido, com a mesma aparência, apenas parado no tempo. '
+           || 'Reinstale antes de confiar em qualquer saldo desta tela.',
+         NULL::numeric,
+         NULL::text
+   WHERE NOT EXISTS (
+     SELECT 1
+       FROM pg_trigger t
+       JOIN pg_class cl     ON cl.oid = t.tgrelid
+       JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+      WHERE ns.nspname = 'public'
+        AND cl.relname = 'financeiro_lancamentos'
+        AND t.tgname   = 'trg_saldo_lancamento'
+        AND NOT t.tgisinternal
+        AND t.tgenabled = 'O'   -- 'O' = ativo; 'D' = desabilitado
+   )
+
+  UNION ALL
+
+  -- ── 10. Nota fiscal lançada sem o documento guardado ──────────────────────
+  -- O XML da NF-e É o documento fiscal; o DANFE é a representação impressa
+  -- dele. Guardar só os campos extraídos não cumpre o prazo decadencial de
+  -- cinco anos, e deixa sem prova quem precisar responder a questionamento do
+  -- órgão ou pedir reequilíbrio.
+  --
+  -- Só conta lançamento nascido a partir de 2026-08-25: cobrar documento do
+  -- que foi lançado antes de o arquivamento existir seria cobrar uma
+  -- obrigação retroativa que ninguém tinha como cumprir.
+  SELECT 'atencao'::text,
+         'nota sem documento'::text,
+         count(*) || ' lançamento(s) de NF-e/NFS-e sem o arquivo guardado. '
+           || 'Os campos foram registrados, o documento não — e é ele que vale '
+           || 'como prova e cumpre o prazo de guarda.',
+         SUM(l.valor),
+         NULL::text
+    FROM public.financeiro_lancamentos l
+   WHERE l.empresa_id = p_empresa_id
+     AND l.tipo_documento IN ('nfe','nfse','nfce')
+     AND l.created_at >= DATE '2026-08-25'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.financeiro_documentos_fiscais d
+        WHERE d.lancamento_id = l.id
+          AND (d.storage_path IS NOT NULL OR d.arquivo_xml IS NOT NULL)
+     )
+  HAVING count(*) > 0
+
+$$;
+
+COMMENT ON FUNCTION public.financeiro_conferencia(uuid) IS
+  'Refaz as derivações do Financeiro e devolve o que não fecha: saldo que não '
+  'corresponde aos lançamentos, conta negativa, transferência sem par ou acima '
+  'do saldo, faturamento divergente, regime ausente, data implausível, '
+  'lançamento sem categoria. Não corrige nada — corrigir dinheiro é decisão de '
+  'gente. Ela só se recusa a ficar calada.';
+
+GRANT EXECUTE ON FUNCTION public.financeiro_conferencia(uuid) TO authenticated;
+
+-- Uso:
+--   SELECT * FROM public.financeiro_conferencia(
+--     (SELECT id FROM public.empresas WHERE razao_social ILIKE 'ETHOS%')
+--   ) ORDER BY CASE severidade WHEN 'critico' THEN 1 WHEN 'atencao' THEN 2 ELSE 3 END;
+```

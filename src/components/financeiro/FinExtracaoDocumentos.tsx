@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
+import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface DocItem {
   dados?: any;
   // Lançamento já criado a partir deste doc
   lancamentoId?: string | null;
+  /** O documento fiscal guardado — existe mesmo quando a leitura falha. */
+  documentoId?: string | null;
   // Vínculo com Gestão (Contrato/ATA/Item/Aditivo)
   vinculo?: VinculoContratoValue;
   vincularExpandido?: boolean;
@@ -96,6 +99,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
+  const { guardarArquivo, vincularLancamento } = useDocumentoFiscal();
   const [processando, setProcessando] = useState(false);
   const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null; docId: string | null }>({
     open: false,
@@ -147,6 +151,24 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const limparTudo = () => setDocs([]);
 
   const processarUm = async (item: DocItem): Promise<DocItem> => {
+    /**
+     * O arquivo sobe ANTES da leitura, sempre.
+     *
+     * A leitura pode falhar — IA que não acha a chave, escaneado ruim, rede
+     * que cai. Se o envio dependesse do sucesso dela, exatamente os documentos
+     * difíceis seriam os que se perderiam, e são justamente esses que alguém
+     * vai querer reabrir depois para conferir à mão. A chegada do documento é
+     * um fato; o conteúdo é interpretação, e vem depois.
+     */
+    const documento = await guardarArquivo(item.file, {
+      arquivo_xml: item.kind === "xml" ? await item.file.text().catch(() => null) : null,
+    });
+    if (!documento) {
+      toast.warning(`"${item.file.name}" foi processado, mas não pôde ser arquivado.`, {
+        description: "O lançamento será criado; o documento original não ficará guardado.",
+      });
+    }
+
     try {
       // ---------- XML (NF-e / NFS-e) ----------
       if (item.kind === "xml") {
@@ -169,6 +191,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             _ja_lancada: true,
           },
           lancamentoId: null,
+          documentoId: documento?.id ?? null,
         };
       }
 
@@ -190,9 +213,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       const dados = data?.dados;
       if (!dados) throw new Error("Sem dados extraídos");
 
-      return { ...item, status: "ok", motor: data.motor, dados };
+      return { ...item, status: "ok", motor: data.motor, dados, documentoId: documento?.id ?? null };
     } catch (e: any) {
-      return { ...item, status: "erro", erro: e?.message ?? "Erro inesperado" };
+      // O arquivo já está guardado — o erro é da leitura, não do documento.
+      return { ...item, status: "erro", erro: e?.message ?? "Erro inesperado", documentoId: documento?.id ?? null };
     }
   };
 
@@ -379,6 +403,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           if (!lancId) lancId = (rpcData as any)?.lancamento_id ?? "ok";
         }
 
+        // O documento já está guardado; agora ele aponta para o lançamento
+        // que nasceu dele. Sem esse elo, o arquivo fica no bucket sem que
+        // ninguém saiba a que ele se refere.
+        if (item.documentoId && lancId && lancId !== "ok") {
+          await vincularLancamento(item.documentoId, lancId);
+        }
         setDocs((prev) =>
           prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: lancId ?? "ok" } : x)),
         );
@@ -408,7 +438,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         numero_documento: d.numero_documento ?? null,
         chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
       } as any);
-      setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: (r as any)?.id ?? "ok" } : x)));
+      const novoId = (r as any)?.id ?? null;
+      if (item.documentoId && novoId) await vincularLancamento(item.documentoId, novoId);
+      setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId: novoId ?? "ok" } : x)));
       invalidarFinanceiro();
     } catch {
       /* toast já exibido pelo hook */
@@ -532,6 +564,13 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               {d.lancamentoId && (
                                 <Badge variant="default" className="text-xs gap-1">
                                   <FileCheck2 className="w-3 h-3" />lançado
+                                </Badge>
+                              )}
+                              {/* O selo que faltava: o arquivo ficou. Aparece mesmo
+                                  quando a leitura falhou — é esse o ponto. */}
+                              {d.documentoId && (
+                                <Badge variant="outline" className="text-xs gap-1 border-success/40 text-success">
+                                  <FileCheck2 className="w-3 h-3" />arquivado
                                 </Badge>
                               )}
                             </div>

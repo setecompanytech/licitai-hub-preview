@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import DocumentoDoLancamento from "./DocumentoDoLancamento";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -344,7 +345,13 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                         {format(parseISO(venc), "dd/MM/yyyy", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="max-w-xs">
-                        <p className="font-medium line-clamp-1">{l.descricao}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="font-medium line-clamp-1">{l.descricao}</p>
+                          {/* O documento que originou o lançamento, ao lado dele.
+                              Pasta de arquivos que não aponta para os lançamentos
+                              é arquivo morto: existe, e ninguém abre. */}
+                          <DocumentoDoLancamento lancamentoId={l.id} />
+                        </div>
                         {l.categoria?.nome && (
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
                         )}
