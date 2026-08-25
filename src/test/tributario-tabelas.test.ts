@@ -295,19 +295,55 @@ const MIGRATION_CONFIG = 'supabase/migrations/20260425194132_9068ae31-35fa-436b-
 
 type Coluna = { nome: string; precisao: number; escala: number; padraoSql: number };
 
-/** Colunas numéricas de `financeiro_config_tributaria`, lidas da migration. */
+/**
+ * Colunas numéricas de `financeiro_config_tributaria` — o tipo EFETIVO.
+ *
+ * Antes esta função lia só o CREATE TABLE de abril e tratava aquele retrato
+ * como a verdade. Retrato envelhece: no dia em que uma migration alterasse o
+ * tipo de uma coluna, o guarda continuaria conferindo o passado e passaria
+ * verde sobre um schema que já era outro.
+ *
+ * Agora o CREATE dá o ponto de partida e cada `ALTER COLUMN ... TYPE` posterior
+ * sobrescreve — as migrations são varridas em ordem de nome, que é a ordem em
+ * que rodam.
+ */
 function colunasDaMigration(): Coluna[] {
   const fonte = ler(MIGRATION_CONFIG);
   const bloco = fonte.split('CREATE TABLE IF NOT EXISTS public.financeiro_config_tributaria')[1];
   if (!bloco) throw new Error('Bloco da financeiro_config_tributaria não encontrado na migration.');
   const corpo = bloco.split(');')[0];
-  const achados: Coluna[] = [];
+  const porNome = new Map<string, Coluna>();
   for (const [, nome, p, s, padrao] of corpo.matchAll(
     /(\w+)\s+numeric\((\d+),(\d+)\)\s+DEFAULT\s+([\d.]+)/g,
   )) {
-    achados.push({ nome, precisao: Number(p), escala: Number(s), padraoSql: Number(padrao) });
+    porNome.set(nome, { nome, precisao: Number(p), escala: Number(s), padraoSql: Number(padrao) });
   }
-  return achados;
+
+  // Os ALTER posteriores. Cobre tanto o SQL escrito à mão quanto o gerado por
+  // format() dentro de um DO $$ — foi assim que as nove alíquotas mudaram.
+  const dir = path.join(RAIZ, 'supabase', 'migrations');
+  for (const arquivo of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+    const texto = readFileSync(path.join(dir, arquivo), 'utf8');
+    if (!texto.includes('financeiro_config_tributaria')) continue;
+
+    for (const [, nome, p, s] of texto.matchAll(
+      /ALTER\s+COLUMN\s+(\w+)\s+TYPE\s+numeric\((\d+),(\d+)\)/gi,
+    )) {
+      const atual = porNome.get(nome);
+      if (atual) porNome.set(nome, { ...atual, precisao: Number(p), escala: Number(s) });
+    }
+    // ALTER COLUMN %I TYPE numeric(p,s) montado por format(): o nome da coluna
+    // vem da lista de pares logo acima, no mesmo arquivo.
+    const viaFormat = texto.match(/ALTER\s+COLUMN\s+%I\s+TYPE\s+numeric\((\d+),(\d+)\)/i);
+    if (viaFormat) {
+      const [, p, s] = viaFormat;
+      for (const [, nome] of texto.matchAll(/\['(\w+)',\s*'[\d.]+'\]/g)) {
+        const atual = porNome.get(nome);
+        if (atual) porNome.set(nome, { ...atual, precisao: Number(p), escala: Number(s) });
+      }
+    }
+  }
+  return [...porNome.values()];
 }
 
 /** Valores do DEFAULT_CONFIG do hook, lidos do fonte. */
@@ -324,15 +360,21 @@ function padroesDoHook(): Record<string, number> {
 const tetoDe = (p: number, s: number) => 10 ** (p - s) - 10 ** -s;
 
 /**
- * DEFEITO CONHECIDO — três colunas `numeric(5,4)` (teto 9,9999) com DEFAULT
- * percentual. O DDL passa porque o Postgres não avalia a default expression na
- * criação, mas nenhum INSERT funciona, nem um que OMITA as colunas. É por isso
- * que `financeiro_config_tributaria` estava com zero linhas.
+ * Estouros conhecidos: nenhum, desde 2026-08-25.
  *
- * Sai na fase de consolidação, com ALTER TYPE para numeric(7,4) + CHECK 0..100.
- * Quando sair, esta lista esvazia e nenhuma outra asserção muda.
+ * Eram três — `aliquota_irpj`, `adicional_irpj` e `aliquota_icms`, colunas
+ * numeric(5,4) (teto 9,9999) com DEFAULT 15, 10 e 18. O DDL passava porque o
+ * Postgres não avalia a expressão de default na criação; o INSERT é que não
+ * passava, nem OMITINDO as colunas. A tabela ficou quatro meses com zero linhas,
+ * e o hook caiu no DEFAULT_CONFIG do código a cada carregamento — foi esse
+ * padrão, e não uma escolha de ninguém, que apurou empresa de Lucro Presumido
+ * pela tabela do Simples.
+ *
+ * `20260825000005_aliquotas_numeric_7_4.sql` levou as nove alíquotas a
+ * numeric(7,4) com CHECK 0..100. A lista fica aqui, vazia, porque o teste
+ * abaixo exige que continue vazia: um estouro novo é regressão, não descoberta.
  */
-const COLUNAS_QUE_ESTOURAM = ['aliquota_irpj', 'adicional_irpj', 'aliquota_icms'];
+const COLUNAS_QUE_ESTOURAM: string[] = [];
 
 describe('precisão das colunas de alíquota', () => {
   const colunas = colunasDaMigration();
@@ -356,12 +398,21 @@ describe('precisão das colunas de alíquota', () => {
     }
   });
 
-  it('cada estouro documentado é real e vale para os dois lados', () => {
-    for (const nome of COLUNAS_QUE_ESTOURAM) {
-      const c = colunas.find((x) => x.nome === nome);
-      expect(c, `coluna ${nome} sumiu da migration`).toBeDefined();
-      expect(c!.padraoSql).toBeGreaterThan(tetoDe(c!.precisao, c!.escala));
-      expect(hook[nome]).toBeGreaterThan(tetoDe(c!.precisao, c!.escala));
+  it('nenhuma coluna tem DEFAULT que não cabe no próprio tipo', () => {
+    // O defeito que manteve a tabela vazia por quatro meses. Cada estouro que
+    // sobrar aqui é uma coluna cujo INSERT falha mesmo omitindo o campo.
+    const estouram = colunas.filter((c) => c.padraoSql > tetoDe(c.precisao, c.escala));
+    expect(estouram.map((c) => `${c.nome} numeric(${c.precisao},${c.escala}) DEFAULT ${c.padraoSql}`)).toEqual([]);
+    expect(COLUNAS_QUE_ESTOURAM).toEqual([]);
+  });
+
+  it('o DEFAULT_CONFIG do hook também cabe nos tipos do SQL', () => {
+    // O outro lado do mesmo defeito: o hook manda o valor no upsert, e um valor
+    // que não cabe derruba a gravação inteira, não só aquela coluna.
+    for (const c of colunas) {
+      if (hook[c.nome] === undefined) continue;
+      expect(hook[c.nome], `${c.nome} não cabe em numeric(${c.precisao},${c.escala})`)
+        .toBeLessThanOrEqual(tetoDe(c.precisao, c.escala));
     }
   });
 
