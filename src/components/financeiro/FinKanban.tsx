@@ -387,8 +387,12 @@ export default function FinKanban({ tipo }: Props) {
     <div className="space-y-4">
       {/* Cabeçalho com totalizador, busca e ações */}
       <Card>
-        <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-6">
+        {/* Dois indicadores empilhados à esquerda deixavam um vazio morto no
+            centro, e a ação principal caía sozinha numa segunda linha. Agora os
+            indicadores correm LADO A LADO no topo, e a barra de ações ocupa a
+            largura toda embaixo — com a busca esticando para preencher o vão. */}
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex flex-wrap items-stretch gap-x-8 gap-y-3">
             <div>
               {/* A contagem vive AO LADO do total que ela qualifica — no meio da
                   barra de ações ela era informação espremida entre botões,
@@ -403,7 +407,7 @@ export default function FinKanban({ tipo }: Props) {
                 {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
-            <div className="h-10 w-px bg-border hidden sm:block" />
+            <div className="w-px bg-border hidden sm:block" />
             <div>
               <p className="text-sm text-muted-foreground">
                 Saldo atual {filtroConta !== "todos" ? `· ${contas.find((c) => c.id === filtroConta)?.nome ?? ""}` : "· todas as contas"}
@@ -414,14 +418,14 @@ export default function FinKanban({ tipo }: Props) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+            <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar descrição, doc, pessoa ou categoria…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 w-72"
+                className="pl-8 h-9 w-full"
               />
             </div>
             <Button
