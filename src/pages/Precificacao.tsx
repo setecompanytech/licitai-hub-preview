@@ -179,20 +179,16 @@ export default function Precificacao() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   /**
-   * Onde a tela abre.
+   * Onde a tela abre: sempre na pesquisa de preços, salvo `?tab=` explícito.
    *
-   * O `?tab=` da URL manda sempre — é o que traz quem clicou em "Edital /
-   * Itens" no workspace. Sem ele, a entrada depende de haver processo: com
-   * processo, o trabalho começa nos itens do edital; sem processo, essa aba só
-   * teria a dizer "nenhum processo selecionado", e aí a pesquisa avulsa de
-   * preços é a porta útil. `processoId` vem do `?lid=` da URL, então já está
-   * resolvido no primeiro render — dá para decidir sem piscar a tela.
+   * Cheguei a abrir em "Itens & Planilha" quando havia processo ativo. Por
+   * decisão do dono do produto, a entrada é fixa — a porta do módulo não muda
+   * de lugar conforme o contexto, e quem quer os itens tem o link direto do
+   * workspace ("Edital / Itens", que traz o `?tab=`).
    */
   const tabInicial = ABAS.some((a) => a.id === searchParams.get('tab'))
     ? (searchParams.get('tab') as string)
-    : searchParams.get('lid')
-      ? 'extracao-itens'
-      : 'marketplaces';
+    : 'marketplaces';
   const [abaAtiva, setAbaAtiva] = useState(tabInicial);
   const AbaAtual = ABAS.find((a) => a.id === abaAtiva) ?? ABAS[0];
   const { addItem, hasPending, pendingItems } = usePropostaCart();

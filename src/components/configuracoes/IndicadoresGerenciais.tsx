@@ -53,25 +53,57 @@ export default function IndicadoresGerenciais() {
   const [nomes, setNomes] = useState<Record<string, string>>({});
 
   /**
-   * O faturamento DECLARADO em Apuração (digitado mês a mês) contra o
-   * CONTABILIZADO (somado dos lançamentos). Enquanto a conciliação anda em
-   * degraus, os dois divergem — e a divergência precisa aparecer nomeada, ou
-   * vira "os números não batem" sem explicação.
+   * A conta que explica a divergência — e ela tem TRÊS parcelas, não duas.
+   *
+   * O faturamento DECLARADO na Apuração (digitado mês a mês) contra o
+   * CONTABILIZADO pelos indicadores. A diferença costuma ser lida como
+   * "conciliação atrasada", e em parte é. Mas há uma segunda causa, estrutural,
+   * que não some com esforço nenhum: o indicador só conta lançamento
+   * `realizado`/`conciliado`, e uma Conta a Receber emitida e ainda não
+   * recebida é faturamento de competência que NUNCA entra até ser quitada.
+   *
+   * Num negócio que vende a órgão público — trinta, sessenta, noventa dias
+   * para receber — essa parcela é permanente. Somá-la ao atraso da conciliação
+   * faria a tela cobrar do usuário um trabalho que não existe.
+   *
+   * Por isso a divergência é decomposta:
+   *   declarado − contabilizado = (a receber em aberto) + (o que falta lançar)
+   *
+   * A primeira parcela é normal e se explica sozinha. A segunda é a real
+   * pendência de conciliação — e é só ela que deve pesar na decisão de adotar.
    */
   const [faturamentoDeclarado, setFaturamentoDeclarado] = useState(0);
+  const [aReceberEmAberto, setAReceberEmAberto] = useState(0);
 
   useEffect(() => {
-    if (!empresaAtiva?.id) { setFaturamentoDeclarado(0); return; }
+    if (!empresaAtiva?.id) { setFaturamentoDeclarado(0); setAReceberEmAberto(0); return; }
+    const empresaId = empresaAtiva.id;
+
     void supabase
       .from('faturamento_mensal' as never)
       .select('valor_faturamento')
-      .eq('empresa_id', empresaAtiva.id)
+      .eq('empresa_id', empresaId)
       .then(({ data }) => {
         const total = ((data ?? []) as { valor_faturamento: number }[])
           .reduce((s, r) => s + (Number(r.valor_faturamento) || 0), 0);
         setFaturamentoDeclarado(total);
       });
-  }, [empresaAtiva?.id]);
+
+    if (!indicadores?.periodo) { setAReceberEmAberto(0); return; }
+    void supabase
+      .from('financeiro_lancamentos')
+      .select('valor')
+      .eq('empresa_id', empresaId)
+      .eq('tipo', 'a_receber')
+      .not('status', 'in', '(realizado,conciliado)')
+      .gte('data_competencia', indicadores.periodo.inicio)
+      .lte('data_competencia', indicadores.periodo.fim)
+      .then(({ data }) => {
+        const total = ((data ?? []) as { valor: number }[])
+          .reduce((s, r) => s + (Number(r.valor) || 0), 0);
+        setAReceberEmAberto(total);
+      });
+  }, [empresaAtiva?.id, indicadores?.periodo]);
 
   const carregarHistorico = useCallback(async () => {
     if (!empresaAtiva?.id) return;
@@ -161,20 +193,29 @@ export default function IndicadoresGerenciais() {
 
       {indicadores && (
         <>
-          {/* ── Os percentuais que vão ao preço ─────────────────────────── */}
+          {/* ── Os percentuais, e quais deles chegam ao preço ────────────
+              Só o administrativo entra. O financeiro e o CMV ficam de fora, por
+              motivos diferentes: juro e tarifa bancária são custo de FINANCIAR
+              a operação, não de operá-la — por decisão do dono do produto, saem
+              do lucro, não do preço; e o CMV já é o custo unitário do item na
+              cotação, somá-lo aqui cobraria a mercadoria duas vezes. Dizer isso
+              no cartão evita que alguém some 6% de boa-fé. */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground">Despesas administrativas</p>
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                Despesas administrativas
+                <span className="rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">vai ao preço</span>
+              </p>
               <p className="text-2xl font-bold tabular-nums">{pct(indicadores.pct_despesa_administrativa)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {brl(indicadores.media_mensal.despesa_operacional)}/mês
               </p>
             </div>
-            <div className="rounded-lg border p-3">
+            <div className="rounded-lg border p-3 bg-muted/30">
               <p className="text-xs text-muted-foreground">Despesas financeiras</p>
-              <p className="text-2xl font-bold tabular-nums">{pct(indicadores.pct_despesa_financeira)}</p>
+              <p className="text-2xl font-bold tabular-nums text-muted-foreground">{pct(indicadores.pct_despesa_financeira)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {brl(indicadores.media_mensal.despesa_financeira)}/mês
+                {brl(indicadores.media_mensal.despesa_financeira)}/mês — fora do cálculo
               </p>
             </div>
             <div className="rounded-lg border p-3 bg-muted/30">
@@ -186,24 +227,64 @@ export default function IndicadoresGerenciais() {
             </div>
           </div>
 
-          {/* ── A conciliação anda em degraus; a defasagem tem de aparecer ─ */}
+          {/* ── Confronto: declarado × contabilizado, decomposto ─────────── */}
           {faturamentoDeclarado > 0 && indicadores.receita_bruta > 0 && (() => {
             const dif = faturamentoDeclarado - indicadores.receita_bruta;
             const pctDif = (dif / faturamentoDeclarado) * 100;
             if (Math.abs(pctDif) < 2) return null;
+
+            // A parcela que a conciliação NÃO resolve: nota emitida, prazo
+            // correndo. Some do confronto quando o órgão pagar, não antes.
+            const emAberto = Math.min(Math.max(aReceberEmAberto, 0), Math.max(dif, 0));
+            const porLancar = Math.max(dif - emAberto, 0);
+            const excedente = dif < 0;
+
             return (
-              <div className="rounded-lg border border-warning/40 bg-warning/5 p-3">
-                <p className="text-xs font-medium text-warning flex items-center gap-1.5 mb-1">
-                  <AlertTriangle className="w-4 h-4" /> Conciliação em andamento
+              <div className={`rounded-lg border p-3 ${porLancar > 0 || excedente ? 'border-warning/40 bg-warning/5' : 'border-info/40 bg-info/5'}`}>
+                <p className={`text-xs font-medium flex items-center gap-1.5 mb-1.5 ${porLancar > 0 || excedente ? 'text-warning' : 'text-info'}`}>
+                  <AlertTriangle className="w-4 h-4" />
+                  {excedente
+                    ? 'Receita lançada acima do faturamento declarado'
+                    : porLancar > 0
+                      ? 'Conciliação em andamento'
+                      : 'Diferença explicada por contas a receber'}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  O faturamento declarado em Apuração ({brl(faturamentoDeclarado)}) está{' '}
-                  {brl(Math.abs(dif))} {dif > 0 ? 'acima' : 'abaixo'} do que os lançamentos
-                  conciliados somam ({brl(indicadores.receita_bruta)}) —{' '}
-                  {Math.abs(pctDif).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% de diferença.
-                  {dif > 0
-                    ? ' Enquanto há notas por conciliar, o percentual apurado fica ALTO: a mesma despesa dividida por uma receita menor.'
-                    : ' Há receita lançada além do faturamento declarado — vale conferir qual dos dois está desatualizado.'}
+
+                <div className="text-xs space-y-1">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Faturamento declarado (Apuração)</span>
+                    <span className="tabular-nums font-medium">{brl(faturamentoDeclarado)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Receita contabilizada (lançamentos)</span>
+                    <span className="tabular-nums font-medium">{brl(indicadores.receita_bruta)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2 border-t pt-1">
+                    <span className="text-muted-foreground">Diferença</span>
+                    <span className="tabular-nums font-semibold">
+                      {brl(Math.abs(dif))} ({Math.abs(pctDif).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)
+                    </span>
+                  </div>
+                  {!excedente && (
+                    <>
+                      <div className="flex justify-between gap-2 pl-3">
+                        <span className="text-muted-foreground">· a receber em aberto (normal)</span>
+                        <span className="tabular-nums">{brl(emAberto)}</span>
+                      </div>
+                      <div className="flex justify-between gap-2 pl-3">
+                        <span className="text-muted-foreground">· sem lançamento (a conciliar)</span>
+                        <span className={`tabular-nums ${porLancar > 0 ? 'font-semibold text-warning' : ''}`}>{brl(porLancar)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                  {excedente
+                    ? 'Há mais receita lançada do que faturamento declarado na Apuração — provável nota lançada em duplicidade, ou competência de Apuração desatualizada.'
+                    : porLancar > 0
+                      ? <>Faltam <strong className="text-foreground">{brl(porLancar)}</strong> em lançamentos. Enquanto isso, o percentual apurado sai ALTO — a mesma despesa dividida por uma receita menor — e precificar por ele encarece a proposta.</>
+                      : 'A diferença inteira é nota emitida com prazo a vencer. Não há conciliação pendente: essa parcela só entra quando o pagamento entrar.'}
                 </p>
               </div>
             );

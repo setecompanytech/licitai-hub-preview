@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
+import { regimeDaEmpresa } from "@/lib/tributario/regime";
 import {
   calcularSimples, calcularPresumido, calcularReal,
   type AnexoSimples, type ResultadoSimples, type ResultadoPresumido, type ResultadoReal,
@@ -93,7 +94,14 @@ export function useApuracaoTributaria() {
         .eq("empresa_id", empresaAtiva.id)
         .maybeSingle();
 
-      setConfig(cfg ?? { empresa_id: empresaAtiva.id, ...DEFAULT_CONFIG });
+      // O regime é do CADASTRO, não desta tabela. `financeiro_config_tributaria`
+      // continua guardando as alíquotas — que são configuração de verdade —,
+      // mas a coluna `regime` dela virou histórico: enquanto ela decidia, o
+      // padrão `simples` sobrescrevia o Lucro Presumido escolhido em
+      // Configurações e a Apuração calculava pela tabela errada, calada.
+      const doCadastro = regimeDaEmpresa(empresaAtiva.regime_tributario);
+      const base: ConfigTributaria = cfg ?? { empresa_id: empresaAtiva.id, ...DEFAULT_CONFIG };
+      setConfig({ ...base, regime: doCadastro ?? base.regime });
 
       const { data: aps } = await (supabase as any)
         .from("financeiro_apuracoes")
@@ -107,7 +115,7 @@ export function useApuracaoTributaria() {
     } finally {
       setLoading(false);
     }
-  }, [empresaAtiva?.id]);
+  }, [empresaAtiva?.id, empresaAtiva?.regime_tributario]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

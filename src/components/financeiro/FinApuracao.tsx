@@ -3,13 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
+import { useNavigate } from "react-router-dom";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { rotuloDoRegime, excedeTetoDoSimples, TETO_SIMPLES_NACIONAL } from "@/lib/tributario/regime";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { useApuracaoTributaria, type Regime } from "@/hooks/useApuracaoTributaria";
+import { useApuracaoTributaria } from "@/hooks/useApuracaoTributaria";
 import { useValidacaoApuracao, type DivergenciaApuracao } from "@/hooks/useValidacaoApuracao";
 import { DialogDivergenciasApuracao } from "./DialogDivergenciasApuracao";
 import FinImportarNotas from "./FinImportarNotas";
@@ -41,6 +44,8 @@ export default function FinApuracao() {
   const [limiteAdicional, setLimiteAdicional] = useState(0);
   const [carregandoReceita, setCarregandoReceita] = useState(false);
   const { validar } = useValidacaoApuracao();
+  const navigate = useNavigate();
+  const { empresaAtiva } = useEmpresa();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [divergencias, setDivergencias] = useState<DivergenciaApuracao[] | null>(null);
   const [validando, setValidando] = useState(false);
@@ -173,6 +178,19 @@ export default function FinApuracao() {
                 <div>
                   <Label>RBT12 — Receita 12 meses</Label>
                   <MoneyInput value={rbt12} onValueChange={setRbt12} />
+                </div>
+              )}
+              {config.regime === "simples" && excedeTetoDoSimples(rbt12) && (
+                <div className="md:col-span-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+                  <p className="text-xs font-medium text-destructive flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-4 h-4" /> RBT12 acima do teto do Simples Nacional
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    O Anexo I termina em {fmt(TETO_SIMPLES_NACIONAL)} de RBT12 (LC 123/2006, art. 3º, II).
+                    Com {fmt(rbt12)} não há faixa aplicável — o cálculo abaixo estende a sexta faixa e
+                    produz um imposto que não é devido dessa forma. Confira o regime no cadastro da
+                    empresa antes de usar este número.
+                  </p>
                 </div>
               )}
               {config.regime === "real" && (
@@ -338,16 +356,22 @@ export default function FinApuracao() {
           <CardHeader><CardTitle>Configuração tributária</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* O regime não se escolhe aqui. Escolhia-se, e era esse o defeito:
+                  duas telas gravando a mesma decisão em colunas diferentes, com
+                  palavras diferentes, sem se falarem. Quem trocava em
+                  Configurações via esta aqui ignorar a troca. */}
               <div>
                 <Label>Regime tributário</Label>
-                <Select value={config.regime} onValueChange={(v: Regime) => salvarConfig({ regime: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="simples">Simples Nacional</SelectItem>
-                    <SelectItem value="presumido">Lucro Presumido</SelectItem>
-                    <SelectItem value="real">Lucro Real</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-muted/40 px-3">
+                  <span className="text-sm font-medium">{rotuloDoRegime(empresaAtiva?.regime_tributario)}</span>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs"
+                    onClick={() => navigate('/configuracoes?aba=tributario')}>
+                    Alterar em Configurações
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Vem do cadastro da empresa e vale para Precificação, Contratos e Proposta.
+                </p>
               </div>
               {config.regime === "simples" && (
                 <div>

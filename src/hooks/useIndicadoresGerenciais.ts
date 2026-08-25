@@ -71,6 +71,35 @@ export function useIndicadoresGerenciais(meses = 12) {
   useEffect(() => { void carregar(); }, [carregar]);
 
   /**
+   * A conciliação anda em degraus, e o indicador acompanha o degrau.
+   *
+   * Quem concilia passa a tarde lançando; sem isto, o percentual da tela
+   * continuaria sendo o de quando a página abriu, e a distância entre o
+   * faturamento declarado e o contabilizado pareceria estagnada mesmo enquanto
+   * encolhia. O recálculo é barato (uma RPC agregada) e o debounce evita
+   * refazê-lo a cada linha de um lote — espera a rajada terminar.
+   */
+  useEffect(() => {
+    if (!empresaAtiva?.id) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const canal = supabase
+      .channel(`indicadores_gerenciais_${empresaAtiva.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'financeiro_lancamentos', filter: `empresa_id=eq.${empresaAtiva.id}` },
+        () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => { void carregar(); }, 1500);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(canal);
+    };
+  }, [empresaAtiva?.id, carregar]);
+
+  /**
    * A versão em vigor — a última adotada. É ela que o comercial deve usar:
    * o cálculo do momento muda a cada conciliação, e preço não pode oscilar
    * conforme a hora em que a proposta foi montada.
