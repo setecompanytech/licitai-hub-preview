@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -118,4 +119,63 @@ export function useDocumentoFiscal() {
   }, []);
 
   return { guardarArquivo, vincularLancamento, abrirArquivo };
+}
+
+
+/**
+ * O documento fiscal encontrado pelo NÚMERO da nota.
+ *
+ * A tela de Pedidos do contrato mostra o número da NF-e ("000.000.692") e
+ * nada mais — o pedido não guarda `lancamento_id`, então o elo entre o pedido
+ * e o documento arquivado é o próprio número.
+ *
+ * Duas pontes, porque o número pode estar de dois lados: no documento (quando
+ * quem arquivou já sabia qual era a nota) ou no lançamento que ele originou
+ * (quando o arquivo subiu ANTES da leitura, que é o caminho normal — ali o
+ * número ainda não existia).
+ *
+ * Uma consulta por empresa, cacheada. Uma por linha derrubaria a tabela.
+ */
+export type DocumentoPorNumero = { id: string; storage_path: string; arquivo_nome: string };
+
+export function useDocumentosPorNumeroNota() {
+  const { empresaAtiva } = useEmpresa();
+  return useQuery({
+    queryKey: ['fin-documentos-por-numero', empresaAtiva?.id],
+    enabled: !!empresaAtiva?.id,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, DocumentoPorNumero>> => {
+      const { data, error } = await supabase
+        .from('financeiro_documentos_fiscais' as never)
+        .select('id, numero, storage_path, arquivo_nome, lancamento:financeiro_lancamentos(numero_documento)')
+        .eq('empresa_id', empresaAtiva!.id)
+        .not('storage_path', 'is', null);
+      if (error) throw error;
+
+      const mapa: Record<string, DocumentoPorNumero> = {};
+      type Linha = DocumentoPorNumero & {
+        numero: string | null;
+        lancamento: { numero_documento: string | null } | null;
+      };
+      for (const d of (data ?? []) as unknown as Linha[]) {
+        const doc = { id: d.id, storage_path: d.storage_path, arquivo_nome: d.arquivo_nome };
+        // Chaveia pelas duas formas em que o número aparece, e também sem os
+        // separadores: o contrato grava "000.000.692" e a NF-e traz "692".
+        for (const bruto of [d.numero, d.lancamento?.numero_documento]) {
+          if (!bruto) continue;
+          mapa[bruto] = doc;
+          const digitos = String(bruto).replace(/\D/g, '').replace(/^0+/, '');
+          if (digitos) mapa[digitos] = doc;
+        }
+      }
+      return mapa;
+    },
+  });
+}
+
+/** A chave com que se procura um número no mapa acima. */
+export function chaveDoNumero(numero: string | null | undefined): string[] {
+  if (!numero) return [];
+  const digitos = String(numero).replace(/\D/g, '').replace(/^0+/, '');
+  return digitos ? [numero, digitos] : [numero];
 }

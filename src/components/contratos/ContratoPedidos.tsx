@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useDocumentoFiscal, useDocumentosPorNumeroNota, chaveDoNumero } from '@/hooks/useDocumentoFiscal';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,8 @@ import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
-  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown
+  Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
+  ExternalLink,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -96,6 +98,20 @@ const tiposDocumento = [
 ];
 
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
+  const { data: docsPorNumero } = useDocumentosPorNumeroNota();
+  const { abrirArquivo } = useDocumentoFiscal();
+
+  /** Abre o DANFE arquivado no Financeiro, por URL assinada. */
+  const abrirDanfe = async (storagePath: string, nome: string) => {
+    const url = await abrirArquivo(storagePath);
+    if (!url) {
+      toast.error('Não foi possível abrir o documento.', {
+        description: `"${nome}" está guardado, mas o link de acesso falhou. Tente de novo.`,
+      });
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const navigate = useNavigate();
@@ -1194,15 +1210,45 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-xs">
                       <div className="space-y-1">
-                        {p.nota_fiscal && (
-                          <Badge variant="outline" className="text-xs block w-fit text-foreground">
-                            <FileText className="w-3 h-3 mr-1 inline" />
-                            {p.nota_fiscal}
-                            {p.nf_quitada && p.data_quitacao && (
-                              <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                            )}
-                          </Badge>
-                        )}
+                        {p.nota_fiscal && (() => {
+                          // O número da nota é o elo entre o pedido e o
+                          // documento arquivado no Financeiro: o pedido não
+                          // guarda lancamento_id. Havendo arquivo, o selo vira
+                          // botão e abre o DANFE — ver o pedido e não alcançar
+                          // a nota que o comprova é o passo que faltava.
+                          const doc = chaveDoNumero(p.nota_fiscal)
+                            .map((k) => docsPorNumero?.[k]).find(Boolean);
+                          const conteudo = (
+                            <>
+                              <FileText className="w-3 h-3 mr-1 inline" />
+                              {p.nota_fiscal}
+                              {p.nf_quitada && p.data_quitacao && (
+                                <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                              )}
+                            </>
+                          );
+                          if (!doc) {
+                            return (
+                              <Badge variant="outline" className="text-xs block w-fit text-foreground">
+                                {conteudo}
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => abrirDanfe(doc.storage_path, doc.arquivo_nome)}
+                              title={`Abrir ${doc.arquivo_nome}`}
+                              className="block w-fit"
+                            >
+                              <Badge variant="outline"
+                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                {conteudo}
+                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                              </Badge>
+                            </button>
+                          );
+                        })()}
                         {linkedNfs.map(nf => (
                           <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
                             nf.status === 'autorizada' ? 'border-success/30 text-success' :
