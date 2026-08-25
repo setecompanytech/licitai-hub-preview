@@ -23,6 +23,10 @@ import EstruturaDocumentoCard from './EstruturaDocumentoCard';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+// Item antigo pode ter a PALAVRA "null" gravada como unidade (extração que
+// declarou ausência em prosa). Na tela, isso não é unidade — é vazio.
+const uni = (u?: string | null) => (u && u.trim() && !/^null$/i.test(u.trim()) ? u : '');
+
 type Produto = { id: string; codigo: string | null; descricao: string; unidade: string; preco_venda: number | null };
 
 type ContratoItem = {
@@ -753,7 +757,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                     </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground"> {item.unidade}</span>
+                      <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                       {/* Quantidade zerada é a fratura físico×financeiro: o
                           scan não rendeu o número e o total fica em R$ 0,00.
                           O aviso mora ao lado do defeito, não noutra aba. */}
@@ -795,7 +799,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
                     </TableCell>
                     <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
-                      <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {item.unidade}</div>
+                      <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
                       <div className="text-[11px]">{fmt(item.saldo_financeiro)}</div>
                     </TableCell>
                     <TableCell className="sticky right-0 bg-card border-l border-border">
@@ -891,7 +895,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Quantidade</div>
-                  <div className="font-medium">{Number(itemVisualizado.quantidade_contratada || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade}</div>
+                  <div className="font-medium">{Number(itemVisualizado.quantidade_contratada || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Valor unitário</div>
@@ -903,11 +907,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Consumido</div>
-                  <div className="font-medium">{Number(itemVisualizado.quantidade_consumida || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade}</div>
+                  <div className="font-medium">{Number(itemVisualizado.quantidade_consumida || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Saldo</div>
-                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {itemVisualizado.unidade} · {fmt(itemVisualizado.saldo_financeiro || 0)}</div>
+                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(itemVisualizado.saldo_financeiro || 0)}</div>
                 </div>
               </div>
 

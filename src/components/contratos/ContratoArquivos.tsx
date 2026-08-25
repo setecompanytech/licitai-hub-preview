@@ -999,6 +999,18 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           }
         }
 
+        // A unidade do derivado é a DA ATA: mesmo preço e condições incluem o
+        // "kg". A extração vinha com "null" textual e o item nascia sem unidade.
+        const unidadesDaAta = new Map<string, string>();
+        {
+          const ids = matches.map((m: any) => m?.ata_item_id).filter(Boolean);
+          if (ids.length > 0) {
+            const { data: uns } = await supabase
+              .from('contrato_itens').select('id, unidade').in('id', ids);
+            (uns || []).forEach((u: any) => { if (u.unidade) unidadesDaAta.set(u.id, u.unidade); });
+          }
+        }
+
         let inferidas = 0;
         const itensInsert = itensExtraidos.map((it: any, idx: number) => {
           const m = matches[idx];
@@ -1027,7 +1039,8 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             contrato_id: created.id,
             user_id: user.id,
             descricao: it.descricao || 'Item',
-            unidade: it.unidade || 'UN',
+            unidade: (m?.ata_item_id && unidadesDaAta.get(m.ata_item_id))
+              || (it.unidade && !/^null$/i.test(String(it.unidade)) ? it.unidade : 'UN'),
             quantidade_contratada: qtd,
             valor_unitario: vu,
             valor_total: vt,

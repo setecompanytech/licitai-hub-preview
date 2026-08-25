@@ -59,7 +59,12 @@ type DadosContrato = {
 function cleanString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const cleaned = value.replace(/\s+/g, " ").trim();
-  return cleaned.length > 0 ? cleaned : null;
+  if (cleaned.length === 0) return null;
+  // O modelo às vezes escreve a PALAVRA "null" no campo que não leu — e o
+  // texto passava por todo filtro até a tela imprimir "403.200 null". Ausência
+  // declarada em prosa é ausência.
+  if (/^(null|none|n\/a|undefined|-)$/i.test(cleaned)) return null;
+  return cleaned;
 }
 
 function parseNumber(value: unknown): number | null {
