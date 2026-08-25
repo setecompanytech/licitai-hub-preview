@@ -166,7 +166,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
@@ -464,6 +464,25 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               <span className="ml-2 text-warning">({itens.length} registros, {itensMesclados.length} itens físicos)</span>
             )}
           </p>
+          {(() => {
+            // Os dois livros do contrato: o Valor Global (original + aditivos,
+            // automático) e a soma dos itens (declarada no lápis). Divergência
+            // acima de 1% é preço de item errado ou aditivo mal lançado — e os
+            // dois já divergiram em milhões sem ninguém acusar, quando o VALOR
+            // do acréscimo foi digitado como PREÇO unitário.
+            const global = Number((meta as { valor_global?: number } | null)?.valor_global) || 0;
+            if (global <= 0 || totalContratadoEfetivo <= 0) return null;
+            const dif = totalContratadoEfetivo - global;
+            if (Math.abs(dif) <= global * 0.01) return null;
+            return (
+              <p className="text-xs text-destructive mt-0.5">
+                ⚠ A soma dos itens {dif > 0 ? 'excede' : 'fica abaixo de'} o Valor Global do contrato
+                ({fmt(global)}) em {fmt(Math.abs(dif))}. Confira o preço unitário dos itens
+                e os aditivos — os dois totais devem fechar.
+              </p>
+            );
+          })()}
+
           {isContratoComATA && (
             <p className="text-xs text-warning mt-1 flex items-center gap-1">
               <Link2 className="w-3 h-3" /> Contrato vinculado à ATA SRP — itens devem ser selecionados da ATA de origem
