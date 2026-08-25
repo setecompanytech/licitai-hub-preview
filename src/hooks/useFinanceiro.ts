@@ -820,7 +820,7 @@ export function useResumoFinanceiro() {
         supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
         supabase
           .from("financeiro_lancamentos")
-          .select("valor, tipo, status, natureza, data_competencia, data_realizado, categoria:financeiro_categorias(nome)")
+          .select("valor, tipo, status, natureza, data_competencia, data_realizado, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
           .eq("empresa_id", empresaId!)
           .gte("data_competencia", inicio6m)
           .limit(2000),

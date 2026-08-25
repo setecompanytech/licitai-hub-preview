@@ -148,7 +148,7 @@ export default function FinRelatorios() {
   async function gerarFluxoRealizado(filename: string, titulo: string) {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("data_realizado, descricao, tipo, natureza, valor, categoria:financeiro_categorias(nome), pessoa:financeiro_pessoas(nome)")
+      .select("data_realizado, descricao, tipo, natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome), pessoa:financeiro_pessoas(nome)")
       .eq("empresa_id", empresaAtiva!.id)
       .in("status", ["realizado", "conciliado"])
       .gte("data_realizado", periodo.inicio)
@@ -196,7 +196,7 @@ export default function FinRelatorios() {
   async function gerarTitulos(filename: string, titulo: string, tipo: "a_pagar" | "a_receber") {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("data_vencimento, data_realizado, descricao, valor, status, pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias(nome)")
+      .select("data_vencimento, data_realizado, descricao, valor, status, pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
       .eq("empresa_id", empresaAtiva!.id)
       .eq("tipo", tipo)
       .neq("status", "cancelado")
@@ -244,7 +244,7 @@ export default function FinRelatorios() {
   async function gerarDRESimplificada(filename: string, titulo: string) {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("valor, tipo, natureza, categoria:financeiro_categorias(nome, natureza)")
+      .select("valor, tipo, natureza, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza)")
       .eq("empresa_id", empresaAtiva!.id)
       .in("status", ["realizado", "conciliado"])
       .gte("data_realizado", periodo.inicio)
@@ -302,7 +302,7 @@ export default function FinRelatorios() {
   async function gerarRazaoCategoria(filename: string, titulo: string) {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("data_competencia, data_realizado, descricao, valor, tipo, status, categoria:financeiro_categorias(nome)")
+      .select("data_competencia, data_realizado, descricao, valor, tipo, status, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
       .eq("empresa_id", empresaAtiva!.id)
       .gte("data_competencia", periodo.inicio)
       .lte("data_competencia", periodo.fim)

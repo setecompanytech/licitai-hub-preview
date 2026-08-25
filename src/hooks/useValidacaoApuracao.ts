@@ -47,7 +47,7 @@ export function useValidacaoApuracao() {
 
     const { data: lanc, error } = await (supabase as any)
       .from("financeiro_lancamentos")
-      .select("data_competencia,natureza,valor,status,categoria_id,financeiro_categorias!inner(tipo_servico,natureza)")
+      .select("data_competencia,natureza,valor,status,categoria_id,financeiro_categorias!financeiro_lancamentos_categoria_id_fkey!inner(tipo_servico,natureza)")
       .eq("empresa_id", empresaAtiva.id)
       .in("status", ["realizado", "conciliado"])
       .gte("data_competencia", dataInicio)

@@ -52,9 +52,13 @@ export default function FinCalculadoraMargem() {
       dataInicio.setMonth(dataInicio.getMonth() - meses);
       const inicioISO = dataInicio.toISOString().slice(0, 10);
 
+      // O lançamento tem DUAS chaves para categorias — `categoria_id` (a
+      // classificada) e `categoria_sugerida_id` (o palpite da conciliação) —
+      // e sem dizer qual, o PostgREST recusa: "more than one relationship was
+      // found". Aqui só a classificada vale; sugestão não é classificação.
       const { data, error } = await (supabase as any)
         .from("financeiro_lancamentos")
-        .select("natureza, valor, status, data_competencia, financeiro_categorias(tipo)")
+        .select("natureza, valor, status, data_competencia, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(tipo, grupo_dre)")
         .eq("empresa_id", empresaAtiva.id)
         .in("status", ["realizado", "conciliado"])
         .gte("data_competencia", inicioISO);
@@ -64,11 +68,12 @@ export default function FinCalculadoraMargem() {
       let receita = 0, custo = 0, despesa = 0;
       for (const l of data ?? []) {
         const v = Number(l.valor) || 0;
-        const tipoCat = l.financeiro_categorias?.tipo as string | undefined;
+        const cat = l.categoria as { tipo?: string; grupo_dre?: string } | null;
         if (l.natureza === "receita") receita += v;
         else if (l.natureza === "despesa") {
-          // Heurística: categorias do tipo "custo" são CMV/CSP; demais são despesa operacional
-          if (tipoCat === "custo") custo += v;
+          // O grupo_dre é a autoridade (mesma régua dos indicadores gerenciais);
+          // o tipo antigo fica como reserva para plano de contas sem grupo.
+          if (cat?.grupo_dre === "cmv_cps" || cat?.tipo === "custo") custo += v;
           else despesa += v;
         }
       }
