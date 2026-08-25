@@ -523,6 +523,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           data_aditivo: aditivoData.data_assinatura || null,
           justificativa: aditivoData.justificativa || null,
           observacoes: aditivoData.observacoes || null,
+          // Sem isto a coluna caía no DEFAULT 'contrato' e o guarda do banco
+          // barrava o aditivo de ATA: "Aditivo marcado como Contrato, mas o
+          // documento referenciado é uma ATA SRP". Quem grava sabe o alvo.
+          referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
         };
         payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
 
@@ -574,6 +578,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         data_aditivo: aditivoForm.data_assinatura || null,
         justificativa: aditivoForm.justificativa || null,
         observacoes: aditivoForm.observacoes || null,
+        referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
       };
       payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
 
@@ -851,6 +856,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           data_aditivo: editAditivoForm.data_assinatura || null,
           justificativa: editAditivoForm.justificativa || null,
           observacoes: editAditivoForm.observacoes || null,
+          referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
         };
         payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
 
