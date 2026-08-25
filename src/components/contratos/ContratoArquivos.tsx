@@ -1424,32 +1424,44 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       {/* Aditivos summary + list */}
       {aditivos.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-muted-foreground">Aditivos Registrados</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Acréscimos (R$)</div>
-              <p className="text-sm font-bold text-success">{fmt(totalAcrescimo)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Supressões (R$)</div>
-              <p className="text-sm font-bold text-destructive">{fmt(totalSupressao)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Saldo Valor</div>
-              <p className={`text-sm font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Acrésc. Qtde</div>
-              <p className="text-sm font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Supr. Qtde</div>
-              <p className="text-sm font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
-            </Card>
-            <Card className="p-3">
-              <div className="text-xs text-muted-foreground mb-1">Saldo Qtde</div>
-              <p className={`text-sm font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
-            </Card>
+          {/* O resumo geral se vestia igual aos cartões de cada termo, e os
+              dois níveis se confundiam. Agora ele é UM cartão de consolidado —
+              filete de destaque, fundo próprio, valores maiores — e os termos
+              individuais seguem abaixo, visivelmente subordinados. */}
+          <Card className="p-4 border-l-4 border-l-accent bg-muted/40">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <Layers className="w-4 h-4 text-accent" />
+              <span className="text-sm font-semibold">Aditivos Registrados</span>
+              <span className="text-xs text-muted-foreground">
+                resumo geral das alterações contratuais · {aditivos.length} termo{aditivos.length > 1 ? 's' : ''}
+              </span>
+              </div>
+          </Card>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-3">
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
+                <p className="text-base font-bold text-success">{fmt(totalAcrescimo)}</p>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
+                <p className="text-base font-bold text-destructive">{fmt(totalSupressao)}</p>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
+                <p className={`text-base font-bold ${saldoAditivos >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(saldoAditivos)}</p>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
+                <p className="text-base font-bold text-success">+{fmtQty(totalQtyAcrescimo)}</p>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
+                <p className="text-base font-bold text-destructive">-{fmtQty(totalQtySupressao)}</p>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
+                <p className={`text-base font-bold ${saldoQty >= 0 ? 'text-success' : 'text-destructive'}`}>{fmtQty(saldoQty)}</p>
+              </div>
           </div>
 
           {aditivos.map((a: any) => {
