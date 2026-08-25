@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreditCard, Check, Star, Zap, Loader2, ExternalLink, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { descreverFalha } from '@/lib/erro-edge-function';
 
 import { type BillingCycle, cycleConfig, formatCurrency } from '@/data/pricing-config';
 import { stripePlans, type StripePlanSlug } from '@/data/stripe-config';
@@ -134,13 +135,31 @@ export default function PlanoAssinatura() {
 
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        /**
+         * Mesma aba, não `window.open`.
+         *
+         * O clique dispara uma chamada assíncrona antes de abrir a janela, e
+         * nesse ponto o navegador já não considera a abertura como resposta a
+         * um gesto do usuário — Chrome e Safari bloqueiam o popup em silêncio.
+         * O usuário clica, nada acontece, e não há erro nenhum para investigar.
+         *
+         * O Checkout do Stripe é um fluxo de página inteira e já volta pelo
+         * `success_url`. Navegar na mesma aba nunca é bloqueado.
+         */
+        window.location.href = data.url;
       } else {
         toast.error('Não foi possível gerar o link de pagamento.');
       }
     } catch (err) {
       console.error('Checkout error:', err);
-      toast.error('Erro ao iniciar checkout. Tente novamente.');
+      // "Tente novamente" é conselho inútil quando a causa é uma chave ausente
+      // no servidor: tentar de novo falha de novo, para sempre. O motivo real
+      // vem no corpo da resposta e precisa ser buscado.
+      const motivo = await descreverFalha(err);
+      toast.error('Não foi possível iniciar o pagamento', {
+        description: motivo ?? 'Tente novamente em alguns instantes.',
+        duration: 12000,
+      });
     } finally {
       setCheckingOut(null);
     }
@@ -165,7 +184,11 @@ export default function PlanoAssinatura() {
       }
     } catch (err) {
       console.error('Portal error:', err);
-      toast.error('Erro ao abrir portal. Tente novamente.');
+      const motivo = await descreverFalha(err);
+      toast.error('Não foi possível abrir o portal de assinatura', {
+        description: motivo ?? 'Tente novamente em alguns instantes.',
+        duration: 12000,
+      });
     } finally {
       setManagingPortal(false);
     }

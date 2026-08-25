@@ -295,9 +295,42 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      /**
+       * O XML guardado — porque o XML É o documento fiscal.
+       *
+       * Até 25/08 esta função extraía os campos e descartava o arquivo. O que
+       * sobrava era o REGISTRO da nota, não a nota: sem valor como prova de
+       * execução contratual, e sem cumprir o prazo decadencial de cinco anos.
+       * O DANFE em PDF é só a representação impressa deste texto aqui.
+       *
+       * Falha ao guardar NÃO derruba a importação: o lançamento já existe e é
+       * útil. Mas o resultado carrega o aviso, para que a ausência não passe
+       * por sucesso — a conferência do Financeiro cobra o documento depois.
+       */
+      const { error: docErr } = await admin
+        .from("financeiro_documentos_fiscais")
+        .insert({
+          empresa_id: empresaId,
+          tipo: nota.tipo,
+          numero: nota.numero,
+          serie: nota.serie,
+          chave_acesso: nota.chave_acesso,
+          data_emissao: nota.data_emissao,
+          valor_total: nota.valor_total ?? 0,
+          lancamento_id: lanc.id,
+          arquivo_xml: xml,
+          arquivo_nome: nome,
+          arquivo_mime: "application/xml",
+          arquivo_bytes: xml.length,
+          enviado_por: userId,
+          origem: "manual",
+          origem_job: "importar-notas-fiscais",
+        });
+
       criadas++;
       resultados.push({
         nome,
+        aviso: docErr ? "Lançada, mas o XML não pôde ser arquivado: " + docErr.message : undefined,
         status: "processada",
         tipo: nota.tipo,
         direcao: nota.direcao,
