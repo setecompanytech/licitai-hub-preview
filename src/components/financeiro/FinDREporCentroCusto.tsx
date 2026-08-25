@@ -52,6 +52,10 @@ export default function FinDREporCentroCusto() {
           .select("natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre)")
           .eq("empresa_id", empresaAtiva.id)
           .eq("centro_custo_id", centroId)
+          // Transferência entre contas próprias vinha em duas pernas — uma de
+          // natureza "receita", outra "despesa" — e entrava como faturamento E
+          // como custo do centro. Mesma régua dos indicadores gerenciais.
+          .in("tipo", ["a_receber", "a_pagar"])
           .in("status", ["realizado", "conciliado"])
           .gte("data_competencia", dataInicio)
           .lte("data_competencia", dataFim);
@@ -59,9 +63,10 @@ export default function FinDREporCentroCusto() {
         // 2) Lançamentos rateados que incluem este centro
         const { data: rateios } = await (supabase as any)
           .from("fin_lancamento_rateios")
-          .select("valor, financeiro_lancamentos!inner(natureza, status, data_competencia, empresa_id, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre))")
+          .select("valor, financeiro_lancamentos!inner(natureza, tipo, status, data_competencia, empresa_id, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre))")
           .eq("centro_custo_id", centroId)
           .eq("financeiro_lancamentos.empresa_id", empresaAtiva.id)
+          .in("financeiro_lancamentos.tipo", ["a_receber", "a_pagar"])
           .in("financeiro_lancamentos.status", ["realizado", "conciliado"])
           .gte("financeiro_lancamentos.data_competencia", dataInicio)
           .lte("financeiro_lancamentos.data_competencia", dataFim);

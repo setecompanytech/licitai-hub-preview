@@ -60,6 +60,16 @@ export default function FinCalculadoraMargem() {
         .from("financeiro_lancamentos")
         .select("natureza, valor, status, data_competencia, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre)")
         .eq("empresa_id", empresaAtiva.id)
+        // Só título: a transferência entre contas próprias vinha em DUAS pernas,
+        // uma com natureza "receita" e outra com "despesa", e sem categoria —
+        // então caía nos dois ramos abaixo e a MESMA operação entrava como
+        // faturamento E como custo. Na base da ETHOS são 156 pernas somando
+        // R$ 19,17 milhões, justamente nesta tela que decide margem.
+        //
+        // O movimento de extrato também sai, pela mesma régua de
+        // financeiro_indicadores_gerenciais: enquanto não for conciliado contra
+        // o título, ele é o mesmo dinheiro por outro caminho.
+        .in("tipo", ["a_receber", "a_pagar"])
         .in("status", ["realizado", "conciliado"])
         .gte("data_competencia", inicioISO);
 
