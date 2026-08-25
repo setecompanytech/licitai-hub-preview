@@ -37,6 +37,7 @@ import {
 } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { motivoDoDescarte, ehLinhaInformativa } from "@/lib/financeiro/linha-informativa";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { BancoLogo, findBanco } from "./BancoSelectorLogos";
@@ -262,11 +263,22 @@ export default function FinImportarOFX() {
         const pid = inferirPessoa(mov._detalhes.favorecido_texto, pessoas);
         return {
           ...mov,
+          // Linha de saldo já chega desmarcada, e VISÍVEL: quem importa vê o
+          // que ficou de fora e pode reverter se o banco usar um rótulo que a
+          // lista ainda não conhece. Descartar depois, calado, foi o que deixou
+          // dezoito saldos diários virarem contas a receber.
+          _ignorar: mov._ignorar || ehLinhaInformativa(mov.memo),
           _detalhes: { ...mov._detalhes, categoria_id: cat, pessoa_id: pid },
         };
       });
       setMovimentos(enriquecido);
-      toast.success(`${enriquecido.length} movimentação(ões) detectada(s).`);
+      const saldos = enriquecido.filter((m) => ehLinhaInformativa(m.memo)).length;
+      toast.success(
+        `${enriquecido.length} movimentação(ões) detectada(s).`,
+        saldos > 0
+          ? { description: `${saldos} linha(s) de saldo do extrato já desmarcada(s) — confira antes de importar.` }
+          : undefined,
+      );
       if (empresaId) await sugerirConciliacao(enriquecido);
     };
     reader.readAsText(f, "utf-8");
@@ -375,12 +387,25 @@ export default function FinImportarOFX() {
           })
           .eq("id", c._sugestao!.lancamento_id);
       }
-      // Filtra linhas informativas do OFX (saldos, totais) que vêm com valor 0
-      // — o banco rejeita valor = 0 (CHECK valor > 0).
+      // Linhas informativas do extrato — saldo do dia, saldo anterior, totais —
+      // não são transação e não podem virar lançamento.
+      //
+      // O filtro aqui era só `valor === 0`. Muitas dessas linhas vêm zeradas, é
+      // verdade, mas "SALDO TOTAL DISPONÍVEL DIA" vem com o valor do saldo: numa
+      // única conta, dezoito dias de saldo viraram dezoito contas a receber
+      // somando R$ 7,8 milhões, e o erro só apareceu meses depois, quando
+      // alguém foi conferir e cancelou as vinte linhas à mão.
+      //
+      // Agora o texto decide, e o descarte é dito em voz alta — ver
+      // src/lib/financeiro/linha-informativa.ts.
       const candidatos = ativos.filter((m) => !m._sugestao);
-      const ignoradosZero = candidatos.filter((m) => Math.abs(m.valor) < 0.005);
+      const descartados = candidatos
+        .map((m) => ({ m, motivo: motivoDoDescarte(m.memo, m.valor) }))
+        .filter((d) => d.motivo !== null);
+      const ignoradosZero = descartados.filter((d) => d.motivo === 'valor zero');
+      const ignoradosSaldo = descartados.filter((d) => d.motivo === 'linha de saldo do extrato');
       const novos = candidatos
-        .filter((m) => Math.abs(m.valor) >= 0.005)
+        .filter((m) => motivoDoDescarte(m.memo, m.valor) === null)
         .map((m) => ({
           empresa_id: empresaId!,
           tipo: "movimento_bancario" as const,
@@ -415,7 +440,10 @@ export default function FinImportarOFX() {
         `${novos.length} novo(s) lançamento(s)`,
       ];
       if (ignoradosZero.length > 0) {
-        partes.push(`${ignoradosZero.length} saldo(s) informativo(s) ignorado(s)`);
+        partes.push(`${ignoradosZero.length} linha(s) zerada(s) ignorada(s)`);
+      }
+      if (ignoradosSaldo.length > 0) {
+        partes.push(`${ignoradosSaldo.length} linha(s) de saldo do extrato ignorada(s)`);
       }
       toast.success(`Importação concluída: ${partes.join(", ")}.`);
       setMovimentos([]);
