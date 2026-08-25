@@ -189,6 +189,30 @@ export default function ApuracaoRegimeTributario() {
     lucro_real: 'Lucro Real',
   };
 
+  /**
+   * Mudar o regime AQUI, onde ele é decidido.
+   *
+   * Este painel comparava as três cargas, marcava uma como "Recomendado" — e
+   * não oferecia como adotá-la: o regime só se alterava em Empresas → Editar,
+   * uma tela de cadastro. Quem estudava a decisão aqui saía convencido de ter
+   * mudado, e a Precificação seguia calculando pelo regime antigo.
+   */
+  const [trocando, setTrocando] = useState(false);
+  const trocarRegime = async (novo: string) => {
+    if (!empresaAtiva?.id || novo === regimeAtual) return;
+    setTrocando(true);
+    const { error } = await supabase
+      .from('empresas')
+      .update({ regime_tributario: novo } as never)
+      .eq('id', empresaAtiva.id);
+    setTrocando(false);
+    if (error) { toast.error('Não foi possível alterar o regime: ' + error.message); return; }
+    toast.success(`Regime alterado para ${regimeLabels[novo] ?? novo}.`, {
+      description: 'A Precificação passa a calcular por este regime.',
+    });
+    await reloadEmpresas();
+  };
+
   if (!empresaAtiva) {
     return (
       <div className="text-center py-8 text-muted-foreground text-sm">
@@ -346,7 +370,14 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'simples_nacional' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
+                      {regimeAtual === 'simples_nacional'
+                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
+                        : (
+                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
+                            disabled={trocando} onClick={() => trocarRegime('simples_nacional')}>
+                            Adotar
+                          </Button>
+                        )}
                       {regimeRecomendado?.regime === 'simples_nacional' && regimeAtual !== 'simples_nacional' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
@@ -368,7 +399,14 @@ export default function ApuracaoRegimeTributario() {
                         : <AlertTriangle className="w-4 h-4 text-warning mx-auto" />}
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_presumido' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
+                      {regimeAtual === 'lucro_presumido'
+                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
+                        : (
+                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
+                            disabled={trocando} onClick={() => trocarRegime('lucro_presumido')}>
+                            Adotar
+                          </Button>
+                        )}
                       {regimeRecomendado?.regime === 'lucro_presumido' && regimeAtual !== 'lucro_presumido' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}
@@ -388,7 +426,14 @@ export default function ApuracaoRegimeTributario() {
                       <CheckCircle2 className="w-4 h-4 text-success mx-auto" />
                     </TableCell>
                     <TableCell className="text-center">
-                      {regimeAtual === 'lucro_real' && <Badge className="text-xs bg-muted text-foreground">Atual</Badge>}
+                      {regimeAtual === 'lucro_real'
+                        ? <Badge className="text-xs bg-muted text-foreground">Atual</Badge>
+                        : (
+                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2"
+                            disabled={trocando} onClick={() => trocarRegime('lucro_real')}>
+                            Adotar
+                          </Button>
+                        )}
                       {regimeRecomendado?.regime === 'lucro_real' && regimeAtual !== 'lucro_real' && (
                         <Badge className="text-xs bg-success/15 text-success">Recomendado</Badge>
                       )}

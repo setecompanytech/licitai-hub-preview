@@ -309,6 +309,17 @@ export default function CalculadoraUnificada({
               }
               return prev;
             });
+            // A receita mensal é OUTRA coisa que o RBT12 — é a base sobre a
+            // qual a alíquota incide, e o RBT12 é quem define a alíquota. Mas
+            // digitá-la à mão a cada cálculo, tendo os doze meses cadastrados,
+            // é trabalho sem propósito: a média mensal é o melhor palpite, e
+            // continua editável para o mês atípico.
+            setReceitaBruta(prev => {
+              if (!prev || parseCurrencyInput(prev) === 0) {
+                return (total / 12).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+              return prev;
+            });
           }
         }
       });
@@ -782,6 +793,15 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
           <div>
             <Label className="text-xs">Receita Bruta Mensal (R$) *</Label>
             <Input value={receitaBruta} onChange={e => setReceitaBruta(formatCurrencyInput(e.target.value))} placeholder="R$ 0,00" className="mt-1" />
+            {rbt12Auto && rbt12Auto > 0 && (
+              <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
+                <Lightbulb className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>
+                  Média dos 12 meses cadastrados. É a base sobre a qual a alíquota
+                  incide — quem define a alíquota é o RBT12 ao lado.
+                </span>
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-xs">UF para Cálculo *</Label>
