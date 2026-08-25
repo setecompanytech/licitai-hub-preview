@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { acharContrapartida, decidirAcao, type Contrapartida } from "@/lib/financeiro/transferencia-propria";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import {
   useContas,
@@ -85,6 +86,7 @@ import {
   Trash2,
   Pencil,
   Filter,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters";
@@ -200,6 +202,60 @@ export default function FinConciliacao() {
   const importar = useImportarOFX();
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
+
+  /**
+   * Transferência entre contas próprias, reconhecida antes de conciliar.
+   *
+   * O extrato de cada conta enxerga metade da operação, e nada nas duas linhas
+   * diz que são a mesma coisa. Conciliadas às cegas viram uma despesa e uma
+   * receita que nunca existiram — foi assim que R$ 19,17 milhões em pernas de
+   * transferência entraram nos relatórios de margem.
+   *
+   * O casamento é aritmético: mesmo valor, sinais opostos, contas próprias
+   * diferentes, datas próximas. A regra e os testes estão em
+   * src/lib/financeiro/transferencia-propria.ts.
+   */
+  const contasProprias = useMemo(
+    () => (contas ?? []).map((c: { id: string }) => c.id),
+    [contas],
+  );
+
+  const candidatosTransferencia = useMemo<Contrapartida[]>(() => {
+    type LancParaCasar = {
+      id: string; conta_id: string | null; natureza: string | null; valor: number | string;
+      data_realizado: string | null; data_competencia: string | null; descricao: string | null;
+    };
+    return ((lancamentosTodos ?? []) as unknown as LancParaCasar[])
+      .filter((l) => !!l.conta_id && contasProprias.includes(l.conta_id))
+      .map((l) => ({
+        id: l.id,
+        conta_id: l.conta_id,
+        // O extrato usa sinal; o lançamento usa `natureza`. Traduz para poder
+        // comparar sentidos: sem isto, saída e entrada pareceriam iguais.
+        valor: (l.natureza === 'despesa' ? -1 : 1) * Math.abs(Number(l.valor) || 0),
+        data: String(l.data_realizado ?? l.data_competencia ?? '').slice(0, 10),
+        descricao: l.descricao,
+        origem: 'lancamento' as const,
+      }));
+  }, [lancamentosTodos, contasProprias]);
+
+  const paresPorMovimento = useMemo(() => {
+    const mapa = new Map<string, ReturnType<typeof acharContrapartida>>();
+    type MovParaCasar = {
+      id: string; conta_id: string | null; valor: number | string; data_movimento: string;
+      descricao: string | null; conciliado?: boolean | null; ignorado?: boolean | null;
+    };
+    for (const m of (movimentos ?? []) as unknown as MovParaCasar[]) {
+      if (m.conciliado || m.ignorado) continue;
+      const pares = acharContrapartida(
+        { id: m.id, conta_id: m.conta_id, valor: Number(m.valor), data_movimento: m.data_movimento, descricao: m.descricao },
+        candidatosTransferencia,
+        { contasProprias },
+      );
+      if (pares.length > 0) mapa.set(m.id, pares);
+    }
+    return mapa;
+  }, [movimentos, candidatosTransferencia, contasProprias]);
   const desfazer = useDesfazerConciliacao();
   const upsertLancamento = useUpsertLancamento();
 
@@ -1382,10 +1438,22 @@ export default function FinConciliacao() {
                   status: "realizado" as const,
                 };
                 const movSugs = movSugestoesMap.get(m.id) ?? [];
+                // Transferência entre contas próprias tem precedência sobre a
+                // sugestão comum: conciliar às cegas cria receita e despesa que
+                // não existiram, e depois ninguém desfaz porque o saldo fecha.
+                const paresTransf = paresPorMovimento.get(m.id) ?? [];
+                const acaoTransf = m.conciliado || m.ignorado
+                  ? "nenhum"
+                  : decidirAcao(
+                      { id: m.id, conta_id: m.conta_id, valor: Number(m.valor), data_movimento: m.data_movimento, descricao: m.descricao },
+                      paresTransf,
+                    );
                 const borderColor = m.conciliado
                   ? "border-l-success"
                   : m.ignorado
                   ? "border-l-muted-foreground/20"
+                  : acaoTransf !== "nenhum"
+                  ? "border-l-info"
                   : movSugs.length > 0
                   ? "border-l-primary"
                   : "border-l-warning";
@@ -1424,6 +1492,55 @@ export default function FinConciliacao() {
                           <div className="text-xs text-muted-foreground truncate">{m.descricao_extra}</div>
                         )}
                         <div className="text-xs text-muted-foreground mt-0.5">{m.conta?.nome ?? "—"}</div>
+
+                        {/* Transferência entre contas próprias.
+                            Fica do lado do EXTRATO, não do sistema, porque a
+                            pergunta é sobre esta linha do banco: "isto é dinheiro
+                            entrando, ou é o seu próprio dinheiro mudando de
+                            conta?". Conciliar sem responder cria receita e
+                            despesa que nunca existiram — e depois ninguém
+                            desfaz, porque o saldo fecha. */}
+                        {acaoTransf === "casar" && paresTransf[0] && (
+                          <div className="mt-2 rounded-md border border-info/40 bg-info/5 px-2.5 py-2">
+                            <p className="text-xs font-medium text-info flex items-center gap-1.5">
+                              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                              Transferência entre contas próprias
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              Casa com <strong className="text-foreground">{paresTransf[0].contrapartida.descricao || "lançamento"}</strong>
+                              {" "}({paresTransf[0].motivos.join(" · ")}).
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Isto não é receita nem despesa: é o mesmo dinheiro mudando de conta.
+                            </p>
+                            <Button
+                              size="sm" variant="outline"
+                              className="h-7 text-xs mt-1.5 border-info/40 text-info hover:bg-info/10"
+                              disabled={conciliarManual.isPending}
+                              onClick={() =>
+                                conciliarManual.mutate(
+                                  { movimento_id: m.id, lancamento_id: paresTransf[0].contrapartida.id },
+                                  { onSuccess: () => toast.success("Transferência casada — as duas pontas apontam para a mesma operação.") },
+                                )
+                              }
+                            >
+                              Casar com a outra ponta
+                            </Button>
+                          </div>
+                        )}
+                        {acaoTransf === "criar_par" && (
+                          <div className="mt-2 rounded-md border border-warning/40 bg-warning/5 px-2.5 py-2">
+                            <p className="text-xs font-medium text-warning flex items-center gap-1.5">
+                              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                              Parece transferência, e falta a outra ponta
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              A descrição indica movimentação entre contas próprias, mas nenhuma conta
+                              da empresa registra o valor no sentido oposto. Confira se o extrato da
+                              outra conta foi importado antes de lançar como receita ou despesa.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
