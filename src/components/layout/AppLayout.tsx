@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
@@ -45,6 +45,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -228,7 +229,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
         {/* Carimbo invisível, para conferir o que está publicado. */}
         <span data-versao={VERSAO_APP} className="hidden" />
-        <BotaoVoltar />
+        {/* O Painel é a RAIZ da navegação: voltar a partir dele não leva a
+            lugar que faça sentido — o botão ali era um convite sem destino.
+            Nas demais telas, continua sendo o caminho de volta. */}
+        {location.pathname !== '/dashboard' && <BotaoVoltar />}
         {children}
       </main>
 
