@@ -527,6 +527,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           // barrava o aditivo de ATA: "Aditivo marcado como Contrato, mas o
           // documento referenciado é uma ATA SRP". Quem grava sabe o alvo.
           referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
+          // O elo com o PDF que originou o registro: sem ele, o cartão do
+          // aditivo não tinha como dizer de que documento nasceu.
+          arquivo_id: inserted?.id ?? null,
         };
         payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
 
@@ -1474,6 +1477,26 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                       {(a.data_assinatura || a.data_aditivo) && <span>Assinatura: {new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
                     </div>
                     {a.justificativa && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.justificativa}</p>}
+                    {(() => {
+                      // "Onde está o arquivo deste aditivo?" — a pergunta que o
+                      // cartão não respondia. O elo (arquivo_id) já existia no
+                      // banco; faltava a tela usá-lo.
+                      const arq = arquivos.find((f: any) => f.id === a.arquivo_id);
+                      return arq ? (
+                        <button
+                          type="button"
+                          onClick={() => handleVisualizar(arq)}
+                          title="Visualizar o documento deste aditivo"
+                          className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+                        >
+                          <FileText className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[420px]">{arq.nome_arquivo}</span>
+                          <Eye className="w-3 h-3 shrink-0" />
+                        </button>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground italic">sem arquivo vinculado</p>
+                      );
+                    })()}
                   </div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => handleDeleteAditivo(a.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
