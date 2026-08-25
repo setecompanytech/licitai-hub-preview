@@ -48,7 +48,7 @@ export default function FinDREporCentroCusto() {
         // 1) Lançamentos diretamente vinculados ao centro
         const { data: diretos } = await (supabase as any)
           .from("financeiro_lancamentos")
-          .select("natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(tipo)")
+          .select("natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre)")
           .eq("empresa_id", empresaAtiva.id)
           .eq("centro_custo_id", centroId)
           .in("status", ["realizado", "conciliado"])
@@ -58,7 +58,7 @@ export default function FinDREporCentroCusto() {
         // 2) Lançamentos rateados que incluem este centro
         const { data: rateios } = await (supabase as any)
           .from("fin_lancamento_rateios")
-          .select("valor, financeiro_lancamentos!inner(natureza, status, data_competencia, empresa_id, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(tipo))")
+          .select("valor, financeiro_lancamentos!inner(natureza, status, data_competencia, empresa_id, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre))")
           .eq("centro_custo_id", centroId)
           .eq("financeiro_lancamentos.empresa_id", empresaAtiva.id)
           .in("financeiro_lancamentos.status", ["realizado", "conciliado"])
@@ -67,21 +67,25 @@ export default function FinDREporCentroCusto() {
 
         let receita = 0, custo = 0, despesa = 0, rateado = 0;
 
-        const aplicar = (natureza: string, tipoCat: string | undefined, v: number) => {
-          if (natureza === "receita") receita += v;
-          else if (natureza === "despesa") {
-            if (tipoCat === "custo") custo += v;
-            else despesa += v;
+        // A categoria nunca teve coluna `tipo` — quem separa CMV de despesa é
+        // o `grupo_dre`, a mesma régua dos indicadores gerenciais e da
+        // Calculadora de Margem. Pedir `tipo` derrubava a tela inteira.
+        const aplicar = (natureza: string, grupo: string | undefined, v: number) => {
+          if (natureza === "receita") {
+            if (grupo !== "receita_financeira") receita += v;
+          } else if (natureza === "despesa") {
+            if (grupo === "cmv_cps") custo += v;
+            else if (grupo !== "movimentacao") despesa += v;
           }
         };
 
         for (const l of diretos ?? []) {
-          aplicar(l.natureza, l.categoria?.tipo, Number(l.valor) || 0);
+          aplicar(l.natureza, l.categoria?.grupo_dre, Number(l.valor) || 0);
         }
         for (const r of rateios ?? []) {
           const v = Number(r.valor) || 0;
           rateado += v;
-          aplicar(r.financeiro_lancamentos.natureza, r.financeiro_lancamentos.categoria?.tipo, v);
+          aplicar(r.financeiro_lancamentos.natureza, r.financeiro_lancamentos.categoria?.grupo_dre, v);
         }
 
         if (!cancelado) {

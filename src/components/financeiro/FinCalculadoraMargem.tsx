@@ -58,7 +58,7 @@ export default function FinCalculadoraMargem() {
       // found". Aqui só a classificada vale; sugestão não é classificação.
       const { data, error } = await (supabase as any)
         .from("financeiro_lancamentos")
-        .select("natureza, valor, status, data_competencia, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(tipo, grupo_dre)")
+        .select("natureza, valor, status, data_competencia, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre)")
         .eq("empresa_id", empresaAtiva.id)
         .in("status", ["realizado", "conciliado"])
         .gte("data_competencia", inicioISO);
@@ -68,13 +68,20 @@ export default function FinCalculadoraMargem() {
       let receita = 0, custo = 0, despesa = 0;
       for (const l of data ?? []) {
         const v = Number(l.valor) || 0;
-        const cat = l.categoria as { tipo?: string; grupo_dre?: string } | null;
-        if (l.natureza === "receita") receita += v;
-        else if (l.natureza === "despesa") {
-          // O grupo_dre é a autoridade (mesma régua dos indicadores gerenciais);
-          // o tipo antigo fica como reserva para plano de contas sem grupo.
-          if (cat?.grupo_dre === "cmv_cps" || cat?.tipo === "custo") custo += v;
-          else despesa += v;
+        const cat = l.categoria as { grupo_dre?: string } | null;
+        // A categoria NUNCA teve coluna `tipo` — só `tipo_servico` e
+        // `dfc_classe`. Esta tela pedia `tipo` desde que nasceu, e por isso
+        // nunca chegou a carregar. Quem separa CMV de despesa é o `grupo_dre`,
+        // a mesma régua dos indicadores gerenciais.
+        if (l.natureza === "receita") {
+          // Rendimento de aplicação não é faturamento: infla a receita e
+          // baixa artificialmente a margem necessária.
+          if (cat?.grupo_dre !== "receita_financeira") receita += v;
+        } else if (l.natureza === "despesa") {
+          if (cat?.grupo_dre === "cmv_cps") custo += v;
+          // Movimentação patrimonial (distribuição de lucro, empréstimo) não é
+          // despesa do período — incluí-la encareceria o preço sem razão.
+          else if (cat?.grupo_dre !== "movimentacao") despesa += v;
         }
       }
 

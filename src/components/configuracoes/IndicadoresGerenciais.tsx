@@ -52,6 +52,27 @@ export default function IndicadoresGerenciais() {
   const [historico, setHistorico] = useState<Adocao[]>([]);
   const [nomes, setNomes] = useState<Record<string, string>>({});
 
+  /**
+   * O faturamento DECLARADO em Apuração (digitado mês a mês) contra o
+   * CONTABILIZADO (somado dos lançamentos). Enquanto a conciliação anda em
+   * degraus, os dois divergem — e a divergência precisa aparecer nomeada, ou
+   * vira "os números não batem" sem explicação.
+   */
+  const [faturamentoDeclarado, setFaturamentoDeclarado] = useState(0);
+
+  useEffect(() => {
+    if (!empresaAtiva?.id) { setFaturamentoDeclarado(0); return; }
+    void supabase
+      .from('faturamento_mensal' as never)
+      .select('valor_faturamento')
+      .eq('empresa_id', empresaAtiva.id)
+      .then(({ data }) => {
+        const total = ((data ?? []) as { valor_faturamento: number }[])
+          .reduce((s, r) => s + (Number(r.valor_faturamento) || 0), 0);
+        setFaturamentoDeclarado(total);
+      });
+  }, [empresaAtiva?.id]);
+
   const carregarHistorico = useCallback(async () => {
     if (!empresaAtiva?.id) return;
     const { data } = await supabase
@@ -164,6 +185,29 @@ export default function IndicadoresGerenciais() {
               </p>
             </div>
           </div>
+
+          {/* ── A conciliação anda em degraus; a defasagem tem de aparecer ─ */}
+          {faturamentoDeclarado > 0 && indicadores.receita_bruta > 0 && (() => {
+            const dif = faturamentoDeclarado - indicadores.receita_bruta;
+            const pctDif = (dif / faturamentoDeclarado) * 100;
+            if (Math.abs(pctDif) < 2) return null;
+            return (
+              <div className="rounded-lg border border-warning/40 bg-warning/5 p-3">
+                <p className="text-xs font-medium text-warning flex items-center gap-1.5 mb-1">
+                  <AlertTriangle className="w-4 h-4" /> Conciliação em andamento
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  O faturamento declarado em Apuração ({brl(faturamentoDeclarado)}) está{' '}
+                  {brl(Math.abs(dif))} {dif > 0 ? 'acima' : 'abaixo'} do que os lançamentos
+                  conciliados somam ({brl(indicadores.receita_bruta)}) —{' '}
+                  {Math.abs(pctDif).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% de diferença.
+                  {dif > 0
+                    ? ' Enquanto há notas por conciliar, o percentual apurado fica ALTO: a mesma despesa dividida por uma receita menor.'
+                    : ' Há receita lançada além do faturamento declarado — vale conferir qual dos dois está desatualizado.'}
+                </p>
+              </div>
+            );
+          })()}
 
           {/* ── A confiança do número, dita antes de ele ser usado ──────── */}
           <div className="rounded-lg border p-3 space-y-2">
