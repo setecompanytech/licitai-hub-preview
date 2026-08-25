@@ -87,6 +87,13 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const isContratoComATA = meta?.tipo_documento === 'contrato' && !!meta?.ata_srp_id;
 
+  // A trava do "mesmo preço da ata" protege a CONTRATAÇÃO — mas o art. 124,
+  // II, "d" (reequilíbrio) e os institutos irmãos autorizam exatamente a
+  // divergência que ela proíbe. Registrado o aditivo no contrato, o preço do
+  // item destrava; sem aditivo, a trava continua sendo a lei.
+  const temAditivoForaDoObjeto = aditivos.some((a: { tipo?: string }) =>
+    ['reequilibrio', 'revisao', 'repactuacao', 'reajuste'].includes(a.tipo || ''));
+
   const filteredProdutos = useMemo(() => {
     if (!prodSearch.trim()) return produtos.slice(0, 12);
     const q = prodSearch.toLowerCase();
@@ -376,7 +383,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const salvarEdicao = async () => {
     if (!editItem) return;
     const qtd = parseFloat(editForm.quantidade) || 0;
-    const travado = isContratoComATA && !!editItem.ata_item_id;
+    const travado = isContratoComATA && !!editItem.ata_item_id && !temAditivoForaDoObjeto;
     const vu = travado ? (editItem.valor_unitario || 0) : (parseFloat(editForm.valor_unitario) || 0);
 
     // O saldo da ata vale também na edição — descontando a própria fatia
@@ -841,17 +848,29 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div>
                   <Label>Valor Unitário (R$)</Label>
-                  {isContratoComATA && !!editItem.ata_item_id ? (
+                  {isContratoComATA && !!editItem.ata_item_id && !temAditivoForaDoObjeto ? (
                     <>
                       {/* Campo travado não é campo: é informação. Exibir o
                           número cru do input ("15,8") num valor em reais nega
                           a pontuação que o resto da tela promete. */}
                       <Input value={fmt(editItem.valor_unitario || 0)} disabled />
-                      <p className="text-xs text-muted-foreground mt-1">Travado no registrado da ATA.</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Travado no registrado da ATA. Para alterá-lo, registre antes o
+                        termo aditivo que o autoriza (reequilíbrio, revisão, reajuste)
+                        em Arquivos e Aditivos.
+                      </p>
                     </>
                   ) : (
-                    <Input type="number" step="0.01" value={editForm.valor_unitario}
-                      onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                    <>
+                      <Input type="number" step="0.01" value={editForm.valor_unitario}
+                        onChange={e => setEditForm(f => ({ ...f, valor_unitario: e.target.value }))} />
+                      {isContratoComATA && !!editItem.ata_item_id && temAditivoForaDoObjeto && (
+                        <p className="text-xs text-warning mt-1">
+                          Destravado: o contrato registra reequilíbrio/revisão/reajuste.
+                          A mudança fica no histórico de preços; o registrado da ATA não muda.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
