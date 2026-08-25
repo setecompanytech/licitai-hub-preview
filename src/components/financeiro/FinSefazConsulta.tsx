@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
     const d = new Date(); d.setDate(1);
     return d.toISOString().slice(0, 10);
   });
-  const [fim, setFim] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fim, setFim] = useState(() => hojeLocal());
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [municipioCod, setMunicipioCod] = useState<string>("");
   const [logs, setLogs] = useState<any[]>([]);

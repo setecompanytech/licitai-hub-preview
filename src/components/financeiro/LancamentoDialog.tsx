@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +23,6 @@ import {
   useMembrosEmpresa,
   useFinProjetos,
   calcularSerieParcelas,
-  ajustarSaldoConta,
-  isStatusPago,
   type Lancamento,
   type Periodicidade,
   type RegraFimSemana,
@@ -93,7 +92,7 @@ type Props = {
   onSaved?: (lancamento: Lancamento) => void;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => hojeLocal();
 
 export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo, onSaved }: Props) {
   const { data: contas = [] } = useContas();
@@ -232,7 +231,6 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const totalSerie = useMemo(() => simulacao.reduce((s, d) => s + (Number(d.valor) || 0), 0), [simulacao]);
 
-  const calcDelta = (nat: string, v: number) => (nat === "receita" ? v : -v);
 
   const isTransferencia = tipo === "transferencia";
 
@@ -304,9 +302,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         conta_destino_id: contaId || null,
       } as any);
 
-      // Ajusta saldos das duas contas (a transferência já ocorreu no extrato)
-      if (contaId) await ajustarSaldoConta(contaId, -valor);
-      if (contaDestinoId) await ajustarSaldoConta(contaDestinoId, valor);
+      // O saldo das duas contas sai do gatilho, que agora entende a
+      // transferência espelhada. Ajustar aqui somava o valor uma segunda vez.
 
       if (savedA && onSaved) onSaved(savedA as unknown as Lancamento);
       onOpenChange(false);
@@ -326,35 +323,13 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
         datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
-      // Parcelamento: se status já for pago, ajusta o saldo para cada parcela
-      if (isStatusPago(status) && contaId) {
-        for (const p of simulacao) {
-          await ajustarSaldoConta(contaId, calcDelta(natureza, Number(p.valor)));
-        }
-      }
     } else {
       const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
       if (saved && onSaved) onSaved(saved as unknown as Lancamento);
 
-      // Ajusta saldo da conta conforme transição de status
-      const oldStatus = initial?.status ?? null;
-      const oldContaId = initial?.conta_id ?? null;
-      const oldNatureza = initial?.natureza ?? natureza;
-      const oldValor = Number(initial?.valor ?? valor);
-      const newPago = isStatusPago(status);
-      const oldPago = isStatusPago(oldStatus);
-
-      if (newPago && !oldPago && contaId) {
-        // Entrou em pago
-        await ajustarSaldoConta(contaId, calcDelta(natureza, valor));
-      } else if (!newPago && oldPago && oldContaId) {
-        // Saiu de pago (reabertura)
-        await ajustarSaldoConta(oldContaId, -calcDelta(oldNatureza, oldValor));
-      } else if (newPago && oldPago && oldContaId !== contaId) {
-        // Mudou de conta enquanto pago: reverte da antiga, aplica na nova
-        if (oldContaId) await ajustarSaldoConta(oldContaId, -calcDelta(oldNatureza, oldValor));
-        if (contaId) await ajustarSaldoConta(contaId, calcDelta(natureza, valor));
-      }
+      // Transição de status não mexe no saldo daqui: o upsert acima já
+      // disparou o gatilho, que recalcula a conta inteira — inclusive a antiga,
+      // quando o lançamento troca de conta.
     }
     onOpenChange(false);
   };

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +48,7 @@ function exportCSV(dias: ReturnType<typeof useFluxoCaixa>["data"]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `fluxo-caixa-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `fluxo-caixa-${hojeLocal()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -70,7 +71,7 @@ function exportDFCcsv(dfc: ReturnType<typeof useDFC>["data"]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `dfc-cpc03-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `dfc-cpc03-${hojeLocal()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

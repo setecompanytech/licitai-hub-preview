@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ interface Resultado {
   rateado: number; // valor proveniente de rateios (informativo)
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => hojeLocal();
 const firstDayMonth = () => {
   const d = new Date();
   d.setDate(1);

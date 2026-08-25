@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +98,7 @@ export default function FinApuracao() {
     const blob = new Blob([linhas], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `apuracoes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.href = url; a.download = `apuracoes_${hojeLocal()}.csv`;
     a.click(); URL.revokeObjectURL(url);
     setDialogOpen(false);
   }

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { hojeLocal, somarDiasLocal, mesLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -43,16 +44,25 @@ export const isStatusPago = (s: string | null | undefined): boolean =>
   STATUS_PAGO.includes(s as any);
 
 /** Incrementa/decrementa saldo_atual de uma conta de forma segura (read-then-write). */
-export async function ajustarSaldoConta(contaId: string, delta: number): Promise<void> {
-  if (!contaId || delta === 0) return;
-  const { data } = await supabase
-    .from("financeiro_contas")
-    .select("saldo_atual")
-    .eq("id", contaId)
-    .single();
-  const novo = Number(data?.saldo_atual ?? 0) + delta;
-  await supabase.from("financeiro_contas").update({ saldo_atual: novo }).eq("id", contaId);
-}
+/**
+ * O saldo da conta NÃO se ajusta daqui.
+ *
+ * Havia `ajustarSaldoConta(conta, delta)`: lia `saldo_atual`, somava o delta e
+ * gravava. Catorze pontos do Financeiro chamavam isso logo depois de gravar um
+ * lançamento — e é aí que estava o defeito, porque gravar um lançamento já
+ * dispara `trg_saldo_lancamento`, que recalcula `saldo_atual` INTEIRO a partir
+ * de saldo_inicial + movimentos.
+ *
+ * Ou seja: quando a função rodava, o saldo já estava certo. Ela lia o valor
+ * correto e somava o delta OUTRA VEZ. Todo lançamento baixado contava em dobro
+ * no saldo, até que qualquer mexida naquela conta disparasse o gatilho de novo
+ * e desfizesse a duplicata. O saldo da tela dependia de qual dos dois tinha
+ * escrito por último.
+ *
+ * Duas autoridades sobre a mesma coluna, uma absoluta e outra incremental,
+ * nunca convergem. Ficou a do gatilho — a que se refaz do zero e não depende
+ * de ninguém lembrar de chamá-la. Ver CLAUDE.md, princípio 1.
+ */
 
 // ----------------------------------------------------------------------------
 // Projetos (fin_projetos)
@@ -452,7 +462,7 @@ export function useUpsertLancamento() {
               empresa_id: empresaId,
               descricao: payload.descricao ?? "",
               valor: payload.valor ?? 0,
-              data_competencia: payload.data_competencia ?? new Date().toISOString().slice(0, 10),
+              data_competencia: payload.data_competencia ?? hojeLocal(),
               natureza: payload.natureza ?? "despesa",
               tipo: payload.tipo ?? "a_pagar",
               origem_tipo: (payload as any).origem_tipo ?? "manual",
@@ -503,18 +513,8 @@ export function useDeleteLancamento() {
           .neq("id", id);
         for (const par of pares ?? []) {
           idsToDelete.push(par.id);
-          // Reverte saldo do par
-          if (isStatusPago(par.status) && par.conta_id) {
-            const d = par.natureza === "receita" ? -Number(par.valor) : Number(par.valor);
-            await ajustarSaldoConta(par.conta_id, d);
-          }
+          // Saldo: o DELETE dispara o gatilho, que refaz a conta do zero.
         }
-      }
-
-      // Reverte saldo do lançamento principal
-      if (lanc && isStatusPago(lanc.status) && lanc.conta_id) {
-        const delta = lanc.natureza === "receita" ? -Number(lanc.valor) : Number(lanc.valor);
-        await ajustarSaldoConta(lanc.conta_id, delta);
       }
 
       // Remove FKs: desconcilia movimentos do extrato e apaga conciliações
@@ -1222,7 +1222,7 @@ export function useFluxoCaixa(diasFrente = 90) {
     queryFn: async (): Promise<{ saldoInicial: number; dias: FluxoDia[] }> => {
       const hoje = new Date();
       const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().slice(0, 10);
-      const fim = new Date(hoje.getTime() + diasFrente * 86400000).toISOString().slice(0, 10);
+      const fim = somarDiasLocal(diasFrente);
 
       const [contasRes, fluxoRes] = await Promise.all([
         supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
@@ -1275,6 +1275,13 @@ export type ResumoVisor = {
   topAtrasosReceber: Array<{ id: string; descricao: string; pessoa: string; diasAtraso: number; valor: number; vencimento: string }>;
   inadimplenciaMesPct: number;
   runwayDias: number | null;
+  /**
+   * Recortes que bateram no teto da consulta e saíram incompletos. Vazio é o
+   * caso normal. Não vazio significa que inadimplência e runway foram apurados
+   * sobre uma amostra — e a tela precisa dizer isso em vez de exibir o número
+   * com a mesma confiança de sempre.
+   */
+  truncado: string[];
 };
 
 export function useResumoVisorFinanceiro() {
@@ -1284,15 +1291,13 @@ export function useResumoVisorFinanceiro() {
     enabled: !!empresaId,
     refetchInterval: 60_000,
     queryFn: async (): Promise<ResumoVisor> => {
+      // Datas pelo relógio de quem olha a tela, não por UTC: às 21h em Belém
+      // o UTC já virou o dia, e "hoje" passava a ser amanhã. Ver data-local.ts.
       const hoje = new Date();
-      const hojeStr = hoje.toISOString().slice(0, 10);
-      const fim10 = new Date(hoje);
-      fim10.setDate(fim10.getDate() + 10);
-      const fim10Str = fim10.toISOString().slice(0, 10);
-      const inicio30 = new Date(hoje);
-      inicio30.setDate(inicio30.getDate() - 30);
-      const inicio30Str = inicio30.toISOString().slice(0, 10);
-      const mesAtual = hoje.toISOString().slice(0, 7);
+      const hojeStr = hojeLocal();
+      const fim10Str = somarDiasLocal(10);
+      const inicio30Str = somarDiasLocal(-30);
+      const mesAtual = mesLocal();
 
       const [contasRes, futurosRes, atrasosRes, mesRes] = await Promise.all([
         supabase.from("financeiro_contas").select("id, nome, tipo, banco_nome, agencia, conta, cor, saldo_atual, ativa, ordem").eq("empresa_id", empresaId!).order("ordem", { ascending: true }),
@@ -1324,6 +1329,23 @@ export function useResumoVisorFinanceiro() {
       if (atrasosRes.error) throw atrasosRes.error;
       if (mesRes.error) throw mesRes.error;
 
+      /**
+       * Truncar em silêncio é pior do que falhar.
+       *
+       * As três consultas acima têm teto (2000, 500, 2000). Batendo no teto, a
+       * inadimplência do mês e o runway saem calculados sobre uma AMOSTRA — e
+       * saem com a mesma cara de número exato que teriam se estivessem certos.
+       * Quem lê não tem como saber. Aqui o corte deixa rastro, e a tela pode
+       * dizer que o número está incompleto.
+       */
+      const truncou: string[] = [];
+      if ((futurosRes.data?.length ?? 0) >= 2000) truncou.push('vencimentos dos próximos 10 dias');
+      if ((atrasosRes.data?.length ?? 0) >= 500) truncou.push('atrasos');
+      if ((mesRes.data?.length ?? 0) >= 2000) truncou.push('movimento dos últimos 30 dias');
+      if (truncou.length) {
+        console.warn('[financeiro] resumo truncado por limite de consulta:', truncou.join(', '));
+      }
+
       const contasRows = (contasRes.data ?? []) as Array<{ id: string; nome: string; tipo: string | null; banco_nome: string | null; agencia: string | null; conta: string | null; cor: string | null; saldo_atual: number | null; ativa: boolean }>;
       const contasSaldo = contasRows.map((c) => ({
         id: c.id,
@@ -1341,9 +1363,7 @@ export function useResumoVisorFinanceiro() {
       // Próximos 10 dias
       const buckets = new Map<string, { previstoPagar: number; previstoReceber: number }>();
       for (let i = 0; i < 10; i++) {
-        const d = new Date(hoje);
-        d.setDate(d.getDate() + i);
-        buckets.set(d.toISOString().slice(0, 10), { previstoPagar: 0, previstoReceber: 0 });
+        buckets.set(somarDiasLocal(i), { previstoPagar: 0, previstoReceber: 0 });
       }
       (futurosRes.data ?? []).forEach((l) => {
         const k = (l.data_vencimento ?? "").slice(0, 10);
@@ -1418,6 +1438,8 @@ export function useResumoVisorFinanceiro() {
         topAtrasosReceber,
         inadimplenciaMesPct,
         runwayDias,
+        // Quais recortes bateram no teto da consulta. Vazio = número completo.
+        truncado: truncou,
       };
     },
   });

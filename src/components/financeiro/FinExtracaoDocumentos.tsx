@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -232,7 +233,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()
         || item.file.name,
       valor: Number(d.valor_total ?? 0),
-      data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+      data_competencia: d.data_emissao ?? hojeLocal(),
       data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
       data_emissao: d.data_emissao ?? null,
       tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
@@ -332,18 +333,18 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               p_origem_aditivo_id: v!.origem_aditivo_id,
               p_numero_pedido:
                 (d.numero_documento ||
-                  `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`) +
+                  `DOC-${hojeLocal().replace(/-/g, "")}`) +
                 (itemIds.length > 1 ? `-${idx + 1}` : ""),
               p_descricao:
                 descricaoBase + (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
               p_quantidade: qtd || 1,
               p_valor_unitario: vu,
               p_valor_total: fatia,
-              p_data_pedido: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+              p_data_pedido: d.data_emissao ?? hojeLocal(),
               p_tipo: tipo,
               p_natureza: tipo === "a_receber" ? "receita" : "despesa",
               p_status: "previsto",
-              p_data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+              p_data_competencia: d.data_emissao ?? hojeLocal(),
               p_data_vencimento: d.data_vencimento ?? null,
               p_data_emissao: d.data_emissao ?? null,
               p_tipo_documento: (d.tipo_documento as any) ?? "outro",
@@ -394,7 +395,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim() ||
           item.file.name,
         valor: Number(d.valor_total),
-        data_competencia: d.data_emissao ?? new Date().toISOString().slice(0, 10),
+        data_competencia: d.data_emissao ?? hojeLocal(),
         data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
         data_emissao: d.data_emissao ?? null,
         tipo_documento: (d.tipo_documento as any) ?? "outro",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +111,7 @@ export default function FinRelatorios() {
     }
     setGerando(rel.key);
     try {
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = hojeLocal();
       const filename = `${rel.key}-${stamp}`;
       const titulo = `${rel.titulo} — ${empresaLabel} — ${periodoLabel}`;
 
@@ -205,7 +206,7 @@ export default function FinRelatorios() {
       .order("data_vencimento", { ascending: true });
     if (error) throw error;
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     const rows = (data || []).map((l: any) => {
       const venc = l.data_vencimento as string | null;
       const liquidado = l.status === "realizado" || l.status === "conciliado";

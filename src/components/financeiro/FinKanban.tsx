@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,6 @@ import {
   useCategorias,
   usePessoas,
   useContas,
-  ajustarSaldoConta,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
 import LancamentoDialog from "./LancamentoDialog";
@@ -203,17 +203,12 @@ export default function FinKanban({ tipo }: Props) {
   const selecionarTodosVisiveis = () => setSelecionados(new Set(idsSelecionaveis));
   const limparSelecao = () => setSelecionados(new Set());
   const marcarSelecionadosPagos = async () => {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     const ids = Array.from(selecionados);
     try {
       await Promise.all(
         ids.map(async (id) => {
           await upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any);
-          const lanc = lancamentos.find((x) => x.id === id);
-          if (lanc?.conta_id) {
-            const delta = lanc.natureza === "receita" ? Number(lanc.valor) : -Number(lanc.valor);
-            await ajustarSaldoConta(lanc.conta_id, delta);
-          }
         }),
       );
       qc.invalidateQueries({ queryKey: ["fin-contas"] });
@@ -230,11 +225,9 @@ export default function FinKanban({ tipo }: Props) {
     await upsert.mutateAsync({
       id: l.id,
       status: "realizado",
-      data_realizado: new Date().toISOString().slice(0, 10),
+      data_realizado: hojeLocal(),
     } as any);
     if (l.conta_id) {
-      const delta = l.natureza === "receita" ? Number(l.valor) : -Number(l.valor);
-      await ajustarSaldoConta(l.conta_id, delta);
       qc.invalidateQueries({ queryKey: ["fin-contas"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo"] });
@@ -330,12 +323,8 @@ export default function FinKanban({ tipo }: Props) {
         await upsert.mutateAsync({
           id,
           status: "realizado",
-          data_realizado: new Date().toISOString().slice(0, 10),
+          data_realizado: hojeLocal(),
         } as any);
-        if (lanc.conta_id) {
-          const delta = lanc.natureza === "receita" ? Number(lanc.valor) : -Number(lanc.valor);
-          await ajustarSaldoConta(lanc.conta_id, delta);
-        }
         qc.invalidateQueries({ queryKey: ["fin-contas"] });
         qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
         qc.invalidateQueries({ queryKey: ["fin-resumo"] });
@@ -347,10 +336,6 @@ export default function FinKanban({ tipo }: Props) {
           status: "previsto",
           data_realizado: null,
         } as any);
-        if (lanc.conta_id) {
-          const delta = lanc.natureza === "receita" ? -Number(lanc.valor) : Number(lanc.valor);
-          await ajustarSaldoConta(lanc.conta_id, delta);
-        }
         qc.invalidateQueries({ queryKey: ["fin-contas"] });
         qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
         qc.invalidateQueries({ queryKey: ["fin-resumo"] });

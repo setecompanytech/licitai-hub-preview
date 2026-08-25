@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import {
   useContas,
   useExtratosImportados,
@@ -10,7 +11,6 @@ import {
   useResumoPorExtrato,
   useLancamentos,
   useUpsertLancamento,
-  ajustarSaldoConta,
   useEmpresaId,
 } from "@/hooks/useFinanceiro";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -231,7 +231,7 @@ export default function FinConciliacao() {
               natureza: natureza as never,
               tipo: tipo as never,
               status: "cancelado" as never,
-              data_competencia: params.mov.data_movimento ?? new Date().toISOString().slice(0, 10),
+              data_competencia: params.mov.data_movimento ?? hojeLocal(),
               origem_tipo: "ignorado_conciliacao",
               origem_job: "ignorarMov",
               origem_timestamp: new Date().toISOString(),
@@ -537,10 +537,7 @@ export default function FinConciliacao() {
           movimento_id: m.id,
           lancamento_id: (lanc as any).id,
         });
-        if (m.conta_id) {
-          const delta = isCredito ? Math.abs(Number(m.valor)) : -Math.abs(Number(m.valor));
-          await ajustarSaldoConta(m.conta_id, delta);
-        }
+        // Saldo: o lançamento conciliado acima já disparou o gatilho.
         ok++;
       } catch {
         erros++;

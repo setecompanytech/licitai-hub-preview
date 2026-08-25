@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,7 @@ export default function FinBaixaLote() {
   const [tipo, setTipo] = useState<Tipo>("a_pagar");
   const [busca, setBusca] = useState("");
   const [contaPadrao, setContaPadrao] = useState<string>("");
-  const [dataPadrao, setDataPadrao] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [dataPadrao, setDataPadrao] = useState<string>(hojeLocal());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 

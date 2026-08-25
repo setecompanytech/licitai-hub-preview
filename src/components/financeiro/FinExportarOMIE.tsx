@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -170,7 +171,7 @@ export default function FinExportarOMIE() {
       ]);
     }
     const widths = [22, 20, 38, 30, 18, 18, 14, 20, 14, 28, 16, 22, 32, 8, 18, 22, 12, 22, 6, 14, 10, 14, 28, 16, 14, 30, 40];
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = hojeLocal();
     await writeExcelFile(`OMIE_Clientes_Fornecedores_${stamp}.xlsx`, [
       { name: "Pessoas", data: rows, colWidths: widths },
     ]);
@@ -217,7 +218,7 @@ export default function FinExportarOMIE() {
       ]);
     }
     const widths = [38, 14, 14, 14, 18, 20, 30, 16, 16, 18, 10, 12, 12, 12, 12, 14, 14, 14, 40];
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = hojeLocal();
     const nome = entidade === "a_pagar" ? "Contas_Pagar" : "Contas_Receber";
     await writeExcelFile(`OMIE_${nome}_${dataInicio}_${dataFim}.xlsx`, [
       { name: nome, data: rows, colWidths: widths },

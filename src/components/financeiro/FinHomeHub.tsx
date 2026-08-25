@@ -228,7 +228,7 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                 </span>
-                Saldo consolidado em tempo real
+                Saldo consolidado
               </div>
             </div>
             <div className="space-y-1">
@@ -251,6 +251,15 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
                   {kpis.saldoProjetado >= kpis.saldo
                     ? <TrendingUp className="inline w-3 h-3 ml-1 text-success" />
                     : <TrendingDown className="inline w-3 h-3 ml-1 text-destructive" />}
+                </p>
+              )}
+              {/* Número apurado sobre amostra não pode ter a cara de número
+                  exato. O hook marca quais recortes bateram no teto. */}
+              {resumo && resumo.truncado.length > 0 && (
+                <p className="text-xs text-warning flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  Volume acima do teto de consulta em {resumo.truncado.join(", ")} —
+                  inadimplência e runway saem incompletos.
                 </p>
               )}
             </div>
@@ -300,7 +309,10 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
             <MiniMetric
               loading={loadingResumo}
               icon={AlertTriangle}
-              label="Atrasos totais"
+              // "Atrasos totais" soma o que se deve com o que se tem a receber
+              // — duas coisas de sinal oposto num número só. Como volume de
+              // pendência faz sentido; como valor, não. O rótulo diz qual é.
+              label="Em atraso (pagar + receber)"
               value={kpis ? formatBRL(kpis.atrasoTotal) : "—"}
               tone={kpis && kpis.atrasoTotal > 0 ? "warning" : "neutral"}
               onClick={() => handleNavigate("panorama")}

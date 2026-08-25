@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ export default function FinTransferencia() {
   const [origem, setOrigem] = useState<string>("");
   const [destino, setDestino] = useState<string>("");
   const [valor, setValor] = useState<string>("");
-  const [data, setData] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState<string>(hojeLocal());
   const [descricao, setDescricao] = useState<string>("Transferência entre contas");
   const [obs, setObs] = useState<string>("");
   const [saving, setSaving] = useState(false);

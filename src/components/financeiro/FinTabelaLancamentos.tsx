@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -133,7 +134,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     await upsert.mutateAsync({
       id: l.id,
       status: "realizado",
-      data_realizado: new Date().toISOString().slice(0, 10),
+      data_realizado: hojeLocal(),
     } as any);
   };
 
@@ -183,7 +184,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
 
   const exportarCSV = () => {
     const { headers, rows } = buildExportRows();
-    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    const nome = `financeiro-${tipo}-${hojeLocal()}`;
     downloadCSV(nome, headers, rows);
   };
 
@@ -191,7 +192,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     const { headers, rows } = buildExportRows();
     const titulo = `Financeiro · ${tipo === "a_pagar" ? "Contas a Pagar" : "Contas a Receber"}`;
     const subtitulo = `${filtrados.length} lançamento(s) · Total em aberto: ${totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · Total pago: ${totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
-    const nome = `financeiro-${tipo}-${new Date().toISOString().slice(0, 10)}`;
+    const nome = `financeiro-${tipo}-${hojeLocal()}`;
     downloadPDF(nome, `${titulo} — ${subtitulo}`, headers, rows);
   };
 
