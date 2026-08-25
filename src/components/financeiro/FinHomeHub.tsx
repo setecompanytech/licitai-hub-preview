@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
+import FinConferencia from "./FinConferencia";
 
 export type HubItem = {
   id: string;
@@ -209,6 +210,10 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 
   return (
     <div className="space-y-5">
+      {/* A conferência vem ANTES do saldo, de propósito: saber se o número
+          fecha é condição para lê-lo, não um detalhe a conferir depois. */}
+      <FinConferencia />
+
       {/* ============ HERO COMMAND CENTER ============ */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.08] via-card to-background">
         <div

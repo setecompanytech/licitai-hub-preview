@@ -4263,3 +4263,389 @@ SELECT public.financeiro_recalcular_saldo_conta(id) FROM public.financeiro_conta
 --   SELECT tipo, status, count(*) FROM public.financeiro_lancamentos
 --    WHERE tipo <> 'transferencia' AND conta_destino_id IS NOT NULL GROUP BY 1,2;
 ```
+
+## 20260825000007 — Invariantes do Financeiro
+
+O banco passa a recusar o impossível: transferência sem destino, `conta_destino_id` fora
+de transferência, origem igual a destino, realizado sem data de realização, vencimento a
+mais de 15 anos da competência, competência fora de 2000–2100.
+
+Todas entram como **NOT VALID** — valem para toda linha nova, não rejeitam o que já está
+gravado. Há dado torto na base agora, e barrar a migration por causa dele adiaria a
+proteção de tudo o que vier depois. O roteiro para validar o passado está no fim do arquivo.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Invariantes do Financeiro — o banco passa a recusar o impossível
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- A auditoria de 25/08 mostrou que o banco aceitava tudo o que lhe davam:
+-- transferência de R$ 300.000 saindo de uma conta com R$ 39,75, conta de
+-- aplicação com saldo negativo, coluna numeric(5,4) com DEFAULT 15 que não
+-- comportava o próprio padrão, vencimento em 2031, e uma tabela de
+-- configuração vazia por quatro meses sem que nada estranhasse.
+--
+-- Sem invariante, o sistema não distingue erro de digitação de fato — trata os
+-- dois com a mesma seriedade, e é por isso que um campo errado contamina sete
+-- camadas a jusante. O banco é a última instância que pode dizer "esse estado
+-- não existe no mundo".
+--
+-- ── Por que NOT VALID ───────────────────────────────────────────────────────
+-- Todas as restrições entram como NOT VALID: passam a valer para toda linha
+-- nova ou alterada, e NÃO rejeitam o que já está gravado. É deliberado. Há
+-- dado torto na base agora (os oito pares de PIX com origem errada, entre
+-- outros), e barrar a migration por causa dele adiaria a proteção de tudo o
+-- que vier depois. Corrigido o passado, cada uma vira VALID com um comando —
+-- o roteiro está no fim do arquivo.
+
+-- ── 1. Transferência sem destino não é transferência ────────────────────────
+-- Uma transferência é uma relação entre DUAS contas. Sem a segunda, o saldo
+-- não tem para onde ir e o dinheiro some da soma da empresa.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_transferencia_tem_destino;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_transferencia_tem_destino
+  CHECK (tipo <> 'transferencia' OR conta_destino_id IS NOT NULL) NOT VALID;
+
+-- ── 2. conta_destino_id só existe em transferência ──────────────────────────
+-- Este é o defeito nº 2 da fórmula do saldo, agora barrado na entrada: um
+-- a_receber com conta_destino_id preenchido era somado nas DUAS contas, porque
+-- a seleção era (conta_id = X OR conta_destino_id = X). A fórmula foi
+-- corrigida; a restrição impede que o caso volte a existir.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_destino_so_em_transferencia;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_destino_so_em_transferencia
+  CHECK (tipo = 'transferencia' OR conta_destino_id IS NULL) NOT VALID;
+
+-- ── 3. Transferência entre a mesma conta é ruído ────────────────────────────
+-- Origem igual a destino não move dinheiro. Aparece quando alguém escolhe a
+-- conta errada no segundo campo e não percebe, e depois aparece no extrato
+-- como um par que não faz nada.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_transferencia_contas_distintas;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_transferencia_contas_distintas
+  CHECK (conta_destino_id IS NULL OR conta_id IS DISTINCT FROM conta_destino_id) NOT VALID;
+
+-- ── 4. Lançamento realizado tem data de realização ──────────────────────────
+-- "Realizado" e "conciliado" afirmam que o dinheiro se moveu. Sem a data, não
+-- há como situar o movimento no tempo — e é a data que decide competência,
+-- apuração e indicador.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_realizado_tem_data;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_realizado_tem_data
+  CHECK (status NOT IN ('realizado','conciliado') OR data_realizado IS NOT NULL) NOT VALID;
+
+-- ── 5. Vencimento plausível ─────────────────────────────────────────────────
+-- A ETHOS tem 154 contas a pagar previstas com vencimento até 10/08/2031.
+-- Contrato administrativo de dez anos existe (Lei 14.133, art. 108), então a
+-- faixa é generosa DE PROPÓSITO: quinze anos à frente da competência e cinco
+-- atrás. Não é para julgar prazo de contrato — é para pegar o dedo que
+-- escorregou no ano.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_vencimento_plausivel;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_vencimento_plausivel
+  CHECK (
+    data_vencimento IS NULL
+    OR data_competencia IS NULL
+    OR (data_vencimento >= data_competencia - interval '5 years'
+    AND  data_vencimento <= data_competencia + interval '15 years')
+  ) NOT VALID;
+
+-- ── 6. Competência dentro do tempo do sistema ───────────────────────────────
+-- Ano digitado errado é o erro de teclado mais comum em data. 1900 e 2199 não
+-- são competências de ninguém.
+ALTER TABLE public.financeiro_lancamentos
+  DROP CONSTRAINT IF EXISTS chk_competencia_plausivel;
+ALTER TABLE public.financeiro_lancamentos
+  ADD CONSTRAINT chk_competencia_plausivel
+  CHECK (data_competencia IS NULL
+      OR (data_competencia >= DATE '2000-01-01' AND data_competencia <= DATE '2100-01-01')) NOT VALID;
+
+-- ── 7. Saldo de abertura de conta não é nulo por omissão ────────────────────
+-- `saldo_inicial` NULL e `saldo_inicial` zero significam coisas diferentes na
+-- cabeça de quem cadastra — "ainda não informei" e "abriu zerada" — mas a
+-- fórmula do saldo trata as duas como zero, via COALESCE. A coluna passa a ter
+-- padrão explícito para que a ausência seja uma escolha registrada.
+ALTER TABLE public.financeiro_contas
+  ALTER COLUMN saldo_inicial SET DEFAULT 0;
+
+COMMENT ON COLUMN public.financeiro_contas.saldo_inicial IS
+  'Saldo da conta na data de abertura no sistema. Zero significa "abriu '
+  'zerada", e é o padrão. A fórmula do saldo soma este valor aos movimentos — '
+  'saldo de abertura não informado produz conta com saldo negativo sem que '
+  'haja erro de lançamento algum.';
+
+COMMENT ON CONSTRAINT chk_destino_so_em_transferencia ON public.financeiro_lancamentos IS
+  'conta_destino_id fora de transferência fazia o lançamento somar nas duas '
+  'contas, porque financeiro_recalcular_saldo_conta seleciona por '
+  '(conta_id = X OR conta_destino_id = X).';
+
+-- ── Roteiro para validar o passado ──────────────────────────────────────────
+--
+-- Cada consulta abaixo lista o que impede a restrição de virar VALID. Rode,
+-- corrija o que aparecer, e então promova a restrição.
+--
+-- 1. Transferência sem destino:
+--    SELECT id, data_competencia, valor, descricao FROM public.financeiro_lancamentos
+--     WHERE tipo = 'transferencia' AND conta_destino_id IS NULL;
+--
+-- 2. Destino fora de transferência:
+--    SELECT id, tipo, data_competencia, valor, descricao FROM public.financeiro_lancamentos
+--     WHERE tipo <> 'transferencia' AND conta_destino_id IS NOT NULL;
+--
+-- 3. Origem igual a destino:
+--    SELECT id, data_competencia, valor, descricao FROM public.financeiro_lancamentos
+--     WHERE conta_id IS NOT DISTINCT FROM conta_destino_id AND conta_destino_id IS NOT NULL;
+--
+-- 4. Realizado sem data:
+--    SELECT id, status, data_competencia, valor, descricao FROM public.financeiro_lancamentos
+--     WHERE status IN ('realizado','conciliado') AND data_realizado IS NULL;
+--
+-- 5/6. Datas implausíveis:
+--    SELECT id, data_competencia, data_vencimento, valor, descricao
+--      FROM public.financeiro_lancamentos
+--     WHERE data_vencimento > data_competencia + interval '15 years'
+--        OR data_vencimento < data_competencia - interval '5 years'
+--        OR data_competencia NOT BETWEEN DATE '2000-01-01' AND DATE '2100-01-01';
+--
+-- Depois de zerar cada lista:
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_transferencia_tem_destino;
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_destino_so_em_transferencia;
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_transferencia_contas_distintas;
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_realizado_tem_data;
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_vencimento_plausivel;
+--    ALTER TABLE public.financeiro_lancamentos VALIDATE CONSTRAINT chk_competencia_plausivel;
+```
+
+## 20260825000008 — financeiro_conferencia()
+
+Refaz as derivações e devolve o que não fecha: saldo divergente, conta negativa,
+transferência sem par ou acima do saldo, faturamento divergente, regime ausente, data
+implausível, lançamento sem categoria. Não corrige nada.
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- financeiro_conferencia() — o módulo passa a poder provar a própria correção
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Nada no Financeiro comparava o que ele afirmava com o que ele mesmo tinha.
+-- Nada conferia `saldo_atual` contra `saldo_inicial + movimentos`; nada
+-- comparava faturamento declarado com contabilizado; nada notou que uma tabela
+-- de configuração estava vazia desde abril. Cada achado da auditoria de 25/08
+-- precisou de um humano indo procurar.
+--
+-- É essa ausência que faz um erro de digitação virar cascata. Sem prova local,
+-- o erro não fica contido: vaza para tudo a jusante, porque a jusante não tem
+-- como se defender. Um número derivável e conferido isola o estrago; um número
+-- guardado e nunca conferido o espalha.
+--
+-- Esta função refaz as derivações e devolve o que não fecha. Não corrige nada
+-- — corrigir dinheiro é decisão de gente. Ela só se recusa a ficar calada.
+
+CREATE OR REPLACE FUNCTION public.financeiro_conferencia(p_empresa_id uuid)
+RETURNS TABLE (
+  severidade  text,   -- 'critico' | 'atencao' | 'informativo'
+  categoria   text,
+  descricao   text,
+  valor       numeric,
+  referencia  text
+)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+
+  -- ── 1. O saldo bate com os lançamentos? ───────────────────────────────────
+  -- A conferência que provou a correção de 25/08. Enquanto der zero, o saldo é
+  -- derivável a qualquer momento; qualquer valor aqui é saldo fóssil voltando.
+  WITH mov AS (
+    SELECT c.id AS conta_id,
+           COALESCE(SUM(
+             CASE
+               WHEN l.tipo = 'transferencia' AND l.natureza IN ('despesa','receita') THEN
+                 CASE WHEN l.conta_id = c.id
+                      THEN CASE WHEN l.natureza = 'despesa' THEN -l.valor ELSE l.valor END
+                      ELSE 0 END
+               WHEN l.tipo = 'transferencia' AND l.conta_id = c.id         THEN -l.valor
+               WHEN l.tipo = 'transferencia' AND l.conta_destino_id = c.id THEN  l.valor
+               WHEN l.conta_id IS DISTINCT FROM c.id THEN 0
+               WHEN l.tipo = 'a_receber' AND l.status IN ('realizado','conciliado') THEN  l.valor
+               WHEN l.tipo = 'a_pagar'   AND l.status IN ('realizado','conciliado') THEN -l.valor
+               WHEN l.tipo = 'movimento_bancario' AND l.status IS DISTINCT FROM 'cancelado' THEN
+                 CASE WHEN l.natureza = 'despesa' THEN -l.valor ELSE l.valor END
+               ELSE 0
+             END), 0) AS movimento
+      FROM public.financeiro_contas c
+      LEFT JOIN public.financeiro_lancamentos l
+             ON (l.conta_id = c.id OR l.conta_destino_id = c.id)
+     WHERE c.empresa_id = p_empresa_id
+     GROUP BY c.id
+  )
+  SELECT 'critico',
+         'saldo divergente',
+         'O saldo gravado de "' || c.nome || '" não corresponde aos lançamentos. '
+           || 'Gravado ' || to_char(c.saldo_atual, 'FM999G999G999D00')
+           || ', derivado ' || to_char(COALESCE(c.saldo_inicial,0) + m.movimento, 'FM999G999G999D00') || '.',
+         c.saldo_atual - (COALESCE(c.saldo_inicial,0) + m.movimento),
+         c.id::text
+    FROM public.financeiro_contas c
+    JOIN mov m ON m.conta_id = c.id
+   WHERE abs(c.saldo_atual - (COALESCE(c.saldo_inicial,0) + m.movimento)) > 0.005
+
+  UNION ALL
+
+  -- ── 2. Conta com saldo negativo ───────────────────────────────────────────
+  -- Conta corrente pode ficar negativa (cheque especial). Aplicação e caixa,
+  -- não: é sempre saldo de abertura faltando ou lançamento com sentido trocado.
+  SELECT CASE WHEN c.nome ILIKE '%aplica%' OR c.nome ILIKE '%caix%' THEN 'critico' ELSE 'atencao' END,
+         'saldo negativo',
+         'A conta "' || c.nome || '" está com saldo negativo. '
+           || CASE WHEN COALESCE(c.saldo_inicial,0) = 0
+                   THEN 'O saldo de abertura está zerado — confira se ele foi informado.'
+                   ELSE 'Confira se há lançamento com origem ou sentido trocado.' END,
+         c.saldo_atual,
+         c.id::text
+    FROM public.financeiro_contas c
+   WHERE c.empresa_id = p_empresa_id
+     AND c.ativa
+     AND c.saldo_atual < 0
+
+  UNION ALL
+
+  -- ── 3. Transferência de conta que não tinha o dinheiro ────────────────────
+  -- O erro de 25/08: oito PIX lançados como saída de uma conta que abriu o ano
+  -- com R$ 39,75. A conferência olha o saldo de abertura contra o que saiu.
+  SELECT 'atencao',
+         'transferência acima do saldo',
+         'A conta "' || c.nome || '" registra saídas por transferência muito acima '
+           || 'do que recebeu. Confira a conta de origem desses lançamentos.',
+         t.saiu - t.entrou,
+         c.id::text
+    FROM public.financeiro_contas c
+    JOIN LATERAL (
+      SELECT COALESCE(SUM(l.valor) FILTER (WHERE l.natureza = 'despesa'), 0) AS saiu,
+             COALESCE(SUM(l.valor) FILTER (WHERE l.natureza = 'receita'), 0) AS entrou
+        FROM public.financeiro_lancamentos l
+       WHERE l.conta_id = c.id AND l.tipo = 'transferencia'
+    ) t ON true
+   WHERE c.empresa_id = p_empresa_id
+     AND t.saiu - t.entrou > COALESCE(c.saldo_inicial, 0) + 1000
+
+  UNION ALL
+
+  -- ── 4. Perna de transferência sem par ─────────────────────────────────────
+  -- O formato espelhado grava duas linhas por lote. Lote com uma perna só
+  -- significa dinheiro saindo de uma conta e não entrando em nenhuma.
+  SELECT 'critico',
+         'transferência sem par',
+         'Lote de transferência com ' || cnt || ' perna(s) em vez de 2. '
+           || 'O dinheiro sai de uma conta e não entra em nenhuma.',
+         valor_lote,
+         lote::text
+    FROM (
+      SELECT l.origem_lote_id AS lote, count(*) AS cnt, max(l.valor) AS valor_lote
+        FROM public.financeiro_lancamentos l
+       WHERE l.empresa_id = p_empresa_id
+         AND l.tipo = 'transferencia'
+         AND l.natureza IN ('despesa','receita')
+         AND l.origem_lote_id IS NOT NULL
+       GROUP BY l.origem_lote_id
+      HAVING count(*) <> 2
+    ) pares
+
+  UNION ALL
+
+  -- ── 5. Faturamento declarado × contabilizado ──────────────────────────────
+  -- Os dois números que não convergiam. A diferença não é erro por si: parte é
+  -- nota a receber com prazo correndo. Vira aviso quando passa de 10%.
+  SELECT 'atencao',
+         'faturamento não confere',
+         'O faturamento declarado em Apuração difere do que os lançamentos somam. '
+           || 'Declarado ' || to_char(d.declarado, 'FM999G999G999D00')
+           || ', contabilizado ' || to_char(d.contabilizado, 'FM999G999G999D00') || '.',
+         d.declarado - d.contabilizado,
+         NULL
+    FROM (
+      SELECT
+        (SELECT COALESCE(SUM(f.valor_faturamento), 0)
+           FROM public.faturamento_mensal f WHERE f.empresa_id = p_empresa_id) AS declarado,
+        (SELECT COALESCE(SUM(l.valor), 0)
+           FROM public.financeiro_lancamentos l
+           JOIN public.financeiro_categorias c ON c.id = l.categoria_id
+          WHERE l.empresa_id = p_empresa_id
+            AND c.grupo_dre = 'receita_bruta'
+            AND l.status IN ('realizado','conciliado')) AS contabilizado
+    ) d
+   WHERE d.declarado > 0
+     AND abs(d.declarado - d.contabilizado) > d.declarado * 0.10
+
+  UNION ALL
+
+  -- ── 6. Regime tributário ausente ──────────────────────────────────────────
+  -- Sem regime não há por qual tabela apurar, e o padrão do banco era
+  -- 'simples' — foi assim que uma empresa de Lucro Presumido foi apurada pela
+  -- tabela do Simples Nacional sem ninguém ter escolhido nada.
+  SELECT 'critico',
+         'regime não definido',
+         'A empresa não tem regime tributário no cadastro. A apuração não pode '
+           || 'ser feita, e qualquer padrão adotado seria decidir no lugar de alguém.',
+         NULL,
+         e.id::text
+    FROM public.empresas e
+   WHERE e.id = p_empresa_id
+     AND e.regime_tributario IS NULL
+
+  UNION ALL
+
+  -- ── 7. Lançamento com data implausível ────────────────────────────────────
+  SELECT 'atencao',
+         'data implausível',
+         count(*) || ' lançamento(s) com vencimento a mais de 15 anos da competência. '
+           || 'Provável ano digitado errado.',
+         SUM(l.valor),
+         NULL
+    FROM public.financeiro_lancamentos l
+   WHERE l.empresa_id = p_empresa_id
+     AND l.data_vencimento IS NOT NULL
+     AND l.data_competencia IS NOT NULL
+     AND l.data_vencimento > l.data_competencia + interval '15 years'
+  HAVING count(*) > 0
+
+  UNION ALL
+
+  -- ── 8. Lançamento sem categoria ───────────────────────────────────────────
+  -- Percentual apurado sobre lançamento sem categoria é palpite com cara de
+  -- número. A cobertura entra como informativo enquanto for pequena.
+  SELECT CASE WHEN SUM(l.valor) > 50000 THEN 'atencao' ELSE 'informativo' END,
+         'sem classificação',
+         count(*) || ' lançamento(s) realizado(s) sem categoria. '
+           || 'Eles ficam fora do DRE e dos indicadores gerenciais.',
+         SUM(l.valor),
+         NULL
+    FROM public.financeiro_lancamentos l
+   WHERE l.empresa_id = p_empresa_id
+     AND l.categoria_id IS NULL
+     AND l.status IN ('realizado','conciliado')
+     AND l.tipo IN ('a_receber','a_pagar')
+  HAVING count(*) > 0
+
+$$;
+
+COMMENT ON FUNCTION public.financeiro_conferencia(uuid) IS
+  'Refaz as derivações do Financeiro e devolve o que não fecha: saldo que não '
+  'corresponde aos lançamentos, conta negativa, transferência sem par ou acima '
+  'do saldo, faturamento divergente, regime ausente, data implausível, '
+  'lançamento sem categoria. Não corrige nada — corrigir dinheiro é decisão de '
+  'gente. Ela só se recusa a ficar calada.';
+
+GRANT EXECUTE ON FUNCTION public.financeiro_conferencia(uuid) TO authenticated;
+
+-- Uso:
+--   SELECT * FROM public.financeiro_conferencia(
+--     (SELECT id FROM public.empresas WHERE razao_social ILIKE 'ETHOS%')
+--   ) ORDER BY CASE severidade WHEN 'critico' THEN 1 WHEN 'atencao' THEN 2 ELSE 3 END;
+```
