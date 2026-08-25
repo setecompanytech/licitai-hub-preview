@@ -456,9 +456,23 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               <ScanLine className="w-5 h-5" />
               Extração automática de documentos — {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
             </DialogTitle>
-            <DialogDescription>
-              Envie XMLs de NF-e/NFS-e (lançados automaticamente), ou PDFs e imagens de cupom fiscal,
-              boleto, recibo, fatura. A IA extrai os campos para revisão antes de gerar o {tipoLabel}.
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Envie XMLs de NF-e/NFS-e (lançados automaticamente), ou PDFs e imagens de cupom fiscal,
+                  boleto, recibo, fatura.
+                </p>
+                {/* O caminho, dito antes de começar. Quem envia um documento
+                    precisa saber que ele fica guardado, que a leitura é só uma
+                    proposta, e que o lançamento exige um clique — três coisas
+                    que a tela fazia e não contava. */}
+                <ol className="text-xs space-y-0.5 list-decimal list-inside marker:text-muted-foreground/60">
+                  <li>O arquivo é <strong>arquivado</strong> assim que chega — mesmo se a leitura falhar.</li>
+                  <li>A IA lê os campos e mostra para <strong>você conferir</strong>.</li>
+                  <li>Só ao clicar em <strong>Lançar</strong> nasce o {tipoLabel} em{' '}
+                    <strong>{tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}</strong>.</li>
+                </ol>
+              </div>
             </DialogDescription>
           </DialogHeader>
 
@@ -595,6 +609,41 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               </p>
                             )}
                             {d.erro && <p className="text-xs text-destructive mt-1">{d.erro}</p>}
+                            {/* Onde o arquivo foi parar.
+                                Antes, o documento processado ficava num limbo: o
+                                cartão mostrava os campos lidos e três botões, e
+                                nada dizia que ainda faltava um clique nem para
+                                onde o lançamento iria. Quem enviava a nota saía
+                                da tela achando que tinha lançado. */}
+                            {d.status === "ok" && !d.lancamentoId && !d.dados?._ja_lancada && (
+                              <div className="mt-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-1.5">
+                                <p className="text-xs text-warning font-medium">
+                                  Ainda não lançado
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  O documento já está arquivado. Clique em <strong>Lançar e vincular</strong> para
+                                  criar o {tipoLabel} em {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"},
+                                  ou em <strong>Revisar</strong> para conferir os campos antes.
+                                </p>
+                              </div>
+                            )}
+                            {d.lancamentoId && (
+                              <div className="mt-2 rounded-md border border-success/40 bg-success/5 px-2.5 py-1.5 flex items-center justify-between gap-2 flex-wrap">
+                                <div className="min-w-0">
+                                  <p className="text-xs text-success font-medium">
+                                    Lançado em {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {d.dados?.valor_total ? fmt(Number(d.dados.valor_total)) : "Valor a conferir"}
+                                    {d.documentoId ? " · documento arquivado junto" : " · documento NÃO arquivado"}
+                                  </p>
+                                </div>
+                                <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                                  onClick={() => onOpenChange(false)}>
+                                  Ver na lista
+                                </Button>
+                              </div>
+                            )}
                             {d.dados?._ja_lancada && (
                               <p className="text-xs text-success mt-1">
                                 Lançado automaticamente como {d.dados._direcao === "saida" ? "receita" : "despesa"}.

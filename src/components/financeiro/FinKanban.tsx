@@ -592,21 +592,39 @@ export default function FinKanban({ tipo }: Props) {
               }}
               onDrop={handleColDrop(col.id)}
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Icone className="w-4 h-4" />
-                  {col.nome}
+              <CardHeader className="pb-2 space-y-1">
+                <CardTitle className="text-sm flex items-center gap-2 min-w-0">
+                  <Icone className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{col.nome}</span>
+                  {/* A contagem como selo, não como parte da mesma frase do
+                      valor: eram dois números de naturezas diferentes colados
+                      por um ponto, e a leitura tropeçava nos dois. */}
+                  <span className="ml-auto shrink-0 rounded-full bg-background/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums">
+                    {items.length}
+                  </span>
                 </CardTitle>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {items.length} ·{" "}
+                <p className="text-sm font-semibold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
                   {subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
               </CardHeader>
               <CardContent className="p-2 kanban-col">
-                <div className="h-[min(65vh,520px)] overflow-y-auto overflow-x-hidden pr-1 kanban-col-scroll">
+                {/* Coluna vazia não ocupa meia tela.
+                    As quatro tinham altura fixa de 520px, e num quadro com duas
+                    vazias isso somava mais de mil pixels de moldura tracejada —
+                    empurrando para fora da tela justamente as colunas que têm
+                    conteúdo. Vazia agora ocupa o tamanho do próprio recado. */}
+                <div className={cn(
+                  "overflow-y-auto overflow-x-hidden pr-1 kanban-col-scroll",
+                  items.length === 0 ? "h-auto" : "h-[min(65vh,520px)]",
+                )}>
                   <div className="kanban-col-body">
                     {items.length === 0 ? (
-                      <div className="border-2 border-dashed border-border/40 rounded-md py-8 text-center">
+                      <div className={cn(
+                        "border-2 border-dashed rounded-md py-5 text-center transition-colors",
+                        dragOverCol === col.id
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-border/40",
+                      )}>
                         <p className="text-xs text-muted-foreground">
                           {dragOverCol === col.id ? "Solte aqui" : "Nenhum item"}
                         </p>
@@ -697,16 +715,27 @@ export default function FinKanban({ tipo }: Props) {
                                 )}
                               </div>
 
-                              <div className="flex items-center justify-between gap-2 pt-1">
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  Venc: {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
-                                </span>
-                                <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
-                                  {Number(l.valor).toLocaleString("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  })}
-                                </span>
+                              {/* Valor e vencimento disputavam a mesma linha, e
+                                  numa coluna estreita o valor era o que cedia —
+                                  justamente o número que a pessoa está
+                                  procurando. Agora o valor tem a linha inteira
+                                  e a data fica acima, discreta. */}
+                              <div className="pt-1 border-t border-border/40 mt-1.5">
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                    Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
+                                  </span>
+                                  <span className={cn(
+                                    "text-sm font-bold tabular-nums whitespace-nowrap",
+                                    col.id === "vencido" && "text-destructive",
+                                    col.id === "pago" && "text-success",
+                                  )}>
+                                    {Number(l.valor).toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL",
+                                    })}
+                                  </span>
+                                </div>
                               </div>
 
                               {col.id !== "pago" && (

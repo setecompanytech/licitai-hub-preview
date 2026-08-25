@@ -440,9 +440,15 @@
   .kanban-card-body {
     @apply min-w-0 max-w-full overflow-hidden;
   }
-  /* Título do card: 2 linhas, quebra inclusive em palavras longas */
+  /* Título do card.
+     `overflow-wrap: anywhere` quebrava CEDO DEMAIS: ele autoriza a quebra em
+     qualquer ponto e o navegador aproveitava, produzindo "SALDO TOTAL DIS-
+     PONÍVEL DIA" quando havia um espaço logo antes onde quebrar. `break-words`
+     só corta dentro da palavra quando ela sozinha não cabe — que é o caso
+     raro que se queria cobrir. E `hyphens-none` impede o hífen automático,
+     que num título de lançamento não ajuda a ler, atrapalha. */
   .kanban-card-title {
-    @apply text-sm font-medium line-clamp-2 min-w-0 break-words [overflow-wrap:anywhere];
+    @apply text-sm font-medium line-clamp-2 min-w-0 break-words hyphens-none;
   }
   /* Linha auxiliar (cliente, doc, categoria): uma linha truncada */
   .kanban-card-meta {
@@ -450,6 +456,6 @@
   }
   /* Linha auxiliar que pode quebrar (descrições maiores) */
   .kanban-card-meta-wrap {
-    @apply text-[11px] text-muted-foreground min-w-0 max-w-full break-words [overflow-wrap:anywhere];
+    @apply text-[11px] text-muted-foreground min-w-0 max-w-full break-words hyphens-none;
   }
 }
