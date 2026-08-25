@@ -4485,8 +4485,8 @@ AS $$
      WHERE c.empresa_id = p_empresa_id
      GROUP BY c.id
   )
-  SELECT 'critico',
-         'saldo divergente',
+  SELECT 'critico'::text,
+         'saldo divergente'::text,
          'O saldo gravado de "' || c.nome || '" não corresponde aos lançamentos. '
            || 'Gravado ' || to_char(c.saldo_atual, 'FM999G999G999D00')
            || ', derivado ' || to_char(COALESCE(c.saldo_inicial,0) + m.movimento, 'FM999G999G999D00') || '.',
@@ -4501,8 +4501,8 @@ AS $$
   -- ── 2. Conta com saldo negativo ───────────────────────────────────────────
   -- Conta corrente pode ficar negativa (cheque especial). Aplicação e caixa,
   -- não: é sempre saldo de abertura faltando ou lançamento com sentido trocado.
-  SELECT CASE WHEN c.nome ILIKE '%aplica%' OR c.nome ILIKE '%caix%' THEN 'critico' ELSE 'atencao' END,
-         'saldo negativo',
+  SELECT (CASE WHEN c.nome ILIKE '%aplica%' OR c.nome ILIKE '%caix%' THEN 'critico' ELSE 'atencao' END)::text,
+         'saldo negativo'::text,
          'A conta "' || c.nome || '" está com saldo negativo. '
            || CASE WHEN COALESCE(c.saldo_inicial,0) = 0
                    THEN 'O saldo de abertura está zerado — confira se ele foi informado.'
@@ -4519,8 +4519,8 @@ AS $$
   -- ── 3. Transferência de conta que não tinha o dinheiro ────────────────────
   -- O erro de 25/08: oito PIX lançados como saída de uma conta que abriu o ano
   -- com R$ 39,75. A conferência olha o saldo de abertura contra o que saiu.
-  SELECT 'atencao',
-         'transferência acima do saldo',
+  SELECT 'atencao'::text,
+         'transferência acima do saldo'::text,
          'A conta "' || c.nome || '" registra saídas por transferência muito acima '
            || 'do que recebeu. Confira a conta de origem desses lançamentos.',
          t.saiu - t.entrou,
@@ -4540,8 +4540,8 @@ AS $$
   -- ── 4. Perna de transferência sem par ─────────────────────────────────────
   -- O formato espelhado grava duas linhas por lote. Lote com uma perna só
   -- significa dinheiro saindo de uma conta e não entrando em nenhuma.
-  SELECT 'critico',
-         'transferência sem par',
+  SELECT 'critico'::text,
+         'transferência sem par'::text,
          'Lote de transferência com ' || cnt || ' perna(s) em vez de 2. '
            || 'O dinheiro sai de uma conta e não entra em nenhuma.',
          valor_lote,
@@ -4562,13 +4562,13 @@ AS $$
   -- ── 5. Faturamento declarado × contabilizado ──────────────────────────────
   -- Os dois números que não convergiam. A diferença não é erro por si: parte é
   -- nota a receber com prazo correndo. Vira aviso quando passa de 10%.
-  SELECT 'atencao',
-         'faturamento não confere',
+  SELECT 'atencao'::text,
+         'faturamento não confere'::text,
          'O faturamento declarado em Apuração difere do que os lançamentos somam. '
            || 'Declarado ' || to_char(d.declarado, 'FM999G999G999D00')
            || ', contabilizado ' || to_char(d.contabilizado, 'FM999G999G999D00') || '.',
          d.declarado - d.contabilizado,
-         NULL
+         NULL::text
     FROM (
       SELECT
         (SELECT COALESCE(SUM(f.valor_faturamento), 0)
@@ -4589,11 +4589,11 @@ AS $$
   -- Sem regime não há por qual tabela apurar, e o padrão do banco era
   -- 'simples' — foi assim que uma empresa de Lucro Presumido foi apurada pela
   -- tabela do Simples Nacional sem ninguém ter escolhido nada.
-  SELECT 'critico',
-         'regime não definido',
+  SELECT 'critico'::text,
+         'regime não definido'::text,
          'A empresa não tem regime tributário no cadastro. A apuração não pode '
            || 'ser feita, e qualquer padrão adotado seria decidir no lugar de alguém.',
-         NULL,
+         NULL::numeric,
          e.id::text
     FROM public.empresas e
    WHERE e.id = p_empresa_id
@@ -4602,12 +4602,12 @@ AS $$
   UNION ALL
 
   -- ── 7. Lançamento com data implausível ────────────────────────────────────
-  SELECT 'atencao',
-         'data implausível',
+  SELECT 'atencao'::text,
+         'data implausível'::text,
          count(*) || ' lançamento(s) com vencimento a mais de 15 anos da competência. '
            || 'Provável ano digitado errado.',
          SUM(l.valor),
-         NULL
+         NULL::text
     FROM public.financeiro_lancamentos l
    WHERE l.empresa_id = p_empresa_id
      AND l.data_vencimento IS NOT NULL
@@ -4620,12 +4620,12 @@ AS $$
   -- ── 8. Lançamento sem categoria ───────────────────────────────────────────
   -- Percentual apurado sobre lançamento sem categoria é palpite com cara de
   -- número. A cobertura entra como informativo enquanto for pequena.
-  SELECT CASE WHEN SUM(l.valor) > 50000 THEN 'atencao' ELSE 'informativo' END,
-         'sem classificação',
+  SELECT (CASE WHEN SUM(l.valor) > 50000 THEN 'atencao' ELSE 'informativo' END)::text,
+         'sem classificação'::text,
          count(*) || ' lançamento(s) realizado(s) sem categoria. '
            || 'Eles ficam fora do DRE e dos indicadores gerenciais.',
          SUM(l.valor),
-         NULL
+         NULL::text
     FROM public.financeiro_lancamentos l
    WHERE l.empresa_id = p_empresa_id
      AND l.categoria_id IS NULL
