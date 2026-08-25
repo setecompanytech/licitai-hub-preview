@@ -294,9 +294,19 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const aditivosSujeitos = aditivos.filter(a => !FORA_DO_ART_125.includes(a.tipo));
   const totalAcrescimoSujeito = aditivosSujeitos.reduce((s, a) => s + (a.valor_acrescimo || 0), 0);
   const totalSupressaoSujeita = aditivosSujeitos.reduce((s, a) => s + (a.valor_supressao || 0), 0);
-  const pctAcrescimo = valorOriginal > 0 ? (totalAcrescimoSujeito / valorOriginal) * 100 : 0;
-  const pctSupressao = valorOriginal > 0 ? (totalSupressaoSujeita / valorOriginal) * 100 : 0;
-  const excedeuAcrescimo = pctAcrescimo >= limiteArt125;
+  // A base do art. 125 é o "valor INICIAL ATUALIZADO do contrato" — o original
+  // corrigido pelos institutos que não acrescem objeto (reequilíbrio, reajuste,
+  // revisão, repactuação). Dividir pelo original cru acusava 40% num acréscimo
+  // que o órgão calculou, corretamente, como 25% do valor reequilibrado.
+  const atualizacaoForaDoObjeto = aditivos
+    .filter(a => FORA_DO_ART_125.includes(a.tipo))
+    .reduce((s, a) => s + (a.valor_acrescimo || 0) - (a.valor_supressao || 0), 0);
+  const baseAtualizada = valorOriginal + atualizacaoForaDoObjeto;
+  const pctAcrescimo = baseAtualizada > 0 ? (totalAcrescimoSujeito / baseAtualizada) * 100 : 0;
+  const pctSupressao = baseAtualizada > 0 ? (totalSupressaoSujeita / baseAtualizada) * 100 : 0;
+  // No limite exato é LÍCITO — o art. 125 permite "até" 25%. Acusar excesso em
+  // 25,00% cravados chamaria de infração o termo calibrado no máximo legal.
+  const excedeuAcrescimo = pctAcrescimo > limiteArt125;
   const proximoAcrescimo = !excedeuAcrescimo && pctAcrescimo >= limiteArt125 * 0.8;
 
   // Running cumulative per aditivo (for compliance badge per card)
@@ -305,7 +315,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     return aditivos.map(a => {
       const isSujeito = !FORA_DO_ART_125.includes(a.tipo);
       if (isSujeito) acc += (a.valor_acrescimo || 0);
-      const pctAcc = valorOriginal > 0 ? (acc / valorOriginal) * 100 : 0;
+      const pctAcc = baseAtualizada > 0 ? (acc / baseAtualizada) * 100 : 0;
       return { ...a, pctCumulativo: isSujeito ? parseFloat(pctAcc.toFixed(2)) : null, isSujeito };
     });
   })();

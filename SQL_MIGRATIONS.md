@@ -3877,3 +3877,21 @@ mostra na seção própria. Mantém o `formatar_brl` da 20260824000008.
 
 **Arquivo:** `supabase/migrations/20260824000009_diario_nao_grava_parede_de_texto.sql`
 
+---
+
+## 20260825000001 — O teto do art. 125 mede-se sobre o valor inicial atualizado
+
+**Por quê.** A letra da lei: "até 25% do valor inicial **atualizado**" — o
+original corrigido por reequilíbrio/reajuste/revisão/repactuação. O alerta
+dividia pelo original CRU: o 2º termo do 068/2025 (R$ 2.557.296,00, que o órgão
+calculou como 25,00% exatos do valor reequilibrado de R$ 10.229.184,00) seria
+acusado de falsos 40,14% sobre os R$ 6.370.560,00 crus.
+
+**O que muda.** A base vira `valor_global_original + Σ(fora-do-objeto líquido)`;
+o texto do alerta cita "valor inicial atualizado"; e os disparos passam de `>=`
+para `>` — **no limite exato é lícito** ("até" 25%), acusar 25,00% cravados
+chamaria de infração o termo calibrado no máximo legal. Reaplica em todos os
+contratos ao final.
+
+**Arquivo:** `supabase/migrations/20260825000001_art125_base_valor_atualizado.sql`
+
