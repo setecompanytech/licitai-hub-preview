@@ -390,8 +390,14 @@ export default function FinKanban({ tipo }: Props) {
         <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-6">
             <div>
-              <p className="text-sm text-muted-foreground">
+              {/* A contagem vive AO LADO do total que ela qualifica — no meio da
+                  barra de ações ela era informação espremida entre botões,
+                  quebrando o fluxo de quem procura um comando. */}
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
                 Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
+                <Badge variant="outline" className="font-normal">
+                  {lancamentosFiltrados.length} lançamento{lancamentosFiltrados.length === 1 ? "" : "s"}
+                </Badge>
               </p>
               <p className="text-2xl font-bold tabular-nums">
                 {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -431,7 +437,6 @@ export default function FinKanban({ tipo }: Props) {
                 </Badge>
               )}
             </Button>
-            <Badge variant="outline">{lancamentosFiltrados.length} lançamentos</Badge>
             <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
               <ScanLine className="w-4 h-4 mr-1" />
               Extrair de documento
