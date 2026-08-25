@@ -151,7 +151,6 @@ const COPIAS_ANEXO_I: { arquivo: string; constante: string; chave?: string }[] =
   { arquivo: 'src/data/simples-nacional-anexos.ts', constante: 'ANEXO_I', chave: 'faixas' },
   { arquivo: 'src/lib/financeiro/simples-nacional-2026.ts', constante: 'ANEXO_I' },
   { arquivo: 'src/components/configuracoes/ApuracaoRegimeTributario.tsx', constante: 'SIMPLES_FAIXAS' },
-  { arquivo: 'src/components/precificacao/CalculadoraTributaria.tsx', constante: 'SIMPLES_FAIXAS' },
   { arquivo: 'src/components/contratos/ContratoCustos.tsx', constante: 'SIMPLES_FAIXAS' },
   { arquivo: 'src/components/proposta/SimplesNacionalCalculadora.tsx', constante: 'FAIXAS_ANEXO_I' },
 ];

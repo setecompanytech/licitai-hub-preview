@@ -11,10 +11,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import {
   DollarSign, Search, ShoppingCart, TrendingUp, TrendingDown,
-  ExternalLink, RefreshCw, BarChart3, Package, Plus, FileText, Loader2, Bot,
+  ExternalLink, RefreshCw, Package, Plus, FileText, Loader2, Bot,
   Filter, Save, History, Trash2, Eye, CalendarIcon,
   MapPin, Globe, ChevronRight, Tag, X, Truck, CheckSquare, Square, Store, Award,
-  Building2, Upload, ShieldCheck, Sparkles, Calculator
+  Building2, Sparkles, Calculator, FileSpreadsheet, ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,7 +37,6 @@ import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnifica
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
 import PlanilhaCustosEdital, { type EstatisticasPlanilha } from '@/components/precificacao/PlanilhaCustosEdital';
-import ReextrairEditalButton from '@/components/shared/ReextrairEditalButton';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 
@@ -73,6 +72,89 @@ const fonteColors: Record<string, string> = {
 };
 
 
+/**
+ * As abas do módulo, declaradas uma vez só.
+ *
+ * Antes, o rótulo da aba vivia no `TabsTrigger`, o título da página num
+ * ternário sobre o parâmetro `?tab=` da URL, e o subtítulo noutro ternário ao
+ * lado. O efeito: quem entrava por "Edital / Itens" via o cabeçalho certo, mas
+ * quem clicava na mesma aba dentro da página continuava lendo "Precificação de
+ * Preços" — porque o ternário olhava a URL, que não muda ao clicar.
+ *
+ * Com a lista aqui, rótulo, ícone, título e subtítulo saem da mesma linha, e a
+ * aba ativa (não a URL) manda no cabeçalho.
+ *
+ * `usaLocalizacao` marca as duas únicas abas onde os filtros de região/estado/
+ * cidade significam alguma coisa. Eles ficavam sempre visíveis, inclusive nas
+ * cinco abas que os ignoram — três seletores oferecendo um recorte que não
+ * seria aplicado.
+ */
+const PLATAFORMAS = [
+  { titulo: 'Marketplaces', itens: ['Mercado Livre', 'Amazon', 'Shopee', 'AliExpress', 'Magazine Luiza', 'Americanas'] },
+  { titulo: 'Varejo & Eletrônicos', itens: ['KaBuM', 'Pichau', 'Terabyte', 'Fast Shop', 'Casas Bahia', 'Carrefour'] },
+  { titulo: 'E-commerce', itens: ['Shopify', 'VTEX', 'Nuvemshop', 'Tray', 'Loja Integrada', 'WooCommerce'] },
+  { titulo: 'Especializados', itens: ['Leroy Merlin', 'MadeiraMadeira', 'Centauro', 'Netshoes', 'Havan', 'Colombo'] },
+] as const;
+
+const ABAS = [
+  {
+    id: 'extracao-itens',
+    label: 'Itens & Planilha',
+    icone: FileText,
+    titulo: 'Itens & Planilha de Custos',
+    subtitulo: 'Itens extraídos do edital — lote, descrição, quantidade, unidade e valor — e a planilha de custos que nasce deles',
+    usaLocalizacao: false,
+  },
+  {
+    id: 'marketplaces',
+    label: 'Pesquisa de Preços',
+    icone: ShoppingCart,
+    titulo: 'Pesquisa de Preços',
+    subtitulo: 'Preços praticados no varejo e em marketplaces, para sustentar a estimativa',
+    usaLocalizacao: true,
+  },
+  {
+    id: 'govbr',
+    label: 'Painel Gov.br',
+    icone: Building2,
+    titulo: 'Painel de Preços Gov.br',
+    subtitulo: 'Preços homologados em compras públicas — a referência que o pregoeiro consulta',
+    usaLocalizacao: true,
+  },
+  {
+    id: 'cotacoes-listas',
+    label: 'Cotações & Listas',
+    icone: FileSpreadsheet,
+    titulo: 'Cotações & Listas',
+    subtitulo: 'Cotações formais de fornecedores, listas de compras e importação de planilhas',
+    usaLocalizacao: false,
+  },
+  {
+    id: 'calculadora',
+    label: 'Calculadoras',
+    icone: Calculator,
+    titulo: 'Calculadoras de Formação de Preço',
+    subtitulo: 'Produto com BDI, serviço de engenharia e serviço com mão de obra',
+    usaLocalizacao: false,
+  },
+  {
+    id: 'catalogo',
+    label: 'Catálogo',
+    icone: Package,
+    titulo: 'Catálogo de Itens Precificados',
+    subtitulo: 'O que já foi precificado, pronto para reaproveitar no próximo processo',
+    usaLocalizacao: false,
+  },
+  {
+    id: 'inteligencia',
+    label: 'Inteligência de Preços',
+    icone: Bot,
+    titulo: 'Inteligência de Preços',
+    subtitulo: 'Comparativo entre fontes e recomendações de precificação por IA',
+    usaLocalizacao: false,
+  },
+] as const;
+
 export default function Precificacao() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todos');
@@ -96,7 +178,23 @@ export default function Precificacao() {
   const [filterMarcas, setFilterMarcas] = useState<string[]>([]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const tabInicial = searchParams.get('tab') || 'marketplaces';
+  /**
+   * Onde a tela abre.
+   *
+   * O `?tab=` da URL manda sempre — é o que traz quem clicou em "Edital /
+   * Itens" no workspace. Sem ele, a entrada depende de haver processo: com
+   * processo, o trabalho começa nos itens do edital; sem processo, essa aba só
+   * teria a dizer "nenhum processo selecionado", e aí a pesquisa avulsa de
+   * preços é a porta útil. `processoId` vem do `?lid=` da URL, então já está
+   * resolvido no primeiro render — dá para decidir sem piscar a tela.
+   */
+  const tabInicial = ABAS.some((a) => a.id === searchParams.get('tab'))
+    ? (searchParams.get('tab') as string)
+    : searchParams.get('lid')
+      ? 'extracao-itens'
+      : 'marketplaces';
+  const [abaAtiva, setAbaAtiva] = useState(tabInicial);
+  const AbaAtual = ABAS.find((a) => a.id === abaAtiva) ?? ABAS[0];
   const { addItem, hasPending, pendingItems } = usePropostaCart();
   const abortRef = useRef(false);
   const { user } = useAuth();
@@ -448,30 +546,19 @@ export default function Precificacao() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              {tabInicial === 'extracao-itens'
-                ? <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-                : <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />}
-              {tabInicial === 'extracao-itens' ? 'Itens do Edital' : 'Precificação de Preços'}
+              <AbaAtual.icone className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
+              {AbaAtual.titulo}
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              {tabInicial === 'extracao-itens'
-                ? 'Itens extraídos do edital — lote, descrição, quantidade, unidade e valor'
-                : 'Pesquisa integrada com Mercado Livre, Google Shopping, Painel de Preços Gov.br e cotações de fornecedores'}
-            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{AbaAtual.subtitulo}</p>
           </div>
-          {tabInicial !== 'extracao-itens' && (
-            <div className="flex gap-2 self-start sm:self-auto flex-shrink-0">
-              <Button variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-1" /> Atualizar Preços
-              </Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">
-                <BarChart3 className="w-4 h-4 mr-1" /> Gerar Relatório
-              </Button>
-            </div>
-          )}
         </div>
 
-        {/* Stats */}
+        {/* Os quatro cartões só existem quando há o que contar.
+            Vazios eles liam "0 / 0 / — / 09:56" — três nadas e um relógio. E o
+            relógio era o pior: mostrava a hora de uma cotação que nunca houve,
+            dando ao usuário a impressão de que o sistema acabara de atualizar
+            preços. Os números nascem da planilha, então acompanham a aba dela. */}
+        {abaAtiva === 'extracao-itens' && itensNaPlanilha > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             {
@@ -509,6 +596,7 @@ export default function Precificacao() {
             </div>
           ))}
         </div>
+        )}
 
 
         {/* ML-style Category Breadcrumb */}
@@ -525,7 +613,8 @@ export default function Precificacao() {
           </div>
         )}
 
-        {/* Geographic Filters */}
+        {/* Localização: só nas abas que de fato recortam por ela */}
+        {AbaAtual.usaLocalizacao && (
         <div className="flex gap-3 items-center flex-wrap">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="w-4 h-4" />
@@ -571,72 +660,39 @@ export default function Precificacao() {
             </Button>
           )}
         </div>
+        )}
 
         {/* Source Tabs */}
-        <Tabs defaultValue={tabInicial} className="space-y-4">
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <TabsList className="bg-muted/50 flex-wrap h-auto">
-            <TabsTrigger value="marketplaces" className="gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5" /> Pesquisa de Preços
-            </TabsTrigger>
-            <TabsTrigger value="govbr" className="gap-1.5">
-              <Building2 className="w-3.5 h-3.5" /> Painel Gov.br
-            </TabsTrigger>
-            <TabsTrigger value="cotacoes-listas" className="gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Cotações & Listas
-            </TabsTrigger>
-            <TabsTrigger value="calculadora" className="gap-1.5">
-              <Calculator className="w-3.5 h-3.5" /> Calculadoras
-            </TabsTrigger>
-            <TabsTrigger value="catalogo" className="gap-1.5">
-              <Package className="w-3.5 h-3.5" /> Catálogo
-            </TabsTrigger>
-            <TabsTrigger value="inteligencia" className="gap-1.5">
-              <Bot className="w-3.5 h-3.5" /> Inteligência de Preços
-            </TabsTrigger>
-            <TabsTrigger value="extracao-itens" className="gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Extração de Itens
-            </TabsTrigger>
+            {ABAS.map((aba) => (
+              <TabsTrigger key={aba.id} value={aba.id} className="gap-1.5">
+                <aba.icone className="w-3.5 h-3.5" /> {aba.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="marketplaces" className="space-y-4">
-        {/* Integrated Platforms Banner */}
+        {/* As trinta marcas viravam um mural: quatro cartões, trinta etiquetas e
+            um selo de conformidade ocupando a primeira tela inteira, todo dia,
+            para dizer algo que só se lê uma vez. Vira uma linha; quem quiser a
+            lista abre. */}
         {!aiParsedData && !isSearchingAI && !showHistory && (
-          <div className="bg-muted/40 border border-border/50 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Globe className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">Plataformas e Marketplaces Integrados</h3>
-              <Badge variant="outline" className="text-xs ml-auto">+30 fontes</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Pesquisa em tempo real nos principais marketplaces e plataformas de e-commerce do Brasil.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { title: 'Marketplaces', items: ['Mercado Livre', 'Amazon', 'Shopee', 'AliExpress', 'Magazine Luiza', 'Americanas'], icon: ShoppingCart },
-                { title: 'Varejo & Eletrônicos', items: ['KaBuM', 'Pichau', 'Terabyte', 'Fast Shop', 'Casas Bahia', 'Carrefour'], icon: Store },
-                { title: 'E-commerce Platforms', items: ['Shopify', 'VTEX', 'Nuvemshop', 'Tray', 'Loja Integrada', 'WooCommerce'], icon: Globe },
-                { title: 'Especializados', items: ['Leroy Merlin', 'MadeiraMadeira', 'Centauro', 'Netshoes', 'Havan', 'Colombo'], icon: Package },
-              ].map((group) => (
-                <div key={group.title} className="bg-card/80 rounded-lg border border-border/30 p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <group.icon className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold text-foreground">{group.title}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {group.items.map((item) => (
-                      <Badge key={item} variant="secondary" className="text-xs px-1.5 py-0.5 font-normal">
-                        {item}
-                      </Badge>
-                    ))}
-                  </div>
+          <details className="group rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground">
+              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Pesquisa em tempo real em <strong className="font-semibold text-foreground">+30 marketplaces e varejistas</strong></span>
+              <ChevronDown className="w-3.5 h-3.5 ml-auto transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 border-t border-border/50 pt-3">
+              {PLATAFORMAS.map((grupo) => (
+                <div key={grupo.titulo}>
+                  <p className="text-[11px] font-semibold text-foreground mb-0.5">{grupo.titulo}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{grupo.itens.join(' · ')}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="w-3.5 h-3.5 text-success" />
-              <span>Preços reais extraídos via scraping • Cadastro unificado • Estoque sincronizado • Conformidade Lei 14.133/2021</span>
-            </div>
-          </div>
+          </details>
         )}
 
         {/* Simple Search */}
@@ -672,32 +728,6 @@ export default function Precificacao() {
           </Button>
         </div>
 
-        {/* Planilha de Custos — Extração por IA */}
-        <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
-            <Badge variant="outline" className="text-xs ml-auto">Upload + Extração + Cotação</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Envie o Edital, Termo de Referência ou Anexo e a IA extrairá automaticamente todos os itens em uma planilha editável. Use "Cotar Todos" para preencher valores automaticamente.
-          </p>
-          {processoId && itensNaPlanilha === 0 && (
-            <div className="rounded-lg border border-dashed border-border bg-muted/50 p-3 flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-xs">
-                <p className="font-medium">Sem download/upload manual</p>
-                <p className="text-muted-foreground">Lemos o edital direto da fonte (PNCP/portal) e importamos os itens automaticamente.</p>
-              </div>
-              <ReextrairEditalButton licitacaoId={processoId} />
-            </div>
-          )}
-          <PlanilhaCustosEdital
-            onItensStatus={setStatsPlanilha}
-            licitacaoId={processoId}
-            licitacaoNumero={processoMeta.numero}
-            licitacaoOrgao={processoMeta.orgao}
-          />
-        </div>
 
         {/* Saved Searches History */}
         {showHistory && (
@@ -1148,10 +1178,35 @@ export default function Precificacao() {
             </div>
           </TabsContent>
 
-          <TabsContent value="extracao-itens">
+          {/* Itens & Planilha: uma aba só para `licitacao_itens`.
+              A planilha morava dentro de "Pesquisa de Preços" e lia a MESMA
+              tabela que o visualizador de itens desta aba — duas telas, dois
+              formatos, um dado só. Quem editava numa não via a outra mudar. */}
+          <TabsContent value="extracao-itens" className="space-y-4">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <EditalItensViewer licitacaoId={processoId ?? null} />
             </div>
+          {/* Planilha de Custos — Extração por IA */}
+          <div className="bg-card border border-border/50 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Planilha de Custos — Extração por IA</h3>
+              <Badge variant="outline" className="text-xs ml-auto">Upload + Extração + Cotação</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Preencha os custos e use "Cotar Todos" para buscar valores automaticamente nas fontes de pesquisa.
+            </p>
+            {/* O convite a extrair saía daqui e do vazio do EditalItensViewer logo
+                acima — dois botões "extrair automaticamente" empilhados na mesma
+                tela, disputando o mesmo clique. Fica o de cima, que é quem manda
+                na lista de itens. */}
+            <PlanilhaCustosEdital
+              onItensStatus={setStatsPlanilha}
+              licitacaoId={processoId}
+              licitacaoNumero={processoMeta.numero}
+              licitacaoOrgao={processoMeta.orgao}
+            />
+          </div>
           </TabsContent>
         </Tabs>
       </div>
