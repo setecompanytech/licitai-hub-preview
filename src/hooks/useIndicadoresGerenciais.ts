@@ -70,6 +70,32 @@ export function useIndicadoresGerenciais(meses = 12) {
 
   useEffect(() => { void carregar(); }, [carregar]);
 
+  /**
+   * A versão em vigor — a última adotada. É ela que o comercial deve usar:
+   * o cálculo do momento muda a cada conciliação, e preço não pode oscilar
+   * conforme a hora em que a proposta foi montada.
+   */
+  const [adotado, setAdotado] = useState<{
+    pct_despesa_administrativa: number | null;
+    pct_despesa_financeira: number | null;
+    adotado_em: string;
+    meses: number;
+  } | null>(null);
+
+  const carregarAdotado = useCallback(async () => {
+    if (!empresaAtiva?.id) { setAdotado(null); return; }
+    const { data } = await supabase
+      .from('financeiro_indicadores_adotados' as never)
+      .select('pct_despesa_administrativa, pct_despesa_financeira, adotado_em, meses')
+      .eq('empresa_id', empresaAtiva.id)
+      .order('adotado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setAdotado((data as never) ?? null);
+  }, [empresaAtiva?.id]);
+
+  useEffect(() => { void carregarAdotado(); }, [carregarAdotado]);
+
   /** Congela a versão usada para precificar — com data, autor e o retrato. */
   const adotar = useCallback(async (observacao?: string) => {
     if (!empresaAtiva?.id || !indicadores) return false;
@@ -83,8 +109,9 @@ export function useIndicadoresGerenciais(meses = 12) {
       indicadores: indicadores as unknown as Record<string, unknown>,
       observacao: observacao ?? null,
     } as never);
+    if (!error) await carregarAdotado();
     return !error;
-  }, [empresaAtiva?.id, user?.id, indicadores]);
+  }, [empresaAtiva?.id, user?.id, indicadores, carregarAdotado]);
 
-  return { indicadores, carregando, erro, recarregar: carregar, adotar };
+  return { indicadores, adotado, carregando, erro, recarregar: carregar, adotar };
 }

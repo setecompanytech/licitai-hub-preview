@@ -290,7 +290,7 @@ export default function CalculadoraUnificada({
   // Auto-fill RBT12 from faturamento_mensal (Configurações → Regime Tributário)
   const [rbt12Auto, setRbt12Auto] = useState<number | null>(null);
   // A ponte com o Financeiro (ver useIndicadoresGerenciais).
-  const { indicadores } = useIndicadoresGerenciais(12);
+  const { indicadores, adotado } = useIndicadoresGerenciais(12);
   useEffect(() => {
     if (!empresaAtiva?.id) return;
     supabase
@@ -1027,7 +1027,33 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
                       comercial, e um certame pode justificar apertar a
                       estrutura; o que não pode é o número ser inventado por
                       falta de referência. */}
-                  {indicadores?.pct_despesa_administrativa != null && (
+                  {/* A versão ADOTADA manda sobre a apuração do momento: preço
+                      não pode oscilar conforme a hora em que a proposta foi
+                      montada. O apurado só aparece como referência, e quando
+                      diverge da adotada, a tela diz — é o sinal de revisar. */}
+                  {adotado?.pct_despesa_administrativa != null ? (
+                    <p className="text-xs mt-1 flex items-start gap-1">
+                      <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        Em vigor:{' '}
+                        <button
+                          type="button"
+                          onClick={() => setDespesasAdmin(String(adotado.pct_despesa_administrativa))}
+                          className="font-semibold text-accent hover:underline"
+                        >
+                          {adotado.pct_despesa_administrativa.toLocaleString('pt-BR')}%
+                        </button>{' '}
+                        (adotado em {new Date(adotado.adotado_em).toLocaleDateString('pt-BR')}, base de {adotado.meses} meses).
+                        {indicadores?.pct_despesa_administrativa != null
+                          && Math.abs(indicadores.pct_despesa_administrativa - adotado.pct_despesa_administrativa) >= 0.5 && (
+                          <span className="text-warning">
+                            {' '}O Financeiro apura hoje {indicadores.pct_despesa_administrativa.toLocaleString('pt-BR')}% —
+                            revise em Configurações → Regime Tributário.
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  ) : indicadores?.pct_despesa_administrativa != null && (
                     <p className="text-xs mt-1 flex items-start gap-1">
                       <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-muted-foreground" />
                       <span className="text-muted-foreground">

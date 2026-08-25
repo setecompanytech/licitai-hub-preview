@@ -24,6 +24,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import ExportarDados from '@/components/export/ExportarDados';
 import BackupAgendado from '@/components/configuracoes/BackupAgendado';
 import ApuracaoRegimeTributario from '@/components/configuracoes/ApuracaoRegimeTributario';
+import IndicadoresGerenciais from '@/components/configuracoes/IndicadoresGerenciais';
 import { UFS_BRASIL, normalizeUfs } from '@/constants/ufsBrasil';
 
 
@@ -744,6 +745,10 @@ export default function Configuracoes() {
           {/* ── Tab: Regime Tributário ── */}
           <TabsContent value="regime" className="space-y-6">
             <ApuracaoRegimeTributario />
+            {/* Mora aqui porque é a mesma pergunta: qual é a base de cálculo
+                que o comercial usa. A apuração dá os tributos; os indicadores
+                dão o custo da estrutura. */}
+            <IndicadoresGerenciais />
           </TabsContent>
 
           {/* ── Tab: Segurança ── */}
