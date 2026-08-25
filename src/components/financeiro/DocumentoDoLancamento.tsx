@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Paperclip, Loader2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Paperclip, Loader2, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useDocumentoFiscal } from '@/hooks/useDocumentoFiscal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 /**
  * O clipe que abre o documento original do lançamento.
@@ -46,13 +47,107 @@ function useDocumentosPorLancamento() {
   });
 }
 
-export default function DocumentoDoLancamento({ lancamentoId }: { lancamentoId: string }) {
+type Props = {
+  lancamentoId: string;
+  /** Do lançamento, para enriquecer o registro do documento. Opcionais. */
+  tipoDocumento?: string | null;
+  numeroDocumento?: string | null;
+  dataEmissao?: string | null;
+  valorTotal?: number | null;
+  /** A nota EXIGE documento? NF-e e NFS-e sim; tarifa bancária não. */
+  exigeDocumento?: boolean;
+};
+
+export default function DocumentoDoLancamento({
+  lancamentoId, tipoDocumento, numeroDocumento, dataEmissao, valorTotal, exigeDocumento,
+}: Props) {
   const { data: mapa } = useDocumentosPorLancamento();
-  const { abrirArquivo } = useDocumentoFiscal();
+  const { abrirArquivo, guardarArquivo } = useDocumentoFiscal();
   const [abrindo, setAbrindo] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const entrada = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
 
   const doc = mapa?.[lancamentoId];
-  if (!doc) return null;
+
+  /**
+   * Anexar a um lançamento que JÁ existe.
+   *
+   * Sem isto, a conferência apontaria "nota sem documento" para um lançamento
+   * que ninguém consegue corrigir: o único caminho que guardava arquivo era o
+   * de CRIAR lançamento, e reenviar o PDF por lá geraria um segundo lançamento
+   * do mesmo valor — pior que o problema original.
+   *
+   * Aviso que aponta para porta fechada vira ruído em duas semanas: a pessoa
+   * aprende que aquilo não tem saída e para de ler o painel inteiro.
+   */
+  const anexar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Arquivo acima de 15 MB.');
+      return;
+    }
+    setEnviando(true);
+    const ehXml = /\.xml$/i.test(file.name);
+    const salvo = await guardarArquivo(file, {
+      tipo: tipoDocumento ?? 'outro',
+      numero: numeroDocumento ?? null,
+      data_emissao: dataEmissao ?? null,
+      valor_total: valorTotal ?? 0,
+      lancamento_id: lancamentoId,
+      arquivo_xml: ehXml ? await file.text().catch(() => null) : null,
+    });
+    setEnviando(false);
+    if (!salvo) {
+      toast.error('Não foi possível guardar o documento.', {
+        description: 'O lançamento não foi alterado. Tente de novo.',
+      });
+      return;
+    }
+    toast.success('Documento guardado e vinculado ao lançamento.');
+    void qc.invalidateQueries({ queryKey: ['fin-documentos-por-lancamento'] });
+    void qc.invalidateQueries({ queryKey: ['fin-conferencia'] });
+  };
+
+  // Sem documento: oferece anexar — em destaque quando a nota exige.
+  if (!doc) {
+    return (
+      <>
+        <input ref={entrada} type="file" className="hidden" onChange={anexar}
+          accept=".pdf,.xml,.jpg,.jpeg,.png" />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => entrada.current?.click()}
+                disabled={enviando}
+                className={cn(
+                  'transition-colors',
+                  exigeDocumento
+                    ? 'text-warning hover:text-warning/80'
+                    : 'text-muted-foreground/40 hover:text-muted-foreground',
+                )}
+                aria-label="Anexar documento a este lançamento"
+              >
+                {enviando
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Upload className="w-3.5 h-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p className="text-xs">
+                {exigeDocumento
+                  ? 'Nota fiscal sem o documento guardado — anexar'
+                  : 'Anexar documento'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </>
+    );
+  }
 
   const abrir = async () => {
     setAbrindo(true);

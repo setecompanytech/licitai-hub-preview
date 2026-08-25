@@ -350,7 +350,17 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           {/* O documento que originou o lançamento, ao lado dele.
                               Pasta de arquivos que não aponta para os lançamentos
                               é arquivo morto: existe, e ninguém abre. */}
-                          <DocumentoDoLancamento lancamentoId={l.id} />
+                          <DocumentoDoLancamento
+                            lancamentoId={l.id}
+                            tipoDocumento={l.tipo_documento}
+                            numeroDocumento={l.numero_documento}
+                            dataEmissao={l.data_emissao}
+                            valorTotal={Number(l.valor) || 0}
+                            // NF-e e NFS-e exigem o arquivo: o XML É o documento
+                            // fiscal e o prazo de guarda é de cinco anos. Tarifa
+                            // bancária não exige nada.
+                            exigeDocumento={["nfe", "nfse", "nfce"].includes(String(l.tipo_documento ?? ""))}
+                          />
                         </div>
                         {l.categoria?.nome && (
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
