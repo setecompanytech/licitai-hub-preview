@@ -24,6 +24,7 @@ interface Fornecedor {
   frete: string;
   emEstoque: boolean;
   avaliacao: number;         // 0-5
+  url?: string;
   melhorPreco?: boolean;
   maior_margem?: boolean;
 }
@@ -78,7 +79,8 @@ Quando o usuário descrever um item de edital:
       "pagamento": "<ex: 30/60 dias>",
       "frete": "<ex: Incluso ou + R$ XX,00>",
       "emEstoque": <true|false>,
-      "avaliacao": <3.5-5.0>
+      "avaliacao": <3.5-5.0>,
+      "url": "<URL real do produto ou da página do fornecedor — Mercado Livre, Amazon, site próprio, etc.>"
     }
   ]
 }
@@ -166,6 +168,7 @@ function TabelaCotacaoUI({
               <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Total</th>
               <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Margem</th>
               <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Condições</th>
+              <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -247,6 +250,22 @@ function TabelaCotacaoUI({
                         {f.emEstoque ? "Em estoque" : "Sob encomenda"}
                       </span>
                     </div>
+                  </td>
+
+                  {/* link */}
+                  <td className="px-3 py-3">
+                    {f.url ? (
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Ver produto"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    ) : null}
                   </td>
                 </tr>
               );
