@@ -25,6 +25,7 @@ import EditalOriginalCard from '@/components/workspace/EditalOriginalCard';
 import EditalViewer from '@/components/workspace/EditalViewer';
 import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { exportarPastaZip } from '@/components/workspace/exportarPasta';
+import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
@@ -674,7 +675,19 @@ export default function ProcessoWorkspace() {
           </TabsContent>
 
           {/* Precificação */}
-          <TabsContent value="precificacao" className="space-y-4">
+          <TabsContent value="precificacao">
+            <Tabs defaultValue="prec-historico" className="space-y-4">
+              <TabsList className="h-auto">
+                <TabsTrigger value="prec-historico" className="gap-1.5">
+                  <Calculator className="w-3.5 h-3.5" /> Precificação
+                </TabsTrigger>
+                <TabsTrigger value="prec-aurelia" className="gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Nova Precificação
+                </TabsTrigger>
+              </TabsList>
+
+              {/* sub-aba: conteúdo original */}
+              <TabsContent value="prec-historico" className="space-y-4">
             {/* Fase 2: precificação in-context — os itens do edital ganham
                 preço aqui e vão para o catálogo, de onde a Proposta importa. */}
             <ItensEditalPrecificacao
@@ -792,6 +805,15 @@ export default function ProcessoWorkspace() {
                 )}
               </>
             )}
+              </TabsContent>
+
+              {/* sub-aba: AURÉLIA conversacional */}
+              <TabsContent value="prec-aurelia">
+                <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
+                  <AureliaPrecificacaoChat />
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Proposta — Fase 2: trabalhada dentro do processo */}
