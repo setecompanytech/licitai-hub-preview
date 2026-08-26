@@ -2,20 +2,20 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { streamAIChat, type ChatMessage } from "@/lib/ai-stream";
+import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import {
-  Send, Sparkles, ChevronDown, ChevronUp, Star, ExternalLink,
-  ShoppingCart, Check, ArrowDownUp, Package2, Truck, CreditCard,
+  Send, Sparkles, ExternalLink, ShoppingCart, Check,
+  Package2, Truck, CreditCard, Loader2, Search,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Fornecedor {
   id: string;
-  nome: string;
-  cnpj: string;
-  modelo: string;
-  aderencia: number;         // 0-100
+  nome: string;           // seller nickname
+  modelo: string;         // product title
+  aderencia: number;
   valorUnit: number;
   qtd: number;
   margem: number;
@@ -23,8 +23,8 @@ interface Fornecedor {
   pagamento: string;
   frete: string;
   emEstoque: boolean;
-  avaliacao: number;         // 0-5
-  url?: string;
+  avaliacao: number;
+  url: string;
   melhorPreco?: boolean;
   maior_margem?: boolean;
 }
@@ -39,6 +39,7 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
   tabela?: TabelaCotacao;
+  buscando?: boolean;
 }
 
 type Ordem = "preco" | "margem" | "avaliacao";
@@ -48,68 +49,82 @@ type Ordem = "preco" | "margem" | "avaliacao";
 const fmtBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const stars = (r: number) => {
-  const full = Math.round(r);
-  return "★".repeat(full) + "☆".repeat(5 - full);
-};
+const stars = (r: number) => "★".repeat(Math.round(r)) + "☆".repeat(5 - Math.round(r));
 
-const SYSTEM_PROMPT = `Você é AURÉLIA, especialista em precificação de licitações públicas da PRAEFECTUS.
-
-Quando o usuário descrever um item de edital:
-1. Se não informou quantidade, pergunte.
-2. Quando tiver item + quantidade, responda EXATAMENTE no formato abaixo (sem mais texto depois do JSON):
-
-<texto natural curto confirmando que encontrou cotações>
-
-\`\`\`json-cotacao
-{
-  "item": "<nome curto do item>",
-  "qtd": <número>,
-  "fornecedores": [
-    {
-      "id": "f1",
-      "nome": "<nome do fornecedor>",
-      "cnpj": "<CNPJ formatado>",
-      "modelo": "<descrição técnica do modelo/especificação>",
-      "aderencia": <0-100>,
-      "valorUnit": <valor numérico>,
-      "qtd": <quantidade>,
-      "margem": <% margem inteiro>,
-      "prazoEntrega": "<ex: 5 dias úteis>",
-      "pagamento": "<ex: 30/60 dias>",
-      "frete": "<ex: Incluso ou + R$ XX,00>",
-      "emEstoque": <true|false>,
-      "avaliacao": <3.5-5.0>,
-      "url": "<URL real do produto ou da página do fornecedor — Mercado Livre, Amazon, site próprio, etc.>"
-    }
-  ]
-}
-\`\`\`
-
-Gere EXATAMENTE 3 fornecedores realistas para licitação, com valores coerentes para o mercado brasileiro. O menor preço marque melhorPreco:true. Valores devem ser competitivos e reais.
-
-Para outras perguntas, responda normalmente sem o bloco JSON.`;
-
-// ─── Parsing do JSON-cotacao ──────────────────────────────────────────────────
-
-function parseTabela(content: string): { texto: string; tabela?: TabelaCotacao } {
-  const m = content.match(/```json-cotacao\s*([\s\S]*?)```/);
-  if (!m) return { texto: content };
-  try {
-    const data = JSON.parse(m[1].trim()) as TabelaCotacao;
-    // decora melhor preço e maior margem
-    const sorted = [...data.fornecedores].sort((a, b) => a.valorUnit - b.valorUnit);
-    sorted[0].melhorPreco = true;
-    const sortedM = [...data.fornecedores].sort((a, b) => b.margem - a.margem);
-    sortedM[0].maior_margem = true;
-    const texto = content.replace(/```json-cotacao[\s\S]*?```/, "").trim();
-    return { texto, tabela: data };
-  } catch {
-    return { texto: content };
-  }
+// Margem simulada baseada em posição de mercado (menor preço = menor margem)
+function calcMargem(preco: number, todos: number[]): number {
+  const min = Math.min(...todos);
+  const max = Math.max(...todos);
+  if (max === min) return 15;
+  const pos = (preco - min) / (max - min); // 0=mais barato, 1=mais caro
+  return Math.round(8 + pos * 22);         // 8% a 30%
 }
 
-// ─── Componente da tabela ─────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `Você é AURÉLIA, especialista em precificação de licitações da PRAEFECTUS.
+
+Quando o usuário descrever um item:
+1. Se não informou quantidade, pergunte de forma breve.
+2. Quando tiver item + quantidade, responda com uma linha de confirmação SEGUIDA do marcador exato abaixo na última linha — sem nada após ele:
+
+[BUSCAR: "<termo curto para busca no Mercado Livre>" QTD: <número>]
+
+Exemplo:
+Certo! Buscando cotações para 10 unidades de papel A4 resma...
+
+[BUSCAR: "papel A4 resma 500 folhas" QTD: 10]
+
+REGRAS:
+- O termo de busca deve ser conciso, como um comprador pesquisaria no ML.
+- Não gere tabelas, preços ou dados de fornecedores — os dados virão da API real.
+- Para outras dúvidas, responda normalmente sem o marcador.`;
+
+// ─── Parser do marcador ───────────────────────────────────────────────────────
+
+function parseBuscar(content: string): { termo: string; qtd: number } | null {
+  const m = content.match(/\[BUSCAR:\s*"([^"]+)"\s+QTD:\s*(\d+)\]/i);
+  if (!m) return null;
+  return { termo: m[1].trim(), qtd: parseInt(m[2], 10) };
+}
+
+function stripMarcador(content: string): string {
+  return content.replace(/\[BUSCAR:[^\]]+\]/gi, "").trim();
+}
+
+// ─── Busca real no Mercado Livre ──────────────────────────────────────────────
+
+async function buscarML(termo: string, qtd: number): Promise<Fornecedor[]> {
+  const { data, error } = await supabase.functions.invoke("consulta-mercadolivre", {
+    body: { termo, limite: 12, condicao: "novo" },
+  });
+
+  if (error || !data?.produtos) return [];
+
+  const produtos: any[] = data.produtos;
+  const precos = produtos.map((p: any) => p.preco as number);
+
+  return produtos.slice(0, 6).map((p: any, i: number): Fornecedor => {
+    const margem = calcMargem(p.preco, precos);
+    return {
+      id: p.id || String(i),
+      nome: p.vendedor?.nome || "Vendedor",
+      modelo: p.titulo,
+      aderencia: Math.max(60, 98 - i * 5),
+      valorUnit: p.preco,
+      qtd,
+      margem,
+      prazoEntrega: p.frete_gratis ? "Envio rápido" : "5–12 dias úteis",
+      pagamento: p.parcelas
+        ? `${p.parcelas.quantidade}x de ${fmtBRL(p.parcelas.amount)}`
+        : "À vista",
+      frete: p.frete_gratis ? "Grátis" : "A calcular",
+      emEstoque: (p.disponivel ?? 1) > 0,
+      avaliacao: p.nota_avaliacao ?? (p.vendedor?.estrelas ?? 4),
+      url: p.url,
+    };
+  });
+}
+
+// ─── Tabela de cotações ───────────────────────────────────────────────────────
 
 function TabelaCotacaoUI({
   tabela,
@@ -130,12 +145,11 @@ function TabelaCotacaoUI({
 
   return (
     <div className="mt-3 rounded-xl border border-border overflow-hidden bg-card shadow-sm">
-      {/* cabeçalho */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30 flex-wrap gap-2">
         <p className="text-xs font-semibold text-foreground">
-          Cotações encontradas
+          Cotações do Mercado Livre
           <span className="font-normal text-muted-foreground ml-1">
-            · {tabela.fornecedores.length} fornecedores
+            · {tabela.fornecedores.length} resultados · {tabela.item}
           </span>
         </p>
         <div className="flex gap-1.5">
@@ -156,14 +170,13 @@ function TabelaCotacaoUI({
         </div>
       </div>
 
-      {/* tabela */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs min-w-[860px]">
+        <table className="w-full text-xs min-w-[780px]">
           <thead>
             <tr className="border-b border-border bg-muted/20">
               <th className="w-8 px-3 py-2.5" />
-              <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Fornecedor</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Especificação</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Vendedor</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Produto</th>
               <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Valor unit.</th>
               <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Total</th>
               <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Margem</th>
@@ -172,9 +185,10 @@ function TabelaCotacaoUI({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {sorted.map((f) => {
+            {sorted.map((f, idx) => {
               const sel = selection.has(f.id);
               const total = f.valorUnit * f.qtd;
+              const isCheapest = idx === 0 && ordem === "preco";
               return (
                 <tr
                   key={f.id}
@@ -184,65 +198,52 @@ function TabelaCotacaoUI({
                   )}
                   onClick={() => onToggle(f)}
                 >
-                  {/* checkbox */}
                   <td className="px-3 py-3">
-                    <div
-                      className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                        sel ? "bg-primary border-primary" : "border-border"
-                      )}
-                    >
+                    <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-colors", sel ? "bg-primary border-primary" : "border-border")}>
                       {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                     </div>
                   </td>
 
-                  {/* fornecedor */}
                   <td className="px-3 py-3">
                     <div className="font-semibold text-foreground flex items-center gap-1.5">
-                      <span
-                        className="w-6 h-6 rounded-md bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground flex-shrink-0"
-                      >
+                      <span className="w-6 h-6 rounded-md bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground flex-shrink-0">
                         {f.nome.slice(0, 2).toUpperCase()}
                       </span>
-                      {f.nome}
+                      <span className="max-w-[110px] truncate">{f.nome}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{f.cnpj}</div>
-                    <div className="text-[10px] text-amber-500 mt-0.5">{stars(f.avaliacao)} {f.avaliacao.toFixed(1)}</div>
+                    {f.avaliacao > 0 && (
+                      <div className="text-[10px] text-amber-500 mt-0.5">{stars(f.avaliacao)} {f.avaliacao.toFixed(1)}</div>
+                    )}
                   </td>
 
-                  {/* especificação */}
                   <td className="px-3 py-3">
-                    <p className="text-foreground leading-relaxed max-w-[220px]">{f.modelo}</p>
-                    <span className="inline-block mt-1.5 text-[10px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                    <p className="text-foreground leading-relaxed max-w-[260px] line-clamp-2">{f.modelo}</p>
+                    <span className="inline-block mt-1 text-[10px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                       {f.aderencia}% aderência
                     </span>
-                    {f.melhorPreco && (
-                      <span className="inline-block ml-1.5 mt-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full">
-                        🏅 Melhor preço
+                    {isCheapest && (
+                      <span className="inline-block ml-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        🏅 Menor preço
                       </span>
                     )}
                   </td>
 
-                  {/* valor unit */}
                   <td className="px-3 py-3 text-right font-mono tabular-nums font-semibold text-foreground whitespace-nowrap">
                     {fmtBRL(f.valorUnit)}
                     <div className="text-[10px] font-normal text-muted-foreground">{f.qtd} un.</div>
                   </td>
 
-                  {/* total */}
                   <td className="px-3 py-3 text-right font-mono tabular-nums font-bold text-foreground whitespace-nowrap">
                     {fmtBRL(total)}
                   </td>
 
-                  {/* margem */}
                   <td className="px-3 py-3 text-center">
                     <span className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                       {f.margem}%
                     </span>
                   </td>
 
-                  {/* condições */}
-                  <td className="px-3 py-3 text-muted-foreground leading-relaxed whitespace-nowrap">
+                  <td className="px-3 py-3 text-muted-foreground leading-relaxed whitespace-nowrap text-[11px]">
                     <div className="flex items-center gap-1.5"><Truck className="w-3 h-3" /> {f.prazoEntrega}</div>
                     <div className="flex items-center gap-1.5 mt-0.5"><CreditCard className="w-3 h-3" /> {f.pagamento}</div>
                     <div className="flex items-center gap-1.5 mt-0.5"><Package2 className="w-3 h-3" />
@@ -252,20 +253,19 @@ function TabelaCotacaoUI({
                     </div>
                   </td>
 
-                  {/* link */}
                   <td className="px-3 py-3">
-                    {f.url ? (
+                    {f.url && (
                       <a
                         href={f.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        title="Ver produto"
+                        title="Ver no Mercado Livre"
                         className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
-                    ) : null}
+                    )}
                   </td>
                 </tr>
               );
@@ -273,8 +273,9 @@ function TabelaCotacaoUI({
           </tbody>
         </table>
       </div>
-      <div className="px-4 py-2 bg-muted/20 border-t border-border text-[10.5px] text-muted-foreground">
-        Selecione as cotações para incluir na proposta comercial.
+      <div className="px-4 py-2 bg-muted/20 border-t border-border text-[10.5px] text-muted-foreground flex items-center gap-1.5">
+        <Search className="w-3 h-3" />
+        Resultados reais do Mercado Livre. Selecione para incluir na proposta.
       </div>
     </div>
   );
@@ -286,15 +287,13 @@ export default function AureliaPrecificacaoChat() {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content:
-        "Olá! Descreva o item do edital e eu busco cotações comparadas para você.\n\nPode colar a especificação técnica completa — quanto mais detalhe, mais precisa é a busca.",
+      content: "Olá! Descreva o item do edital — pode colar a especificação técnica completa — e eu busco cotações reais do mercado para você.",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selection, setSelection] = useState<Map<string, Fornecedor>>(new Map());
   const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -319,7 +318,6 @@ export default function AureliaPrecificacaoChat() {
     setInput("");
     setLoading(true);
 
-    // adapta para ChatMessage (sem campo tabela)
     const chatHistory: ChatMessage[] = updatedMsgs.map((m) => ({
       role: m.role,
       content: m.content,
@@ -333,29 +331,48 @@ export default function AureliaPrecificacaoChat() {
       context: SYSTEM_PROMPT,
       onDelta: (chunk) => {
         raw += chunk;
-        // atualiza enquanto stream vem (sem parsear tabela ainda)
+        const texto = stripMarcador(raw);
         setMessages((prev) => {
           const last = prev[prev.length - 1];
-          if (last?.role === "assistant" && last === prev.at(-1) && prev.length > updatedMsgs.length) {
-            return prev.map((m, i) =>
-              i === prev.length - 1 ? { ...m, content: raw } : m
-            );
+          if (last?.role === "assistant" && prev.length > updatedMsgs.length) {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: texto || "…" } : m);
           }
-          return [...prev, { role: "assistant", content: raw }];
+          return [...prev, { role: "assistant", content: texto || "…" }];
         });
       },
-      onDone: () => {
-        // parseia tabela ao final do stream
-        const { texto, tabela } = parseTabela(raw);
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "assistant") {
-            return prev.map((m, i) =>
-              i === prev.length - 1 ? { role: "assistant", content: texto, tabela } : m
-            );
+      onDone: async () => {
+        const sinal = parseBuscar(raw);
+        const textoLimpo = stripMarcador(raw);
+
+        if (sinal) {
+          // Atualiza mensagem com indicador de busca
+          setMessages((prev) => prev.map((m, i) =>
+            i === prev.length - 1
+              ? { role: "assistant", content: textoLimpo, buscando: true }
+              : m
+          ));
+
+          const fornecedores = await buscarML(sinal.termo, sinal.qtd);
+
+          if (fornecedores.length === 0) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: `Não encontrei resultados para "${sinal.termo}". Tente reformular a descrição do item.` },
+            ]);
+          } else {
+            setMessages((prev) => prev.map((m, i) =>
+              i === prev.length - 1
+                ? {
+                    role: "assistant",
+                    content: textoLimpo,
+                    buscando: false,
+                    tabela: { item: sinal.termo, qtd: sinal.qtd, fornecedores },
+                  }
+                : m
+            ));
           }
-          return [...prev, { role: "assistant", content: texto, tabela }];
-        });
+        }
+
         setLoading(false);
       },
       onError: (err) => {
@@ -368,41 +385,28 @@ export default function AureliaPrecificacaoChat() {
     });
   };
 
-  const totalSel = [...selection.values()].reduce(
-    (s, f) => s + f.valorUnit * f.qtd,
-    0
-  );
-  const avgMargem =
-    selection.size > 0
-      ? [...selection.values()].reduce((s, f) => s + f.margem, 0) / selection.size
-      : 0;
+  const totalSel = [...selection.values()].reduce((s, f) => s + f.valorUnit * f.qtd, 0);
+  const avgMargem = selection.size > 0
+    ? [...selection.values()].reduce((s, f) => s + f.margem, 0) / selection.size
+    : 0;
 
   return (
     <div className="flex flex-col h-full min-h-0 relative">
 
-      {/* ── Área de mensagens ── */}
+      {/* ── Mensagens ── */}
       <div
         className="flex-1 overflow-y-auto px-4 py-5 space-y-5"
         style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 1px)",
           backgroundSize: "22px 22px",
         }}
       >
         {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={cn("flex gap-3 items-start", msg.role === "user" && "flex-row-reverse")}
-          >
-            {/* avatar */}
-            <div
-              className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
-                msg.role === "assistant"
-                  ? "bg-gradient-to-br from-accent to-teal-400 shadow-md"
-                  : "bg-foreground"
-              )}
-            >
+          <div key={idx} className={cn("flex gap-3 items-start", msg.role === "user" && "flex-row-reverse")}>
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
+              msg.role === "assistant" ? "bg-gradient-to-br from-accent to-teal-400 shadow-md" : "bg-foreground"
+            )}>
               {msg.role === "assistant" ? (
                 <Sparkles className="w-4 h-4 text-white" />
               ) : (
@@ -412,28 +416,34 @@ export default function AureliaPrecificacaoChat() {
               )}
             </div>
 
-            {/* conteúdo */}
             <div className={cn("flex-1 min-w-0", msg.role === "user" && "flex flex-col items-end")}>
               {msg.role === "assistant" && (
                 <p className="text-[10.5px] font-bold text-accent mb-1.5 tracking-wider uppercase">AURÉLIA</p>
               )}
-              <div
-                className={cn(
+              {msg.content && (
+                <div className={cn(
                   "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[85%]",
                   msg.role === "assistant"
                     ? "bg-card border border-border shadow-sm rounded-tl-sm prose prose-sm dark:prose-invert max-w-none"
                     : "bg-foreground text-background rounded-tr-sm font-mono text-[12.5px] whitespace-pre-wrap"
-                )}
-              >
-                {msg.role === "assistant" ? (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                ) : (
-                  msg.content
-                )}
-              </div>
-              {/* tabela de cotações */}
+                )}>
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  ) : msg.content}
+                </div>
+              )}
+
+              {/* Indicador de busca em andamento */}
+              {msg.buscando && (
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Buscando cotações reais no Mercado Livre…
+                </div>
+              )}
+
+              {/* Tabela de resultados reais */}
               {msg.tabela && (
-                <div className="w-full max-w-[95%]">
+                <div className="w-full max-w-[96%]">
                   <TabelaCotacaoUI
                     tabela={msg.tabela}
                     selection={selection}
@@ -445,8 +455,8 @@ export default function AureliaPrecificacaoChat() {
           </div>
         ))}
 
-        {/* typing indicator */}
-        {loading && (
+        {/* Typing indicator */}
+        {loading && !messages[messages.length - 1]?.buscando && (
           <div className="flex gap-3 items-start">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-teal-400 flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-4 h-4 text-white" />
@@ -454,11 +464,7 @@ export default function AureliaPrecificacaoChat() {
             <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
               <div className="flex gap-1.5 items-center">
                 {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  />
+                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                 ))}
               </div>
             </div>
@@ -467,7 +473,7 @@ export default function AureliaPrecificacaoChat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Cart bar (aparece quando tem seleção) ── */}
+      {/* ── Cart bar ── */}
       {selection.size > 0 && (
         <div className="mx-4 mb-3 rounded-xl bg-foreground text-background px-4 py-3 flex items-center justify-between gap-4 shadow-xl flex-wrap">
           <div className="flex items-center gap-5 flex-wrap">
@@ -487,13 +493,11 @@ export default function AureliaPrecificacaoChat() {
           <Button
             className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold whitespace-nowrap"
             onClick={() => {
-              // integração com proposta: gera mensagem no chat
               const itens = [...selection.values()];
-              const msg: Msg = {
+              setMessages((prev) => [...prev, {
                 role: "assistant",
                 content: `✅ **Proposta gerada com ${itens.length} ${itens.length === 1 ? "item" : "itens"}** — valor total de **${fmtBRL(totalSel)}**.\n\nAcesse a aba **Proposta** para revisar e exportar o documento.`,
-              };
-              setMessages((prev) => [...prev, msg]);
+              }]);
               setSelection(new Map());
             }}
           >
@@ -507,7 +511,6 @@ export default function AureliaPrecificacaoChat() {
       <div className="px-4 pb-4 bg-card border-t border-border">
         <div className="flex items-end gap-2 border border-border rounded-xl px-3 py-2 focus-within:border-accent transition-colors bg-background">
           <textarea
-            ref={textareaRef}
             rows={1}
             value={input}
             onChange={(e) => {
@@ -516,12 +519,9 @@ export default function AureliaPrecificacaoChat() {
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
             }}
-            placeholder="Cole a especificação técnica do item ou envie uma mensagem para a AURÉLIA…"
+            placeholder="Cole a especificação técnica do item ou descreva o que precisa cotar…"
             className="flex-1 resize-none border-none outline-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground py-1.5 leading-relaxed max-h-[120px]"
           />
           <Button
@@ -538,7 +538,7 @@ export default function AureliaPrecificacaoChat() {
           </Button>
         </div>
         <p className="text-[10.5px] text-muted-foreground mt-1.5 ml-1">
-          Enter para enviar · Shift+Enter para quebrar linha
+          Enter para enviar · Shift+Enter para quebrar linha · Dados reais do Mercado Livre
         </p>
       </div>
     </div>
