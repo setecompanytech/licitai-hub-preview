@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { streamAIChat, type ChatMessage } from "@/lib/ai-stream";
-import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 import {
   Send, Sparkles, ExternalLink, ShoppingCart, Check,
@@ -90,36 +89,40 @@ function stripMarcador(content: string): string {
   return content.replace(/\[BUSCAR:[^\]]+\]/gi, "").trim();
 }
 
-// ─── Busca real no Mercado Livre ──────────────────────────────────────────────
+// ─── Busca real direta na API pública do Mercado Livre ───────────────────────
 
 async function buscarML(termo: string, qtd: number): Promise<Fornecedor[]> {
-  const { data, error } = await supabase.functions.invoke("consulta-mercadolivre", {
-    body: { termo, limite: 12, condicao: "novo" },
-  });
+  const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(termo)}&limit=10&condition=new`;
 
-  if (error || !data?.produtos) return [];
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) return [];
 
-  const produtos: any[] = data.produtos;
-  const precos = produtos.map((p: any) => p.preco as number);
+  const json = await res.json();
+  const results: any[] = json.results ?? [];
+  if (results.length === 0) return [];
 
-  return produtos.slice(0, 6).map((p: any, i: number): Fornecedor => {
-    const margem = calcMargem(p.preco, precos);
+  const precos = results.map((r: any) => r.price as number).filter(Boolean);
+
+  return results.slice(0, 6).map((r: any, i: number): Fornecedor => {
+    const margem = calcMargem(r.price, precos);
+    const freeShipping = r.shipping?.free_shipping ?? false;
+    const parcelas = r.installments;
     return {
-      id: p.id || String(i),
-      nome: p.vendedor?.nome || "Vendedor",
-      modelo: p.titulo,
-      aderencia: Math.max(60, 98 - i * 5),
-      valorUnit: p.preco,
+      id: r.id,
+      nome: r.seller?.nickname ?? "Vendedor",
+      modelo: r.title,
+      aderencia: Math.max(60, 98 - i * 4),
+      valorUnit: r.price,
       qtd,
       margem,
-      prazoEntrega: p.frete_gratis ? "Envio rápido" : "5–12 dias úteis",
-      pagamento: p.parcelas
-        ? `${p.parcelas.quantidade}x de ${fmtBRL(p.parcelas.amount)}`
+      prazoEntrega: freeShipping ? "Envio rápido" : "5–12 dias úteis",
+      pagamento: parcelas
+        ? `${parcelas.quantity}x de ${fmtBRL(parcelas.amount)}`
         : "À vista",
-      frete: p.frete_gratis ? "Grátis" : "A calcular",
-      emEstoque: (p.disponivel ?? 1) > 0,
-      avaliacao: p.nota_avaliacao ?? (p.vendedor?.estrelas ?? 4),
-      url: p.url,
+      frete: freeShipping ? "Grátis" : "A calcular",
+      emEstoque: (r.available_quantity ?? 1) > 0,
+      avaliacao: r.seller?.seller_reputation?.power_seller_status ? 4.5 : 4.0,
+      url: r.permalink,
     };
   });
 }
