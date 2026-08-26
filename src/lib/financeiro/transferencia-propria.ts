@@ -182,3 +182,72 @@ export function decidirAcao(
   if (pareceTransferencia(mov.descricao)) return 'criar_par';
   return 'nenhum';
 }
+
+
+// ─── Títulos que já nasceram errados ─────────────────────────────────────────
+
+/**
+ * Um título (`a_receber`/`a_pagar`) já gravado que, pelo texto, é transferência.
+ *
+ * Na ETHOS há R$ 1,86 milhão de "INT RESGATE MAPFRERFDI" lançado como conta a
+ * receber. Não é recebimento de cliente: é dinheiro da empresa voltando do CDB
+ * para a conta corrente. Inflava o "Total a receber em aberto" e, até a
+ * correção de hoje, entrava como faturamento na calculadora de margem.
+ *
+ * Mas o remédio depende de uma pergunta que só os dados respondem: **a
+ * transferência correspondente já existe?**
+ *
+ *  • Se existe, o título é DUPLICATA — a mesma operação contada duas vezes, e
+ *    o certo é remover o título, não convertê-lo. Converter criaria uma
+ *    terceira contagem.
+ *  • Se não existe, o título é a transferência MAL LANÇADA, e o certo é
+ *    convertê-lo, dando-lhe a conta de destino que falta.
+ *
+ * Confundir os dois casos dobra o erro em vez de corrigi-lo. Por isso esta
+ * função não decide sozinha pelo texto: ela procura o par antes.
+ */
+export type ClassificacaoTitulo =
+  | 'duplicata_de_transferencia'
+  | 'transferencia_mal_lancada'
+  | 'nenhum';
+
+export type TituloSuspeito = {
+  id: string;
+  conta_id: string | null;
+  /** Sempre em módulo, como o banco grava. */
+  valor: number;
+  data: string;
+  descricao?: string | null;
+  natureza?: string | null;
+};
+
+/** Uma transferência já existente, para conferir se o título é duplicata. */
+export type TransferenciaExistente = {
+  id: string;
+  conta_id: string | null;
+  conta_destino_id?: string | null;
+  valor: number;
+  data: string;
+};
+
+export function classificarTitulo(
+  titulo: TituloSuspeito,
+  transferencias: TransferenciaExistente[],
+  opcoes?: { janelaDias?: number },
+): { classificacao: ClassificacaoTitulo; par?: TransferenciaExistente } {
+  if (!pareceTransferencia(titulo.descricao)) return { classificacao: 'nenhum' };
+
+  const janela = opcoes?.janelaDias ?? 3;
+  const alvo = Math.abs(titulo.valor);
+
+  const par = transferencias.find((t) => {
+    if (Math.abs(Math.abs(t.valor) - alvo) > CENTAVO) return false;
+    if (diasEntre(titulo.data, t.data) > janela) return false;
+    // A transferência tem de tocar a conta do título — de um lado ou do outro.
+    return t.conta_id === titulo.conta_id || t.conta_destino_id === titulo.conta_id;
+  });
+
+  return par
+    ? { classificacao: 'duplicata_de_transferencia', par }
+    : { classificacao: 'transferencia_mal_lancada' };
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  pareceTransferencia, diasEntre, acharContrapartida, decidirAcao,
-  type MovimentoExtrato, type Contrapartida,
+  pareceTransferencia, diasEntre, acharContrapartida, decidirAcao, classificarTitulo,
+  type MovimentoExtrato, type Contrapartida, type TransferenciaExistente,
 } from '@/lib/financeiro/transferencia-propria';
 
 /**
@@ -166,5 +166,57 @@ describe('diasEntre', () => {
 
   it('data inválida não casa com nada', () => {
     expect(diasEntre('', '2026-06-05')).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+
+describe('título já gravado que na verdade é transferência', () => {
+  const resgate = {
+    id: 'titulo-resgate', conta_id: ITAU, valor: 507096.72,
+    data: '2026-05-12', descricao: 'INT RESGATE  MAPFRERFDI', natureza: 'receita',
+  };
+  const transferenciaCorrespondente: TransferenciaExistente = {
+    id: 'transf-existente', conta_id: APLICACAO, conta_destino_id: ITAU,
+    valor: 507096.72, data: '2026-05-12',
+  };
+
+  it('havendo a transferência, o título é DUPLICATA — remover, não converter', () => {
+    const r = classificarTitulo(resgate, [transferenciaCorrespondente]);
+    expect(r.classificacao).toBe('duplicata_de_transferencia');
+    expect(r.par?.id).toBe('transf-existente');
+  });
+
+  it('não havendo, o título É a transferência mal lançada — converter', () => {
+    const r = classificarTitulo(resgate, []);
+    expect(r.classificacao).toBe('transferencia_mal_lancada');
+    expect(r.par).toBeUndefined();
+  });
+
+  it('confundir os dois casos dobraria o erro: converter uma duplicata cria uma TERCEIRA contagem', () => {
+    // O teste existe para fixar a regra, não a implementação: enquanto houver
+    // par, a resposta nunca pode ser "converter".
+    const r = classificarTitulo(resgate, [transferenciaCorrespondente]);
+    expect(r.classificacao).not.toBe('transferencia_mal_lancada');
+  });
+
+  it('a transferência tem de tocar a conta do título', () => {
+    const emOutraConta: TransferenciaExistente = {
+      ...transferenciaCorrespondente, conta_id: BANPARA, conta_destino_id: APLICACAO,
+    };
+    expect(classificarTitulo(resgate, [emOutraConta]).classificacao).toBe('transferencia_mal_lancada');
+  });
+
+  it('valor diferente não é o par', () => {
+    const outroValor = { ...transferenciaCorrespondente, valor: 500000 };
+    expect(classificarTitulo(resgate, [outroValor]).classificacao).toBe('transferencia_mal_lancada');
+  });
+
+  it('recebimento de cliente de verdade não é tocado', () => {
+    const venda = {
+      id: 'titulo-venda', conta_id: ITAU, valor: 158000,
+      data: '2026-06-23', descricao: 'NF-e 692 CARNE MOIDA TIPO BOVINA SEDUC', natureza: 'receita',
+    };
+    expect(classificarTitulo(venda, [transferenciaCorrespondente]).classificacao).toBe('nenhum');
+    expect(classificarTitulo(venda, []).classificacao).toBe('nenhum');
   });
 });
