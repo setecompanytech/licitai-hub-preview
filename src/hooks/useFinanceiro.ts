@@ -1086,6 +1086,169 @@ export function useConciliarManual() {
   });
 }
 
+/**
+ * Casa as duas pontas de uma transferência entre contas próprias.
+ *
+ * `useConciliarManual` NÃO serve aqui, e a diferença é dinheiro. Ele grava a
+ * conciliação, marca o movimento e muda o status do lançamento — e para. O
+ * lançamento continua sendo `a_pagar`/`a_receber`, com a natureza que tinha.
+ *
+ * Casar a entrada do Itaú contra uma saída lançada como despesa no Banpará
+ * daria isto: o Banpará debita, o Itaú NÃO credita — o dinheiro some do
+ * consolidado —, e a despesa fantasma segue no DRE. Esconder a entrada sem
+ * dar destino ao valor é pior do que não casar nada.
+ *
+ * A transferência é UMA operação com duas contas. Então o lançamento vira o
+ * que ele sempre deveria ter sido: `tipo = transferencia`, `natureza =
+ * movimentacao`, `conta_id` na origem e `conta_destino_id` no destino. Assim
+ * `financeiro_recalcular_saldo_conta` debita uma e credita a outra, e nenhum
+ * relatório de resultado o enxerga.
+ *
+ * Quem é origem e quem é destino sai do SINAL do movimento, não da conta em
+ * que o lançamento estava: o extrato é quem sabe para que lado o dinheiro foi.
+ */
+export function useCasarTransferencia() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: {
+      movimento_id: string;
+      /** Conta do movimento de extrato. */
+      movimento_conta_id: string;
+      /** Positivo = entrou nesta conta; negativo = saiu dela. */
+      movimento_valor: number;
+      lancamento_id: string;
+      /** Conta em que o lançamento da outra ponta está. */
+      lancamento_conta_id: string;
+    }) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      if (input.movimento_conta_id === input.lancamento_conta_id) {
+        throw new Error("Origem e destino são a mesma conta — isso não é transferência.");
+      }
+
+      const entrouNoMovimento = input.movimento_valor >= 0;
+      const contaOrigem  = entrouNoMovimento ? input.lancamento_conta_id : input.movimento_conta_id;
+      const contaDestino = entrouNoMovimento ? input.movimento_conta_id : input.lancamento_conta_id;
+
+      const { error: errLanc } = await supabase
+        .from("financeiro_lancamentos")
+        .update({
+          tipo: "transferencia" as never,
+          natureza: "movimentacao" as never,
+          conta_id: contaOrigem,
+          conta_destino_id: contaDestino,
+          status: "conciliado" as never,
+          data_conciliado: new Date().toISOString(),
+        })
+        .eq("id", input.lancamento_id);
+      if (errLanc) throw errLanc;
+
+      const { error: errCon } = await supabase.from("financeiro_conciliacoes").insert({
+        empresa_id: empresaId,
+        extrato_movimento_id: input.movimento_id,
+        lancamento_id: input.lancamento_id,
+        score: 100,
+        metodo: "transferencia_propria",
+        motivos: { transferencia_entre_contas_proprias: true },
+      });
+      if (errCon) throw errCon;
+
+      await supabase
+        .from("financeiro_extrato_movimentos")
+        .update({ conciliado: true, lancamento_id: input.lancamento_id })
+        .eq("id", input.movimento_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      qc.invalidateQueries({ queryKey: ["fin-conferencia"] });
+      toast.success("Transferência unificada — uma operação, duas contas.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+/**
+ * Cria a transferência quando a outra ponta não existe.
+ *
+ * O extrato de uma conta mostra a saída; o da outra nunca foi importado. Sem
+ * isto, o operador só teria dois caminhos ruins: lançar como despesa (e
+ * inventar um custo) ou deixar o movimento pendente para sempre.
+ */
+export function useCriarTransferenciaDeMovimento() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+  return useMutation({
+    mutationFn: async (input: {
+      movimento_id: string;
+      movimento_conta_id: string;
+      movimento_valor: number;
+      data: string;
+      descricao: string;
+      /** A conta do outro lado, escolhida por quem concilia. */
+      contrapartida_conta_id: string;
+    }) => {
+      if (!empresaId) throw new Error("Selecione uma empresa ativa.");
+      if (input.movimento_conta_id === input.contrapartida_conta_id) {
+        throw new Error("Origem e destino são a mesma conta — isso não é transferência.");
+      }
+
+      const entrou = input.movimento_valor >= 0;
+      const contaOrigem  = entrou ? input.contrapartida_conta_id : input.movimento_conta_id;
+      const contaDestino = entrou ? input.movimento_conta_id : input.contrapartida_conta_id;
+
+      const { data: lanc, error: errLanc } = await supabase
+        .from("financeiro_lancamentos")
+        .insert({
+          empresa_id: empresaId,
+          tipo: "transferencia" as never,
+          natureza: "movimentacao" as never,
+          status: "conciliado" as never,
+          descricao: input.descricao || "Transferência entre contas próprias",
+          valor: Math.abs(input.movimento_valor),
+          data_competencia: input.data,
+          data_realizado: input.data,
+          data_conciliado: new Date().toISOString(),
+          conta_id: contaOrigem,
+          conta_destino_id: contaDestino,
+          origem: "ofx" as never,
+          origem_job: "conciliacao_transferencia_propria",
+        } as never)
+        .select("id")
+        .single();
+      if (errLanc) throw errLanc;
+
+      const lancId = (lanc as { id: string }).id;
+
+      const { error: errCon } = await supabase.from("financeiro_conciliacoes").insert({
+        empresa_id: empresaId,
+        extrato_movimento_id: input.movimento_id,
+        lancamento_id: lancId,
+        score: 100,
+        metodo: "transferencia_propria",
+        motivos: { contrapartida_criada: true },
+      });
+      if (errCon) throw errCon;
+
+      await supabase
+        .from("financeiro_extrato_movimentos")
+        .update({ conciliado: true, lancamento_id: lancId })
+        .eq("id", input.movimento_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
+      qc.invalidateQueries({ queryKey: ["fin-contas"] });
+      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
+      qc.invalidateQueries({ queryKey: ["fin-conferencia"] });
+      toast.success("Transferência criada com as duas contas.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useDesfazerConciliacao() {
   const qc = useQueryClient();
   return useMutation({

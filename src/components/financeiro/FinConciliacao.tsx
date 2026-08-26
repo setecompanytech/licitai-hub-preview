@@ -8,6 +8,8 @@ import {
   useImportarOFX,
   useConciliarAutomatico,
   useConciliarManual,
+  useCasarTransferencia,
+  useCriarTransferenciaDeMovimento,
   useDesfazerConciliacao,
   useResumoPorExtrato,
   useLancamentos,
@@ -202,6 +204,10 @@ export default function FinConciliacao() {
   const importar = useImportarOFX();
   const conciliarAuto = useConciliarAutomatico();
   const conciliarManual = useConciliarManual();
+  const casarTransferencia = useCasarTransferencia();
+  const criarTransferencia = useCriarTransferenciaDeMovimento();
+  /** Conta do outro lado escolhida por movimento, quando a ponta não existe. */
+  const [contrapartidaEscolhida, setContrapartidaEscolhida] = useState<Record<string, string>>({});
 
   /**
    * Transferência entre contas próprias, reconhecida antes de conciliar.
@@ -1516,15 +1522,18 @@ export default function FinConciliacao() {
                             <Button
                               size="sm" variant="outline"
                               className="h-7 text-xs mt-1.5 border-info/40 text-info hover:bg-info/10"
-                              disabled={conciliarManual.isPending}
+                              disabled={casarTransferencia.isPending}
                               onClick={() =>
-                                conciliarManual.mutate(
-                                  { movimento_id: m.id, lancamento_id: paresTransf[0].contrapartida.id },
-                                  { onSuccess: () => toast.success("Transferência casada — as duas pontas apontam para a mesma operação.") },
-                                )
+                                casarTransferencia.mutate({
+                                  movimento_id: m.id,
+                                  movimento_conta_id: m.conta_id,
+                                  movimento_valor: Number(m.valor),
+                                  lancamento_id: paresTransf[0].contrapartida.id,
+                                  lancamento_conta_id: paresTransf[0].contrapartida.conta_id!,
+                                })
                               }
                             >
-                              Casar com a outra ponta
+                              Unificar como transferência
                             </Button>
                           </div>
                         )}
@@ -1536,9 +1545,48 @@ export default function FinConciliacao() {
                             </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">
                               A descrição indica movimentação entre contas próprias, mas nenhuma conta
-                              da empresa registra o valor no sentido oposto. Confira se o extrato da
-                              outra conta foi importado antes de lançar como receita ou despesa.
+                              da empresa registra o valor no sentido oposto — provavelmente o extrato
+                              da outra conta ainda não foi importado.
                             </p>
+                            {/* Sem esta escolha sobrariam dois caminhos ruins:
+                                lançar como despesa (inventando um custo) ou
+                                deixar o movimento pendente para sempre. */}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <Select
+                                value={contrapartidaEscolhida[m.id] ?? ""}
+                                onValueChange={(v) =>
+                                  setContrapartidaEscolhida((c) => ({ ...c, [m.id]: v }))
+                                }
+                              >
+                                <SelectTrigger className="h-7 text-xs w-[210px]">
+                                  <SelectValue placeholder={Number(m.valor) >= 0 ? "Saiu de qual conta?" : "Entrou em qual conta?"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(contas ?? [])
+                                    .filter((c: { id: string }) => c.id !== m.conta_id)
+                                    .map((c: { id: string; nome: string }) => (
+                                      <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
+                                disabled={!contrapartidaEscolhida[m.id] || criarTransferencia.isPending}
+                                onClick={() =>
+                                  criarTransferencia.mutate({
+                                    movimento_id: m.id,
+                                    movimento_conta_id: m.conta_id,
+                                    movimento_valor: Number(m.valor),
+                                    data: m.data_movimento,
+                                    descricao: m.descricao || "Transferência entre contas próprias",
+                                    contrapartida_conta_id: contrapartidaEscolhida[m.id],
+                                  })
+                                }
+                              >
+                                Lançar a contrapartida
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>
