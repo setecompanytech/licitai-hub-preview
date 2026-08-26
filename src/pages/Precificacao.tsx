@@ -39,6 +39,7 @@ import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
 import PlanilhaCustosEdital, { type EstatisticasPlanilha } from '@/components/precificacao/PlanilhaCustosEdital';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
+import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
 
 type FontePreco = {
   fonte: string;
@@ -151,6 +152,14 @@ const ABAS = [
     icone: Bot,
     titulo: 'Inteligência de Preços',
     subtitulo: 'Comparativo entre fontes e recomendações de precificação por IA',
+    usaLocalizacao: false,
+  },
+  {
+    id: 'aurelia-cotar',
+    label: 'Nova Precificação',
+    icone: Sparkles,
+    titulo: 'AURÉLIA · Precificação Conversacional',
+    subtitulo: 'Descreva o item do edital e a AURÉLIA busca cotações comparadas em tempo real',
     usaLocalizacao: false,
   },
 ] as const;
@@ -1171,6 +1180,12 @@ export default function Precificacao() {
           <TabsContent value="inteligencia">
             <div className="bg-card rounded-xl border border-border/50 shadow-sm p-5">
               <InteligenciaUnificada />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="aurelia-cotar" className="flex-1 min-h-0">
+            <div className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 240px)', minHeight: 500 }}>
+              <AureliaPrecificacaoChat />
             </div>
           </TabsContent>
 
