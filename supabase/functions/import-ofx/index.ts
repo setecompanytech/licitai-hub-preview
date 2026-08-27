@@ -166,6 +166,25 @@ function parseOFX(content: string) {
   const startDate = parseOFXDate(leafValue(tranList, "DTSTART") ?? "");
   const endDate = parseOFXDate(leafValue(tranList, "DTEND") ?? "");
 
+  /**
+   * O saldo que o BANCO declara.
+   *
+   * Todo OFX traz <LEDGERBAL> com o saldo na data de corte. Até aqui esse
+   * campo era lido e descartado — e era a única informação do arquivo que não
+   * vinha do sistema. Sem ele, o Financeiro só conseguia conferir a si mesmo:
+   * comparava o saldo gravado com uma re-derivação pela mesma fórmula, e um
+   * erro NA fórmula ficava invisível dos dois lados.
+   *
+   * Foi assim que R$ 48.907,10 de saldo inexistente sobreviveram numa conta
+   * até alguém olhar o extrato no banco e dizer o número em voz alta.
+   */
+  const ledgerBal = findFirst(root, "LEDGERBAL");
+  const saldoBruto = leafValue(ledgerBal, "BALAMT");
+  const saldoFinal = saldoBruto !== null && saldoBruto !== undefined && saldoBruto !== ""
+    ? Number(String(saldoBruto).replace(",", "."))
+    : null;
+  const saldoFinalEm = parseOFXDate(leafValue(ledgerBal, "DTASOF") ?? "") || endDate;
+
   const trxNodes = findAll(root, "STMTTRN");
   console.log("[import-ofx] STMTTRN encontradas:", trxNodes.length);
   if (trxNodes.length > 0) {
@@ -211,7 +230,7 @@ function parseOFX(content: string) {
     throw new Error("Nenhuma transação <STMTTRN> encontrada no arquivo OFX.");
   }
 
-  return { accountId, startDate, endDate, transactions };
+  return { accountId, startDate, endDate, transactions, saldoFinal, saldoFinalEm };
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -310,6 +329,8 @@ Deno.serve(async (req) => {
         arquivo_hash,
         data_inicio: stmt.startDate || null,
         data_fim: stmt.endDate || null,
+        saldo_final: Number.isFinite(stmt.saldoFinal as number) ? stmt.saldoFinal : null,
+        saldo_final_em: stmt.saldoFinalEm || stmt.endDate || null,
         total_movimentos: stmt.transactions.length,
         status: "processando",
         importado_por: user.id,
