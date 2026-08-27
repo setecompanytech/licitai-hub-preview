@@ -122,14 +122,41 @@ Deno.serve(async (req) => {
     const { data: movimentos, error: errMov } = await qMov.limit(500);
     if (errMov) throw errMov;
 
-    // Busca lançamentos pendentes (previstos)
-    const { data: lancamentos, error: errLanc } = await supabase
+    /**
+     * Lançamentos que podem casar com um movimento.
+     *
+     * `previsto` e `realizado` são os óbvios. `conciliado` entra também — mas
+     * só quando NÃO há registro em `financeiro_conciliacoes` apontando para
+     * ele: nesse caso a marca existe e o vínculo não, e o lançamento está
+     * livre para casar de novo.
+     *
+     * Sem isso, apagar um extrato e reimportá-lo produzia pendências
+     * insolúveis. A exclusão leva a conciliação junto (ON DELETE CASCADE) mas
+     * deixa `status = conciliado` no lançamento; na reimportação o motor não o
+     * enxergava, nenhum match era achado, e não havia como reconciliar pela
+     * tela — o outro lado estava marcado como já feito. Na base há 209
+     * lançamentos assim, somando R$ 13,5 milhões.
+     */
+    const { data: lancamentosBrutos, error: errLanc } = await supabase
       .from("financeiro_lancamentos")
       .select("id, conta_id, natureza, valor, data_vencimento, data_competencia, descricao, status")
       .eq("empresa_id", empresa_id)
-      .in("status", ["previsto", "realizado"])
-      .limit(2000);
+      .in("status", ["previsto", "realizado", "conciliado"])
+      .limit(4000);
     if (errLanc) throw errLanc;
+
+    // Quem já tem vínculo sai da disputa: conciliado COM conciliação está
+    // resolvido, e oferecê-lo de novo criaria dupla contagem.
+    const { data: jaVinculados } = await supabase
+      .from("financeiro_conciliacoes")
+      .select("lancamento_id")
+      .eq("empresa_id", empresa_id);
+    const comVinculo = new Set(
+      (jaVinculados ?? []).map((k: { lancamento_id: string }) => k.lancamento_id),
+    );
+    const lancamentos = (lancamentosBrutos ?? []).filter(
+      (l: { id: string; status: string }) => l.status !== "conciliado" || !comVinculo.has(l.id),
+    );
 
     const matches: Array<{
       movimento_id: string;

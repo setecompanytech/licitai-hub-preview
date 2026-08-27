@@ -1321,7 +1321,8 @@ export default function FinConciliacao() {
                     <strong>{confirmApagarExtrato?.total_movimentos ?? 0} movimentos</strong> associados.
                   </p>
                   <p className="text-muted-foreground">
-                    Lançamentos já conciliados não serão excluídos, mas perderão o vínculo com o extrato.
+                    Lançamentos conciliados por este extrato não serão excluídos: voltam a
+                    <strong> previsto</strong>, aguardando conciliação de novo.
                   </p>
                 </div>
               </AlertDialogDescription>
@@ -1335,6 +1336,34 @@ export default function FinConciliacao() {
                   setApagandoExtrato(confirmApagarExtrato.extrato_id);
                   setConfirmApagarExtrato(null);
                   try {
+                    /**
+                     * Desfazer a conciliação ANTES de apagar o extrato.
+                     *
+                     * `financeiro_conciliacoes` cai por ON DELETE CASCADE junto
+                     * com os movimentos — mas o `status = conciliado` fica no
+                     * lançamento. Resultado: marca sem fato. Na reimportação o
+                     * motor não enxergava esses lançamentos, nenhum match era
+                     * achado, e as pendências ficavam insolúveis pela tela.
+                     *
+                     * Só reverte quem estava conciliado POR CAUSA deste extrato
+                     * — a conciliação diz quais são. Quem foi marcado por outro
+                     * caminho não é tocado.
+                     */
+                    const { data: vinculos } = await supabase
+                      .from("financeiro_conciliacoes")
+                      .select("lancamento_id, extrato_movimento_id, financeiro_extrato_movimentos!inner(extrato_id)")
+                      .eq("financeiro_extrato_movimentos.extrato_id", confirmApagarExtrato.extrato_id);
+                    const idsParaReverter = [
+                      ...new Set(((vinculos ?? []) as { lancamento_id: string }[]).map((v) => v.lancamento_id)),
+                    ];
+                    if (idsParaReverter.length > 0) {
+                      await supabase
+                        .from("financeiro_lancamentos")
+                        .update({ status: "previsto", data_conciliado: null } as never)
+                        .in("id", idsParaReverter)
+                        .eq("status", "conciliado");
+                    }
+
                     await supabase
                       .from("financeiro_extrato_movimentos")
                       .delete()
@@ -1346,7 +1375,14 @@ export default function FinConciliacao() {
                     if (error) throw error;
                     qc.invalidateQueries({ queryKey: ["fin-extratos"] });
                     qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
-                    toast.success("Extrato apagado.");
+                    toast.success(
+                      idsParaReverter.length > 0
+                        ? `Extrato apagado · ${idsParaReverter.length} lançamento(s) voltaram a previsto`
+                        : "Extrato apagado.",
+                      { description: idsParaReverter.length > 0
+                          ? "Eles perderam o que os conciliava, então voltaram a aguardar conciliação."
+                          : undefined },
+                    );
                   } catch (e: any) {
                     toast.error(e.message ?? "Erro ao apagar extrato.");
                   } finally {

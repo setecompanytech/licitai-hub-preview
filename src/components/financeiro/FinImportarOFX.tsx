@@ -376,6 +376,15 @@ export default function FinImportarOFX() {
     try {
       const ativos = movimentos.filter((m) => !m._ignorar);
       const conciliacoes = ativos.filter((m) => m._sugestao);
+      /**
+       * Marcar conciliado sem registrar a conciliação é criar marca sem fato.
+       *
+       * Este laço gravava só o `status` do lançamento. Sem linha em
+       * `financeiro_conciliacoes`, ninguém sabe o que o conciliou: o motor de
+       * conciliação não o oferece de volta, a auditoria não tem o que reverter,
+       * e a tela não tem o que mostrar. Na base há 209 lançamentos assim,
+       * somando R$ 13,5 milhões — parte veio daqui.
+       */
       for (const c of conciliacoes) {
         await supabase
           .from("financeiro_lancamentos")
