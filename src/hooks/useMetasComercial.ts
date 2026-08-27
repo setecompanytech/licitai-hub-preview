@@ -1,4 +1,5 @@
 import type { BaseMeta } from '@/lib/metas/painel';
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -49,6 +50,60 @@ export type MotivoPerda = {
   ativo: boolean;
   ordem: number;
 };
+
+/**
+ * A meta alterada pelo administrador chega a quem está olhando.
+ *
+ * Havia só `invalidateQueries`: quando o admin salvava um valor-alvo, o cache
+ * era refeito NA SESSÃO DELE. O vendedor com a tela aberta continuava vendo o
+ * alvo antigo até recarregar a página — e nada ali sugeria que devesse.
+ *
+ * Numa tela que anuncia "Risco crítico — 0% da meta com 2 dias úteis
+ * restantes", isso não é detalhe: o número que decide se alguém corre atrás
+ * de proposta hoje pode ter mudado há uma hora.
+ *
+ * O debounce evita refazer a consulta a cada linha de uma edição em lote —
+ * espera a rajada terminar, como no painel de indicadores gerenciais.
+ */
+export function useMetasEmTempoReal() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaId();
+
+  useEffect(() => {
+    if (!empresaId) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const refazer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ['comercial-metas-config'] });
+        void qc.invalidateQueries({ queryKey: ['comercial-valores-alvo'] });
+        void qc.invalidateQueries({ queryKey: ['comercial-metas'] });
+      }, 1200);
+    };
+
+    const canal = supabase
+      .channel(`metas_comercial_${empresaId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comercial_valores_alvo', filter: `empresa_id=eq.${empresaId}` },
+        refazer)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comercial_metas_config', filter: `empresa_id=eq.${empresaId}` },
+        refazer)
+      // A meta mensal do colaborador é o número que o painel exibe em destaque;
+      // sem ela no canal, o alvo alterado continuaria antigo na tela de quem
+      // está correndo atrás dele.
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comercial_metas', filter: `empresa_id=eq.${empresaId}` },
+        refazer)
+      .subscribe();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(canal);
+    };
+  }, [empresaId, qc]);
+}
 
 // ─── Configuração geral ───────────────────────────────────────────────────────
 

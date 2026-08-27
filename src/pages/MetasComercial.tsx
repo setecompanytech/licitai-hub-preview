@@ -1,4 +1,5 @@
 import AppLayout from '@/components/layout/AppLayout';
+import { useMetasEmTempoReal } from '@/hooks/useMetasComercial';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +18,9 @@ import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
  */
 export default function MetasComercial() {
   const { isAdmin, loading } = useMembroPermissoes();
+  // Meta alterada pelo administrador chega a quem está olhando, sem recarregar.
+  // Ver useMetasEmTempoReal: antes só a sessão de quem salvou era atualizada.
+  useMetasEmTempoReal();
   const [searchParams, setSearchParams] = useSearchParams();
   const ABAS = ['painel', 'equipe', 'relatorios', 'parametros'];
   const pedida = searchParams.get('tab') || '';
@@ -57,9 +61,15 @@ export default function MetasComercial() {
           <TabsTrigger value="relatorios" className="gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Relatórios
           </TabsTrigger>
-          <TabsTrigger value="parametros" className="gap-1.5">
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Parametrização
-          </TabsTrigger>
+          {/* Escondida para quem não é admin, como a Equipe logo acima.
+              Antes ela aparecia para todos e só o conteúdo dizia "Acesso
+              restrito" — duas abas do mesmo tipo tratadas de dois jeitos, uma
+              sumindo e a outra convidando ao clique para negar. */}
+          {isAdmin && (
+            <TabsTrigger value="parametros" className="gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5" /> Parametrização
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="painel">

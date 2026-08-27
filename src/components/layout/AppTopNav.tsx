@@ -11,6 +11,7 @@ import {
   TrendingUp, Target, ClipboardCheck, BookOpen, Bell, Archive, CalendarDays,
   GraduationCap, FileText, ListChecks, Menu, X, FileBarChart, Workflow,
   Plug, Truck, Send, ShoppingCart, Gauge,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -110,7 +111,12 @@ const navGroups: NavGroup[] = [
       { icon: Building2, label: 'Empresas', path: '/empresas' },
       { icon: Users, label: 'Equipe', path: '/equipe' },
       { icon: Bell, label: 'Preferências de Alertas', path: '/configuracoes/alertas' },
-      { icon: Gauge, label: 'Definir Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
+      /* Mesma tela de "Metas do Comercial", entrando direto na aba de
+         parametrização. O rótulo e o ícone dizem isso agora: antes eram
+         'Definir Metas' com o MESMO ícone Gauge da entrada de Gestão, e duas
+         portas idênticas para uma tela só passavam por duas funções — o dono
+         do produto descreveu cada uma como se fizesse coisa diferente. */
+      { icon: SlidersHorizontal, label: 'Parametrizar Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
