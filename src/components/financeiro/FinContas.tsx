@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { z } from "zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -152,8 +153,16 @@ export default function FinContas() {
       }
       await qc.invalidateQueries({ queryKey: ["fin-contas"] });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Falha ao sincronizar saldos.";
-      toast.error(msg);
+      // O erro do Supabase é um PostgrestError — um objeto simples, NÃO um
+      // `Error`. O teste `e instanceof Error` dava falso e a causa exata era
+      // descartada na última linha antes de virar texto na tela: a função
+      // falhava desde 30/04 por consultar colunas que não existem, e tudo o
+      // que chegava a quem clicava era "Falha ao sincronizar saldos".
+      console.error("[sincronizar-saldos]", e);
+      toast.error("Não foi possível sincronizar os saldos", {
+        description: mensagemDeErro(e, "Erro desconhecido — veja o console para o texto do banco."),
+        duration: 12000,
+      });
     } finally {
       setSincronizando(false);
       setConfirmSync(false);

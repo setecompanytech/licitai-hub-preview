@@ -271,7 +271,16 @@ function TabelaCotacaoUI({
   onToggle,
 }: {
   tabela: TabelaCotacao;
-  selection: Set<string>;
+  /**
+   * O que está selecionado, chaveado pelo id do fornecedor.
+   *
+   * Estava declarado `Set<string>` e recebe um `Map<string, Fornecedor>`. Só
+   * não quebrou porque `Map.has(chave)` e `Set.has(valor)` têm o mesmo nome, e
+   * é só `.has` que esta tabela usa — funcionava por coincidência de
+   * vocabulário. Um `.add()` ou um `Array.from()` aqui dentro derrubaria a
+   * tela, e o tipo declarado não avisaria ninguém.
+   */
+  selection: ReadonlyMap<string, Fornecedor>;
   onToggle: (f: Fornecedor) => void;
 }) {
   const [ordem, setOrdem] = useState<Ordem>("preco");
