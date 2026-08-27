@@ -110,7 +110,12 @@ export async function montarPdfUnico(pecas: PecaDoKit[]): Promise<{ blob: Blob; 
     }
   }
 
-  return { blob: new Blob([await alvo.save()], { type: 'application/pdf' }), ignorados };
+  // `save()` devolve Uint8Array<ArrayBufferLike>; BlobPart exige ArrayBuffer.
+  const bytes = await alvo.save();
+  return {
+    blob: new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/pdf' }),
+    ignorados,
+  };
 }
 
 /** Entrega ao navegador. */
