@@ -1013,8 +1013,37 @@ export function useImportarOFX() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["fin-extratos"] });
       qc.invalidateQueries({ queryKey: ["fin-movimentos"] });
-      if (data?.duplicado) toast.info("Arquivo já havia sido importado anteriormente.");
-      else toast.success(`${data?.total_movimentos ?? 0} movimentos importados.`);
+      if (data?.duplicado) {
+        toast.info("Arquivo já havia sido importado anteriormente.");
+        return;
+      }
+      /**
+       * Dizer o que aconteceu, não só que aconteceu.
+       *
+       * Reimportar o mesmo período agora ATUALIZA os movimentos em vez de
+       * descartá-los — eles passam a apontar para esta importação. Quem
+       * reimporta precisa saber quantos vieram novos e quantos foram
+       * reaproveitados, senão "26 movimentos importados" parece o mesmo tanto
+       * na primeira vez quanto na quinta.
+       */
+      const novos = Number(data?.movimentos_novos ?? data?.total_movimentos ?? 0);
+      const atualizados = Number(data?.movimentos_atualizados ?? 0);
+      const esvaziadas = Number(data?.importacoes_esvaziadas ?? 0);
+      const partes: string[] = [];
+      if (novos > 0) partes.push(`${novos} novo(s)`);
+      if (atualizados > 0) partes.push(`${atualizados} atualizado(s)`);
+      toast.success(
+        `${data?.total_movimentos ?? 0} movimento(s) no extrato`,
+        {
+          description: [
+            partes.length ? partes.join(' · ') : undefined,
+            esvaziadas > 0
+              ? `${esvaziadas} importação(ões) anterior(es) ficaram sem movimentos — podem ser apagadas.`
+              : undefined,
+          ].filter(Boolean).join(' · ') || undefined,
+          duration: esvaziadas > 0 ? 10000 : 5000,
+        },
+      );
     },
     onError: (e: Error) => toast.error(`Erro ao importar OFX: ${e.message}`),
   });

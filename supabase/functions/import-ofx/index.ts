@@ -353,9 +353,40 @@ Deno.serve(async (req) => {
       descricao_extra: t.memo ?? null,
     }));
 
+    /**
+     * Reimportar ATUALIZA o movimento; não o descarta.
+     *
+     * A chave do conflito é (conta_id, fitid) — o `fitid` é o identificador
+     * que o banco dá a cada transação, e ele é o mesmo toda vez que o mesmo
+     * período é baixado. Com `ignoreDuplicates: true`, a segunda importação
+     * era engolida em silêncio: o extrato novo era criado, os movimentos
+     * colidiam com os da importação anterior, e o extrato ficava com ZERO
+     * linhas. A tela filtra por extrato_id, não achava nada, e dizia "Nenhum
+     * movimento" — enquanto os movimentos existiam, apontando para o extrato
+     * antigo.
+     *
+     * Agora o conflito ATUALIZA: os movimentos passam a apontar para a
+     * importação mais recente, que é a que o usuário está olhando. A mesma
+     * transação continua existindo UMA vez por conta — trocar a chave para
+     * incluir extrato_id permitiria a mesma linha bancária duas vezes, e daí
+     * viria conciliação em dobro.
+     *
+     * O que o upsert NÃO toca: `conciliado`, `lancamento_id` e `ignorado` não
+     * estão no payload, então o Postgres os preserva. Reimportar um extrato
+     * não desfaz o trabalho de conciliação já feito sobre ele.
+     */
+    const fitids = movimentos.map((m) => m.fitid);
+    const { data: preexistentes } = await supabase
+      .from("financeiro_extrato_movimentos")
+      .select("fitid")
+      .eq("conta_id", conta_id)
+      .in("fitid", fitids);
+    const atualizados = (preexistentes ?? []).length;
+    const novos = movimentos.length - atualizados;
+
     const { error: errMov } = await supabase
       .from("financeiro_extrato_movimentos")
-      .upsert(movimentos, { onConflict: "conta_id,fitid", ignoreDuplicates: true });
+      .upsert(movimentos, { onConflict: "conta_id,fitid", ignoreDuplicates: false });
 
     if (errMov) {
       await supabase
@@ -370,11 +401,36 @@ Deno.serve(async (req) => {
       .update({ status: "concluido" })
       .eq("id", extrato.id);
 
+    /**
+     * Importações anteriores que ficaram sem linha nenhuma.
+     *
+     * Ao reapontar os movimentos para esta importação, a anterior pode ter
+     * ficado vazia. Ela não é apagada aqui — apagar registro de importação por
+     * conta própria esconderia o histórico de quem importou o quê e quando.
+     * Ela é CONTADA, e a tela avisa, para quem quiser limpar saber que existe.
+     */
+    const { data: irmaos } = await supabase
+      .from("financeiro_extratos_importados")
+      .select("id")
+      .eq("conta_id", conta_id)
+      .neq("id", extrato.id);
+    let esvaziados = 0;
+    for (const irmao of (irmaos ?? []) as { id: string }[]) {
+      const { count } = await supabase
+        .from("financeiro_extrato_movimentos")
+        .select("id", { count: "exact", head: true })
+        .eq("extrato_id", irmao.id);
+      if ((count ?? 0) === 0) esvaziados++;
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         extrato_id: extrato.id,
         total_movimentos: stmt.transactions.length,
+        movimentos_novos: novos,
+        movimentos_atualizados: atualizados,
+        importacoes_esvaziadas: esvaziados,
         periodo: { inicio: stmt.startDate, fim: stmt.endDate },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
