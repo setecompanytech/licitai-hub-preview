@@ -144,6 +144,23 @@ export default function PainelMetas() {
       userId: selecionado, ano, mes, base: meta.base_meta,
     });
 
+    /**
+     * As três pontas da esteira, lado a lado.
+     *
+     * `realizadoCent` acima mede só a base PRINCIPAL — é ela que dispara o
+     * alerta e alimenta a projeção. Mas medir uma ponta só esconde onde a
+     * esteira travou: contratos em dia com quitação zerada é ter fechado e não
+     * entregado, e o painel mostrava isso como meta batida.
+     */
+    const linhaDoMes = linhas.find(
+      (l) => l.user_id === selecionado && l.ano === ano && l.mes === mes,
+    );
+    const pontas = {
+      contratos: { alvo: meta.meta_contratos ?? 0, feito: linhaDoMes?.ganhos ?? 0 },
+      faturamento: { alvo: Number(meta.meta_faturamento) || 0, feito: linhaDoMes?.valor_faturado ?? 0 },
+      quitacao: { alvo: Number(meta.meta_quitacao) || 0, feito: linhaDoMes?.valor_quitado ?? 0 },
+    };
+
     const tickets = apurarTickets(
       (contratos ?? []).map((c) => ({
         modalidade: c.modalidade,
@@ -187,7 +204,7 @@ export default function PainelMetas() {
       percentualMinimo: Number(config.alerta_percentual_minimo),
     });
 
-    return { projecao, severidade, tickets, historico, feriadosNoMes };
+    return { projecao, severidade, tickets, historico, feriadosNoMes, pontas };
   }, [config, selecionado, meta, realizado, contratos, valoresAlvo, feriados, colaborador, ano, mes, hoje]);
 
   // Barra de progresso: mesma severidade do alerta, para não divergirem
@@ -346,6 +363,61 @@ export default function PainelMetas() {
               icone={CalendarDays}
             />
           </div>
+
+          {/* ── As três pontas da esteira ──
+              Na ordem em que o dinheiro anda: o negócio fecha, a nota sai, o
+              dinheiro entra. A principal — a que dispara o alerta — vem
+              marcada; as outras duas existem para mostrar ONDE a esteira
+              travou. Ponta sem alvo definido não aparece: cobrar uma meta que
+              ninguém escreveu é barulho. */}
+          {(analise.pontas.contratos.alvo > 0
+            || analise.pontas.faturamento.alvo > 0
+            || analise.pontas.quitacao.alvo > 0) && (
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-muted-foreground" />
+                As três pontas do mês
+              </p>
+              {([
+                { chave: 'contratos_ganhos', titulo: '1 · Contratos ganhos', sub: 'o negócio fechou',
+                  p: analise.pontas.contratos, moeda: false },
+                { chave: 'faturamento', titulo: '2 · Faturamento', sub: 'a nota saiu',
+                  p: analise.pontas.faturamento, moeda: true },
+                { chave: 'nf_quitada', titulo: '3 · NF-e quitada', sub: 'o dinheiro entrou',
+                  p: analise.pontas.quitacao, moeda: true },
+              ] as const).filter((l) => l.p.alvo > 0).map((l) => {
+                const pct = l.p.alvo > 0 ? Math.min((l.p.feito / l.p.alvo) * 100, 100) : 0;
+                const principal = meta.base_meta === l.chave;
+                const exibir = (v: number) => (l.moeda ? formatBRL(v) : String(v));
+                return (
+                  <div key={l.chave} className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-medium flex items-center gap-1.5">
+                        {l.titulo}
+                        {principal && (
+                          <span className="rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">
+                            principal
+                          </span>
+                        )}
+                        <span className="text-muted-foreground font-normal">· {l.sub}</span>
+                      </span>
+                      <span className="text-xs tabular-nums whitespace-nowrap">
+                        <strong>{exibir(l.p.feito)}</strong>
+                        <span className="text-muted-foreground"> de {exibir(l.p.alvo)}</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn('h-full rounded-full transition-all',
+                          pct >= 100 ? 'bg-success' : principal ? 'bg-primary' : 'bg-muted-foreground/40')}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* A barra usa a MESMA severidade do alerta (estadoDaBarra), para as
               duas não contarem histórias diferentes. Antes era laranja fixa,

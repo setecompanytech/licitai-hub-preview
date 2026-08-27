@@ -338,9 +338,18 @@ export type Meta = {
   user_id: string;
   ano: number;
   mes: number;
+  /** A nota saiu — segunda ponta da esteira. */
   meta_faturamento: number;
+  /** O dinheiro entrou — última ponta. Nula = não definida, não zero. */
+  meta_quitacao: number | null;
+  /** O negócio fechou — primeira ponta, em quantidade. */
   meta_contratos: number | null;
   meta_participacoes: number | null;
+  /**
+   * A meta PRINCIPAL: qual das três dispara o alerta de risco e alimenta a
+   * projeção. As outras duas continuam medidas e exibidas — uma só manda no
+   * alarme, senão o painel grita três vezes pelo mesmo mês.
+   */
   base_meta: BaseMeta;
   observacao: string | null;
 };
@@ -374,6 +383,8 @@ export function useSalvarMeta() {
       ano: number;
       mes: number;
       meta_faturamento: number;
+      /** Meta de NF-e quitada — a ponta da esteira em que o dinheiro entra. */
+      meta_quitacao?: number | null;
       meta_contratos?: number | null;
       meta_participacoes?: number | null;
       base_meta?: BaseMeta;
