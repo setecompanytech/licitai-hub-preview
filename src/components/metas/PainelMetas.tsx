@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,6 @@ import { filtrarColaboradoresDoPainel } from '@/lib/metas/colaboradores';
 import { avaliarAlerta, projetarMeta, type Severidade } from '@/lib/metas/projecao';
 import { estadoDaBarra } from '@/lib/metas/progresso';
 import { rotuloModalidade } from '@/lib/metas/modalidades';
-import DefinirMetaDialog from './DefinirMetaDialog';
 
 const NOMES_MES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -80,13 +80,13 @@ function Indicador({
 }
 
 export default function PainelMetas() {
+  const navigate = useNavigate();
   const hoje = hojeEmSaoPaulo();
   const [anoRef, mesRef] = hoje.split('-').map(Number);
 
   const [ano, setAno] = useState(anoRef);
   const [mes, setMes] = useState(mesRef);
   const [userId, setUserId] = useState<string>('');
-  const [dialogoAberto, setDialogoAberto] = useState(false);
 
   // Admin (global ou da empresa) acompanha o time inteiro e define as metas.
   // Colaborador vê apenas o próprio painel, sem poder alterar a própria meta.
@@ -263,15 +263,22 @@ export default function PainelMetas() {
               </SelectContent>
             </Select>
           </div>
-          {isAdmin && (
+          {/* Definir meta saiu daqui.
+              Por decisão do dono do produto, Gestão é leitura: acompanhar e
+              levantar relatórios. Quem define o alvo vai a Ferramentas →
+              Definir Metas. Deixar o botão aqui era o que fazia a tela de
+              acompanhamento parecer também a de configuração — e foi essa
+              ambiguidade que gerou duas entradas de menu para uma tela só.
+
+              Sem meta definida, o painel diz para onde ir em vez de oferecer
+              um botão que a regra não permite mais. */}
+          {isAdmin && !meta && selecionado && (
             <Button
-              size="sm"
-              className="h-9"
-              disabled={!selecionado}
-              onClick={() => setDialogoAberto(true)}
+              size="sm" variant="outline" className="h-9"
+              onClick={() => navigate('/definir-metas')}
             >
-              {meta ? <Pencil className="w-3.5 h-3.5 mr-1.5" /> : <Target className="w-3.5 h-3.5 mr-1.5" />}
-              {meta ? 'Editar meta' : 'Definir meta'}
+              <Target className="w-3.5 h-3.5 mr-1.5" />
+              Definir em Ferramentas
             </Button>
           )}
         </CardContent>
@@ -298,9 +305,9 @@ export default function PainelMetas() {
               <p className="text-base text-muted-foreground mt-1 mb-4">
                 Defina a meta de {nomeColaborador} para o painel calcular projeção e alertas.
               </p>
-              <Button size="sm" onClick={() => setDialogoAberto(true)}>
+              <Button size="sm" onClick={() => navigate('/definir-metas')}>
                 <Target className="w-3.5 h-3.5 mr-1.5" />
-                Definir meta
+                Definir em Ferramentas
               </Button>
             </>
           ) : (
@@ -594,16 +601,6 @@ export default function PainelMetas() {
         </>
       )}
 
-      {isAdmin && selecionado && (
-        <DefinirMetaDialog
-          aberto={dialogoAberto}
-          onFechar={() => setDialogoAberto(false)}
-          colaborador={{ user_id: selecionado, nome: nomeColaborador }}
-          ano={ano}
-          mes={mes}
-          metaAtual={meta}
-        />
-      )}
     </div>
   );
 }

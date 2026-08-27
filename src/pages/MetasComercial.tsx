@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, SlidersHorizontal, LayoutDashboard, Lock, FileText , Users } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
-import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
 import EquipeMetas from '@/components/metas/EquipeMetas';
 import PainelMetas from '@/components/metas/PainelMetas';
 import RelatoriosMetas from '@/components/metas/RelatoriosMetas';
@@ -22,7 +21,11 @@ export default function MetasComercial() {
   // Ver useMetasEmTempoReal: antes só a sessão de quem salvou era atualizada.
   useMetasEmTempoReal();
   const [searchParams, setSearchParams] = useSearchParams();
-  const ABAS = ['painel', 'equipe', 'relatorios', 'parametros'];
+  /* Parametrização saiu daqui. Por decisão do dono do produto, Gestão é
+     leitura — acompanhar e levantar relatórios —, e o alvo se escreve em
+     Ferramentas → Definir Metas. Uma tela com duas entradas de menu passava
+     por duas funções, e era isso que confundia. */
+  const ABAS = ['painel', 'equipe', 'relatorios'];
   const pedida = searchParams.get('tab') || '';
   const aba = ABAS.includes(pedida) ? pedida : 'painel';
   const trocarAba = (valor: string) =>
@@ -61,15 +64,6 @@ export default function MetasComercial() {
           <TabsTrigger value="relatorios" className="gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Relatórios
           </TabsTrigger>
-          {/* Escondida para quem não é admin, como a Equipe logo acima.
-              Antes ela aparecia para todos e só o conteúdo dizia "Acesso
-              restrito" — duas abas do mesmo tipo tratadas de dois jeitos, uma
-              sumindo e a outra convidando ao clique para negar. */}
-          {isAdmin && (
-            <TabsTrigger value="parametros" className="gap-1.5">
-              <SlidersHorizontal className="w-3.5 h-3.5" /> Parametrização
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="painel">
@@ -95,19 +89,6 @@ export default function MetasComercial() {
           <RelatoriosMetas />
         </TabsContent>
 
-        <TabsContent value="parametros">
-          {loading ? null : isAdmin ? (
-            <ParametrizacaoMetas />
-          ) : (
-            <Card className="p-12 text-center">
-              <Lock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-base font-medium text-muted-foreground">Acesso restrito</p>
-              <p className="text-base text-muted-foreground mt-1">
-                Apenas administradores da empresa podem alterar os valores-alvo e os limiares de alerta.
-              </p>
-            </Card>
-          )}
-        </TabsContent>
       </Tabs>
     </AppLayout>
   );

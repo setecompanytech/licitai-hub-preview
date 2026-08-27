@@ -116,7 +116,7 @@ const navGroups: NavGroup[] = [
          'Definir Metas' com o MESMO ícone Gauge da entrada de Gestão, e duas
          portas idênticas para uma tela só passavam por duas funções — o dono
          do produto descreveu cada uma como se fizesse coisa diferente. */
-      { icon: SlidersHorizontal, label: 'Parametrizar Metas', path: '/metas-comercial?tab=parametros', adminOnly: true },
+      { icon: SlidersHorizontal, label: 'Definir Metas', path: '/definir-metas', adminOnly: true },
       { icon: Settings, label: 'Configurações', path: '/configuracoes' },
       { icon: HeadphonesIcon, label: 'Suporte', path: '/suporte' },
     ],
