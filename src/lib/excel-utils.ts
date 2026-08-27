@@ -1,5 +1,30 @@
 import ExcelJS from 'exceljs';
 
+/**
+ * Monta a planilha e devolve o Blob, sem baixar.
+ *
+ * `writeExcelFile` baixa e pronto — serve para quem quer o arquivo na máquina.
+ * Não serve para quem precisa ANEXAR a planilha ao processo: a composição de
+ * preços é peça do processo licitatório, e ficar só na pasta de downloads de
+ * quem calculou é o mesmo que não existir no dia em que o pregoeiro pedir.
+ */
+export type LinhaPlanilha = (string | number | boolean | Date | null)[];
+
+export async function buildExcelBlob(
+  sheets: { name: string; data: LinhaPlanilha[]; colWidths?: number[] }[]
+): Promise<Blob> {
+  const wb = new ExcelJS.Workbook();
+  for (const sheet of sheets) {
+    const ws = wb.addWorksheet(sheet.name);
+    for (const row of sheet.data) ws.addRow(row);
+    sheet.colWidths?.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  }
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
 /** Create a workbook, add sheets from array-of-arrays, and trigger download */
 export async function writeExcelFile(
   filename: string,

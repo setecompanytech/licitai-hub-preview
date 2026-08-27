@@ -1,8 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { UNIDADES } from '@/lib/unidades';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useIndicadoresGerenciais } from '@/hooks/useIndicadoresGerenciais';
 import { usePropostaCart } from '@/contexts/PropostaCartContext';
+import { formarPreco, precoEhPossivel, somaDasCamadas } from '@/lib/precificacao/formacao-preco';
+import { montarPlanilhaComposicao, nomeDoArquivoComposicao } from '@/lib/precificacao/planilha-composicao';
+import { buildExcelBlob } from '@/lib/excel-utils';
+import { useProcessoWorkspace } from '@/hooks/useProcessoWorkspace';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -232,6 +236,16 @@ export default function CalculadoraUnificada({
   const [iaResult, setIaResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviarProposta, setEnviarProposta] = useState(false);
+  /**
+   * O processo com que esta calculadora está trabalhando.
+   *
+   * Começa no que a página trouxe (o Processo Ativo) e passa a seguir o que o
+   * seletor escolher. Antes, escolher no seletor mudava só o texto do número e
+   * do órgão: a tela dizia "vinculado ao processo X" e mandava os itens para o
+   * lugar de Y — ou para lugar nenhum.
+   */
+  const [licitacaoIdSel, setLicitacaoIdSel] = useState<string | null>(licitacaoId);
+  const { uploadAnexo } = useProcessoWorkspace(licitacaoIdSel);
   const [composicaoResult, setComposicaoResult] = useState<ComposicaoResult | null>(null);
 
   // (Serviços MDO state moved to ServicoMDOCalculadora component)
@@ -252,6 +266,7 @@ export default function CalculadoraUnificada({
   useEffect(() => {
     setLicitacaoNumero(licitacaoNumeroProp || '');
     setLicitacaoOrgao(licitacaoOrgaoProp || '');
+    setLicitacaoIdSel(licitacaoId);
   }, [licitacaoId, licitacaoNumeroProp, licitacaoOrgaoProp]);
 
   const collectCalcData = useCallback(() => ({
@@ -331,6 +346,32 @@ export default function CalculadoraUnificada({
     const titulo = licitacaoNumero ? `Precificação — ${licitacaoNumero}` : 'Precificação (sem licitação)';
     autoSave(data, titulo);
   }, [collectCalcData, autoSave]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hooks ANTES de qualquer return condicional. Eu havia posto os dois abaixo
+  // no meio do componente, depois do `return` deste `if` — `rules-of-hooks`
+  // violado derruba a tela em branco, e foi assim que a página de contrato
+  // caiu nesta semana.
+  /**
+   * As camadas que saem do preço, do jeito que a tela as tem.
+   *
+   * `pctImpostos` vem do resultado do simulador quando ele já rodou — é a
+   * alíquota EFETIVA do regime, não a nominal. Sem simulação, fica zero e o
+   * aviso abaixo cobra o cálculo: preço formado sem imposto é preço errado
+   * para baixo, e em licitação isso não se perde, se ganha.
+   */
+  const camadasDoPreco = useMemo(() => ({
+    pctImpostos: resultado
+      ? (regime === 'simples_nacional'
+          ? Number(resultado.aliquotaEfetiva) || 0
+          : (Number(resultado.receita) > 0
+              ? (Number(resultado.totalTributos) / Number(resultado.receita)) * 100
+              : 0))
+      : 0,
+    pctDespesasAdmin: parseFloat(despesasAdmin) || 0,
+    pctDespesasOperacionais: parseFloat(frete) || 0,
+    pctMargem: parseFloat(margemLucro) || 15,
+  }), [resultado, regime, despesasAdmin, frete, margemLucro]);
+  const [anexandoPlanilha, setAnexandoPlanilha] = useState(false);
 
   if (!regime || !config) {
     return (
@@ -535,23 +576,127 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
   const updateItem = (i: number, field: keyof ItemCusto, value: string) => setItens(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   const removeItem = (i: number) => { if (itens.length > 1) setItens(prev => prev.filter((_, idx) => idx !== i)); };
 
+
+  /**
+   * A composição de preços vira peça do processo.
+   *
+   * Calcular a composição e deixá-la na tela não serve: ela é o documento que
+   * a Administração pede quando a proposta chega abaixo do que ela orçou, e
+   * sem ele a proposta é desclassificada por não comprovar o que afirma
+   * (Lei 14.133/2021, art. 59, §§ 3º e 4º). O lugar dela é a pasta do
+   * processo, junto do edital e da habilitação — não a pasta de downloads de
+   * quem calculou.
+   */
+
+  const anexarComposicaoAoProcesso = async () => {
+    if (!licitacaoIdSel) {
+      toast.error('Vincule a licitação antes de anexar.', {
+        description: 'A planilha precisa saber a que processo pertence.',
+      });
+      return;
+    }
+    const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
+    if (validItens.length === 0) { toast.error('Nenhum item válido para compor.'); return; }
+    if (!precoEhPossivel(camadasDoPreco)) {
+      toast.error('Não existe preço possível com esses percentuais.');
+      return;
+    }
+
+    setAnexandoPlanilha(true);
+    try {
+      const { linhas, larguras, total } = montarPlanilhaComposicao(
+        validItens.map((i) => ({
+          descricao: i.descricao,
+          unidade: i.unidade,
+          quantidade: parseFloat(i.quantidade) || 1,
+          custoUnitario: parseCurrencyInput(i.custoUnitario),
+        })),
+        camadasDoPreco,
+        {
+          empresa: empresaAtiva?.razao_social ?? '—',
+          cnpj: empresaAtiva?.cnpj ?? null,
+          processo: licitacaoNumero || null,
+          orgao: licitacaoOrgao || null,
+          regime: regime || null,
+          emitidoEm: new Date().toLocaleDateString('pt-BR'),
+        },
+      );
+      const blob = await buildExcelBlob([
+        { name: 'Composição de Preços', data: linhas, colWidths: larguras },
+      ]);
+      const nome = nomeDoArquivoComposicao(licitacaoNumero);
+      const arquivo = new File([blob], nome, { type: blob.type });
+
+      const anexo = await uploadAnexo(arquivo, 'proposta',
+        `Composição analítica de preços — total ${formatCurrency(total)}`,
+        { origem: 'calculadora_precificacao', total, camadas: camadasDoPreco },
+      );
+      if (anexo) {
+        toast.success('Planilha anexada ao processo', {
+          description: `${nome} · pasta do processo, aba Proposta.`,
+        });
+      }
+    } catch (e) {
+      toast.error('Não foi possível gerar a planilha.', {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    } finally {
+      setAnexandoPlanilha(false);
+    }
+  };
+
   const enviarParaProposta = () => {
     const validItens = itens.filter(i => i.descricao.trim() && i.custoUnitario.trim());
     if (validItens.length === 0) { toast.error('Nenhum item válido.'); return; }
+
+    // Sem processo, os itens iriam para um carrinho solto e ninguém saberia de
+    // qual licitação eles são. O vínculo lá de cima passa a valer aqui embaixo.
+    if (!licitacaoIdSel) {
+      toast.error('Vincule a licitação antes de enviar.', {
+        description: 'Sem o processo, os itens não têm para onde ir — use "Vincular à Licitação" no topo da página.',
+      });
+      return;
+    }
+
+    /**
+     * O preço enviado é o preço FORMADO, não custo × margem.
+     *
+     * A conta anterior tratava a margem como se incidisse sobre o custo e
+     * ignorava imposto, frete e despesa administrativa por completo. Com
+     * imposto de 19%, despesa de 7%, frete de 3% e margem de 15%, ela mandava
+     * R$ 115,00 onde o preço é R$ 178,57 — e vender a R$ 115,00 dá prejuízo de
+     * R$ 18,35 por unidade numa proposta apresentada como 15% de lucro.
+     * Ver src/lib/precificacao/formacao-preco.ts.
+     */
+    if (!precoEhPossivel(camadasDoPreco)) {
+      toast.error('Não existe preço possível com esses percentuais.', {
+        description: `Impostos, despesas e margem somam ${somaDasCamadas(camadasDoPreco).toFixed(2)}% do preço.`,
+      });
+      return;
+    }
+    if (!resultado) {
+      toast.warning('Calcule os tributos antes de enviar.', {
+        description: 'Sem a alíquota efetiva do regime, o preço sai sem imposto — baixo demais.',
+      });
+      return;
+    }
+
     validItens.forEach((item, idx) => {
-      const custo = parseCurrencyInput(item.custoUnitario);
-      const qtd = parseFloat(item.quantidade) || 1;
-      const markup = 1 + (parseFloat(margemLucro) || 15) / 100;
-      const precoUnit = custo * markup;
-      const total = precoUnit * qtd;
+      const p = formarPreco(
+        parseCurrencyInput(item.custoUnitario),
+        parseFloat(item.quantidade) || 1,
+        camadasDoPreco,
+      );
       addItem({
-        item: String(idx + 1), descricao: item.descricao, quantidade: String(qtd), unidade: item.unidade,
+        item: String(idx + 1), descricao: item.descricao, quantidade: String(p.quantidade), unidade: item.unidade,
         marca: '', fabricante: '', modelo: '',
-        valorUnitario: precoUnit.toFixed(2).replace('.', ','), valorUnitarioExtenso: valorPorExtenso(precoUnit),
-        valorTotal: total.toFixed(2).replace('.', ','), valorTotalExtenso: valorPorExtenso(total),
+        valorUnitario: p.precoUnitario.toFixed(2).replace('.', ','), valorUnitarioExtenso: valorPorExtenso(p.precoUnitario),
+        valorTotal: p.precoTotal.toFixed(2).replace('.', ','), valorTotalExtenso: valorPorExtenso(p.precoTotal),
       });
     });
-    toast.success(`${validItens.length} item(ns) enviado(s) para a Proposta Comercial!`);
+    toast.success(`${validItens.length} item(ns) enviado(s) à proposta`, {
+      description: `Processo ${licitacaoNumero || licitacaoIdSel} · preço formado com ${somaDasCamadas(camadasDoPreco).toFixed(1)}% de impostos, despesas e margem.`,
+    });
   };
 
   const salvarNoCatalogo = async () => {
@@ -697,7 +842,8 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
 
       {/* ── Vinculação com Licitação (Smart Selector) ── */}
       <LicitacaoSelector
-        licitacaoId={licitacaoId}
+        licitacaoId={licitacaoIdSel}
+        onLicitacaoSelecionada={(id) => setLicitacaoIdSel(id)}
         licitacaoNumero={licitacaoNumero}
         setLicitacaoNumero={setLicitacaoNumero}
         licitacaoOrgao={licitacaoOrgao}
@@ -1193,6 +1339,26 @@ Responda EXCLUSIVAMENTE em JSON com: itens[{descricao,quantidade,unidade,compone
               <Button onClick={gerarComposicaoBDI} disabled={loading} variant="outline" className="w-full h-10" size="lg">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
                 Gerar Composição via IA Contábil (alternativo)
+              </Button>
+
+              {/* A composição é peça do processo, não relatório de tela.
+                  Quando a proposta chega abaixo do que a Administração orçou,
+                  é esta planilha que demonstra a exequibilidade — e sem ela a
+                  proposta é desclassificada por não comprovar o que afirma
+                  (Lei 14.133/2021, art. 59, §§ 3º e 4º). */}
+              <Button
+                onClick={anexarComposicaoAoProcesso}
+                disabled={anexandoPlanilha || !licitacaoIdSel}
+                variant="outline"
+                className="w-full h-10 border-primary/40 text-primary hover:bg-primary/5"
+                size="lg"
+              >
+                {anexandoPlanilha
+                  ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  : <FileText className="w-4 h-4 mr-2" />}
+                {licitacaoIdSel
+                  ? `Anexar planilha à pasta do processo${licitacaoNumero ? ` ${licitacaoNumero}` : ''}`
+                  : 'Vincule a licitação para anexar a planilha ao processo'}
               </Button>
             </div>
           ) : (

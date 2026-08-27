@@ -50,6 +50,15 @@ interface LicitacaoSelectorProps {
   licitacaoOrgao: string;
   setLicitacaoOrgao: (v: string) => void;
   onItensLoaded?: (itens: LicitacaoItemAutoFill[]) => void;
+  /**
+   * O ID do processo escolhido, devolvido a quem usa o seletor.
+   *
+   * Sem isto, escolher uma licitação aqui mudava apenas o número e o órgão —
+   * dois textos. Quem chama continuava com o `licitacaoId` que veio da página,
+   * que pode ser outro processo ou nenhum. A tela dizia "vinculado ao processo
+   * X" e enviava os itens para o lugar de Y.
+   */
+  onLicitacaoSelecionada?: (id: string | null, numero: string, orgao: string) => void;
 }
 
 export default function LicitacaoSelector({
@@ -59,6 +68,7 @@ export default function LicitacaoSelector({
   licitacaoOrgao,
   setLicitacaoOrgao,
   onItensLoaded,
+  onLicitacaoSelecionada,
 }: LicitacaoSelectorProps) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
@@ -78,10 +88,25 @@ export default function LicitacaoSelector({
     if (!user) return;
     setLoading(true);
 
+    /**
+     * Só processo que ocupa a mesa.
+     *
+     * A lista trazia TUDO o que já passou por `licitacoes`, sem olhar
+     * `arquivado_em` nem status — processos mortos, encerrados há meses,
+     * misturados com os de hoje. Quem vai precificar escolhia entre doze
+     * nomes sem saber quais ainda existem.
+     *
+     * O critério é o mesmo do Kanban e do seletor de Processo Ativo
+     * (`useProcessoAtivo`): não arquivado. `arquivado_em` vence qualquer
+     * status — processo homologado e arquivado está no Arquivo, e continua
+     * homologado. Ver src/lib/licitacao/status.ts.
+     */
     const [licitacoesResp, favoritosResp] = await Promise.all([
       (empresaAtiva
-        ? supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital').eq('empresa_id', empresaAtiva.id)
-        : supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital'))
+        ? supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital, status, prazo_final').eq('empresa_id', empresaAtiva.id)
+        : supabase.from('licitacoes').select('id, numero, orgao, objeto, modalidade, valor_estimado, url_edital, status, prazo_final'))
+        .is('arquivado_em', null)
+        .neq('status', 'Arquivada')
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
@@ -160,6 +185,7 @@ export default function LicitacaoSelector({
     setSelectedId(targetLicitacaoId);
     setLicitacaoNumero(lic.numero || '');
     setLicitacaoOrgao(lic.orgao || '');
+    onLicitacaoSelecionada?.(targetLicitacaoId, lic.numero || '', lic.orgao || '');
     setLoadingItens(true);
 
     const [docsResp, rawItensResp, existingItens] = await Promise.all([
