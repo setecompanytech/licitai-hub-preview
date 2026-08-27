@@ -108,14 +108,6 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const { user } = useAuth();
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   const [docAtual, setDocAtual] = useState<DocAlvo | null>(null);
-
-  // Só vale avisar quando o tipo escolhido ENTRA no cálculo do limite: dizer
-  // isso num aditivo já classificado como reequilíbrio seria ruído.
-  const avisoDeTipoDivergente = (() => {
-    if (!['valor', 'quantidade', 'valor_quantidade', 'escopo'].includes(form.tipo)) return null;
-    const achado = INSTITUTOS_SEM_LIMITE.find(([re]) => re.test(form.justificativa || ''));
-    return achado?.[1] ?? null;
-  })();
   const [alvosDisponiveis, setAlvosDisponiveis] = useState<DocAlvo[]>([]);
   const [valorOriginal, setValorOriginal] = useState<number>(0);
   const [objetoContrato, setObjetoContrato] = useState<string>('');
@@ -124,6 +116,15 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const [editing, setEditing] = useState<Aditivo | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  // Só vale avisar quando o tipo escolhido ENTRA no cálculo do limite: dizer
+  // isso num aditivo já classificado como reequilíbrio seria ruído.
+  // Fica depois de `form` porque lê dele — antes, era uso antes da declaração.
+  const avisoDeTipoDivergente = (() => {
+    if (!['valor', 'quantidade', 'valor_quantidade', 'escopo'].includes(form.tipo)) return null;
+    const achado = INSTITUTOS_SEM_LIMITE.find(([re]) => re.test(form.justificativa || ''));
+    return achado?.[1] ?? null;
+  })();
 
   const loadAditivos = async () => {
     setLoading(true);
