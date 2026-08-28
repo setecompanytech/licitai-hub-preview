@@ -33,6 +33,7 @@ import {
   Download,
   Minus,
   Scale,
+  AlertTriangle,
 } from "lucide-react";
 import FinDREporCentroCusto from "./FinDREporCentroCusto";
 
@@ -238,6 +239,54 @@ export default function FinDRE() {
         </CardContent>
       </Card>
 
+      {/* O que o resultado NÃO absorveu, dito antes do detalhamento.
+          Antes, o que não tinha grupo de DRE era varrido para Receita Bruta ou
+          Despesas Operacionais por um atalho no cálculo — e o relatório
+          parecia completo justamente onde estava mais incompleto. */}
+      {atual &&
+        (atual.semClassificacao.linhas > 0 || atual.movimentacaoExcluida.linhas > 0) && (
+          <Card className="border-amber-500/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                Fora do resultado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {atual.semClassificacao.linhas > 0 && (
+                <div>
+                  <p className="text-sm font-medium">
+                    {atual.semClassificacao.linhas} lançamento(s) sem grupo de DRE
+                  </p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {formatBRL(atual.semClassificacao.receita)} em receita ·{" "}
+                    {formatBRL(atual.semClassificacao.despesa)} em despesa
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A categoria existe, mas não está ligada a um grupo do DRE — então
+                    não há onde somá-la. Financeiro → Categorias, coluna Grupo DRE.
+                  </p>
+                </div>
+              )}
+              {atual.movimentacaoExcluida.linhas > 0 && (
+                <div>
+                  <p className="text-sm font-medium">
+                    {atual.movimentacaoExcluida.linhas} lançamento(s) de movimentação
+                    patrimonial
+                  </p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {formatBRL(atual.movimentacaoExcluida.total)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Transferência, aporte, empréstimo e distribuição de lucro mudam o
+                    caixa sem mudar o resultado. Excluídos por definição, não por erro.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
       {atual && atual.grupos.length > 0 && (
         <Card>
           <CardHeader>
@@ -246,9 +295,9 @@ export default function FinDRE() {
           <CardContent>
             <div className="space-y-4">
               {atual.grupos.map((g) => (
-                <div key={g.grupo}>
+                <div key={g.chave}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-medium text-sm">{g.grupo}</span>
+                    <span className="font-medium text-sm">{g.rotulo}</span>
                     <span
                       className={`text-sm font-medium ${
                         g.natureza === "receita" ? "text-success" : "text-destructive"

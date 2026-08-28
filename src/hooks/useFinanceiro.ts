@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
 import { hojeLocal, somarDiasLocal, mesLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -1304,37 +1305,10 @@ export function useDesfazerConciliacao() {
 // ----------------------------------------------------------------------------
 // DRE — Demonstração do Resultado do Exercício (mensal)
 // ----------------------------------------------------------------------------
-export type DRELinhaRaw = {
-  empresa_id: string;
-  competencia: string;
-  grupo_dre: string | null;
-  categoria_id: string | null;
-  categoria_nome: string | null;
-  natureza: "receita" | "despesa";
-  total: number;
-};
-
-export type DREGrupo = {
-  grupo: string;
-  natureza: "receita" | "despesa";
-  total: number;
-  itens: { categoria: string; total: number }[];
-};
-
-export type DREResumo = {
-  competencia: string;
-  receitaBruta: number;
-  deducoes: number;
-  receitaLiquida: number;
-  custos: number;
-  lucroBruto: number;
-  despesasOperacionais: number;
-  resultadoOperacional: number;
-  outrosResultados: number;
-  resultadoLiquido: number;
-  margemLiquida: number;
-  grupos: DREGrupo[];
-};
+// A montagem vive em `src/lib/financeiro/dre.ts` — fora do hook, para poder
+// ser testada. Ela carregava três erros de aritmética que nenhum teste
+// alcançava porque estavam dentro de um `queryFn`.
+export type { DRELinhaRaw, DREGrupo, DREResumo } from "@/lib/financeiro/dre";
 
 export function useDRE(competencia: string) {
   const empresaId = useEmpresaId();
@@ -1349,46 +1323,7 @@ export function useDRE(competencia: string) {
         .eq("empresa_id", empresaId!)
         .eq("competencia", inicio);
       if (error) throw error;
-      const linhas = (data ?? []) as unknown as DRELinhaRaw[];
-
-      const gruposMap = new Map<string, DREGrupo>();
-      linhas.forEach((l) => {
-        const key = l.grupo_dre ?? "outros";
-        if (!gruposMap.has(key)) {
-          gruposMap.set(key, { grupo: key, natureza: l.natureza, total: 0, itens: [] });
-        }
-        const g = gruposMap.get(key)!;
-        g.total += Number(l.total ?? 0);
-        g.itens.push({ categoria: l.categoria_nome ?? "Sem categoria", total: Number(l.total ?? 0) });
-      });
-      const grupos = Array.from(gruposMap.values()).sort((a, b) => b.total - a.total);
-
-      const sumGrupo = (nome: string) => grupos.find((g) => g.grupo === nome)?.total ?? 0;
-      const receitaBruta = sumGrupo("receita_bruta") || grupos.filter((g) => g.natureza === "receita").reduce((s, g) => s + g.total, 0);
-      const deducoes = sumGrupo("deducoes");
-      const receitaLiquida = receitaBruta - deducoes;
-      const custos = sumGrupo("custos");
-      const lucroBruto = receitaLiquida - custos;
-      const despesasOperacionais = sumGrupo("despesas_operacionais") || grupos.filter((g) => g.natureza === "despesa" && g.grupo !== "deducoes" && g.grupo !== "custos" && g.grupo !== "outros_resultados").reduce((s, g) => s + g.total, 0);
-      const resultadoOperacional = lucroBruto - despesasOperacionais;
-      const outrosResultados = sumGrupo("outros_resultados");
-      const resultadoLiquido = resultadoOperacional + outrosResultados;
-      const margemLiquida = receitaLiquida > 0 ? resultadoLiquido / receitaLiquida : 0;
-
-      return {
-        competencia,
-        receitaBruta,
-        deducoes,
-        receitaLiquida,
-        custos,
-        lucroBruto,
-        despesasOperacionais,
-        resultadoOperacional,
-        outrosResultados,
-        resultadoLiquido,
-        margemLiquida,
-        grupos,
-      };
+      return montarDRE((data ?? []) as unknown as DRELinhaRaw[], competencia);
     },
   });
 }
