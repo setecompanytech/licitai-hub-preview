@@ -15,6 +15,8 @@ import {
   Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
 import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
+import SecaoDoDocumento from '@/components/documento/SecaoDoDocumento';
+import DeOndeVem from '@/components/documento/DeOndeVem';
 import FolhaDeAssinaturas from '@/components/documento/FolhaDeAssinaturas';
 import BotaoImprimir from '@/components/documento/BotaoImprimir';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
@@ -172,6 +174,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         )}
       </div>
       {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
+        <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
           <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
             <AlertTriangle className="w-4 h-4" /> Alertas
@@ -194,8 +197,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
         </div>
+        </SecaoDoDocumento>
       )}
 
+      <SecaoDoDocumento numero="2" titulo="Execução do contrato">
       {/* Cards visíveis para todos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
@@ -280,8 +285,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </div>
       )}
 
+      <DeOndeVem
+        itens={[
+          { numero: 'Valor global', origem: 'valor original do contrato mais os aditivos de acréscimo', ondeEditar: 'Arquivos e Aditivos' },
+          { numero: 'Saldo', origem: 'valor global menos o que os pedidos já consumiram' },
+          { numero: 'Faturado', origem: 'soma dos pedidos lançados', ondeEditar: 'Pedidos' },
+          { numero: 'Itens', origem: 'linhas cadastradas', ondeEditar: 'Itens/Lotes' },
+        ]}
+      />
+      </SecaoDoDocumento>
+
       {/* Composição de custos - apenas admin/financeiro */}
       {podeVerCustos && totalCustos > 0 && (
+        <SecaoDoDocumento numero="3" titulo="Composição de custos">
         <Card className="p-4">
           <h4 className="text-xs font-semibold mb-3 flex items-center gap-1.5"><Receipt className="w-4 h-4 text-muted-foreground" /> Composição de Custos</h4>
           <div className="space-y-2">
@@ -307,6 +323,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             })}
           </div>
         </Card>
+        </SecaoDoDocumento>
       )}
 
       {/* Aviso para não-financeiros */}
@@ -319,6 +336,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Card>
       )}
 
+      <SecaoDoDocumento numero="4" titulo="Evolução mensal">
       <EvolucaoMensalDashboard
         pedidos={data!.pedidos as any[]}
         podeVerCustos={podeVerCustos}
@@ -326,7 +344,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         dataInicio={c.data_inicio}
         dataFim={c.data_fim}
       />
+      </SecaoDoDocumento>
 
+      <SecaoDoDocumento numero="5" titulo="Vigência">
       <Card className="p-4">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-xs font-semibold flex items-center gap-1.5"><Calendar className="w-4 h-4 text-muted-foreground" /> Vigência</h4>
@@ -397,6 +417,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </div>
         </div>
       </Card>
+      </SecaoDoDocumento>
 
       {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura
           eletrônica aqui. O fiscal do órgão já está cadastrado no contrato,
