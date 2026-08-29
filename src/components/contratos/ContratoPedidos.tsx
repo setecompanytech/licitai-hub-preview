@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
 import { situacaoDoPrazo } from '@/lib/contratos/prazo-de-entrega';
 import { useDocumentoFiscal, useDocumentosPorNumeroNota, chaveDoNumero } from '@/hooks/useDocumentoFiscal';
@@ -187,6 +188,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   }>>([]);
 
   const [prazos, setPrazos] = useState<PrazosDoContrato | null>(null);
+  // Registrar pedido num contrato que ainda não produz efeitos é o erro que
+  // mais custa: a entrega sai, e a cobrança nasce sem título que a sustente.
+  const { situacao: juridico } = useSituacaoJuridica(contratoId);
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -197,6 +201,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * prazo", que é diferente de "ninguém cadastrou".
    */
   const avisarPrazo = (dataDoPedido: string | null | undefined) => {
+    // Antes do prazo de entrega, a pergunta anterior: este contrato já produz
+    // efeitos? Sai primeiro porque é a que muda a decisão — de nada adianta
+    // saber a data-limite de um pedido que não deveria existir ainda.
+    if (juridico && !juridico.podeExecutar) {
+      toast.warning(`Pedido registrado — ${juridico.titulo.toLowerCase()}`, {
+        description: juridico.detalhe,
+        duration: 14000,
+      });
+      return;
+    }
     const s = situacaoDoPrazo(dataDoPedido, {
       dias: prazos?.prazo_entrega_dias ?? null,
       unidade: (prazos?.prazo_entrega_unidade as 'uteis' | 'corridos' | null) ?? null,

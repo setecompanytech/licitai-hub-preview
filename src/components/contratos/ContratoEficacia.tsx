@@ -12,10 +12,8 @@ import { toast } from 'sonner';
 import {
   ShieldCheck, ShieldAlert, AlertTriangle, Plus, ExternalLink, Loader2, Trash2, Gavel,
 } from 'lucide-react';
-import {
-  situacaoJuridica, extratosExigidos, ROTULO_PUBLICACAO,
-  type TipoDePublicacao,
-} from '@/lib/contratos/eficacia';
+import { extratosExigidos, ROTULO_PUBLICACAO, type TipoDePublicacao } from '@/lib/contratos/eficacia';
+import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import { deDataLocal, hojeLocal } from '@/lib/financeiro/data-local';
 
 type Publicacao = {
@@ -61,6 +59,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [aditivos, setAditivos] = useState<Array<{ id: string; numero_aditivo: string }>>([]);
   const [indisponivel, setIndisponivel] = useState(false);
+  const { situacao: s, recarregar: recarregarSituacao } = useSituacaoJuridica(contratoId);
   const [criando, setCriando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
@@ -94,14 +93,10 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
 
   if (indisponivel || !contrato) return null;
 
-  const doContrato = publicacoes.find(p => p.tipo === 'extrato_contrato' || p.tipo === 'extrato_ata');
-  const s = situacaoJuridica({
-    dataAssinatura: contrato.data_assinatura,
-    assinaturaSituacao: contrato.assinatura_situacao as never,
-    dataDivulgacao: doContrato?.data_publicacao ?? null,
-    modalidade: contrato.modalidade,
-    urgencia: !!contrato.eficacia_por_urgencia,
-  });
+  // A situação vem do hook, não de um cálculo local: a aba Pedidos usa a mesma
+  // resposta para avisar antes de registrar, e duas contas do mesmo fato
+  // divergem — foi o defeito que esta semana inteira se dedicou a arrancar.
+  if (!s) return null;
   const { fundo, cor, Icone } = ESTILO[s.severidade];
 
   const exigidos = extratosExigidos({
@@ -136,6 +131,9 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     setForm(f => ({ ...f, numero: '', url: '' }));
     toast.success('Publicação registrada.');
     void carregar();
+    // A publicação do extrato é o que dá eficácia: o painel de cima precisa
+    // mudar junto, senão continua dizendo "não inicie a execução".
+    recarregarSituacao();
   };
 
   const excluir = async (id: string) => {
@@ -143,6 +141,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     const { error } = await supabase.from('contrato_publicacoes' as never).delete().eq('id', id);
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
     void carregar();
+    recarregarSituacao();
   };
 
   return (
