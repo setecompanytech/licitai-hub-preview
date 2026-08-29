@@ -14,6 +14,9 @@ import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
   Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
 } from 'lucide-react';
+import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
+import FolhaDeAssinaturas from '@/components/documento/FolhaDeAssinaturas';
+import BotaoImprimir from '@/components/documento/BotaoImprimir';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
@@ -146,13 +149,28 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
   const isAtaSrp = c.tipo_documento === 'ata_srp';
 
   return (
-    <div className="space-y-5">
-      {isAtaSrp && (
-        <div className="flex justify-end gap-2">
-          <ManutencaoAtaSrpDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
-          <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
-        </div>
-      )}
+    <div className="space-y-5 documento">
+      {/* Só aparece no papel: a folha sai da impressora sem saber de que
+          empresa e de que contrato ela fala, e vai parar dentro de um
+          processo administrativo. */}
+      <CabecalhoDoDocumento
+        titulo={isAtaSrp ? 'Relatório de Consumo de Ata' : 'Relatório de Execução Contratual'}
+        referencia={c.objeto ?? undefined}
+        identificador={[
+          isAtaSrp ? c.numero_ata : c.numero_contrato,
+          c.orgao_contratante,
+        ].filter(Boolean).join(' — ') || undefined}
+      />
+
+      <div className="flex justify-end gap-2">
+        <BotaoImprimir />
+        {isAtaSrp && (
+          <>
+            <ManutencaoAtaSrpDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
+            <RelatorioConsumoAtaDialog ataId={contratoId} ataNumero={c.numero_ata || c.numero_contrato} />
+          </>
+        )}
+      </div>
       {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
           <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
@@ -184,7 +202,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5 text-muted-foreground text-xs"><DollarSign className="w-3.5 h-3.5" /> Valor Global</div>
             {podeVerCustos && !editingGlobal && (
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => { setEditingGlobal(true); setGlobalInput(String(c.valor_global || 0)); }}>
+              <Button variant="ghost" size="icon" className="h-5 w-5 nao-imprime" onClick={() => { setEditingGlobal(true); setGlobalInput(String(c.valor_global || 0)); }}>
                 <Pencil className="w-3 h-3" />
               </Button>
             )}
@@ -379,6 +397,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </div>
         </div>
       </Card>
+
+      {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura
+          eletrônica aqui. O fiscal do órgão já está cadastrado no contrato,
+          então o nome dele vem escrito; a caneta é que não. */}
+      <FolhaDeAssinaturas
+        local={c.municipio ?? undefined}
+        signatarios={[
+          { papel: 'Responsável pela emissão' },
+          { papel: 'Gestor do contrato' },
+          ...(c.fiscal_nome
+            ? [{ papel: 'Fiscal do contrato (órgão)', nome: c.fiscal_nome }]
+            : []),
+        ]}
+      />
     </div>
   );
 }

@@ -459,3 +459,98 @@
     @apply text-[11px] text-muted-foreground min-w-0 max-w-full break-words hyphens-none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Documento — o que a tela vira quando é impressa
+   ═══════════════════════════════════════════════════════════════════════════
+
+   O trabalho em licitação não termina na tela: termina em PDF assinado,
+   numerado e anexado ao processo. É o que se cita em ofício e o que o órgão
+   pede. Até aqui o projeto não tinha uma única regra de impressão — imprimir
+   qualquer tela saía com menu lateral, botões e barra de busca no papel.
+
+   Três classes, e é só isso que uma tela precisa saber:
+
+     .nao-imprime   some no papel   (botões, filtros, navegação)
+     .so-impresso   só no papel     (cabeçalho oficial, assinaturas)
+     .folha-nova    quebra de página antes
+
+   Quem pinta fundo colorido em cartão precisa de `print-color-adjust`, senão
+   o navegador economiza tinta e devolve tudo branco — inclusive o vermelho
+   que diz que o contrato venceu. */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm 16mm;
+  }
+
+  /* O navegador desliga cor de fundo por padrão. Num documento em que a cor
+     CARREGA informação — vermelho é vencido, âmbar é vencendo — desligar é
+     perder o dado, não economizar tinta. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000;
+  }
+
+  .nao-imprime,
+  [data-imprimir="nao"] {
+    display: none !important;
+  }
+
+  .so-impresso {
+    display: block !important;
+  }
+
+  .folha-nova {
+    break-before: page;
+  }
+
+  /* Cartão vira bloco de documento: sem sombra, com fio. E não pode ser
+     partido no meio — meio cartão no fim da folha e meio na seguinte é o
+     defeito clássico de imprimir tela. */
+  .documento [class*="rounded"],
+  .documento .card {
+    box-shadow: none !important;
+  }
+
+  .documento section,
+  .documento table,
+  .bloco-inteiro {
+    break-inside: avoid;
+  }
+
+  /* Cabeçalho de tabela repete em toda folha; sem isto, da segunda página em
+     diante ninguém sabe o que cada coluna é. */
+  thead {
+    display: table-header-group;
+  }
+
+  tr,
+  img {
+    break-inside: avoid;
+  }
+
+  /* Título órfão no pé da folha. */
+  h1, h2, h3, h4 {
+    break-after: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}
+
+/* Fora da impressão, `.so-impresso` fica escondido. Precisa vir depois do
+   bloco @media para não depender da ordem de especificidade do Tailwind. */
+.so-impresso {
+  display: none;
+}

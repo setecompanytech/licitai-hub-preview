@@ -585,7 +585,7 @@ export default function GestaoContratos() {
             existe no contrato: conteúdo em branco, nenhuma aba acesa. A chave
             por identidade remonta e todo registro abre no Dashboard. */}
         <Tabs key={c.id} defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
-          <TabsList className="flex-wrap">
+          <TabsList className="flex-wrap nao-imprime">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
             {!isAta && <TabsTrigger value="pedidos"><ShoppingCart className="w-3.5 h-3.5 mr-1" /> Pedidos</TabsTrigger>}

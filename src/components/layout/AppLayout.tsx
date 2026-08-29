@@ -116,7 +116,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   return (
     <div className="min-h-screen bg-background">
       {/* Top header bar */}
-      <header className="sticky top-0 z-40 h-12 sm:h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-4">
+      <header className="nao-imprime sticky top-0 z-40 h-12 sm:h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-4">
         {/* Logo */}
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
           <PraefectusLogo size="md" />
@@ -222,8 +222,12 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
 
       {/* Main content */}
       <main className={`${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
-        <MaintenanceBanner showModal />
-        <AlertaVencimentoBanner />
+        {/* Banner de manutenção e aviso de vencimento são da sessão, não do
+            documento: no papel viram ruído com data de validade. */}
+        <div className="nao-imprime">
+          <MaintenanceBanner showModal />
+          <AlertaVencimentoBanner />
+        </div>
         {/* Vencimento de certidão não é assunto só da página de Documentos. */}
         <LembreteDeVencimento />
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
