@@ -708,23 +708,46 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           return;
         }
 
-        const d = extracted.data;
-        const updates: any = {};
-        if (d.numero_contrato) updates.numero_contrato = d.numero_contrato;
-        if (d.objeto) updates.objeto = d.objeto;
-        if (d.orgao_contratante) updates.orgao = d.orgao_contratante;
-        if (typeof d.valor_global === 'number') updates.valor_global_original = d.valor_global;
-        if (d.data_assinatura) updates.data_assinatura = d.data_assinatura;
-        if (d.data_inicio) updates.data_inicio = d.data_inicio;
-        if (d.data_fim) updates.data_fim = d.data_fim;
-        if (d.modalidade) updates.modalidade = d.modalidade;
+        // Este trecho tinha uma SEGUNDA cópia da regra de merge, escrita à mão,
+        // e ela carregava dois defeitos:
+        //
+        //   1. `updates.orgao` — a coluna se chama `orgao_contratante`, e
+        //      `orgao` não existe. Toda vez que a IA devolvia o órgão, o
+        //      UPDATE INTEIRO falhava com "column does not exist" e o erro ia
+        //      para console.warn. A tela dizia "reextração concluída, 8 campos
+        //      atualizados" e nenhum deles tinha sido gravado.
+        //
+        //   2. Não conhecia prazo e local de entrega — nem conheceria os
+        //      próximos campos. Duas cópias da mesma regra divergem sempre;
+        //      é só questão de qual das duas alguém lembra de atualizar.
+        //
+        // Agora usa a mesma régua do upload: validar, depois montar o UPDATE
+        // respeitando o que foi editado à mão.
+        const { normalized, rejected } = validateExtractedContract(extracted.data);
+        const updates = buildParentUpdates(
+          normalized,
+          parentContrato ?? {},
+          parentTipoDocumento ?? 'contrato',
+        );
 
-        if (Object.keys(updates).length > 0) {
-          const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
-          if (cErr) console.warn('Falha ao atualizar contrato:', cErr);
+        if (Object.keys(updates).length === 0) {
+          toast.info(
+            rejected.length > 0
+              ? `IA retornou dados inválidos (${rejected.join(', ')}).`
+              : 'Arquivo substituído. Nenhum campo novo a preencher — o registro já está completo.',
+          );
+          return;
         }
 
-        toast.success(`Reextração concluída. ${Object.keys(updates).length} campos atualizados.`);
+        const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
+        if (cErr) {
+          // Falha de gravação não pode virar sucesso na tela: era exatamente
+          // isso que escondia o defeito da coluna inexistente.
+          toast.error('A IA leu o documento, mas a gravação falhou.', { description: cErr.message });
+          return;
+        }
+
+        toast.success(`Reextração concluída. ${Object.keys(updates).length} campo(s) atualizado(s).`);
       } catch (extErr: any) {
         console.warn('Reextração falhou:', extErr);
         toast.warning('Arquivo substituído, mas reextração IA falhou.', { description: extErr?.message });

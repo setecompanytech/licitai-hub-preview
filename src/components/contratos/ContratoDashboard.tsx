@@ -22,6 +22,7 @@ import BotaoImprimir from '@/components/documento/BotaoImprimir';
 import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
+import ContratoEntrega from './ContratoEntrega';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -417,6 +418,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </div>
         </div>
       </Card>
+      </SecaoDoDocumento>
+
+      <SecaoDoDocumento numero="6" titulo="Condições de entrega">
+        <ContratoEntrega contratoId={contratoId} />
       </SecaoDoDocumento>
 
       {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura
