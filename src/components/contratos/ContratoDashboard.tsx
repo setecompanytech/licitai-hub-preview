@@ -23,6 +23,7 @@ import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
 import ContratoEntrega from './ContratoEntrega';
+import ContratoEficacia from './ContratoEficacia';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -174,6 +175,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </>
         )}
       </div>
+      {/* Antes de qualquer número: o contrato já produz efeitos? Executar sob
+          ajuste ineficaz é entregar sem título que sustente a cobrança, e
+          nenhum indicador de consumo importa antes dessa resposta. */}
+      <ContratoEficacia contratoId={contratoId} />
+
       {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>

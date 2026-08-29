@@ -129,3 +129,29 @@ describe('buildParentUpdates — prazo e local de entrega', () => {
     expect(Object.keys(u)).toHaveLength(0);
   });
 });
+
+describe('assinatura das partes', () => {
+  it('lê os quatro estados', () => {
+    for (const v of ['ambas', 'so_contratada', 'so_orgao', 'nenhuma']) {
+      expect(validateExtractedContract({ assinatura_situacao: v }).normalized.assinatura_situacao).toBe(v);
+    }
+  });
+
+  it('valor fora da lista é descartado — "não sei" é melhor que palpite', () => {
+    // Um 'ambas' errado libera a execução de um contrato que não vincula
+    // ninguém: é o pior erro possível deste campo.
+    const { normalized } = validateExtractedContract({ assinatura_situacao: 'parcial' });
+    expect(normalized.assinatura_situacao).toBeUndefined();
+  });
+
+  it('sobrescreve o valor anterior — o PDF anexado é a fonte', () => {
+    // Trocar o PDF pela versão finalmente assinada pelas duas partes tem de
+    // refletir. Manter o valor antigo deixaria o alerta preso no passado.
+    const u = buildParentUpdates(
+      { assinatura_situacao: 'ambas' },
+      { assinatura_situacao: 'so_contratada' },
+      'contrato',
+    );
+    expect(u.assinatura_situacao).toBe('ambas');
+  });
+});

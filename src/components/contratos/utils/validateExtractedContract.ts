@@ -60,6 +60,8 @@ export interface NormalizedExtraction {
   prazo_recebimento_dias?: number;
   prazo_recebimento_unidade?: 'uteis' | 'corridos';
   prazo_recebimento_clausula?: string;
+  assinatura_situacao?: 'ambas' | 'so_contratada' | 'so_orgao' | 'nenhuma';
+  assinatura_observacao?: string;
 }
 
 /** Dias de prazo plausíveis: 1..1825. Fora disso é data lida como prazo. */
@@ -175,6 +177,17 @@ export function validateExtractedContract(raw: any): ValidationReport {
   const clRec = toCleanString(raw.prazo_recebimento_clausula, 900);
   if (clRec) out.prazo_recebimento_clausula = clRec;
 
+  // Validade do instrumento. Só os quatro valores da coluna; qualquer outra
+  // coisa é descartada em silêncio — aqui "não sei" é resposta melhor do que
+  // um palpite, porque 'ambas' errado libera a execução de um contrato que não
+  // vincula ninguém.
+  const assin = toCleanString(raw.assinatura_situacao, 30)?.toLowerCase();
+  if (assin === 'ambas' || assin === 'so_contratada' || assin === 'so_orgao' || assin === 'nenhuma') {
+    out.assinatura_situacao = assin;
+  }
+  const assinObs = toCleanString(raw.assinatura_observacao, 400);
+  if (assinObs) out.assinatura_observacao = assinObs;
+
   return { normalized: out, rejected };
 }
 
@@ -241,6 +254,16 @@ export function buildParentUpdates(
     u.local_entrega = normalized.local_entrega;
     if (normalized.local_entrega_clausula) u.local_entrega_clausula = normalized.local_entrega_clausula;
   }
+  // A assinatura é sobrescrita mesmo quando já havia valor: o documento
+  // ANEXADO é a fonte, e trocar o PDF por outro (a versão finalmente assinada
+  // pelas duas partes) tem de refletir aqui. Manter o valor antigo faria o
+  // sistema continuar dizendo "assinado por uma parte só" depois de o problema
+  // ter sido resolvido.
+  if (normalized.assinatura_situacao) {
+    u.assinatura_situacao = normalized.assinatura_situacao;
+    if (normalized.assinatura_observacao) u.assinatura_observacao = normalized.assinatura_observacao;
+  }
+
   if (normalized.prazo_recebimento_dias && !parent.prazo_recebimento_dias) {
     u.prazo_recebimento_dias = normalized.prazo_recebimento_dias;
     u.prazo_recebimento_unidade = normalized.prazo_recebimento_unidade ?? 'corridos';

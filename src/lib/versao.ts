@@ -13,4 +13,4 @@
  *
  * Formato: AAAA-MM-DD.N — data e a quantas publicações do dia.
  */
-export const VERSAO_APP = '2026-08-29.6';
+export const VERSAO_APP = '2026-08-29.7';
