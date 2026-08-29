@@ -52,6 +52,25 @@ export interface NormalizedExtraction {
   data_fim?: string;
   vigencia_meses?: number;
   validade_ata_meses?: number;
+  prazo_entrega_dias?: number;
+  prazo_entrega_unidade?: 'uteis' | 'corridos';
+  prazo_entrega_clausula?: string;
+  local_entrega?: string;
+  local_entrega_clausula?: string;
+  prazo_recebimento_dias?: number;
+  prazo_recebimento_unidade?: 'uteis' | 'corridos';
+  prazo_recebimento_clausula?: string;
+}
+
+/** Dias de prazo plausíveis: 1..1825. Fora disso é data lida como prazo. */
+const MAX_DIAS_DE_PRAZO = 1825;
+
+/** Só as duas unidades que existem em contrato público. Resto vira undefined. */
+function unidadeDePrazo(v: unknown): 'uteis' | 'corridos' | undefined {
+  const t = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (/[uú]tei?s?/.test(t)) return 'uteis';
+  if (/corrid/.test(t)) return 'corridos';
+  return undefined;
 }
 
 export interface ValidationReport {
@@ -123,6 +142,39 @@ export function validateExtractedContract(raw: any): ValidationReport {
   if (valMeses !== null && Number.isInteger(valMeses)) out.validade_ata_meses = valMeses;
   else if (raw.validade_ata_meses) rejected.push('validade_ata_meses');
 
+  // ── Prazo e local de entrega ──────────────────────────────────────────────
+  // A unidade é validada JUNTO com os dias: prazo sem unidade seria contado
+  // como corrido por omissão, e "10 dias" lido de uma cláusula que dizia
+  // "10 dias úteis" põe a data-limite quatro dias antes da real. O CHECK do
+  // banco recusaria a gravação, então o par tem de sair coerente daqui.
+  const dEnt = toPositiveNumber(raw.prazo_entrega_dias, MAX_DIAS_DE_PRAZO);
+  if (dEnt !== null && Number.isInteger(dEnt)) {
+    out.prazo_entrega_dias = dEnt;
+    const un = unidadeDePrazo(raw.prazo_entrega_unidade);
+    // Art. 132 da Lei 14.133/2021: sem menção expressa, o prazo é em dias
+    // corridos. É regra supletiva, não invenção nossa.
+    out.prazo_entrega_unidade = un ?? 'corridos';
+  } else if (raw.prazo_entrega_dias) {
+    rejected.push('prazo_entrega_dias');
+  }
+  const clEnt = toCleanString(raw.prazo_entrega_clausula, 900);
+  if (clEnt) out.prazo_entrega_clausula = clEnt;
+
+  const local = toCleanString(raw.local_entrega, 400);
+  if (local) out.local_entrega = local;
+  const clLocal = toCleanString(raw.local_entrega_clausula, 900);
+  if (clLocal) out.local_entrega_clausula = clLocal;
+
+  const dRec = toPositiveNumber(raw.prazo_recebimento_dias, MAX_DIAS_DE_PRAZO);
+  if (dRec !== null && Number.isInteger(dRec)) {
+    out.prazo_recebimento_dias = dRec;
+    out.prazo_recebimento_unidade = unidadeDePrazo(raw.prazo_recebimento_unidade) ?? 'corridos';
+  } else if (raw.prazo_recebimento_dias) {
+    rejected.push('prazo_recebimento_dias');
+  }
+  const clRec = toCleanString(raw.prazo_recebimento_clausula, 900);
+  if (clRec) out.prazo_recebimento_clausula = clRec;
+
   return { normalized: out, rejected };
 }
 
@@ -171,6 +223,28 @@ export function buildParentUpdates(
 
   if (parentTipo === 'contrato' && normalized.vigencia_meses && !parent.vigencia_meses) {
     u.vigencia_meses = normalized.vigencia_meses;
+  }
+
+  // ── Prazo e local de entrega ──────────────────────────────────────────────
+  // Valem para contrato E para ata: a ata também diz em quanto tempo entregar
+  // depois da ordem de fornecimento — é dela que os pedidos saem.
+  //
+  // Dias e unidade vão SEMPRE juntos. Gravar só o dia deixaria a coluna de
+  // unidade nula e o CHECK do banco recusaria a linha inteira; gravar só a
+  // unidade não significa nada.
+  if (normalized.prazo_entrega_dias && !parent.prazo_entrega_dias) {
+    u.prazo_entrega_dias = normalized.prazo_entrega_dias;
+    u.prazo_entrega_unidade = normalized.prazo_entrega_unidade ?? 'corridos';
+    if (normalized.prazo_entrega_clausula) u.prazo_entrega_clausula = normalized.prazo_entrega_clausula;
+  }
+  if (normalized.local_entrega && !parent.local_entrega) {
+    u.local_entrega = normalized.local_entrega;
+    if (normalized.local_entrega_clausula) u.local_entrega_clausula = normalized.local_entrega_clausula;
+  }
+  if (normalized.prazo_recebimento_dias && !parent.prazo_recebimento_dias) {
+    u.prazo_recebimento_dias = normalized.prazo_recebimento_dias;
+    u.prazo_recebimento_unidade = normalized.prazo_recebimento_unidade ?? 'corridos';
+    if (normalized.prazo_recebimento_clausula) u.prazo_recebimento_clausula = normalized.prazo_recebimento_clausula;
   }
 
   return u;
