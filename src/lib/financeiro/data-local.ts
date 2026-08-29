@@ -26,6 +26,21 @@ export function dataLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
+/**
+ * O caminho de volta: AAAA-MM-DD para `Date`, no fuso local.
+ *
+ * `new Date('2026-08-29')` é interpretado como meia-noite UTC — no Brasil,
+ * 21h do dia 28. Todo cálculo que parte de uma data ISO precisa disto, ou
+ * repete o mesmo erro de um dia que `dataLocal` existe para evitar.
+ *
+ * Meio-dia como âncora, pela mesma razão de `somarDiasLocal`: a virada do
+ * horário de verão acontece na madrugada.
+ */
+export function deDataLocal(iso: string): Date {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  return new Date(ano, (mes ?? 1) - 1, dia ?? 1, 12, 0, 0, 0);
+}
+
 /** Hoje, no fuso de quem está olhando a tela. */
 export function hojeLocal(): string {
   return dataLocal(new Date());

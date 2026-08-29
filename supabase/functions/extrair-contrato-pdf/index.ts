@@ -32,6 +32,14 @@ type DadosContrato = {
   data_inicio?: string | null;
   data_fim?: string | null;
   vigencia_meses?: number | string | null;
+  prazo_entrega_dias?: number | string | null;
+  prazo_entrega_unidade?: string | null;
+  prazo_entrega_clausula?: string | null;
+  local_entrega?: string | null;
+  local_entrega_clausula?: string | null;
+  prazo_recebimento_dias?: number | string | null;
+  prazo_recebimento_unidade?: string | null;
+  prazo_recebimento_clausula?: string | null;
   validade_ata_meses?: number | string | null;
   modalidade?: string | null;
   uf?: string | null;
@@ -182,11 +190,48 @@ function normalizeContrato(data: DadosContrato) {
     fiscal_nome: cleanString(data.fiscal_nome),
     fiscal_email: cleanString(data.fiscal_email),
     fiscal_telefone: cleanString(data.fiscal_telefone),
+
+    // Prazo e local de entrega. `unidadeDePrazo` só aceita as duas que
+    // existem em contrato público brasileiro: qualquer outra coisa vira null,
+    // porque unidade inventada faz o aviso cair no dia errado — e avisar no
+    // dia errado é pior do que não avisar, já que quem confia perde o prazo
+    // confiando.
+    prazo_entrega_dias: prazoEmDias(data.prazo_entrega_dias),
+    prazo_entrega_unidade: unidadeDePrazo(data.prazo_entrega_unidade),
+    prazo_entrega_clausula: cleanString(data.prazo_entrega_clausula),
+    local_entrega: cleanString(data.local_entrega),
+    local_entrega_clausula: cleanString(data.local_entrega_clausula),
+    prazo_recebimento_dias: prazoEmDias(data.prazo_recebimento_dias),
+    prazo_recebimento_unidade: unidadeDePrazo(data.prazo_recebimento_unidade),
+    prazo_recebimento_clausula: cleanString(data.prazo_recebimento_clausula),
+
     observacoes: cleanString(data.observacoes),
     itens,
     aditivo,
     conferencia: conferirItens(itens, parseNumber(data.valor_global)),
   };
+}
+
+/**
+ * Dias de prazo, ou null.
+ *
+ * Fora da faixa 1..1825 é erro de leitura, não cláusula — cinco anos cobre o
+ * contrato mais longo do art. 108 e nenhuma entrega leva isso. Deixar passar
+ * um 20260 lido de uma data produziria um limite no ano 2081.
+ */
+function prazoEmDias(v: unknown): number | null {
+  const n = parseNumber(v);
+  if (n === null || !Number.isFinite(n)) return null;
+  const inteiro = Math.round(n);
+  return inteiro >= 1 && inteiro <= 1825 ? inteiro : null;
+}
+
+/** 'uteis' | 'corridos' — qualquer outra coisa é null, nunca um palpite. */
+function unidadeDePrazo(v: unknown): "uteis" | "corridos" | null {
+  const t = cleanString(v)?.toLowerCase() ?? "";
+  if (/[uú]tei?s?/.test(t)) return "uteis";
+  if (/corrid/.test(t)) return "corridos";
+  return null;
 }
 
 /**
@@ -342,7 +387,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -395,6 +440,19 @@ serve(async (req) => {
                   data_fim: { type: "string", description: "Fim da vigência" },
                   vigencia_meses: { type: "number", description: "Vigência em meses, se explícita" },
                   validade_ata_meses: { type: "number", description: "Validade da ATA SRP em meses (geralmente 12)" },
+
+                  // Obrigações com prazo. Nascem da cláusula de entrega e são
+                  // o que a tela de Pedidos passa a vigiar: estourar o prazo
+                  // de entrega é inadimplemento (art. 137, II) e abre caminho
+                  // para as sanções do art. 156.
+                  prazo_entrega_dias: { type: "number", description: "Prazo de ENTREGA em dias, contado do pedido/ordem de fornecimento. Só o número." },
+                  prazo_entrega_unidade: { type: "string", enum: ["uteis", "corridos"], description: "A cláusula diz 'dias úteis' ou 'dias corridos'? Se ela não disser, use 'corridos' — é a regra supletiva do art. 132 da Lei 14.133/2021." },
+                  prazo_entrega_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de entrega saiu, para conferência." },
+                  local_entrega: { type: "string", description: "Onde entregar: endereço, unidade, almoxarifado, ou a regra ('nas unidades indicadas na ordem de fornecimento')." },
+                  local_entrega_clausula: { type: "string", description: "A frase LITERAL de onde o local saiu." },
+                  prazo_recebimento_dias: { type: "number", description: "Prazo do ÓRGÃO para receber e atestar o objeto, contado da entrega (art. 140). Só o número." },
+                  prazo_recebimento_unidade: { type: "string", enum: ["uteis", "corridos"], description: "Unidade do prazo de recebimento." },
+                  prazo_recebimento_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de recebimento saiu." },
                   modalidade: { type: "string" },
                   uf: { type: "string" },
                   municipio: { type: "string" },

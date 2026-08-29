@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
+import { situacaoDoPrazo } from '@/lib/contratos/prazo-de-entrega';
 import { useDocumentoFiscal, useDocumentosPorNumeroNota, chaveDoNumero } from '@/hooks/useDocumentoFiscal';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -184,6 +186,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     contrato_item_id: string;
   }>>([]);
 
+  const [prazos, setPrazos] = useState<PrazosDoContrato | null>(null);
+
+  /**
+   * O aviso que o pedido dispara no instante em que é registrado.
+   *
+   * O usuário acabou de assumir uma obrigação com prazo — é aqui que ela
+   * precisa ser dita, não numa tela que ele talvez não abra. Quando o contrato
+   * não registra prazo, o aviso diz isso: silêncio seria lido como "não há
+   * prazo", que é diferente de "ninguém cadastrou".
+   */
+  const avisarPrazo = (dataDoPedido: string | null | undefined) => {
+    const s = situacaoDoPrazo(dataDoPedido, {
+      dias: prazos?.prazo_entrega_dias ?? null,
+      unidade: (prazos?.prazo_entrega_unidade as 'uteis' | 'corridos' | null) ?? null,
+    });
+    if (s.estado === 'sem_prazo') {
+      toast.warning('Pedido registrado — prazo de entrega não cadastrado no contrato.', {
+        description: 'O sistema não consegue calcular a data-limite. Reenvie o PDF do contrato ou preencha o prazo à mão.',
+      });
+      return;
+    }
+    toast.success('Pedido registrado.', {
+      description: prazos?.local_entrega ? `${s.frase} · Entregar em: ${prazos.local_entrega}` : s.frase,
+      duration: 8000,
+    });
+  };
+
   const load = async () => {
     setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
@@ -211,6 +240,23 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setPreNotas((preNotasRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
+    // Consulta SEPARADA, de propósito. As colunas de prazo vêm da migration
+    // 20260829000004, que é colada à mão no SQL Editor: enquanto ela não
+    // rodar, pedi-las junto com o resto derrubaria a aba INTEIRA por "column
+    // does not exist". Aqui a falha custa só o aviso de prazo, e o aviso já
+    // sabe dizer "prazo não registrado" — que é a verdade nos dois casos.
+    supabase
+      .from('contratos')
+      .select('prazo_entrega_dias, prazo_entrega_unidade, prazo_entrega_clausula, local_entrega, prazo_recebimento_dias, prazo_recebimento_unidade')
+      .eq('id', contratoId)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          setPrazos(null);
+          return;
+        }
+        setPrazos(data as unknown as PrazosDoContrato);
+      });
     setDadosExecucao({
       forma: (contratoRes.data as any)?.forma_execucao ?? null,
       fundamento: (contratoRes.data as any)?.art95_fundamento ?? null,
@@ -495,7 +541,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
     await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
-    toast.success('Pedido registrado.');
+    avisarPrazo(novoPedido?.data_pedido);
     setDialogOpen(false);
     resetForm();
     load();
@@ -534,7 +580,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       if (error) { console.error('Erro ao salvar pedido:', error.message); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
       await gerarLancamentosFinanceiros([novoPedido as any]);
       setSaving(false);
-      toast.success('Pedido registrado.');
+      avisarPrazo(novoPedido?.data_pedido);
       setDialogOpen(false);
       resetForm();
       load();
@@ -1181,7 +1227,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-center whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell className="text-xs text-center whitespace-nowrap">
+                      <div>{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+                      {/* O prazo que começou a correr quando este pedido foi
+                          lançado. Antes a coluna mostrava a data e parava aí. */}
+                      <AvisoDePrazoDeEntrega
+                        compacto
+                        contrato={prazos}
+                        dataDoPedido={p.data_pedido}
+                        dataDeEntrega={p.data_entrega}
+                      />
+                    </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
                     </TableCell>
