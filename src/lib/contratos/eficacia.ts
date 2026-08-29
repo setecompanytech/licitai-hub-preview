@@ -58,6 +58,18 @@ export type EstadoDaEficacia =
   | 'assinatura_incompleta'
   | 'aguardando_divulgacao'
   | 'divulgacao_atrasada'
+  /**
+   * O sistema não tem o extrato — e isso NÃO significa que não foi publicado.
+   *
+   * Distinção que custou caro em outros cantos deste produto: `grupo_dre` nulo
+   * não quer dizer "é receita", e publicação não registrada não quer dizer
+   * "não publicada". Um contrato que vem sendo executado há dois anos foi
+   * publicado; o que falta é alguém ter digitado.
+   *
+   * Gritar "prazo vencido há 700 dias" num contrato desses é o alarme falso
+   * que ensina a ignorar o alarme — e aí o próximo, verdadeiro, passa batido.
+   */
+  | 'publicacao_nao_registrada'
   | 'eficaz_por_urgencia'
   | 'eficaz';
 
@@ -83,6 +95,14 @@ export type EntradaDaEficacia = {
   modalidade?: string | null;
   /** Art. 94, §1º: contrato de urgência tem eficácia da assinatura. */
   urgencia?: boolean;
+  /**
+   * O contrato já está sendo executado (tem pedido ou consumo)?
+   *
+   * Muda o sentido da falta de extrato: execução em curso é evidência de que a
+   * publicação saiu e não foi registrada aqui. Sem execução nenhuma, a falta
+   * de extrato é o que parece — e aí vale travar.
+   */
+  temExecucao?: boolean;
   feriados?: string[];
   hoje?: string;
 };
@@ -162,16 +182,32 @@ export function situacaoJuridica(e: EntradaDaEficacia): SituacaoJuridica {
   }
 
   if (dias < 0) {
+    // Execução em curso é evidência de que a publicação saiu: o órgão não
+    // recebe entrega sob contrato que ele sabe ineficaz. O que falta é o
+    // registro, e o pedido tem de ser esse — não uma acusação de atraso.
+    if (e.temExecucao) {
+      return {
+        estado: 'publicacao_nao_registrada',
+        podeExecutar: true,
+        limiteDivulgacao: limite,
+        dias,
+        severidade: 'atencao',
+        titulo: 'Extrato de publicação não registrado',
+        detalhe:
+          'Este contrato já tem execução, o que indica que a publicação saiu — ela só não foi registrada aqui. ' +
+          'Registre o extrato com a data em que saiu: é o que prova desde quando o contrato produz efeitos, e é o primeiro documento que se pede numa auditoria.',
+      };
+    }
     return {
       estado: 'divulgacao_atrasada',
       podeExecutar: false,
       limiteDivulgacao: limite,
       dias,
       severidade: 'critico',
-      titulo: `Prazo de divulgação vencido há ${Math.abs(dias)} dia(s)`,
+      titulo: `Sem extrato registrado, ${Math.abs(dias)} dia(s) além do prazo`,
       detalhe:
-        `O órgão tinha até ${limiteBr} para divulgar no PNCP (${prazo} dias úteis da assinatura, ${nomeDaOrigem}). ` +
-        'Enquanto não divulgar, o contrato não produz efeitos: executar agora é entregar sem título que sustente a cobrança. Cobre a publicação por escrito e guarde o protocolo.',
+        `O órgão tinha até ${limiteBr} para divulgar no PNCP (${prazo} dias úteis da assinatura, ${nomeDaOrigem}), e não há extrato registrado aqui. ` +
+        'Se já foi publicado, registre o extrato. Se não foi, o contrato ainda não produz efeitos: executar agora é entregar sem título que sustente a cobrança — cobre a publicação por escrito e guarde o protocolo.',
     };
   }
 

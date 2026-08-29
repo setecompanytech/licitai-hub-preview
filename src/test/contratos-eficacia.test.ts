@@ -99,12 +99,33 @@ describe('situacaoJuridica — eficácia', () => {
     expect(PRAZO_DIVULGACAO.direta).toBe(10);
   });
 
-  it('prazo estourado sem divulgação é crítico, e diz o que fazer', () => {
+  it('prazo estourado, sem extrato e SEM execução, é crítico', () => {
     const s = situacaoJuridica({ ...assinado, modalidade: 'Pregão', hoje: '2026-09-10' });
     expect(s.estado).toBe('divulgacao_atrasada');
     expect(s.podeExecutar).toBe(false);
     expect(s.severidade).toBe('critico');
-    expect(s.detalhe).toMatch(/Cobre a publicação/);
+    expect(s.detalhe).toMatch(/cobre a publicação/i);
+    // Não afirma que não foi publicado — só que não há registro aqui.
+    expect(s.detalhe).toMatch(/Se já foi publicado, registre o extrato/);
+  });
+
+  it('COM execução em curso, a falta de extrato é falta de REGISTRO', () => {
+    // Um contrato de 2024 que vem sendo executado foi publicado; o que falta é
+    // alguém ter digitado. Gritar "vencido há 700 dias" nele é o alarme falso
+    // que ensina a ignorar o alarme.
+    const s = situacaoJuridica({
+      ...assinado, modalidade: 'Pregão', hoje: '2026-09-10', temExecucao: true,
+    });
+    expect(s.estado).toBe('publicacao_nao_registrada');
+    expect(s.podeExecutar).toBe(true);
+    expect(s.severidade).toBe('atencao');
+    expect(s.titulo).toMatch(/não registrado/);
+  });
+
+  it('sem execução, o prazo ainda correndo não vira alarme', () => {
+    const s = situacaoJuridica({ ...assinado, modalidade: 'Pregão', hoje: '2026-08-10', temExecucao: true });
+    // Dentro do prazo, execução ou não, o estado é o mesmo: ainda esperando.
+    expect(s.estado).toBe('aguardando_divulgacao');
   });
 
   it('urgência dá eficácia desde a assinatura, mas não dispensa publicar', () => {

@@ -33,7 +33,7 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
     const [cRes, pRes] = await Promise.all([
       supabase
         .from('contratos')
-        .select('data_assinatura, modalidade, assinatura_situacao, eficacia_por_urgencia')
+        .select('data_assinatura, modalidade, assinatura_situacao, eficacia_por_urgencia, valor_consumido')
         .eq('id', contratoId)
         .single(),
       supabase
@@ -51,6 +51,7 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
     const c = cRes.data as unknown as {
       data_assinatura: string | null; modalidade: string | null;
       assinatura_situacao: string | null; eficacia_por_urgencia: boolean | null;
+      valor_consumido: number | null;
     };
     const publicacoes = (pRes.data ?? []) as unknown as Array<{ data_publicacao: string }>;
 
@@ -62,6 +63,11 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
         dataDivulgacao: publicacoes[0]?.data_publicacao ?? null,
         modalidade: c.modalidade,
         urgencia: !!c.eficacia_por_urgencia,
+        // Consumo > 0 significa que o contrato vem sendo executado — e o órgão
+        // não recebe entrega sob ajuste que ele sabe ineficaz. Logo, a
+        // publicação saiu; o que falta é o registro. Sem isso, todo contrato
+        // antigo apareceria como "prazo vencido há 700 dias".
+        temExecucao: (c.valor_consumido ?? 0) > 0,
       }),
     );
   }, [contratoId]);
