@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { rotuloDaAlteracao, especieDaAlteracao } from '@/lib/contratos/rotulos';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -435,7 +436,20 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-semibold">{a.numero_aditivo}</span>
+                      {/* O nome do instrumento, não só o número digitado.
+                          Reajuste e repactuação de preços já previstos no
+                          contrato são registrados por APOSTILA (art. 136, I),
+                          não por termo aditivo — chamar tudo de aditivo sugere
+                          negociação e assinatura das duas partes onde a lei
+                          não exige nenhuma. */}
+                      <span className="text-sm font-semibold">
+                        {rotuloDaAlteracao(a.tipo, a.numero_aditivo)}
+                      </span>
+                      {especieDaAlteracao(a.tipo) === 'apostilamento' && (
+                        <Badge variant="outline" className="text-xs border-primary/40 text-primary">
+                          Apostila — art. 136, I
+                        </Badge>
+                      )}
                       <Badge className={`text-xs ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
                       {a.isSujeito && pctThisItem !== null && (
                         <Badge variant="outline" className={`text-xs ${itemExcedeu ? 'border-destructive/40 text-destructive' : itemProximo ? 'border-warning/40 text-warning' : 'border-muted-foreground/30 text-muted-foreground'}`}>
@@ -539,7 +553,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
             </div>
             <div>
               <Label className="text-xs">Nº/Identificação *</Label>
-              <Input value={form.numero_aditivo} onChange={(e) => setForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
+              <Input value={form.numero_aditivo} onChange={(e) => setForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1 (o instrumento é nomeado pelo tipo)" />
             </div>
             <div>
               <Label className="text-xs">Tipo</Label>

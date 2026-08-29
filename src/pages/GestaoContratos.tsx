@@ -4,7 +4,7 @@ import { useColaboradores } from '@/hooks/useMetasComercial';
 import { nomeExibido } from '@/lib/equipe/nomeExibido';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import { AMPARO_ART95, ESPECIES_OBJETO, FORMAS_EXECUCAO, FUNDAMENTOS_ART95, INSTRUMENTOS, LIMITES_ADITIVO, VIGENCIA_ATA, avisoDeVigencia } from '@/lib/contratos/instrumentos';
-import { rotuloDaAta } from '@/lib/contratos/rotulos';
+import { rotuloDaAta, rotuloDoContrato, rotuloDoDocumento, nomeDoOrgao } from '@/lib/contratos/rotulos';
 import { avisoDeVigenciaAta, calcularVigencia, somarDias, statusEfetivo } from '@/lib/contratos/vigencia';
 import LocalDoOrgao from '@/components/contratos/LocalDoOrgao';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
@@ -529,7 +529,7 @@ export default function GestaoContratos() {
               </div>
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{c.objeto}</p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-                <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.orgao_contratante}</span>
+                <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{nomeDoOrgao(c.orgao_contratante)}</span>
                 {c.uf && <span>{c.uf}{c.municipio ? `/${c.municipio}` : ''}</span>}
                 {ataOrigem && (
                   <button
@@ -1096,13 +1096,15 @@ export default function GestaoContratos() {
                     {/* 1º — Órgão/cliente */}
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-semibold truncate">{c.orgao_contratante}</span>
+                      <span className="text-sm font-semibold truncate">{nomeDoOrgao(c.orgao_contratante)}</span>
                     </div>
                     {/* 2º — Número + tipo + badges de status */}
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {isAta
-                        ? <span className="text-xs font-medium text-foreground">{rotuloDaAta(c.numero_ata || c.numero_contrato)}</span>
-                        : <span className="text-xs font-medium text-foreground">Contrato n. {c.numero_contrato}</span>}
+                      <span className="text-xs font-medium text-foreground">
+                        {isAta
+                          ? rotuloDaAta(c.numero_ata || c.numero_contrato)
+                          : rotuloDoContrato(c.numero_contrato)}
+                      </span>
                       <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
                       {/* Os derivados moram dentro da pasta da ata; o cartão diz
                           quantos, senão parecem ter sumido da lista. */}
@@ -1207,9 +1209,9 @@ export default function GestaoContratos() {
             {excluidos.map(c => (
               <div key={c.id} className="flex items-center gap-3 py-2.5 flex-wrap">
                 <span className="text-sm font-medium">
-                  {c.tipo_documento === 'ata_srp' ? rotuloDaAta(c.numero_ata || c.numero_contrato) : `Contrato n. ${c.numero_contrato}`}
+                  {rotuloDoDocumento(c.tipo_documento, c.tipo_documento === 'ata_srp' ? (c.numero_ata || c.numero_contrato) : c.numero_contrato)}
                 </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[280px]">{c.orgao_contratante}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[280px]">{nomeDoOrgao(c.orgao_contratante)}</span>
                 {c.excluido_em && (
                   <span className="text-xs text-muted-foreground">
                     excluído em {new Date(c.excluido_em).toLocaleDateString('pt-BR')}
