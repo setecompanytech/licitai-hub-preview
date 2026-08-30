@@ -608,7 +608,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       }
       try {
         if (!user?.id) throw new Error('sem usuário');
-        const caminho = `${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+        // A PRIMEIRA pasta tem de ser o auth.uid(): a política do bucket é
+        // `auth.uid()::text = (storage.foldername(name))[1]`. Eu começava pelo
+        // contrato — `${contratoId}/ordens/...` — e o upload era recusado com
+        // "new row violates row-level security policy", que soa como problema
+        // de tabela e é do storage.
+        const caminho = `${user!.id}/${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
         const { error: upErr } = await supabase.storage
           .from('contratos-docs')
           .upload(caminho, file, { upsert: false, contentType: file.type });
