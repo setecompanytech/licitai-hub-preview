@@ -8118,10 +8118,16 @@ ON CONFLICT (lancamento_id) DO NOTHING;
 -- Cinco colunas apontam para categoria. Esquecer uma faz o DELETE falhar (na
 -- que tem RESTRICT) ou deixar referência órfã (nas que não têm).
 
+-- O contador vem do registro dos lançamentos, não de uma contagem ao vivo.
+-- A versão anterior contava `financeiro_lancamentos` na hora: rodando o script
+-- de novo, a categoria já não existia, os lançamentos já haviam se movido, e a
+-- contagem sobrescrevia o número certo por zero. `bkp_lancamentos_...` tem
+-- ON CONFLICT DO NOTHING e preserva o primeiro registro — dele o número não
+-- foge.
 UPDATE public.bkp_categorias_fundidas_20260829 b
    SET lancamentos_movidos = (
-     SELECT count(*) FROM public.financeiro_lancamentos l
-      WHERE l.categoria_id = b.categoria_removida
+     SELECT count(*) FROM public.bkp_lancamentos_recategorizados_20260829 r
+      WHERE r.categoria_anterior = b.categoria_removida
    );
 
 UPDATE public.financeiro_lancamentos l
