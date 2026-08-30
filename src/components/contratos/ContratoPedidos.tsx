@@ -111,6 +111,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { abrirArquivo } = useDocumentoFiscal();
 
   /** Abre o DANFE arquivado no Financeiro, por URL assinada. */
+  /**
+   * Abre a Ordem de Fornecimento / Nota de Empenho que autorizou o pedido.
+   *
+   * O `arquivo_ordem_id` era gravado em três lugares e lido em nenhum: o PDF
+   * ficava guardado e sem caminho até ele. Guardar sem dar como alcançar é
+   * meio arquivamento — e é o documento que se apresenta quando o órgão
+   * questiona quantidade empenhada.
+   */
+  const abrirOrdem = async (p: Pedido) => {
+    const id = (p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id;
+    if (!id) { openEditDialog(p); return; }
+    const { data } = await supabase
+      .from('contrato_arquivos')
+      .select('storage_path, nome_arquivo')
+      .eq('id', id)
+      .single();
+    if (!data?.storage_path) { openEditDialog(p); return; }
+    void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Ordem/Empenho');
+  };
+
   const abrirDanfe = async (storagePath: string, nome: string) => {
     const url = await abrirArquivo(storagePath);
     if (!url) {
@@ -1397,8 +1417,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       ) : (
                         <button
                           className="hover:underline text-primary cursor-pointer"
-                          onClick={() => openEditDialog(p)}
-                          title="Abrir detalhes do pedido"
+                          onClick={() => abrirOrdem(p)}
+                          title={(p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id
+                            ? 'Abrir a Ordem/Empenho que autorizou este pedido'
+                            : 'Abrir detalhes do pedido'}
                         >
                           {p.numero_pedido}
                         </button>
