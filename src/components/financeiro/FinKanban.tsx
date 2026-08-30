@@ -82,6 +82,11 @@ export default function FinKanban({ tipo }: Props) {
   const [filtroVenc, setFiltroVenc] = useState<VencFiltro>("todos");
   const [valorMin, setValorMin] = useState<string>("");
   const [valorMax, setValorMax] = useState<string>("");
+  // Período explícito, em cima dos atalhos. "Este mês" resolve o caso comum;
+  // conferir contra extrato de abril, fechar trimestre ou achar o lançamento
+  // de uma data específica pedem intervalo — e sem ele a pessoa ia ao SQL.
+  const [dataDe, setDataDe] = useState<string>("");
+  const [dataAte, setDataAte] = useState<string>("");
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -116,6 +121,34 @@ export default function FinKanban({ tipo }: Props) {
     return "aberto";
   };
 
+  /**
+   * O mês escolhido vira o intervalo do primeiro ao último dia.
+   *
+   * Guardar mês E intervalo como filtros separados criaria dois donos da mesma
+   * pergunta — e quando os dois discordassem, ninguém saberia qual valia. Aqui
+   * o mês é um atalho que ESCREVE no intervalo, e o intervalo é a única
+   * autoridade.
+   */
+  const aplicarMes = (mes: string) => {
+    if (!mes) { setDataDe(""); setDataAte(""); return; }
+    const [ano, m] = mes.split("-").map(Number);
+    // Dia 0 do mês seguinte é o último dia deste — evita a tabela de quantos
+    // dias tem cada mês, e acerta fevereiro bissexto de graça.
+    const ultimo = new Date(ano, m, 0).getDate();
+    setDataDe(`${mes}-01`);
+    setDataAte(`${mes}-${String(ultimo).padStart(2, "0")}`);
+  };
+
+  /** O mês a exibir no seletor, quando o intervalo for exatamente um mês. */
+  const mesSelecionado = (() => {
+    if (!dataDe || !dataAte) return "";
+    const mes = dataDe.slice(0, 7);
+    if (dataAte.slice(0, 7) !== mes || !dataDe.endsWith("-01")) return "";
+    const [ano, m] = mes.split("-").map(Number);
+    const ultimo = new Date(ano, m, 0).getDate();
+    return dataAte === `${mes}-${String(ultimo).padStart(2, "0")}` ? mes : "";
+  })();
+
   const matchVencimento = (l: LancamentoCard): boolean => {
     if (filtroVenc === "todos") return true;
     const ref = parseISO(dataReferenciaVenc(l));
@@ -139,6 +172,14 @@ export default function FinKanban({ tipo }: Props) {
       if (filtroPessoa !== "todos" && l.pessoa_id !== filtroPessoa) return false;
       if (filtroConta !== "todos" && l.conta_id !== filtroConta) return false;
       if (!matchVencimento(l)) return false;
+      // O período usa a MESMA data que as colunas e os atalhos —
+      // `dataReferenciaVenc`. Filtrar por uma data e pintar por outra faria o
+      // cartão sumir do intervalo em que a tela diz que ele está.
+      if (dataDe || dataAte) {
+        const ref = dataReferenciaVenc(l);
+        if (dataDe && ref < dataDe) return false;
+        if (dataAte && ref > dataAte) return false;
+      }
       const valor = Number(l.valor);
       if (vMin !== null && valor < vMin) return false;
       if (vMax !== null && valor > vMax) return false;
@@ -151,7 +192,7 @@ export default function FinKanban({ tipo }: Props) {
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lancamentos, busca, filtroVendedor, filtroCategoria, filtroPessoa, filtroConta, filtroVenc, valorMin, valorMax, pendingDeleteIds]);
+  }, [lancamentos, busca, filtroVendedor, filtroCategoria, filtroPessoa, filtroConta, filtroVenc, valorMin, valorMax, dataDe, dataAte, pendingDeleteIds]);
 
   const filtrosAtivos =
     (filtroVendedor !== "todos" ? 1 : 0) +
@@ -160,7 +201,10 @@ export default function FinKanban({ tipo }: Props) {
     (filtroConta !== "todos" ? 1 : 0) +
     (filtroVenc !== "todos" ? 1 : 0) +
     (valorMin ? 1 : 0) +
-    (valorMax ? 1 : 0);
+    (valorMax ? 1 : 0) +
+    // O intervalo conta como UM filtro mesmo com as duas pontas preenchidas:
+    // é uma decisão só, e dizer "2 filtros" para um período confunde.
+    (dataDe || dataAte ? 1 : 0);
 
   const limparFiltros = () => {
     setFiltroVendedor("todos");
@@ -170,6 +214,8 @@ export default function FinKanban({ tipo }: Props) {
     setFiltroVenc("todos");
     setValorMin("");
     setValorMax("");
+    setDataDe("");
+    setDataAte("");
     setBusca("");
   };
 
@@ -516,6 +562,34 @@ export default function FinKanban({ tipo }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Ocupa duas colunas para que Mês/De/Até fechem a linha e os
+                campos de valor fiquem juntos na seguinte. */}
+            <div className="space-y-1 lg:col-span-2">
+              <label className="text-xs text-muted-foreground">Mês</label>
+              <Input
+                type="month"
+                value={mesSelecionado}
+                onChange={(e) => aplicarMes(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">De</label>
+              <Input
+                type="date"
+                value={dataDe}
+                max={dataAte || undefined}
+                onChange={(e) => setDataDe(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Até</label>
+              <Input
+                type="date"
+                value={dataAte}
+                min={dataDe || undefined}
+                onChange={(e) => setDataAte(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
