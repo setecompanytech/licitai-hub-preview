@@ -181,3 +181,21 @@ describe('pagamento', () => {
     expect(s.cabeExtincao).toBe(false);
   });
 });
+
+describe('data prevista não é data de entrega', () => {
+  const prazo = { dias: 10, unidade: 'corridos' as const };
+
+  it('sem entrega registrada, o prazo segue correndo', () => {
+    // O defeito de 30/08: `data_entrega` guarda a data PREVISTA, e passá-la
+    // como se fosse a realizada fazia a tela afirmar "Entregue com 286 dias
+    // de atraso" para um pedido que nunca saiu.
+    const s = situacaoDoPrazo('2026-03-10', prazo, { hoje: '2026-08-30' });
+    expect(s.estado).toBe('vencido');
+    expect(s.frase).not.toMatch(/Entregue/);
+  });
+
+  it('com entrega registrada, aí sim encerra a contagem', () => {
+    const s = situacaoDoPrazo('2026-03-10', prazo, { entregueEm: '2026-03-18' });
+    expect(s.estado).toBe('entregue');
+  });
+});

@@ -1446,12 +1446,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <TableCell className="text-sm text-center whitespace-nowrap">
                       <div>{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                       {/* O prazo que começou a correr quando este pedido foi
-                          lançado. Antes a coluna mostrava a data e parava aí. */}
+                          lançado. Antes a coluna mostrava a data e parava aí.
+
+                          `dataDeEntrega` só é passada quando o STATUS diz que
+                          houve entrega. `data_entrega` guarda a data PREVISTA
+                          — a própria extração a descreve assim — e tratá-la
+                          como realizada fazia a linha afirmar "Entregue com
+                          286 dias de atraso" para um pedido que nunca saiu,
+                          usando a data de fim do empenho lida do documento.
+                          Quem sabe se entregou é o status; a data prevista só
+                          diz para quando era. */}
                       <AvisoDePrazoDeEntrega
                         compacto
                         contrato={prazos}
                         dataDoPedido={p.data_pedido}
-                        dataDeEntrega={p.data_entrega}
+                        dataDeEntrega={p.status === 'entregue' ? p.data_entrega : null}
                       />
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
