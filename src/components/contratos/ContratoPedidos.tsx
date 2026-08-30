@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
@@ -762,7 +763,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     // 1. Update pedido with NF quitada
     const { error: updateErr } = await supabase.from('contrato_pedidos').update({
-      nota_fiscal: nfNumero,
+      // Grava já no formato do DANFE: normalizar na entrada evita que a mesma
+      // nota exista em três grafias no banco, o que nenhuma formatação de
+      // tela consegue desfazer para efeito de busca e ordenação.
+      nota_fiscal: formatarNumeroNfe(nfNumero) ?? nfNumero.trim(),
       nf_quitada: true,
       data_quitacao: nfData,
     } as any).eq('id', nfDialog.id);
@@ -1325,7 +1329,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           const conteudo = (
                             <>
                               <FileText className="w-3 h-3 mr-1 inline" />
-                              {p.nota_fiscal}
+                              {/* Formato do DANFE. O campo é texto livre e
+                                  recebe "125", "NF 000000125" e "125/2026" —
+                                  três grafias da mesma nota, que sem
+                                  normalizar viram três linhas diferentes. */}
+                              {formatarNumeroNfe(p.nota_fiscal) ?? p.nota_fiscal}
                               {p.nf_quitada && p.data_quitacao && (
                                 <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                               )}
@@ -1353,16 +1361,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </button>
                           );
                         })()}
-                        {linkedNfs.map(nf => (
-                          <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
-                            nf.status === 'autorizada' ? 'border-success/30 text-success' :
-                            nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
-                            'border-muted-foreground/30 text-muted-foreground'
-                          }`}>
-                            <FileText className="w-3 h-3 mr-1 inline" />
-                            {nf.numero_nf || 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
-                          </Badge>
-                        ))}
+                        {linkedNfs.map(nf => {
+                          // Dois donos do mesmo número: `contrato_pedidos.nota_fiscal`
+                          // é digitado, `notas_fiscais.numero_nf` é o documento
+                          // emitido. Quando divergem, a tela precisa dizer —
+                          // senão fica igual ao saldo com duas fórmulas: dois
+                          // números convivendo e ninguém sabendo qual vale.
+                          const diverge =
+                            !!p.nota_fiscal && !!nf.numero_nf &&
+                            numeroNfeComoInteiro(p.nota_fiscal) !== null &&
+                            numeroNfeComoInteiro(p.nota_fiscal) !== numeroNfeComoInteiro(nf.numero_nf);
+                          return (
+                            <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
+                              diverge ? 'border-warning/50 text-warning' :
+                              nf.status === 'autorizada' ? 'border-success/30 text-success' :
+                              nf.status === 'rejeitada' ? 'border-destructive/30 text-destructive' :
+                              'border-muted-foreground/30 text-muted-foreground'
+                            }`}
+                            title={diverge
+                              ? `A nota emitida (${formatarNumeroNfe(nf.numero_nf)}) não é a mesma que foi digitada no pedido (${formatarNumeroNfe(p.nota_fiscal)}).`
+                              : undefined}>
+                              <FileText className="w-3 h-3 mr-1 inline" />
+                              {formatarNumeroNfe(nf.numero_nf) ?? 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
+                              {diverge && ' • diverge do pedido'}
+                            </Badge>
+                          );
+                        })}
                         {!p.nota_fiscal && linkedNfs.length === 0 && (
                           <span className="text-muted-foreground">—</span>
                         )}

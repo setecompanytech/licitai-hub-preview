@@ -38,3 +38,57 @@ export function chaveNfeSuspeita(valor: unknown): boolean {
   const digitos = String(valor).replace(/\D/g, '');
   return digitos.length > 0 && digitos.length !== 44;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O NÚMERO da nota — que não é a chave
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Os dígitos do número, tirando o ano quando ele vem depois da barra.
+ *
+ * "125/2026" é como se escreve "nota 125 do ano 2026" — e concatenar tudo
+ * daria 1252026, uma nota que não existe. A regra é estreita de propósito:
+ * só descarta 19xx ou 20xx NO FIM, depois de barra. "1252026" escrito sem
+ * barra continua intacto, porque aí é mesmo o número.
+ */
+function digitosDoNumero(valor: unknown): string {
+  const texto = String(valor ?? '').trim().replace(/\/\s*(19|20)\d{2}\s*$/, '');
+  return texto.replace(/\D+/g, '');
+}
+
+/**
+ * O número da NF-e no formato do DANFE: `000.000.001`.
+ *
+ * O campo é texto livre e recebe de tudo — "125", "NF 000000125", "nfe
+ * 000.000.125", "Nota 125/2026". Três grafias do mesmo número na mesma
+ * coluna fazem quem confere procurar diferença onde não há, e impedem
+ * ordenar a lista pela sequência.
+ *
+ * A NF-e tem número de até 9 dígitos (campo `nNF` do layout), e o DANFE o
+ * imprime em três grupos de três. É esse o formato que a pessoa vê no papel
+ * que está na mão dela.
+ *
+ * Devolve `null` quando não há dígito nenhum: exibir "000.000.000" para um
+ * campo vazio seria inventar uma nota que não existe.
+ */
+export function formatarNumeroNfe(valor: unknown): string | null {
+  const digitos = digitosDoNumero(valor);
+  if (!digitos) return null;
+  // Mais de 9 dígitos é a CHAVE de acesso (44) ou um erro de digitação. Não
+  // se formata como número — devolve limpo, para quem olha perceber.
+  if (digitos.length > 9) return digitos;
+  const cheio = digitos.padStart(9, '0');
+  return `${cheio.slice(0, 3)}.${cheio.slice(3, 6)}.${cheio.slice(6)}`;
+}
+
+/**
+ * O número da nota como número, para ordenar e comparar.
+ *
+ * "000.000.125" e "125" são a mesma nota; comparar como texto os separa.
+ */
+export function numeroNfeComoInteiro(valor: unknown): number | null {
+  const digitos = digitosDoNumero(valor);
+  if (!digitos || digitos.length > 9) return null;
+  const n = parseInt(digitos, 10);
+  return Number.isFinite(n) ? n : null;
+}
