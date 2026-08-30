@@ -121,14 +121,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    */
   const abrirOrdem = async (p: Pedido) => {
     const id = (p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id;
-    if (!id) { openEditDialog(p); return; }
-    const { data } = await supabase
-      .from('contrato_arquivos')
-      .select('storage_path, nome_arquivo')
-      .eq('id', id)
-      .single();
-    if (!data?.storage_path) { openEditDialog(p); return; }
-    void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Ordem/Empenho');
+
+    // Caminho direto: o pedido sabe qual arquivo o autorizou.
+    if (id) {
+      const { data } = await supabase
+        .from('contrato_arquivos')
+        .select('storage_path, nome_arquivo')
+        .eq('id', id)
+        .single();
+      if (data?.storage_path) {
+        void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Ordem/Empenho');
+        return;
+      }
+    }
+
+    // Caminho de recuperação: pedido anterior ao vínculo, ou empenho anexado
+    // pela aba Arquivos e Aditivos em vez do upload de pedido. O documento
+    // existe, só não foi ligado — e procurá-lo pelo número é melhor do que
+    // dizer que não há.
+    const numero = String(p.numero_pedido ?? '').replace(/\D+/g, '');
+    if (numero.length >= 4) {
+      const { data: candidatos } = await supabase
+        .from('contrato_arquivos')
+        .select('id, storage_path, nome_arquivo')
+        .eq('contrato_id', contratoId);
+      const achado = (candidatos ?? []).find((a) =>
+        String(a.nome_arquivo ?? '').replace(/\D+/g, '').includes(numero.slice(-6)),
+      );
+      if (achado?.storage_path) {
+        // Liga para a próxima vez: achar de novo a cada clique seria repetir
+        // uma busca cuja resposta já se conhece.
+        await supabase
+          .from('contrato_pedidos')
+          .update({ arquivo_ordem_id: achado.id } as never)
+          .eq('id', p.id);
+        void abrirDanfe(achado.storage_path, achado.nome_arquivo ?? 'Ordem/Empenho');
+        load();
+        return;
+      }
+    }
+
+    toast.info('Nenhum documento anexado a este pedido.', {
+      description: 'Use "Registrar Ordem/Empenho" para anexar a nota, ou a aba Arquivos e Aditivos.',
+      action: { label: 'Ver detalhes', onClick: () => openEditDialog(p) },
+    });
   };
 
   const abrirDanfe = async (storagePath: string, nome: string) => {
@@ -776,7 +812,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       return {
         contrato_id: contratoId,
         user_id: user!.id,
-        numero_pedido: itensSalvar.length > 1 ? `${form.numero_pedido}-${idx + 1}` : form.numero_pedido,
+        // O número do documento é UM. Sufixar `-1`, `-2` por item inventava
+        // documentos que não existem: as duas linhas de um empenho dividido em
+        // cota principal e reservada são o MESMO 2026.260101NE003716, e a
+        // divisão está na cota, não no número.
+        numero_pedido: form.numero_pedido,
         descricao: ei.descricao,
         contrato_item_id: ei.contrato_item_id || null,
         quantidade: qty,
