@@ -1,3 +1,18 @@
+-- ⚠️ REVOGADA PELA 20260829000009 — NÃO APLICAR ⚠️
+--
+-- A premissa deste arquivo é falsa: nem toda perna espelhada tem
+-- `conta_destino_id` nulo. `useCasarTransferencia` cria transferência de LINHA
+-- ÚNICA com natureza `movimentacao` E destino preenchido, e a regra abaixo
+-- manda linhas com destino para o ramo de linha única sem verificar se a outra
+-- perna existe — contando o mesmo dinheiro duas vezes.
+--
+-- Aplicada em 29/08/2026 às 22:08, deixou quatro contas da ETHOS negativas
+-- (Itaú PJ em −R$ 2.975.953,63) e foi revertida em minutos. O arquivo fica
+-- como registro do erro.
+--
+-- O defeito que ela tentava corrigir CONTINUA ABERTO: no Banpará, em 19/03,
+-- duas pernas da mesma transferência de R$ 12.000,00 subtraem cada uma.
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Perna espelhada se reconhece pelo destino nulo, não pela natureza
 -- ═══════════════════════════════════════════════════════════════════════════
