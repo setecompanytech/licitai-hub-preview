@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
 import { normalizarNumeroEmpenho, tipoDeEmpenho } from '@/lib/contratos/empenho';
 import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
@@ -321,6 +322,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     );
   };
 
+  /**
+   * A data-limite de entrega, derivada da cláusula do contrato.
+   *
+   * O sistema já calculava isto para mostrar o aviso vermelho na linha do
+   * pedido — e deixava o campo "Data de Entrega" vazio, pedindo que alguém
+   * digitasse o que ele acabara de calcular.
+   *
+   * O marco é a data DO PEDIDO nos três tipos de empenho, e não por acaso: no
+   * ordinário há uma entrega só e a data dela é a do empenho; no global e no
+   * estimativo cada pedido abre o próprio prazo, contado da sua ordem de
+   * fornecimento. Um marco só atende os três porque o pedido sempre carrega a
+   * data que o inicia.
+   *
+   * Preenche, mas não tranca: a cláusula é a regra geral e a ordem pode trazer
+   * prazo próprio. Quem editar sobrepõe.
+   */
+  const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
+    if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
+    return limiteDeEntrega(dataDoPedido, {
+      dias: prazos.prazo_entrega_dias,
+      unidade: (prazos.prazo_entrega_unidade as 'uteis' | 'corridos' | null) ?? null,
+    }) ?? '';
+  };
+
   const avisarPrazo = (dataDoPedido: string | null | undefined) => {
     // Antes do prazo de entrega, a pergunta anterior: este contrato já produz
     // efeitos? Sai primeiro porque é a que muda a decisão — de nada adianta
@@ -637,7 +662,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         numero_pedido: extracted.numero_documento || f.numero_pedido,
         descricao: extracted.observacoes || f.descricao,
         data_pedido: extracted.data_documento || f.data_pedido,
-        data_entrega: extracted.data_entrega || f.data_entrega,
+        // O documento manda; sem data nele, a cláusula do contrato preenche.
+        data_entrega: extracted.data_entrega
+          || f.data_entrega
+          || limiteDerivado(extracted.data_documento || f.data_pedido),
         nota_fiscal: extracted.nota_fiscal || f.nota_fiscal,
         tipo_documento: extracted.tipo_documento || f.tipo_documento,
         observacoes: extracted.observacoes || '',
@@ -1208,8 +1236,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <Input type="date" value={form.data_pedido} onChange={e => setForm(f => ({ ...f, data_pedido: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Data de Entrega</Label>
+                    <Label className="text-xs">Data de Entrega (prevista)</Label>
                     <Input type="date" value={form.data_entrega} onChange={e => setForm(f => ({ ...f, data_entrega: e.target.value }))} />
+                    {/* De onde a data veio. Derivado e digitado se parecem na
+                        tela, e quem confere precisa saber em qual está apoiado
+                        — o mesmo motivo do cartão de procedência do DRE. */}
+                    {prazos?.prazo_entrega_dias && form.data_pedido && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {form.data_entrega === limiteDerivado(form.data_pedido)
+                          ? `Derivado da cláusula: ${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'} da data do pedido.`
+                          : `A cláusula do contrato daria ${limiteDerivado(form.data_pedido)
+                              ? new Date(limiteDerivado(form.data_pedido) + 'T12:00:00').toLocaleDateString('pt-BR')
+                              : '—'} (${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'}).`}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs">Status</Label>
