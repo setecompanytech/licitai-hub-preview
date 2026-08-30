@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { normalizarNumeroEmpenho, tipoDeEmpenho } from '@/lib/contratos/empenho';
 import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/lib/contratos/casar-pedido';
@@ -155,6 +156,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: '',
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
+    numero_empenho: '', tipo_empenho: '', valor_empenho: '',
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -172,6 +174,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
+    numero_empenho: '', tipo_empenho: '', valor_empenho: '',
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
@@ -203,6 +206,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // Saldo que resta no contrato — para o formulário avisar quando a edição
   // estoura o que sobrou, em vez de aceitar e deixar o consumo em 303%.
   const [saldoDoContrato, setSaldoDoContrato] = useState(0);
+  // O PDF da Ordem/Empenho guardado nesta sessão de upload, para ligar ao
+  // pedido no momento em que ele for salvo.
+  const [arquivoOrdem, setArquivoOrdem] = useState<string | null>(null);
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -474,7 +480,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
       data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
       tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
+      numero_empenho: '', tipo_empenho: '', valor_empenho: '',
     });
+    setArquivoOrdem(null);
     setExtractedData(null);
     setExtractedItens([]);
     setFonteItens('contrato');
@@ -496,6 +504,45 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     setUploading(true);
     try {
+      // ── O arquivo é guardado ANTES da leitura ────────────────────────────
+      //
+      // A Ordem de Fornecimento é o documento que AUTORIZA o pedido. Até aqui
+      // ela era lida e descartada: o pedido passava a existir e a autorização
+      // dele, não. Numa divergência com o órgão sobre quantidade empenhada é a
+      // nota de empenho que se apresenta.
+      //
+      // Antes da leitura, e não depois, pela mesma razão que vale para a NF-e
+      // no Financeiro: se a IA falhar, o documento já está guardado. Guardar
+      // depois só arquiva o que deu certo.
+      let arquivoOrdemId: string | null = null;
+      try {
+        const caminho = `${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+        const { error: upErr } = await supabase.storage
+          .from('contratos-docs')
+          .upload(caminho, file, { upsert: false, contentType: file.type });
+        if (!upErr) {
+          const { data: arq } = await supabase
+            .from('contrato_arquivos')
+            .insert({
+              contrato_id: contratoId,
+              nome_arquivo: file.name,
+              storage_path: caminho,
+              tamanho_bytes: file.size,
+              tipo: 'ordem_fornecimento',
+              descricao: 'Ordem de Fornecimento / Nota de Empenho',
+              user_id: user?.id ?? null,
+            } as never)
+            .select('id')
+            .single();
+          arquivoOrdemId = (arq as { id: string } | null)?.id ?? null;
+        } else {
+          // Falha de guarda não impede a leitura, mas não pode passar calada:
+          // quem lançar o pedido precisa saber que a autorização não ficou.
+          toast.warning('O PDF não pôde ser guardado no contrato.', { description: upErr.message });
+        }
+      } catch { /* idem — a leitura segue */ }
+      setArquivoOrdem(arquivoOrdemId);
+
       // Leitor da casa: página por página, OCR reencaixado no lugar. Era a
       // quarta cópia do leitor antigo — e empenho/nota ESCANEADOS são o caso
       // comum deste upload, não a exceção.
@@ -527,6 +574,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         nota_fiscal: extracted.nota_fiscal || f.nota_fiscal,
         tipo_documento: extracted.tipo_documento || f.tipo_documento,
         observacoes: extracted.observacoes || '',
+        // O empenho passa a ser CAMPO, não texto solto nas observações. É por
+        // ele que se sabe quantos pedidos saíram do mesmo documento e se a
+        // soma deles passou o valor empenhado.
+        numero_empenho:
+          normalizarNumeroEmpenho(extracted.numero_empenho ?? extracted.numero_documento) ?? f.numero_empenho,
+        tipo_empenho: tipoDeEmpenho(extracted.tipo_documento) ?? f.tipo_empenho,
+        valor_empenho: extracted.valor_total ? String(extracted.valor_total) : f.valor_empenho,
       }));
 
       if (extracted.itens?.length > 0) {
@@ -618,6 +672,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: form.status, nota_fiscal: form.nota_fiscal || null,
       observacoes: form.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
+      numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
+      tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
+      valor_empenho: parseFloat(form.valor_empenho) || null,
+      arquivo_ordem_id: arquivoOrdem,
     } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
     await gerarLancamentosFinanceiros([novoPedido as any]);
@@ -659,6 +717,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
           observacoes: form.observacoes || extractedData.observacoes || null,
           origem_aditivo_id: form.origem_aditivo_id || null,
+      numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
+      tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
+      valor_empenho: parseFloat(form.valor_empenho) || null,
+      arquivo_ordem_id: arquivoOrdem,
         } as any)
         .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
         .single();
@@ -683,6 +745,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       nota_fiscal: form.nota_fiscal || extractedData.nota_fiscal || null,
       observacoes: form.observacoes || extractedData.observacoes || null,
       origem_aditivo_id: form.origem_aditivo_id || null,
+      numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
+      tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
+      valor_empenho: parseFloat(form.valor_empenho) || null,
+      arquivo_ordem_id: arquivoOrdem,
     };
     const inserts = itensSalvar.map((ei, idx) => {
       const qty = parseFloat(ei.quantidade) || 0;
@@ -768,6 +834,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: p.status || 'pendente',
       nota_fiscal: p.nota_fiscal || '',
       observacoes: p.observacoes || '',
+      numero_empenho: (p as { numero_empenho?: string }).numero_empenho || '',
+      tipo_empenho: (p as { tipo_empenho?: string }).tipo_empenho || '',
+      valor_empenho: String((p as { valor_empenho?: number }).valor_empenho ?? ''),
     });
     setEditDialogOpen(true);
   };
@@ -790,6 +859,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: editForm.status,
       nota_fiscal: editForm.nota_fiscal || null,
       observacoes: editForm.observacoes || null,
+      numero_empenho: normalizarNumeroEmpenho(editForm.numero_empenho),
+      tipo_empenho: tipoDeEmpenho(editForm.tipo_empenho),
+      valor_empenho: parseFloat(editForm.valor_empenho) || null,
     } as any).eq('id', editingPedido.id);
     setSavingEdit(false);
     if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
@@ -957,8 +1029,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <Button size="sm" variant="outline" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
             <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
           </Button>
-          <Button size="sm" onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Pedido
+          {/* Este SAI da tela: leva ao Kanban comercial. O nome "Novo Pedido"
+              era idêntico ao do botão ao lado, que cria aqui mesmo — e os dois
+              fazem coisas diferentes. */}
+          <Button size="sm" variant="outline"
+            title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
+            onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
+            <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Criar no Kanban
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
@@ -968,9 +1045,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 contrato que já estava em andamento antes da adesão ao sistema,
                 passa por aqui. O rótulo "Legada" dizia o contrário e convidava
                 a remover o que não dá para remover. */}
-            <Button size="sm" variant="outline" onClick={openNewDialog} className="gap-1"
-              title="Cadastrar pedido diretamente neste contrato, inclusive retroativo">
-              <Plus className="w-3.5 h-3.5" /> Lançar aqui
+            {/* O caminho principal de quem administra o contrato: chegou a
+                Ordem de Fornecimento ou a nota de empenho, anexa aqui, o
+                sistema lê os itens e abate saldo e quantidade. */}
+            <Button size="sm" onClick={openNewDialog} className="gap-1"
+              title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
+              <Upload className="w-3.5 h-3.5" /> Registrar Ordem/Empenho
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

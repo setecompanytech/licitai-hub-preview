@@ -1,0 +1,75 @@
+import { describe, it, expect } from 'vitest';
+import {
+  tipoDeEmpenho, normalizarNumeroEmpenho, situacaoDoEmpenho,
+} from '@/lib/contratos/empenho';
+
+describe('normalizarNumeroEmpenho', () => {
+  it('as três grafias do mesmo empenho viram uma', () => {
+    // Sem isto, três grafias viram três empenhos na hora de somar e o
+    // controle de saldo deixa de existir sem ninguém perceber.
+    const esperado = '2026NE003716';
+    expect(normalizarNumeroEmpenho('2026NE003716')).toBe(esperado);
+    expect(normalizarNumeroEmpenho('2026.260101NE003716')).toBe(esperado);
+    expect(normalizarNumeroEmpenho('2026 NE 003716')).toBe(esperado);
+  });
+
+  it('completa o sequencial com zeros', () => {
+    expect(normalizarNumeroEmpenho('2026NE895')).toBe('2026NE000895');
+  });
+
+  it('devolve null para vazio', () => {
+    expect(normalizarNumeroEmpenho('')).toBeNull();
+    expect(normalizarNumeroEmpenho(null)).toBeNull();
+  });
+});
+
+describe('tipoDeEmpenho', () => {
+  it('lê os três, com ou sem prefixo e acento', () => {
+    expect(tipoDeEmpenho('empenho_global')).toBe('global');
+    expect(tipoDeEmpenho('Ordinário')).toBe('ordinario');
+    expect(tipoDeEmpenho('estimativo')).toBe('estimativo');
+  });
+
+  it('o que não é um dos três vira null, não palpite', () => {
+    expect(tipoDeEmpenho('parcial')).toBeNull();
+    expect(tipoDeEmpenho(null)).toBeNull();
+  });
+});
+
+describe('situacaoDoEmpenho', () => {
+  it('sem valor empenhado, não supõe cobertura', () => {
+    // Supor que o empenho cobre porque ninguém informou o contrário é o
+    // silêncio que o art. 60 não admite.
+    const s = situacaoDoEmpenho({ somaDosPedidos: 50000 });
+    expect(s.estado).toBe('sem_empenho');
+    expect(s.severidade).toBe('atencao');
+  });
+
+  it('dentro do empenho é ok', () => {
+    const s = situacaoDoEmpenho({ valorEmpenhado: 40000, somaDosPedidos: 10000 });
+    expect(s.estado).toBe('dentro');
+    expect(s.saldo).toBe(30000);
+  });
+
+  it('menos de 10% restantes já avisa', () => {
+    const s = situacaoDoEmpenho({ valorEmpenhado: 40000, somaDosPedidos: 37000 });
+    expect(s.estado).toBe('no_limite');
+    expect(s.severidade).toBe('atencao');
+  });
+
+  it('excedido em empenho global é crítico e cita a lei', () => {
+    const s = situacaoDoEmpenho({ valorEmpenhado: 40000, somaDosPedidos: 45000, tipo: 'global' });
+    expect(s.estado).toBe('excedido');
+    expect(s.severidade).toBe('critico');
+    expect(s.frase).toMatch(/art\. 60/);
+  });
+
+  it('excedido em ESTIMATIVO é atenção, e pede reforço', () => {
+    // O mesmo excesso é irregularidade grave num global e rotina num
+    // estimativo. A frase muda porque a providência muda.
+    const s = situacaoDoEmpenho({ valorEmpenhado: 40000, somaDosPedidos: 45000, tipo: 'estimativo' });
+    expect(s.estado).toBe('excedido');
+    expect(s.severidade).toBe('atencao');
+    expect(s.frase).toMatch(/reforço/);
+  });
+});
