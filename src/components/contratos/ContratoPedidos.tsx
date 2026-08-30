@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { avaliarCabimento } from '@/lib/contratos/cabimento';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
-import { normalizarNumeroEmpenho, tipoDeEmpenho } from '@/lib/contratos/empenho';
+import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO } from '@/lib/contratos/empenho';
+import {
+  oQueODocumentoCria, especieComOrigem, atribuirCotas,
+  ROTULO_DA_COTA, ROTULO_DA_ORIGEM_DA_COTA,
+} from '@/lib/contratos/autoriza-ou-consome';
 import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/lib/contratos/casar-pedido';
@@ -97,6 +101,15 @@ const kanbanCfg: Record<string, { label: string; color: string }> = {
   faturado:        { label: 'Faturado',            color: 'bg-success/10 text-success border-success/20' },
   entrega:         { label: 'Em Entrega',          color: 'bg-info/10 text-info border-info/20' },
   cancelado:       { label: 'Cancelado',           color: 'bg-destructive/10 text-destructive border-destructive/20' },
+};
+
+/** Uma linha do documento recém-lido, antes de a cota ser decidida. */
+type LinhaLida = {
+  key: string; descricao: string; quantidade: string; valor_unitario: string;
+  contrato_item_id: string;
+  /** O que a nota escreveu na linha, se escreveu algo. */
+  cotaBruta: string | null;
+  valorTotal: number;
 };
 
 const tiposDocumento = [
@@ -233,6 +246,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
     numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
+    // De qual empenho este pedido sai. É o vínculo que faz o saldo do empenho
+    // baixar quando a entrega acontece — e não quando o dinheiro é reservado.
+    empenho_id: '',
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
@@ -251,6 +267,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [extractedItens, setExtractedItens] = useState<Array<{
     key: string; descricao: string; quantidade: string; valor_unitario: string;
     contrato_item_id: string;
+    // A cota de cada linha, e de onde ela saiu — rótulo do documento ou
+    // dedução pela proporção 75/25. A tela diz qual das duas, porque deduzida
+    // é para conferir, lida é para confiar.
+    cota: string; cota_origem: 'documento' | 'proporcao' | 'indefinida';
   }>>([]);
 
   const [prazos, setPrazos] = useState<PrazosDoContrato | null>(null);
@@ -355,7 +375,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     const item = itens.find((i) => i.id === itemId) as
       | { descricao?: string; codigo_item?: string; saldo_quantitativo?: number }
       | undefined;
-    const emp = saldosDeEmpenho.find((e) => !cota || e.cota === cota) ?? saldosDeEmpenho[0];
+    // Só o empenho escolhido, e dentro dele só a cota do pedido. Cair no
+    // primeiro da lista quando a cota não bate confere o pedido contra o saldo
+    // ERRADO — a reservada passaria por ter folga na principal, que é
+    // exatamente a confusão que separar as cotas existe para evitar.
+    const doEmpenho = form.empenho_id
+      ? saldosDeEmpenho.filter((e) => e.empenho_id === form.empenho_id)
+      : saldosDeEmpenho;
+    const emp = cota
+      ? doEmpenho.find((e) => e.cota === cota)
+      : (doEmpenho.length === 1 ? doEmpenho[0] : undefined);
     return avaliarCabimento(
       { quantidade: qtd, valor },
       {
@@ -369,6 +398,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       },
     );
   };
+
+  /** Os empenhos do contrato, um por número, com o saldo somado das cotas. */
+  const empenhosDoContrato = useMemo(() => {
+    const porId = new Map<string, { id: string; numero: string; tipo: string; saldo: number }>();
+    for (const s of saldosDeEmpenho) {
+      const atual = porId.get(s.empenho_id);
+      if (atual) atual.saldo += Number(s.saldo_qtd) || 0;
+      else porId.set(s.empenho_id, {
+        id: s.empenho_id, numero: s.numero, tipo: s.tipo, saldo: Number(s.saldo_qtd) || 0,
+      });
+    }
+    return [...porId.values()];
+  }, [saldosDeEmpenho]);
+
+  /** O que o upload em curso vai criar: autorização ou consumo. */
+  const documentoCria = oQueODocumentoCria(extractedData?.tipo_documento || form.tipo_documento);
 
   const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
     if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
@@ -613,6 +658,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
       tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
       numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
+      empenho_id: '',
     });
     setArquivoOrdem(null);
     setExtractedData(null);
@@ -730,27 +776,61 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         // soma deles passou o valor empenhado.
         numero_empenho:
           normalizarNumeroEmpenho(extracted.numero_empenho ?? extracted.numero_documento) ?? f.numero_empenho,
-        tipo_empenho: tipoDeEmpenho(extracted.tipo_documento) ?? f.tipo_empenho,
+        // A ESPÉCIE vem do campo rotulado na nota, não do tipo do documento:
+        // "nota de empenho" não diz se é ordinária, global ou estimativa, e é
+        // essa diferença que decide se um excesso é rotina ou irregularidade.
+        tipo_empenho:
+          especieComOrigem({
+            especieDoDocumento: extracted.especie_empenho,
+            escolhaManual: extracted.tipo_documento,
+          }).tipo ?? f.tipo_empenho,
         valor_empenho: extracted.valor_total ? String(extracted.valor_total) : f.valor_empenho,
       }));
 
       if (extracted.itens?.length > 0) {
-        setExtractedItens(extracted.itens.map((ei: any) => {
+        const linhas: LinhaLida[] = extracted.itens.map((ei: Record<string, unknown>) => {
+          const desc = String(ei.descricao ?? '');
           const matchedItem = itens.find(ci =>
-            ci.descricao.toLowerCase().includes(ei.descricao?.toLowerCase()?.substring(0, 20) || '') ||
-            ei.descricao?.toLowerCase()?.includes(ci.descricao.toLowerCase().substring(0, 20))
+            ci.descricao.toLowerCase().includes(desc.toLowerCase().substring(0, 20)) ||
+            (desc.length >= 20 && desc.toLowerCase().includes(ci.descricao.toLowerCase().substring(0, 20)))
           );
+          const unit = ei.valor_unitario
+            ? Number(ei.valor_unitario)
+            : (matchedItem ? Number(matchedItem.valor_unitario) : 0);
           return {
             key: crypto.randomUUID(),
-            descricao: ei.descricao || '',
+            descricao: desc,
             quantidade: ei.quantidade ? String(ei.quantidade) : '',
             valor_unitario: ei.valor_unitario ? String(ei.valor_unitario) : (matchedItem ? String(matchedItem.valor_unitario) : ''),
             contrato_item_id: matchedItem?.id || '',
+            cotaBruta: (ei.cota as string) ?? null,
+            valorTotal: (Number(ei.quantidade) || 0) * unit,
           };
-        }));
+        });
+        // A divisão em cota principal e reservada (LC 123/2006, art. 48, III) é
+        // reconhecida aqui, não no formulário: quem preenche à mão não vê que
+        // duas linhas do mesmo produto em 75/25 são UMA divisão, e foi assim
+        // que o empenho do 008/2026 virou dois pedidos.
+        const cotas = atribuirCotas(linhas.map((l: LinhaLida) => ({
+          descricao: l.descricao, cota: l.cotaBruta, valorTotal: l.valorTotal,
+        })));
+        setExtractedItens(linhas.map((l: LinhaLida, i: number) => ({
+          key: l.key,
+          descricao: l.descricao,
+          quantidade: l.quantidade,
+          valor_unitario: l.valor_unitario,
+          contrato_item_id: l.contrato_item_id,
+          cota: cotas[i].cota ?? '',
+          cota_origem: cotas[i].origem,
+        })));
       }
       setActiveTab('manual');
-      toast.success(`Dados extraídos: ${extracted.itens?.length || 0} itens identificados.`);
+      const cria = oQueODocumentoCria(extracted.tipo_documento || form.tipo_documento);
+      toast.success(
+        cria === 'empenho'
+          ? `Nota de empenho lida: ${extracted.itens?.length || 0} linha(s). Ao salvar, ela AUTORIZA — nenhum saldo é consumido.`
+          : `Dados extraídos: ${extracted.itens?.length || 0} itens identificados.`,
+      );
     } catch (err: any) {
       console.error('Upload error:', err);
       toast.error(err.message || 'Erro ao processar documento');
@@ -810,6 +890,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
 
   const handleSaveSingle = async () => {
+    // A mesma bifurcação do upload, no lançamento à mão: quem escolhe "Empenho
+    // Ordinário" no tipo do documento está registrando uma AUTORIZAÇÃO, e ela
+    // não pode virar entrega só porque foi digitada em vez de lida.
+    if (oQueODocumentoCria(form.tipo_documento) === 'empenho') {
+      return salvarEmpenho([{
+        descricao: form.descricao,
+        quantidade: form.quantidade,
+        valor_unitario: form.valor_unitario,
+        contrato_item_id: form.contrato_item_id,
+        cota: form.cota,
+      }]);
+    }
+
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
@@ -841,6 +934,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
       cota: form.cota || null,
+      empenho_id: form.empenho_id || null,
     } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
     await gerarLancamentosFinanceiros([novoPedido as any]);
@@ -855,11 +949,146 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
+  /**
+   * A nota de empenho vira EMPENHO, e nenhum pedido.
+   *
+   * Empenhar é o órgão reservar o dinheiro; entregar é outra coisa, e vem
+   * depois. Enquanto o upload da nota criava pedidos, o saldo do contrato caía
+   * no instante da reserva — o 008/2026 marcava 100% consumido sem uma única
+   * entrega, e a primeira de verdade o punha acima disso.
+   *
+   * As linhas viram `contrato_empenho_itens`, cada uma com a sua cota, porque
+   * a principal e a reservada esgotam separadas.
+   */
+  const salvarEmpenho = async (
+    linhasBrutas: Array<{
+      descricao: string; quantidade: string; valor_unitario: string;
+      contrato_item_id: string; cota: string;
+    }>,
+  ) => {
+    const numero = normalizarNumeroEmpenho(form.numero_empenho || form.numero_pedido);
+    if (!numero) { toast.error('Informe o número da nota de empenho'); return; }
+
+    const especie = especieComOrigem({
+      especieDoDocumento: extractedData?.especie_empenho,
+      trecho: extractedData?.especie_empenho_texto,
+      escolhaManual: form.tipo_empenho || form.tipo_documento,
+    });
+    // Sem espécie não há como julgar excesso — no ordinário é irregularidade,
+    // no estimativo é rotina. Parar aqui é melhor do que gravar um palpite.
+    if (!especie.tipo) {
+      toast.error('Escolha a espécie do empenho (ordinário, global ou estimativo) antes de salvar.');
+      return;
+    }
+
+    const linhas = linhasBrutas.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
+    const empresaId = empresaAtiva?.id;
+    if (!empresaId) { toast.error('Nenhuma empresa ativa.'); return; }
+
+    setSaving(true);
+    const totalValor = linhas.length
+      ? linhas.reduce((s, l) => s + (parseFloat(l.quantidade) || 0) * (parseFloat(l.valor_unitario) || 0), 0)
+      : (parseFloat(form.valor_empenho) || parseFloat(extractedData?.valor_total) || 0);
+    const totalQtd = linhas.reduce((s, l) => s + (parseFloat(l.quantidade) || 0), 0);
+
+    const { data: empenho, error } = await supabase
+      .from('contrato_empenhos' as never)
+      .insert({
+        empresa_id: empresaId,
+        contrato_id: contratoId,
+        numero,
+        tipo: especie.tipo,
+        tipo_origem: especie.origem,
+        tipo_trecho: especie.trecho,
+        valor: totalValor || null,
+        quantidade: totalQtd || null,
+        unidade: 'un',
+        data_emissao: form.data_pedido || extractedData?.data_documento || null,
+        arquivo_id: arquivoOrdem,
+        observacao: form.observacoes || null,
+        created_by: user!.id,
+      } as never)
+      .select('id, numero')
+      .single();
+    // `contrato_empenhos` ainda não está no types.ts gerado — a tabela nasceu
+    // depois da última regeneração. O `as never` acima cala o cliente; aqui a
+    // forma volta a ser declarada, e é ela que o resto usa.
+    const criado = empenho as unknown as { id: string; numero: string } | null;
+
+    if (error) {
+      setSaving(false);
+      // Número repetido é o caso comum: o mesmo empenho anexado duas vezes.
+      // Dizer isso vale mais do que repetir a mensagem do Postgres.
+      toast.error(
+        error.code === '23505'
+          ? `O empenho ${numero} já está registrado neste contrato.`
+          : 'Erro ao registrar empenho: ' + error.message,
+      );
+      return;
+    }
+
+    if (linhas.length > 0) {
+      const { error: erroItens } = await supabase
+        .from('contrato_empenho_itens' as never)
+        .insert(linhas.map(l => {
+          const qtd = parseFloat(l.quantidade) || 0;
+          const unit = parseFloat(l.valor_unitario) || 0;
+          return {
+            empresa_id: empresaId,
+            empenho_id: criado!.id,
+            contrato_item_id: l.contrato_item_id || null,
+            cota: l.cota || null,
+            descricao: l.descricao,
+            quantidade: qtd,
+            unidade: 'un',
+            valor_unitario: unit,
+            valor_total: qtd * unit,
+          };
+        }) as never)
+        .select('id');
+      // O empenho sem as linhas é um saldo sem do que ser feito: a checagem
+      // por cota passa a não ter contra o que conferir. Falar alto, não deixar
+      // passar como se tivesse dado certo.
+      if (erroItens) {
+        toast.error('Empenho criado, mas as linhas falharam: ' + erroItens.message);
+      }
+    }
+
+    setSaving(false);
+    toast.success(
+      `Empenho ${criado!.numero} registrado (${ROTULO_DO_EMPENHO[especie.tipo].toLowerCase()}). ` +
+      'Nenhum saldo foi consumido — ele autoriza os pedidos que virão.',
+    );
+    setDialogOpen(false);
+    resetForm();
+    load();
+  };
+
   const handleSaveBatch = async () => {
-    if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     if (!extractedData) { toast.error('Nenhum documento extraído'); return; }
 
+    // A bifurcação: nota de empenho AUTORIZA, ordem de fornecimento CONSOME.
+    if (oQueODocumentoCria(extractedData.tipo_documento || form.tipo_documento) === 'empenho') {
+      return salvarEmpenho(extractedItens);
+    }
+
+    if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
+
     const itensSalvar = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
+
+    // A mesma checagem tripla do lançamento avulso: contrato, item e cota do
+    // empenho limitam a mesma entrega, e nenhum implica o outro.
+    for (const ei of itensSalvar) {
+      const qtd = parseFloat(ei.quantidade) || 0;
+      const unit = parseFloat(ei.valor_unitario) || 0;
+      const cabimento = conferirCabimento(qtd, qtd * unit, ei.contrato_item_id, ei.cota || form.cota);
+      if (!cabimento.cabe && cabimento.gargalo) {
+        const seguir = confirm(
+          `${ei.descricao}\n\n${cabimento.frase}\n\n${cabimento.gargalo.providencia}\n\nRegistrar mesmo assim?`,
+        );
+        if (!seguir) return;
+      }
+    }
 
     // Fallback: nenhum item válido → cria um único pedido com o total do documento (comportamento original)
     if (itensSalvar.length === 0) {
@@ -887,6 +1116,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
       cota: form.cota || null,
+      empenho_id: form.empenho_id || null,
         } as any)
         .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
         .single();
@@ -916,8 +1146,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
       cota: form.cota || null,
+      empenho_id: form.empenho_id || null,
     };
-    const inserts = itensSalvar.map((ei, idx) => {
+    const inserts = itensSalvar.map((ei) => {
       const qty = parseFloat(ei.quantidade) || 0;
       const unit = parseFloat(ei.valor_unitario) || 0;
       return {
@@ -934,6 +1165,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         valor_unitario: unit,
         valor_total: qty * unit,
         ...campos,
+        // A cota é da LINHA, não do documento: uma OF pode consumir das duas.
+        // O campo do formulário só entra onde a linha não disse nada.
+        cota: ei.cota || form.cota || null,
       };
     });
     const { data: novosPedidos, error } = await supabase
@@ -1342,11 +1576,83 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   </div>
                 </div>
 
+                {/* O que este documento vai fazer, dito ANTES de salvar.
+                    Empenhar não é entregar: enquanto a nota criava pedidos, o
+                    saldo caía no instante em que o dinheiro era reservado. */}
+                {extractedData && documentoCria === 'empenho' && (
+                    <div className="p-3 rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 space-y-2">
+                      <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                        Nota de empenho — <b>autoriza</b>, não consome
+                      </p>
+                      <p className="text-xs text-blue-900/80 dark:text-blue-200/80">
+                        Vai ser registrada como empenho do contrato. Nenhum saldo de item ou de
+                        contrato é abatido: isso acontece quando as entregas forem lançadas contra
+                        ela.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <Label className="text-xs">Número do empenho</Label>
+                          <Input
+                            value={form.numero_empenho}
+                            onChange={e => setForm(f => ({ ...f, numero_empenho: e.target.value }))}
+                            placeholder="2026NE003716"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Espécie</Label>
+                          <Select value={form.tipo_empenho} onValueChange={v => setForm(f => ({ ...f, tipo_empenho: v }))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha a espécie" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ordinario" className="text-xs">{ROTULO_DO_EMPENHO.ordinario}</SelectItem>
+                              <SelectItem value="global" className="text-xs">{ROTULO_DO_EMPENHO.global}</SelectItem>
+                              <SelectItem value="estimativo" className="text-xs">{ROTULO_DO_EMPENHO.estimativo}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {/* Lida do documento é fato; escolhida à mão é
+                              declaração. O mesmo excesso é irregularidade num
+                              ordinário e rotina num estimativo. */}
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {tipoDeEmpenho(extractedData?.especie_empenho)
+                              ? 'Lida do documento.'
+                              : 'Não veio rotulada no documento — a escolha fica registrada como manual.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                )}
+
+                {/* De qual empenho a entrega sai. Sem isto o pedido não abate
+                    nada, e o saldo do empenho fica parado enquanto o material
+                    some do estoque. */}
+                {documentoCria === 'pedido' && empenhosDoContrato.length > 0 && (
+                    <div>
+                      <Label className="text-xs">Empenho que autoriza este pedido</Label>
+                      <Select
+                        value={form.empenho_id || '__sem__'}
+                        onValueChange={v => setForm(f => ({ ...f, empenho_id: v === '__sem__' ? '' : v }))}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__sem__" className="text-xs">Sem empenho registrado</SelectItem>
+                          {empenhosDoContrato.map(e => (
+                            <SelectItem key={e.id} value={e.id} className="text-xs">
+                              {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
+                              {' · '}saldo {e.saldo.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                )}
+
                 {extractedItens.length > 0 ? (
                   <>
                     <Separator />
                     <div>
-                      <p className="text-xs font-semibold mb-2">Itens Extraídos ({extractedItens.length})</p>
+                      <p className="text-xs font-semibold mb-2">
+                        {documentoCria === 'empenho' ? 'Linhas do empenho' : 'Itens Extraídos'} ({extractedItens.length})
+                      </p>
                       <div className="space-y-2 max-h-[35vh] overflow-y-auto pr-1">
                         {extractedItens.map((ei, idx) => (
                           <Card key={ei.key} className="p-3 space-y-2">
@@ -1388,6 +1694,35 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 text-xs" />
                               </div>
                             </div>
+                            {/* A cota fica no nível da LINHA porque é aí que ela
+                                vive: a principal e a reservada são divisões do
+                                mesmo item (LC 123/2006, art. 48, III) e esgotam
+                                separadas. */}
+                            <div>
+                              <Label className="text-xs">Cota</Label>
+                              <Select
+                                value={ei.cota || '__sem__'}
+                                onValueChange={v => {
+                                  updateExtractedItem(ei.key, 'cota', v === '__sem__' ? '' : v);
+                                  updateExtractedItem(ei.key, 'cota_origem', 'documento');
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__sem__" className="text-xs">Sem divisão de cota</SelectItem>
+                                  <SelectItem value="principal" className="text-xs">{ROTULO_DA_COTA.principal}</SelectItem>
+                                  <SelectItem value="reservada" className="text-xs">{ROTULO_DA_COTA.reservada}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {/* Deduzida é para conferir; lida é para confiar.
+                                  Não dizer qual das duas é apresentar palpite
+                                  com a mesma cara de fato. */}
+                              {ei.cota_origem === 'proporcao' && (
+                                <p className="text-[11px] text-amber-700 dark:text-amber-500 mt-1">
+                                  {ROTULO_DA_ORIGEM_DA_COTA.proporcao}
+                                </p>
+                              )}
+                            </div>
                           </Card>
                         ))}
                       </div>
@@ -1403,18 +1738,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                     </div>
 
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
-                      <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
-                      <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
-                        <DollarSign className="w-3 h-3 inline mr-1" />
-                        Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
-                      </Label>
-                    </div>
+                    {/* Empenho não gera cobrança: não há entrega para faturar.
+                        O título nasce quando a OF for lançada contra ele. */}
+                    {documentoCria === 'pedido' && (
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                        <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                        <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
+                          <DollarSign className="w-3 h-3 inline mr-1" />
+                          Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
+                        </Label>
+                      </div>
+                    )}
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                       <Button onClick={handleSaveBatch} disabled={saving}>
                         {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                        Registrar {extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens
+                        {documentoCria === 'empenho'
+                          ? `Registrar empenho (${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} linhas)`
+                          : `Registrar ${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens`}
                       </Button>
                     </div>
                   </>
