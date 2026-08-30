@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, FileText, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
+import { Sparkles, FileText, FileX, RefreshCw, Loader2, AlertTriangle, Calculator, ScrollText, Eye, Wand2 } from 'lucide-react';
 import EventoAuditoriaDetalheDialog from './EventoAuditoriaDetalheDialog';
 import { toast } from 'sonner';
 import { useAuthorization } from '@/hooks/useAuthorization';
@@ -65,6 +65,12 @@ const formatVal = (campo: string, v: string | null, origem?: string | null) => {
 interface AuditoriaRow {
   id: string;
   contrato_id: string;
+  /**
+   * Nulo com `arquivo_nome` preenchido significa que o arquivo FOI EXCLUÍDO —
+   * a coluna é `ON DELETE SET NULL`, e o nome é texto que sobrevive de
+   * propósito. Trilha que some junto com o documento não é trilha: bastaria
+   * apagar o PDF para apagar o registro do que ele mudou.
+   */
   arquivo_id: string | null;
   arquivo_nome: string | null;
   campo: string;
@@ -177,9 +183,20 @@ export default function ContratoIaAuditoriaPanel({ contratoId }: { contratoId: s
               {CAMPO_LABELS[r.campo] || r.campo}
             </Badge>
             {r.arquivo_nome && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <FileText className="h-3 w-3" />
-                {r.arquivo_nome}
+              /* Sem o aviso, a linha exibe o nome de um PDF que já não está
+                 na aba e manda a pessoa procurar o que não existe. O registro
+                 continua valendo — o documento é que saiu. */
+              <span
+                className={`inline-flex items-center gap-1 text-xs ${
+                  r.arquivo_id ? 'text-muted-foreground' : 'text-warning'
+                }`}
+                title={r.arquivo_id ? undefined : 'O arquivo de origem foi excluído do contrato. O registro permanece.'}
+              >
+                {r.arquivo_id
+                  ? <FileText className="h-3 w-3" />
+                  : <FileX className="h-3 w-3" />}
+                <span className={r.arquivo_id ? '' : 'line-through opacity-80'}>{r.arquivo_nome}</span>
+                {!r.arquivo_id && <span className="not-italic">· arquivo excluído</span>}
               </span>
             )}
           </div>
