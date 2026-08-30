@@ -40,6 +40,10 @@ type DadosContrato = {
   prazo_recebimento_dias?: number | string | null;
   prazo_recebimento_unidade?: string | null;
   prazo_recebimento_clausula?: string | null;
+  prazo_pagamento_dias?: number | string | null;
+  prazo_pagamento_unidade?: string | null;
+  prazo_pagamento_marco?: string | null;
+  prazo_pagamento_clausula?: string | null;
   assinatura_situacao?: string | null;
   assinatura_observacao?: string | null;
   validade_ata_meses?: number | string | null;
@@ -207,6 +211,11 @@ function normalizeContrato(data: DadosContrato) {
     prazo_recebimento_unidade: unidadeDePrazo(data.prazo_recebimento_unidade),
     prazo_recebimento_clausula: cleanString(data.prazo_recebimento_clausula),
 
+    prazo_pagamento_dias: prazoEmDias(data.prazo_pagamento_dias),
+    prazo_pagamento_unidade: unidadeDePrazo(data.prazo_pagamento_unidade),
+    prazo_pagamento_marco: marcoDoPagamento(data.prazo_pagamento_marco),
+    prazo_pagamento_clausula: cleanString(data.prazo_pagamento_clausula),
+
     // Só os quatro valores que a coluna aceita. Qualquer outra coisa vira
     // null: "não sei" é resposta melhor do que um palpite que libera execução.
     assinatura_situacao: situacaoDaAssinatura(data.assinatura_situacao),
@@ -231,6 +240,13 @@ function prazoEmDias(v: unknown): number | null {
   if (n === null || !Number.isFinite(n)) return null;
   const inteiro = Math.round(n);
   return inteiro >= 1 && inteiro <= 1825 ? inteiro : null;
+}
+
+/** De onde o prazo de pagamento conta. Fora da lista, null — não se supõe. */
+function marcoDoPagamento(v: unknown): string | null {
+  const t = cleanString(v)?.toLowerCase() ?? "";
+  if (t === "ateste" || t === "nota_fiscal" || t === "protocolo" || t === "entrega") return t;
+  return null;
 }
 
 /** Os quatro valores que `contratos.assinatura_situacao` aceita. */
@@ -401,7 +417,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- ASSINATURAS: informe em assinatura_situacao quem assinou o documento — procure bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por", "Documento assinado digitalmente". Só devolva "ambas" quando houver assinatura DOS DOIS lados (órgão E contratada). Se aparecer só um lado, diga qual. Se não conseguir determinar com segurança, devolva null em vez de "ambas" — dizer que está assinado quando não está faz o sistema liberar execução de um contrato que não vincula ninguém.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- PRAZO DE PAGAMENTO: procure a clausula "DO PAGAMENTO", "DAS CONDICOES DE PAGAMENTO" ou equivalente — e o art. 92, V da Lei 14.133/2021 a torna obrigatoria, entao ela existe. Extraia em quantos dias a Administracao paga, se sao uteis ou corridos, e sobretudo DE ONDE o prazo e contado: do ateste, da emissao da nota fiscal, do protocolo da nota no orgao, ou da entrega. Nao suponha o marco — contratos usam os quatro, e trocar um pelo outro desloca a previsao de entrada em semanas. Sempre com a frase literal.\n- ASSINATURAS: informe em assinatura_situacao quem assinou o documento — procure bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por", "Documento assinado digitalmente". Só devolva "ambas" quando houver assinatura DOS DOIS lados (órgão E contratada). Se aparecer só um lado, diga qual. Se não conseguir determinar com segurança, devolva null em vez de "ambas" — dizer que está assinado quando não está faz o sistema liberar execução de um contrato que não vincula ninguém.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -467,6 +483,17 @@ serve(async (req) => {
                   prazo_recebimento_dias: { type: "number", description: "Prazo do ÓRGÃO para receber e atestar o objeto, contado da entrega (art. 140). Só o número." },
                   prazo_recebimento_unidade: { type: "string", enum: ["uteis", "corridos"], description: "Unidade do prazo de recebimento." },
                   prazo_recebimento_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de recebimento saiu." },
+
+                  // Prazo de PAGAMENTO — clausula obrigatoria do art. 92, V.
+                  // E o que alimenta a projecao de entrada no Contas a Receber.
+                  prazo_pagamento_dias: { type: "number", description: "Prazo da Administração para PAGAR, em dias. Só o número." },
+                  prazo_pagamento_unidade: { type: "string", enum: ["uteis", "corridos"], description: "A cláusula diz dias úteis ou corridos? Sem menção, 'corridos'." },
+                  prazo_pagamento_marco: {
+                    type: "string",
+                    enum: ["ateste", "nota_fiscal", "protocolo", "entrega"],
+                    description: "De onde o prazo é contado: do ateste/aceite, da EMISSÃO da nota fiscal, do PROTOCOLO da nota no órgão, ou da entrega. Contratos usam os quatro — não suponha, leia. Se a cláusula não disser, devolva null.",
+                  },
+                  prazo_pagamento_clausula: { type: "string", description: "A frase LITERAL de onde o prazo de pagamento saiu." },
 
                   // Validade do instrumento. Documento com uma assinatura só é
                   // proposta, não ajuste — não vincula ninguém e não inicia

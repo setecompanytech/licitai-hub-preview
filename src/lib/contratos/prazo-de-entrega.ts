@@ -160,3 +160,132 @@ export function limiteDeRecebimento(
 ): string | null {
   return limiteDeEntrega(dataDaEntrega, prazo, feriados);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pagamento — a última ponta, e a única que interessa ao caixa
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * De onde o prazo de pagamento é contado.
+ *
+ * Contratos usam os quatro, e supor um deles desloca a previsão de entrada em
+ * semanas — o ateste costuma vir dias depois da entrega, e o protocolo depois
+ * da nota.
+ */
+export type MarcoDoPagamento = 'ateste' | 'nota_fiscal' | 'protocolo' | 'entrega';
+
+export const ROTULO_DO_MARCO: Record<MarcoDoPagamento, string> = {
+  ateste: 'do ateste',
+  nota_fiscal: 'da emissão da nota fiscal',
+  protocolo: 'do protocolo da nota',
+  entrega: 'da entrega',
+};
+
+/**
+ * Quando o pagamento vence.
+ *
+ * Cláusula obrigatória do art. 92, V. Sem ela, `null` — e o Contas a Receber
+ * fica sem base para projetar, o que é melhor do que projetar sobre um número
+ * inventado: fluxo de caixa montado sobre chute parece planejamento e não é.
+ */
+export function limiteDePagamento(
+  dataDoMarco: string | null | undefined,
+  prazo: PrazoDoContrato,
+  feriados: string[] = [],
+): string | null {
+  return limiteDeEntrega(dataDoMarco, prazo, feriados);
+}
+
+/**
+ * Dois meses da emissão da nota — o marco do art. 137, §2º, IV.
+ *
+ * Passado esse prazo sem pagamento, nasce para a contratada o direito de pedir
+ * a extinção do contrato. Não é opinião nem estratégia: é o texto da lei. Quem
+ * não acompanha a data não sabe que o direito existe, e é comum descobrir
+ * tarde demais para usá-lo.
+ */
+export function direitoDeExtincaoPorAtraso(
+  dataDaNotaFiscal: string | null | undefined,
+  hoje = hojeLocal(),
+): { nasceEm: string; jaNasceu: boolean; dias: number } | null {
+  if (!dataDaNotaFiscal) return null;
+  const d = deDataLocal(dataDaNotaFiscal);
+  d.setMonth(d.getMonth() + 2);
+  const nasceEm = dataLocal(d);
+  const dias = diasAte(nasceEm, hoje);
+  return { nasceEm, jaNasceu: dias <= 0, dias };
+}
+
+export type SituacaoDoPagamento = {
+  estado: 'sem_prazo' | 'pago' | 'vencido' | 'vence_hoje' | 'a_vencer';
+  limite: string | null;
+  dias: number | null;
+  frase: string;
+  /** O direito do art. 137, §2º, IV já nasceu? */
+  cabeExtincao: boolean;
+};
+
+/**
+ * O estado do pagamento de uma nota, pronto para a tela.
+ *
+ * Aqui a assimetria é deliberada: no prazo de ENTREGA o atraso é nosso e o
+ * aviso serve para evitar; no de PAGAMENTO o atraso é do órgão e o aviso serve
+ * para cobrar — e, passados dois meses, para lembrar que a lei dá uma saída.
+ */
+export function situacaoDoPagamento(
+  dataDoMarco: string | null | undefined,
+  prazo: PrazoDoContrato,
+  opcoes: {
+    pagoEm?: string | null;
+    dataDaNotaFiscal?: string | null;
+    feriados?: string[];
+    hoje?: string;
+  } = {},
+): SituacaoDoPagamento {
+  const { pagoEm, dataDaNotaFiscal, feriados = [], hoje = hojeLocal() } = opcoes;
+  const limite = limiteDePagamento(dataDoMarco, prazo, feriados);
+  const extincao = direitoDeExtincaoPorAtraso(dataDaNotaFiscal ?? dataDoMarco, hoje);
+  const cabeExtincao = !pagoEm && !!extincao?.jaNasceu;
+
+  if (!limite) {
+    return {
+      estado: 'sem_prazo',
+      limite: null,
+      dias: null,
+      cabeExtincao,
+      frase: 'Prazo de pagamento não registrado no contrato',
+    };
+  }
+
+  const formatado = deDataLocal(limite).toLocaleDateString('pt-BR');
+
+  if (pagoEm) {
+    const atraso = diasAte(limite, pagoEm);
+    return {
+      estado: 'pago',
+      limite,
+      dias: atraso,
+      cabeExtincao: false,
+      frase: atraso < 0
+        ? `Pago com ${Math.abs(atraso)} dia(s) de atraso (vencia ${formatado})`
+        : `Pago no prazo (vencia ${formatado})`,
+    };
+  }
+
+  const dias = diasAte(limite, hoje);
+  if (dias < 0) {
+    return {
+      estado: 'vencido',
+      limite,
+      dias,
+      cabeExtincao,
+      frase: cabeExtincao
+        ? `Pagamento atrasado há ${Math.abs(dias)} dia(s) — cabe pedir extinção (art. 137, §2º, IV)`
+        : `Pagamento atrasado há ${Math.abs(dias)} dia(s) — vencia ${formatado}`,
+    };
+  }
+  if (dias === 0) {
+    return { estado: 'vence_hoje', limite, dias, cabeExtincao, frase: `Pagamento vence hoje (${formatado})` };
+  }
+  return { estado: 'a_vencer', limite, dias, cabeExtincao, frase: `Previsto para ${formatado} (${dias} dias)` };
+}

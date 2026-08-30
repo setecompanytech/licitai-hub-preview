@@ -60,6 +60,10 @@ export interface NormalizedExtraction {
   prazo_recebimento_dias?: number;
   prazo_recebimento_unidade?: 'uteis' | 'corridos';
   prazo_recebimento_clausula?: string;
+  prazo_pagamento_dias?: number;
+  prazo_pagamento_unidade?: 'uteis' | 'corridos';
+  prazo_pagamento_marco?: 'ateste' | 'nota_fiscal' | 'protocolo' | 'entrega';
+  prazo_pagamento_clausula?: string;
   assinatura_situacao?: 'ambas' | 'so_contratada' | 'so_orgao' | 'nenhuma';
   assinatura_observacao?: string;
 }
@@ -177,6 +181,23 @@ export function validateExtractedContract(raw: any): ValidationReport {
   const clRec = toCleanString(raw.prazo_recebimento_clausula, 900);
   if (clRec) out.prazo_recebimento_clausula = clRec;
 
+  // Pagamento. Um ano de teto: prazo maior que isso é data lida como prazo.
+  const dPag = toPositiveNumber(raw.prazo_pagamento_dias, 365);
+  if (dPag !== null && Number.isInteger(dPag)) {
+    out.prazo_pagamento_dias = dPag;
+    out.prazo_pagamento_unidade = unidadeDePrazo(raw.prazo_pagamento_unidade) ?? 'corridos';
+    const marco = toCleanString(raw.prazo_pagamento_marco, 20)?.toLowerCase();
+    // O marco NÃO tem padrão: supor "ateste" quando a cláusula conta da nota
+    // desloca a previsão de entrada em semanas. Sem leitura segura, fica nulo.
+    if (marco === 'ateste' || marco === 'nota_fiscal' || marco === 'protocolo' || marco === 'entrega') {
+      out.prazo_pagamento_marco = marco;
+    }
+  } else if (raw.prazo_pagamento_dias) {
+    rejected.push('prazo_pagamento_dias');
+  }
+  const clPag = toCleanString(raw.prazo_pagamento_clausula, 900);
+  if (clPag) out.prazo_pagamento_clausula = clPag;
+
   // Validade do instrumento. Só os quatro valores da coluna; qualquer outra
   // coisa é descartada em silêncio — aqui "não sei" é resposta melhor do que
   // um palpite, porque 'ambas' errado libera a execução de um contrato que não
@@ -254,6 +275,13 @@ export function buildParentUpdates(
     u.local_entrega = normalized.local_entrega;
     if (normalized.local_entrega_clausula) u.local_entrega_clausula = normalized.local_entrega_clausula;
   }
+  if (normalized.prazo_pagamento_dias && !parent.prazo_pagamento_dias) {
+    u.prazo_pagamento_dias = normalized.prazo_pagamento_dias;
+    u.prazo_pagamento_unidade = normalized.prazo_pagamento_unidade ?? 'corridos';
+    if (normalized.prazo_pagamento_marco) u.prazo_pagamento_marco = normalized.prazo_pagamento_marco;
+    if (normalized.prazo_pagamento_clausula) u.prazo_pagamento_clausula = normalized.prazo_pagamento_clausula;
+  }
+
   // A assinatura é sobrescrita mesmo quando já havia valor: o documento
   // ANEXADO é a fonte, e trocar o PDF por outro (a versão finalmente assinada
   // pelas duas partes) tem de refletir aqui. Manter o valor antigo faria o

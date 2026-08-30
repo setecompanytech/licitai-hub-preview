@@ -5,6 +5,8 @@ import {
   limiteDeEntrega,
   diasAte,
   situacaoDoPrazo,
+  situacaoDoPagamento,
+  direitoDeExtincaoPorAtraso,
 } from '@/lib/contratos/prazo-de-entrega';
 
 describe('somarDiasCorridos', () => {
@@ -121,5 +123,61 @@ describe('situacaoDoPrazo', () => {
     const s = situacaoDoPrazo('2026-08-01', prazo, { entregueEm: '2026-08-08' });
     expect(s.estado).toBe('entregue');
     expect(s.frase).toMatch(/dentro do prazo/);
+  });
+});
+
+describe('pagamento', () => {
+  const trinta = { dias: 30, unidade: 'corridos' as const };
+
+  it('projeta a data de entrada do dinheiro', () => {
+    const s = situacaoDoPagamento('2026-08-01', trinta, { hoje: '2026-08-10' });
+    expect(s.estado).toBe('a_vencer');
+    expect(s.limite).toBe('2026-08-31');
+  });
+
+  it('sem cláusula, não inventa — o Contas a Receber fica sem base, e diz', () => {
+    // Fluxo de caixa montado sobre chute parece planejamento e não é.
+    const s = situacaoDoPagamento('2026-08-01', { dias: null, unidade: null });
+    expect(s.estado).toBe('sem_prazo');
+    expect(s.limite).toBeNull();
+  });
+
+  it('acusa atraso do órgão', () => {
+    const s = situacaoDoPagamento('2026-08-01', trinta, { hoje: '2026-09-10' });
+    expect(s.estado).toBe('vencido');
+    expect(s.dias).toBe(-10);
+  });
+
+  it('dois meses da nota fiscal fazem nascer o direito de extinção', () => {
+    // Art. 137, §2º, IV: atraso superior a 2 meses contado da emissão da nota.
+    const d = direitoDeExtincaoPorAtraso('2026-06-15', '2026-08-20');
+    expect(d?.nasceEm).toBe('2026-08-15');
+    expect(d?.jaNasceu).toBe(true);
+  });
+
+  it('antes dos dois meses o direito ainda não existe', () => {
+    const d = direitoDeExtincaoPorAtraso('2026-08-01', '2026-08-20');
+    expect(d?.jaNasceu).toBe(false);
+    expect(d?.dias).toBeGreaterThan(0);
+  });
+
+  it('a frase muda quando o direito nasce — é o que ninguém percebe sozinho', () => {
+    const s = situacaoDoPagamento('2026-06-15', trinta, {
+      dataDaNotaFiscal: '2026-06-15',
+      hoje: '2026-08-20',
+    });
+    expect(s.cabeExtincao).toBe(true);
+    expect(s.frase).toMatch(/art\. 137, §2º, IV/);
+  });
+
+  it('pagamento feito encerra a contagem e registra o atraso', () => {
+    const s = situacaoDoPagamento('2026-08-01', trinta, {
+      pagoEm: '2026-09-10',
+      dataDaNotaFiscal: '2026-06-01',
+    });
+    expect(s.estado).toBe('pago');
+    expect(s.frase).toMatch(/10 dia\(s\) de atraso/);
+    // Pago encerra o direito de extinção, mesmo com a nota antiga.
+    expect(s.cabeExtincao).toBe(false);
   });
 });

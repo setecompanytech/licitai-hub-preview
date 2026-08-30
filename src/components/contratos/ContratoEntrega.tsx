@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Truck, Pencil, Check, X, Loader2, AlertTriangle } from 'lucide-react';
+import { ROTULO_DO_MARCO } from '@/lib/contratos/prazo-de-entrega';
 
 type Entrega = {
   prazo_entrega_dias: number | null;
@@ -17,17 +18,24 @@ type Entrega = {
   prazo_recebimento_dias: number | null;
   prazo_recebimento_unidade: string | null;
   prazo_recebimento_clausula: string | null;
+  prazo_pagamento_dias: number | null;
+  prazo_pagamento_unidade: string | null;
+  prazo_pagamento_marco: string | null;
+  prazo_pagamento_clausula: string | null;
 };
 
 const VAZIO: Entrega = {
   prazo_entrega_dias: null, prazo_entrega_unidade: null, prazo_entrega_clausula: null,
   local_entrega: null, local_entrega_clausula: null,
   prazo_recebimento_dias: null, prazo_recebimento_unidade: null, prazo_recebimento_clausula: null,
+  prazo_pagamento_dias: null, prazo_pagamento_unidade: null, prazo_pagamento_marco: null,
+  prazo_pagamento_clausula: null,
 };
 
 const COLUNAS =
   'prazo_entrega_dias, prazo_entrega_unidade, prazo_entrega_clausula, local_entrega, ' +
-  'local_entrega_clausula, prazo_recebimento_dias, prazo_recebimento_unidade, prazo_recebimento_clausula';
+  'local_entrega_clausula, prazo_recebimento_dias, prazo_recebimento_unidade, prazo_recebimento_clausula, ' +
+  'prazo_pagamento_dias, prazo_pagamento_unidade, prazo_pagamento_marco, prazo_pagamento_clausula';
 
 const emDias = (d: number | null, u: string | null) =>
   d ? `${d} dia${d > 1 ? 's' : ''} ${u === 'uteis' ? 'úteis' : 'corridos'}` : null;
@@ -76,6 +84,9 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
       local_entrega: form.local_entrega?.trim() || null,
       prazo_recebimento_dias: form.prazo_recebimento_dias || null,
       prazo_recebimento_unidade: form.prazo_recebimento_dias ? (form.prazo_recebimento_unidade || 'corridos') : null,
+      prazo_pagamento_dias: form.prazo_pagamento_dias || null,
+      prazo_pagamento_unidade: form.prazo_pagamento_dias ? (form.prazo_pagamento_unidade || 'corridos') : null,
+      prazo_pagamento_marco: form.prazo_pagamento_dias ? (form.prazo_pagamento_marco || null) : null,
     };
     // `types.ts` é gerado do schema e ainda não conhece estas colunas — elas
     // nasceram na 20260829000004, que é colada à mão. O cast some quando
@@ -93,7 +104,8 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
     toast.success('Condições de entrega atualizadas.');
   };
 
-  const semNada = !dados?.prazo_entrega_dias && !dados?.local_entrega && !dados?.prazo_recebimento_dias;
+  const semNada = !dados?.prazo_entrega_dias && !dados?.local_entrega
+    && !dados?.prazo_recebimento_dias && !dados?.prazo_pagamento_dias;
 
   return (
     <Card className="p-4">
@@ -135,6 +147,40 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 onChange={e => setForm(f => ({ ...f, prazo_recebimento_dias: e.target.value ? Number(e.target.value) : null }))} />
             </div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Prazo de pagamento</Label>
+              <Input type="number" min={1} max={365} placeholder="dias"
+                value={form.prazo_pagamento_dias ?? ''}
+                onChange={e => setForm(f => ({ ...f, prazo_pagamento_dias: e.target.value ? Number(e.target.value) : null }))} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Contagem</Label>
+              <Select value={form.prazo_pagamento_unidade ?? 'corridos'}
+                onValueChange={v => setForm(f => ({ ...f, prazo_pagamento_unidade: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="corridos">dias corridos</SelectItem>
+                  <SelectItem value="uteis">dias úteis</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              {/* Sem padrão de propósito: trocar ateste por nota fiscal
+                  desloca a previsão de entrada em semanas. */}
+              <Label className="text-xs text-muted-foreground">Contado a partir</Label>
+              <Select value={form.prazo_pagamento_marco ?? ''}
+                onValueChange={v => setForm(f => ({ ...f, prazo_pagamento_marco: v }))}>
+                <SelectTrigger><SelectValue placeholder="o que a cláusula diz" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ateste">do ateste</SelectItem>
+                  <SelectItem value="nota_fiscal">da emissão da NF</SelectItem>
+                  <SelectItem value="protocolo">do protocolo da NF</SelectItem>
+                  <SelectItem value="entrega">da entrega</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div>
             <Label className="text-xs text-muted-foreground">Local de entrega</Label>
             <Input placeholder="Endereço, unidade ou a regra do contrato"
@@ -172,7 +218,18 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               <span className="text-muted-foreground">Órgão recebe em:</span>
               <p className="font-medium">{emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade) ?? '—'}</p>
             </div>
-            <div className="col-span-2 sm:col-span-1">
+            <div>
+              <span className="text-muted-foreground">Órgão paga em:</span>
+              <p className="font-medium">
+                {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade) ?? '—'}
+                {dados!.prazo_pagamento_marco && (
+                  <span className="text-muted-foreground font-normal">
+                    {' '}{ROTULO_DO_MARCO[dados!.prazo_pagamento_marco as keyof typeof ROTULO_DO_MARCO]}
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-3">
               <span className="text-muted-foreground">Local:</span>
               <p className="font-medium">{dados!.local_entrega ?? '—'}</p>
             </div>
@@ -181,10 +238,12 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
           {/* A frase de onde o número saiu. Sem ela o prazo é um número que
               ninguém consegue contestar — e prazo errado só se descobre no dia
               em que já era. */}
-          {(dados!.prazo_entrega_clausula || dados!.local_entrega_clausula || dados!.prazo_recebimento_clausula) && (
+          {(dados!.prazo_entrega_clausula || dados!.local_entrega_clausula
+            || dados!.prazo_recebimento_clausula || dados!.prazo_pagamento_clausula) && (
             <div className="pt-2 border-t space-y-1">
               <p className="text-[11px] text-muted-foreground">Conforme o documento:</p>
-              {[dados!.prazo_entrega_clausula, dados!.local_entrega_clausula, dados!.prazo_recebimento_clausula]
+              {[dados!.prazo_entrega_clausula, dados!.local_entrega_clausula,
+                dados!.prazo_recebimento_clausula, dados!.prazo_pagamento_clausula]
                 .filter(Boolean)
                 .map((c, i) => (
                   <p key={i} className="text-[11px] text-muted-foreground/80 italic border-l-2 border-border pl-2">
