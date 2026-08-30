@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -196,6 +197,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // Pedido retroativo: o recebimento já está no Financeiro e o que falta é
   // ligá-los. Ver VincularLancamentoDialog.
   const [vinculando, setVinculando] = useState<PedidoParaCasar | null>(null);
+  const [lendo, setLendo] = useState<Pedido | null>(null);
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -396,14 +398,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setForm(f => ({ ...f, contrato_item_id: matched.id, valor_unitario: String(ataItem.valor_unitario) }));
   };
 
+  /**
+   * Continua a numeração do contrato em vez de abrir outra.
+   *
+   * O gerador antigo contava (`count(*)`) e prefixava com o ano — `P-2026-001`
+   * —, o que criava uma segunda sequência ao lado da que vem do Kanban (5, 6,
+   * 7, 8). E, apagado um pedido, a contagem repetia número de alguém: o mesmo
+   * número aparece na descrição do lançamento financeiro, na NF e no ofício ao
+   * órgão.
+   */
   const gerarNumeroPedido = async (): Promise<string> => {
-    const { count } = await supabase
+    const { data } = await supabase
       .from('contrato_pedidos')
-      .select('id', { count: 'exact', head: true })
+      .select('numero_pedido')
       .eq('contrato_id', contratoId);
-    const seq = ((count ?? 0) + 1).toString().padStart(3, '0');
-    const ano = new Date().getFullYear();
-    return `P-${ano}-${seq}`;
+    return proximoNumeroDePedido((data ?? []).map((p) => p.numero_pedido));
   };
 
   const resetForm = () => {
@@ -892,9 +901,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" onClick={openNewDialog} className="gap-1">
-              <Plus className="w-3.5 h-3.5" /> Novo Pedido
-              <Badge variant="outline" className="text-xs px-1 py-0 border-muted-foreground/40 text-muted-foreground ml-0.5">Legada</Badge>
+            {/* Não é tela legada: é a ÚNICA forma de cadastrar pedido direto
+                no contrato — o botão azul ao lado navega para Gestão de
+                Compras e cria pelo Kanban. Quem lança pedido retroativo, de
+                contrato que já estava em andamento antes da adesão ao sistema,
+                passa por aqui. O rótulo "Legada" dizia o contrário e convidava
+                a remover o que não dá para remover. */}
+            <Button size="sm" variant="outline" onClick={openNewDialog} className="gap-1"
+              title="Cadastrar pedido diretamente neste contrato, inclusive retroativo">
+              <Plus className="w-3.5 h-3.5" /> Lançar aqui
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -1243,7 +1258,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{p.descricao || '—'}</TableCell>
+                    <TableCell className="text-xs max-w-[200px]">
+                      {/* A descrição do objeto não cabe em 200px e a leitura
+                          completa é o que diz O QUE foi pedido. Truncar sem
+                          dar como abrir esconde justamente isso. */}
+                      {p.descricao ? (
+                        <button
+                          type="button"
+                          className="truncate block w-full text-left hover:underline cursor-pointer"
+                          title="Ver descrição completa"
+                          onClick={() => setLendo(p)}
+                        >
+                          {p.descricao}
+                        </button>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
                     <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
                     <TableCell className="text-xs text-center whitespace-nowrap">
@@ -1387,14 +1416,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </Button>
                         )}
+                        {(isFinanceiro || isAdmin) && (
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            title="Excluir pedido"
+                            onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        )}
                         {(isFinanceiro || isAdmin) && !p.nf_quitada && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
                             <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        )}
-                        {(isFinanceiro || isAdmin) && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openDeleteDialog(p.id, p.numero_pedido)}>
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         )}
                         {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
@@ -1690,6 +1723,49 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </DialogContent>
       </Dialog>
+      {/* Leitura, não edição: quem clica na descrição quer LER o que foi
+          pedido. Abrir o formulário de edição para isso põe campo gravável
+          na frente de quem só queria conferir. */}
+      <Dialog open={!!lendo} onOpenChange={(o) => !o && setLendo(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Pedido {lendo?.numero_pedido}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Descrição</p>
+              <p className="whitespace-pre-wrap">{lendo?.descricao || '—'}</p>
+            </div>
+            {lendo?.observacoes && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                <p className="whitespace-pre-wrap">{lendo.observacoes}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t text-xs">
+              <div>
+                <span className="text-muted-foreground">Quantidade</span>
+                <p className="font-medium">{lendo?.quantidade ?? '—'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Valor total</span>
+                <p className="font-medium">{lendo ? fmt(Number(lendo.valor_total) || 0) : '—'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Data do pedido</span>
+                <p className="font-medium">
+                  {lendo?.data_pedido ? new Date(lendo.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                </p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Nota fiscal</span>
+                <p className="font-medium">{lendo?.nota_fiscal || '—'}</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <VincularLancamentoDialog
         aberto={!!vinculando}
         onFechar={() => setVinculando(null)}
