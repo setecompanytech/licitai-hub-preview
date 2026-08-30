@@ -157,8 +157,12 @@ export default function KitFaturamento({ pedido }: Props) {
 
   return (
     <>
-      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAberto(true)}>
-        <Package className="w-3.5 h-3.5 mr-1" /> Kit de faturamento
+      {/* Ícone, não rótulo: numa linha de tabela com cinco ações, os 120px
+          do texto eram exatamente o que transbordava e cortava os botões
+          seguintes. O título no hover mantém a descoberta. */}
+      <Button size="icon" variant="outline" className="h-7 w-7"
+        title="Kit de faturamento" onClick={() => setAberto(true)}>
+        <Package className="w-4 h-4" />
       </Button>
 
       <Dialog open={aberto} onOpenChange={setAberto}>

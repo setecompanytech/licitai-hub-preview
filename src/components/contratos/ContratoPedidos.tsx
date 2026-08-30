@@ -200,6 +200,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // ligá-los. Ver VincularLancamentoDialog.
   const [vinculando, setVinculando] = useState<PedidoParaCasar | null>(null);
   const [lendo, setLendo] = useState<Pedido | null>(null);
+  // Saldo que resta no contrato — para o formulário avisar quando a edição
+  // estoura o que sobrou, em vez de aceitar e deixar o consumo em 303%.
+  const [saldoDoContrato, setSaldoDoContrato] = useState(0);
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -291,7 +294,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento').eq('id', contratoId).single(),
+      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento, saldo_remanescente, valor_global').eq('id', contratoId).single(),
     ]);
     const pedidosData = (pedidosRes.data as any[]) || [];
     setPedidos(pedidosData);
@@ -310,6 +313,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setPreNotas((preNotasRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
+    setSaldoDoContrato(Number((contratoRes.data as any)?.saldo_remanescente ?? 0));
     // Consulta SEPARADA, de propósito. As colunas de prazo vêm da migration
     // 20260829000004, que é colada à mão no SQL Editor: enquanto ela não
     // rodar, pedi-las junto com o resto derrubaria a aba INTEIRA por "column
@@ -1273,20 +1277,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <Table>
              <TableHeader>
               <TableRow>
-                <TableHead className="text-xs whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
+                <TableHead className="text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
                   <div className="flex items-center gap-1">
                     N.º Pedido
                     {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground" />}
                   </div>
                 </TableHead>
-                <TableHead className="text-xs whitespace-nowrap">Descrição</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Qtd</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Vlr Total</TableHead>
-                <TableHead className="text-xs text-center whitespace-nowrap">Data</TableHead>
-                <TableHead className="text-xs text-center whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-xs text-center whitespace-nowrap">Status Kanban</TableHead>
-                <TableHead className="text-xs whitespace-nowrap">NF-e Financeiro</TableHead>
-                <TableHead className="text-xs w-20"></TableHead>
+                <TableHead className="text-sm whitespace-nowrap">Descrição</TableHead>
+                <TableHead className="text-sm text-right whitespace-nowrap">Qtd</TableHead>
+                <TableHead className="text-sm text-right whitespace-nowrap">Vlr Total</TableHead>
+                <TableHead className="text-sm text-center whitespace-nowrap">Data</TableHead>
+                <TableHead className="text-sm text-center whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-sm text-center whitespace-nowrap">Status Kanban</TableHead>
+                <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
+                <TableHead className="text-sm w-20"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1302,7 +1306,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="text-xs font-mono font-medium whitespace-nowrap">
+                    <TableCell className="text-sm font-mono font-medium whitespace-nowrap">
                       {p.nf_quitada ? (
                         <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
                       ) : (
@@ -1315,7 +1319,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[200px]">
+                    <TableCell className="text-sm max-w-[200px]">
                       {/* A descrição do objeto não cabe em 200px e a leitura
                           completa é o que diz O QUE foi pedido. Truncar sem
                           dar como abrir esconde justamente isso. */}
@@ -1330,9 +1334,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         </button>
                       ) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">{p.quantidade}</TableCell>
-                    <TableCell className="text-xs text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-center whitespace-nowrap">
+                    <TableCell className="text-sm text-right whitespace-nowrap">{p.quantidade}</TableCell>
+                    <TableCell className="text-sm text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
+                    <TableCell className="text-sm text-center whitespace-nowrap">
                       <div>{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                       {/* O prazo que começou a correr quando este pedido foi
                           lançado. Antes a coluna mostrava a data e parava aí. */}
@@ -1369,7 +1373,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         <span className="text-muted-foreground/40 text-xs">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-sm">
                       <div className="space-y-1">
                         {p.nota_fiscal && (() => {
                           // O número da nota é o elo entre o pedido e o
@@ -1773,6 +1777,35 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
+
+            {/* O total, calculado à vista.
+                Pedido vindo do Kanban chega sem `valor_unitario`: o campo abre
+                vazio e quem edita preenche com o que conhece — o TOTAL. Salva
+                150 × 3.382,50 e o contrato passa a 303% consumido, sem que
+                nada tenha avisado. Mostrar a conta antes de salvar é o que
+                torna o erro visível no momento em que ele é cometido. */}
+            {(() => {
+              const q = parseFloat(editForm.quantidade) || 0;
+              const u = parseFloat(editForm.valor_unitario) || 0;
+              const total = q * u;
+              const saldo = saldoDoContrato;
+              const anterior = Number(editingPedido?.valor_total) || 0;
+              const estoura = saldo > 0 && total - anterior > saldo;
+              if (q <= 0 || u <= 0) return null;
+              return (
+                <div className={`rounded-lg border p-2.5 text-xs ${estoura ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-muted/30'}`}>
+                  <p className={estoura ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                    {q} × {fmt(u)} = <strong>{fmt(total)}</strong>
+                  </p>
+                  {estoura && (
+                    <p className="text-destructive mt-1">
+                      Isso passa em {fmt(total - anterior - saldo)} o saldo que resta no contrato
+                      ({fmt(saldo)}). Confira se o valor digitado é o UNITÁRIO e não o total.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Data do Pedido</Label>
