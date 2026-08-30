@@ -4,6 +4,7 @@ import {
   ordenarCandidatos,
   conferirSoma,
   quitacaoDoPedido,
+  PONTOS_PARA_SUGERIR,
   type PedidoParaCasar,
   type TituloCandidato,
 } from '@/lib/contratos/casar-pedido';
@@ -155,5 +156,25 @@ describe('quitacaoDoPedido', () => {
 
   it('sem título nenhum não quita', () => {
     expect(quitacaoDoPedido([])).toEqual({ nf_quitada: false, data_quitacao: null });
+  });
+});
+
+describe('PONTOS_PARA_SUGERIR', () => {
+  it('é exatamente o que "valor idêntico" vale sozinho', () => {
+    // Abaixo disso a sugestão nasceria de proximidade de data — que todo
+    // título do mês satisfaz — e viraria aviso constante.
+    const soValor = pontuarCandidato(pedido, titulo({ data_competencia: null }));
+    expect(soValor.pontos).toBe(PONTOS_PARA_SUGERIR);
+  });
+
+  it('proximidade de data sozinha não chega ao limiar', () => {
+    const soData = pontuarCandidato(pedido, titulo({ valor: 999999 }));
+    expect(soData.pontos).toBeLessThan(PONTOS_PARA_SUGERIR);
+  });
+
+  it('mas continua aparecendo na lista do diálogo', () => {
+    // Quem abriu o diálogo já está procurando: ali basta pontuar acima de zero.
+    const lista = ordenarCandidatos(pedido, [titulo({ valor: 999999 })]);
+    expect(lista).toHaveLength(1);
   });
 });

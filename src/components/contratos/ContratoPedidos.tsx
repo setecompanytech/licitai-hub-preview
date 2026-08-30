@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
+import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/lib/contratos/casar-pedido';
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -208,6 +209,53 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * não registra prazo, o aviso diz isso: silêncio seria lido como "não há
    * prazo", que é diferente de "ninguém cadastrou".
    */
+  /**
+   * Depois de salvar um pedido sem gerar conta a receber, procura no Financeiro
+   * um título que pareça ser dele — e oferece o vínculo ali mesmo.
+   *
+   * O caminho do pedido retroativo tem três passos: lançar, abater saldo,
+   * vincular ao título que já existe. Os três funcionavam, e eram três ações
+   * separadas que o usuário precisava saber que existiam. A terceira é a que
+   * impede a divergência com Contas a Receber, e era a mais fácil de esquecer
+   * justamente por ser a última.
+   *
+   * Sugere, não vincula: casar sozinho o dinheiro de alguém é decisão que o
+   * sistema não tem como tomar. O diálogo mostra os motivos e quem decide
+   * confirma.
+   */
+  const sugerirVinculo = async (p: { id: string; numero_pedido: string; valor_total: number; data_pedido: string | null; nota_fiscal?: string | null }) => {
+    if (!empresaAtiva?.id) return;
+    const alvo = {
+      id: p.id,
+      numero_pedido: p.numero_pedido,
+      valor_total: Number(p.valor_total) || 0,
+      data_pedido: p.data_pedido,
+      nota_fiscal: p.nota_fiscal ?? null,
+    };
+    const { data } = await supabase
+      .from('financeiro_lancamentos')
+      .select('id, descricao, valor, data_competencia, numero_documento, status, contrato_pedido_id, contrato_id')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('tipo', 'a_receber')
+      .is('contrato_pedido_id', null)
+      .limit(400);
+    if (!data?.length) return;
+
+    const fortes = ordenarCandidatos(alvo, data as unknown as TituloCandidato[])
+      .filter((c) => c.pontos >= PONTOS_PARA_SUGERIR);
+    if (fortes.length === 0) return;
+
+    const primeiro = fortes[0];
+    toast.info(
+      `${fortes.length} lançamento(s) no Financeiro parece(m) ser deste pedido.`,
+      {
+        description: `${primeiro.descricao} · ${fmt(Number(primeiro.valor))} — ${primeiro.motivos.join(', ')}. Vincular evita contar a receita duas vezes.`,
+        action: { label: 'Vincular', onClick: () => setVinculando(alvo) },
+        duration: 20000,
+      },
+    );
+  };
+
   const avisarPrazo = (dataDoPedido: string | null | undefined) => {
     // Antes do prazo de entrega, a pergunta anterior: este contrato já produz
     // efeitos? Sai primeiro porque é a que muda a decisão — de nada adianta
@@ -571,6 +619,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     await gerarLancamentosFinanceiros([novoPedido as any]);
     setSaving(false);
     avisarPrazo(novoPedido?.data_pedido);
+    // Só faz sentido sugerir quando NÃO se acabou de criar um título: com a
+    // caixa marcada, o pedido já tem o seu, e a sugestão convidaria a somar
+    // dois pelo mesmo dinheiro.
+    if (!gerarContaReceber && novoPedido) void sugerirVinculo(novoPedido as never);
     setDialogOpen(false);
     resetForm();
     load();
@@ -610,6 +662,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       await gerarLancamentosFinanceiros([novoPedido as any]);
       setSaving(false);
       avisarPrazo(novoPedido?.data_pedido);
+      if (!gerarContaReceber && novoPedido) void sugerirVinculo(novoPedido as never);
       setDialogOpen(false);
       resetForm();
       load();

@@ -131,6 +131,18 @@ export function pontuarCandidato(pedido: PedidoParaCasar, titulo: TituloCandidat
   return { pontos, motivos };
 }
 
+/**
+ * A partir de quantos pontos vale INTERROMPER alguém com uma sugestão.
+ *
+ * Cinquenta é exatamente o que "valor idêntico" vale sozinho. Abaixo disso a
+ * sugestão nasceria de proximidade de data — que todo título do mês satisfaz —
+ * e viraria aviso constante, do tipo que se aprende a fechar sem ler.
+ *
+ * Aparecer na LISTA do diálogo é outra coisa: ali basta pontuar acima de zero,
+ * porque quem abriu já está procurando.
+ */
+export const PONTOS_PARA_SUGERIR = 50;
+
 /** Candidatos ordenados do mais provável ao menos, sem os impossíveis. */
 export function ordenarCandidatos(
   pedido: PedidoParaCasar,
