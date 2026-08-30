@@ -24,7 +24,7 @@ serve(async (req) => {
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const tipoLabel = tipo_documento || "Ordem de Fornecimento / Empenho / PRD";
-    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho (global, ordinário, estimativo), PRDs e documentos similares. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null.`;
+    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho, PRDs e documentos similares. A ESPÉCIE do empenho (ordinário, global ou estimativo) é um campo ROTULADO na nota — leia o rótulo, não deduza pelo conteúdo; sem rótulo, devolva null. Itens divididos em COTA PRINCIPAL e COTA RESERVADA (LC 123/2006) devem vir como linhas separadas, cada uma com a sua cota marcada. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null.`;
 
     // Build user message — text or vision
     let userContent: any;
@@ -67,7 +67,21 @@ serve(async (req) => {
                 properties: {
                   tipo_documento: {
                     type: "string",
-                    description: "Tipo do documento identificado: ordem_fornecimento, empenho_global, empenho_ordinario, empenho_estimativo, prd, outro"
+                    description: "Que documento é este: ordem_fornecimento, nota_empenho, prd, outro"
+                  },
+
+                  // A ESPÉCIE do empenho é campo rotulado no documento — não
+                  // se infere do texto. Pedir a classificação junto com o tipo
+                  // do documento misturava duas perguntas; separadas, cada uma
+                  // tem uma resposta que está escrita.
+                  especie_empenho: {
+                    type: "string",
+                    enum: ["ordinario", "global", "estimativo"],
+                    description: "A ESPÉCIE do empenho, quando o documento for nota de empenho. Procure o campo rotulado — costuma aparecer como 'ESPÉCIE DE EMPENHO', 'TIPO DE EMPENHO' ou 'MODALIDADE DE EMPENHO', e o valor é uma das três palavras. NÃO deduza pelo conteúdo: se o rótulo não estiver no documento, devolva null e deixe quem tem a nota decidir.",
+                  },
+                  especie_empenho_texto: {
+                    type: "string",
+                    description: "O trecho LITERAL onde a espécie aparece, com o rótulo. É o que permite conferir a leitura sem reabrir o PDF.",
                   },
                   numero_documento: { type: "string", description: "Número do documento (OF, NE, PRD)" },
                   data_documento: { type: "string", description: "Data do documento no formato YYYY-MM-DD" },
@@ -88,6 +102,15 @@ serve(async (req) => {
                         quantidade: { type: "number", description: "Quantidade solicitada" },
                         unidade: { type: "string", description: "Unidade de medida (UN, KG, CX, etc.)" },
                         valor_unitario: { type: "number", description: "Valor unitário em reais" },
+                        // Divisão do art. 48, III da LC 123/2006: até 25% do
+                        // objeto reservado a ME/EPP/MEI. O empenho traz as duas
+                        // cotas em linhas separadas, e os saldos delas correm
+                        // independentes.
+                        cota: {
+                          type: "string",
+                          enum: ["principal", "reservada"],
+                          description: "Se a linha for de cota, qual delas. Procure 'COTA PRINCIPAL' / 'COTA RESERVADA' (ou 'AMPLA CONCORRÊNCIA' / 'EXCLUSIVA ME/EPP') na descrição do item ou no cabeçalho do lote. Null quando o item não for dividido.",
+                        },
                         valor_total: { type: "number", description: "Valor total do item em reais" },
                       },
                       required: ["descricao"],

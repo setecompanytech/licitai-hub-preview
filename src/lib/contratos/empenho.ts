@@ -31,6 +31,22 @@ export const SENTIDO_DO_TIPO: Record<TipoDeEmpenho, string> = {
     'Previsão de consumo. Ultrapassar não é erro, mas exige reforço do empenho antes de continuar.',
 };
 
+/**
+ * De onde veio a espécie do empenho.
+ *
+ * A tela precisa dizer isto, e não é preciosismo: espécie lida do documento é
+ * fato; escolhida à mão é declaração de quem preencheu. Quando o excesso de
+ * R$ 5.000 for irregularidade num caso e rotina no outro, quem confere precisa
+ * saber em que dos dois está apoiado.
+ */
+export type OrigemDaEspecie = 'documento' | 'manual' | 'nao_informada';
+
+export const ROTULO_DA_ORIGEM: Record<OrigemDaEspecie, string> = {
+  documento: 'lido do documento',
+  manual: 'informado à mão',
+  nao_informada: 'não informada',
+};
+
 /** Só os três que existem; qualquer outra coisa é null, nunca um palpite. */
 export function tipoDeEmpenho(v: unknown): TipoDeEmpenho | null {
   const t = String(v ?? '').trim().toLowerCase().replace(/^empenho[_ ]?/, '');

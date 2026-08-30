@@ -73,3 +73,18 @@ describe('situacaoDoEmpenho', () => {
     expect(s.frase).toMatch(/reforço/);
   });
 });
+
+describe('origem da espécie', () => {
+  it('a IA só afirma quando leu o rótulo', () => {
+    // O prompt manda devolver null sem rótulo. Aqui o que se testa é o que o
+    // código faz com essa ausência: não inventa.
+    expect(tipoDeEmpenho(undefined)).toBeNull();
+    expect(tipoDeEmpenho('nota de empenho')).toBeNull();
+  });
+
+  it('lê as três espécies escritas como o documento as escreve', () => {
+    expect(tipoDeEmpenho('ORDINÁRIO')).toBe('ordinario');
+    expect(tipoDeEmpenho('Global')).toBe('global');
+    expect(tipoDeEmpenho('ESTIMATIVO')).toBe('estimativo');
+  });
+});

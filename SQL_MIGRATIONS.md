@@ -8646,6 +8646,30 @@ ALTER TABLE public.contrato_pedidos
   ADD CONSTRAINT chk_pedido_cota
   CHECK (cota IS NULL OR cota IN ('principal','reservada')) NOT VALID;
 
+-- ── De onde veio a espécie ──────────────────────────────────────────────────
+-- Espécie lida do documento é fato; escolhida à mão é declaração de quem
+-- preencheu. Como o mesmo excesso é irregularidade num tipo e rotina noutro,
+-- quem confere precisa saber em que dos dois está apoiado.
+ALTER TABLE public.contrato_empenhos
+  ADD COLUMN IF NOT EXISTS tipo_origem  text NOT NULL DEFAULT 'manual',
+  ADD COLUMN IF NOT EXISTS tipo_trecho  text;
+
+COMMENT ON COLUMN public.contrato_empenhos.tipo_origem IS
+  'documento | manual. Como a espécie do empenho foi determinada. A IA só '
+  'devolve `documento` quando encontra o campo ROTULADO na nota (ESPÉCIE DE '
+  'EMPENHO, TIPO DE EMPENHO); sem rótulo ela devolve nulo e quem tem a nota '
+  'escolhe — e aí fica `manual`.';
+
+COMMENT ON COLUMN public.contrato_empenhos.tipo_trecho IS
+  'O trecho literal onde a espécie aparece no documento. Permite conferir a '
+  'leitura sem reabrir o PDF — o mesmo que se faz com as cláusulas de prazo.';
+
+ALTER TABLE public.contrato_empenhos
+  DROP CONSTRAINT IF EXISTS chk_empenho_tipo_origem;
+ALTER TABLE public.contrato_empenhos
+  ADD CONSTRAINT chk_empenho_tipo_origem
+  CHECK (tipo_origem IN ('documento','manual'));
+
 -- ── O saldo POR COTA ────────────────────────────────────────────────────────
 -- Derivado, como todo saldo neste sistema. Devolve uma linha por cota do
 -- empenho: somar as duas esconderia o momento em que uma acaba.
@@ -8717,4 +8741,5 @@ GRANT EXECUTE ON FUNCTION public.contrato_empenho_saldo_por_cota(uuid) TO authen
 --     FROM public.contrato_empenhos e
 --     JOIN public.contrato_empenho_itens i ON i.empenho_id = e.id
 --    GROUP BY 1;
+
 ```
