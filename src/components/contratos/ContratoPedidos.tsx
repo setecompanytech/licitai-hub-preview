@@ -571,7 +571,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       // no Financeiro: se a IA falhar, o documento já está guardado. Guardar
       // depois só arquiva o que deu certo.
       let arquivoOrdemId: string | null = null;
+      // A política de `contrato_arquivos` é `auth.uid() = user_id`. Passar
+      // null ali — o que eu fazia com `user?.id ?? null` — nunca satisfaz a
+      // comparação, e o insert é recusado com "violates row-level security
+      // policy". Sem usuário na sessão não há o que guardar: a leitura segue
+      // e o aviso diz o que ficou de fora.
+      if (!user?.id) {
+        toast.warning('O PDF não pôde ser guardado: sessão sem usuário.', {
+          description: 'Recarregue a página e tente de novo — a leitura do documento continua.',
+        });
+      }
       try {
+        if (!user?.id) throw new Error('sem usuário');
         const caminho = `${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
         const { error: upErr } = await supabase.storage
           .from('contratos-docs')
@@ -586,7 +597,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               tamanho_bytes: file.size,
               tipo: 'ordem_fornecimento',
               descricao: 'Ordem de Fornecimento / Nota de Empenho',
-              user_id: user?.id ?? null,
+              user_id: user!.id,
             } as never)
             .select('id')
             .single();
