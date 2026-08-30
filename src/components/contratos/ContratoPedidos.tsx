@@ -1370,7 +1370,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-sm text-center whitespace-nowrap">Status</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap">Status Kanban</TableHead>
                 <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
-                <TableHead className="text-sm w-20"></TableHead>
+                {/* Fixa à direita. As colunas cresceram quando a fonte subiu
+                    para 14px e empurraram as ações para fora da area visivel —
+                    e o macOS esconde a barra de rolagem, entao os botoes
+                    simplesmente sumiam. Acao de linha nao pode depender de
+                    alguem descobrir que a tabela rola. */}
+                <TableHead className="text-sm sticky right-0 bg-background z-10 w-px" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1529,7 +1534,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="sticky right-0 bg-background z-10 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                       <div className="flex items-center gap-1">
                         {/* Kit vale antes e depois da quitação: o órgão pede a
                             segunda via, e a fila do financeiro só mostra o que
