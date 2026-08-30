@@ -65,6 +65,8 @@ export interface NormalizedExtraction {
   prazo_pagamento_marco?: 'ateste' | 'nota_fiscal' | 'protocolo' | 'entrega';
   prazo_pagamento_clausula?: string;
   assinatura_situacao?: 'ambas' | 'so_contratada' | 'so_orgao' | 'nenhuma';
+  assinatura_orgao?: string;
+  assinatura_contratada?: string;
   assinatura_observacao?: string;
 }
 
@@ -198,14 +200,30 @@ export function validateExtractedContract(raw: any): ValidationReport {
   const clPag = toCleanString(raw.prazo_pagamento_clausula, 900);
   if (clPag) out.prazo_pagamento_clausula = clPag;
 
-  // Validade do instrumento. Só os quatro valores da coluna; qualquer outra
-  // coisa é descartada em silêncio — aqui "não sei" é resposta melhor do que
-  // um palpite, porque 'ambas' errado libera a execução de um contrato que não
-  // vincula ninguém.
-  const assin = toCleanString(raw.assinatura_situacao, 30)?.toLowerCase();
-  if (assin === 'ambas' || assin === 'so_contratada' || assin === 'so_orgao' || assin === 'nenhuma') {
-    out.assinatura_situacao = assin;
-  }
+  // ── Validade do instrumento ───────────────────────────────────────────────
+  //
+  // A IA LISTA quem assinou de cada lado; a classificação sai daqui.
+  //
+  // Antes eu pedia a classificação pronta, e em 30/08/2026 ela devolveu
+  // `so_orgao` para um contrato cuja única assinatura era do "Contratado" —
+  // errado, e com aparência de resposta. O painel de eficácia passou a dizer
+  // o oposto do que o documento mostra.
+  //
+  // Classificar exige decidir de que lado está cada nome. Listar exige só
+  // copiar o que está escrito ao lado dele. A segunda tarefa a IA faz bem, e
+  // a primeira o código faz sem errar.
+  const porOrgao = toCleanString(raw.assinatura_orgao, 200);
+  const porContratada = toCleanString(raw.assinatura_contratada, 200);
+  if (porOrgao) out.assinatura_orgao = porOrgao;
+  if (porContratada) out.assinatura_contratada = porContratada;
+
+  if (porOrgao && porContratada) out.assinatura_situacao = 'ambas';
+  else if (porContratada) out.assinatura_situacao = 'so_contratada';
+  else if (porOrgao) out.assinatura_situacao = 'so_orgao';
+  // Nenhum dos dois lados lido: fica NULO, não 'nenhuma'. "Não consegui ler"
+  // e "não há assinatura" são coisas diferentes, e só a segunda deveria
+  // travar a execução por si.
+
   const assinObs = toCleanString(raw.assinatura_observacao, 400);
   if (assinObs) out.assinatura_observacao = assinObs;
 
@@ -289,7 +307,15 @@ export function buildParentUpdates(
   // ter sido resolvido.
   if (normalized.assinatura_situacao) {
     u.assinatura_situacao = normalized.assinatura_situacao;
-    if (normalized.assinatura_observacao) u.assinatura_observacao = normalized.assinatura_observacao;
+    // A observação guarda os DOIS lados como foram lidos. É o que permite
+    // conferir a classificação sem reabrir o PDF — e foi lendo esse campo ao
+    // lado do outro que o erro de 30/08 apareceu.
+    const partes = [
+      normalized.assinatura_orgao ? `Órgão: ${normalized.assinatura_orgao}` : null,
+      normalized.assinatura_contratada ? `Contratada: ${normalized.assinatura_contratada}` : null,
+      normalized.assinatura_observacao ?? null,
+    ].filter(Boolean);
+    if (partes.length > 0) u.assinatura_observacao = partes.join(' · ').slice(0, 400);
   }
 
   if (normalized.prazo_recebimento_dias && !parent.prazo_recebimento_dias) {

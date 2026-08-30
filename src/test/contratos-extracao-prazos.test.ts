@@ -131,17 +131,51 @@ describe('buildParentUpdates — prazo e local de entrega', () => {
 });
 
 describe('assinatura das partes', () => {
-  it('lê os quatro estados', () => {
-    for (const v of ['ambas', 'so_contratada', 'so_orgao', 'nenhuma']) {
-      expect(validateExtractedContract({ assinatura_situacao: v }).normalized.assinatura_situacao).toBe(v);
-    }
+  it('classifica a partir dos DOIS lados lidos, não do palpite da IA', () => {
+    const ambas = validateExtractedContract({
+      assinatura_orgao: 'CEL PM Fulano, Comandante-Geral',
+      assinatura_contratada: 'Rafael William, sócio',
+    }).normalized;
+    expect(ambas.assinatura_situacao).toBe('ambas');
+
+    const soContratada = validateExtractedContract({
+      assinatura_contratada: 'RAFAEL WILLIAM CASTRO DA SILVA, Contratado.',
+    }).normalized;
+    expect(soContratada.assinatura_situacao).toBe('so_contratada');
+
+    const soOrgao = validateExtractedContract({
+      assinatura_orgao: 'Ordenador de Despesa',
+    }).normalized;
+    expect(soOrgao.assinatura_situacao).toBe('so_orgao');
   });
 
-  it('valor fora da lista é descartado — "não sei" é melhor que palpite', () => {
-    // Um 'ambas' errado libera a execução de um contrato que não vincula
-    // ninguém: é o pior erro possível deste campo.
-    const { normalized } = validateExtractedContract({ assinatura_situacao: 'parcial' });
+  it('o caso real de 30/08: só o Contratado assinou', () => {
+    // A IA classificava isto como `so_orgao` — o oposto — e o painel de
+    // eficácia dizia que faltava a assinatura da contratada quando era a do
+    // órgão que faltava.
+    const { normalized } = validateExtractedContract({
+      assinatura_contratada: 'RAFAEL WILLIAM CASTRO DA SILVA, Contratado.',
+    });
+    expect(normalized.assinatura_situacao).toBe('so_contratada');
+  });
+
+  it('nenhum lado lido fica NULO, não "nenhuma"', () => {
+    // "Não consegui ler" e "não há assinatura" são coisas diferentes, e só a
+    // segunda deveria travar a execução por si.
+    const { normalized } = validateExtractedContract({ numero_contrato: '008/2026' });
     expect(normalized.assinatura_situacao).toBeUndefined();
+  });
+
+  it('a observação guarda os dois lados, para conferir sem reabrir o PDF', () => {
+    const u = buildParentUpdates(
+      {
+        assinatura_situacao: 'so_contratada',
+        assinatura_contratada: 'RAFAEL WILLIAM CASTRO DA SILVA, Contratado.',
+      },
+      {},
+      'contrato',
+    );
+    expect(u.assinatura_observacao).toMatch(/Contratada: RAFAEL WILLIAM/);
   });
 
   it('sobrescreve o valor anterior — o PDF anexado é a fonte', () => {
