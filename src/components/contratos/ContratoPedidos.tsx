@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import VincularLancamentoDialog from './VincularLancamentoDialog';
+import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
 import { situacaoDoPrazo } from '@/lib/contratos/prazo-de-entrega';
@@ -25,7 +27,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink,
+  ExternalLink, Link2,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -191,6 +193,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // Registrar pedido num contrato que ainda não produz efeitos é o erro que
   // mais custa: a entrega sai, e a cobrança nasce sem título que a sustente.
   const { situacao: juridico } = useSituacaoJuridica(contratoId);
+  // Pedido retroativo: o recebimento já está no Financeiro e o que falta é
+  // ligá-los. Ver VincularLancamentoDialog.
+  const [vinculando, setVinculando] = useState<PedidoParaCasar | null>(null);
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -1364,6 +1369,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </Button>
                           )
                         )}
+                        {(isFinanceiro || isAdmin) && (
+                          /* Pedido retroativo — cadastrado depois de o
+                             recebimento já estar no Financeiro. Vincular em vez
+                             de gerar evita contar a receita duas vezes. */
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            title="Vincular a lançamento existente no Financeiro"
+                            onClick={() => setVinculando({
+                              id: p.id,
+                              numero_pedido: p.numero_pedido,
+                              valor_total: Number(p.valor_total) || 0,
+                              data_pedido: p.data_pedido,
+                              nota_fiscal: p.nota_fiscal ?? null,
+                            })}
+                          >
+                            <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
+                        )}
                         {(isFinanceiro || isAdmin) && !p.nf_quitada && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
                             <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
@@ -1667,6 +1690,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </DialogContent>
       </Dialog>
+      <VincularLancamentoDialog
+        aberto={!!vinculando}
+        onFechar={() => setVinculando(null)}
+        contratoId={contratoId}
+        empresaId={empresaAtiva?.id}
+        pedido={vinculando}
+        aoVincular={load}
+      />
+
     </div>
   );
 }
