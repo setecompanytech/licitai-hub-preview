@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { avaliarCabimento } from '@/lib/contratos/cabimento';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
 import { normalizarNumeroEmpenho, tipoDeEmpenho } from '@/lib/contratos/empenho';
 import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-nfe';
@@ -213,7 +214,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: '',
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
-    numero_empenho: '', tipo_empenho: '', valor_empenho: '',
+    numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -231,7 +232,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     numero_pedido: '', descricao: '', contrato_item_id: '',
     quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
-    numero_empenho: '', tipo_empenho: '', valor_empenho: '',
+    numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
   const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
@@ -263,6 +264,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // Saldo que resta no contrato — para o formulário avisar quando a edição
   // estoura o que sobrou, em vez de aceitar e deixar o consumo em 303%.
   const [saldoDoContrato, setSaldoDoContrato] = useState(0);
+  // Saldo por cota dos empenhos deste contrato, para a checagem tripla.
+  const [saldosDeEmpenho, setSaldosDeEmpenho] = useState<
+    Array<{ empenho_id: string; numero: string; tipo: string; cota: string; saldo_qtd: number }>
+  >([]);
   // O PDF da Ordem/Empenho guardado nesta sessão de upload, para ligar ao
   // pedido no momento em que ele for salvo.
   const [arquivoOrdem, setArquivoOrdem] = useState<string | null>(null);
@@ -338,6 +343,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * Preenche, mas não tranca: a cláusula é a regra geral e a ordem pode trazer
    * prazo próprio. Quem editar sobrepõe.
    */
+  /**
+   * O pedido cabe nos três saldos que o limitam?
+   *
+   * Contrato, item e cota do empenho restringem a mesma entrega sem que um
+   * implique o outro: o contrato pode ter saldo com o item esgotado, e o item
+   * pode ter saldo com o empenho esgotado. Verificar um só deixa passar o que
+   * os outros dois barrariam — foi assim que este contrato chegou a 303%.
+   */
+  const conferirCabimento = (qtd: number, valor: number, itemId: string, cota?: string | null) => {
+    const item = itens.find((i) => i.id === itemId) as
+      | { descricao?: string; codigo_item?: string; saldo_quantitativo?: number }
+      | undefined;
+    const emp = saldosDeEmpenho.find((e) => !cota || e.cota === cota) ?? saldosDeEmpenho[0];
+    return avaliarCabimento(
+      { quantidade: qtd, valor },
+      {
+        empenho: emp
+          ? { rotulo: `cota ${emp.cota} do empenho ${emp.numero}`, saldoQtd: emp.saldo_qtd, tipo: emp.tipo }
+          : null,
+        item: item?.saldo_quantitativo != null
+          ? { rotulo: `item ${item.codigo_item ?? ''}`.trim(), saldoQtd: Number(item.saldo_quantitativo) }
+          : null,
+        contrato: { saldoValor: saldoDoContrato || null },
+      },
+    );
+  };
+
   const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
     if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
     return limiteDeEntrega(dataDoPedido, {
@@ -401,6 +433,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setAditivos((aditivosRes.data as any[]) || []);
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
     setSaldoDoContrato(Number((contratoRes.data as any)?.saldo_remanescente ?? 0));
+
+    // Empenhos e o saldo de cada cota. Consulta separada e tolerante: as
+    // tabelas vêm de migration colada à mão, e sem elas a checagem apenas não
+    // avalia o empenho — não impede ninguém de trabalhar.
+    supabase
+      .from('contrato_empenhos' as never)
+      .select('id, numero, tipo')
+      .eq('contrato_id', contratoId)
+      .then(async ({ data: emps, error }) => {
+        if (error || !emps?.length) { setSaldosDeEmpenho([]); return; }
+        const linhas: Array<{ empenho_id: string; numero: string; tipo: string; cota: string; saldo_qtd: number }> = [];
+        for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string }>) {
+          const { data: saldo } = await supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never);
+          for (const s of (saldo ?? []) as unknown as Array<{ cota: string; saldo_qtd: number }>) {
+            linhas.push({ empenho_id: e.id, numero: e.numero, tipo: e.tipo, cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0 });
+          }
+        }
+        setSaldosDeEmpenho(linhas);
+      });
     // Consulta SEPARADA, de propósito. As colunas de prazo vêm da migration
     // 20260829000004, que é colada à mão no SQL Editor: enquanto ela não
     // rodar, pedi-las junto com o resto derrubaria a aba INTEIRA por "column
@@ -561,7 +612,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       quantidade: '', valor_unitario: '', data_pedido: new Date().toISOString().split('T')[0],
       data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
       tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
-      numero_empenho: '', tipo_empenho: '', valor_empenho: '',
+      numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
     });
     setArquivoOrdem(null);
     setExtractedData(null);
@@ -762,6 +813,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
+
+    // Avisa e deixa seguir: há entrega legítima que estoura o saldo previsto —
+    // reforço de empenho em andamento, aditivo em tramitação. Barrar seria
+    // decidir no lugar de quem conhece o processo; calar seria deixar o
+    // contrato chegar a 303% de novo.
+    const cabimento = conferirCabimento(qty, qty * unit, form.contrato_item_id, form.cota);
+    if (!cabimento.cabe && cabimento.gargalo) {
+      const seguir = confirm(
+        `${cabimento.frase}\n\n${cabimento.gargalo.providencia}\n\nRegistrar mesmo assim?`,
+      );
+      if (!seguir) return;
+    }
+
     setSaving(true);
     const { data: novoPedido, error } = await supabase.from('contrato_pedidos').insert({
       contrato_id: contratoId, user_id: user!.id,
@@ -776,6 +840,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
+      cota: form.cota || null,
     } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
     if (error) { console.error('Erro ao salvar pedido:', error.message, error.details, error.code); toast.error('Erro ao salvar pedido: ' + error.message); setSaving(false); return; }
     await gerarLancamentosFinanceiros([novoPedido as any]);
@@ -821,6 +886,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
+      cota: form.cota || null,
         } as any)
         .select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id')
         .single();
@@ -849,6 +915,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
       arquivo_ordem_id: arquivoOrdem,
+      cota: form.cota || null,
     };
     const inserts = itensSalvar.map((ei, idx) => {
       const qty = parseFloat(ei.quantidade) || 0;
@@ -941,6 +1008,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_empenho: (p as { numero_empenho?: string }).numero_empenho || '',
       tipo_empenho: (p as { tipo_empenho?: string }).tipo_empenho || '',
       valor_empenho: String((p as { valor_empenho?: number }).valor_empenho ?? ''),
+      cota: (p as { cota?: string }).cota || '',
     });
     setEditDialogOpen(true);
   };
