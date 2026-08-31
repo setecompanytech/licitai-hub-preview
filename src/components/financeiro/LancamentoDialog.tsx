@@ -214,7 +214,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const editando = !!initial?.id;
   const { empresaAtiva } = useEmpresa();
-  const { guardarArquivo } = useDocumentoFiscal();
+  const { guardarArquivo, abrirArquivo } = useDocumentoFiscal();
   const entradaDeArquivo = useRef<HTMLInputElement>(null);
   // Os arquivos esperam o Salvar. Anexar não é registrar — e um lançamento
   // novo ainda nem tem id ao qual o documento possa se prender.
@@ -231,6 +231,44 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
    * nulo.
    */
   const [nfeLida, setNfeLida] = useState<unknown>(null);
+  /**
+   * O documento que JÁ está guardado neste lançamento.
+   *
+   * Faltava buscar isto, e a falta enganava: depois de salvar, a aba voltava a
+   * mostrar o convite para anexar, exatamente como antes do upload. Quem
+   * reabria concluía que o arquivo não tinha sido guardado — e anexava de
+   * novo, criando o segundo registro do mesmo papel.
+   */
+  const [docGuardado, setDocGuardado] = useState<{
+    id: string; arquivo_nome: string; storage_path: string; arquivo_xml: string | null;
+  } | null>(null);
+  const [abrindoDoc, setAbrindoDoc] = useState(false);
+
+  useEffect(() => {
+    if (!open || !initial?.id) { setDocGuardado(null); return; }
+    let vivo = true;
+    supabase
+      .from("financeiro_documentos_fiscais" as never)
+      .select("id, arquivo_nome, storage_path, arquivo_xml")
+      .eq("lancamento_id", initial.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (!vivo) return;
+        setDocGuardado((data as unknown as Array<{
+          id: string; arquivo_nome: string; storage_path: string; arquivo_xml: string | null;
+        }> | null)?.[0] ?? null);
+      });
+    return () => { vivo = false; };
+  }, [open, initial?.id]);
+
+  const abrirDocGuardado = async () => {
+    if (!docGuardado) return;
+    setAbrindoDoc(true);
+    const url = await abrirArquivo(docGuardado.storage_path);
+    setAbrindoDoc(false);
+    if (!url) { toast.error("Não foi possível abrir o documento."); return; }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   /**
    * Lê o DANFE em PDF, quando não veio XML.
@@ -512,6 +550,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
         dia_fixo: diaFixo ? Math.max(1, Math.min(31, parseInt(diaFixo, 10))) : null,
         datas_customizadas: simulacao.length === qtdParcelas ? simulacao : undefined,
       });
+      // O anexo não pode sumir por o lançamento ter sido parcelado: a nota é
+      // uma só, e fica com o registro que a originou.
+      if (initial?.id) await guardarDocumentos(initial.id);
     } else {
       const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
       if (saved && onSaved) onSaved(saved as unknown as Lancamento);
@@ -563,8 +604,32 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       });
       return;
     }
+    // ── Trocar é trocar ──────────────────────────────────────────────────
+    //
+    // Sem isto, anexar de novo deixaria DOIS registros do mesmo papel: o mapa
+    // da lista mostra um deles, e o outro vira arquivo que ninguém alcança e
+    // ninguém sabe que existe. O botão promete "trocar"; a promessa vale.
+    //
+    // A ordem importa: o registro sai primeiro. Falhando o storage, sobra um
+    // arquivo órfão no bucket — desperdício. Na ordem inversa, falhando o
+    // registro, sobra uma LINHA apontando para arquivo que não existe mais, e
+    // o "Ver documento" quebra.
+    if (docGuardado) {
+      const { error: errApagar } = await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .delete().eq("id", docGuardado.id);
+      if (errApagar) {
+        toast.warning("O novo documento foi guardado, mas o anterior continua no lançamento.", {
+          description: errApagar.message,
+        });
+      } else {
+        await supabase.storage.from("financeiro-documentos").remove([docGuardado.storage_path]);
+      }
+    }
+
     setArquivoPdf(null); setArquivoXml(null); setDivergencias([]); setNfeLida(null);
-    toast.success("Documento guardado e vinculado ao lançamento.");
+    setDocGuardado(null);
+    toast.success(docGuardado ? "Documento trocado." : "Documento guardado e vinculado ao lançamento.");
   };
 
   const categoriasFiltradas = categorias.filter((c) => {
@@ -958,9 +1023,27 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   </div>
                   <Button type="button" variant="outline" size="sm"
                     onClick={() => entradaDeArquivo.current?.click()}>
-                    Escolher arquivos
+                    {docGuardado ? "Trocar arquivos" : "Escolher arquivos"}
                   </Button>
                 </div>
+                {/* O que já está no dossiê. Sem isto a aba volta ao convite de
+                    anexar, e quem reabre conclui que o arquivo não foi
+                    guardado. */}
+                {docGuardado && !arquivoPdf && !arquivoXml && (
+                  <div className="flex items-center justify-between gap-2 flex-wrap rounded-md border bg-background px-2.5 py-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{docGuardado.arquivo_nome}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        guardado neste lançamento
+                        {docGuardado.arquivo_xml && " · com XML"}
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                      onClick={abrirDocGuardado} disabled={abrindoDoc}>
+                      {abrindoDoc ? "abrindo…" : "Ver documento"}
+                    </Button>
+                  </div>
+                )}
                 {(arquivoPdf || arquivoXml) && (
                   <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
                     {arquivoXml && <span>XML: {arquivoXml.name}</span>}
