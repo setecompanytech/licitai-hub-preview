@@ -1,17 +1,24 @@
-# Agente Cloud — pendências no agente (v2.1.0)
+# Agente Cloud — pendências no agente (VPS em v2.1.0, template em v2.2.0)
 
 Diagnóstico feito em 16/08/2026 sondando `https://agente.praefectus.com.br`
 diretamente. **Nada aqui depende do Praefectus** — são rotas que o sistema
 chama e que o agente ainda não implementa. O lado do Praefectus já foi
 corrigido para não mentir enquanto isso.
 
+> **Reteste em 31/08/2026** pelo botão "Testar freio" do Checklist de Ativação:
+> o agente respondeu **404** ao `POST /kill-switch`. O item 1 continua aberto.
+>
+> **O que mudou desde então: as três pendências do agente foram escritas no
+> template deste repositório** (`src/lib/agente-template-generator.ts`), que
+> passou a **v2.2.0**. Falta só o deploy na VPS — ver "O que falta agora".
+
 ## Situação em uma olhada
 
 | # | Pendência | Onde | Status |
 | --- | --- | --- | --- |
-| 1 | **`POST /kill-switch`** — freio de emergência | **agente** | ❌ **PENDENTE — bloqueia níveis 2 e 3** |
-| 2 | `POST /api/proposta/enviar` — envio da proposta | **agente** | ❌ pendente |
-| 3 | Declarar as rotas disponíveis no `/health` | **agente** | ⬜ sugerido |
+| 1 | **`POST /kill-switch`** — freio de emergência | **agente** | 🚚 **no template; falta deploy — bloqueia níveis 2 e 3** |
+| 2 | `POST /api/proposta/enviar` — envio da proposta | **agente** | 🚚 rota no template; formulário por portal a implementar |
+| 3 | Declarar as rotas disponíveis no `/health` | **agente** | ✅ resolvido no template (`rotas: [...]`) |
 | 4 | Heartbeat (sinal de vida) | Praefectus | ✅ resolvido — passamos a puxar via `/health` |
 | 5 | Selo "Agente Online" mentiroso | Praefectus | ✅ resolvido — healthcheck real, três estados |
 | 6 | Kill-switch anunciando parada não confirmada | Praefectus | ✅ resolvido — relata o resultado real |
@@ -19,12 +26,35 @@ corrigido para não mentir enquanto isso.
 | 8 | Painel VNC bloqueado pela CSP | Praefectus | ✅ resolvido |
 | 9 | Certificado negado apesar de instalado | Praefectus | ✅ resolvido — considera o relato do agente |
 | 10 | `CRON_SECRET` compartilhado com o cron do PNCP | Praefectus | ✅ resolvido — usa a chave do próprio agente |
-| 11 | Chave de cifra das senhas derivada da service role | Praefectus | 🕐 **planejado** — exige migração, ver seção 6 |
+| 11 | Chave de cifra das senhas derivada da service role | Praefectus | ✅ **resolvido em 31/08** — ver seção 6 |
 | 12 | Robô de Lances não parte da pasta do processo | Praefectus | ✅ resolvido — atalho em Módulos, processo ativo e pré-seleção |
+| 13 | `src/portals/index.js` saía do gerador com sintaxe inválida | template | ✅ **resolvido em 31/08** — ver seção 8 |
+| 14 | Checklist consultava `credenciais_portal` (singular) | Praefectus | ✅ **resolvido em 31/08** — ver seção 9 |
 
 **Enquanto o item 1 não for implementado, o envio automático (níveis 2 e 3) fica
 bloqueado pelo próprio sistema.** Nível 1 (assistente, sem envio automático)
 segue liberado.
+
+## O que falta agora
+
+Um passo, e ele é na VPS:
+
+```sh
+# na VPS, a partir do ZIP gerado em Robô de Lances → Agente Cloud → baixar template
+npm install && pm2 restart agente-lances    # ou o gestor de processo em uso
+curl -s https://agente.praefectus.com.br/health | jq '.version, .rotas'
+# esperado: "2.2.0" e a lista com 9 rotas
+```
+
+Depois disso, "Testar freio" no Checklist de Ativação deve passar e liberar os
+níveis 2 e 3. O `POST /api/proposta/enviar` passa a responder **501** nomeando o
+portal — que é o estado honesto: a rota existe, o formulário daquele portal ainda
+não foi automatizado. O 404 atual não distinguia as duas coisas.
+
+**O que continua sendo trabalho de portal, não de rota:** o método
+`enviarProposta(dados)` em cada `src/portals/<portal>.js`. O contrato está
+documentado em `base-portal.js`; os seletores dependem de acesso ao portal e não
+podem ser escritos às cegas.
 
 ## O que o agente responde hoje
 
@@ -172,7 +202,30 @@ X-Agent-Key: <api_key_hash>
 { "sessao_id": "<uuid>", "tipo": "heartbeat", "payload": { ...saúde... } }
 ```
 
-## 6. Chave de cifra das senhas de portal — PLANEJADO (não mudar às pressas)
+## 6. Chave de cifra das senhas de portal — RESOLVIDO em 31/08/2026
+
+> **Como foi resolvido:** a contagem de `credenciais_portais` deu **zero
+> registros**. Sem senha cifrada em produção, a migração descrita abaixo não era
+> necessária — não havia o que re-cifrar. A troca virou uma substituição direta:
+>
+> 1. segredo `CREDENCIAIS_ENCRYPTION_KEY` cadastrado nas Edge Functions;
+> 2. `credenciais-portal` passou a derivar a chave dele, nunca mais da service
+>    role, e a marcar o texto cifrado com o prefixo de versão `v2:`;
+> 3. o `atob()` de retrocompatibilidade foi removido — formato desconhecido
+>    agora falha alto, em vez de devolver lixo como se fosse senha.
+>
+> A derivação foi movida para dentro dos ramos `save` e `decrypt`: sem o segredo,
+> `list` e `delete` continuam funcionando em vez de a tela inteira quebrar.
+>
+> Validado em produção com uma credencial de teste: gravou e leu de volta com
+> `v2:` e 52 caracteres — os 3 do prefixo, 16 do IV e 32 do texto cifrado, em
+> base64. Credencial de teste removida em seguida.
+>
+> **A ressalva de arquitetura abaixo continua valendo como leitura**, e é o
+> motivo da mudança. O plano de migração em três passos fica registrado para o
+> caso de a chave precisar ser rotacionada quando já houver senhas gravadas.
+
+### Diagnóstico original (16/08)
 
 As senhas dos portais são cifradas com AES-256-GCM antes de ir para o banco
 (chave derivada por PBKDF2, 100 mil iterações, IV aleatório por senha) e a view
@@ -224,6 +277,60 @@ persistir com sessão ativa, o websockify precisa de atenção.
 *(A exibição do painel dentro do Praefectus estava bloqueada pela política de
 segurança da página e já foi liberada.)*
 
+## 8. O template não bootava — RESOLVIDO em 31/08/2026
+
+Achado ao gerar o ZIP e rodar `node --check` em cada arquivo: **29 dos 30
+passavam, e o que falhava era `src/portals/index.js`**.
+
+```js
+// gerado (inválido — barra invertida antes de cada crase):
+throw new Error(\`Portal "\${portalId}" não suportado...\`);
+```
+
+A string no gerador tinha uma camada de escape a mais (`\\\`` em vez de `` \` ``).
+Como `src/index.js` faz `require('./portals')` na primeira linha, **o agente
+inteiro morria no boot** — nenhuma rota subia, nem as que já existiam.
+
+Isto explica a divergência que confundiu o diagnóstico: a VPS e o template se
+declaravam ambos **v2.1.0**, mas eram código diferente. O que roda na VPS não
+saiu deste template — não teria como.
+
+**Como se evita a reincidência:** o gerador agora é verificável de fora do
+navegador.
+
+```sh
+# gera o ZIP em Node e valida a sintaxe dos 30 arquivos
+npx esbuild <script>.mts --bundle --platform=node --format=esm \
+  --alias:@=./src --define:import.meta.env='{"VITE_SUPABASE_URL":"..."}'
+for f in $(find agente-lances-externo -name '*.js'); do node --check "$f" || echo "FALHA: $f"; done
+```
+
+Vale mais que a checagem de tipos: `tsc` só vê uma `string`, e o conteúdo dela
+nunca foi analisado como JavaScript.
+
+## 9. Checklist consultava tabela inexistente — RESOLVIDO em 31/08/2026
+
+O item "Credenciais de Portal" do Checklist de Ativação ficava **eternamente
+pendente**, mesmo com credencial cadastrada:
+
+```
+GET /rest/v1/credenciais_portal?select=*&user_id=eq...
+404 · PGRST205 · "Perhaps you meant the table 'public.credenciais_portais'"
+```
+
+A tabela é `credenciais_portais` (plural). Dois agravantes:
+
+- **`as any` na chamada** silenciou o TypeScript, que teria reprovado o nome —
+  os tipos gerados só conhecem o plural;
+- **o `error` era descartado** (`const { data } = await ...`), então 404 e "não
+  há credencial" apareciam idênticos na tela. Falha silenciosa, proibida pelo
+  princípio 3 do `CLAUDE.md`.
+
+Corrigido para a view `credenciais_portais_safe` com `select('id')` — nome certo,
+e o `senha_hash` deixa de ser trafegado para o navegador só para contar linhas.
+O erro passa a aparecer na descrição do item, com estado `erro` em vez de
+`pendente`.
+
 ---
 
 ## Como reproduzir os testes
@@ -240,3 +347,16 @@ done
 # esperado hoje: 404 / 404 / 403
 # esperado depois das correções: 401 ou 403 nas três (rota existe, exige chave)
 ```
+
+Confirmado em 31/08 contra o template v2.2.0 rodando localmente (puppeteer
+dublê, só para exercitar o roteamento):
+
+| Chamada | Resposta |
+| --- | --- |
+| `GET /health` | 200 · `version: "2.2.0"` · 9 rotas declaradas |
+| `POST /kill-switch` com chave | **200** · `{"success":true,"sessoes_encerradas":0}` |
+| `POST /kill-switch` sem chave | 403 |
+| `POST /api/proposta/enviar` payload válido | **501** · nomeia o portal sem `enviarProposta` |
+| `POST /api/proposta/enviar` `itens: []` | 400 · diz o que faltou |
+| `POST /api/proposta/enviar` portal inexistente | 400 · lista os 23 disponíveis |
+| `POST /api/proposta/enviar` sem chave | 403 |
