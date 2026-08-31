@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
+import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -206,6 +208,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   );
 
   const editando = !!initial?.id;
+  const { empresaAtiva } = useEmpresa();
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
   const temAcrescimos = valorJuros > 0 || valorMulta > 0 || valorDesconto > 0 || valorTarifa > 0;
 
@@ -247,6 +250,45 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       toast.error("Informe a conta de destino da transferência.");
       return;
     }
+
+    // ── A nota já lançada ────────────────────────────────────────────────────
+    //
+    // O caminho que leva aqui por engano é curto e comum: a pessoa tem a NF-e
+    // na mão, quer relacioná-la a um contrato, e "Novo recebimento" parece o
+    // começo natural. Só que o lançamento pode já existir — vindo do extrato,
+    // de uma importação, ou de meses atrás.
+    //
+    // O gêmeo não avisa. Ele DOBRA o valor no fluxo de caixa, no DRE e no
+    // saldo da conta, e a divergência só aparece na conciliação seguinte, sem
+    // nada que aponte a origem. Já vinculado a um contrato, dobraria também o
+    // consumo do saldo contratual.
+    //
+    // Aviso, não bloqueio: nota desdobrada em parcelas legitimamente repete o
+    // número, e quem tem o papel na mão sabe disso melhor que o sistema.
+    const numeroLimpo = numeroDocumento.trim();
+    if (!editando && numeroLimpo && empresaAtiva?.id) {
+      const { data: gemeos } = await supabase
+        .from("financeiro_lancamentos")
+        .select("id, descricao, valor, data_competencia, status")
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("tipo", tipo)
+        .eq("numero_documento", numeroLimpo)
+        .limit(5);
+      if (gemeos && gemeos.length > 0) {
+        const lista = gemeos
+          .map((g: { descricao: string; valor: number; data_competencia: string; status: string }) =>
+            `• ${g.descricao} — ${Number(g.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (${g.status})`)
+          .join("\n");
+        const seguir = confirm(
+          `Já existe lançamento com o documento ${numeroLimpo}:\n\n${lista}\n\n` +
+          "Criar outro DOBRA o valor no fluxo de caixa e no DRE.\n\n" +
+          "Se o objetivo é ligar essa nota a um contrato, cancele aqui e use o ícone de elo " +
+          "na linha do lançamento que já existe.\n\nCriar mesmo assim?",
+        );
+        if (!seguir) return;
+      }
+    }
+
     const baseBody: any = {
       tipo,
       natureza,

@@ -16,6 +16,7 @@ import {
   type LancamentoParaVincular, type ContratoCandidato,
 } from '@/lib/contratos/pedido-do-lancamento';
 import { avaliarCabimento } from '@/lib/contratos/cabimento';
+import { quitacaoDoPedido } from '@/lib/contratos/casar-pedido';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 
 /**
@@ -212,13 +213,36 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
       .from('financeiro_lancamentos')
       .update({ contrato_pedido_id: pedidoId, contrato_id: contratoId } as never)
       .eq('id', lancamento.id);
+    if (error) { setSalvando(false); toast.error('Não foi possível vincular', { description: error.message }); return; }
+
+    // ── A quitação volta do título para o pedido ─────────────────────────
+    //
+    // Lançamento CONCILIADO é dinheiro que já entrou. Ligá-lo a um pedido que
+    // segue marcado como não quitado deixa o contrato certo e a meta de
+    // quitação cega — e é justamente o caso mais comum aqui, porque o motivo
+    // de o lançamento existir antes do pedido costuma ser que ele já foi pago.
+    //
+    // Recalculado sobre TODOS os títulos do pedido, não só sobre este: com
+    // parcelas, o pedido só está pago quando não falta nenhuma.
+    const { data: irmaos } = await supabase
+      .from('financeiro_lancamentos')
+      .select('status, data_competencia')
+      .eq('contrato_pedido_id', pedidoId);
+    const q = quitacaoDoPedido((irmaos ?? []) as Array<{ status: string; data_competencia: string | null }>);
+    const { error: errQuitacao } = await supabase
+      .from('contrato_pedidos')
+      .update({ nf_quitada: q.nf_quitada, data_quitacao: q.data_quitacao } as never)
+      .eq('id', pedidoId);
     setSalvando(false);
-    if (error) { toast.error('Não foi possível vincular', { description: error.message }); return; }
+    if (errQuitacao) {
+      toast.error('Vínculo salvo, mas a quitação não voltou ao pedido', { description: errQuitacao.message });
+    }
 
     toast.success(
       modo === 'novo'
         ? `Pedido ${numeroPedido} criado e vinculado — o saldo do contrato já reflete esta nota.`
         : 'Lançamento vinculado ao pedido.',
+      { description: q.nf_quitada ? 'Pedido marcado como quitado: o título já está conciliado.' : undefined },
     );
     onVinculado?.();
     fechar();
