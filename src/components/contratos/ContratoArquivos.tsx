@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import {
-  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye
+  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, Sparkles
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
@@ -185,6 +185,8 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   const [showAditivoFields, setShowAditivoFields] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
+  /** Qual documento está sendo relido agora. */
+  const [relendoId, setRelendoId] = useState<string | null>(null);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const replaceTargetRef = useRef<any>(null);
   const [parentContrato, setParentContrato] = useState<any>(null);
@@ -648,6 +650,112 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     }
   };
 
+  /**
+   * Relê um documento e preenche o que estiver em branco no contrato.
+   *
+   * `buildParentUpdates` só grava campo VAZIO — nunca sobrescreve o que
+   * alguém corrigiu à mão. É o que torna a releitura segura de repetir: ela
+   * preenche lacuna, não revisa decisão.
+   */
+  const relerDocumento = async (file: File, arquivo: any): Promise<void> => {
+      // Mesmo leitor da casa que o importador usa: página por página, OCR
+      // reencaixado no lugar, marcadores de página para a seleção do
+      // servidor. Era a terceira cópia do leitor antigo neste arquivo.
+      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
+      const texto = await extractTextFromFile(file, 156, false, 40);
+
+      if (texto.trim().length < 80) {
+        toast.warning('Não foi possível extrair texto do arquivo. Edite valores manualmente.');
+        return;
+      }
+
+      const { data: extracted, error: extErr } = await supabase.functions.invoke('extrair-contrato-pdf', {
+        body: {
+          texto_pdf: texto,
+          nome_arquivo: file.name,
+          tipo_arquivo: arquivo.tipo,
+        },
+      });
+      if (extErr) throw extErr;
+      if (!extracted?.success || !extracted?.data) {
+        toast.warning('IA não conseguiu extrair dados estruturados.');
+        return;
+      }
+
+      // Este trecho tinha uma SEGUNDA cópia da regra de merge, escrita à mão,
+      // e ela carregava dois defeitos:
+      //
+      //   1. `updates.orgao` — a coluna se chama `orgao_contratante`, e
+      //      `orgao` não existe. Toda vez que a IA devolvia o órgão, o
+      //      UPDATE INTEIRO falhava com "column does not exist" e o erro ia
+      //      para console.warn. A tela dizia "reextração concluída, 8 campos
+      //      atualizados" e nenhum deles tinha sido gravado.
+      //
+      //   2. Não conhecia prazo e local de entrega — nem conheceria os
+      //      próximos campos. Duas cópias da mesma regra divergem sempre;
+      //      é só questão de qual das duas alguém lembra de atualizar.
+      //
+      // Agora usa a mesma régua do upload: validar, depois montar o UPDATE
+      // respeitando o que foi editado à mão.
+      const { normalized, rejected } = validateExtractedContract(extracted.data);
+      const updates = buildParentUpdates(
+        normalized,
+        parentContrato ?? {},
+        parentTipoDocumento ?? 'contrato',
+      );
+
+      if (Object.keys(updates).length === 0) {
+        toast.info(
+          rejected.length > 0
+            ? `IA retornou dados inválidos (${rejected.join(', ')}).`
+            : 'Arquivo substituído. Nenhum campo novo a preencher — o registro já está completo.',
+        );
+        return;
+      }
+
+      const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
+      if (cErr) {
+        // Falha de gravação não pode virar sucesso na tela: era exatamente
+        // isso que escondia o defeito da coluna inexistente.
+        toast.error('A IA leu o documento, mas a gravação falhou.', { description: cErr.message });
+        return;
+      }
+
+      toast.success(`Documento relido: ${Object.keys(updates).length} campo(s) preenchido(s).`, {
+        description: Object.keys(updates).join(', '),
+      });
+  };
+
+  /**
+   * Relê o PDF que JÁ está guardado.
+   *
+   * Faltava este caminho, e a falta tinha um preço absurdo: para o Dashboard
+   * receber o que a leitura passou a extrair — prazo de entrega, local, prazo
+   * de pagamento —, era preciso APAGAR o contrato de Arquivos e Aditivos e
+   * anexá-lo de novo. Destruir o registro do dossiê para reprocessar um
+   * arquivo que nunca saiu do lugar.
+   *
+   * O documento está no storage. Basta baixá-lo e lê-lo outra vez.
+   */
+  const handleReler = async (arquivo: any) => {
+    setRelendoId(arquivo.id);
+    try {
+      const { data, error } = await supabase.storage
+        .from('contratos-docs')
+        .download(arquivo.storage_path);
+      if (error || !data) throw error ?? new Error('arquivo não encontrado no storage');
+      // `File` sem qualificar resolveria para o ícone do lucide, importado
+      // neste arquivo — e o erro sairia como "só função void aceita new".
+      const comoArquivo = new globalThis.File([data], arquivo.nome_arquivo, { type: 'application/pdf' });
+      await relerDocumento(comoArquivo, arquivo);
+      loadData();
+    } catch (err: any) {
+      toast.error('Não foi possível reler o documento', { description: err?.message });
+    } finally {
+      setRelendoId(null);
+    }
+  };
+
   const handleReplaceFile = (arquivo: any) => {
     replaceTargetRef.current = arquivo;
     replaceFileRef.current?.click();
@@ -691,77 +799,13 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       } as any).eq('id', arquivo.id);
       if (updErr) throw updErr;
 
-      toast.success('Arquivo substituído. Reextraindo dados via IA…');
+      toast.success('Arquivo substituído. Relendo o documento…');
 
-      // 4) Trigger IA re-extraction (best-effort, async)
       try {
-        // Mesmo leitor da casa que o importador usa: página por página, OCR
-        // reencaixado no lugar, marcadores de página para a seleção do
-        // servidor. Era a terceira cópia do leitor antigo neste arquivo.
-        const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-        const texto = await extractTextFromFile(file, 156, false, 40);
-
-        if (texto.trim().length < 80) {
-          toast.warning('Não foi possível extrair texto do arquivo. Edite valores manualmente.');
-          return;
-        }
-
-        const { data: extracted, error: extErr } = await supabase.functions.invoke('extrair-contrato-pdf', {
-          body: {
-            texto_pdf: texto,
-            nome_arquivo: file.name,
-            tipo_arquivo: arquivo.tipo,
-          },
-        });
-        if (extErr) throw extErr;
-        if (!extracted?.success || !extracted?.data) {
-          toast.warning('IA não conseguiu extrair dados estruturados.');
-          return;
-        }
-
-        // Este trecho tinha uma SEGUNDA cópia da regra de merge, escrita à mão,
-        // e ela carregava dois defeitos:
-        //
-        //   1. `updates.orgao` — a coluna se chama `orgao_contratante`, e
-        //      `orgao` não existe. Toda vez que a IA devolvia o órgão, o
-        //      UPDATE INTEIRO falhava com "column does not exist" e o erro ia
-        //      para console.warn. A tela dizia "reextração concluída, 8 campos
-        //      atualizados" e nenhum deles tinha sido gravado.
-        //
-        //   2. Não conhecia prazo e local de entrega — nem conheceria os
-        //      próximos campos. Duas cópias da mesma regra divergem sempre;
-        //      é só questão de qual das duas alguém lembra de atualizar.
-        //
-        // Agora usa a mesma régua do upload: validar, depois montar o UPDATE
-        // respeitando o que foi editado à mão.
-        const { normalized, rejected } = validateExtractedContract(extracted.data);
-        const updates = buildParentUpdates(
-          normalized,
-          parentContrato ?? {},
-          parentTipoDocumento ?? 'contrato',
-        );
-
-        if (Object.keys(updates).length === 0) {
-          toast.info(
-            rejected.length > 0
-              ? `IA retornou dados inválidos (${rejected.join(', ')}).`
-              : 'Arquivo substituído. Nenhum campo novo a preencher — o registro já está completo.',
-          );
-          return;
-        }
-
-        const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
-        if (cErr) {
-          // Falha de gravação não pode virar sucesso na tela: era exatamente
-          // isso que escondia o defeito da coluna inexistente.
-          toast.error('A IA leu o documento, mas a gravação falhou.', { description: cErr.message });
-          return;
-        }
-
-        toast.success(`Reextração concluída. ${Object.keys(updates).length} campo(s) atualizado(s).`);
+        await relerDocumento(file, arquivo);
       } catch (extErr: any) {
         console.warn('Reextração falhou:', extErr);
-        toast.warning('Arquivo substituído, mas reextração IA falhou.', { description: extErr?.message });
+        toast.warning('Arquivo substituído, mas a releitura falhou.', { description: extErr?.message });
       }
 
       loadData();
@@ -1435,6 +1479,18 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {/* Reler o que já está guardado. Sem isto, alimentar o
+                      Dashboard com o que a leitura passou a extrair exigia
+                      APAGAR o documento e anexá-lo de novo — destruir o
+                      registro do dossiê para reprocessar um arquivo que nunca
+                      saiu do lugar. */}
+                  <Button size="icon" variant="ghost" className="h-8 w-8"
+                    onClick={() => handleReler(arq)} disabled={relendoId === arq.id}
+                    title="Reler com a IA e preencher os campos em branco do contrato">
+                    {relendoId === arq.id
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Sparkles className="w-4 h-4" />}
+                  </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleVisualizar(arq)} title="Visualizar em tela">
                     <Eye className="w-4 h-4" />
                   </Button>
