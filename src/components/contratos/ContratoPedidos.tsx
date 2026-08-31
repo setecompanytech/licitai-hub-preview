@@ -2079,11 +2079,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-sm text-right whitespace-nowrap">Vlr Total</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap">Data</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap"
                   title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
                   Etapa no Kanban
                 </TableHead>
-                <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
                 {/* Fixa à direita. As colunas cresceram quando a fonte subiu
                     para 14px e empurraram as ações para fora da area visivel —
                     e o macOS esconde a barra de rolagem, entao os botoes
@@ -2140,8 +2140,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-sm text-right whitespace-nowrap">{p.quantidade}</TableCell>
                     <TableCell className="text-sm text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
-                    <TableCell className="text-sm text-center whitespace-nowrap">
-                      <div>{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+                    {/* Sem `whitespace-nowrap` na célula inteira: o aviso de
+                        prazo — "Prazo vencido há 113 dia(s) — limite era
+                        10/05/2026" — travava a coluna nessa largura e empurrava
+                        a NF-e para baixo da coluna fixa de ações. A DATA
+                        continua numa linha só; o aviso quebra. */}
+                    <TableCell className="text-sm text-center max-w-[11rem]">
+                      <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                       {/* O prazo que começou a correr quando este pedido foi
                           lançado. Antes a coluna mostrava a data e parava aí.
 
@@ -2162,29 +2167,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center whitespace-nowrap">
-                      {p.pedido_id ? (
-                        updatingKanban[p.pedido_id] ? (
-                          <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
-                        ) : (
-                          <Select
-                            value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
-                            onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
-                          >
-                            <SelectTrigger className={`h-6 text-xs border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(kanbanCfg).map(([key, cfg]) => (
-                                <SelectItem key={key} value={key} className="text-xs">{cfg.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )
-                      ) : (
-                        <span className="text-muted-foreground/40 text-xs">—</span>
-                      )}
                     </TableCell>
                     <TableCell className="text-sm">
                       <div className="space-y-1">
@@ -2312,6 +2294,29 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <span className="text-muted-foreground">—</span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      {p.pedido_id ? (
+                        updatingKanban[p.pedido_id] ? (
+                          <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
+                        ) : (
+                          <Select
+                            value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
+                            onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
+                          >
+                            <SelectTrigger className={`h-6 text-xs border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(kanbanCfg).map(([key, cfg]) => (
+                                <SelectItem key={key} value={key} className="text-xs">{cfg.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-background z-10 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                       <div className="flex items-center gap-1">
