@@ -142,18 +142,28 @@ export default function VincularContratoDialog({
     let vivo = true;
     supabase
       .from('financeiro_documentos_fiscais' as never)
-      .select('arquivo_xml')
+      .select('arquivo_xml, ocr_data')
       .eq('lancamento_id', lancamento.id)
       .limit(1)
       .then(({ data }) => {
-        const xml = (data as unknown as Array<{ arquivo_xml: string | null }> | null)?.[0]?.arquivo_xml;
-        if (!vivo || !xml) return;
+        const doc = (data as unknown as Array<{
+          arquivo_xml: string | null; ocr_data: unknown;
+        }> | null)?.[0];
+        if (!vivo || !doc) return;
         try {
-          const lido = quantidadeDaNota(parseNFeXML(xml));
+          // O XML manda: é o documento fiscal. Sem ele, `ocr_data` — o que foi
+          // lido do DANFE em PDF, na mesma forma. A nota emitida fora do
+          // sistema chega dos dois jeitos, e a quantidade não pode depender de
+          // qual dos dois a pessoa teve em mãos.
+          const nfe = doc.arquivo_xml
+            ? parseNFeXML(doc.arquivo_xml)
+            : (doc.ocr_data as ReturnType<typeof parseNFeXML> | null);
+          if (!nfe) return;
+          const lido = quantidadeDaNota(nfe);
           if (!vivo || lido.total <= 0) return;
           setDaNota(lido);
           setQuantidade(String(lido.total));
-        } catch { /* XML ilegível: a quantidade continua sendo digitada */ }
+        } catch { /* leitura ilegível: a quantidade continua sendo digitada */ }
       });
     return () => { vivo = false; };
   }, [aberto, lancamento]);
@@ -455,8 +465,8 @@ export default function VincularContratoDialog({
                     {daNota && (
                       <p className="text-[11px] text-muted-foreground mt-1">
                         {Number(quantidade) === daNota.total
-                          ? `Do XML da nota${daNota.linhas.length > 1 ? ` — soma de ${daNota.linhas.length} linhas` : ''}.`
-                          : `O XML da nota diz ${daNota.total.toLocaleString('pt-BR')}.`}
+                          ? `Lido da nota${daNota.linhas.length > 1 ? ` — soma de ${daNota.linhas.length} linhas` : ''}.`
+                          : `A nota diz ${daNota.total.toLocaleString('pt-BR')}.`}
                       </p>
                     )}
                   </div>

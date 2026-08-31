@@ -5,7 +5,8 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
-import { acharChaveNoTexto, dadosDaChave, ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
+import { ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
+import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -220,71 +221,81 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
   const [arquivoXml, setArquivoXml] = useState<File | null>(null);
   const [divergencias, setDivergencias] = useState<Divergencia[]>([]);
-  const [lendoDanfe, setLendoDanfe] = useState(false);
+  /** Onde a leitura do DANFE está — nulo quando não há leitura em curso. */
+  const [lendoDanfe, setLendoDanfe] = useState<string | null>(null);
+  /**
+   * O que foi lido da nota, guardado com o documento.
+   *
+   * É por aqui que os ITENS chegam ao vínculo com contrato: `ocr_data` já
+   * existia em `financeiro_documentos_fiscais` para isso, e estava sempre
+   * nulo.
+   */
+  const [nfeLida, setNfeLida] = useState<unknown>(null);
 
   /**
    * Lê o DANFE em PDF, quando não veio XML.
    *
-   * Não tenta entender o layout: cada emissor imprime de um jeito e o OCR de
-   * nota escaneada erra coluna. Procura a CHAVE DE ACESSO, que tem dígito
-   * verificador — ou está certa, ou não é chave — e que CONTÉM número, série e
-   * competência. Achar um número e conferir seu DV é mais seguro do que
-   * interpretar um papel.
+   * Dois passos, em `lib/financeiro/ler-danfe.ts`: a CHAVE (local, instantânea,
+   * com dígito verificador) e depois `extrair-dados-nfe-pdf` — a leitura por IA
+   * que já existia no sistema, usada em Gestão de Compras desde antes.
    *
-   * O que a chave NÃO traz é o dia da emissão nem o valor. O dia fica com o
-   * que já estava no lançamento; o valor idem — e num lançamento conciliado
-   * ele veio do extrato, que manda sobre a nota de todo jeito.
+   * A chave dá número, série e competência de graça e sem errar. A IA traz o
+   * que a chave não codifica: o dia da emissão, o valor e os ITENS. Os itens
+   * são a razão de valer a chamada — sem eles, vincular a nota a um contrato
+   * exige calcular a quantidade de cabeça.
    */
   const lerDanfe = async (pdf: File) => {
-    setLendoDanfe(true);
+    setLendoDanfe("Lendo…");
     try {
-      const { extractTextFromFile } = await import("@/lib/pdf-text-extractor");
-      // DANFE tem uma ou duas páginas, e escaneado é o caso comum — o OCR
-      // precisa estar ligado, mas com orçamento curto.
-      const texto = await extractTextFromFile(pdf, 3, false, 2);
-      const chave = acharChaveNoTexto(texto);
-      if (!chave) {
-        toast.warning("PDF anexado, mas a chave de acesso não foi encontrada.", {
+      const leitura = await lerDanfeEmPdf(pdf, (m) => setLendoDanfe(m));
+      const nfe = consolidar(leitura);
+      if (!nfe) {
+        toast.warning("PDF anexado, mas não pôde ser lido.", {
           description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
         });
         return;
       }
-      const dados = dadosDaChave(chave)!;
-      const preencher: string[] = [];
-      if (!chaveValida(chaveAcessoNfe)) { setChaveAcessoNfe(chave); preencher.push("chave"); }
-      if (!numeroDocumento.trim()) { setNumeroDocumento(dados.numero); preencher.push("número"); }
-      if (!serieDocumento.trim()) { setSerieDocumento(dados.serie); preencher.push("série"); }
-      if (!tipoDocumento && ROTULO_DO_MODELO[dados.modelo]) {
-        setTipoDocumento(ROTULO_DO_MODELO[dados.modelo] as TipoDocumento);
-      }
-      // A chave só guarda ano e mês. Preenche o dia 1 apenas quando não há
-      // data nenhuma — inventar o dia certo seria pior do que deixar em
-      // branco, e a competência já situa a nota no mês.
-      if (!dataEmissao) { setDataEmissao(`${dados.competencia}-01`); preencher.push("mês da emissão"); }
+      setNfeLida(nfe);
 
-      // A chave é fato conferível; o que ela contradiz não é sobrescrito.
-      const divergentes: Divergencia[] = [];
-      const numeroGravado = numeroDocumento.replace(/\D/g, "").replace(/^0+/, "");
-      if (numeroGravado && numeroGravado !== dados.numero) {
-        divergentes.push({ campo: "Número do documento", noSistema: numeroDocumento, naNota: dados.numero });
+      const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, {
+        numero_documento: numeroDocumento,
+        serie_documento: serieDocumento,
+        chave_acesso_nfe: chaveAcessoNfe,
+        data_emissao: dataEmissao,
+        valor,
+      });
+      if (preencher.numero_documento) setNumeroDocumento(preencher.numero_documento);
+      if (preencher.serie_documento) setSerieDocumento(preencher.serie_documento);
+      if (preencher.chave_acesso_nfe) setChaveAcessoNfe(preencher.chave_acesso_nfe);
+      if (preencher.data_emissao) setDataEmissao(preencher.data_emissao);
+      if (preencher.valor != null) setValor(preencher.valor);
+      if (!tipoDocumento && leitura.daChave && ROTULO_DO_MODELO[leitura.daChave.modelo]) {
+        setTipoDocumento(ROTULO_DO_MODELO[leitura.daChave.modelo] as TipoDocumento);
       }
-      if (dataEmissao && !dataEmissao.startsWith(dados.competencia)) {
-        divergentes.push({ campo: "Competência da emissão", noSistema: dataEmissao.slice(0, 7), naNota: dados.competencia });
-      }
-      setDivergencias(divergentes);
+      setDivergencias(achadas);
 
+      const n = Object.keys(preencher).length;
+      const itens = nfe.itens?.length ?? 0;
       toast.success(
-        preencher.length > 0
-          ? `DANFE lido: ${preencher.join(", ")} preenchido(s) pela chave de acesso.`
-          : "DANFE lido — os campos já estavam preenchidos.",
-        { description: divergentes.length > 0 ? `${divergentes.length} divergência(s) apontada(s).` : undefined },
+        n > 0 ? `DANFE lido: ${n} campo(s) preenchido(s).` : "DANFE lido — os campos já estavam preenchidos.",
+        {
+          description: [
+            itens > 0 ? `${itens} item(ns) lido(s) — a quantidade vai junto para o vínculo com contrato.` : null,
+            // A contradição não muda nada no formulário, mas é sinal de leitura
+            // ruim do papel: quem confere merece saber.
+            leitura.contradicoes.length > 0
+              ? `A leitura do papel discordou da chave em: ${leitura.contradicoes.join(", ")} — a chave prevaleceu.`
+              : null,
+            achadas.length > 0 ? `${achadas.length} divergência(s) apontada(s) abaixo.` : null,
+          ].filter(Boolean).join(" ") || undefined,
+        },
       );
     } catch {
       toast.warning("O PDF foi anexado, mas não pôde ser lido.", {
         description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
       });
     } finally {
-      setLendoDanfe(false);
+      setLendoDanfe(null);
     }
   };
 
@@ -314,6 +325,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
     try {
       const nfe = parseNFeXML(await xml.text());
+      setNfeLida(nfe);
       const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, {
         numero_documento: numeroDocumento,
         serie_documento: serieDocumento,
@@ -539,6 +551,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       valor_total: valor ?? 0,
       lancamento_id: lancamentoId,
       arquivo_xml: xmlTexto,
+      // Os itens lidos. Sem isto, um DANFE em PDF chegaria ao vínculo com
+      // contrato sem quantidade, e a divisão voltaria a ser de quem cadastra.
+      ocr_data: nfeLida,
     });
     if (!salvo) {
       // O lançamento foi salvo; só o anexo falhou. Dizer qual das duas coisas
@@ -548,7 +563,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       });
       return;
     }
-    setArquivoPdf(null); setArquivoXml(null); setDivergencias([]);
+    setArquivoPdf(null); setArquivoXml(null); setDivergencias([]); setNfeLida(null);
     toast.success("Documento guardado e vinculado ao lançamento.");
   };
 
@@ -950,7 +965,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
                     {arquivoXml && <span>XML: {arquivoXml.name}</span>}
                     {arquivoPdf && <span>PDF: {arquivoPdf.name}</span>}
-                    {lendoDanfe && <span className="text-primary">lendo o DANFE…</span>}
+                    {lendoDanfe && <span className="text-primary">{lendoDanfe}</span>}
                     <span className="text-primary">guardado ao salvar o lançamento</span>
                   </div>
                 )}
