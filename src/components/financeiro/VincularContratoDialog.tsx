@@ -44,8 +44,11 @@ import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 
 type ItemDoContrato = {
   id: string; descricao: string; codigo_item: string | null;
-  quantidade: number | null; saldo_quantitativo: number | null;
-  valor_unitario: number | null; cota: string | null;
+  quantidade_contratada: number | null; quantidade_consumida: number | null;
+  saldo_quantitativo: number | null;
+  valor_unitario: number | null;
+  /** Nasce na migration 20260830000003 — ainda não está no types.ts gerado. */
+  cota: string | null;
 };
 
 type PedidoExistente = {
@@ -109,7 +112,7 @@ export default function VincularContratoDialog({
     setCarregando(true);
     supabase
       .from('contratos')
-      .select('id, numero_contrato, objeto, orgao_contratante, cliente_id, projeto_id, saldo_remanescente')
+      .select('id, numero_contrato, objeto, orgao_contratante, saldo_remanescente')
       .eq('empresa_id', empresaAtiva.id)
       .order('created_at', { ascending: false })
       .limit(300)
@@ -174,7 +177,7 @@ export default function VincularContratoDialog({
           .select('id, numero_pedido, descricao, valor_total, data_pedido')
           .eq('contrato_id', contratoId).order('data_pedido', { ascending: false }).limit(200),
         supabase.from('contrato_itens')
-          .select('id, descricao, codigo_item, quantidade, saldo_quantitativo, valor_unitario, cota')
+          .select('id, descricao, codigo_item, quantidade_contratada, quantidade_consumida, saldo_quantitativo, valor_unitario, cota')
           .eq('contrato_id', contratoId).limit(300),
         supabase.from('contratos').select('saldo_remanescente').eq('id', contratoId).single(),
       ]);
@@ -388,7 +391,9 @@ export default function VincularContratoDialog({
               <SelectContent>
                 {contratos.map(c => (
                   <SelectItem key={c.id} value={c.id} className="text-xs">
-                    {c.numero_contrato ?? 'sem número'} — {(c.objeto ?? '').slice(0, 60)}
+                    {c.numero_contrato ?? 'sem número'}
+                    {c.orgao_contratante && ` · ${c.orgao_contratante.slice(0, 40)}`}
+                    {' — '}{(c.objeto ?? '').slice(0, 45)}
                     {(c as { pontos?: number }).pontos! >= PONTOS_PARA_PRESELECIONAR && ' ·  provável'}
                   </SelectItem>
                 ))}

@@ -432,7 +432,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             variant="ghost"
                             className={cn("h-7 w-7",
                               (tipo === "a_pagar" ? l.contrato_id : l.contrato_pedido_id) && "text-primary")}
-                            onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
+                            onClick={() => setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null })}
                             title={tipo === "a_pagar"
                               ? (l.contrato_id
                                   ? "Despesa atribuída a um contrato — clique para trocar"

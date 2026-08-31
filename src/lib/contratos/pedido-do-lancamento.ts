@@ -21,6 +21,10 @@ export type LancamentoParaVincular = {
   data_emissao: string | null;
   pessoa_id: string | null;
   projeto_id: string | null;
+  /** O nome do cliente, quando a consulta o trouxe. É por ele que se reconhece
+   *  o órgão: `contratos` guarda `orgao_contratante` como TEXTO, e não tem
+   *  chave para a pessoa do Financeiro. */
+  pessoa_nome?: string | null;
   contrato_id: string | null;
   contrato_pedido_id: string | null;
 };
@@ -29,11 +33,33 @@ export type ContratoCandidato = {
   id: string;
   numero_contrato: string | null;
   objeto: string | null;
+  /**
+   * O contratante, em TEXTO LIVRE — `contratos` não tem chave para a pessoa
+   * do Financeiro. Por isso o reconhecimento é por palavras, e não por id: o
+   * mesmo órgão é "POLICIA MILITAR DO ESTADO DO PARA" num cadastro e "Polícia
+   * Militar do Pará" no outro.
+   */
   orgao_contratante: string | null;
-  cliente_id?: string | null;
-  projeto_id?: string | null;
   saldo_remanescente?: number | null;
 };
+
+const palavrasDe = (s: string) =>
+  new Set(
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      .split(' ')
+      // Preposições e artigos casariam com qualquer órgão do estado.
+      .filter(p => p.length >= 3 && !['do','da','de','dos','das','the'].includes(p)),
+  );
+
+/** Quanto dois nomes de organização se parecem, de 0 a 1. */
+function parecencaDeNome(a: string, b: string): number {
+  const x = palavrasDe(a), y = palavrasDe(b);
+  if (x.size === 0 || y.size === 0) return 0;
+  let comuns = 0;
+  for (const p of x) if (y.has(p)) comuns++;
+  return comuns / Math.min(x.size, y.size);
+}
 
 /**
  * Quanto um contrato parece ser o dono deste lançamento.
@@ -53,12 +79,16 @@ export function pontuarContrato(
   // vínculo feito pela metade, e o candidato certo é óbvio.
   if (lancamento.contrato_id && lancamento.contrato_id === contrato.id) pontos += 100;
 
-  // Mesmo cliente é o sinal mais forte do cadastro: contrato administrativo
-  // tem um contratante só.
-  if (lancamento.pessoa_id && contrato.cliente_id === lancamento.pessoa_id) pontos += 50;
-
-  // Projeto costuma ser criado POR contrato — quando preenchido, quase decide.
-  if (lancamento.projeto_id && contrato.projeto_id === lancamento.projeto_id) pontos += 40;
+  // O contratante. Comparado por PALAVRAS porque os dois cadastros são
+  // independentes e escrevem o mesmo órgão de formas diferentes — "POLICIA
+  // MILITAR DO ESTADO DO PARA" e "Polícia Militar do Pará" são o mesmo, e
+  // nenhuma string contém a outra.
+  if (lancamento.pessoa_nome && contrato.orgao_contratante) {
+    const p = parecencaDeNome(lancamento.pessoa_nome, contrato.orgao_contratante);
+    // Metade das palavras em comum já é reconhecimento; abaixo disso são dois
+    // órgãos que por acaso compartilham uma palavra ("Secretaria", "Estado").
+    if (p >= 0.5) pontos += Math.round(50 * p);
+  }
 
   // O número do contrato citado na descrição do lançamento. Vale menos que o
   // cadastro porque é texto livre, mas resgata o que o cadastro não ligou.

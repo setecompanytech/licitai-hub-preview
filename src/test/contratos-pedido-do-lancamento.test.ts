@@ -13,6 +13,7 @@ const lanc = (over: Partial<LancamentoParaVincular> = {}): LancamentoParaVincula
   data_emissao: '2026-05-20',
   pessoa_id: 'pmpa',
   projeto_id: 'p002',
+  pessoa_nome: 'POLICIA MILITAR DO ESTADO DO PARA',
   contrato_id: null,
   contrato_pedido_id: null,
   ...over,
@@ -24,19 +25,37 @@ describe('pontuarContrato', () => {
     expect(p).toBeGreaterThanOrEqual(100);
   });
 
-  it('mesmo cliente pesa', () => {
-    const p = pontuarContrato(lanc(), { id: 'c1', numero_contrato: null, objeto: null, orgao_contratante: null, cliente_id: 'pmpa' });
-    expect(p).toBe(50);
+  it('reconhece o mesmo órgão escrito de outro jeito', () => {
+    // Os dois cadastros são independentes: `contratos.orgao_contratante` é
+    // TEXTO LIVRE e não tem chave para a pessoa do Financeiro. Nenhuma das
+    // duas strings contém a outra, e são o mesmo órgão.
+    const p = pontuarContrato(lanc(), {
+      id: 'c1', numero_contrato: null, objeto: null,
+      orgao_contratante: 'POLÍCIA MILITAR DO PARÁ',
+    });
+    expect(p).toBeGreaterThanOrEqual(50);
   });
 
-  it('mesmo projeto pesa', () => {
-    const p = pontuarContrato(lanc(), { id: 'c1', numero_contrato: null, objeto: null, orgao_contratante: null, projeto_id: 'p002' });
-    expect(p).toBe(40);
+  it('uma palavra genérica em comum não reconhece nada', () => {
+    // "Estado" sozinho casaria com todo órgão estadual.
+    const p = pontuarContrato(
+      lanc({ pessoa_nome: 'SECRETARIA DE ESTADO DE SAUDE' }),
+      { id: 'c1', numero_contrato: null, objeto: null, orgao_contratante: 'POLÍCIA MILITAR DO ESTADO DO PARÁ' },
+    );
+    expect(p).toBe(0);
+  });
+
+  it('sem nome do cliente na linha, não pontua por órgão', () => {
+    const p = pontuarContrato(
+      lanc({ pessoa_nome: null }),
+      { id: 'c1', numero_contrato: null, objeto: null, orgao_contratante: 'POLÍCIA MILITAR DO PARÁ' },
+    );
+    expect(p).toBe(0);
   });
 
   it('número do contrato citado na descrição resgata o que o cadastro não ligou', () => {
     const p = pontuarContrato(
-      lanc({ descricao: 'FORN. CONTRATO 008/2026 - AGUA MINERAL', pessoa_id: null, projeto_id: null }),
+      lanc({ descricao: 'FORN. CONTRATO 008/2026 - AGUA MINERAL', pessoa_nome: null }),
       { id: 'c1', numero_contrato: '008/2026', objeto: null, orgao_contratante: null },
     );
     expect(p).toBe(30);
@@ -44,7 +63,7 @@ describe('pontuarContrato', () => {
 
   it('número curto demais não pontua — "1" casaria com qualquer descrição', () => {
     const p = pontuarContrato(
-      lanc({ descricao: 'NOTA 1 DE MAIO', pessoa_id: null, projeto_id: null }),
+      lanc({ descricao: 'NOTA 1 DE MAIO', pessoa_nome: null }),
       { id: 'c1', numero_contrato: '1', objeto: null, orgao_contratante: null },
     );
     expect(p).toBe(0);
@@ -60,15 +79,17 @@ describe('ordenarContratos', () => {
   it('o mais provável vem primeiro, e nenhum é descartado', () => {
     const r = ordenarContratos(lanc(), [
       { id: 'c3', numero_contrato: '999/2020', objeto: null, orgao_contratante: null },
-      { id: 'c1', numero_contrato: '008/2026', objeto: null, orgao_contratante: null, cliente_id: 'pmpa', projeto_id: 'p002' },
-      { id: 'c2', numero_contrato: '010/2026', objeto: null, orgao_contratante: null, cliente_id: 'pmpa' },
+      { id: 'c1', numero_contrato: '008/2026', objeto: null, orgao_contratante: 'POLÍCIA MILITAR DO PARÁ' },
+      { id: 'c2', numero_contrato: '010/2026', objeto: null, orgao_contratante: 'POLÍCIA MILITAR DO ESTADO DO PARÁ — 4º BPM' },
     ]);
-    expect(r.map(c => c.id)).toEqual(['c1', 'c2', 'c3']);
+    // Os dois primeiros reconhecem o órgão; o terceiro não.
+    expect(r[2].id).toBe('c3');
+    expect(r.filter(c => c.pontos > 0)).toHaveLength(2);
     expect(r).toHaveLength(3);
   });
 
   it('empate preserva a ordem recebida', () => {
-    const r = ordenarContratos(lanc({ pessoa_id: null, projeto_id: null }), [
+    const r = ordenarContratos(lanc({ pessoa_nome: null }), [
       { id: 'a', numero_contrato: null, objeto: null, orgao_contratante: null },
       { id: 'b', numero_contrato: null, objeto: null, orgao_contratante: null },
     ]);

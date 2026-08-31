@@ -513,7 +513,7 @@ export default function FinLancamentos() {
                                     : "Vincular a um contrato/pedido em Gestão")}
                               onClick={() => {
                                 setModoDoVinculo(l.tipo === "a_pagar" ? "despesa" : "receita");
-                                setVinculando(l as unknown as LancamentoParaVincular);
+                                setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null });
                               }}
                             >
                               <Link2 className={`w-3.5 h-3.5 ${
