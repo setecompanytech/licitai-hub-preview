@@ -141,7 +141,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Recebimento pelo órgão</Label>
+              <Label className="text-xs text-muted-foreground">Ateste pelo órgão (art. 140)</Label>
               <Input type="number" min={1} max={1825} placeholder="dias"
                 value={form.prazo_recebimento_dias ?? ''}
                 onChange={e => setForm(f => ({ ...f, prazo_recebimento_dias: e.target.value ? Number(e.target.value) : null }))} />
@@ -209,31 +209,63 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+          {/* ── Três prazos, três donos ────────────────────────────────────
+              "Órgão recebe em" era um rótulo enganoso: lia-se como o momento
+              em que a mercadoria chega, que é o mesmo da entrega. O prazo é
+              outro — é o que o órgão tem para ATESTAR (art. 140), e é dele que
+              costuma correr o pagamento. Nomear quem deve o quê separa os três
+              sem precisar explicar. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div>
-              <span className="text-muted-foreground">Entregar em:</span>
+              <span className="text-muted-foreground">Você entrega em:</span>
               <p className="font-medium">{emDias(dados!.prazo_entrega_dias, dados!.prazo_entrega_unidade) ?? '—'}</p>
+              <p className="text-[11px] text-muted-foreground">contado do marco da cláusula</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Órgão recebe em:</span>
-              <p className="font-medium">{emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade) ?? '—'}</p>
+              <span className="text-muted-foreground">Órgão atesta em:</span>
+              <p className="font-medium">
+                {emDias(dados!.prazo_recebimento_dias, dados!.prazo_recebimento_unidade)
+                  ?? <span className="text-muted-foreground font-normal">não fixado</span>}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                recebimento definitivo — art. 140
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Órgão paga em:</span>
               <p className="font-medium">
-                {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade) ?? '—'}
+                {emDias(dados!.prazo_pagamento_dias, dados!.prazo_pagamento_unidade)
+                  ?? <span className="text-warning font-normal">não fixado</span>}
                 {dados!.prazo_pagamento_marco && (
                   <span className="text-muted-foreground font-normal">
                     {' '}{ROTULO_DO_MARCO[dados!.prazo_pagamento_marco as keyof typeof ROTULO_DO_MARCO]}
                   </span>
                 )}
               </p>
+              <p className="text-[11px] text-muted-foreground">
+                cláusula obrigatória — art. 92, V
+              </p>
             </div>
-            <div className="col-span-2 sm:col-span-3">
+            <div className="col-span-1 sm:col-span-3">
               <span className="text-muted-foreground">Local:</span>
               <p className="font-medium">{dados!.local_entrega ?? '—'}</p>
             </div>
           </div>
+
+          {/* O que a ausência custa, dita onde ela aparece. Um traço não
+              informa que falta a cláusula que faz o Contas a Receber projetar,
+              nem que a lei tem uma resposta quando ela falta. */}
+          {!dados!.prazo_pagamento_dias && (
+            <p className="text-[11px] text-warning flex items-start gap-1.5">
+              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+              <span>
+                Sem prazo de pagamento o Contas a Receber não tem data para projetar — e projetar
+                sobre um número inventado é pior do que não projetar. Enquanto não for preenchido,
+                o único marco que resta é o do art. 137, §2º, IV: dois meses da emissão da nota
+                fiscal, quando nasce o direito de pedir a extinção do contrato.
+              </span>
+            </p>
+          )}
 
           {/* A frase de onde o número saiu. Sem ela o prazo é um número que
               ninguém consegue contestar — e prazo errado só se descobre no dia
