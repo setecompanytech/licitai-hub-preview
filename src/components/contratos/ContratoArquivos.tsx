@@ -63,6 +63,10 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
   aditivo_repactuacao: { label: 'Repactuação', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
   aditivo_reajuste: { label: 'Reajuste', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
+  // 20260830000001, mas nenhum rótulo aqui — e aparecia como "Outro
+  // Documento", que é o carimbo de quem não sabe o que guardou. É o documento
+  // que autoriza a despesa (Lei 4.320/64, art. 60): merece o próprio nome.
   outro: { label: 'Outro Documento', color: 'bg-muted text-muted-foreground' },
 };
 
@@ -108,6 +112,13 @@ const TIPOS_ARQUIVO_ATA: Record<string, { label: string; color: string; isAditiv
 const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   ...TIPOS_ARQUIVO_CONTRATO,
   ...TIPOS_ARQUIVO_ATA,
+  // Fica AQUI e não em TIPOS_ARQUIVO_CONTRATO de propósito: este mapa nomeia o
+  // que já está guardado, e aquele lista o que se pode anexar por esta aba.
+  // A nota de empenho é anexada pelo "Registrar Ordem/Empenho" em Pedidos,
+  // porque lá ela também CRIA o empenho — subi-la por aqui deixaria o PDF no
+  // dossiê e a autorização sem existir. Sem esta linha ela aparecia como
+  // "Outro Documento", o carimbo de quem não sabe o que guardou.
+  ordem_fornecimento: { label: 'Ordem de Fornecimento / Nota de Empenho', color: 'bg-info/10 text-info' },
   apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
 };
 

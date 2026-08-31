@@ -37,7 +37,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2,
+  ExternalLink, Link2, Eye,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -182,6 +182,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
   };
 
+  /**
+   * Abre um documento do dossiê pelo id — o caminho que o empenho usa.
+   *
+   * O empenho guarda o PDF em `arquivo_id`, e não no pedido: ele é UM
+   * documento que autoriza várias entregas, então repeti-lo em cada pedido
+   * seria guardar a mesma nota tantas vezes quantas ela for consumida.
+   */
+  const abrirDocumentoDoEmpenho = async (arquivoId: string) => {
+    const { data } = await supabase
+      .from('contrato_arquivos')
+      .select('storage_path, nome_arquivo')
+      .eq('id', arquivoId)
+      .single();
+    if (data?.storage_path) {
+      void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Empenho');
+      return;
+    }
+    toast.error('O documento não foi encontrado no dossiê.');
+  };
+
   const abrirDanfe = async (storagePath: string, nome: string) => {
     const url = await abrirArquivo(storagePath);
     if (!url) {
@@ -286,11 +306,71 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [saldoDoContrato, setSaldoDoContrato] = useState(0);
   // Saldo por cota dos empenhos deste contrato, para a checagem tripla.
   const [saldosDeEmpenho, setSaldosDeEmpenho] = useState<
-    Array<{ empenho_id: string; numero: string; tipo: string; cota: string; saldo_qtd: number }>
+    Array<{
+      empenho_id: string; numero: string; tipo: string; arquivo_id: string | null;
+      cota: string; saldo_qtd: number; qtd_empenhada: number;
+    }>
   >([]);
   // O PDF da Ordem/Empenho guardado nesta sessão de upload, para ligar ao
   // pedido no momento em que ele for salvo.
   const [arquivoOrdem, setArquivoOrdem] = useState<string | null>(null);
+  // O PDF ainda NÃO guardado: fica em memória até o Registrar. Anexar não é
+  // registrar — quem desiste no meio não deixa arquivo solto no dossiê.
+  const [arquivoPendente, setArquivoPendente] = useState<File | null>(null);
+
+  /**
+   * Guarda o PDF da Ordem/Empenho e devolve o id em `contrato_arquivos`.
+   *
+   * Chamada no momento de salvar, uma vez. Se o mesmo formulário já guardou o
+   * arquivo (segunda tentativa depois de um erro), reaproveita — subir duas
+   * vezes deixaria o dossiê com o mesmo documento em duplicidade.
+   */
+  const guardarArquivoDaOrdem = async (): Promise<string | null> => {
+    if (arquivoOrdem) return arquivoOrdem;
+    const file = arquivoPendente;
+    if (!file) return null;
+    // A política de `contrato_arquivos` é `auth.uid() = user_id`. Passar null
+    // ali nunca satisfaz a comparação, e o insert volta como "violates row-
+    // level security policy".
+    if (!user?.id) {
+      toast.warning('O PDF não pôde ser guardado: sessão sem usuário.');
+      return null;
+    }
+    // A PRIMEIRA pasta tem de ser o auth.uid(): a política do bucket é
+    // `auth.uid()::text = (storage.foldername(name))[1]`. Começar pelo
+    // contrato faz o upload ser recusado com uma mensagem que soa como
+    // problema de tabela e é do storage.
+    const caminho = `${user.id}/${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+    const { error: upErr } = await supabase.storage
+      .from('contratos-docs')
+      .upload(caminho, file, { upsert: false, contentType: file.type });
+    if (upErr) {
+      // Não impede o registro, mas não passa calada: quem lançar precisa saber
+      // que a autorização ficou de fora do dossiê.
+      toast.warning('O PDF não pôde ser guardado no contrato.', { description: upErr.message });
+      return null;
+    }
+    const { data: arq, error: arqErr } = await supabase
+      .from('contrato_arquivos')
+      .insert({
+        contrato_id: contratoId,
+        nome_arquivo: file.name,
+        storage_path: caminho,
+        tamanho_bytes: file.size,
+        tipo: 'ordem_fornecimento',
+        descricao: 'Ordem de Fornecimento / Nota de Empenho',
+        user_id: user.id,
+      } as never)
+      .select('id')
+      .single();
+    if (arqErr) {
+      toast.warning('O PDF subiu, mas não entrou no dossiê.', { description: arqErr.message });
+      return null;
+    }
+    const id = (arq as { id: string } | null)?.id ?? null;
+    setArquivoOrdem(id);
+    return id;
+  };
 
   /**
    * O aviso que o pedido dispara no instante em que é registrado.
@@ -401,12 +481,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   /** Os empenhos do contrato, um por número, com o saldo somado das cotas. */
   const empenhosDoContrato = useMemo(() => {
-    const porId = new Map<string, { id: string; numero: string; tipo: string; saldo: number }>();
+    const porId = new Map<string, { id: string; numero: string; tipo: string; arquivo_id: string | null; saldo: number }>();
     for (const s of saldosDeEmpenho) {
       const atual = porId.get(s.empenho_id);
       if (atual) atual.saldo += Number(s.saldo_qtd) || 0;
       else porId.set(s.empenho_id, {
-        id: s.empenho_id, numero: s.numero, tipo: s.tipo, saldo: Number(s.saldo_qtd) || 0,
+        id: s.empenho_id, numero: s.numero, tipo: s.tipo, arquivo_id: s.arquivo_id,
+        saldo: Number(s.saldo_qtd) || 0,
       });
     }
     return [...porId.values()];
@@ -484,15 +565,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // avalia o empenho — não impede ninguém de trabalhar.
     supabase
       .from('contrato_empenhos' as never)
-      .select('id, numero, tipo')
+      .select('id, numero, tipo, arquivo_id')
       .eq('contrato_id', contratoId)
+      .order('created_at', { ascending: true })
       .then(async ({ data: emps, error }) => {
         if (error || !emps?.length) { setSaldosDeEmpenho([]); return; }
-        const linhas: Array<{ empenho_id: string; numero: string; tipo: string; cota: string; saldo_qtd: number }> = [];
-        for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string }>) {
+        const linhas: typeof saldosDeEmpenho = [];
+        for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string; arquivo_id: string | null }>) {
           const { data: saldo } = await supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never);
-          for (const s of (saldo ?? []) as unknown as Array<{ cota: string; saldo_qtd: number }>) {
-            linhas.push({ empenho_id: e.id, numero: e.numero, tipo: e.tipo, cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0 });
+          for (const s of (saldo ?? []) as unknown as Array<{ cota: string; saldo_qtd: number; qtd_empenhada: number }>) {
+            linhas.push({
+              empenho_id: e.id, numero: e.numero, tipo: e.tipo, arquivo_id: e.arquivo_id,
+              cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0,
+              qtd_empenhada: Number(s.qtd_empenhada) || 0,
+            });
           }
         }
         setSaldosDeEmpenho(linhas);
@@ -661,6 +747,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       empenho_id: '',
     });
     setArquivoOrdem(null);
+    setArquivoPendente(null);
     setExtractedData(null);
     setExtractedItens([]);
     setFonteItens('contrato');
@@ -682,60 +769,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     setUploading(true);
     try {
-      // ── O arquivo é guardado ANTES da leitura ────────────────────────────
+      // ── O arquivo espera o Registrar ─────────────────────────────────────
       //
-      // A Ordem de Fornecimento é o documento que AUTORIZA o pedido. Até aqui
-      // ela era lida e descartada: o pedido passava a existir e a autorização
-      // dele, não. Numa divergência com o órgão sobre quantidade empenhada é a
-      // nota de empenho que se apresenta.
+      // Guardava-se aqui, antes da leitura, para que uma falha da IA não
+      // perdesse o documento. O raciocínio estava errado: o PDF está no
+      // computador de quem o anexou — nada se perde. O que a pressa produzia
+      // era pior: quem anexasse e desistisse deixava o arquivo no dossiê do
+      // contrato, como se fizesse parte dele, sem nada que o explicasse.
       //
-      // Antes da leitura, e não depois, pela mesma razão que vale para a NF-e
-      // no Financeiro: se a IA falhar, o documento já está guardado. Guardar
-      // depois só arquiva o que deu certo.
-      let arquivoOrdemId: string | null = null;
-      // A política de `contrato_arquivos` é `auth.uid() = user_id`. Passar
-      // null ali — o que eu fazia com `user?.id ?? null` — nunca satisfaz a
-      // comparação, e o insert é recusado com "violates row-level security
-      // policy". Sem usuário na sessão não há o que guardar: a leitura segue
-      // e o aviso diz o que ficou de fora.
-      if (!user?.id) {
-        toast.warning('O PDF não pôde ser guardado: sessão sem usuário.', {
-          description: 'Recarregue a página e tente de novo — a leitura do documento continua.',
-        });
-      }
-      try {
-        if (!user?.id) throw new Error('sem usuário');
-        // A PRIMEIRA pasta tem de ser o auth.uid(): a política do bucket é
-        // `auth.uid()::text = (storage.foldername(name))[1]`. Eu começava pelo
-        // contrato — `${contratoId}/ordens/...` — e o upload era recusado com
-        // "new row violates row-level security policy", que soa como problema
-        // de tabela e é do storage.
-        const caminho = `${user!.id}/${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
-        const { error: upErr } = await supabase.storage
-          .from('contratos-docs')
-          .upload(caminho, file, { upsert: false, contentType: file.type });
-        if (!upErr) {
-          const { data: arq } = await supabase
-            .from('contrato_arquivos')
-            .insert({
-              contrato_id: contratoId,
-              nome_arquivo: file.name,
-              storage_path: caminho,
-              tamanho_bytes: file.size,
-              tipo: 'ordem_fornecimento',
-              descricao: 'Ordem de Fornecimento / Nota de Empenho',
-              user_id: user!.id,
-            } as never)
-            .select('id')
-            .single();
-          arquivoOrdemId = (arq as { id: string } | null)?.id ?? null;
-        } else {
-          // Falha de guarda não impede a leitura, mas não pode passar calada:
-          // quem lançar o pedido precisa saber que a autorização não ficou.
-          toast.warning('O PDF não pôde ser guardado no contrato.', { description: upErr.message });
-        }
-      } catch { /* idem — a leitura segue */ }
-      setArquivoOrdem(arquivoOrdemId);
+      // Anexar não é registrar. O arquivo entra no contrato no mesmo instante
+      // em que o empenho ou o pedido entram — nem antes, nem sem eles.
+      setArquivoPendente(file);
+      setArquivoOrdem(null);
 
       // Leitor da casa: página por página, OCR reencaixado no lugar. Era a
       // quarta cópia do leitor antigo — e empenho/nota ESCANEADOS são o caso
@@ -920,6 +965,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
 
     setSaving(true);
+    // O PDF entra no dossiê agora, junto com o pedido — não no anexo.
+    const arquivoId = await guardarArquivoDaOrdem();
     const { data: novoPedido, error } = await supabase.from('contrato_pedidos').insert({
       contrato_id: contratoId, user_id: user!.id,
       numero_pedido: form.numero_pedido, descricao: form.descricao || null,
@@ -932,7 +979,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
-      arquivo_ordem_id: arquivoOrdem,
+      arquivo_ordem_id: arquivoId,
       cota: form.cota || null,
       empenho_id: form.empenho_id || null,
     } as any).select('id, numero_pedido, descricao, valor_total, data_pedido, contrato_item_id').single();
@@ -986,6 +1033,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!empresaId) { toast.error('Nenhuma empresa ativa.'); return; }
 
     setSaving(true);
+    const arquivoId = await guardarArquivoDaOrdem();
     const totalValor = linhas.length
       ? linhas.reduce((s, l) => s + (parseFloat(l.quantidade) || 0) * (parseFloat(l.valor_unitario) || 0), 0)
       : (parseFloat(form.valor_empenho) || parseFloat(extractedData?.valor_total) || 0);
@@ -1004,7 +1052,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         quantidade: totalQtd || null,
         unidade: 'un',
         data_emissao: form.data_pedido || extractedData?.data_documento || null,
-        arquivo_id: arquivoOrdem,
+        arquivo_id: arquivoId,
         observacao: form.observacoes || null,
         created_by: user!.id,
       } as never)
@@ -1015,15 +1063,45 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // forma volta a ser declarada, e é ela que o resto usa.
     const criado = empenho as unknown as { id: string; numero: string } | null;
 
+    // ── Já registrado não é erro: é o documento chegando depois ─────────────
+    //
+    // O empenho pode existir sem o PDF — foi assim que o 2026NE003716 nasceu,
+    // convertido por SQL a partir de dois lançamentos, sem documento nenhum.
+    // Quem sobe a nota depois está trazendo justamente o que faltava. Recusar
+    // com "já está registrado" devolve a pessoa ao ponto de partida sem dizer
+    // o que fazer, e o dossiê continua sem a autorização.
+    if (error?.code === '23505') {
+      const { data: existente } = await supabase
+        .from('contrato_empenhos' as never)
+        .select('id, arquivo_id')
+        .eq('contrato_id', contratoId)
+        .eq('numero', numero)
+        .single();
+      const jaExiste = existente as unknown as { id: string; arquivo_id: string | null } | null;
+      if (jaExiste && arquivoId && !jaExiste.arquivo_id) {
+        await supabase
+          .from('contrato_empenhos' as never)
+          .update({ arquivo_id: arquivoId } as never)
+          .eq('id', jaExiste.id);
+        setSaving(false);
+        toast.success(`Empenho ${numero} já estava registrado — o PDF foi anexado a ele.`);
+        setDialogOpen(false);
+        resetForm();
+        load();
+        return;
+      }
+      setSaving(false);
+      toast.error(
+        jaExiste?.arquivo_id
+          ? `O empenho ${numero} já está registrado neste contrato, com documento anexado.`
+          : `O empenho ${numero} já está registrado neste contrato.`,
+      );
+      return;
+    }
+
     if (error) {
       setSaving(false);
-      // Número repetido é o caso comum: o mesmo empenho anexado duas vezes.
-      // Dizer isso vale mais do que repetir a mensagem do Postgres.
-      toast.error(
-        error.code === '23505'
-          ? `O empenho ${numero} já está registrado neste contrato.`
-          : 'Erro ao registrar empenho: ' + error.message,
-      );
+      toast.error('Erro ao registrar empenho: ' + error.message);
       return;
     }
 
@@ -1093,6 +1171,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Fallback: nenhum item válido → cria um único pedido com o total do documento (comportamento original)
     if (itensSalvar.length === 0) {
       setSaving(true);
+      const arquivoId = await guardarArquivoDaOrdem();
       const valorTotal = parseFloat(extractedData.valor_total) || 0;
       const tipoLabel = tiposDocumento.find(t => t.value === (extractedData.tipo_documento || form.tipo_documento))?.label || form.tipo_documento;
       const descricao = `${tipoLabel}${extractedData.numero_documento ? ' — ' + extractedData.numero_documento : ''}`;
@@ -1114,7 +1193,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
-      arquivo_ordem_id: arquivoOrdem,
+      arquivo_ordem_id: arquivoId,
       cota: form.cota || null,
       empenho_id: form.empenho_id || null,
         } as any)
@@ -1134,6 +1213,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Múltiplos itens: um registro individual por item extraído
     // Itens sem contrato_item_id mapeado são salvos com contrato_item_id: null (fallback seguro por item)
     setSaving(true);
+    const arquivoId = await guardarArquivoDaOrdem();
     const campos = {
       data_pedido: form.data_pedido || extractedData.data_documento || null,
       data_entrega: form.data_entrega || extractedData.data_entrega || null,
@@ -1144,7 +1224,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_empenho: normalizarNumeroEmpenho(form.numero_empenho),
       tipo_empenho: tipoDeEmpenho(form.tipo_empenho),
       valor_empenho: parseFloat(form.valor_empenho) || null,
-      arquivo_ordem_id: arquivoOrdem,
+      arquivo_ordem_id: arquivoId,
       cota: form.cota || null,
       empenho_id: form.empenho_id || null,
     };
@@ -1872,10 +1952,73 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </div>
       </div>
 
+      {/* ── Os empenhos do contrato ───────────────────────────────────────
+          Faltava esta lista, e a falta tinha consequência: o 2026NE003716
+          estava registrado, a aba mostrava "0 pedidos | R$ 0,00", e a única
+          leitura possível era a de que nada havia sido registrado. Daí a
+          segunda tentativa de cadastrar o mesmo empenho.
+          Empenho não é pedido, então não entra na tabela de pedidos — mas
+          precisa estar à vista, com o que já autoriza e o que dele resta. */}
+      {empenhosDoContrato.length > 0 && (
+        <Card className="p-4 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              Empenhos registrados ({empenhosDoContrato.length})
+            </h4>
+            <span className="text-xs text-muted-foreground">autorizam os pedidos abaixo</span>
+          </div>
+          <div className="space-y-2">
+            {empenhosDoContrato.map(e => {
+              const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
+              return (
+                <div key={e.id} className="rounded-md border p-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium tabular-nums">{e.numero}</span>
+                      <Badge variant="outline" className="text-[11px]">
+                        {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
+                      </Badge>
+                    </div>
+                    {e.arquivo_id ? (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs"
+                        onClick={() => abrirDocumentoDoEmpenho(e.arquivo_id!)}>
+                        <Eye className="w-3 h-3 mr-1" /> Ver documento
+                      </Button>
+                    ) : (
+                      // Empenho sem PDF é autorização que não se prova. Dizer
+                      // qual está sem documento é o que permite ir buscá-lo.
+                      <span className="text-[11px] text-amber-700 dark:text-amber-500">
+                        sem documento anexado
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-4 flex-wrap mt-1.5">
+                    {cotas.map(c => (
+                      <span key={c.cota} className="text-xs text-muted-foreground">
+                        {c.cota === 'reservada' ? 'Cota reservada' : 'Cota principal'}:{' '}
+                        <b className="text-foreground tabular-nums">
+                          {c.saldo_qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                        </b>{' '}
+                        de {c.qtd_empenhada.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} disponíveis
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : pedidos.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground text-sm">Nenhum pedido registrado</Card>
+        <Card className="p-8 text-center text-muted-foreground text-sm">
+          {empenhosDoContrato.length > 0
+            ? 'Nenhum pedido registrado ainda — o empenho acima autoriza, e cada entrega lançada aqui consome dele.'
+            : 'Nenhum pedido registrado'}
+        </Card>
       ) : (
         <>
         <div className="rounded-lg border overflow-x-auto">
