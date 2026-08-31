@@ -158,3 +158,36 @@ export function situacaoDoEmpenho(entrada: {
     frase: `Restam ${saldo.toFixed(2)} do empenho.`,
   };
 }
+
+/**
+ * O empenho foi cancelado?
+ *
+ * Cancelar é anular por inteiro — o Portal da Transparência rotula o movimento
+ * como "ANULACAO DE EMPENHO", e o art. 38 da Lei 4.320/64 trata os dois pelo
+ * mesmo mecanismo. Não precisa de coluna: o estado é DERIVADO dos movimentos,
+ * como todo o resto aqui.
+ *
+ * A distinção que esta função existe para fazer:
+ *
+ *   VIGENTE ZERO POR CONSUMO      o empenho cumpriu seu papel. As entregas
+ *                                 saíram e foram pagas.
+ *   VIGENTE ZERO POR ANULAÇÃO     o empenho foi desfeito. Nada saiu por ele, e
+ *                                 nada mais sairá.
+ *
+ * Os dois mostram "R$ 0,00" e significam coisas opostas. Um contrato onde o
+ * empenho foi cancelado e ninguém percebeu é um contrato executando sem
+ * cobertura — exatamente o que o art. 60 proíbe.
+ */
+export function empenhoCancelado(v: {
+  valorOriginal: number | null | undefined;
+  reforcos: number | null | undefined;
+  anulacoes: number | null | undefined;
+}): boolean {
+  const original = Number(v.valorOriginal ?? 0);
+  const reforcos = Number(v.reforcos ?? 0);
+  const anulacoes = Number(v.anulacoes ?? 0);
+  // Sem anulação nenhuma não há cancelamento, ainda que o vigente seja zero
+  // por o empenho ter nascido zerado.
+  if (anulacoes <= 0) return false;
+  return anulacoes >= original + reforcos - 0.005;
+}

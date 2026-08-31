@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, TrendingUp, TrendingDown, FileText } from 'lucide-react';
+import { Loader2, Plus, Trash2, TrendingUp, TrendingDown, FileText, Ban } from 'lucide-react';
+import { empenhoCancelado } from '@/lib/contratos/empenho';
 
 /**
  * A vida do empenho: original, reforços e anulações.
@@ -197,6 +198,28 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
             {/* ── O que o empenho comporta hoje ───────────────────────────────
                 O original permanece à vista ao lado do vigente: a diferença
                 entre os dois É a história, e é ela que a auditoria pergunta. */}
+            {/* ── Vigente zero significa duas coisas opostas ─────────────────
+                Consumido por inteiro, o empenho cumpriu seu papel. Cancelado,
+                ele foi desfeito e nada mais sai por ele. Os dois mostram
+                "R$ 0,00", e um contrato executando sobre empenho cancelado é
+                exatamente o que o art. 60 proíbe. */}
+            {vigente && empenhoCancelado({
+              valorOriginal: vigente.valor_original,
+              reforcos: vigente.reforcos,
+              anulacoes: vigente.anulacoes,
+            }) && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+                <Ban className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-destructive">Empenho cancelado</p>
+                  <p className="text-xs text-muted-foreground">
+                    A anulação cobre todo o valor empenhado. Ele não autoriza mais nenhuma entrega —
+                    e entregar sob empenho cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
+                  </p>
+                </div>
+              </div>
+            )}
+
             {vigente && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>

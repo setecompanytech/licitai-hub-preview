@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  tipoDeEmpenho, normalizarNumeroEmpenho, situacaoDoEmpenho,
+  tipoDeEmpenho, normalizarNumeroEmpenho, situacaoDoEmpenho, empenhoCancelado,
 } from '@/lib/contratos/empenho';
 
 describe('normalizarNumeroEmpenho', () => {
@@ -86,5 +86,36 @@ describe('origem da espécie', () => {
     expect(tipoDeEmpenho('ORDINÁRIO')).toBe('ordinario');
     expect(tipoDeEmpenho('Global')).toBe('global');
     expect(tipoDeEmpenho('ESTIMATIVO')).toBe('estimativo');
+  });
+});
+
+describe('empenhoCancelado', () => {
+  it('anulação que cobre tudo é cancelamento', () => {
+    expect(empenhoCancelado({ valorOriginal: 5000, reforcos: 0, anulacoes: 5000 })).toBe(true);
+  });
+
+  it('anulação parcial não é cancelamento — o empenho segue vivo', () => {
+    // O 2025NE000064: anulou R$ 24.722 de R$ 159.979,55 e continuou operando.
+    expect(empenhoCancelado({ valorOriginal: 22.55, reforcos: 159957, anulacoes: 24722 })).toBe(false);
+  });
+
+  it('reforço posterior à anulação reabre o empenho', () => {
+    // Anulou tudo e depois reforçou: o vigente voltou a ser positivo, e o
+    // empenho autoriza de novo.
+    expect(empenhoCancelado({ valorOriginal: 5000, reforcos: 3000, anulacoes: 5000 })).toBe(false);
+  });
+
+  it('vigente zero SEM anulação não é cancelamento', () => {
+    // Empenho consumido por inteiro cumpriu seu papel; cancelado foi desfeito.
+    // Os dois mostram R$ 0,00 e significam coisas opostas.
+    expect(empenhoCancelado({ valorOriginal: 5000, reforcos: 0, anulacoes: 0 })).toBe(false);
+  });
+
+  it('centavo de arredondamento não impede o reconhecimento', () => {
+    expect(empenhoCancelado({ valorOriginal: 135257.55, reforcos: 0, anulacoes: 135257.55 })).toBe(true);
+  });
+
+  it('valores ausentes não viram cancelamento', () => {
+    expect(empenhoCancelado({ valorOriginal: null, reforcos: null, anulacoes: null })).toBe(false);
   });
 });
