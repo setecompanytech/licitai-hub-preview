@@ -13,10 +13,31 @@ const SPREADSHEET_SHEET_LIMIT = 10;
 const SPREADSHEET_ROW_LIMIT = 500;
 const SPREADSHEET_COL_LIMIT = 16;
 
-type VisionImageInput = {
+export type VisionImageInput = {
   name: string;
   dataUrl: string;
 };
+
+/**
+ * A primeira página do PDF como imagem.
+ *
+ * O OCR de documento financeiro (`ocr-document-financeiro`) recebe
+ * `imageDataUrl`, e recibo, comprovante e boleto cabem numa página. Sem isto
+ * seria a quarta cópia do carregamento do pdfjs neste repositório — três já
+ * custaram caro.
+ */
+export async function primeiraPaginaComoImagem(file: File): Promise<string | null> {
+  try {
+    const pdfjsLib = await import('pdfjs-dist');
+    const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const imagens = await renderPdfPagesToVisionInputs(pdf, [1]);
+    return imagens[0]?.dataUrl ?? null;
+  } catch {
+    return null;
+  }
+}
 
 function normalizeExtractedText(text: string): string {
   return text

@@ -7,9 +7,11 @@ import { parseNFeXML } from "@/lib/parseNFe";
 import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
 import { ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
 import { perfilDoAnexo } from "@/lib/financeiro/anexo-do-lancamento";
-import { acharLinhaDigitavel } from "@/lib/financeiro/boleto";
+import { acharLinhaDigitavel, lerLinhaDigitavel } from "@/lib/financeiro/boleto";
+import { chaveDeAcessoValida, dadosDaChave } from "@/lib/financeiro/danfe";
 import { hojeLocal as hojeISO } from "@/lib/financeiro/data-local";
 import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
+import { abrirEspelho } from "@/lib/financeiro/espelho-da-nfe";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -282,6 +284,98 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   };
 
   /**
+   * O último recurso: OCR genérico, para o que não tem código conferível.
+   *
+   * Recibo, RPA, cupom de papel e NFS-e municipal não têm chave nem linha
+   * digitável. `ocr-document-financeiro` já existia no sistema — lê justamente
+   * esta família — e estava alcançável só por duas telas separadas.
+   *
+   * ── O que a IA lê, a aritmética confere ─────────────────────────────────
+   *
+   * Ela devolve `chave_nfe` e `codigo_barras` junto do resto. Esses dois têm
+   * dígito verificador: passando pelo DV, deixam de ser leitura e viram fato —
+   * e o valor e o vencimento saem do código, não do que a IA achou que leu.
+   *
+   * O que sobra sem código é preenchido do mesmo jeito, mas ANUNCIADO como
+   * leitura. Dado conferido e dado adivinhado não podem ter a mesma cara.
+   */
+  const lerPorOcr = async (arquivo: File): Promise<boolean> => {
+    setLendoDanfe("Lendo o documento…");
+    try {
+      let dataUrl: string | null = null;
+      if (/^image\//.test(arquivo.type)) {
+        dataUrl = await new Promise<string | null>((ok) => {
+          const r = new FileReader();
+          r.onload = () => ok(typeof r.result === "string" ? r.result : null);
+          r.onerror = () => ok(null);
+          r.readAsDataURL(arquivo);
+        });
+      } else {
+        const { primeiraPaginaComoImagem } = await import("@/lib/pdf-text-extractor");
+        dataUrl = await primeiraPaginaComoImagem(arquivo);
+      }
+      if (!dataUrl) return false;
+
+      const { data, error } = await supabase.functions.invoke("ocr-document-financeiro", {
+        body: { imageDataUrl: dataUrl },
+      });
+      const d = (data as { dados?: Record<string, unknown> } | null)?.dados;
+      if (error || !d) return false;
+
+      const preencheu: string[] = [];
+      const conferidos: string[] = [];
+
+      // Primeiro o que tem DV: se fecha, é fato, e manda sobre o resto.
+      const chave = chaveDeAcessoValida(d.chave_nfe);
+      if (chave && !chaveValida(chaveAcessoNfe)) {
+        setChaveAcessoNfe(chave);
+        const dc = dadosDaChave(chave)!;
+        if (!numeroDocumento.trim()) setNumeroDocumento(dc.numero);
+        if (!serieDocumento.trim()) setSerieDocumento(dc.serie);
+        conferidos.push("chave de acesso");
+      }
+      const boleto = d.codigo_barras ? lerLinhaDigitavel(d.codigo_barras, hojeISO()) : null;
+      if (boleto) {
+        if (boleto.valor != null && !valor) setValor(boleto.valor);
+        if (boleto.vencimento && !dataVencimento) setDataVencimento(boleto.vencimento);
+        if (!numeroDocumento.trim()) setNumeroDocumento(boleto.linha);
+        conferidos.push("linha digitável");
+      }
+
+      // Depois o que não tem como conferir.
+      const num = (k: string) => { const n = Number(d[k]); return Number.isFinite(n) && n > 0 ? n : null; };
+      const txt = (k: string) => (typeof d[k] === "string" && d[k] ? String(d[k]) : null);
+      if (!boleto && num("valor_total") && !valor) { setValor(num("valor_total")!); preencheu.push("valor"); }
+      if (!boleto && txt("data_vencimento") && !dataVencimento) { setDataVencimento(txt("data_vencimento")!); preencheu.push("vencimento"); }
+      if (txt("data_emissao") && !dataEmissao) { setDataEmissao(txt("data_emissao")!); preencheu.push("emissão"); }
+      if (!chave && !boleto && txt("numero_documento") && !numeroDocumento.trim()) {
+        setNumeroDocumento(txt("numero_documento")!); preencheu.push("número");
+      }
+      if (txt("tipo_documento") && !tipoDocumento) {
+        setTipoDocumento(txt("tipo_documento") as TipoDocumento);
+      }
+
+      if (conferidos.length === 0 && preencheu.length === 0) return false;
+      toast.success(
+        conferidos.length > 0
+          ? `Documento lido. Conferido por ${conferidos.join(" e ")}.`
+          : `Documento lido: ${preencheu.join(", ")}.`,
+        {
+          description: preencheu.length > 0
+            // A frase existe para que o dado lido não passe por dado conferido.
+            ? `${preencheu.join(", ")} — leitura por IA, sem dígito verificador. Confira antes de salvar.`
+            : undefined,
+        },
+      );
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setLendoDanfe(null);
+    }
+  };
+
+  /**
    * Lê o boleto ou a guia pela linha digitável.
    *
    * A linha é o equivalente da chave de acesso para o que se paga: tem dígito
@@ -356,17 +450,15 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
    * são a razão de valer a chamada — sem eles, vincular a nota a um contrato
    * exige calcular a quantidade de cabeça.
    */
-  const lerDanfe = async (pdf: File) => {
+  const lerDanfe = async (pdf: File): Promise<boolean> => {
     setLendoDanfe("Lendo…");
     try {
       const leitura = await lerDanfeEmPdf(pdf, (m) => setLendoDanfe(m));
       const nfe = consolidar(leitura);
-      if (!nfe) {
-        toast.warning("PDF anexado, mas não pôde ser lido.", {
-          description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
-        });
-        return;
-      }
+      // Devolve `false` em vez de avisar: quem chamou tem mais uma carta na
+      // manga — o OCR genérico —, e um aviso aqui anunciaria derrota antes da
+      // última tentativa.
+      if (!nfe) return false;
       setNfeLida(nfe);
 
       const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, {
@@ -402,10 +494,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
           ].filter(Boolean).join(" ") || undefined,
         },
       );
+      return true;
     } catch {
-      toast.warning("O PDF foi anexado, mas não pôde ser lido.", {
-        description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
-      });
+      return false;
     } finally {
       setLendoDanfe(null);
     }
@@ -437,16 +528,18 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       // Só tenta ler onde há o que ler. Procurar chave de acesso num boleto
       // gasta OCR e uma chamada de IA para não achar nada — e o aviso de
       // "chave não encontrada" seria verdadeiro e inútil.
+      // ── A cascata: exato primeiro, caro por último ─────────────────────
+      //
+      // Linha digitável e chave de acesso custam nada e não erram — ou os
+      // dígitos fecham, ou não são. Só o que sobra vai para a IA, que custa
+      // uma chamada e pode ler errado.
       const ehPdf = /\.pdf$/i.test(principal.name);
-      // Boleto primeiro quando o tipo o anuncia: é a leitura barata e exata.
       if (perfil.leLinhaDigitavel && ehPdf && await lerBoleto(principal)) return;
-      if (perfil.leChave && ehPdf) {
-        await lerDanfe(principal);
-      } else {
-        toast.success("Arquivo anexado.", {
-          description: "Será guardado ao salvar o lançamento.",
-        });
-      }
+      if (perfil.leChave && ehPdf && await lerDanfe(principal)) return;
+      if (await lerPorOcr(principal)) return;
+      toast.success("Arquivo anexado.", {
+        description: "Nada foi lido dele — preencha os campos à mão. Será guardado ao salvar.",
+      });
       return;
     }
     if (!perfil.leXml) {
@@ -1129,10 +1222,37 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                         {docGuardado.arquivo_xml && " · com XML"}
                       </p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
-                      onClick={abrirDocGuardado} disabled={abrindoDoc}>
-                      {abrindoDoc ? "abrindo…" : "Ver documento"}
-                    </Button>
+                    <div className="flex gap-1.5 shrink-0">
+                      {/* ── Ver a nota quando só existe o XML ─────────────────
+                          XML aberto no navegador é marcação crua. O dado está
+                          todo ali — `parseNFe` já o extrai por inteiro —, só
+                          não havia como lê-lo com olhos humanos.
+
+                          "Espelho" e não "DANFE": o documento auxiliar oficial
+                          tem layout próprio do Manual de Orientação do
+                          Contribuinte, e chamar uma leitura de DANFE
+                          convidaria alguém a apresentá-la como se fosse. */}
+                      {docGuardado.arquivo_xml && (
+                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                          onClick={() => {
+                            try {
+                              if (!abrirEspelho(parseNFeXML(docGuardado.arquivo_xml!))) {
+                                toast.error("O navegador bloqueou a aba.", {
+                                  description: "Permita pop-ups para este site e tente de novo.",
+                                });
+                              }
+                            } catch {
+                              toast.error("O XML guardado não pôde ser lido.");
+                            }
+                          }}>
+                          Ver a nota
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                        onClick={abrirDocGuardado} disabled={abrindoDoc}>
+                        {abrindoDoc ? "abrindo…" : "Ver arquivo"}
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {(arquivoPdf || arquivoXml) && (
