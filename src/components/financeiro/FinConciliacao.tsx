@@ -97,6 +97,8 @@ import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
 import LancamentoDialog from "./LancamentoDialog";
+import SeloDoContrato from "./SeloDoContrato";
+import { useVinculosDeContrato } from "@/hooks/useVinculosDeContrato";
 
 type MatchSugestao = {
   movimento_id: string;
@@ -178,6 +180,10 @@ export default function FinConciliacao() {
     { enabled: !!extratoAberto },
   );
   const { data: lancamentosTodos } = useLancamentos({});
+  // O que cada título sustenta na Gestão. Conciliar passou a TER efeito lá —
+  // o gatilho da 20260831000001 refaz a quitação do pedido —, e efeito que a
+  // tela não anuncia é efeito que ninguém confere.
+  const { data: vinculosDeContrato } = useVinculosDeContrato();
 
   const extratoAtivo = useMemo(
     () => (extratos ?? []).find((e) => e.id === extratoAberto) ?? null,
@@ -1222,6 +1228,13 @@ export default function FinConciliacao() {
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   {lanc.data_vencimento ? `Venc.: ${formatDate(lanc.data_vencimento)}` : "—"} · {formatBRL(Number(lanc.valor))}
                                 </div>
+                                {/* Conciliar aqui marca uma entrega como paga
+                                    do outro lado. Dizer isso ANTES do clique é
+                                    o que separa conferir de descobrir depois. */}
+                                <SeloDoContrato
+                                  vinculo={vinculosDeContrato?.[s.lancamento_id]}
+                                  statusFuturo="conciliado"
+                                />
                               </div>
                             ) : (
                               <span className="text-muted-foreground text-xs">Lançamento fora da página atual</span>
@@ -1642,6 +1655,13 @@ export default function FinConciliacao() {
                               {statusLabel[m.lancamento.status] ?? m.lancamento.status}
                               {m.lancamento.data_vencimento && ` · Venc: ${formatDate(m.lancamento.data_vencimento)}`}
                             </div>
+                            {/* Já conciliado: aqui o selo serve para DESFAZER
+                                com consciência — soltar este movimento tira a
+                                quitação do pedido. */}
+                            <SeloDoContrato
+                              vinculo={m.lancamento_id ? vinculosDeContrato?.[m.lancamento_id] : undefined}
+                              statusFuturo={m.lancamento.status}
+                            />
                           </div>
                           <Button
                             size="sm"
@@ -1795,7 +1815,18 @@ export default function FinConciliacao() {
                                     }
                                   >
                                     <Sparkles className="w-3.5 h-3.5 text-muted-foreground mr-2 shrink-0" />
-                                    <span className="truncate flex-1">{lancSug.descricao}</span>
+                                    <span className="truncate flex-1">
+                                      {lancSug.descricao}
+                                      {/* No menu o espaço é curto: só o número
+                                          do contrato, que já basta para não
+                                          escolher o título errado entre dois
+                                          de mesmo valor. */}
+                                      {vinculosDeContrato?.[s.lancamento_id]?.numero_contrato && (
+                                        <span className="ml-1 text-primary">
+                                          · {vinculosDeContrato[s.lancamento_id].numero_contrato}
+                                        </span>
+                                      )}
+                                    </span>
                                     <span className="ml-2 text-xs text-muted-foreground tabular-nums">{s.score}</span>
                                   </DropdownMenuItem>
                                 ) : null;

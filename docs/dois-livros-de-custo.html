@@ -1,0 +1,609 @@
+<title>Dois Livros de Custo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --tinta:      #14181e;
+    --tinta-2:    #4a545f;
+    --tinta-3:    #78838f;
+    --papel:      #f5f6f8;
+    --papel-alto: #ffffff;
+    --regua:      #dce0e6;
+    --regua-forte:#bcc4ce;
+    --acento:     #1e5a7a;
+    --acento-bg:  #e8f0f4;
+    --previsto:   #8a6216;
+    --previsto-bg:#faf2e0;
+    --real:       #2e6b4f;
+    --real-bg:    #e6f1eb;
+    --alerta:     #9d3b30;
+    --alerta-bg:  #faeae7;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta:      #e8eaee;
+      --tinta-2:    #a5aeb9;
+      --tinta-3:    #78838f;
+      --papel:      #0f1216;
+      --papel-alto: #171b21;
+      --regua:      #2a3038;
+      --regua-forte:#3d4650;
+      --acento:     #6ab3d4;
+      --acento-bg:  #14262f;
+      --previsto:   #d6ab55;
+      --previsto-bg:#2a2213;
+      --real:       #74c39c;
+      --real-bg:    #14251c;
+      --alerta:     #e08a7d;
+      --alerta-bg:  #2b1815;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --tinta:      #e8eaee;
+    --tinta-2:    #a5aeb9;
+    --tinta-3:    #78838f;
+    --papel:      #0f1216;
+    --papel-alto: #171b21;
+    --regua:      #2a3038;
+    --regua-forte:#3d4650;
+    --acento:     #6ab3d4;
+    --acento-bg:  #14262f;
+    --previsto:   #d6ab55;
+    --previsto-bg:#2a2213;
+    --real:       #74c39c;
+    --real-bg:    #14251c;
+    --alerta:     #e08a7d;
+    --alerta-bg:  #2b1815;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.5rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .folha { max-width: 46rem; margin: 0 auto; }
+  .largo { max-width: 58rem; margin-left: auto; margin-right: auto; }
+
+  header.capa {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 2px solid var(--tinta);
+    margin-bottom: 3rem;
+  }
+  .sobrelinha {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--tinta-3);
+    margin: 0 0 1.25rem;
+  }
+  h1 {
+    font-family: Newsreader, Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  .resumo {
+    font-family: Newsreader, Georgia, serif;
+    font-size: 1.28rem;
+    line-height: 1.5;
+    color: var(--tinta-2);
+    max-width: 34rem;
+    margin: 0;
+  }
+
+  h2 {
+    font-family: Newsreader, Georgia, serif;
+    font-weight: 600;
+    font-size: 1.85rem;
+    line-height: 1.18;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 3.75rem 0 .3rem;
+  }
+  h2 .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+    font-weight: 500;
+    letter-spacing: .1em;
+    color: var(--acento);
+    display: block;
+    margin-bottom: .55rem;
+  }
+  h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 1.02rem;
+    margin: 2.25rem 0 .4rem;
+  }
+  p { margin: 0 0 1.05rem; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  .destaque {
+    font-family: Newsreader, Georgia, serif;
+    font-size: 1.32rem;
+    line-height: 1.46;
+    border-left: 3px solid var(--acento);
+    padding: .1rem 0 .1rem 1.35rem;
+    margin: 2rem 0;
+    color: var(--tinta);
+  }
+
+  /* ── O diagrama dos dois livros ───────────────────────────────────── */
+  .livros {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--regua-forte);
+    border: 1px solid var(--regua-forte);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 2rem 0 .75rem;
+  }
+  @media (max-width: 40rem) { .livros { grid-template-columns: 1fr; } }
+  .livro { background: var(--papel-alto); padding: 1.1rem 1.15rem 1.25rem; }
+  .livro .cabeca {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--tinta-3);
+    margin: 0 0 .5rem;
+  }
+  .livro .tabela {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .82rem;
+    font-weight: 500;
+    margin: 0 0 .55rem;
+  }
+  .livro .quem { font-size: .85rem; color: var(--tinta-2); margin: 0; line-height: 1.5; }
+  .livro .valor {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    margin: .7rem 0 .1rem;
+  }
+  .livro .rotulo { font-size: .78rem; color: var(--tinta-3); margin: 0; }
+  .livro.a .valor { color: var(--acento); }
+  .livro.b .valor { color: var(--previsto); }
+
+  .selo-divergencia {
+    background: var(--alerta-bg);
+    border: 1px solid var(--alerta);
+    border-radius: 6px;
+    padding: .8rem 1rem;
+    font-size: .89rem;
+    color: var(--alerta);
+    margin: 0 0 2rem;
+  }
+  .selo-divergencia b { color: var(--alerta); }
+
+  /* ── Quadro de peças ──────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 1.75rem 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .88rem;
+    min-width: 34rem;
+  }
+  caption {
+    text-align: left;
+    font-size: .8rem;
+    color: var(--tinta-3);
+    padding-bottom: .6rem;
+  }
+  th {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--tinta-3);
+    border-bottom: 1px solid var(--regua-forte);
+    padding: 0 .8rem .5rem 0;
+  }
+  td {
+    padding: .62rem .8rem .62rem 0;
+    border-bottom: 1px solid var(--regua);
+    vertical-align: top;
+  }
+  td:first-child { font-weight: 500; }
+  td code, .mono {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .84em;
+  }
+  .sim { color: var(--real); font-weight: 500; }
+  .nao { color: var(--alerta); font-weight: 500; }
+
+  /* ── Comparação previsto × realizado ──────────────────────────────── */
+  .comparacao {
+    border: 1px solid var(--regua-forte);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 1.75rem 0;
+    background: var(--papel-alto);
+  }
+  .comparacao .titulo {
+    padding: .8rem 1.1rem;
+    border-bottom: 1px solid var(--regua);
+    font-weight: 600;
+    font-size: .95rem;
+  }
+  .linha-comp {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 1rem;
+    align-items: baseline;
+    padding: .7rem 1.1rem;
+    border-bottom: 1px solid var(--regua);
+    font-size: .88rem;
+  }
+  .linha-comp:last-child { border-bottom: 0; }
+  .linha-comp .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    min-width: 5.5rem;
+    text-align: right;
+  }
+  .linha-comp.p { background: var(--previsto-bg); }
+  .linha-comp.p .n { color: var(--previsto); }
+  .linha-comp.r { background: var(--real-bg); }
+  .linha-comp.r .n { color: var(--real); }
+  .linha-comp.d { font-weight: 600; }
+  .linha-comp.d .n { color: var(--alerta); }
+
+  /* ── Fases ────────────────────────────────────────────────────────── */
+  .fase {
+    border-left: 2px solid var(--regua-forte);
+    padding: 0 0 .1rem 1.3rem;
+    margin: 0 0 2rem;
+    position: relative;
+  }
+  .fase::before {
+    content: "";
+    position: absolute;
+    left: -5px; top: .55rem;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--acento);
+  }
+  .fase h3 { margin-top: 0; }
+  .fase .etiqueta {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--tinta-3);
+    display: block;
+    margin-bottom: .25rem;
+  }
+  .fase p { font-size: .93rem; margin-bottom: .6rem; }
+
+  .risco {
+    background: var(--acento-bg);
+    border-radius: 6px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.75rem 0;
+    font-size: .93rem;
+  }
+  .risco h3 { margin-top: 0; }
+  .risco pre {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    background: var(--papel-alto);
+    border: 1px solid var(--regua);
+    border-radius: 4px;
+    padding: .8rem .9rem;
+    margin: .8rem 0 0;
+  }
+
+  ul { padding-left: 1.15rem; margin: 0 0 1.05rem; }
+  li { margin-bottom: .38rem; }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--regua-forte);
+    font-size: .82rem;
+    color: var(--tinta-3);
+  }
+</style>
+
+<header class="capa">
+  <div class="folha">
+    <p class="sobrelinha">Praefectus · Estudo de arquitetura financeira</p>
+    <h1>Dois livros de custo</h1>
+    <p class="resumo">
+      O mesmo dinheiro é anotado duas vezes, em lugares que não se falam — e a margem
+      que o Dashboard mostra sai do lado que ninguém mantém.
+    </p>
+  </div>
+</header>
+
+<main class="folha">
+
+  <h2><span class="num">01</span>O achado</h2>
+
+  <p>
+    Antes de responder se dá para sincronizar Contas a Pagar com o custo do contrato,
+    fui ver onde o custo mora hoje. Mora em <strong>dois lugares</strong>.
+  </p>
+
+  <div class="livros largo">
+    <div class="livro a">
+      <p class="cabeca">Livro 1 · Financeiro</p>
+      <p class="tabela">financeiro_lancamentos</p>
+      <p class="quem">Alimentado por quem <strong>paga</strong>. Sustenta caixa, DRE e conciliação bancária.</p>
+      <p class="valor">A pagar</p>
+      <p class="rotulo">o dinheiro que saiu de fato</p>
+    </div>
+    <div class="livro b">
+      <p class="cabeca">Livro 2 · Gestão de Contratos</p>
+      <p class="tabela">contrato_custos</p>
+      <p class="quem">Alimentado por quem <strong>administra o contrato</strong>. Sustenta a margem do Dashboard.</p>
+      <p class="valor">Custos</p>
+      <p class="rotulo">o custo atribuído ao contrato</p>
+    </div>
+  </div>
+
+  <div class="selo-divergencia largo">
+    Não há vínculo nenhum entre eles. <b>Nenhuma coluna, em tabela nenhuma.</b>
+    A mesma compra — os copos de água para atender o 008/2026 — é digitada uma vez
+    porque precisa ser paga, e outra vez porque precisa ser atribuída.
+  </div>
+
+  <p class="destaque">
+    Duas anotações do mesmo número, mantidas por pessoas diferentes, em momentos
+    diferentes, divergem. Não é hipótese: é o mesmo defeito que pôs o saldo das contas
+    em R$ 3,5 milhões e o contrato em 303% consumido.
+  </p>
+
+  <p>
+    E há uma assimetria que agrava. O Financeiro <em>tem</em> que ser preenchido — sem
+    lançamento não há pagamento. O <code>contrato_custos</code> não tem essa força:
+    ninguém é cobrado por deixá-lo vazio. Então ele fica vazio, e a margem que sai dele
+    aparece como <strong>0,0%</strong> — que é o que os cartões do 008/2026 mostram hoje.
+  </p>
+
+  <h2><span class="num">02</span>O que já existe, e o que falta</h2>
+
+  <div class="rolagem largo">
+    <table>
+      <caption>Peças do quebra-cabeça, conferidas no código</caption>
+      <thead>
+        <tr><th>Peça</th><th>Onde</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Custo previsto por item</td>
+          <td><code>contrato_itens.custo_unitario</code></td>
+          <td class="sim">Existe — vem da Precificação</td>
+        </tr>
+        <tr>
+          <td>Despesa apontando para o contrato</td>
+          <td><code>financeiro_lancamentos.contrato_id</code></td>
+          <td class="sim">A coluna existe e aceita <code>a_pagar</code></td>
+        </tr>
+        <tr>
+          <td>Regimes tributários e alíquotas</td>
+          <td><code>ContratoCustos.tsx</code></td>
+          <td class="sim">Simples, Presumido e Real, com faixas</td>
+        </tr>
+        <tr>
+          <td>Receita realizada por contrato</td>
+          <td><code>contrato_pedido_id</code> + quitação</td>
+          <td class="sim">Construído esta semana</td>
+        </tr>
+        <tr>
+          <td>Elo da despesa com o contrato</td>
+          <td>Contas a Pagar</td>
+          <td class="nao">Falta — a coluna existe, nada a usa</td>
+        </tr>
+        <tr>
+          <td>Custo de contrato vindo do que foi pago</td>
+          <td><code>contrato_custos</code></td>
+          <td class="nao">Falta — é digitado à parte</td>
+        </tr>
+        <tr>
+          <td>Comparação previsto × realizado</td>
+          <td>—</td>
+          <td class="nao">Não existe em lugar nenhum</td>
+        </tr>
+        <tr>
+          <td>Retorno da execução à Precificação</td>
+          <td>—</td>
+          <td class="nao">O ciclo nunca fecha</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    A leitura otimista: <strong>quase tudo já está lá</strong>. O que falta não é
+    infraestrutura — é ligação. A coluna que atribui uma despesa a um contrato existe
+    desde sempre e nenhuma tela a preenche.
+  </p>
+
+  <h2><span class="num">03</span>O desenho</h2>
+
+  <h3>Camada 1 · O custo passa a ter um dono só</h3>
+  <p>
+    A regra que resolve a duplicidade é de repartição, não de sincronia. Sincronizar
+    duas cópias é aceitar que elas existem; o certo é que cada custo exista <em>uma
+    vez</em>, no livro a que pertence:
+  </p>
+  <ul>
+    <li><strong>Custo que foi pago</strong> vive em <code>financeiro_lancamentos</code>,
+        com <code>contrato_id</code> preenchido. Não é copiado para lugar nenhum.</li>
+    <li><strong>Custo que não é lançamento</strong> — rateio de despesa fixa, mão de obra
+        própria, estimativa antes da nota — continua em <code>contrato_custos</code>,
+        e passa a ser <em>identificado como tal</em> na tela.</li>
+  </ul>
+  <p>
+    O custo do contrato vira a soma dos dois, sem interseção. E a tela passa a distinguir
+    <strong>custo pago</strong> de <strong>custo previsto</strong>, que hoje se parecem.
+  </p>
+
+  <h3>Camada 2 · O elo em Contas a Pagar</h3>
+  <p>
+    O mesmo diálogo do lado de receber, com uma diferença de fundo: a despesa se liga ao
+    <strong>contrato</strong>, e opcionalmente ao pedido — nunca cria pedido.
+    Comprar não é entregar. Uma compra pode servir a várias entregas, e é por isso que
+    o rateio precisa existir.
+  </p>
+
+  <h3>Camada 3 · O percentual, e por que ele só vale comparado</h3>
+  <p>
+    O número que você pediu — quanto a empresa dispôs para custear a operação — é o custo
+    como percentual da receita do contrato. Sozinho, ele informa pouco: 79% pode ser
+    ótimo ou desastroso. O que decide é o que a proposta <em>previu</em>:
+  </p>
+
+  <div class="comparacao largo">
+    <div class="titulo">Água mineral em copo 200ml · Contrato 008/2026</div>
+    <div class="linha-comp p">
+      <span>Previsto na proposta <span class="mono">(contrato_itens.custo_unitario)</span></span>
+      <span class="n">R$ 0,3182</span>
+      <span class="n">74,0%</span>
+    </div>
+    <div class="linha-comp r">
+      <span>Realizado <span class="mono">(a_pagar do contrato ÷ unidades entregues)</span></span>
+      <span class="n">R$ 0,3440</span>
+      <span class="n">80,0%</span>
+    </div>
+    <div class="linha-comp d">
+      <span>Desvio</span>
+      <span class="n">+R$ 0,0258</span>
+      <span class="n">+8,1%</span>
+    </div>
+  </div>
+
+  <p>
+    Cada linha dessa é uma pergunta respondível: o frete subiu, o fornecedor reajustou,
+    a cotação da proposta estava otimista. Nenhuma delas existe hoje, porque os dois
+    números nunca ficam lado a lado.
+  </p>
+
+  <h2><span class="num">04</span>O ciclo que fecha</h2>
+
+  <p>
+    Aqui está a razão de esta ideia valer mais do que um relatório a mais. Hoje a
+    Precificação estima, a empresa ganha, executa — e a estimativa seguinte parte
+    exatamente do mesmo lugar da anterior. <strong>A execução nunca volta.</strong>
+  </p>
+
+  <p class="destaque">
+    Com o desvio medido por item, a próxima licitação do mesmo objeto é precificada
+    sobre o custo que <em>aconteceu</em>, não sobre o que se imaginou. É a diferença
+    entre um catálogo de preços e um catálogo de resultados.
+  </p>
+
+  <p>
+    E ganha uma segunda serventia, imediata: um contrato cuja margem realizada está
+    abaixo da prevista pode ser detectado <em>durante</em> a execução, e não no
+    fechamento. Contrato administrativo tem saída — reequilíbrio econômico-financeiro,
+    art. 124, II, “d” da Lei 14.133/2021 — mas ela exige demonstrar o desequilíbrio
+    com números. Quem não mede não pede.
+  </p>
+
+  <h2><span class="num">05</span>O risco que precisa ser tratado primeiro</h2>
+
+  <div class="risco largo">
+    <h3>Dupla contagem no acumulado</h3>
+    <p>
+      Se hoje existir uma linha em <code>contrato_custos</code> que <em>já</em> corresponde
+      a uma despesa em Contas a Pagar, ligar a despesa ao contrato passaria a contar o
+      mesmo custo duas vezes — e a margem pioraria sem nada ter mudado no mundo real.
+    </p>
+    <p>
+      Isso não se resolve com uma regra: resolve-se <strong>medindo antes</strong>. Esta
+      consulta lista os pares suspeitos — mesmo contrato, mesmo valor, datas próximas:
+    </p>
+<pre>SELECT c.contrato_id, c.descricao AS custo_digitado, c.valor, c.data_lancamento,
+       l.descricao AS lancamento, l.data_competencia
+  FROM public.contrato_custos c
+  JOIN public.financeiro_lancamentos l
+    ON l.contrato_id = c.contrato_id
+   AND l.tipo = 'a_pagar'
+   AND abs(l.valor - c.valor) &lt; 0.01
+   AND abs(l.data_competencia - c.data_lancamento) &lt;= 15
+ ORDER BY c.contrato_id, c.valor;</pre>
+    <p style="margin-top:.8rem;margin-bottom:0">
+      Zero linhas: o caminho está livre. Qualquer linha: cada uma é uma decisão de quem
+      conhece a operação, antes de qualquer migration.
+    </p>
+  </div>
+
+  <h2><span class="num">06</span>Plano, em fases que valem sozinhas</h2>
+
+  <div class="fase">
+    <span class="etiqueta">Fase 1 · não muda número nenhum</span>
+    <h3>A Conciliação diz o que está quitando</h3>
+    <p>
+      “Isto quita o pedido 003 do contrato 008/2026.” É só leitura, não altera cálculo,
+      e resolve a peça que você já aprovou. Entrega isolada, sem depender do resto.
+    </p>
+  </div>
+
+  <div class="fase">
+    <span class="etiqueta">Fase 2 · medir antes de mexer</span>
+    <h3>A varredura de dupla contagem</h3>
+    <p>
+      A consulta acima, rodada no banco real. O resultado decide se a Fase 3 começa
+      limpa ou se precisa de uma conciliação manual antes.
+    </p>
+  </div>
+
+  <div class="fase">
+    <span class="etiqueta">Fase 3 · a ligação</span>
+    <h3>O elo em Contas a Pagar, com rateio</h3>
+    <p>
+      Despesa aponta para contrato — e, quando serve a vários, rateia. Aqui o
+      <code>contrato_custos</code> passa a marcar o que é pago e o que é previsto.
+    </p>
+  </div>
+
+  <div class="fase">
+    <span class="etiqueta">Fase 4 · a resposta</span>
+    <h3>Previsto × realizado, por item e por contrato</h3>
+    <p>
+      O quadro da seção 03, no Dashboard do contrato, alimentando os cartões de margem
+      que hoje mostram 0,0%.
+    </p>
+  </div>
+
+  <div class="fase">
+    <span class="etiqueta">Fase 5 · o retorno</span>
+    <h3>A Precificação recebe o desvio</h3>
+    <p>
+      O catálogo passa a mostrar, ao lado do custo estimado, o custo realizado nos
+      contratos já executados daquele objeto.
+    </p>
+  </div>
+
+  <footer>
+    Levantado no código em 31/08/2026 · Praefectus <span class="mono">2026-08-31.12</span><br>
+    Contrato de referência: 008/2026 · Polícia Militar do Pará · R$ 175.440,00
+  </footer>
+
+</main>
