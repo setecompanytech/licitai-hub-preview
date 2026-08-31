@@ -54,12 +54,13 @@ describe('avaliarCabimento', () => {
     const estimativo = avaliarCabimento({ quantidade: 100, valor: 43 }, {
       empenho: { rotulo: 'empenho', saldoQtd: 10, saldoValor: 10, tipo: 'estimativo' },
     });
+    // O estimativo não tem gargalo — ele avisa. A providência está no aviso.
     const global = avaliarCabimento({ quantidade: 100, valor: 43 }, {
       empenho: { rotulo: 'cota', saldoQtd: 10, tipo: 'global' },
     });
     // Ultrapassar um estimativo é rotina que pede reforço; um global é despesa
     // sem cobertura. Mesma falta, providências diferentes.
-    expect(estimativo.gargalo?.providencia).toMatch(/rotina/);
+    expect(estimativo.avisos[0]?.providencia).toMatch(/rotina/);
     expect(global.gargalo?.providencia).toMatch(/art\. 60/);
   });
 
@@ -120,18 +121,40 @@ describe('a espécie do empenho muda a unidade conferida', () => {
     expect(doEmpenho.disponivel).toBe(20000);
   });
 
-  it('estimativo estourado no VALOR avisa, e a providência é reforço', () => {
+  it('estimativo estourado AVISA sem barrar — o saldo conhecido é parcial', () => {
+    // A nota inicial do 149/2024 é de R$ 22,55 num contrato de R$ 81.180,00, e
+    // o órgão reforça conforme o consumo. Enquanto os reforços não estiverem
+    // registrados, afirmar "não cabe" seria acusar falta a partir do que o
+    // sistema sabe não conhecer.
     const r = avaliarCabimento(
-      { quantidade: 1000, valor: 22550 },
+      { quantidade: 300, valor: 6765 },
       {
-        empenho: { rotulo: 'empenho 2025NE000064', saldoQtd: 1, saldoValor: 20000, tipo: 'estimativo' },
+        empenho: { rotulo: 'empenho 2025NE000064', saldoQtd: 1, saldoValor: 22.55, tipo: 'estimativo' },
+        item: { rotulo: 'item 1', saldoQtd: 3600 },
+        contrato: { saldoValor: 81180 },
+      },
+    );
+    // Cabe: quem decide é o contrato e o item, e nos dois há folga.
+    expect(r.cabe).toBe(true);
+    expect(r.gargalo?.origem).not.toBe('empenho');
+    // Mas o empenho aparece como aviso, com a providência certa.
+    expect(r.avisos).toHaveLength(1);
+    expect(r.avisos[0].origem).toBe('empenho');
+    expect(r.avisos[0].providencia).toContain('reforço');
+  });
+
+  it('o item estourado continua barrando, mesmo com o estimativo em aviso', () => {
+    // O informativo não contamina o resto: o contrato e o item seguem decidindo.
+    const r = avaliarCabimento(
+      { quantidade: 4000, valor: 90200 },
+      {
+        empenho: { rotulo: 'empenho', saldoQtd: 1, saldoValor: 22.55, tipo: 'estimativo' },
         item: { rotulo: 'item 1', saldoQtd: 3600 },
         contrato: { saldoValor: 81180 },
       },
     );
     expect(r.cabe).toBe(false);
-    expect(r.gargalo?.origem).toBe('empenho');
-    expect(r.gargalo?.providencia).toContain('reforço');
+    expect(r.gargalo?.origem).not.toBe('empenho');
   });
 
   it('global e ordinário continuam conferidos por quantidade', () => {

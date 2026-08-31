@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { avaliarCabimento } from '@/lib/contratos/cabimento';
+import { avaliarCabimento, fraseDoLimite } from '@/lib/contratos/cabimento';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
 import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO } from '@/lib/contratos/empenho';
 import {
@@ -554,6 +554,23 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     extractedData?.especie_empenho || form.tipo_empenho,
   );
 
+  /**
+   * O aviso que não barra.
+   *
+   * O empenho estimativo entra no cabimento como referência, não como
+   * impedimento — o saldo que o sistema conhece é parcial enquanto os reforços
+   * não estiverem registrados. Mas silenciar seria pior: quem fatura precisa
+   * saber que o reforço está pendente ANTES de a nota sair, porque pagar além
+   * do empenhado é o que o art. 60 não admite.
+   */
+  const avisarDeReforco = (c: ReturnType<typeof avaliarCabimento>) => {
+    for (const a of c.avisos) {
+      // A frase sai do PRÓPRIO limite: `c.frase` fala do gargalo que decide, e
+      // o aviso é sobre outro número.
+      toast.warning(fraseDoLimite(a), { description: a.providencia });
+    }
+  };
+
   const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
     if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
     return limiteDeEntrega(dataDoPedido, {
@@ -1024,6 +1041,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       );
       if (!seguir) return;
     }
+    // O aviso do estimativo sai mesmo quando o pedido cabe: ele não impede,
+    // mas quem fatura precisa saber que o reforço do empenho está pendente
+    // antes de a nota sair.
+    avisarDeReforco(cabimento);
 
     setSaving(true);
     // O PDF entra no dossiê agora, junto com o pedido — não no anexo.
@@ -1230,6 +1251,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         );
         if (!seguir) return;
       }
+      avisarDeReforco(cabimento);
     }
 
     // Fallback: nenhum item válido → cria um único pedido com o total do documento (comportamento original)

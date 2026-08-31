@@ -37,12 +37,23 @@ export type LimiteAvaliado = {
   /** Negativo = o quanto falta. */
   folga: number;
   providencia: string;
+  /**
+   * Aparece no aviso, mas NÃO decide se o pedido cabe.
+   *
+   * Existe para um caso só, e ele é honesto: o empenho estimativo, cujo saldo
+   * o sistema sabe estar incompleto porque não conhece os reforços. Afirmar
+   * "não cabe" a partir de um número reconhecidamente parcial seria acusar
+   * falta com base no que não se sabe.
+   */
+  informativo?: boolean;
 };
 
 export type Cabimento = {
   cabe: boolean;
-  /** O limite mais apertado — o que de fato decide. */
+  /** O limite mais apertado ENTRE OS QUE DECIDEM. */
   gargalo: LimiteAvaliado | null;
+  /** Limites informativos estourados — dizem-se, sem barrar. */
+  avisos: LimiteAvaliado[];
   /** Todos os limites avaliados, para a tela poder mostrar o quadro inteiro. */
   limites: LimiteAvaliado[];
   frase: string;
@@ -80,6 +91,15 @@ const fmtBRL = (n: number) =>
  * como "cabe" libera o que ninguém conferiu; tratar como "não cabe" trava
  * quem não tem empenho registrado — e a maioria dos contratos não tem.
  */
+/** A frase de um limite estourado, na unidade dele. */
+export function fraseDoLimite(l: LimiteAvaliado): string {
+  const f = l.unidade === 'quantidade' ? fmtQtd : fmtBRL;
+  const falta = Math.abs(l.folga);
+  return l.folga >= -0.0001
+    ? `${l.rotulo}: restam ${f(l.folga)}.`
+    : `${l.rotulo}: ${f(l.solicitado)} pedidos, ${f(l.disponivel)} disponíveis. Faltam ${f(falta)}.`;
+}
+
 export function avaliarCabimento(
   pedido: { quantidade: number; valor: number },
   saldos: SaldosDisponiveis,
@@ -123,6 +143,18 @@ export function avaliarCabimento(
           unidade: 'valor',
           folga: Number((disp - pedido.valor).toFixed(2)),
           providencia,
+          // ── Por que o estimativo não barra ───────────────────────────────
+          //
+          // O órgão empenha um valor inicial e REFORÇA conforme o consumo se
+          // materializa — no 149/2024 a nota inicial é de R$ 22,55 num
+          // contrato de R$ 81.180,00, e isso é prática regular.
+          //
+          // Enquanto os reforços não estiverem registrados aqui, o saldo que
+          // o sistema conhece é reconhecidamente parcial. Afirmar "não cabe"
+          // com base nele seria acusar falta a partir do que não se sabe — e
+          // quem governa a quantidade no estimativo é o contrato, que está
+          // sendo conferido logo abaixo.
+          informativo: true,
         });
       }
     } else if (saldos.empenho.saldoQtd != null) {
@@ -165,22 +197,27 @@ export function avaliarCabimento(
     });
   }
 
-  if (limites.length === 0) {
+  const decidem = limites.filter(l => !l.informativo);
+  const avisos = limites.filter(l => l.informativo && l.folga < -0.0001);
+
+  if (decidem.length === 0) {
     return {
-      cabe: true, gargalo: null, limites: [],
-      frase: 'Nenhum saldo registrado para conferir — o pedido passa sem verificação.',
+      cabe: true, gargalo: null, avisos, limites,
+      frase: limites.length === 0
+        ? 'Nenhum saldo registrado para conferir — o pedido passa sem verificação.'
+        : 'Sem limite que decida: o que há é referência. O pedido passa.',
     };
   }
 
   // O mais apertado manda. Empate de folga: a ordem de `limites` decide, e ela
   // põe o empenho primeiro de propósito — é o que tem a consequência legal
   // mais grave.
-  const gargalo = limites.reduce((pior, l) => (l.folga < pior.folga ? l : pior));
+  const gargalo = decidem.reduce((pior, l) => (l.folga < pior.folga ? l : pior));
   const cabe = gargalo.folga >= -0.0001;
 
   if (cabe) {
     return {
-      cabe: true, gargalo, limites,
+      cabe: true, gargalo, avisos, limites,
       frase: gargalo.unidade === 'quantidade'
         ? `Cabe. O mais apertado é ${gargalo.rotulo}: restam ${fmtQtd(gargalo.folga)} depois deste pedido.`
         : `Cabe. O mais apertado é ${gargalo.rotulo}: restam ${fmtBRL(gargalo.folga)} depois deste pedido.`,
@@ -189,7 +226,7 @@ export function avaliarCabimento(
 
   const falta = Math.abs(gargalo.folga);
   return {
-    cabe: false, gargalo, limites,
+    cabe: false, gargalo, avisos, limites,
     frase: gargalo.unidade === 'quantidade'
       ? `Não cabe: ${fmtQtd(gargalo.solicitado)} pedidos, ${fmtQtd(gargalo.disponivel)} disponíveis em ${gargalo.rotulo}. Faltam ${fmtQtd(falta)}.`
       : `Não cabe: ${fmtBRL(gargalo.solicitado)} pedidos, ${fmtBRL(gargalo.disponivel)} disponíveis em ${gargalo.rotulo}. Faltam ${fmtBRL(falta)}.`,
