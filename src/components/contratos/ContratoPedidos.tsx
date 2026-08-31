@@ -15,6 +15,7 @@ import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
 import { situacaoDoPrazo } from '@/lib/contratos/prazo-de-entrega';
 import { useDocumentoFiscal, useDocumentosPorNumeroNota, chaveDoNumero } from '@/hooks/useDocumentoFiscal';
+import { useNotasDosPedidos } from '@/hooks/useNotaDoPedido';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,6 +124,8 @@ const tiposDocumento = [
 
 export default function ContratoPedidos({ contratoId }: { contratoId: string }) {
   const { data: docsPorNumero } = useDocumentosPorNumeroNota();
+  // A nota pelo VÍNCULO, não pelo número digitado. Ver useNotaDoPedido.
+  const { data: notaDoPedido } = useNotasDosPedidos(contratoId);
   const { abrirArquivo } = useDocumentoFiscal();
 
   /** Abre o DANFE arquivado no Financeiro, por URL assinada. */
@@ -2101,14 +2104,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         </button>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm max-w-[200px]">
-                      {/* A descrição do objeto não cabe em 200px e a leitura
-                          completa é o que diz O QUE foi pedido. Truncar sem
-                          dar como abrir esconde justamente isso. */}
+                    <TableCell className="text-sm min-w-[16rem] max-w-[22rem]">
+                      {/* ── Quebrar em duas linhas, não cortar na primeira ────
+                          Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
+                          exatamente no número, que é a parte que identifica o
+                          pedido. Duas linhas mostram a descrição inteira na
+                          maioria dos casos; o clique continua abrindo o texto
+                          completo para os poucos que passam disso. */}
                       {p.descricao ? (
                         <button
                           type="button"
-                          className="truncate block w-full text-left hover:underline cursor-pointer"
+                          className="block w-full text-left hover:underline cursor-pointer line-clamp-2 leading-snug"
                           title="Ver descrição completa"
                           onClick={() => setLendo(p)}
                         >
@@ -2166,7 +2172,34 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-sm">
                       <div className="space-y-1">
-                        {p.nota_fiscal && (() => {
+                        {/* ── Primeiro o vínculo, depois o número ──────────
+                            O caminho por chave estrangeira — pedido →
+                            lançamento → documento — acha a nota mesmo quando
+                            `nota_fiscal` do pedido ficou vazio, que é o caso de
+                            todo pedido criado antes de o documento ser lido.
+                            Casamento por texto depende de alguém ter digitado
+                            igual dos dois lados; chave estrangeira não depende
+                            de ninguém. */}
+                        {notaDoPedido?.[p.id] && (
+                          <button
+                            type="button"
+                            onClick={() => abrirArquivoDoContrato(
+                              notaDoPedido[p.id].storage_path, notaDoPedido[p.id].arquivo_nome)}
+                            title={`Abrir ${notaDoPedido[p.id].arquivo_nome} em nova aba`}
+                            className="block w-fit"
+                          >
+                            <Badge variant="outline"
+                              className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                              <FileText className="w-3 h-3 mr-1 inline" />
+                              {formatarNumeroNfe(notaDoPedido[p.id].numero) ?? notaDoPedido[p.id].numero ?? 'documento'}
+                              {p.nf_quitada && p.data_quitacao && (
+                                <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                              )}
+                              <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                            </Badge>
+                          </button>
+                        )}
+                        {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
                           // O número da nota é o elo entre o pedido e o
                           // documento arquivado no Financeiro: o pedido não
                           // guarda lancamento_id. Havendo arquivo, o selo vira
@@ -2241,7 +2274,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </Badge>
                           );
                         })}
-                        {!p.nota_fiscal && linkedNfs.length === 0 && (
+                        {!notaDoPedido?.[p.id] && !p.nota_fiscal && linkedNfs.length === 0 && (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </div>
