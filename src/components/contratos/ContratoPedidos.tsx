@@ -2066,7 +2066,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <TableHead className="text-sm text-right whitespace-nowrap">Vlr Total</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap">Data</TableHead>
                 <TableHead className="text-sm text-center whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-sm text-center whitespace-nowrap">Status Kanban</TableHead>
+                <TableHead className="text-sm text-center whitespace-nowrap"
+                  title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
+                  Etapa no Kanban
+                </TableHead>
                 <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
                 {/* Fixa à direita. As colunas cresceram quando a fonte subiu
                     para 14px e empurraram as ações para fora da area visivel —
@@ -2172,33 +2175,51 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </TableCell>
                     <TableCell className="text-sm">
                       <div className="space-y-1">
-                        {/* ── Primeiro o vínculo, depois o número ──────────
-                            O caminho por chave estrangeira — pedido →
-                            lançamento → documento — acha a nota mesmo quando
-                            `nota_fiscal` do pedido ficou vazio, que é o caso de
-                            todo pedido criado antes de o documento ser lido.
-                            Casamento por texto depende de alguém ter digitado
-                            igual dos dois lados; chave estrangeira não depende
-                            de ninguém. */}
-                        {notaDoPedido?.[p.id] && (
-                          <button
-                            type="button"
-                            onClick={() => abrirArquivoDoContrato(
-                              notaDoPedido[p.id].storage_path, notaDoPedido[p.id].arquivo_nome)}
-                            title={`Abrir ${notaDoPedido[p.id].arquivo_nome} em nova aba`}
-                            className="block w-fit"
-                          >
-                            <Badge variant="outline"
-                              className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                        {/* ── A coluna da NOTA: número, estado e o documento ──
+                            Aqui é onde a nota vive. O número identifica; a
+                            quitação é estado DELA, não do pedido — e estava na
+                            coluna de ações, sem cabeçalho, parecendo um botão.
+                            Clicável só quando há arquivo: número sem link diz
+                            qual nota é e que falta anexá-la, que é mais do que
+                            um traço diz.
+
+                            O vínculo (pedido → lançamento → documento) vem
+                            antes do casamento por texto: ele acha a nota mesmo
+                            quando `nota_fiscal` do pedido ficou vazio. */}
+                        {notaDoPedido?.[p.id] && (() => {
+                          const nd = notaDoPedido[p.id];
+                          const rotulo = (
+                            <>
                               <FileText className="w-3 h-3 mr-1 inline" />
-                              {formatarNumeroNfe(notaDoPedido[p.id].numero) ?? notaDoPedido[p.id].numero ?? 'documento'}
+                              {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
                               {p.nf_quitada && p.data_quitacao && (
-                                <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                <span className="ml-1 text-success">
+                                  • Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                </span>
                               )}
-                              <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                            </Badge>
-                          </button>
-                        )}
+                            </>
+                          );
+                          if (!nd.storage_path) {
+                            return (
+                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
+                                {rotulo}
+                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <button type="button" className="block w-fit"
+                              onClick={() => abrirArquivoDoContrato(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
+                              title={`Abrir ${nd.arquivo_nome} em nova aba`}>
+                              <Badge variant="outline"
+                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                {rotulo}
+                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                              </Badge>
+                            </button>
+                          );
+                        })()}
                         {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
                           // O número da nota é o elo entre o pedido e o
                           // documento arquivado no Financeiro: o pedido não
@@ -2293,21 +2314,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             contrato_id: contratoId,
                           }}
                         />
-                        {p.nf_quitada ? (
-                          <Badge className="text-xs bg-success/10 text-success border border-success/30 whitespace-nowrap">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> NF Quitada
-                          </Badge>
-                        ) : (
-                          p.status === 'entregue' && (isFinanceiro || isAdmin) && (
-                            <Button
-                              size="sm" variant="outline"
-                              className="h-7 px-2 text-xs text-success border-success/30 hover:bg-success/5"
-                              onClick={() => openNfDialog(p)}
-                              title="Registrar pagamento da NF-e e gerar bonificação"
-                            >
-                              <DollarSign className="w-3 h-3 mr-1" /> NF Quitada
-                            </Button>
-                          )
+                        {/* Só a AÇÃO fica aqui. O ESTADO "quitada" mudou para a
+                            coluna NF-e, junto da nota a que ele se refere: o
+                            mesmo lugar mostrando um selo verde às vezes e um
+                            botão outras é o que fazia "NF Quitada" parecer
+                            coluna sem cabeçalho. */}
+                        {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="h-7 px-2 text-xs text-success border-success/30 hover:bg-success/5"
+                            onClick={() => openNfDialog(p)}
+                            title="Registrar pagamento da NF-e e gerar bonificação"
+                          >
+                            <DollarSign className="w-3 h-3 mr-1" /> Quitar NF
+                          </Button>
                         )}
                         {(isFinanceiro || isAdmin) && (
                           /* Pedido retroativo — cadastrado depois de o

@@ -26,9 +26,10 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
  */
 
 export type NotaDoPedido = {
-  documento_id: string;
-  storage_path: string;
-  arquivo_nome: string;
+  /** Nulo quando o título existe e o documento ainda não foi anexado. */
+  documento_id: string | null;
+  storage_path: string | null;
+  arquivo_nome: string | null;
   /** O número que o Financeiro conhece — pode existir aqui e faltar no pedido. */
   numero: string | null;
   tem_xml: boolean;
@@ -73,15 +74,17 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
       const mapa: Record<string, NotaDoPedido> = {};
       for (const l of lancamentos) {
         const d = porLancamento.get(l.id);
-        if (!d) continue;
+        // Entra mesmo SEM documento: o número da nota vem do título e vale
+        // ser mostrado. "000.000.125" sem arquivo diz qual nota é e que falta
+        // anexá-la; um traço não diz nem uma coisa nem outra.
         mapa[l.contrato_pedido_id] = {
-          documento_id: d.id,
-          storage_path: d.storage_path,
-          arquivo_nome: d.arquivo_nome,
+          documento_id: d?.id ?? null,
+          storage_path: d?.storage_path ?? null,
+          arquivo_nome: d?.arquivo_nome ?? null,
           // O número do documento vale mais que o do registro: é o que a nota
           // diz. Faltando, o do lançamento.
-          numero: d.numero ?? l.numero_documento ?? null,
-          tem_xml: !!d.arquivo_xml,
+          numero: d?.numero ?? l.numero_documento ?? null,
+          tem_xml: !!d?.arquivo_xml,
         };
       }
       return mapa;
