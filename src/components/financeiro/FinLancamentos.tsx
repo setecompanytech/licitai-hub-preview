@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   Pencil,
+  Link2,
   Trash2,
   Search,
   TrendingUp,
@@ -31,6 +32,8 @@ import {
 } from "@/hooks/useFinanceiro";
 import { formatBRL, formatDate, statusColor, statusLabel, tipoLabel } from "@/lib/financeiro/formatters";
 import LancamentoDialog from "./LancamentoDialog";
+import VincularContratoDialog from "./VincularContratoDialog";
+import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +68,8 @@ export default function FinLancamentos() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Lancamento | null>(null);
+  /** O lançamento cujo vínculo com a Gestão está sendo feito. */
+  const [vinculando, setVinculando] = useState<LancamentoParaVincular | null>(null);
   const [confirmDel, setConfirmDel] = useState<Lancamento | null>(null);
   const [sort, setSort] = useState<{ campo: "data_competencia" | "data_vencimento"; dir: "asc" | "desc" }>({
     campo: "data_competencia",
@@ -488,6 +493,26 @@ export default function FinLancamentos() {
 
                         {/* Ações */}
                         <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                          {/* O mesmo elo de Contas a Receber. Ele nascera só
+                              lá, e esta é a tela em que se procura um
+                              lançamento antigo pelo nome — justamente o gesto
+                              de quem vai ligar faturamento retroativo a um
+                              contrato que entrou na gestão depois. */}
+                          {l.tipo === "a_receber" && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              title={(l as { contrato_pedido_id?: string | null }).contrato_pedido_id
+                                ? "Vinculado a um pedido — clique para trocar"
+                                : "Vincular a um contrato/pedido em Gestão"}
+                              onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
+                            >
+                              <Link2 className={`w-3.5 h-3.5 ${
+                                (l as { contrato_pedido_id?: string | null }).contrato_pedido_id ? "text-primary" : ""
+                              }`} />
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="ghost"
@@ -522,6 +547,11 @@ export default function FinLancamentos() {
 
       {/* ── Dialogs ── */}
       <LancamentoDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} />
+
+      <VincularContratoDialog
+        lancamento={vinculando}
+        onFechar={() => setVinculando(null)}
+      />
 
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent>
