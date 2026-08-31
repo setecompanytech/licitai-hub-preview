@@ -8,6 +8,23 @@
  * qualquer sinal.
  */
 
+/**
+ * As três modalidades, e onde cada uma está escrita.
+ *
+ * A Lei 4.320/64, art. 60, nomeia duas: o §2º define o empenho POR ESTIMATIVA
+ * ("despesa cujo montante não se possa determinar") e o §3º autoriza o GLOBAL
+ * ("despesas contratuais e outras, sujeitas a parcelamento").
+ *
+ * As três juntas — inclusive o ORDINÁRIO — vêm do Decreto 93.872/1986, que
+ * consolida a execução financeira da União, e dos regulamentos estaduais e
+ * municipais correlatos. É norma, não doutrina: a distinção importa porque
+ * regulamento se cita e se cumpre.
+ *
+ * Ressalva de alcance: o Decreto 93.872/86 rege a UNIÃO. Os contratos aqui são
+ * estaduais (PMPA, CBMPA), e o Pará tem regulamento próprio — a taxonomia é a
+ * mesma, consolidada nacionalmente pelo MCASP, mas a norma que se cita numa
+ * peça contra o Estado é a estadual.
+ */
 export type TipoDeEmpenho = 'ordinario' | 'global' | 'estimativo';
 
 export const ROTULO_DO_EMPENHO: Record<TipoDeEmpenho, string> = {
@@ -21,6 +38,11 @@ export const ROTULO_DO_EMPENHO: Record<TipoDeEmpenho, string> = {
  *
  * Não é detalhe de nomenclatura: o mesmo excesso de R$ 5.000 é irregularidade
  * grave num ordinário e rotina administrativa num estimativo.
+ *
+ * As definições seguem o Decreto 93.872/86: ordinário quando o valor é
+ * previamente conhecido e o pagamento se faz de uma só vez; por estimativa
+ * quando o valor não se pode determinar de antemão; global quando a despesa é
+ * contratual ou sujeita a parcelamento.
  */
 export const SENTIDO_DO_TIPO: Record<TipoDeEmpenho, string> = {
   ordinario:

@@ -117,7 +117,8 @@ export function avaliarCabimento(
   //                       vale como limite.
   //
   //   ESTIMATIVO          o montante NÃO é determinável — é a própria razão de
-  //                       ele existir (art. 60, §2º). A quantidade que aparece
+  //                       ele existir (Lei 4.320/64, art. 60, §2º; modalidades
+  //                       detalhadas no Decreto 93.872/86). A quantidade que aparece
   //                       na nota é formalidade: o 149/2024 traz "1 pacote"
   //                       num contrato de 3.600. Conferir o pedido contra esse
   //                       1 acusaria falta em TODA entrega, e alerta que sempre
