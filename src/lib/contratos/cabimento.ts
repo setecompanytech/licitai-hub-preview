@@ -49,8 +49,18 @@ export type Cabimento = {
 };
 
 export type SaldosDisponiveis = {
-  /** Saldo da cota do empenho, em quantidade. Ausente = sem empenho vinculado. */
-  empenho?: { rotulo: string; saldoQtd: number | null; tipo?: string | null } | null;
+  /**
+   * O saldo do empenho. Ausente = sem empenho vinculado.
+   *
+   * Vem nas DUAS unidades porque a que vale muda com a espécie — ver a nota
+   * sobre o estimativo em `avaliarCabimento`.
+   */
+  empenho?: {
+    rotulo: string;
+    saldoQtd: number | null;
+    saldoValor?: number | null;
+    tipo?: string | null;
+  } | null;
   /** Saldo do item do contrato, em quantidade. */
   item?: { rotulo: string; saldoQtd: number | null } | null;
   /** Saldo do contrato, em VALOR — é assim que ele é controlado. */
@@ -76,19 +86,57 @@ export function avaliarCabimento(
 ): Cabimento {
   const limites: LimiteAvaliado[] = [];
 
-  if (saldos.empenho && saldos.empenho.saldoQtd != null) {
-    const disp = saldos.empenho.saldoQtd;
-    limites.push({
-      origem: 'empenho',
-      rotulo: saldos.empenho.rotulo,
-      disponivel: disp,
-      solicitado: pedido.quantidade,
-      unidade: 'quantidade',
-      folga: Number((disp - pedido.quantidade).toFixed(4)),
-      providencia: saldos.empenho.tipo === 'estimativo'
-        ? 'Peça o reforço do empenho antes de entregar — no estimativo isso é rotina, não irregularidade.'
-        : 'Peça novo empenho: entregar além do empenhado é despesa sem cobertura (Lei 4.320/64, art. 60).',
-    });
+  // ── O empenho: qual unidade vale depende da espécie ─────────────────────
+  //
+  // O empenho reserva DINHEIRO — é o que o art. 60 da Lei 4.320/64 protege. A
+  // quantidade impressa nele é descrição, e a fidelidade dessa descrição muda
+  // com a espécie:
+  //
+  //   ORDINÁRIO e GLOBAL  empenham quantidade definida. "100 pacotes" são 100
+  //                       pacotes, e a centésima entrega esgota. A quantidade
+  //                       vale como limite.
+  //
+  //   ESTIMATIVO          o montante NÃO é determinável — é a própria razão de
+  //                       ele existir (art. 60, §2º). A quantidade que aparece
+  //                       na nota é formalidade: o 149/2024 traz "1 pacote"
+  //                       num contrato de 3.600. Conferir o pedido contra esse
+  //                       1 acusaria falta em TODA entrega, e alerta que sempre
+  //                       dispara é alerta que ninguém lê.
+  //
+  // Quem governa a quantidade no estimativo é o CONTRATO e o ITEM, que estão
+  // logo abaixo. O empenho continua sendo conferido — pelo valor, que é o que
+  // ele de fato reservou.
+  if (saldos.empenho) {
+    const ehEstimativo = saldos.empenho.tipo === 'estimativo';
+    const providencia = ehEstimativo
+      ? 'Peça o reforço do empenho antes de faturar — no estimativo isso é rotina, não irregularidade.'
+      : 'Peça novo empenho: entregar além do empenhado é despesa sem cobertura (Lei 4.320/64, art. 60).';
+
+    if (ehEstimativo) {
+      if (saldos.empenho.saldoValor != null) {
+        const disp = saldos.empenho.saldoValor;
+        limites.push({
+          origem: 'empenho',
+          rotulo: `${saldos.empenho.rotulo} (valor empenhado)`,
+          disponivel: disp,
+          solicitado: pedido.valor,
+          unidade: 'valor',
+          folga: Number((disp - pedido.valor).toFixed(2)),
+          providencia,
+        });
+      }
+    } else if (saldos.empenho.saldoQtd != null) {
+      const disp = saldos.empenho.saldoQtd;
+      limites.push({
+        origem: 'empenho',
+        rotulo: saldos.empenho.rotulo,
+        disponivel: disp,
+        solicitado: pedido.quantidade,
+        unidade: 'quantidade',
+        folga: Number((disp - pedido.quantidade).toFixed(4)),
+        providencia,
+      });
+    }
   }
 
   if (saldos.item && saldos.item.saldoQtd != null) {

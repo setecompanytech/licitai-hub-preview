@@ -352,6 +352,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     Array<{
       empenho_id: string; numero: string; tipo: string; arquivo_id: string | null;
       cota: string; saldo_qtd: number; qtd_empenhada: number;
+      // O saldo em VALOR. No estimativo é ele que vale: a quantidade impressa
+      // na nota é formalidade — o 149/2024 traz "1 pacote" num contrato de
+      // 3.600 —, e o que o empenho reservou de fato é dinheiro.
+      saldo_valor: number;
     }>
   >([]);
   // O PDF da Ordem/Empenho guardado nesta sessão de upload, para ligar ao
@@ -512,7 +516,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       { quantidade: qtd, valor },
       {
         empenho: emp
-          ? { rotulo: `cota ${emp.cota} do empenho ${emp.numero}`, saldoQtd: emp.saldo_qtd, tipo: emp.tipo }
+          ? {
+              rotulo: `cota ${emp.cota} do empenho ${emp.numero}`,
+              saldoQtd: emp.saldo_qtd,
+              saldoValor: emp.saldo_valor,
+              tipo: emp.tipo,
+            }
           : null,
         item: item?.saldo_quantitativo != null
           ? { rotulo: `item ${item.codigo_item ?? ''}`.trim(), saldoQtd: Number(item.saldo_quantitativo) }
@@ -622,11 +631,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         const linhas: typeof saldosDeEmpenho = [];
         for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string; arquivo_id: string | null }>) {
           const { data: saldo } = await supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never);
-          for (const s of (saldo ?? []) as unknown as Array<{ cota: string; saldo_qtd: number; qtd_empenhada: number }>) {
+          for (const s of (saldo ?? []) as unknown as Array<{
+            cota: string; saldo_qtd: number; qtd_empenhada: number; saldo_valor: number;
+          }>) {
             linhas.push({
               empenho_id: e.id, numero: e.numero, tipo: e.tipo, arquivo_id: e.arquivo_id,
               cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0,
               qtd_empenhada: Number(s.qtd_empenhada) || 0,
+              saldo_valor: Number(s.saldo_valor) || 0,
             });
           }
         }

@@ -49,8 +49,10 @@ describe('avaliarCabimento', () => {
   });
 
   it('a providência muda com a espécie do empenho', () => {
+    // Cada espécie é conferida na SUA unidade: o estimativo pelo valor, que é
+    // o que ele reservou; o global pela quantidade, que ele empenhou de fato.
     const estimativo = avaliarCabimento({ quantidade: 100, valor: 43 }, {
-      empenho: { rotulo: 'cota', saldoQtd: 10, tipo: 'estimativo' },
+      empenho: { rotulo: 'empenho', saldoQtd: 10, saldoValor: 10, tipo: 'estimativo' },
     });
     const global = avaliarCabimento({ quantidade: 100, valor: 43 }, {
       empenho: { rotulo: 'cota', saldoQtd: 10, tipo: 'global' },
@@ -93,5 +95,68 @@ describe('avaliarCabimento', () => {
       item: { rotulo: 'item', saldoQtd: 50 },
     });
     expect(c.gargalo?.origem).toBe('empenho');
+  });
+});
+
+describe('a espécie do empenho muda a unidade conferida', () => {
+  /**
+   * O 149/2024: contrato de 3.600 pacotes a R$ 22,55, e a nota estimativa traz
+   * "1 pacote". Conferir a entrega contra esse 1 acusaria falta em TODA
+   * entrega — e alerta que sempre dispara é alerta que ninguém lê.
+   */
+  it('estimativo NÃO é conferido por quantidade — a nota traz formalidade', () => {
+    const r = avaliarCabimento(
+      { quantidade: 300, valor: 6765 },
+      {
+        empenho: { rotulo: 'empenho 2025NE000064', saldoQtd: 1, saldoValor: 20000, tipo: 'estimativo' },
+        item: { rotulo: 'item 1', saldoQtd: 3600 },
+        contrato: { saldoValor: 81180 },
+      },
+    );
+    expect(r.cabe).toBe(true);
+    // O empenho entra pelo VALOR, que é o que ele de fato reservou.
+    const doEmpenho = r.limites.find(l => l.origem === 'empenho')!;
+    expect(doEmpenho.unidade).toBe('valor');
+    expect(doEmpenho.disponivel).toBe(20000);
+  });
+
+  it('estimativo estourado no VALOR avisa, e a providência é reforço', () => {
+    const r = avaliarCabimento(
+      { quantidade: 1000, valor: 22550 },
+      {
+        empenho: { rotulo: 'empenho 2025NE000064', saldoQtd: 1, saldoValor: 20000, tipo: 'estimativo' },
+        item: { rotulo: 'item 1', saldoQtd: 3600 },
+        contrato: { saldoValor: 81180 },
+      },
+    );
+    expect(r.cabe).toBe(false);
+    expect(r.gargalo?.origem).toBe('empenho');
+    expect(r.gargalo?.providencia).toContain('reforço');
+  });
+
+  it('global e ordinário continuam conferidos por quantidade', () => {
+    // "100 pacotes" num global são 100 pacotes, e a centésima entrega esgota.
+    const r = avaliarCabimento(
+      { quantidade: 120, valor: 500 },
+      {
+        empenho: { rotulo: 'cota principal do empenho', saldoQtd: 100, saldoValor: 99999, tipo: 'global' },
+        contrato: { saldoValor: 99999 },
+      },
+    );
+    expect(r.cabe).toBe(false);
+    expect(r.gargalo?.unidade).toBe('quantidade');
+    expect(r.gargalo?.providencia).toContain('art. 60');
+  });
+
+  it('estimativo sem valor registrado não é avaliado — nem liberado, nem barrado', () => {
+    const r = avaliarCabimento(
+      { quantidade: 300, valor: 6765 },
+      {
+        empenho: { rotulo: 'empenho', saldoQtd: 1, saldoValor: null, tipo: 'estimativo' },
+        item: { rotulo: 'item 1', saldoQtd: 3600 },
+      },
+    );
+    expect(r.limites.find(l => l.origem === 'empenho')).toBeUndefined();
+    expect(r.limites.find(l => l.origem === 'item')).toBeTruthy();
   });
 });
