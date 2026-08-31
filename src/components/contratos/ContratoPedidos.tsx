@@ -2188,9 +2188,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </>
                           );
                           if (!doc) {
+                            // Número sem arquivo é indistinguível de link
+                            // quebrado: o selo fica igual, só não clica. Dizer
+                            // qual dos dois é — e onde se resolve — evita a
+                            // conclusão de que o sistema perdeu a nota.
                             return (
-                              <Badge variant="outline" className="text-xs block w-fit text-foreground">
+                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
                                 {conteudo}
+                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
                               </Badge>
                             );
                           }
@@ -2198,7 +2204,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <button
                               type="button"
                               onClick={() => abrirDanfe(doc.storage_path, doc.arquivo_nome)}
-                              title={`Abrir ${doc.arquivo_nome}`}
+                              title={`Abrir ${doc.arquivo_nome} em nova aba`}
                               className="block w-fit"
                             >
                               <Badge variant="outline"
