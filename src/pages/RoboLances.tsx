@@ -155,7 +155,13 @@ export default function RoboLances() {
       .eq('empresa_id', empresaAtiva.id);
     if (processoId) q = q.eq('licitacao_id', processoId);
     q.order('created_at', { ascending: false }).then(({ data, error }) => {
-      if (error) { console.error('[robo-lances] carregar disputas', error.message); return; }
+      if (error) {
+        // Painel vazio sem explicação é indistinguível de "não há disputa" — e a
+        // pessoa conclui que perdeu o trabalho. O erro tem que aparecer na tela.
+        console.error('[robo-lances] carregar disputas', error.message);
+        toast.error(`Não foi possível carregar as disputas: ${error.message}`, { duration: 12000 });
+        return;
+      }
       setLances(((data || []) as unknown as Record<string, unknown>[]).map(linhaParaLance));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,37 +283,43 @@ export default function RoboLances() {
 
   /* ── handlers ── */
   const handleSaveLance = (lance: LanceConfig) => {
-    // Grava no banco — antes a disputa sumia ao recarregar a página.
-    if (user && empresaAtiva?.id) {
-      const linha = {
-        id: lance.id,
-        empresa_id: empresaAtiva.id,
-        user_id: user.id,
-        licitacao_id: lance.licitacaoId ?? processoId ?? null,
-        edital: lance.edital,
-        portal: lance.portal || null,
-        tipo_disputa: lance.tipoDisputa,
-        valor_referencia: lance.valorReferencia,
-        valor_inicial: lance.valorInicial,
-        valor_minimo: lance.valorMinimo,
-        decremento_min: lance.decrementoMin,
-        decremento_percentual: lance.decrementoPercentual,
-        intervalo_segundos: lance.intervaloSegundos,
-        max_lances: lance.maxLances,
-        modo_automatico: lance.modoAutomatico,
-        horario: lance.horario || null,
-        status: lance.status,
-        meu_lance: lance.meuLance,
-        valor_atual: lance.valorAtual,
-        itens: lance.itens as never,
-      };
-      supabase
-        .from('robo_lances_disputas' as never)
-        .upsert(linha as never, { onConflict: 'id' })
-        .then(({ error }) => {
-          if (error) toast.error(`Disputa não foi salva: ${error.message}`, { duration: 12000 });
-        });
+    // Sem empresa ativa não há onde gravar: `empresa_id` é NOT NULL e a RLS é por
+    // membro da empresa. Antes o bloco inteiro era pulado em silêncio e a tela
+    // ainda dizia "Nova disputa adicionada!" — a estratégia sumia ao recarregar,
+    // que é justamente a queixa da véspera de pregão.
+    if (!user || !empresaAtiva?.id) {
+      toast.error('Selecione uma empresa ativa antes de salvar a disputa.', { duration: 10000 });
+      return;
     }
+
+    const linha = {
+      id: lance.id,
+      empresa_id: empresaAtiva.id,
+      user_id: user.id,
+      licitacao_id: lance.licitacaoId ?? processoId ?? null,
+      edital: lance.edital,
+      portal: lance.portal || null,
+      tipo_disputa: lance.tipoDisputa,
+      valor_referencia: lance.valorReferencia,
+      valor_inicial: lance.valorInicial,
+      valor_minimo: lance.valorMinimo,
+      decremento_min: lance.decrementoMin,
+      decremento_percentual: lance.decrementoPercentual,
+      intervalo_segundos: lance.intervaloSegundos,
+      max_lances: lance.maxLances,
+      modo_automatico: lance.modoAutomatico,
+      horario: lance.horario || null,
+      status: lance.status,
+      meu_lance: lance.meuLance,
+      valor_atual: lance.valorAtual,
+      itens: lance.itens as never,
+    };
+    supabase
+      .from('robo_lances_disputas' as never)
+      .upsert(linha as never, { onConflict: 'id' })
+      .then(({ error }) => {
+        if (error) toast.error(`Disputa não foi salva: ${error.message}`, { duration: 12000 });
+      });
 
     setLances((prev) => {
       const exists = prev.find((l) => l.id === lance.id);
@@ -321,22 +333,56 @@ export default function RoboLances() {
     setSelectedId(lance.id);
   };
 
-  const handleDelete = (id: string) => {
+  // Apagar precisa alcançar o banco: antes só saía da tela e voltava ao
+  // recarregar. O `select()` existe porque a policy de DELETE é de admin da
+  // empresa — sem ele, um não-admin veria "removida" e nada teria acontecido.
+  const handleDelete = async (id: string) => {
+    const { data, error } = await supabase
+      .from('robo_lances_disputas' as never)
+      .delete()
+      .eq('id', id)
+      .select('id');
+
+    if (error) {
+      toast.error(`Disputa não foi removida: ${error.message}`, { duration: 12000 });
+      return;
+    }
+    if (!(data as unknown as unknown[] | null)?.length) {
+      toast.error('Disputa não removida: só um administrador da empresa pode apagar.', { duration: 12000 });
+      return;
+    }
+
     setLances((prev) => prev.filter((l) => l.id !== id));
     if (selectedId === id) setSelectedId(null);
     toast.info('Disputa removida.');
   };
 
-  const handleToggleStatus = (id: string) => {
-    setLances((prev) =>
-      prev.map((l) => {
-        if (l.id !== id) return l;
-        if (l.status === 'aguardando') return { ...l, status: 'ativo' as const };
-        if (l.status === 'ativo' || l.status === 'vencendo' || l.status === 'perdendo')
-          return { ...l, status: 'aguardando' as const };
-        return l;
-      })
-    );
+  const proximoStatus = (atual: LanceConfig['status']): LanceConfig['status'] | null => {
+    if (atual === 'aguardando') return 'ativo';
+    if (atual === 'ativo' || atual === 'vencendo' || atual === 'perdendo') return 'aguardando';
+    return null;
+  };
+
+  // O status também vive no banco. Antes a mudança era só de tela e voltava para
+  // "aguardando" ao recarregar — numa disputa marcada como ativa, isso engana.
+  const handleToggleStatus = async (id: string) => {
+    const atual = lances.find((l) => l.id === id);
+    if (!atual) return;
+    const novo = proximoStatus(atual.status);
+    if (!novo) return;
+
+    setLances((prev) => prev.map((l) => (l.id === id ? { ...l, status: novo } : l)));
+
+    const { error } = await supabase
+      .from('robo_lances_disputas' as never)
+      .update({ status: novo } as never)
+      .eq('id', id);
+
+    if (error) {
+      // Desfaz na tela: mostrar um estado que o banco não tem é pior que não mudar.
+      setLances((prev) => prev.map((l) => (l.id === id ? { ...l, status: atual.status } : l)));
+      toast.error(`Status não foi salvo: ${error.message}`, { duration: 12000 });
+    }
   };
 
   const handleEndDispute = async (resultado: 'venceu' | 'perdeu') => {
