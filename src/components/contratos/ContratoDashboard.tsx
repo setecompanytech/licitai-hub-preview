@@ -28,7 +28,11 @@ import ContratoEficacia from './ContratoEficacia';
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 export default function ContratoDashboard({ contratoId }: { contratoId: string }) {
-  const [data, setData] = useState<{ contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[] } | null>(null);
+  const [data, setData] = useState<{
+    contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[];
+    /** Nulo enquanto a migration 20260831000002 não tiver sido aplicada. */
+    custoRealizado: { custo_pago: number; custo_comprometido: number; custo_digitado: number } | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
   const [editandoVigencia, setEditandoVigencia] = useState(false);
@@ -51,12 +55,21 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId),
       ]);
       if (cancelled) return;
+      // O custo que VEIO DO FINANCEIRO. Consulta separada e tolerante: a função
+      // nasce de migration colada à mão, e sem ela o painel apenas volta ao
+      // custo digitado — não quebra.
+      const { data: realizado } = await supabase
+        .rpc('contrato_custo_realizado' as never, { p_contrato_id: contratoId } as never);
+      if (cancelled) return;
       setData({
         contrato: contratoRes.data,
         itens: (itensRes.data as any[]) || [],
         pedidos: (pedidosRes.data as any[]) || [],
         custos: (custosRes.data as any[]) || [],
         aditivos: (aditivosRes.data as any[]) || [],
+        custoRealizado: (realizado as unknown as Array<{
+          custo_pago: number; custo_comprometido: number; custo_digitado: number;
+        }> | null)?.[0] ?? null,
       });
       setLoading(false);
     };
@@ -96,8 +109,22 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const totalAditivoQtdAcrescimo = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_acrescimo || 0), 0);
     const totalAditivoQtdSupressao = data.aditivos.reduce((s: number, a: any) => s + (a.quantidade_supressao || 0), 0);
     
-    // Custos from contrato_custos table
-    const totalCustosTabela = data.custos.reduce((s: number, cc: any) => s + (cc.valor || 0), 0);
+    // ── O custo agora vem do Financeiro ─────────────────────────────────
+    //
+    // `contrato_custo_realizado` soma as despesas atribuídas a este contrato e
+    // os custos que não nascem de lançamento, IGNORANDO a parcela cujo
+    // lançamento já está atribuído — a dupla contagem é impedida lá, não aqui.
+    //
+    // Por isso `custo_digitado` da função substitui a soma crua de
+    // `contrato_custos`: somar a tabela inteira reintroduziria justamente o que
+    // a função exclui.
+    const cr = data.custoRealizado;
+    const custoPago = Number(cr?.custo_pago ?? 0);
+    const custoComprometido = Number(cr?.custo_comprometido ?? 0);
+    const custoDoFinanceiro = custoPago + custoComprometido;
+    const totalCustosTabela = cr
+      ? Number(cr.custo_digitado ?? 0)
+      : data.custos.reduce((s: number, cc: { valor?: number }) => s + (cc.valor || 0), 0);
     const custosDiretos = data.custos.filter((cc: any) => cc.tipo === 'custo_direto').reduce((s: number, cc: any) => s + cc.valor, 0);
     const tributos = data.custos.filter((cc: any) => cc.tipo === 'tributo').reduce((s: number, cc: any) => s + cc.valor, 0);
     const frete = data.custos.filter((cc: any) => cc.tipo === 'frete_logistica').reduce((s: number, cc: any) => s + cc.valor, 0);
@@ -106,11 +133,27 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     // Custos from pedidos (custo_total field)
     const custoPedidos = pedidosAtivos.reduce((s: number, p: any) => s + (p.custo_total || 0), 0);
     
-    // Total costs = table costs + pedido costs
-    const totalCustos = totalCustosTabela + custoPedidos;
-    
-    const lucroBruto = faturamento - custosDiretos - custoPedidos;
+    // Total costs = Financeiro + table costs + pedido costs
+    const totalCustos = custoDoFinanceiro + totalCustosTabela + custoPedidos;
+
+    // O custo do Financeiro é DIRETO: é a compra feita para atender este
+    // contrato. Entra no lucro bruto, ao lado dos custos diretos digitados.
+    const lucroBruto = faturamento - custosDiretos - custoPedidos - custoDoFinanceiro;
     const lucroLiquido = faturamento - totalCustos;
+
+    // ── Previsto × realizado ────────────────────────────────────────────────
+    //
+    // O previsto sai da Precificação, que gravou `custo_unitario` em cada item.
+    // Comparado só sobre o que JÁ FOI ENTREGUE: confrontar o custo realizado de
+    // 40% do contrato com o custo previsto de 100% dele daria um desvio que
+    // não existe.
+    const custoPrevistoDoEntregue = data.itens.reduce(
+      (s: number, i: any) => s + (Number(i.custo_unitario) || 0) * (Number(i.quantidade_consumida) || 0),
+      0,
+    );
+    const desvioDeCusto = custoPrevistoDoEntregue > 0
+      ? ((custoDoFinanceiro + totalCustosTabela) - custoPrevistoDoEntregue) / custoPrevistoDoEntregue * 100
+      : null;
     
     // valor_global already includes aditivos via trigger, use it directly
     const valorGlobalEfetivo = c.valor_global || 0;
@@ -140,13 +183,15 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const meses: Record<string, number> = {};
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
-    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+    return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
-  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+  const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -275,6 +320,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           <Card className="p-4 border-l-4 border-l-destructive">
             <div className="text-xs text-muted-foreground mb-1">Custos Totais</div>
             <p className="text-lg font-bold text-destructive">{fmt(totalCustos)}</p>
+            {/* Um cartão, a quebra embaixo. Margem é o que se olha de relance;
+                dois cartões competindo pelo mesmo olhar confundem.
+
+                PAGO e COMPROMETIDO separados porque respondem perguntas
+                diferentes: o comprometido já é custo pelo regime de
+                competência — escondê-lo infla a margem —, mas não saiu do
+                caixa, e somá-los apagaria a posição de caixa. */}
+            {custoPago > 0 && (
+              <p className="text-xs text-muted-foreground">Pago: {fmt(custoPago)}</p>
+            )}
+            {custoComprometido > 0 && (
+              <p className="text-xs text-warning">A pagar: {fmt(custoComprometido)}</p>
+            )}
             {custoPedidos > 0 && (
               <p className="text-xs text-muted-foreground">Custos pedidos: {fmt(custoPedidos)}</p>
             )}
@@ -290,6 +348,58 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
           </Card>
         </div>
+      )}
+
+      {/* ── O que a proposta previu, contra o que aconteceu ─────────────────
+          O previsto sai da Precificação, que gravou `custo_unitario` em cada
+          item. É a única comparação que fecha o ciclo: sem ela, a Precificação
+          estima, a empresa executa, e a estimativa seguinte parte do mesmo
+          lugar da anterior — a execução nunca volta.
+
+          Comparado só sobre o que JÁ FOI ENTREGUE. Confrontar o custo
+          realizado de 40% do contrato com o previsto de 100% dele daria um
+          desvio que não existe. */}
+      {podeVerCustos && custoPrevistoDoEntregue > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold">Custo previsto × realizado</h4>
+            <span className="text-xs text-muted-foreground">sobre o que já foi entregue</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Previsto na proposta</p>
+              <p className="font-semibold tabular-nums">{fmt(custoPrevistoDoEntregue)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Realizado</p>
+              <p className="font-semibold tabular-nums">{fmt(custoDoFinanceiro + totalCustosTabela)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Desvio</p>
+              <p className={`font-semibold tabular-nums ${
+                desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive' : 'text-success'
+              }`}>
+                {desvioDeCusto === null ? '—' : `${desvioDeCusto > 0 ? '+' : ''}${desvioDeCusto.toFixed(1)}%`}
+              </p>
+            </div>
+          </div>
+          {/* Custo acima do previsto durante a execução é o que sustenta um
+              pedido de reequilíbrio — e ele exige demonstrar o desequilíbrio
+              com números, não com impressão. */}
+          {desvioDeCusto !== null && desvioDeCusto > 10 && (
+            <p className="text-xs text-warning mt-2">
+              O custo está {desvioDeCusto.toFixed(1)}% acima do previsto na proposta. Se a causa for
+              externa e imprevisível, é a base para pedir reequilíbrio econômico-financeiro
+              (art. 124, II, “d” da Lei 14.133/2021) — que exige demonstrar o desequilíbrio com números.
+            </p>
+          )}
+          {custoDoFinanceiro === 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Nenhuma despesa foi atribuída a este contrato ainda. Atribua pelo ícone de elo em
+              Financeiro › Contas a Pagar para que o realizado deixe de ser só o custo digitado.
+            </p>
+          )}
+        </Card>
       )}
 
       <DeOndeVem

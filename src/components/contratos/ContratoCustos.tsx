@@ -245,6 +245,23 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
         onSaved={load}
       />
 
+      {/* ── Para que esta tela serve, agora que a despesa tem outro caminho ──
+          A despesa paga vive no Financeiro, com o contrato apontado, e NÃO é
+          copiada para cá. Sem dizer isso, alguém digita aqui um custo que já
+          está em Contas a Pagar — e a dupla contagem que a função de custo
+          impede no banco volta como confusão de quem preenche.
+
+          Aviso curto e permanente, não um alerta: não há nada de errado
+          acontecendo, é a divisão de trabalho entre as duas telas. */}
+      <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+        <b className="text-foreground">Aqui entra o custo que não é lançamento do Financeiro:</b>{' '}
+        mão de obra própria, rateio de despesa fixa, estimativa antes da nota, e a parcela de uma
+        compra que serve a vários contratos.
+        <br />
+        Despesa paga <b>para este contrato</b> não se digita aqui — ela é atribuída pelo ícone de
+        elo em <b>Financeiro › Contas a Pagar</b>, e entra no custo sem ser copiada.
+      </div>
+
       {/* Header + filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
