@@ -233,26 +233,31 @@ export default function AtivacaoChecklist() {
     }
 
     // 5. Verificar credenciais de portal
-    const { data: credenciais } = await supabase
-      .from('credenciais_portal' as any)
-      .select('*')
+    // A tabela é `credenciais_portais` (plural) — o singular devolvia PGRST205 e
+    // o erro descartado virava "pendente", idêntico a não ter credencial nenhuma.
+    // A view `_safe` basta para contar e não traz o `senha_hash` para o navegador.
+    const { data: credenciais, error: errCredenciais } = await supabase
+      .from('credenciais_portais_safe')
+      .select('id')
       .eq('user_id', user.id);
 
-    const temCredencial = credenciais && credenciais.length > 0;
+    const temCredencial = !errCredenciais && !!credenciais && credenciais.length > 0;
     newItems.push({
       id: 'credenciais',
       label: 'Credenciais de Portal',
-      descricao: temCredencial
+      descricao: errCredenciais
+        ? `Não foi possível consultar as credenciais: ${errCredenciais.message}`
+        : temCredencial
         ? `${credenciais.length} portal(is) configurado(s)`
         : 'Configure credenciais para pelo menos um portal de licitação',
-      status: temCredencial ? 'ok' : 'pendente',
+      status: errCredenciais ? 'erro' : temCredencial ? 'ok' : 'pendente',
       icon: Key,
     });
 
     // 6. Verificar healthcheck dos portais
     const { data: healthchecks } = await supabase
-      .from('portal_healthcheck' as any)
-      .select('*')
+      .from('portal_healthcheck')
+      .select('id')
       .eq('status', 'ok');
 
     const portaisOk = healthchecks?.length || 0;
