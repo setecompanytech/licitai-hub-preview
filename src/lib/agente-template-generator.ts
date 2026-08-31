@@ -7,7 +7,7 @@ import { INFRA_FILES } from './agent-template/infrastructure';
 const CORE_FILES: Record<string, string> = {
   'package.json': `{
   "name": "agente-lances-externo",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Agente externo para automação de lances em portais de licitação",
   "main": "src/index.js",
   "scripts": {
@@ -31,8 +31,8 @@ AGENT_API_KEY=sua-chave-secreta-aqui
 # Sessões paralelas (cada uma consome ~500MB RAM)
 MAX_SESSOES_PARALELAS=3
 
-# URL de callback do sistema (Lovable Cloud)
-CALLBACK_URL=https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback
+# URL de callback do sistema
+CALLBACK_URL=https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-webhook/callback
 
 # ═══ CERTIFICADOS DIGITAIS (LOCAL) ═══
 # Os certificados NUNCA são enviados para a nuvem.
@@ -181,7 +181,8 @@ O agente envia POST para o \\\`CALLBACK_URL\\\` com:
 const express = require('express');
 const cors = require('cors');
 const { SessionManager } = require('./session-manager');
-const { PORTALS } = require('./portals');
+const { PORTALS, getPortal } = require('./portals');
+const { launchBrowser } = require('./browser');
 
 const app = express();
 app.use(cors());
@@ -190,6 +191,23 @@ app.use(express.json());
 const PORT = process.env.PORT || 3500;
 const AGENT_KEY = process.env.AGENT_API_KEY || '';
 const sessionManager = new SessionManager();
+
+// Rotas que ESTA versão do agente implementa, publicadas no /health.
+// Sem essa lista o Praefectus não tem como saber o que existe aqui: HEAD devolve
+// 404 tanto para rota ausente quanto para rota que só aceita POST, e OPTIONS
+// devolve 204 para qualquer caminho por causa do CORS. Sondar o /kill-switch às
+// cegas para descobrir abortaria uma disputa real.
+const ROTAS = [
+  'GET /health',
+  'POST /sessao/iniciar',
+  'POST /sessao/pausar',
+  'POST /sessao/encerrar',
+  'POST /sessao/retomar',
+  'POST /kill-switch',
+  'GET /sessoes',
+  'GET /portais',
+  'POST /api/proposta/enviar',
+];
 
 function authMiddleware(req, res, next) {
   const key = req.headers['x-agent-key'];
@@ -204,12 +222,13 @@ app.get('/health', (req, res) => {
   const capacity = sessionManager.getCapacity();
   res.json({
     status: 'online',
-    version: '2.1.0',
+    version: '2.2.0',
     uptime: process.uptime(),
     capacidade: capacity,
     sessoes_ativas: capacity.sessoes_ativas,
     sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
+    rotas: ROTAS,
     certificado: {
       carregado: !!process.env.CERT_PATH,
       path: process.env.CERT_PATH || null,
@@ -289,6 +308,111 @@ app.post('/kill-switch', authMiddleware, (req, res) => {
   res.json({ success: true, sessoes_encerradas: encerradas, motivo });
 });
 
+// ─── POST /api/proposta/enviar ───
+// Envio da proposta INICIAL, antes da disputa. Não é uma sessão de lance: abre
+// o navegador, faz login, preenche o formulário de proposta, fecha. Quem chama
+// é a edge function 'enviar-proposta-portal' (botão "Enviar Proposta").
+//
+// Cada resposta diz exatamente o que houve — 404 genérico foi o que deixou o
+// Praefectus meses sem saber se a rota faltava ou se o envio tinha falhado.
+app.post('/api/proposta/enviar', authMiddleware, async (req, res) => {
+  const {
+    portal, numero_pregao, itens, declaracoes, anexos_urls,
+    credenciais_portal, credencial_id, empresa_id, user_id,
+  } = req.body;
+
+  if (!portal || !numero_pregao || !Array.isArray(itens) || itens.length === 0) {
+    return res.status(400).json({
+      error: 'portal, numero_pregao e itens[] (não vazio) são obrigatórios',
+      recebido: { portal: portal || null, numero_pregao: numero_pregao || null, itens: Array.isArray(itens) ? itens.length : null },
+    });
+  }
+
+  if (!PORTALS[portal]) {
+    return res.status(400).json({
+      error: \`Portal "\${portal}" não suportado\`,
+      disponiveis: Object.keys(PORTALS),
+    });
+  }
+
+  // Enviar proposta é opcional por portal: cada um tem um formulário próprio, e
+  // implementar um não implementa os outros. Checado ANTES de abrir o navegador —
+  // não se gasta 500MB e alguns segundos para descobrir que o portal não tem o
+  // fluxo. O 501 nomeia o portal que falta, em vez de deixar o operador achando
+  // que o agente está fora do ar.
+  if (typeof PORTALS[portal].prototype.enviarProposta !== 'function') {
+    return res.status(501).json({
+      error: \`O portal "\${portal}" ainda não automatiza o envio de proposta neste agente\`,
+      portal,
+      implementado: false,
+    });
+  }
+
+  // O envio abre um Chromium próprio (~500MB). Respeita o mesmo teto das
+  // sessões de lance para não derrubar uma disputa em andamento por falta de RAM.
+  const capacity = sessionManager.getCapacity();
+  if (capacity.slots_disponiveis < 1) {
+    return res.status(503).json({
+      error: 'Sem slots livres para abrir o navegador — aguarde uma sessão encerrar',
+      capacidade: capacity,
+    });
+  }
+
+  const inicio = Date.now();
+  let browser = null;
+  try {
+    browser = await launchBrowser();
+    const page = await browser.newPage();
+    const instancia = getPortal(portal, page, credenciais_portal || {});
+
+    console.log(\`📄 Enviando proposta — portal=\${portal} pregão=\${numero_pregao} itens=\${itens.length}\`);
+    await instancia.login();
+
+    const resultado = await instancia.enviarProposta({
+      numero_pregao,
+      itens,
+      declaracoes: declaracoes || {},
+      anexos_urls: anexos_urls || [],
+      empresa_id: empresa_id || null,
+      credencial_id: credencial_id || null,
+    });
+
+    console.log(\`✅ Proposta enviada — portal=\${portal} pregão=\${numero_pregao}\`);
+    res.json({
+      success: true,
+      portal,
+      numero_pregao,
+      itens_enviados: itens.length,
+      protocolo: (resultado && resultado.protocolo) || null,
+      comprovante: (resultado && resultado.comprovante) || null,
+      duracao_ms: Date.now() - inicio,
+      user_id: user_id || null,
+    });
+  } catch (err) {
+    console.error(\`❌ Falha ao enviar proposta (\${portal}/\${numero_pregao}):\`, err);
+    let screenshot = null;
+    try {
+      const pages = await browser.pages();
+      if (pages.length) {
+        screenshot = \`./logs/screenshots/proposta-\${portal}-\${Date.now()}.png\`;
+        await pages[pages.length - 1].screenshot({ path: screenshot });
+      }
+    } catch { /* screenshot é melhor-esforço; nunca esconde o erro original */ }
+
+    res.status(500).json({
+      error: err.message,
+      portal,
+      numero_pregao,
+      screenshot,
+      duracao_ms: Date.now() - inicio,
+    });
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+});
+
 // ─── GET /sessoes ───
 // Lista todas as sessões com status detalhado
 app.get('/sessoes', authMiddleware, (req, res) => {
@@ -312,7 +436,8 @@ app.get('/portais', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(\`🤖 Agente de Lances v2.1.0 rodando na porta \${PORT}\`);
+  console.log(\`🤖 Agente de Lances v2.2.0 rodando na porta \${PORT}\`);
+  console.log(\`   Rotas: \${ROTAS.length} (\${ROTAS.join(' · ')})\`);
   console.log(\`   Portais: \${Object.keys(PORTALS).join(', ')}\`);
   console.log(\`   Max sessões: \${process.env.MAX_SESSOES_PARALELAS || 3}\`);
   console.log(\`   Callback: \${process.env.CALLBACK_URL || '(não configurada)'}\`);
@@ -690,15 +815,13 @@ export async function generateAgentTemplate(): Promise<Blob> {
   const zip = new JSZip();
   const root = zip.folder('agente-lances-externo')!;
 
-  // Core files — inject active Supabase URL so .env.example has the correct CALLBACK_URL
+  // Core files — injeta a URL do Supabase ativo no CALLBACK_URL do .env.example.
+  // O literal em CORE_FILES é o projeto de produção, então o ZIP sai correto mesmo
+  // se este replace não casar; a substituição existe para quem aponta o app para
+  // outro projeto via VITE_SUPABASE_URL.
+  const callbackPadrao = 'https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-webhook/callback';
   for (const [path, content] of Object.entries(CORE_FILES)) {
-    root.file(
-      path,
-      content.replace(
-        'https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback',
-        callbackUrl
-      )
-    );
+    root.file(path, content.replace(callbackPadrao, callbackUrl));
   }
 
   // Portal modules

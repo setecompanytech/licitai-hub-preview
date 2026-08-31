@@ -33,6 +33,31 @@ class BasePortal {
     throw new Error(\`verificarResultado() não implementado para portal \${this.nome}\`);
   }
 
+  /**
+   * enviarProposta(dados) — OPCIONAL, e por isso NÃO declarado aqui.
+   *
+   * A rota POST /api/proposta/enviar checa \`typeof portal.enviarProposta ===
+   * 'function'\` para responder 501 nomeando o portal que ainda não automatiza
+   * o envio. Um stub nesta classe faria todos os portais parecerem prontos e o
+   * erro só apareceria como 500 no meio de um pregão.
+   *
+   * Contrato de quem implementar:
+   *   dados = {
+   *     numero_pregao: 'PE-044/2026',
+   *     itens: [{ numero, descricao, quantidade, unidade, valor_unitario,
+   *               marca, modelo, fabricante }],
+   *     declaracoes: { me_epp, inexistencia_fato, menor_aprendiz,
+   *                    elaboracao_independente },
+   *     anexos_urls: ['https://...'],
+   *     empresa_id, credencial_id,
+   *   }
+   * Retorno: { protocolo?, comprovante? } — ambos opcionais.
+   * Erro: lance uma Error com mensagem legível; a rota devolve 500 com ela e
+   * um screenshot do estado da página.
+   *
+   * O login já foi feito pela rota antes da chamada.
+   */
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
     await this.page.screenshot({ path, fullPage: false });
@@ -1548,7 +1573,7 @@ const PORTALS = {
 function getPortal(portalId, page, credenciais) {
   const PortalClass = PORTALS[portalId];
   if (!PortalClass) {
-    throw new Error(\\\`Portal "\\\${portalId}" não suportado. Disponíveis: \\\${Object.keys(PORTALS).join(', ')}\\\`);
+    throw new Error(\`Portal "\${portalId}" não suportado. Disponíveis: \${Object.keys(PORTALS).join(', ')}\`);
   }
   return new PortalClass(page, credenciais);
 }
