@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { supabase } from '@/integrations/supabase/client';
 import { situacaoDaVigencia } from '@/lib/contratos/vigencia';
+import { excessoDeExecucao } from '@/lib/contratos/excesso-de-execucao';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -170,6 +171,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       return { ...i, quantidade_contratada_total: qtdContratadaTotal, saldo_quantitativo_efetivo: saldoQtd };
     });
     
+    // ── A ressalva do excesso ───────────────────────────────────────────
+    //
+    // Em VALOR, porque é a unidade em que o contrato é controlado e a única
+    // que não depende de as unidades de item e de empenho coincidirem.
+    // `valor_global` já inclui os aditivos por gatilho, então o inicial se
+    // recupera descontando-os.
+    const acrescidoPorAditivo = totalAditivoValorAcrescimo - totalAditivoValorSupressao;
+    const excesso = excessoDeExecucao({
+      inicial: (c.valor_global || 0) - acrescidoPorAditivo,
+      jaAcrescido: acrescidoPorAditivo,
+      executado: c.valor_consumido || 0,
+    });
+
     const itensAlertaSaldo = itensComAditivo.filter((i: any) => i.quantidade_contratada_total > 0 && (i.quantidade_consumida / i.quantidade_contratada_total) * 100 >= 80);
     // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
     // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
@@ -184,14 +198,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -244,6 +258,35 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               valor, mas nenhum quilo foi baixado dos itens da ata. Abra o contrato derivado →
               Itens/Lotes e preencha as quantidades (o lápis edita).
             </p>
+          )}
+          {/* ── A ressalva do excesso, enquanto durar ────────────────────────
+              O aviso de `avaliarCabimento` sai no instante do lançamento e
+              some. Quem abre o contrato amanhã vê consumo acima de 100% e nada
+              que diga o que fazer. Aviso que só existe no clique é aviso que
+              ninguém audita.
+
+              Duas mensagens, porque as providências são opostas: dentro do
+              teto do art. 125, o aditivo regulariza; acima dele o aditivo NÃO
+              regulariza, e mandar pedi-lo manda a pessoa buscar uma solução
+              que não existe. */}
+          {excesso.excede && (
+            <div className={`rounded-md border p-2.5 ${
+              excesso.cabeNoArt125
+                ? 'border-warning/40 bg-warning/5'
+                : 'border-destructive/40 bg-destructive/5'
+            }`}>
+              <p className={`text-xs font-semibold ${
+                excesso.cabeNoArt125 ? 'text-warning' : 'text-destructive'
+              }`}>
+                {excesso.cabeNoArt125
+                  ? 'Execução além do contratado — regularizável por aditivo'
+                  : 'Execução além do que o art. 125 admite'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {excesso.frase} São {fmt(excesso.quanto)} a mais que o contratado.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{excesso.providencia}</p>
+            </div>
           )}
           {itensAlertaSaldo.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
