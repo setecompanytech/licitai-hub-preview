@@ -17,11 +17,39 @@
 
 import { tipoDeEmpenho, type TipoDeEmpenho, type OrigemDaEspecie } from './empenho';
 
-/** O que o upload deste documento deve criar. */
-export function oQueODocumentoCria(tipoDocumento: unknown): 'empenho' | 'pedido' {
-  const t = String(tipoDocumento ?? '').trim().toLowerCase();
-  if (t.startsWith('empenho') || t === 'nota_empenho' || t === 'nota_de_empenho') return 'empenho';
-  return 'pedido';
+/**
+ * O que o upload deste documento deve criar.
+ *
+ * ── Duas fontes, e a segunda é mais forte que a primeira ────────────────────
+ *
+ * `tipoDocumento` é TEXTO LIVRE saído da IA. A primeira versão casava três
+ * grafias exatas — `nota_empenho`, `nota_de_empenho`, e qualquer coisa
+ * começando por `empenho` — e o 149/2024 mostrou o preço disso: dois empenhos
+ * viraram pedidos porque a classificação voltou escrita de outro jeito.
+ * Casamento exato contra texto livre erra; é só questão de qual grafia aparece
+ * primeiro.
+ *
+ * A ESPÉCIE é o sinal forte. Se a leitura achou "estimativo", "global" ou
+ * "ordinário" no campo rotulado do documento, aquilo É uma nota de empenho —
+ * nenhum outro papel tem espécie de empenho. Isso não depende de grafia
+ * nenhuma, e teria salvo os dois: o primeiro veio com `tipo_empenho =
+ * estimativo` e mesmo assim foi tratado como pedido.
+ */
+export function oQueODocumentoCria(
+  tipoDocumento: unknown,
+  especieEmpenho?: unknown,
+): 'empenho' | 'pedido' {
+  // Espécie identificada = nota de empenho, sem discussão.
+  if (tipoDeEmpenho(especieEmpenho)) return 'empenho';
+
+  const t = String(tipoDocumento ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!t) return 'pedido';
+  // "ordem de fornecimento / empenho" é a etiqueta genérica do seletor e não
+  // classifica nada — quando a ordem aparece junto, manda ela.
+  if (/\bordem\b/.test(t)) return 'pedido';
+  return /\bempenho\b/.test(t) ? 'empenho' : 'pedido';
 }
 
 /**

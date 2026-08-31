@@ -537,7 +537,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   }, [saldosDeEmpenho]);
 
   /** O que o upload em curso vai criar: autorização ou consumo. */
-  const documentoCria = oQueODocumentoCria(extractedData?.tipo_documento || form.tipo_documento);
+  // A espécie entra junto: se a leitura achou "estimativo", "global" ou
+  // "ordinário" no campo rotulado, aquilo é nota de empenho — e isso não
+  // depende de como a IA escreveu o tipo do documento.
+  const documentoCria = oQueODocumentoCria(
+    extractedData?.tipo_documento || form.tipo_documento,
+    extractedData?.especie_empenho || form.tipo_empenho,
+  );
 
   const limiteDerivado = (dataDoPedido: string | null | undefined): string => {
     if (!prazos?.prazo_entrega_dias || !dataDoPedido) return '';
@@ -913,7 +919,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         })));
       }
       setActiveTab('manual');
-      const cria = oQueODocumentoCria(extracted.tipo_documento || form.tipo_documento);
+      const cria = oQueODocumentoCria(extracted.tipo_documento || form.tipo_documento, extracted.especie_empenho);
       toast.success(
         cria === 'empenho'
           ? `Nota de empenho lida: ${extracted.itens?.length || 0} linha(s). Ao salvar, ela AUTORIZA — nenhum saldo é consumido.`
@@ -981,7 +987,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // A mesma bifurcação do upload, no lançamento à mão: quem escolhe "Empenho
     // Ordinário" no tipo do documento está registrando uma AUTORIZAÇÃO, e ela
     // não pode virar entrega só porque foi digitada em vez de lida.
-    if (oQueODocumentoCria(form.tipo_documento) === 'empenho') {
+    if (oQueODocumentoCria(form.tipo_documento, form.tipo_empenho) === 'empenho') {
       return salvarEmpenho([{
         descricao: form.descricao,
         quantidade: form.quantidade,
@@ -1189,7 +1195,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!extractedData) { toast.error('Nenhum documento extraído'); return; }
 
     // A bifurcação: nota de empenho AUTORIZA, ordem de fornecimento CONSOME.
-    if (oQueODocumentoCria(extractedData.tipo_documento || form.tipo_documento) === 'empenho') {
+    if (oQueODocumentoCria(
+          extractedData.tipo_documento || form.tipo_documento,
+          extractedData.especie_empenho || form.tipo_empenho,
+        ) === 'empenho') {
       return salvarEmpenho(extractedItens);
     }
 

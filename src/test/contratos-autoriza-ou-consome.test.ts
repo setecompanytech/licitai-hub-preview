@@ -23,6 +23,31 @@ describe('oQueODocumentoCria', () => {
     expect(oQueODocumentoCria(null)).toBe('pedido');
     expect(oQueODocumentoCria('')).toBe('pedido');
   });
+
+  it('a IA escreve em texto livre, e todas as grafias são a mesma coisa', () => {
+    // O 149/2024 quebrou aqui: a classificação voltou escrita de outro jeito e
+    // dois empenhos viraram pedidos. Casamento exato contra texto livre erra —
+    // é só questão de qual grafia aparece primeiro.
+    for (const v of ['nota de empenho', 'Nota de Empenho', 'NOTA DE EMPENHO',
+                     'nota-empenho', 'empenho', 'Empenho Estimativo', 'nota_empenho']) {
+      expect(oQueODocumentoCria(v)).toBe('empenho');
+    }
+  });
+
+  it('a ESPÉCIE decide sozinha, qualquer que seja a grafia do tipo', () => {
+    // Nenhum outro papel tem espécie de empenho. Se a leitura achou o campo
+    // rotulado, aquilo é uma nota — e teria salvo os dois do 149/2024, que
+    // vieram com a espécie preenchida e mesmo assim viraram pedido.
+    expect(oQueODocumentoCria('qualquer coisa', 'estimativo')).toBe('empenho');
+    expect(oQueODocumentoCria(null, 'global')).toBe('empenho');
+    expect(oQueODocumentoCria('', 'ordinario')).toBe('empenho');
+  });
+
+  it('"ordem de fornecimento / empenho" é a etiqueta do seletor, não classificação', () => {
+    // Quando a ordem aparece junto, manda ela: senão toda OF viraria empenho.
+    expect(oQueODocumentoCria('Ordem de Fornecimento / Empenho / PRD')).toBe('pedido');
+    expect(oQueODocumentoCria('ordem_fornecimento')).toBe('pedido');
+  });
 });
 
 describe('especieComOrigem', () => {
