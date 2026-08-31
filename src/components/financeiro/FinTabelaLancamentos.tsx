@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 import DocumentoDoLancamento from "./DocumentoDoLancamento";
+import VincularContratoDialog from "./VincularContratoDialog";
+import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +24,7 @@ import {
   Layers,
   Download,
   FileSpreadsheet,
+  Link2,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { downloadCSV, downloadPDF } from "@/lib/download-utils";
@@ -62,6 +67,9 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Lancamento> | null>(null);
+  /** O lançamento cujo vínculo com a Gestão está sendo feito. */
+  const [vinculando, setVinculando] = useState<LancamentoParaVincular | null>(null);
+  const qc = useQueryClient();
 
   const { data = [], isLoading } = useLancamentos({ tipo });
   const { data: membros = [] } = useMembrosEmpresa();
@@ -408,6 +416,25 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                               {tipo === "a_pagar" ? "Pagar" : "Receber"}
                             </Button>
                           )}
+                          {/* A porta de volta para a Gestão. O vínculo
+                              `contrato_pedido_id` sempre existiu, mas so era
+                              alcancavel a partir do PEDIDO — o que pressupoe
+                              que o pedido veio primeiro. Contrato que entra na
+                              gestao depois de meses de faturamento tem dezenas
+                              de lancamentos e nenhum pedido. */}
+                          {tipo === "a_receber" && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className={cn("h-7 w-7", l.contrato_pedido_id && "text-primary")}
+                              onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
+                              title={l.contrato_pedido_id
+                                ? "Vinculado a um pedido — clique para trocar"
+                                : "Vincular a um contrato/pedido em Gestão"}
+                            >
+                              <Link2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="ghost"
@@ -433,6 +460,12 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
         onOpenChange={setDialogOpen}
         initial={editing}
         defaultTipo={tipo}
+      />
+
+      <VincularContratoDialog
+        lancamento={vinculando}
+        onFechar={() => setVinculando(null)}
+        onVinculado={() => qc.invalidateQueries({ queryKey: ["financeiro-lancamentos"] })}
       />
     </div>
   );
