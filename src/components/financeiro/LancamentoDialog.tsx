@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { parseNFeXML } from "@/lib/parseNFe";
-import { conferirContraOLancamento, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
+import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
+import { acharChaveNoTexto, dadosDaChave, ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -219,6 +220,73 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
   const [arquivoXml, setArquivoXml] = useState<File | null>(null);
   const [divergencias, setDivergencias] = useState<Divergencia[]>([]);
+  const [lendoDanfe, setLendoDanfe] = useState(false);
+
+  /**
+   * Lê o DANFE em PDF, quando não veio XML.
+   *
+   * Não tenta entender o layout: cada emissor imprime de um jeito e o OCR de
+   * nota escaneada erra coluna. Procura a CHAVE DE ACESSO, que tem dígito
+   * verificador — ou está certa, ou não é chave — e que CONTÉM número, série e
+   * competência. Achar um número e conferir seu DV é mais seguro do que
+   * interpretar um papel.
+   *
+   * O que a chave NÃO traz é o dia da emissão nem o valor. O dia fica com o
+   * que já estava no lançamento; o valor idem — e num lançamento conciliado
+   * ele veio do extrato, que manda sobre a nota de todo jeito.
+   */
+  const lerDanfe = async (pdf: File) => {
+    setLendoDanfe(true);
+    try {
+      const { extractTextFromFile } = await import("@/lib/pdf-text-extractor");
+      // DANFE tem uma ou duas páginas, e escaneado é o caso comum — o OCR
+      // precisa estar ligado, mas com orçamento curto.
+      const texto = await extractTextFromFile(pdf, 3, false, 2);
+      const chave = acharChaveNoTexto(texto);
+      if (!chave) {
+        toast.warning("PDF anexado, mas a chave de acesso não foi encontrada.", {
+          description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
+        });
+        return;
+      }
+      const dados = dadosDaChave(chave)!;
+      const preencher: string[] = [];
+      if (!chaveValida(chaveAcessoNfe)) { setChaveAcessoNfe(chave); preencher.push("chave"); }
+      if (!numeroDocumento.trim()) { setNumeroDocumento(dados.numero); preencher.push("número"); }
+      if (!serieDocumento.trim()) { setSerieDocumento(dados.serie); preencher.push("série"); }
+      if (!tipoDocumento && ROTULO_DO_MODELO[dados.modelo]) {
+        setTipoDocumento(ROTULO_DO_MODELO[dados.modelo] as TipoDocumento);
+      }
+      // A chave só guarda ano e mês. Preenche o dia 1 apenas quando não há
+      // data nenhuma — inventar o dia certo seria pior do que deixar em
+      // branco, e a competência já situa a nota no mês.
+      if (!dataEmissao) { setDataEmissao(`${dados.competencia}-01`); preencher.push("mês da emissão"); }
+
+      // A chave é fato conferível; o que ela contradiz não é sobrescrito.
+      const divergentes: Divergencia[] = [];
+      const numeroGravado = numeroDocumento.replace(/\D/g, "").replace(/^0+/, "");
+      if (numeroGravado && numeroGravado !== dados.numero) {
+        divergentes.push({ campo: "Número do documento", noSistema: numeroDocumento, naNota: dados.numero });
+      }
+      if (dataEmissao && !dataEmissao.startsWith(dados.competencia)) {
+        divergentes.push({ campo: "Competência da emissão", noSistema: dataEmissao.slice(0, 7), naNota: dados.competencia });
+      }
+      setDivergencias(divergentes);
+
+      toast.success(
+        preencher.length > 0
+          ? `DANFE lido: ${preencher.join(", ")} preenchido(s) pela chave de acesso.`
+          : "DANFE lido — os campos já estavam preenchidos.",
+        { description: divergentes.length > 0 ? `${divergentes.length} divergência(s) apontada(s).` : undefined },
+      );
+    } catch {
+      toast.warning("O PDF foi anexado, mas não pôde ser lido.", {
+        description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
+      });
+    } finally {
+      setLendoDanfe(false);
+    }
+  };
 
   /**
    * Lê o XML e preenche o que está em branco.
@@ -239,8 +307,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     if (pdf) setArquivoPdf(pdf);
     if (xml) setArquivoXml(xml);
     if (!xml) {
-      if (pdf) toast.success("PDF anexado. Ele será guardado ao salvar o lançamento.");
-      else toast.error("Escolha o XML e/ou o PDF da nota.");
+      if (!pdf) { toast.error("Escolha o XML e/ou o PDF da nota."); return; }
+      await lerDanfe(pdf);
       return;
     }
 
@@ -869,8 +937,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   <div>
                     <p className="text-sm font-medium">Anexar a NF-e</p>
                     <p className="text-xs text-muted-foreground">
-                      O XML preenche os campos abaixo; o PDF é o que se abre depois.
-                      Pode escolher os dois de uma vez.
+                      O XML preenche os campos abaixo. Sem ele, o PDF é lido pela chave de
+                      acesso — que traz número, série e competência. Pode escolher os dois.
                     </p>
                   </div>
                   <Button type="button" variant="outline" size="sm"
@@ -882,6 +950,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
                     {arquivoXml && <span>XML: {arquivoXml.name}</span>}
                     {arquivoPdf && <span>PDF: {arquivoPdf.name}</span>}
+                    {lendoDanfe && <span className="text-primary">lendo o DANFE…</span>}
                     <span className="text-primary">guardado ao salvar o lançamento</span>
                   </div>
                 )}
