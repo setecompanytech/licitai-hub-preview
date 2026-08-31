@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { avaliarCabimento, fraseDoLimite } from '@/lib/contratos/cabimento';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
-import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO } from '@/lib/contratos/empenho';
+import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO, empenhoCancelado } from '@/lib/contratos/empenho';
 import {
   oQueODocumentoCria, especieComOrigem, atribuirCotas,
   ROTULO_DA_COTA, ROTULO_DA_ORIGEM_DA_COTA,
@@ -39,7 +39,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2, Eye, TrendingUp,
+  ExternalLink, Link2, Eye, TrendingUp, Ban,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -353,6 +353,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     Array<{
       empenho_id: string; numero: string; tipo: string; arquivo_id: string | null;
       cota: string; saldo_qtd: number; qtd_empenhada: number;
+      /** Do empenho inteiro, não da cota: é o que diz se ele foi cancelado. */
+      valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number;
       // O saldo em VALOR. No estimativo é ele que vale: a quantidade impressa
       // na nota é formalidade — o 149/2024 traz "1 pacote" num contrato de
       // 3.600 —, e o que o empenho reservou de fato é dinheiro.
@@ -536,13 +538,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   /** Os empenhos do contrato, um por número, com o saldo somado das cotas. */
   const empenhosDoContrato = useMemo(() => {
-    const porId = new Map<string, { id: string; numero: string; tipo: string; arquivo_id: string | null; saldo: number }>();
+    const porId = new Map<string, {
+      id: string; numero: string; tipo: string; arquivo_id: string | null;
+      saldo: number; cancelado: boolean; vigente: number;
+    }>();
     for (const s of saldosDeEmpenho) {
       const atual = porId.get(s.empenho_id);
       if (atual) atual.saldo += Number(s.saldo_qtd) || 0;
       else porId.set(s.empenho_id, {
         id: s.empenho_id, numero: s.numero, tipo: s.tipo, arquivo_id: s.arquivo_id,
         saldo: Number(s.saldo_qtd) || 0,
+        // Cancelado é ANULAÇÃO que cobre tudo — não é saldo zero por consumo.
+        // Os dois mostram zero e significam o oposto.
+        cancelado: empenhoCancelado({
+          valorOriginal: s.valor_original, reforcos: s.reforcos, anulacoes: s.anulacoes,
+        }),
+        vigente: Number(s.valor_vigente) || 0,
       });
     }
     return [...porId.values()];
@@ -650,15 +661,27 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         if (error || !emps?.length) { setSaldosDeEmpenho([]); return; }
         const linhas: typeof saldosDeEmpenho = [];
         for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string; arquivo_id: string | null }>) {
-          const { data: saldo } = await supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never);
+          const [{ data: saldo }, { data: vig }] = await Promise.all([
+            supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never),
+            supabase.rpc('contrato_empenho_valor_vigente' as never, { p_empenho_id: e.id } as never),
+          ]);
+          const v = ((vig ?? []) as unknown as Array<{
+            valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number;
+          }>)[0];
           for (const s of (saldo ?? []) as unknown as Array<{
-            cota: string; saldo_qtd: number; qtd_empenhada: number; saldo_valor: number;
+            cota: string; saldo_qtd: number; qtd_empenhada: number;
+      /** Do empenho inteiro, não da cota: é o que diz se ele foi cancelado. */
+      valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number; saldo_valor: number;
           }>) {
             linhas.push({
               empenho_id: e.id, numero: e.numero, tipo: e.tipo, arquivo_id: e.arquivo_id,
               cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0,
               qtd_empenhada: Number(s.qtd_empenhada) || 0,
               saldo_valor: Number(s.saldo_valor) || 0,
+              valor_original: Number(v?.valor_original) || 0,
+              reforcos: Number(v?.reforcos) || 0,
+              anulacoes: Number(v?.anulacoes) || 0,
+              valor_vigente: Number(v?.valor_vigente) || 0,
             });
           }
         }
@@ -1807,7 +1830,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           {empenhosDoContrato.map(e => (
                             <SelectItem key={e.id} value={e.id} className="text-xs">
                               {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
-                              {' · '}saldo {e.saldo.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                              {/* Continua na lista: há caso legítimo de lançar
+                                  entrega anterior ao cancelamento. Mas sai
+                                  marcado, para ninguém escolhê-lo sem ver. */}
+                              {e.cancelado
+                                ? ' · CANCELADO'
+                                : ` · saldo ${e.saldo.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -2061,13 +2089,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {empenhosDoContrato.map(e => {
               const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
               return (
-                <div key={e.id} className="rounded-md border p-2.5">
+                <div key={e.id} className={`rounded-md border p-2.5 ${
+                  e.cancelado ? 'border-destructive/40 bg-destructive/5' : ''
+                }`}>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium tabular-nums">{e.numero}</span>
+                      <span className={`text-sm font-medium tabular-nums ${
+                        e.cancelado ? 'line-through text-muted-foreground' : ''
+                      }`}>{e.numero}</span>
                       <Badge variant="outline" className="text-[11px]">
                         {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
                       </Badge>
+                      {/* O painel é o que se olha. Sem isto o empenho cancelado
+                          aparece igual a um vivo, com "1 de 1 disponíveis", e
+                          quem lançar entrega sobre ele produz despesa sem
+                          cobertura sem nenhum sinal na tela. */}
+                      {e.cancelado && (
+                        <Badge className="text-[11px] bg-destructive/10 text-destructive border border-destructive/30">
+                          <Ban className="w-3 h-3 mr-1 inline" /> Cancelado
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                     {/* A vida do empenho: original, reforços, anulações. O
@@ -2094,6 +2135,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     )}
                     </div>
                   </div>
+                  {e.cancelado ? (
+                    // A quantidade continua lá porque anulação é ato de VALOR e
+                    // não mexe em quantidade. Mostrá-la aqui faria o empenho
+                    // parecer disponível — o que vale dizer é que ele não
+                    // autoriza mais nada.
+                    <p className="text-xs text-destructive mt-1.5">
+                      Anulado por inteiro. Não autoriza mais nenhuma entrega — entregar sob empenho
+                      cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
+                    </p>
+                  ) : (
                   <div className="flex gap-4 flex-wrap mt-1.5">
                     {cotas.map(c => (
                       <span key={c.cota} className="text-xs text-muted-foreground">
@@ -2105,6 +2156,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </span>
                     ))}
                   </div>
+                  )}
                 </div>
               );
             })}
