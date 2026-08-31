@@ -205,7 +205,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     toast.error('O documento não foi encontrado no dossiê.');
   };
 
-  const abrirDanfe = async (storagePath: string, nome: string) => {
+  /**
+   * Abre documento do FINANCEIRO — bucket `financeiro-documentos`.
+   *
+   * O nome antigo era `abrirDanfe`, e ele não dizia o armário. Isso produziu o
+   * MESMO erro duas vezes no mesmo dia, nas duas direções: documento de
+   * contrato assinado no bucket do Financeiro pela manhã, NF-e do Financeiro
+   * assinada no bucket dos contratos à tarde. Assinar caminho no bucket errado
+   * falha sempre — "Object not found" —, e nada no nome da função avisava.
+   *
+   * Agora os dois nomes carregam o armário, e escolher errado fica visível na
+   * linha da chamada.
+   */
+  const abrirDocumentoDoFinanceiro = async (storagePath: string, nome: string) => {
     const url = await abrirArquivo(storagePath);
     if (!url) {
       toast.error('Não foi possível abrir o documento.', {
@@ -219,15 +231,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   /**
    * Abre um documento do CONTRATO — e o bucket é outro.
    *
-   * `abrirDanfe` assina em `financeiro-documentos`, onde moram as DANFEs. Os
-   * documentos do contrato estão em `contratos-docs`. Assinar um caminho no
-   * bucket errado falha sempre, e a mensagem convidava a tentar de novo uma
-   * coisa que nunca ia dar certo.
+   * `abrirDocumentoDoFinanceiro` assina em `financeiro-documentos`, onde moram
+   * as DANFEs. Os documentos do contrato estão em `contratos-docs`. Assinar um
+   * caminho no bucket errado falha sempre, e a mensagem convidava a tentar de
+   * novo uma coisa que nunca ia dar certo.
    *
    * É a causa de "não consigo ver o empenho anexado", relatado duas vezes: o
    * vínculo estava certo, o caminho estava certo, o arquivo estava lá — só era
    * procurado no armário errado.
    */
+  /** Abre documento do CONTRATO — bucket `contratos-docs`. */
   const abrirArquivoDoContrato = async (storagePath: string, nome: string) => {
     const { data, error } = await supabase.storage
       .from('contratos-docs')
@@ -2210,7 +2223,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           }
                           return (
                             <button type="button" className="block w-fit"
-                              onClick={() => abrirArquivoDoContrato(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
+                              onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
                               title={`Abrir ${nd.arquivo_nome} em nova aba`}>
                               <Badge variant="outline"
                                 className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
@@ -2257,7 +2270,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           return (
                             <button
                               type="button"
-                              onClick={() => abrirDanfe(doc.storage_path, doc.arquivo_nome)}
+                              onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
                               title={`Abrir ${doc.arquivo_nome} em nova aba`}
                               className="block w-fit"
                             >
