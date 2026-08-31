@@ -6,6 +6,7 @@ import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
 import { ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
+import { perfilDoAnexo } from "@/lib/financeiro/anexo-do-lancamento";
 import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -224,6 +225,14 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   /** Onde a leitura do DANFE está — nulo quando não há leitura em curso. */
   const [lendoDanfe, setLendoDanfe] = useState<string | null>(null);
   /**
+   * O bloco fala a língua do documento que está ali.
+   *
+   * "Anexar a NF-e" numa guia do INSS ou num comprovante de PIX ensina a
+   * pessoa que aquela porta não é para ela — e o documento deixa de ser
+   * guardado por uma frase.
+   */
+  const perfil = perfilDoAnexo(tipoDocumento);
+  /**
    * O que foi lido da nota, guardado com o documento.
    *
    * É por aqui que os ITENS chegam ao vínculo com contrato: `ocr_data` já
@@ -352,12 +361,28 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     if (escolhidos.length === 0) return;
 
     const xml = escolhidos.find((f) => /\.xml$/i.test(f.name));
-    const pdf = escolhidos.find((f) => /\.pdf$/i.test(f.name));
-    if (pdf) setArquivoPdf(pdf);
+    // Foto e PDF ocupam o mesmo lugar: é o arquivo que se abre depois. Recibo
+    // se fotografa, e comprovante de PIX é print de celular.
+    const principal = escolhidos.find((f) => !/\.xml$/i.test(f.name));
+    if (principal) setArquivoPdf(principal);
     if (xml) setArquivoXml(xml);
+
     if (!xml) {
-      if (!pdf) { toast.error("Escolha o XML e/ou o PDF da nota."); return; }
-      await lerDanfe(pdf);
+      if (!principal) { toast.error("Escolha um arquivo."); return; }
+      // Só tenta ler onde há o que ler. Procurar chave de acesso num boleto
+      // gasta OCR e uma chamada de IA para não achar nada — e o aviso de
+      // "chave não encontrada" seria verdadeiro e inútil.
+      if (perfil.leChave && /\.pdf$/i.test(principal.name)) {
+        await lerDanfe(principal);
+      } else {
+        toast.success("Arquivo anexado.", {
+          description: "Será guardado ao salvar o lançamento.",
+        });
+      }
+      return;
+    }
+    if (!perfil.leXml) {
+      toast.success("Arquivo anexado.", { description: "Será guardado ao salvar o lançamento." });
       return;
     }
 
@@ -581,9 +606,9 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const guardarDocumentos = async (lancamentoId: string | null) => {
     if (!lancamentoId || (!arquivoPdf && !arquivoXml)) return;
     const xmlTexto = arquivoXml ? await arquivoXml.text().catch(() => null) : null;
-    // O PDF é o que se abre; sem ele, o próprio XML ocupa o lugar do arquivo.
-    const principal = arquivoPdf ?? arquivoXml;
-    const salvo = await guardarArquivo(principal!, {
+    // O PDF ou a foto é o que se abre; sem eles, o próprio XML ocupa o lugar.
+    const paraGuardar = arquivoPdf ?? arquivoXml;
+    const salvo = await guardarArquivo(paraGuardar!, {
       tipo: tipoDocumento || "outro",
       numero: numeroDocumento.trim() || null,
       serie: serieDocumento.trim() || null,
@@ -1004,22 +1029,20 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
             {/* ===================== DOCUMENTO FISCAL ===================== */}
             <TabsContent value="documento" className="space-y-3 mt-0">
-              {/* ── O XML preenche isto ──────────────────────────────────────
-                  Os cinco campos abaixo são exatamente o que o XML da NF-e
-                  traz, com protocolo da SEFAZ. Digitá-los era pedir de novo
-                  uma resposta já arquivada — e o resultado aparece nos
-                  cadastros: chave de acesso com 44 zeros, que é pior que
-                  vazia, porque vazia se vê e zerada passa por preenchida. */}
+              {/* ── O que se anexa depende do que o lançamento é ─────────────
+                  Nota fiscal traz XML e chave, e o sistema os lê. Boleto,
+                  guia e comprovante não têm nada disso — e prometer leitura
+                  onde não há é pior do que não prometer nada.
+
+                  O armazenamento sempre foi genérico; era a redação que dizia
+                  "NF-e" em toda linha. Ver lib/financeiro/anexo-do-lancamento. */}
               <div className="rounded-lg border border-dashed p-3 space-y-2">
                 <input ref={entradaDeArquivo} type="file" className="hidden"
-                  accept=".xml,.pdf" multiple onChange={receberArquivos} />
+                  accept={perfil.aceita} multiple onChange={receberArquivos} />
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
-                    <p className="text-sm font-medium">Anexar a NF-e</p>
-                    <p className="text-xs text-muted-foreground">
-                      O XML preenche os campos abaixo. Sem ele, o PDF é lido pela chave de
-                      acesso — que traz número, série e competência. Pode escolher os dois.
-                    </p>
+                    <p className="text-sm font-medium">{perfil.titulo}</p>
+                    <p className="text-xs text-muted-foreground">{perfil.ajuda}</p>
                   </div>
                   <Button type="button" variant="outline" size="sm"
                     onClick={() => entradaDeArquivo.current?.click()}>

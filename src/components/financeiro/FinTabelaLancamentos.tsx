@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import DocumentoDoLancamento from "./DocumentoDoLancamento";
 import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
+import { exigeDocumento } from "@/lib/financeiro/anexo-do-lancamento";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -364,10 +365,11 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             numeroDocumento={l.numero_documento}
                             dataEmissao={l.data_emissao}
                             valorTotal={Number(l.valor) || 0}
-                            // NF-e e NFS-e exigem o arquivo: o XML É o documento
-                            // fiscal e o prazo de guarda é de cinco anos. Tarifa
-                            // bancária não exige nada.
-                            exigeDocumento={["nfe", "nfse", "nfce"].includes(String(l.tipo_documento ?? ""))}
+                            // A regra de exigência mora em um lugar só, junto do
+                            // perfil do anexo: lista aqui e diálogo lá divergem
+                            // no dia em que alguém acrescentar um tipo e lembrar
+                            // de uma das duas cópias.
+                            exigeDocumento={exigeDocumento(l.tipo_documento)}
                           />
                         </div>
                         {l.categoria?.nome && (
