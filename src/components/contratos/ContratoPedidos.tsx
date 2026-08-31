@@ -10,6 +10,7 @@ import { formatarNumeroNfe, numeroNfeComoInteiro } from '@/lib/financeiro/chave-
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/lib/contratos/casar-pedido';
 import VincularLancamentoDialog from './VincularLancamentoDialog';
+import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
@@ -38,7 +39,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2, Eye,
+  ExternalLink, Link2, Eye, TrendingUp,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -364,6 +365,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // O PDF ainda NÃO guardado: fica em memória até o Registrar. Anexar não é
   // registrar — quem desiste no meio não deixa arquivo solto no dossiê.
   const [arquivoPendente, setArquivoPendente] = useState<File | null>(null);
+  /** O empenho cuja vida — reforços e anulações — está aberta. */
+  const [movimentando, setMovimentando] = useState<EmpenhoParaMovimentar | null>(null);
 
   /**
    * Guarda o PDF da Ordem/Empenho e devolve o id em `contrato_arquivos`.
@@ -2066,6 +2069,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
                       </Badge>
                     </div>
+                    <div className="flex items-center gap-1">
+                    {/* A vida do empenho: original, reforços, anulações. O
+                        estimativo nasce pequeno e é reforçado — sem isto,
+                        aumentá-lo exigiria sobrescrever o valor e apagar que
+                        houve reforço. */}
+                    <Button size="sm" variant="ghost" className="h-7 text-xs"
+                      onClick={() => setMovimentando({
+                        id: e.id, numero: e.numero, tipo: e.tipo, contratoId,
+                      })}>
+                      <TrendingUp className="w-3 h-3 mr-1" /> Reforço / anulação
+                    </Button>
                     {e.arquivo_id ? (
                       <Button size="sm" variant="ghost" className="h-7 text-xs"
                         onClick={() => abrirDocumentoDoEmpenho(e.arquivo_id!)}>
@@ -2078,6 +2092,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         sem documento anexado
                       </span>
                     )}
+                    </div>
                   </div>
                   <div className="flex gap-4 flex-wrap mt-1.5">
                     {cotas.map(c => (
@@ -2786,6 +2801,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </DialogContent>
       </Dialog>
+
+      <MovimentosDoEmpenho
+        empenho={movimentando}
+        onFechar={() => setMovimentando(null)}
+        onMudou={() => load()}
+      />
 
       <VincularLancamentoDialog
         aberto={!!vinculando}
