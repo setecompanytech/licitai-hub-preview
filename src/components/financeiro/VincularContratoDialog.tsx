@@ -206,6 +206,36 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
 
     if (!pedidoId) { setSalvando(false); toast.error('Escolha o pedido'); return; }
 
+    // ── O número da nota tem de chegar ao pedido ────────────────────────────
+    //
+    // A Gestão não guarda cópia da NF-e: ela acha o documento pelo NÚMERO
+    // gravado em `contrato_pedidos.nota_fiscal`. Ligar o título a um pedido
+    // sem número deixa o vínculo financeiro certo e a coluna "NF-e Financeiro"
+    // vazia — a nota existe, está guardada, e não aparece onde é procurada.
+    //
+    // Só preenche quando está EM BRANCO. Sobrescrever a nota de um pedido que
+    // já tem uma seria reescrever referência fiscal em silêncio, e o pedido
+    // passaria a apontar para um documento que não é o dele.
+    if (modo === 'existente' && lancamento.numero_documento) {
+      const escolhido = pedidos.find(p => p.id === pedidoId);
+      const { data: atual } = await supabase
+        .from('contrato_pedidos').select('nota_fiscal').eq('id', pedidoId).single();
+      if (!(atual as { nota_fiscal?: string | null } | null)?.nota_fiscal) {
+        await supabase
+          .from('contrato_pedidos')
+          .update({ nota_fiscal: lancamento.numero_documento } as never)
+          .eq('id', pedidoId);
+      } else if ((atual as { nota_fiscal?: string | null }).nota_fiscal !== lancamento.numero_documento) {
+        // Divergência não se resolve sozinha: pode ser entrega faturada em
+        // duas notas, e pode ser o pedido errado. Quem tem os papéis decide.
+        toast.warning(
+          `O pedido ${escolhido?.numero_pedido ?? ''} já aponta para a nota `
+          + `${(atual as { nota_fiscal?: string | null }).nota_fiscal}.`,
+          { description: 'O vínculo foi feito, mas o número da nota no pedido não foi alterado.' },
+        );
+      }
+    }
+
     // O lançamento passa a apontar para o pedido. `contrato_id` vai junto:
     // é por ele que o contrato soma o que já foi faturado, e deixá-lo em
     // branco faria o pedido existir sem o título aparecer no contrato.
