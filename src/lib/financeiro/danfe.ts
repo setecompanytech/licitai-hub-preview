@@ -127,8 +127,18 @@ export function dadosDaChave(chave: string): DadosDaChave | null {
   };
 }
 
-/** Só os modelos que este campo comporta; outro modelo não é NF-e nem NFC-e. */
+/**
+ * Os modelos que a chave de 44 dígitos identifica, e que o campo comporta.
+ *
+ * O CT-e é modelo 57 e tem a MESMA estrutura de chave — o leitor já o
+ * encontrava e não sabia nomeá-lo, então o tipo do documento ficava vazio num
+ * conhecimento de transporte perfeitamente lido.
+ *
+ * Modelo fora desta lista não vira tipo nenhum: a chave é válida, mas o campo
+ * não tem opção para ele, e escolher a errada é pior que deixar em branco.
+ */
 export const ROTULO_DO_MODELO: Record<string, string> = {
   '55': 'nfe',
+  '57': 'cte',
   '65': 'nfce',
 };

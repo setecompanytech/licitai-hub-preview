@@ -7,6 +7,8 @@ import { parseNFeXML } from "@/lib/parseNFe";
 import { conferirContraOLancamento, chaveValida, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
 import { ROTULO_DO_MODELO } from "@/lib/financeiro/danfe";
 import { perfilDoAnexo } from "@/lib/financeiro/anexo-do-lancamento";
+import { acharLinhaDigitavel } from "@/lib/financeiro/boleto";
+import { hojeLocal as hojeISO } from "@/lib/financeiro/data-local";
 import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -280,6 +282,69 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   };
 
   /**
+   * Lê o boleto ou a guia pela linha digitável.
+   *
+   * A linha é o equivalente da chave de acesso para o que se paga: tem dígito
+   * verificador e carrega VALOR e VENCIMENTO. Não depende de layout nem de o
+   * OCR acertar coluna — ou os dígitos fecham, ou não é linha digitável.
+   *
+   * Preencher e sobrescrever seguem a mesma regra do XML: campo vazio recebe;
+   * campo preenchido que discorda apenas aparece. Vale sobretudo para o valor
+   * de um lançamento já conciliado, que veio do extrato e não se corrige por
+   * boleto — juros e multa fazem o pago diferir do impresso legitimamente.
+   */
+  const lerBoleto = async (arquivo: File): Promise<boolean> => {
+    setLendoDanfe("Procurando a linha digitável…");
+    try {
+      const { extractTextFromFile } = await import("@/lib/pdf-text-extractor");
+      const texto = await extractTextFromFile(arquivo, 3, false, 2);
+      const b = acharLinhaDigitavel(texto, hojeISO());
+      if (!b) return false;
+
+      const preencheu: string[] = [];
+      const divergentes: Divergencia[] = [];
+
+      if (b.valor != null) {
+        if (!valor) { setValor(b.valor); preencheu.push("valor"); }
+        else if (Math.abs(Number(valor) - b.valor) > 0.005) {
+          divergentes.push({
+            campo: "Valor",
+            noSistema: Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+            naNota: b.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+          });
+        }
+      }
+      if (b.vencimento) {
+        if (!dataVencimento) { setDataVencimento(b.vencimento); preencheu.push("vencimento"); }
+        else if (dataVencimento !== b.vencimento) {
+          divergentes.push({ campo: "Vencimento", noSistema: dataVencimento, naNota: b.vencimento });
+        }
+      }
+      if (!numeroDocumento.trim()) { setNumeroDocumento(b.linha); preencheu.push("linha digitável"); }
+      if (!tipoDocumento) {
+        setTipoDocumento((b.formato === "arrecadacao" ? "darf" : "boleto") as TipoDocumento);
+      }
+      setDivergencias(divergentes);
+
+      toast.success(
+        preencheu.length > 0
+          ? `${b.formato === "arrecadacao" ? "Guia" : "Boleto"} lido: ${preencheu.join(", ")} preenchido(s).`
+          : "Linha digitável conferida — os campos já estavam preenchidos.",
+        {
+          description: divergentes.length > 0
+            ? `${divergentes.length} divergência(s) apontada(s) — nada foi alterado nelas.`
+            : (b.formato === "arrecadacao" ? "Guia de arrecadação não carrega vencimento." : undefined),
+        },
+      );
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setLendoDanfe(null);
+    }
+  };
+
+  /**
    * Lê o DANFE em PDF, quando não veio XML.
    *
    * Dois passos, em `lib/financeiro/ler-danfe.ts`: a CHAVE (local, instantânea,
@@ -372,7 +437,10 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       // Só tenta ler onde há o que ler. Procurar chave de acesso num boleto
       // gasta OCR e uma chamada de IA para não achar nada — e o aviso de
       // "chave não encontrada" seria verdadeiro e inútil.
-      if (perfil.leChave && /\.pdf$/i.test(principal.name)) {
+      const ehPdf = /\.pdf$/i.test(principal.name);
+      // Boleto primeiro quando o tipo o anuncia: é a leitura barata e exata.
+      if (perfil.leLinhaDigitavel && ehPdf && await lerBoleto(principal)) return;
+      if (perfil.leChave && ehPdf) {
         await lerDanfe(principal);
       } else {
         toast.success("Arquivo anexado.", {

@@ -27,6 +27,8 @@ export type PerfilDoAnexo = {
   leXml: boolean;
   /** Este tipo tem chave de acesso de 44 dígitos no papel? */
   leChave: boolean;
+  /** Este tipo tem linha digitável — valor e vencimento no próprio papel? */
+  leLinhaDigitavel: boolean;
 };
 
 const IMAGENS = '.jpg,.jpeg,.png,.webp,.heic';
@@ -51,6 +53,7 @@ export function perfilDoAnexo(tipoDocumento: string | null | undefined): PerfilD
       aceita: `.xml,.pdf,${IMAGENS}`,
       leXml: true,
       leChave: true,
+      leLinhaDigitavel: false,
     };
   }
 
@@ -65,17 +68,19 @@ export function perfilDoAnexo(tipoDocumento: string | null | undefined): PerfilD
       aceita: `.xml,.pdf,${IMAGENS}`,
       leXml: true,
       leChave: false,
+      leLinhaDigitavel: false,
     };
   }
 
   if (COBRANCA.has(t)) {
     return {
       titulo: 'Anexar o boleto ou a guia',
-      ajuda: 'O papel que originou a cobrança. Guardá-lo é o que permite conferir valor e '
-        + 'vencimento depois, e provar o que se pagou.',
+      ajuda: 'A linha digitável é lida do próprio papel — ela traz valor e vencimento, '
+        + 'conferidos por dígito verificador. Foto serve.',
       aceita: `.pdf,${IMAGENS}`,
       leXml: false,
       leChave: false,
+      leLinhaDigitavel: true,
     };
   }
 
@@ -86,6 +91,7 @@ export function perfilDoAnexo(tipoDocumento: string | null | undefined): PerfilD
       aceita: `.pdf,${IMAGENS}`,
       leXml: false,
       leChave: false,
+      leLinhaDigitavel: false,
     };
   }
 
@@ -97,6 +103,7 @@ export function perfilDoAnexo(tipoDocumento: string | null | undefined): PerfilD
       aceita: `.pdf,${IMAGENS}`,
       leXml: false,
       leChave: false,
+      leLinhaDigitavel: false,
     };
   }
 
@@ -107,6 +114,10 @@ export function perfilDoAnexo(tipoDocumento: string | null | undefined): PerfilD
     aceita: `.pdf,.xml,${IMAGENS}`,
     leXml: true,
     leChave: true,
+    // Sem tipo escolhido, tenta as duas leituras. Chave de acesso e linha
+    // digitável se excluem — nenhum papel tem as duas —, então uma delas
+    // simplesmente não acha nada, e nada é gravado por engano.
+    leLinhaDigitavel: true,
   };
 }
 
