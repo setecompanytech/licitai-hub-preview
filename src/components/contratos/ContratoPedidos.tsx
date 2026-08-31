@@ -145,7 +145,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         .eq('id', id)
         .single();
       if (data?.storage_path) {
-        void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Ordem/Empenho');
+        void abrirArquivoDoContrato(data.storage_path, data.nome_arquivo ?? 'Ordem/Empenho');
         return;
       }
     }
@@ -170,7 +170,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           .from('contrato_pedidos')
           .update({ arquivo_ordem_id: achado.id } as never)
           .eq('id', p.id);
-        void abrirDanfe(achado.storage_path, achado.nome_arquivo ?? 'Ordem/Empenho');
+        void abrirArquivoDoContrato(achado.storage_path, achado.nome_arquivo ?? 'Ordem/Empenho');
         load();
         return;
       }
@@ -196,7 +196,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       .eq('id', arquivoId)
       .single();
     if (data?.storage_path) {
-      void abrirDanfe(data.storage_path, data.nome_arquivo ?? 'Empenho');
+      void abrirArquivoDoContrato(data.storage_path, data.nome_arquivo ?? 'Empenho');
       return;
     }
     toast.error('O documento não foi encontrado no dossiê.');
@@ -211,6 +211,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  /**
+   * Abre um documento do CONTRATO — e o bucket é outro.
+   *
+   * `abrirDanfe` assina em `financeiro-documentos`, onde moram as DANFEs. Os
+   * documentos do contrato estão em `contratos-docs`. Assinar um caminho no
+   * bucket errado falha sempre, e a mensagem convidava a tentar de novo uma
+   * coisa que nunca ia dar certo.
+   *
+   * É a causa de "não consigo ver o empenho anexado", relatado duas vezes: o
+   * vínculo estava certo, o caminho estava certo, o arquivo estava lá — só era
+   * procurado no armário errado.
+   */
+  const abrirArquivoDoContrato = async (storagePath: string, nome: string) => {
+    const { data, error } = await supabase.storage
+      .from('contratos-docs')
+      .createSignedUrl(storagePath, 600);
+    if (error || !data?.signedUrl) {
+      toast.error('Não foi possível abrir o documento.', {
+        // A mensagem real do storage distingue "não está lá" de falha
+        // passageira — e só uma das duas se resolve tentando de novo.
+        description: `"${nome}": ${error?.message ?? 'link não gerado'}`,
+      });
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   };
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
