@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
-  ShieldCheck, ShieldAlert, AlertTriangle, Plus, ExternalLink, Loader2, Trash2, Gavel,
+  ShieldCheck, ShieldAlert, AlertTriangle, Plus, ExternalLink, Loader2, Trash2, Gavel, FileText,
 } from 'lucide-react';
 import { extratosExigidos, ROTULO_PUBLICACAO, type TipoDePublicacao } from '@/lib/contratos/eficacia';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -19,6 +19,9 @@ import { deDataLocal, hojeLocal } from '@/lib/financeiro/data-local';
 type Publicacao = {
   id: string; tipo: string; veiculo: string; data_publicacao: string;
   numero: string | null; url: string | null; aditivo_id: string | null;
+  /** O recorte guardado no dossiê. A coluna existe desde a 20260829000005 e
+   *  nunca foi preenchida — o registro dizia QUE foi publicado, sem a prova. */
+  arquivo_id: string | null;
 };
 
 type Contrato = {
@@ -61,6 +64,18 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   const [indisponivel, setIndisponivel] = useState(false);
   const { situacao: s, leituraDaAssinatura, recarregar: recarregarSituacao } = useSituacaoJuridica(contratoId);
   const [conferindo, setConferindo] = useState(false);
+  /**
+   * O recorte do Diário, esperando o Registrar.
+   *
+   * `contrato_publicacoes.arquivo_id` existe desde a 20260829000005 e nunca foi
+   * preenchido: o registro dizia QUE foi publicado, e não guardava a PROVA. O
+   * link do Diário caduca — o portal muda de endereço, a edição sai do ar —, e
+   * o que sobra na fiscalização é o recorte que se guardou.
+   *
+   * Anexar não é registrar: o arquivo espera, como no empenho e na NF-e.
+   */
+  const [recorte, setRecorte] = useState<File | null>(null);
+  const entradaDoRecorte = useRef<HTMLInputElement>(null);
   const [criando, setCriando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
@@ -115,6 +130,34 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
       return;
     }
     setSalvando(true);
+
+    // O recorte vai para o dossiê do contrato antes, porque é dele que sai o
+    // `arquivo_id` do registro. Falhando, o registro continua: a publicação
+    // aconteceu de todo jeito, e perdê-la por causa do anexo seria trocar o
+    // fato pela prova.
+    let arquivoId: string | null = null;
+    if (recorte && user?.id) {
+      // A PRIMEIRA pasta tem de ser o auth.uid(): é o que a política do bucket
+      // confere.
+      const caminho = `${user.id}/${contratoId}/publicacoes/${Date.now()}-${recorte.name.replace(/[^\w.\-]+/g, '_')}`;
+      const { error: upErr } = await supabase.storage
+        .from('contratos-docs').upload(caminho, recorte, { upsert: false, contentType: recorte.type });
+      if (upErr) {
+        toast.warning('O recorte não pôde ser guardado.', { description: upErr.message });
+      } else {
+        const { data: arq } = await supabase.from('contrato_arquivos').insert({
+          contrato_id: contratoId,
+          nome_arquivo: recorte.name,
+          storage_path: caminho,
+          tamanho_bytes: recorte.size,
+          tipo: 'publicacao',
+          descricao: `${ROTULO_PUBLICACAO[form.tipo]} · ${form.veiculo}`,
+          user_id: user.id,
+        } as never).select('id').single();
+        arquivoId = (arq as { id: string } | null)?.id ?? null;
+      }
+    }
+
     const { error } = await supabase.from('contrato_publicacoes' as never).insert({
       empresa_id: empresaAtiva.id,
       contrato_id: contratoId,
@@ -124,17 +167,39 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
       data_publicacao: form.data_publicacao,
       numero: form.numero.trim() || null,
       url: form.url.trim() || null,
+      arquivo_id: arquivoId,
       created_by: user?.id ?? null,
     } as never);
     setSalvando(false);
     if (error) { toast.error('Não foi possível registrar', { description: error.message }); return; }
     setCriando(false);
     setForm(f => ({ ...f, numero: '', url: '' }));
-    toast.success('Publicação registrada.');
+    setRecorte(null);
+    toast.success(
+      arquivoId ? 'Publicação registrada, com o recorte guardado.' : 'Publicação registrada.',
+      { description: arquivoId ? undefined : 'Sem recorte anexado — o link do Diário pode sair do ar.' },
+    );
     void carregar();
     // A publicação do extrato é o que dá eficácia: o painel de cima precisa
     // mudar junto, senão continua dizendo "não inicie a execução".
     recarregarSituacao();
+  };
+
+  /** Abre o recorte guardado no dossiê do contrato. */
+  const abrirRecorte = async (arquivoId: string) => {
+    const { data } = await supabase
+      .from('contrato_arquivos').select('storage_path, nome_arquivo').eq('id', arquivoId).single();
+    if (!data?.storage_path) { toast.error('O recorte não foi encontrado no dossiê.'); return; }
+    // Bucket dos CONTRATOS — o recorte é documento do contrato, não do
+    // Financeiro. Assinar no armário errado falha sempre, e foi o erro que se
+    // repetiu duas vezes em 31/08.
+    const { data: url, error } = await supabase.storage
+      .from('contratos-docs').createSignedUrl(data.storage_path, 600);
+    if (error || !url?.signedUrl) {
+      toast.error('Não foi possível abrir o recorte.', { description: error?.message });
+      return;
+    }
+    window.open(url.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const excluir = async (id: string) => {
@@ -258,9 +323,18 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 </span>
                 {p.numero && <span className="text-muted-foreground truncate">nº {p.numero}</span>}
                 {p.url && (
-                  <a href={p.url} target="_blank" rel="noreferrer" className="text-primary shrink-0" title="Abrir">
+                  <a href={p.url} target="_blank" rel="noreferrer" className="text-primary shrink-0" title="Abrir o link do Diário">
                     <ExternalLink className="w-3 h-3" />
                   </a>
+                )}
+                {/* O recorte guardado. Link e recorte convivem: o primeiro leva
+                    à fonte enquanto ela existir, o segundo prova depois. */}
+                {p.arquivo_id && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 nao-imprime"
+                    title="Ver o recorte publicado"
+                    onClick={() => abrirRecorte(p.arquivo_id!)}>
+                    <FileText className="w-3 h-3 text-primary" />
+                  </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto shrink-0 nao-imprime"
                   onClick={() => excluir(p.id)}>
@@ -328,6 +402,29 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 <Label className="text-xs text-muted-foreground">Link (opcional)</Label>
                 <Input placeholder="https://pncp.gov.br/..." value={form.url}
                   onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* ── O recorte do Diário ─────────────────────────────────────────
+                O link caduca: o portal muda de endereço, a edição sai do ar, e
+                o PNCP reorganiza URL. Numa fiscalização anos depois, o que
+                sustenta a eficácia é o recorte que se guardou — não o endereço
+                que se anotou. */}
+            <div>
+              <Label className="text-xs text-muted-foreground">Recorte publicado (recomendado)</Label>
+              <input ref={entradaDoRecorte} type="file" className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                onChange={e => { setRecorte(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <Button type="button" size="sm" variant="outline" className="h-8 text-xs"
+                  onClick={() => entradaDoRecorte.current?.click()}>
+                  {recorte ? 'Trocar arquivo' : 'Escolher arquivo'}
+                </Button>
+                {recorte
+                  ? <span className="text-xs text-muted-foreground">{recorte.name} · guardado ao registrar</span>
+                  : <span className="text-xs text-muted-foreground">
+                      PDF ou foto da página. O link do Diário sai do ar; o recorte fica.
+                    </span>}
               </div>
             </div>
 
