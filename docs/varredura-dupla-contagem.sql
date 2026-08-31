@@ -2,30 +2,46 @@
 -- FASE 2 — Varredura de dupla contagem de custo
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- SOMENTE LEITURA. Nenhum INSERT, UPDATE ou DELETE. Pode rodar à vontade.
+-- SOMENTE LEITURA. Nenhum INSERT, UPDATE ou DELETE.
 --
--- Antes de ligar Contas a Pagar ao contrato, é preciso saber se algum custo já
--- está anotado nos DOIS livros. Se estiver, a ligação passaria a contá-lo duas
--- vezes, e a margem pioraria sem nada ter mudado no mundo real.
+-- ── RODE ESTA. É uma só, e responde tudo em uma linha. ─────────────────────
 --
--- Rode as cinco e me mande os resultados. A 3 é a que decide.
+-- O SQL Editor do Supabase mostra UM resultado por vez, então cinco consultas
+-- separadas exigem cinco execuções e cinco leituras. Esta devolve os cinco
+-- números de uma vez:
+--
+--   custos_digitados          > 0 ?  há o que duplicar
+--   pagar_ligado_a_contrato   > 0 ?  alguma despesa já foi atribuída
+--   pares_por_valor           > 0 ?  MESMO custo nos dois livros (por valor)
+--   pares_por_nota            > 0 ?  MESMO papel nos dois livros (por NF)
+--
+-- Tudo zero → a Fase 3 começa limpa.
 
--- ── 1. Existe custo digitado? ───────────────────────────────────────────────
--- Se voltar zero, não há o que duplicar e a Fase 3 começa limpa.
-SELECT count(*) AS linhas,
-       count(DISTINCT contrato_id) AS contratos,
-       SUM(valor) AS total
-  FROM public.contrato_custos;
+SELECT
+  (SELECT count(*)                    FROM public.contrato_custos) AS custos_digitados,
+  (SELECT COALESCE(SUM(valor), 0)     FROM public.contrato_custos) AS total_digitado,
+  (SELECT count(*) FROM public.financeiro_lancamentos
+    WHERE tipo = 'a_pagar' AND contrato_id IS NOT NULL)            AS pagar_ligado_a_contrato,
+  (SELECT count(*)
+     FROM public.contrato_custos c
+     JOIN public.financeiro_lancamentos l
+       ON l.contrato_id = c.contrato_id
+      AND l.tipo = 'a_pagar'
+      AND abs(l.valor - c.valor) < 0.01
+      AND abs(l.data_competencia - c.data_lancamento) <= 15)       AS pares_por_valor,
+  (SELECT count(*)
+     FROM public.contrato_custos c
+     JOIN public.financeiro_lancamentos l
+       ON l.tipo = 'a_pagar'
+      AND l.numero_documento IS NOT NULL
+      AND c.nota_fiscal IS NOT NULL
+      AND ltrim(regexp_replace(l.numero_documento, '\D', '', 'g'), '0')
+        = ltrim(regexp_replace(c.nota_fiscal,      '\D', '', 'g'), '0')
+      AND ltrim(regexp_replace(c.nota_fiscal, '\D', '', 'g'), '0') <> '') AS pares_por_nota;
 
--- ── 2. Alguma despesa já aponta para contrato? ──────────────────────────────
--- A coluna existe desde sempre e nenhuma tela a preenche — mas importação ou
--- SQL antigo podem ter preenchido.
-SELECT count(*) AS lancamentos,
-       count(DISTINCT contrato_id) AS contratos,
-       SUM(valor) AS total
-  FROM public.financeiro_lancamentos
- WHERE tipo = 'a_pagar'
-   AND contrato_id IS NOT NULL;
+-- ═══════════════════════════════════════════════════════════════════════════
+-- As detalhadas, só se algum número acima vier > 0
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 3. OS PARES SUSPEITOS ───────────────────────────────────────────────────
 -- Mesmo contrato, mesmo valor ao centavo, datas a até 15 dias. Cada linha aqui
