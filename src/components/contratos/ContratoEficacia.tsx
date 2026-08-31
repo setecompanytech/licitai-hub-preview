@@ -59,7 +59,8 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [aditivos, setAditivos] = useState<Array<{ id: string; numero_aditivo: string }>>([]);
   const [indisponivel, setIndisponivel] = useState(false);
-  const { situacao: s, recarregar: recarregarSituacao } = useSituacaoJuridica(contratoId);
+  const { situacao: s, leituraDaAssinatura, recarregar: recarregarSituacao } = useSituacaoJuridica(contratoId);
+  const [conferindo, setConferindo] = useState(false);
   const [criando, setCriando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
@@ -144,6 +145,27 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     recarregarSituacao();
   };
 
+  /**
+   * Quem tem o instrumento em mãos corrige a leitura.
+   *
+   * Fica gravado como `conferido`, e não como se a máquina tivesse lido: a
+   * releitura automática não desfaz isto (gatilho da 20260831000003), e quem
+   * auditar depois sabe em que está apoiado.
+   */
+  const confirmarAssinaturas = async () => {
+    setConferindo(true);
+    const { error } = await supabase
+      .from('contratos')
+      .update({ assinatura_situacao: 'ambas', assinatura_origem: 'conferido' } as never)
+      .eq('id', contratoId);
+    setConferindo(false);
+    if (error) { toast.error('Não foi possível registrar', { description: error.message }); return; }
+    toast.success('Registrado: as duas partes assinaram.', {
+      description: 'Fica marcado como conferido por pessoa — a releitura automática não desfaz.',
+    });
+    recarregarSituacao();
+  };
+
   return (
     <div className="space-y-3">
       {/* A pergunta que importa, respondida antes de tudo. */}
@@ -157,6 +179,30 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
               <Badge variant="outline" className="mt-2 text-xs border-destructive/40 text-destructive">
                 Não inicie a execução
               </Badge>
+            )}
+
+            {/* ── A leitura pode estar errada, e quem tem o papel decide ──────
+                A assinatura digital é desenhada pelo fluxo de aparência do PDF
+                e nem sempre entra na camada de texto; o carimbo ICP vem em
+                caixa própria; a contratada aparece rotulada "Contratado".
+                Qualquer um desses perde o lado.
+
+                Um alerta crítico que a pessoa sabe estar errado e não pode
+                desligar não vira ruído só ele — ensina que os alertas daquele
+                painel podem ser ignorados. E os outros ali são verdadeiros. */}
+            {s.estado === 'assinatura_incompleta' && (
+              <div className="mt-2.5 space-y-1.5 nao-imprime">
+                {leituraDaAssinatura.observacao && (
+                  <p className="text-[11px] text-muted-foreground">
+                    O que a leitura encontrou: {leituraDaAssinatura.observacao}
+                  </p>
+                )}
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  disabled={conferindo}
+                  onClick={confirmarAssinaturas}>
+                  {conferindo ? 'registrando…' : 'Conferi — as duas partes assinaram'}
+                </Button>
+              </div>
             )}
           </div>
         </div>

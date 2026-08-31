@@ -7,6 +7,15 @@ export type DadosJuridicos = {
   /** A migration 20260829000005 ainda não rodou — nada a exibir, nada a barrar. */
   indisponivel: boolean;
   carregando: boolean;
+  /**
+   * O que a extração leu de cada lado da assinatura, e se alguém já conferiu.
+   *
+   * A tela precisa disto para distinguir leitura de fato: assinatura digital
+   * nem sempre entra na camada de texto do PDF, e o alerta de "assinado por
+   * uma parte só" sai errado com frequência suficiente para ter de ser
+   * corrigível.
+   */
+  leituraDaAssinatura: { observacao: string | null; origem: string };
   recarregar: () => void;
 };
 
@@ -25,6 +34,9 @@ export type DadosJuridicos = {
 export function useSituacaoJuridica(contratoId: string | null | undefined): DadosJuridicos {
   const [situacao, setSituacao] = useState<SituacaoJuridica | null>(null);
   const [indisponivel, setIndisponivel] = useState(false);
+  const [leituraDaAssinatura, setLeituraDaAssinatura] = useState<{
+    observacao: string | null; origem: string;
+  }>({ observacao: null, origem: 'documento' });
   const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {
@@ -33,7 +45,7 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
     const [cRes, pRes] = await Promise.all([
       supabase
         .from('contratos')
-        .select('data_assinatura, modalidade, assinatura_situacao, eficacia_por_urgencia, valor_consumido')
+        .select('data_assinatura, modalidade, assinatura_situacao, assinatura_observacao, assinatura_origem, eficacia_por_urgencia, valor_consumido')
         .eq('id', contratoId)
         .single(),
       supabase
@@ -52,7 +64,14 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
       data_assinatura: string | null; modalidade: string | null;
       assinatura_situacao: string | null; eficacia_por_urgencia: boolean | null;
       valor_consumido: number | null;
+      assinatura_observacao: string | null; assinatura_origem: string | null;
     };
+    // O que a extração LEU de cada lado, e se alguém já conferiu. É por aqui
+    // que a tela distingue leitura de fato — e oferece a correção.
+    setLeituraDaAssinatura({
+      observacao: c.assinatura_observacao ?? null,
+      origem: c.assinatura_origem ?? 'documento',
+    });
     const publicacoes = (pRes.data ?? []) as unknown as Array<{ data_publicacao: string }>;
 
     setIndisponivel(false);
@@ -74,5 +93,5 @@ export function useSituacaoJuridica(contratoId: string | null | undefined): Dado
 
   useEffect(() => { void carregar(); }, [carregar]);
 
-  return { situacao, indisponivel, carregando, recarregar: () => void carregar() };
+  return { situacao, indisponivel, carregando, leituraDaAssinatura, recarregar: () => void carregar() };
 }
