@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
+import {
+  assinarReleituras, releiturasEmCurso, releituraDe,
+  comecarReleitura, progredirReleitura, terminarReleitura,
+} from '@/lib/contratos/releitura';
 import {
   Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, Sparkles
 } from 'lucide-react';
@@ -185,8 +189,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   const [showAditivoFields, setShowAditivoFields] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
-  /** Qual documento está sendo relido agora. */
-  const [relendoId, setRelendoId] = useState<string | null>(null);
+  // Quais documentos estão sendo relidos — no módulo, para sobreviver à troca
+  // de aba. Ver src/lib/contratos/releitura.ts.
+  useSyncExternalStore(assinarReleituras, releiturasEmCurso);
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const replaceTargetRef = useRef<any>(null);
   const [parentContrato, setParentContrato] = useState<any>(null);
@@ -657,73 +662,53 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
    * alguém corrigiu à mão. É o que torna a releitura segura de repetir: ela
    * preenche lacuna, não revisa decisão.
    */
-  const relerDocumento = async (file: File, arquivo: any): Promise<void> => {
-      // Mesmo leitor da casa que o importador usa: página por página, OCR
-      // reencaixado no lugar, marcadores de página para a seleção do
-      // servidor. Era a terceira cópia do leitor antigo neste arquivo.
-      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-      const texto = await extractTextFromFile(file, 156, false, 40);
+  const relerDocumento = async (
+    file: File,
+    arquivo: any,
+    aoProgredir?: (msg: string) => void,
+  ): Promise<void> => {
+    // O leitor completo do importador, e não uma cópia local dele: OCR página
+    // a página, reversão automática no 429 (que é o erro NORMAL logo depois do
+    // OCR de um documento grande) e o motivo REAL da falha em vez de um null
+    // mudo. A cópia que estava aqui não tinha nada disso.
+    const dados = await extractContractDataFromFile(file, arquivo.tipo, aoProgredir);
+    if (!dados) {
+      toast.warning('Não foi possível ler o documento.', { description: motivoDaUltimaFalha() ?? undefined });
+      return;
+    }
 
-      if (texto.trim().length < 80) {
-        toast.warning('Não foi possível extrair texto do arquivo. Edite valores manualmente.');
-        return;
-      }
+    // A régua do upload: validar, depois montar o UPDATE respeitando o que foi
+    // editado à mão. Havia aqui uma SEGUNDA cópia dessa regra, com dois
+    // defeitos — escrevia `orgao` (a coluna é `orgao_contratante`, então o
+    // UPDATE INTEIRO falhava em silêncio) e não conhecia prazo nem local de
+    // entrega. Duas cópias da mesma regra divergem sempre.
+    const { normalized, rejected } = validateExtractedContract(dados);
+    const updates = buildParentUpdates(
+      normalized,
+      parentContrato ?? {},
+      parentTipoDocumento ?? 'contrato',
+    );
 
-      const { data: extracted, error: extErr } = await supabase.functions.invoke('extrair-contrato-pdf', {
-        body: {
-          texto_pdf: texto,
-          nome_arquivo: file.name,
-          tipo_arquivo: arquivo.tipo,
-        },
-      });
-      if (extErr) throw extErr;
-      if (!extracted?.success || !extracted?.data) {
-        toast.warning('IA não conseguiu extrair dados estruturados.');
-        return;
-      }
-
-      // Este trecho tinha uma SEGUNDA cópia da regra de merge, escrita à mão,
-      // e ela carregava dois defeitos:
-      //
-      //   1. `updates.orgao` — a coluna se chama `orgao_contratante`, e
-      //      `orgao` não existe. Toda vez que a IA devolvia o órgão, o
-      //      UPDATE INTEIRO falhava com "column does not exist" e o erro ia
-      //      para console.warn. A tela dizia "reextração concluída, 8 campos
-      //      atualizados" e nenhum deles tinha sido gravado.
-      //
-      //   2. Não conhecia prazo e local de entrega — nem conheceria os
-      //      próximos campos. Duas cópias da mesma regra divergem sempre;
-      //      é só questão de qual das duas alguém lembra de atualizar.
-      //
-      // Agora usa a mesma régua do upload: validar, depois montar o UPDATE
-      // respeitando o que foi editado à mão.
-      const { normalized, rejected } = validateExtractedContract(extracted.data);
-      const updates = buildParentUpdates(
-        normalized,
-        parentContrato ?? {},
-        parentTipoDocumento ?? 'contrato',
+    if (Object.keys(updates).length === 0) {
+      toast.info(
+        rejected.length > 0
+          ? `A IA leu, mas devolveu dados inválidos (${rejected.join(', ')}).`
+          : 'Nada a preencher — os campos que este documento alimenta já estão preenchidos.',
       );
+      return;
+    }
 
-      if (Object.keys(updates).length === 0) {
-        toast.info(
-          rejected.length > 0
-            ? `IA retornou dados inválidos (${rejected.join(', ')}).`
-            : 'Arquivo substituído. Nenhum campo novo a preencher — o registro já está completo.',
-        );
-        return;
-      }
+    const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
+    if (cErr) {
+      // Falha de gravação não pode virar sucesso na tela: era exatamente isso
+      // que escondia o defeito da coluna inexistente.
+      toast.error('A IA leu o documento, mas a gravação falhou.', { description: cErr.message });
+      return;
+    }
 
-      const { error: cErr } = await supabase.from('contratos').update(updates).eq('id', contratoId);
-      if (cErr) {
-        // Falha de gravação não pode virar sucesso na tela: era exatamente
-        // isso que escondia o defeito da coluna inexistente.
-        toast.error('A IA leu o documento, mas a gravação falhou.', { description: cErr.message });
-        return;
-      }
-
-      toast.success(`Documento relido: ${Object.keys(updates).length} campo(s) preenchido(s).`, {
-        description: Object.keys(updates).join(', '),
-      });
+    toast.success(`Documento relido: ${Object.keys(updates).length} campo(s) preenchido(s).`, {
+      description: Object.keys(updates).join(', '),
+    });
   };
 
   /**
@@ -738,7 +723,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
    * O documento está no storage. Basta baixá-lo e lê-lo outra vez.
    */
   const handleReler = async (arquivo: any) => {
-    setRelendoId(arquivo.id);
+    // O módulo é o dono, não o componente: trocar de aba desmonta esta tela e
+    // levaria junto o spinner, o progresso e a recarga do fim — a leitura
+    // seguiria rodando sem nada que a anunciasse, e quem voltasse dispararia
+    // outra por cima.
+    if (!comecarReleitura(arquivo.id, arquivo.nome_arquivo)) {
+      toast.info('Este documento já está sendo lido.');
+      return;
+    }
     try {
       const { data, error } = await supabase.storage
         .from('contratos-docs')
@@ -747,12 +739,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       // `File` sem qualificar resolveria para o ícone do lucide, importado
       // neste arquivo — e o erro sairia como "só função void aceita new".
       const comoArquivo = new globalThis.File([data], arquivo.nome_arquivo, { type: 'application/pdf' });
-      await relerDocumento(comoArquivo, arquivo);
+      await relerDocumento(comoArquivo, arquivo, (msg) => progredirReleitura(arquivo.id, msg));
       loadData();
     } catch (err: any) {
       toast.error('Não foi possível reler o documento', { description: err?.message });
     } finally {
-      setRelendoId(null);
+      terminarReleitura(arquivo.id);
     }
   };
 
@@ -1477,6 +1469,15 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     <span>{new Date(arq.created_at).toLocaleDateString('pt-BR')}</span>
                     {arq.descricao && <span className="truncate">{arq.descricao}</span>}
                   </div>
+                  {/* Onde a leitura está. Sem isto o OCR de um documento
+                      escaneado — que leva minutos — é um spinner mudo, e a
+                      espera correta é indistinguível de travamento. */}
+                  {releituraDe(arq.id) && (
+                    <p className="text-xs text-primary mt-0.5 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                      {releituraDe(arq.id)!.mensagem}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {/* Reler o que já está guardado. Sem isto, alimentar o
@@ -1485,9 +1486,9 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                       registro do dossiê para reprocessar um arquivo que nunca
                       saiu do lugar. */}
                   <Button size="icon" variant="ghost" className="h-8 w-8"
-                    onClick={() => handleReler(arq)} disabled={relendoId === arq.id}
+                    onClick={() => handleReler(arq)} disabled={!!releituraDe(arq.id)}
                     title="Reler com a IA e preencher os campos em branco do contrato">
-                    {relendoId === arq.id
+                    {releituraDe(arq.id)
                       ? <Loader2 className="w-4 h-4 animate-spin" />
                       : <Sparkles className="w-4 h-4" />}
                   </Button>
