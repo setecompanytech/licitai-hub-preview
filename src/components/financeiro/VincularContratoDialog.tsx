@@ -12,9 +12,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, Link2, AlertTriangle } from 'lucide-react';
 import {
-  ordenarContratos, pedidoAPartirDoLancamento, PONTOS_PARA_PRESELECIONAR,
+  ordenarContratos, pedidoAPartirDoLancamento, sugerirItem, PONTOS_PARA_PRESELECIONAR,
   type LancamentoParaVincular, type ContratoCandidato,
 } from '@/lib/contratos/pedido-do-lancamento';
+import { parseNFeXML } from '@/lib/parseNFe';
+import { quantidadeDaNota } from '@/lib/financeiro/nfe-para-lancamento';
 import { avaliarCabimento } from '@/lib/contratos/cabimento';
 import { quitacaoDoPedido } from '@/lib/contratos/casar-pedido';
 import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
@@ -82,6 +84,11 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
   const [cota, setCota] = useState('');
   const [empenhoId, setEmpenhoId] = useState('');
   const [numeroPedido, setNumeroPedido] = useState('');
+  /** O que o XML da nota diz — quando ele foi anexado e é legível. */
+  const [daNota, setDaNota] = useState<{
+    total: number;
+    linhas: Array<{ descricao: string; quantidade: number; unitario: number }>;
+  } | null>(null);
 
   const aberto = !!lancamento;
 
@@ -111,6 +118,41 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
       });
     return () => { vivo = false; };
   }, [aberto, empresaAtiva?.id, lancamento]);
+
+  // ── A quantidade vem da nota, não de uma conta de cabeça ─────────────────
+  //
+  // R$ 30.960,00 a R$ 0,43 são 72.000 unidades. Essa divisão não deveria ser
+  // de quem cadastra: o XML traz `qCom` por item, com fé pública. Quando ele
+  // foi anexado, a quantidade chega preenchida e com a procedência à vista.
+  useEffect(() => {
+    if (!aberto || !lancamento) { setDaNota(null); return; }
+    let vivo = true;
+    supabase
+      .from('financeiro_documentos_fiscais' as never)
+      .select('arquivo_xml')
+      .eq('lancamento_id', lancamento.id)
+      .limit(1)
+      .then(({ data }) => {
+        const xml = (data as unknown as Array<{ arquivo_xml: string | null }> | null)?.[0]?.arquivo_xml;
+        if (!vivo || !xml) return;
+        try {
+          const lido = quantidadeDaNota(parseNFeXML(xml));
+          if (!vivo || lido.total <= 0) return;
+          setDaNota(lido);
+          setQuantidade(String(lido.total));
+        } catch { /* XML ilegível: a quantidade continua sendo digitada */ }
+      });
+    return () => { vivo = false; };
+  }, [aberto, lancamento]);
+
+  // A linha da nota aponta o item do contrato. Só sugere com parecença forte:
+  // confirmar uma sugestão fraca consome o saldo do item errado, e esse erro
+  // ninguém volta a conferir.
+  useEffect(() => {
+    if (!daNota || itens.length === 0 || itemId) return;
+    const sugerido = sugerirItem(daNota.linhas[0]?.descricao ?? '', itens);
+    if (sugerido) setItemId(sugerido);
+  }, [daNota, itens, itemId]);
 
   // ── O que o contrato escolhido oferece ───────────────────────────────────
   useEffect(() => {
@@ -171,7 +213,7 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
 
   const fechar = () => {
     setContratoId(''); setPedidoEscolhido(''); setItemId(''); setQuantidade('');
-    setCota(''); setEmpenhoId(''); setNumeroPedido(''); setContratos([]);
+    setCota(''); setEmpenhoId(''); setNumeroPedido(''); setContratos([]); setDaNota(null);
     onFechar();
   };
 
@@ -362,6 +404,17 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
                     <Label className="text-xs">Quantidade entregue</Label>
                     <Input type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)}
                       placeholder="em unidades do contrato" className="h-8 text-xs" />
+                    {/* De onde o número veio. Lido e digitado se parecem na
+                        tela, e quem confere precisa saber em qual está
+                        apoiado — o mesmo motivo do carimbo de procedência do
+                        DRE e da data de entrega. */}
+                    {daNota && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {Number(quantidade) === daNota.total
+                          ? `Do XML da nota${daNota.linhas.length > 1 ? ` — soma de ${daNota.linhas.length} linhas` : ''}.`
+                          : `O XML da nota diz ${daNota.total.toLocaleString('pt-BR')}.`}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -426,9 +479,24 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
                   </p>
                 )}
 
+                {/* Nota com produtos diferentes não é um pedido só. Mostrar as
+                    linhas é o que permite perceber isso antes de somar tudo
+                    num item que só corresponde a parte delas. */}
+                {daNota && daNota.linhas.length > 1 && (
+                  <div className="text-[11px] text-muted-foreground border rounded-md p-2 space-y-0.5">
+                    <p className="text-warning">
+                      A nota tem {daNota.linhas.length} produtos. A soma foi preenchida — se forem itens
+                      diferentes do contrato, registre um pedido por item.
+                    </p>
+                    {daNota.linhas.map((l, i) => (
+                      <p key={i}>{l.descricao} — {l.quantidade.toLocaleString('pt-BR')} un</p>
+                    ))}
+                  </div>
+                )}
+
                 <p className="text-[11px] text-muted-foreground">
                   O pedido nasce como <b>entregue</b>, com a data da nota — não a de hoje. O valor é o
-                  do lançamento; a quantidade é o que você informar.
+                  do lançamento{daNota ? '; a quantidade veio do XML' : '; a quantidade é o que você informar'}.
                 </p>
               </div>
             )}

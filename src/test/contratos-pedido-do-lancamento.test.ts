@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  pontuarContrato, ordenarContratos, pedidoAPartirDoLancamento,
+  pontuarContrato, ordenarContratos, pedidoAPartirDoLancamento, sugerirItem,
   type LancamentoParaVincular,
 } from '@/lib/contratos/pedido-do-lancamento';
 
@@ -128,5 +128,35 @@ describe('pedidoAPartirDoLancamento', () => {
     const p = pedidoAPartirDoLancamento(lanc(), { contratoId: 'c1', numeroPedido: '001', quantidade: 1 });
     expect(p.observacoes).toContain('retroativo');
     expect(p.observacoes).toContain('000.000.125');
+  });
+});
+
+describe('sugerirItem', () => {
+  const itens = [
+    { id: 'i1', descricao: 'Água mineral em copo de no mínimo 200ml, destinada a atender as necessidades das unidades' },
+    { id: 'i2', descricao: 'Café torrado e moído, pacote de 250g' },
+  ];
+
+  it('casa o mesmo produto escrito de outro jeito', () => {
+    // Nenhuma das duas descrições contém a outra — e são o mesmo produto.
+    expect(sugerirItem('AGUA MINERAL NATURAL 200ML COPO', itens)).toBe('i1');
+  });
+
+  it('não confunde produtos diferentes do mesmo contrato', () => {
+    expect(sugerirItem('CAFE TORRADO E MOIDO 250G', itens)).toBe('i2');
+  });
+
+  it('sem parecença suficiente, não sugere', () => {
+    // Sugestão fraca é pior que nenhuma: a pessoa confirma sem olhar.
+    expect(sugerirItem('PARAFUSO SEXTAVADO 3/8', itens)).toBeNull();
+  });
+
+  it('uma palavra em comum não basta', () => {
+    expect(sugerirItem('COPO DESCARTAVEL', itens)).toBeNull();
+  });
+
+  it('descrição vazia não sugere', () => {
+    expect(sugerirItem('', itens)).toBeNull();
+    expect(sugerirItem('AGUA', [])).toBeNull();
   });
 });

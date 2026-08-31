@@ -151,3 +151,41 @@ export function pedidoAPartirDoLancamento(
       + `(${lancamento.numero_documento ? 'NF ' + lancamento.numero_documento : 'sem número de nota'}).`,
   };
 }
+
+// ── O que a nota diz sobre o item ───────────────────────────────────────────
+
+const normalizar = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Qual item do contrato a linha da nota descreve.
+ *
+ * Pontua por palavras em comum, não por "um contém o outro": a nota escreve
+ * "AGUA MINERAL NATURAL 200ML COPO" e o contrato "Água mineral em copo de no
+ * mínimo 200ml" — nenhuma das duas contém a outra, e são o mesmo produto.
+ *
+ * Devolve `null` abaixo do limiar. Sugestão fraca é pior que sugestão nenhuma:
+ * a pessoa confirma sem olhar, e o pedido vai consumir o saldo do item errado
+ * — que é o tipo de erro que ninguém volta a conferir.
+ */
+export function sugerirItem(
+  descricaoDaNota: string,
+  itens: Array<{ id: string; descricao: string }>,
+): string | null {
+  const alvo = new Set(normalizar(descricaoDaNota).split(' ').filter(p => p.length >= 3));
+  if (alvo.size === 0) return null;
+
+  let melhor: { id: string; pontos: number } | null = null;
+  for (const item of itens) {
+    const palavras = new Set(normalizar(item.descricao).split(' ').filter(p => p.length >= 3));
+    let comuns = 0;
+    for (const p of alvo) if (palavras.has(p)) comuns++;
+    // Proporção sobre a MENOR das duas: a descrição do contrato costuma ser
+    // longa e cheia de condições ("destinada a atender as necessidades…"), e
+    // dividir pelo total dela puniria o casamento certo.
+    const pontos = comuns / Math.min(alvo.size, palavras.size || 1);
+    if (comuns >= 2 && (!melhor || pontos > melhor.pontos)) melhor = { id: item.id, pontos };
+  }
+  return melhor && melhor.pontos >= 0.5 ? melhor.id : null;
+}
