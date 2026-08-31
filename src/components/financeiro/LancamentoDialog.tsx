@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
+import { parseNFeXML } from "@/lib/parseNFe";
+import { conferirContraOLancamento, type Divergencia } from "@/lib/financeiro/nfe-para-lancamento";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -209,6 +212,70 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
   const editando = !!initial?.id;
   const { empresaAtiva } = useEmpresa();
+  const { guardarArquivo } = useDocumentoFiscal();
+  const entradaDeArquivo = useRef<HTMLInputElement>(null);
+  // Os arquivos esperam o Salvar. Anexar não é registrar — e um lançamento
+  // novo ainda nem tem id ao qual o documento possa se prender.
+  const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
+  const [arquivoXml, setArquivoXml] = useState<File | null>(null);
+  const [divergencias, setDivergencias] = useState<Divergencia[]>([]);
+
+  /**
+   * Lê o XML e preenche o que está em branco.
+   *
+   * Preencher e sobrescrever são coisas diferentes, e a distinção mora em
+   * `conferirContraOLancamento`: campo vazio recebe o que o documento diz;
+   * campo preenchido que discorda apenas aparece. O caso que obriga a isso é o
+   * valor de um lançamento conciliado — ele veio do extrato e não se corrige
+   * por nota.
+   */
+  const receberArquivos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const escolhidos = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (escolhidos.length === 0) return;
+
+    const xml = escolhidos.find((f) => /\.xml$/i.test(f.name));
+    const pdf = escolhidos.find((f) => /\.pdf$/i.test(f.name));
+    if (pdf) setArquivoPdf(pdf);
+    if (xml) setArquivoXml(xml);
+    if (!xml) {
+      if (pdf) toast.success("PDF anexado. Ele será guardado ao salvar o lançamento.");
+      else toast.error("Escolha o XML e/ou o PDF da nota.");
+      return;
+    }
+
+    try {
+      const nfe = parseNFeXML(await xml.text());
+      const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, {
+        numero_documento: numeroDocumento,
+        serie_documento: serieDocumento,
+        chave_acesso_nfe: chaveAcessoNfe,
+        data_emissao: dataEmissao,
+        valor,
+      });
+      if (preencher.numero_documento) setNumeroDocumento(preencher.numero_documento);
+      if (preencher.serie_documento) setSerieDocumento(preencher.serie_documento);
+      if (preencher.chave_acesso_nfe) setChaveAcessoNfe(preencher.chave_acesso_nfe);
+      if (preencher.data_emissao) setDataEmissao(preencher.data_emissao);
+      if (preencher.valor != null) setValor(preencher.valor);
+      // A NF-e modelo 55 é de mercadoria. Só define quando o campo está vazio:
+      // quem escolheu NFS-e à mão sabe de algo que o modelo não diz.
+      if (!tipoDocumento) setTipoDocumento("nfe" as TipoDocumento);
+      setDivergencias(achadas);
+
+      const n = Object.keys(preencher).length;
+      toast.success(
+        n > 0 ? `XML lido: ${n} campo(s) preenchido(s).` : "XML lido — os campos já estavam preenchidos.",
+        { description: achadas.length > 0 ? `${achadas.length} divergência(s) apontada(s) abaixo.` : undefined },
+      );
+    } catch {
+      // Arquivo ilegível não impede o anexo: o XML continua sendo o documento
+      // fiscal, e guardá-lo vale mesmo quando a leitura falha.
+      toast.warning("O XML foi anexado, mas não pôde ser lido.", {
+        description: "Preencha os campos à mão — o arquivo será guardado assim mesmo.",
+      });
+    }
+  };
   const podeParcelar = !editando && (tipo === "a_pagar" || tipo === "a_receber");
   const temAcrescimos = valorJuros > 0 || valorMulta > 0 || valorDesconto > 0 || valorTarifa > 0;
 
@@ -372,8 +439,49 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       // Transição de status não mexe no saldo daqui: o upsert acima já
       // disparou o gatilho, que recalcula a conta inteira — inclusive a antiga,
       // quando o lançamento troca de conta.
+
+      await guardarDocumentos((saved as unknown as { id?: string })?.id ?? initial?.id ?? null);
     }
     onOpenChange(false);
+  };
+
+  /**
+   * PDF e XML no MESMO registro.
+   *
+   * `financeiro_documentos_fiscais` guarda o arquivo no storage e o XML como
+   * texto na própria linha — o schema já foi desenhado para os dois juntos.
+   * Criar duas linhas faria a coluna NF-e da Gestão mostrar a última que
+   * entrou, e um dos dois documentos ficaria invisível.
+   *
+   * Só depois do save: um lançamento novo não tem id ao qual o documento possa
+   * se prender, e anexar antes de existir deixaria arquivo órfão para quem
+   * desistisse no meio.
+   */
+  const guardarDocumentos = async (lancamentoId: string | null) => {
+    if (!lancamentoId || (!arquivoPdf && !arquivoXml)) return;
+    const xmlTexto = arquivoXml ? await arquivoXml.text().catch(() => null) : null;
+    // O PDF é o que se abre; sem ele, o próprio XML ocupa o lugar do arquivo.
+    const principal = arquivoPdf ?? arquivoXml;
+    const salvo = await guardarArquivo(principal!, {
+      tipo: tipoDocumento || "outro",
+      numero: numeroDocumento.trim() || null,
+      serie: serieDocumento.trim() || null,
+      chave_acesso: chaveAcessoNfe.replace(/\D/g, "") || null,
+      data_emissao: dataEmissao || null,
+      valor_total: valor ?? 0,
+      lancamento_id: lancamentoId,
+      arquivo_xml: xmlTexto,
+    });
+    if (!salvo) {
+      // O lançamento foi salvo; só o anexo falhou. Dizer qual das duas coisas
+      // deu errado evita que a pessoa refaça o lançamento inteiro.
+      toast.error("O lançamento foi salvo, mas o documento não foi guardado.", {
+        description: "Anexe pelo clipe na linha do lançamento.",
+      });
+      return;
+    }
+    setArquivoPdf(null); setArquivoXml(null); setDivergencias([]);
+    toast.success("Documento guardado e vinculado ao lançamento.");
   };
 
   const categoriasFiltradas = categorias.filter((c) => {
@@ -748,6 +856,52 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
             {/* ===================== DOCUMENTO FISCAL ===================== */}
             <TabsContent value="documento" className="space-y-3 mt-0">
+              {/* ── O XML preenche isto ──────────────────────────────────────
+                  Os cinco campos abaixo são exatamente o que o XML da NF-e
+                  traz, com protocolo da SEFAZ. Digitá-los era pedir de novo
+                  uma resposta já arquivada — e o resultado aparece nos
+                  cadastros: chave de acesso com 44 zeros, que é pior que
+                  vazia, porque vazia se vê e zerada passa por preenchida. */}
+              <div className="rounded-lg border border-dashed p-3 space-y-2">
+                <input ref={entradaDeArquivo} type="file" className="hidden"
+                  accept=".xml,.pdf" multiple onChange={receberArquivos} />
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-sm font-medium">Anexar a NF-e</p>
+                    <p className="text-xs text-muted-foreground">
+                      O XML preenche os campos abaixo; o PDF é o que se abre depois.
+                      Pode escolher os dois de uma vez.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => entradaDeArquivo.current?.click()}>
+                    Escolher arquivos
+                  </Button>
+                </div>
+                {(arquivoPdf || arquivoXml) && (
+                  <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                    {arquivoXml && <span>XML: {arquivoXml.name}</span>}
+                    {arquivoPdf && <span>PDF: {arquivoPdf.name}</span>}
+                    <span className="text-primary">guardado ao salvar o lançamento</span>
+                  </div>
+                )}
+                {/* Divergência não se aplica sozinha. O valor de um lançamento
+                    conciliado veio do extrato — é o dinheiro que entrou —, e
+                    pode diferir da nota por retenção ou desconto. */}
+                {divergencias.length > 0 && (
+                  <div className="text-xs text-warning space-y-0.5">
+                    <p className="flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> A nota diverge do que está gravado — nada foi alterado:
+                    </p>
+                    {divergencias.map(d => (
+                      <p key={d.campo} className="ml-5">
+                        {d.campo}: <b>{d.noSistema}</b> aqui, <b>{d.naNota}</b> na nota
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Tipo de documento</Label>
