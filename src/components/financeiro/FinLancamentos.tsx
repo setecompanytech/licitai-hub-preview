@@ -70,6 +70,7 @@ export default function FinLancamentos() {
   const [editing, setEditing] = useState<Lancamento | null>(null);
   /** O lançamento cujo vínculo com a Gestão está sendo feito. */
   const [vinculando, setVinculando] = useState<LancamentoParaVincular | null>(null);
+  const [modoDoVinculo, setModoDoVinculo] = useState<"receita" | "despesa">("receita");
   const [confirmDel, setConfirmDel] = useState<Lancamento | null>(null);
   const [sort, setSort] = useState<{ campo: "data_competencia" | "data_vencimento"; dir: "asc" | "desc" }>({
     campo: "data_competencia",
@@ -498,18 +499,28 @@ export default function FinLancamentos() {
                               lançamento antigo pelo nome — justamente o gesto
                               de quem vai ligar faturamento retroativo a um
                               contrato que entrou na gestão depois. */}
-                          {l.tipo === "a_receber" && (
+                          {(l.tipo === "a_receber" || l.tipo === "a_pagar") && (
                             <Button
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7"
-                              title={(l as { contrato_pedido_id?: string | null }).contrato_pedido_id
-                                ? "Vinculado a um pedido — clique para trocar"
-                                : "Vincular a um contrato/pedido em Gestão"}
-                              onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
+                              title={l.tipo === "a_pagar"
+                                ? ((l as { contrato_id?: string | null }).contrato_id
+                                    ? "Despesa atribuída a um contrato — clique para trocar"
+                                    : "Atribuir esta despesa a um contrato")
+                                : ((l as { contrato_pedido_id?: string | null }).contrato_pedido_id
+                                    ? "Vinculado a um pedido — clique para trocar"
+                                    : "Vincular a um contrato/pedido em Gestão")}
+                              onClick={() => {
+                                setModoDoVinculo(l.tipo === "a_pagar" ? "despesa" : "receita");
+                                setVinculando(l as unknown as LancamentoParaVincular);
+                              }}
                             >
                               <Link2 className={`w-3.5 h-3.5 ${
-                                (l as { contrato_pedido_id?: string | null }).contrato_pedido_id ? "text-primary" : ""
+                                (l.tipo === "a_pagar"
+                                  ? (l as { contrato_id?: string | null }).contrato_id
+                                  : (l as { contrato_pedido_id?: string | null }).contrato_pedido_id)
+                                  ? "text-primary" : ""
                               }`} />
                             </Button>
                           )}
@@ -548,8 +559,11 @@ export default function FinLancamentos() {
       {/* ── Dialogs ── */}
       <LancamentoDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} />
 
+      {/* A tela Lançamentos mistura os dois tipos, então o modo sai da LINHA
+          e não de um filtro da tela. */}
       <VincularContratoDialog
         lancamento={vinculando}
+        modo={modoDoVinculo}
         onFechar={() => setVinculando(null)}
       />
 

@@ -57,11 +57,21 @@ type Props = {
   lancamento: LancamentoParaVincular | null;
   onFechar: () => void;
   onVinculado?: () => void;
+  /**
+   * 'receita' liga a nota a um pedido — a entrega que ela cobra.
+   * 'despesa' liga a compra ao CONTRATO, e só. Comprar não é entregar: um
+   * pagamento a fornecedor não representa entrega nenhuma ao órgão, e criar
+   * pedido a partir dele consumiria saldo de contrato por causa de uma compra.
+   */
+  modo?: 'receita' | 'despesa';
 };
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function VincularContratoDialog({ lancamento, onFechar, onVinculado }: Props) {
+export default function VincularContratoDialog({
+  lancamento, onFechar, onVinculado, modo: modoDoLancamento = 'receita',
+}: Props) {
+  const ehDespesa = modoDoLancamento === 'despesa';
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
 
@@ -221,6 +231,27 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
     if (!lancamento || !contratoId) return;
     setSalvando(true);
 
+    // ── Despesa: atribui e para por aqui ────────────────────────────────────
+    //
+    // O custo passa a existir UMA vez, no Financeiro, com o contrato apontado.
+    // Não é copiado para `contrato_custos` — foi essa cópia que criou dois
+    // livros do mesmo dinheiro. `contrato_custo_realizado` soma daqui.
+    if (ehDespesa) {
+      const { error: errDespesa } = await supabase
+        .from('financeiro_lancamentos')
+        .update({ contrato_id: contratoId } as never)
+        .eq('id', lancamento.id);
+      setSalvando(false);
+      if (errDespesa) { toast.error('Não foi possível atribuir', { description: errDespesa.message }); return; }
+      const escolhido = contratos.find(c => c.id === contratoId);
+      toast.success(`Despesa atribuída ao contrato ${escolhido?.numero_contrato ?? ''}.`, {
+        description: 'Ela passa a compor o custo — e a margem — deste contrato.',
+      });
+      onVinculado?.();
+      fechar();
+      return;
+    }
+
     let pedidoId = pedidoEscolhido;
 
     if (modo === 'novo') {
@@ -329,7 +360,8 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Link2 className="w-4 h-4 text-muted-foreground" /> Vincular a um contrato
+            <Link2 className="w-4 h-4 text-muted-foreground" />
+            {ehDespesa ? 'Atribuir esta despesa a um contrato' : 'Vincular a um contrato'}
           </DialogTitle>
         </DialogHeader>
 
@@ -365,7 +397,14 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
           )}
         </div>
 
-        {contratoId && (
+        {contratoId && ehDespesa && (
+          <p className="text-xs text-muted-foreground">
+            A despesa passa a compor o <b>custo</b> deste contrato — e a margem que o Dashboard
+            mostra. Ela continua sendo o mesmo lançamento: nada é copiado, e o valor não muda.
+          </p>
+        )}
+
+        {contratoId && !ehDespesa && (
           <>
             <div className="flex gap-2">
               <Button size="sm" variant={modo === 'existente' ? 'secondary' : 'ghost'}
@@ -504,15 +543,17 @@ export default function VincularContratoDialog({ lancamento, onFechar, onVincula
         )}
 
         <div className="flex justify-between items-center gap-2 pt-2">
-          {lancamento.contrato_pedido_id && (
-            <Badge variant="outline" className="text-[11px]">já vinculado — salvar troca o vínculo</Badge>
+          {((ehDespesa && lancamento.contrato_id) || (!ehDespesa && lancamento.contrato_pedido_id)) && (
+            <Badge variant="outline" className="text-[11px]">
+              {ehDespesa ? 'já atribuída — salvar troca o contrato' : 'já vinculado — salvar troca o vínculo'}
+            </Badge>
           )}
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" onClick={fechar}>Cancelar</Button>
             <Button onClick={salvar}
-              disabled={salvando || !contratoId || (modo === 'existente' && !pedidoEscolhido)}>
+              disabled={salvando || !contratoId || (!ehDespesa && modo === 'existente' && !pedidoEscolhido)}>
               {salvando && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-              {modo === 'novo' ? 'Criar pedido e vincular' : 'Vincular'}
+              {ehDespesa ? 'Atribuir ao contrato' : (modo === 'novo' ? 'Criar pedido e vincular' : 'Vincular')}
             </Button>
           </div>
         </div>

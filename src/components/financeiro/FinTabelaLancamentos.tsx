@@ -422,19 +422,27 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                               que o pedido veio primeiro. Contrato que entra na
                               gestao depois de meses de faturamento tem dezenas
                               de lancamentos e nenhum pedido. */}
-                          {tipo === "a_receber" && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className={cn("h-7 w-7", l.contrato_pedido_id && "text-primary")}
-                              onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
-                              title={l.contrato_pedido_id
-                                ? "Vinculado a um pedido — clique para trocar"
-                                : "Vincular a um contrato/pedido em Gestão"}
-                            >
-                              <Link2 className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
+                          {/* A receber liga a uma ENTREGA; a pagar liga ao
+                              CONTRATO. Comprar não é entregar: um pagamento a
+                              fornecedor não representa entrega ao órgão, e
+                              criar pedido a partir dele consumiria saldo de
+                              contrato por causa de uma compra. */}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className={cn("h-7 w-7",
+                              (tipo === "a_pagar" ? l.contrato_id : l.contrato_pedido_id) && "text-primary")}
+                            onClick={() => setVinculando(l as unknown as LancamentoParaVincular)}
+                            title={tipo === "a_pagar"
+                              ? (l.contrato_id
+                                  ? "Despesa atribuída a um contrato — clique para trocar"
+                                  : "Atribuir esta despesa a um contrato")
+                              : (l.contrato_pedido_id
+                                  ? "Vinculado a um pedido — clique para trocar"
+                                  : "Vincular a um contrato/pedido em Gestão")}
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -464,8 +472,12 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
 
       <VincularContratoDialog
         lancamento={vinculando}
+        modo={tipo === "a_pagar" ? "despesa" : "receita"}
         onFechar={() => setVinculando(null)}
-        onVinculado={() => qc.invalidateQueries({ queryKey: ["financeiro-lancamentos"] })}
+        onVinculado={() => {
+          qc.invalidateQueries({ queryKey: ["financeiro-lancamentos"] });
+          qc.invalidateQueries({ queryKey: ["fin-vinculos-de-contrato"] });
+        }}
       />
     </div>
   );
