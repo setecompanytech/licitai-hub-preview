@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
+import { efeitoNoLimite } from '@/lib/contratos/rotulos';
 import {
   assinarReleituras, releiturasEmCurso, releituraDe,
   comecarReleitura, progredirReleitura, terminarReleitura,
@@ -56,28 +57,29 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   contrato_original: { label: 'Contrato Original', color: 'bg-foreground/10 text-foreground' },
   ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning/10 text-warning' },
-  // ── Cada rótulo diz o ARTIGO e o que ele faz com o limite ────────────────
+  // ── O rótulo é o INSTITUTO e o ARTIGO ────────────────────────────────────
   //
-  // Antes só dois citavam a norma. Escolher entre "Termo Aditivo de Prazo" e
-  // "Termo Aditivo de Prazo e Quantidade" era escolher às cegas: nada dizia
-  // que o segundo dispara o alerta do art. 125 e o primeiro não.
+  // Padrão do "Reequilíbrio Econômico-Financeiro (art. 124, II, 'd')", que já
+  // estava certo, estendido aos demais. Antes só dois dos treze citavam a
+  // norma: escolher entre "Termo Aditivo de Prazo" e "Termo Aditivo de Prazo e
+  // Quantidade" era escolher às cegas, sem saber qual regra o sistema ia
+  // aplicar.
   //
-  // E faltava a PRORROGAÇÃO do art. 107 — que renova o período de um
-  // fornecimento contínuo sem acrescer nada. Sem ela, quem prorroga escolhe
-  // "Prazo e Quantidade" e o sistema acusa 100% de acréscimo sobre um contrato
-  // que não foi acrescido em nada.
-  aditivo_prazo: { label: 'Aditivo de Prazo (art. 111) — não consome o limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
-  prorrogacao_continuo: { label: 'Prorrogação de fornecimento/serviço contínuo (art. 107) — novo período, não consome o limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
-  aditivo_valor: { label: 'Aditivo de Valor (art. 125) — consome o limite de 25%', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_quantidade: { label: 'Aditivo de Quantidade (art. 125) — consome o limite de 25%', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
-  aditivo_prazo_valor: { label: 'Aditivo de Prazo e Valor — o valor consome o limite (art. 125)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
-  aditivo_prazo_quantidade: { label: 'Aditivo de Prazo e Quantidade — a quantidade consome o limite (art. 125)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
-  aditivo_valor_quantidade: { label: 'Aditivo de Quantidade e Valor (art. 125) — consome o limite de 25%', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_escopo: { label: 'Aditivo de Escopo (art. 124, I) — consome o limite', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
-  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
-  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
-  aditivo_repactuacao: { label: 'Repactuação (art. 135) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
-  aditivo_reajuste: { label: 'Reajuste (art. 136, I) — apostila, fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  // O efeito no limite do art. 125 NÃO entra no rótulo — vai na linha de ajuda
+  // abaixo do seletor. Rótulo é nome de instituto; consequência é outra coisa,
+  // e misturar as duas produz um menu que ninguém lê até o fim.
+  aditivo_prazo: { label: 'Prorrogação de Vigência (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
+  prorrogacao_continuo: { label: 'Prorrogação de Fornecimento ou Serviço Contínuo (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
+  aditivo_escopo: { label: 'Alteração Qualitativa — Projeto ou Especificações (art. 124, I, \u201ca\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_valor: { label: 'Alteração Quantitativa — Valor (art. 124, I, \u201cb\u201d)', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
+  aditivo_valor_quantidade: { label: 'Alteração Quantitativa — Quantidade e Valor (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
+  aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
+  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
+  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  aditivo_repactuacao: { label: 'Repactuação (art. 135)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste por Apostila (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
   // 20260830000001, mas nenhum rótulo aqui — e aparecia como "Outro
   // Documento", que é o carimbo de quem não sabe o que guardou. É o documento
@@ -1266,6 +1268,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 ))}
               </SelectContent>
             </Select>
+            {/* A consequência, depois da escolha — que é quando se quer saber o
+                que vai acontecer. No rótulo ela produzia linhas longas demais
+                para o menu, e ninguém lê um menu até o fim. */}
+            {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo) && (
+              <p className="text-[11px] text-muted-foreground mt-1 max-w-[26rem]">
+                {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo)}
+              </p>
+            )}
             {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
               <p className="text-xs text-warning mt-1 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />

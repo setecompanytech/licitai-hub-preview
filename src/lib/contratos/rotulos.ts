@@ -197,3 +197,40 @@ export function consomeLimiteDoArt125(tipo: string | null | undefined): boolean 
 export function ehProrrogacaoDeContinuo(tipo: string | null | undefined): boolean {
   return (tipo ?? '').trim().toLowerCase() === 'prorrogacao';
 }
+
+/**
+ * O que a alteração faz com o limite do art. 125 — em uma frase.
+ *
+ * Fica FORA do rótulo do seletor, de propósito. Rótulo é nome de instituto
+ * ("Reequilíbrio Econômico-Financeiro (art. 124, II, 'd')"); consequência é
+ * outra coisa. Misturar as duas produz um menu de linhas longas que ninguém lê
+ * até o fim — e foi o que eu fiz na primeira tentativa.
+ *
+ * Aparece abaixo do seletor, depois da escolha, que é quando a pessoa quer
+ * saber o que vai acontecer.
+ */
+export function efeitoNoLimite(tipo: string | null | undefined): string {
+  const t = (tipo ?? '').trim().toLowerCase();
+  if (consomeLimiteDoArt125(t)) {
+    return 'Consome o limite do art. 125: 25% do valor inicial atualizado, '
+      + '50% em reforma de edifício ou de equipamento.';
+  }
+  if (t === 'prorrogacao' || t === 'prazo') {
+    return 'Abre novo período de vigência. Não acresce ao anterior e não consome '
+      + 'o limite do art. 125.';
+  }
+  if (t === 'prazo_valor' || t === 'prazo_quantidade') {
+    return 'Prorroga E acresce. Só a parte do acréscimo consome o limite do art. 125.';
+  }
+  if (t === 'reajuste') {
+    return 'Registro por apostila — não é alteração contratual e não consome o limite.';
+  }
+  if (['reequilibrio', 'revisao', 'repactuacao'].includes(t)) {
+    return 'Restabelece o equilíbrio econômico-financeiro. Fica fora do limite do '
+      + 'art. 125, que só alcança alteração quantitativa.';
+  }
+  if (['adesao', 'remanejamento'].includes(t)) {
+    return 'Não toca o valor original do ajuste.';
+  }
+  return '';
+}

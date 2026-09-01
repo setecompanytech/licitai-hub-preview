@@ -9,6 +9,7 @@ import {
   objetoDaAlteracao,
   consomeLimiteDoArt125,
   ehProrrogacaoDeContinuo,
+  efeitoNoLimite,
 } from '@/lib/contratos/rotulos';
 
 describe('nomeDoOrgao', () => {
@@ -177,5 +178,37 @@ describe('consomeLimiteDoArt125 — lista por inclusão', () => {
     // passava a consumir o limite sem ninguém ter decidido isso.
     expect(consomeLimiteDoArt125('tipo_que_ainda_nao_existe')).toBe(false);
     expect(consomeLimiteDoArt125(null)).toBe(false);
+  });
+});
+
+describe('efeitoNoLimite', () => {
+  it('quem acresce diz que consome, com os dois tetos', () => {
+    const f = efeitoNoLimite('quantidade');
+    expect(f).toContain('art. 125');
+    expect(f).toContain('25%');
+    expect(f).toContain('50%');
+  });
+
+  it('prorrogação diz que abre novo período e não consome', () => {
+    expect(efeitoNoLimite('prorrogacao')).toContain('novo período');
+    expect(efeitoNoLimite('prorrogacao')).toContain('não consome');
+  });
+
+  it('o misto separa o que consome do que não', () => {
+    // Prazo e quantidade no mesmo termo: só a parte do acréscimo conta.
+    expect(efeitoNoLimite('prazo_quantidade')).toContain('Só a parte do acréscimo');
+  });
+
+  it('reajuste é apostila, não alteração', () => {
+    expect(efeitoNoLimite('reajuste')).toContain('apostila');
+  });
+
+  it('reequilíbrio fica fora do limite', () => {
+    expect(efeitoNoLimite('reequilibrio')).toContain('fora do limite');
+  });
+
+  it('tipo desconhecido não inventa efeito', () => {
+    expect(efeitoNoLimite('nao_existe')).toBe('');
+    expect(efeitoNoLimite(null)).toBe('');
   });
 });
