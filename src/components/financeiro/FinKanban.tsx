@@ -331,6 +331,19 @@ export default function FinKanban({ tipo }: Props) {
     });
   };
 
+  /**
+   * O padrão do Kanban de licitações, herdado: card recolhido em DUAS linhas
+   * com as pontas direitas trabalhando (valor na L1, vencimento e baixa na
+   * L2), clique abre o detalhe, e um controle global dilata/recolhe tudo —
+   * o irmão de "Recolher colunas vazias", agora para as linhas.
+   */
+  const [cardsAbertos, setCardsAbertos] = useState<Set<string>>(new Set());
+  const alternarCard = (id: string) => setCardsAbertos(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   const abrirNovo = () => {
     setEditing(null);
     setDialogOpen(true);
@@ -510,6 +523,18 @@ export default function FinKanban({ tipo }: Props) {
             {c.label}
           </Button>
         ))}
+        <button
+          onClick={() =>
+            setCardsAbertos(prev =>
+              prev.size >= lancamentos.length ? new Set() : new Set(lancamentos.map(l => l.id)),
+            )
+          }
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1"
+        >
+          {cardsAbertos.size >= lancamentos.length && lancamentos.length > 0
+            ? 'Recolher todos'
+            : 'Expandir todos'}
+        </button>
         {filtrosAtivos > 0 && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={limparFiltros}>
             <X className="w-3.5 h-3.5 mr-1" />
@@ -745,116 +770,112 @@ export default function FinKanban({ tipo }: Props) {
                             onDoubleClick={() => abrirEditar(l)}
                             title="Duplo clique para abrir"
                           >
-                            <CardContent className="p-2 space-y-1 kanban-card-body">
-                              <div className="flex items-start gap-1.5 min-w-0 max-w-full">
-                                {col.id !== "pago" && (
-                                  <Checkbox
-                                    checked={selecionados.has(l.id)}
-                                    onCheckedChange={() => toggleSelecionado(l.id)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mt-0.5 shrink-0"
-                                    aria-label="Selecionar lançamento"
-                                  />
-                                )}
-                                <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
-                                {/* Uma linha: o title e o duplo clique dão o
-                                    resto. Duas linhas de título eram o maior
-                                    ladrão de altura da coluna. */}
-                                <p className="text-sm font-medium truncate min-w-0 flex-1" title={l.descricao}>
-                                  {l.descricao}
-                                </p>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    onClick={(e) => { e.stopPropagation(); abrirEditar(l); }}
-                                    title="Editar"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={(e) => { e.stopPropagation(); setConfirmDel(l); }}
-                                    title="Excluir"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
+                            <CardContent className="p-2 space-y-0.5 kanban-card-body">
+                              {(() => {
+                                const aberto = cardsAbertos.has(l.id);
+                                const partes = [l.pessoa?.nome, l.numero_documento ? `Doc ${l.numero_documento}` : null]
+                                  .filter(Boolean).join(" · ");
+                                return (
+                                  <>
+                                    {/* L1 — identidade à esquerda, VALOR à direita. */}
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {col.id !== "pago" && (
+                                        <Checkbox
+                                          checked={selecionados.has(l.id)}
+                                          onCheckedChange={() => toggleSelecionado(l.id)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="shrink-0"
+                                          aria-label="Selecionar lançamento"
+                                        />
+                                      )}
+                                      <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                                      <p
+                                        className={cn(
+                                          "text-sm font-medium min-w-0 flex-1 cursor-pointer",
+                                          aberto ? "break-words" : "truncate",
+                                        )}
+                                        title={aberto ? "Clique para recolher" : l.descricao}
+                                        onClick={(e) => { e.stopPropagation(); alternarCard(l.id); }}
+                                      >
+                                        {l.descricao}
+                                      </p>
+                                      <span className={cn(
+                                        "text-sm font-bold tabular-nums whitespace-nowrap shrink-0",
+                                        col.id === "vencido" && "text-destructive",
+                                        col.id === "pago" && "text-success",
+                                      )}>
+                                        {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                      </span>
+                                    </div>
 
-                              {/* Cliente e documento numa linha só: eram duas
-                                  linhas cheias por card, e a coluna virava uma
-                                  fileira comprida de rolagem. Um separador
-                                  visual e o title guardam o texto completo. */}
-                              {(l.pessoa?.nome || l.numero_documento) && (
-                                <p
-                                  className="kanban-card-meta truncate"
-                                  title={[
-                                    l.pessoa?.nome ? `${tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: ${l.pessoa.nome}` : null,
-                                    l.numero_documento ? `Doc: ${l.numero_documento}${l.serie_documento ? ` / ${l.serie_documento}` : ""}` : null,
-                                  ].filter(Boolean).join(" · ")}
-                                >
-                                  {[l.pessoa?.nome, l.numero_documento ? `Doc ${l.numero_documento}` : null]
-                                    .filter(Boolean).join(" · ")}
-                                </p>
-                              )}
+                                    {/* L2 — partes à esquerda, vencimento e a
+                                        BAIXA à direita. A ação de dar baixa é
+                                        o core do quadro: fica visível também
+                                        no recolhido. */}
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <p
+                                        className="text-[11px] text-muted-foreground truncate min-w-0 flex-1 cursor-pointer"
+                                        title={partes || undefined}
+                                        onClick={(e) => { e.stopPropagation(); alternarCard(l.id); }}
+                                      >
+                                        {partes || "—"}
+                                      </p>
+                                      <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
+                                        Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
+                                      </span>
+                                      {col.id !== "pago" && (
+                                        <Button
+                                          size="icon"
+                                          variant="outline"
+                                          className="h-5 w-5 shrink-0 text-success hover:text-success hover:bg-success/10"
+                                          onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
+                                          disabled={upsert.isPending}
+                                          title={tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
+                                        >
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
 
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {isParcelado && (
-                                  <Badge variant="secondary" className="text-xs gap-1">
-                                    <Layers className="w-3 h-3" />
-                                    {num}/{total}
-                                  </Badge>
-                                )}
-                                {vendedor && (
-                                  <Badge variant="outline" className="text-xs gap-1 max-w-full truncate">
-                                    <User2 className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{vendedor}</span>
-                                  </Badge>
-                                )}
-                              </div>
-
-                              {/* Valor e vencimento disputavam a mesma linha, e
-                                  numa coluna estreita o valor era o que cedia —
-                                  justamente o número que a pessoa está
-                                  procurando. Agora o valor tem a linha inteira
-                                  e a data fica acima, discreta. */}
-                              {/* O botão de LINHA INTEIRA em todo card era o
-                                  segundo ladrão de altura. A ação vira o botão
-                                  compacto ✓ na própria linha do valor — mesma
-                                  função, um terço do espaço. */}
-                              <div className="pt-1 border-t border-border/40 mt-1">
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                                    Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
-                                  </span>
-                                  <span className={cn(
-                                    "text-sm font-bold tabular-nums whitespace-nowrap ml-auto",
-                                    col.id === "vencido" && "text-destructive",
-                                    col.id === "pago" && "text-success",
-                                  )}>
-                                    {Number(l.valor).toLocaleString("pt-BR", {
-                                      style: "currency",
-                                      currency: "BRL",
-                                    })}
-                                  </span>
-                                  {col.id !== "pago" && (
-                                    <Button
-                                      size="icon"
-                                      variant="outline"
-                                      className="h-6 w-6 shrink-0 text-success hover:text-success hover:bg-success/10"
-                                      onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
-                                      disabled={upsert.isPending}
-                                      title={tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
-                                    >
-                                      <CheckCircle2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
+                                    {aberto && (
+                                      <div className="pt-1 mt-0.5 border-t border-border/40 flex items-center gap-2 flex-wrap">
+                                        {isParcelado && (
+                                          <Badge variant="secondary" className="text-xs gap-1">
+                                            <Layers className="w-3 h-3" />
+                                            {num}/{total}
+                                          </Badge>
+                                        )}
+                                        {vendedor && (
+                                          <Badge variant="outline" className="text-xs gap-1 max-w-full truncate">
+                                            <User2 className="w-3 h-3 shrink-0" />
+                                            <span className="truncate">{vendedor}</span>
+                                          </Badge>
+                                        )}
+                                        <div className="ml-auto flex items-center gap-0.5">
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6"
+                                            onClick={(e) => { e.stopPropagation(); abrirEditar(l); }}
+                                            title="Editar"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            onClick={(e) => { e.stopPropagation(); setConfirmDel(l); }}
+                                            title="Excluir"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </CardContent>
                           </Card>
                         );
