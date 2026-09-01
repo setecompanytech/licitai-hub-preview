@@ -262,7 +262,7 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
                 Sem prazo de pagamento o Contas a Receber não tem data para projetar — e projetar
                 sobre um número inventado é pior do que não projetar. Enquanto não for preenchido,
                 o único marco que resta é o do art. 137, §2º, IV: dois meses da emissão da nota
-                fiscal ou de instrumento de cobrança equivalente, quando nasce o direito de pedir
+                fiscal, quando nasce o direito de pedir
                 a extinção do contrato.
               </span>
             </p>

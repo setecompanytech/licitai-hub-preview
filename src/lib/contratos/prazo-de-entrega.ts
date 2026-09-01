@@ -176,7 +176,7 @@ export type MarcoDoPagamento = 'ateste' | 'nota_fiscal' | 'protocolo' | 'entrega
 
 export const ROTULO_DO_MARCO: Record<MarcoDoPagamento, string> = {
   ateste: 'do ateste',
-  nota_fiscal: 'da emissão da nota fiscal ou instrumento de cobrança equivalente',
+  nota_fiscal: 'da emissão da nota fiscal',
   protocolo: 'do protocolo da nota',
   entrega: 'da entrega',
 };
@@ -197,23 +197,28 @@ export function limiteDePagamento(
 }
 
 /**
- * Dois meses do instrumento de cobrança — o marco do art. 137, §2º, IV.
+ * Dois meses da emissão da nota fiscal — o marco do art. 137, §2º, IV.
  *
- * O texto é: "atraso superior a 2 (dois) meses, contado da emissão da nota
- * fiscal OU DE INSTRUMENTO DE COBRANÇA EQUIVALENTE, dos pagamentos ou de
- * parcelas de pagamentos devidos pela Administração por despesas de obras,
- * serviços ou fornecimentos".
+ * Texto legal (Lei 14.133/2021, redação original): "atraso superior a 2 (dois)
+ * meses, contado da emissão da nota fiscal, dos pagamentos ou de parcelas de
+ * pagamentos devidos pela Administração por despesas de obras, serviços ou
+ * fornecimentos".
  *
- * A parte em maiúsculas eu havia omitido, e ela não é ornamento: há
- * fornecimento cobrado por fatura, por RPA, por NFS-e municipal que o sistema
- * nem chama de nota fiscal. Amarrar o direito à NF-e faria o prazo não correr
- * justamente para quem cobra de outro jeito — e o direito existe do mesmo
- * jeito.
+ * ── Nota de versão ──────────────────────────────────────────────────────────
+ *
+ * Houve aqui, por um dia, a locução "ou de instrumento de cobrança
+ * equivalente" apresentada como parte do texto. O texto-parâmetro validado
+ * pelo dono do produto (a lei esquematizada, edição do texto original) NÃO a
+ * traz — e citação de tela jurídica não pode atribuir à lei palavra que a
+ * fonte não sustenta.
+ *
+ * O COMPORTAMENTO permanece: a função aceita a data de qualquer cobrança
+ * emitida (fatura, RPA, NFS-e), porque essa leitura extensiva é a que protege
+ * quem cobra sem NF-e. Mas ela fica dita como leitura, não como letra.
  *
  * Passado o prazo sem pagamento, nasce para a contratada o direito de pedir a
- * extinção do contrato. Não é opinião nem estratégia: é o texto da lei. Quem
- * não acompanha a data não sabe que o direito existe, e é comum descobrir
- * tarde demais para usá-lo.
+ * extinção do contrato. Quem não acompanha a data não sabe que o direito
+ * existe, e é comum descobrir tarde demais para usá-lo.
  */
 export function direitoDeExtincaoPorAtraso(
   /** Emissão da nota fiscal ou do instrumento de cobrança equivalente. */

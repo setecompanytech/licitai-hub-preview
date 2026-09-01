@@ -215,9 +215,13 @@ export function efeitoNoLimite(tipo: string | null | undefined): string {
     return 'Consome o limite do art. 125: 25% do valor inicial atualizado, '
       + '50% em reforma de edifício ou de equipamento.';
   }
-  if (t === 'prorrogacao' || t === 'prazo') {
-    return 'Abre novo período de vigência. Não acresce ao anterior e não consome '
-      + 'o limite do art. 125.';
+  if (t === 'prorrogacao') {
+    return 'Abre novo período de vigência. Não acresce ao anterior e não consome o '
+      + 'limite do art. 125 — mas conta para a vigência máxima decenal do art. 107.';
+  }
+  if (t === 'prazo') {
+    return 'Prorroga pelo tempo necessário à conclusão do objeto (art. 111). Não '
+      + 'consome o limite do art. 125.';
   }
   if (t === 'prazo_valor' || t === 'prazo_quantidade') {
     return 'Prorroga E acresce. Só a parte do acréscimo consome o limite do art. 125.';

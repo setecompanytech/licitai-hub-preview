@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { supabase } from '@/integrations/supabase/client';
-import { situacaoDaVigencia } from '@/lib/contratos/vigencia';
+import { situacaoDaVigencia, tetoDecenal } from '@/lib/contratos/vigencia';
 import { excessoDeExecucao } from '@/lib/contratos/excesso-de-execucao';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
@@ -162,6 +162,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     
     // Contagem por DATA e sem sinal invertido: ver lib/contratos/vigencia.
     const vigencia = situacaoDaVigencia(c.data_fim);
+    // O art. 107 limita as prorrogações sucessivas a DEZ ANOS do início, e a
+    // renovação anual vira rotina sem memória — ninguém conta os anos. O aviso
+    // só aparece quando há algo a decidir: o último período possível, ou o
+    // teto já ultrapassado.
+    const decenal = tetoDecenal(c.data_inicio, c.data_fim);
     const diasRestantes = vigencia.dias;
     
     // For items, add addendum quantities proportionally
@@ -198,14 +203,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -252,6 +257,11 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </p>
           )}
           {!vigencia.vencido && vigencia.vencendo && <p className="text-xs text-warning/80">{vigencia.frase}</p>}
+          {decenal && (decenal.ultrapassa || !decenal.ultimaProrrogacaoAnualCabe) && (
+            <p className={`text-xs ${decenal.ultrapassa ? 'text-destructive' : 'text-warning/80'}`}>
+              <strong>Teto decenal:</strong> {decenal.frase}
+            </p>
+          )}
           {fisicoParado && (
             <p className="text-xs text-warning/80">
               <strong>Consumo financeiro sem lastro físico:</strong> há contratos derivados somando

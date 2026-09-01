@@ -4,7 +4,7 @@ import {
   calcularVigencia,
   situacaoDaVigencia,
   somarMeses,
-  statusEfetivo,
+  statusEfetivo, tetoDecenal,
 } from '@/lib/contratos/vigencia';
 
 const HOJE = new Date(2026, 7, 24); // 24/08/2026
@@ -129,5 +129,46 @@ describe('statusEfetivo', () => {
 
   it('sem data de fim, mantém o gravado', () => {
     expect(statusEfetivo('vigente', null, HOJE)).toBe('vigente');
+  });
+});
+
+describe('tetoDecenal — art. 107', () => {
+  it('o limite é dez anos do início', () => {
+    const t = tetoDecenal('2024-10-22', '2026-10-22')!;
+    expect(t.limite).toBe('2034-10-22');
+    expect(t.ultrapassa).toBe(false);
+  });
+
+  it('dentro do teto com folga, a frase é tranquila', () => {
+    // O 149/2024: segundo período, oito anos de margem.
+    const t = tetoDecenal('2024-10-22', '2026-10-22')!;
+    expect(t.ultimaProrrogacaoAnualCabe).toBe(true);
+    expect(t.frase).toContain('Dentro do teto');
+  });
+
+  it('avisa quando a PRÓXIMA renovação anual já não cabe inteira', () => {
+    // É agora que a decisão de relicitar precisa começar — não quando a
+    // prorrogação for negada.
+    const t = tetoDecenal('2024-10-22', '2034-01-15')!;
+    expect(t.ultrapassa).toBe(false);
+    expect(t.ultimaProrrogacaoAnualCabe).toBe(false);
+    expect(t.frase).toContain('último período');
+    expect(t.frase).toContain('relicitação');
+  });
+
+  it('a renovação que fecha exatamente nos dez anos ainda cabe', () => {
+    const t = tetoDecenal('2024-10-22', '2032-10-22')!;
+    expect(t.ultimaProrrogacaoAnualCabe).toBe(true);
+  });
+
+  it('vigência além do teto é dita como ultrapassagem', () => {
+    const t = tetoDecenal('2024-10-22', '2035-01-01')!;
+    expect(t.ultrapassa).toBe(true);
+    expect(t.frase).toContain('passa do teto');
+  });
+
+  it('sem data de início não inventa limite', () => {
+    expect(tetoDecenal(null, '2026-10-22')).toBeNull();
+    expect(tetoDecenal('2024-10-22', null)).toBeNull();
   });
 });

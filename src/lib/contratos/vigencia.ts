@@ -158,3 +158,49 @@ export function statusEfetivo(statusGravado: string | null | undefined, dataFim:
   if (vencendo && s === 'vigente') return 'vencendo';
   return s;
 }
+
+/**
+ * O teto que o art. 107 esconde na oração intermediária.
+ *
+ * "Os contratos de serviços e fornecimentos contínuos poderão ser prorrogados
+ * sucessivamente, RESPEITADA A VIGÊNCIA MÁXIMA DECENAL, desde que haja
+ * previsão em edital e que a autoridade competente ateste que as condições e
+ * os preços permanecem vantajosos."
+ *
+ * A renovação anual vira rotina — assina, publica, segue — e a rotina não tem
+ * memória: ninguém conta os anos. O 149/2024 está no segundo período; pode
+ * renovar até completar dez anos do início, e a decisão de relicitar precisa
+ * começar ANTES da última prorrogação possível, não quando ela for negada.
+ */
+export function tetoDecenal(
+  dataInicio: string | null | undefined,
+  dataFimVigente: string | null | undefined,
+): {
+  limite: string;
+  ultrapassa: boolean;
+  ultimaProrrogacaoAnualCabe: boolean;
+  frase: string;
+} | null {
+  if (!dataInicio || !dataFimVigente) return null;
+  const limite = somarMeses(dataInicio, 120);
+  if (!limite) return null;
+
+  const ultrapassa = dataFimVigente > limite;
+  // Cabe mais um período anual inteiro dentro do teto?
+  const fimSeRenovar = somarMeses(dataFimVigente, 12);
+  const ultimaProrrogacaoAnualCabe = !!fimSeRenovar && fimSeRenovar <= limite;
+
+  const limiteBr = limite.split('-').reverse().join('/');
+  return {
+    limite,
+    ultrapassa,
+    ultimaProrrogacaoAnualCabe,
+    frase: ultrapassa
+      ? `A vigência atual passa do teto decenal do art. 107 — o limite é ${limiteBr}.`
+      : ultimaProrrogacaoAnualCabe
+        ? `Dentro do teto decenal do art. 107 (limite ${limiteBr}).`
+        // O aviso que importa: a PRÓXIMA renovação anual não caberia inteira.
+        // É agora que a decisão de relicitar precisa começar.
+        : `Este é o último período que cabe no teto decenal do art. 107 (limite ${limiteBr}) — a próxima renovação anual não caberia inteira. A relicitação precisa começar antes do fim da vigência.`,
+  };
+}

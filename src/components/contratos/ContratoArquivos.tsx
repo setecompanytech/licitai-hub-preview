@@ -68,7 +68,7 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   // O efeito no limite do art. 125 NÃO entra no rótulo — vai na linha de ajuda
   // abaixo do seletor. Rótulo é nome de instituto; consequência é outra coisa,
   // e misturar as duas produz um menu que ninguém lê até o fim.
-  aditivo_prazo: { label: 'Prorrogação de Vigência (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
+  aditivo_prazo: { label: 'Prorrogação de Contrato por Escopo (art. 111)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
   prorrogacao_continuo: { label: 'Prorrogação de Fornecimento ou Serviço Contínuo (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
   aditivo_escopo: { label: 'Alteração Qualitativa — Projeto ou Especificações (art. 124, I, \u201ca\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
   aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
