@@ -440,7 +440,10 @@ export default function VinculoContratoSelector({
                   e não escape para containers ancestrais.
                 */}
                 <CommandList
-                  className="h-[min(42vh,340px)] max-h-[calc(100vh-14rem)] overflow-y-auto overscroll-contain"
+                  // max-h, não h: com um resultado só, altura FIXA de 340px
+                  // vira um mar de branco abaixo da lista — a "tela quebrada"
+                  // relatada em 01/09. A lista cresce até o teto; não estica.
+                  className="max-h-[min(42vh,340px)] overflow-y-auto overscroll-contain"
                   onWheel={(e) => {
                     // Permite scroll nativo do mouse mesmo quando há foco
                     // capturado pelo CommandInput (cmdk às vezes consome o evento).
