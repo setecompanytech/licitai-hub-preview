@@ -102,9 +102,25 @@ export default function VinculoContratoSelector({
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
 
-  // Carrega contratos do usuário (e da empresa ativa, quando vinculados).
-  // Importante: muitos contratos legados foram criados sem empresa_id (NULL),
-  // então NÃO filtramos por empresa_id aqui — confiamos no user_id + RLS.
+  // ── Por que esta consulta NÃO filtra por user_id nem por status ─────────
+  //
+  // A versão anterior fazia os dois, e cada um escondia contratos reais:
+  //
+  //   .eq("user_id", ...)   Contrato é da EMPRESA (princípio 2 do CLAUDE.md).
+  //                         Filtrar pelo usuário sumia com o que o colega
+  //                         cadastrou — o mesmo defeito que já barrou colegas
+  //                         no espelho PNCP. O alcance é do RLS; o pós-filtro
+  //                         abaixo prioriza a empresa ativa e mantém os
+  //                         legados sem empresa_id.
+  //
+  //   .in("status", [...])  Lista de status redeclarada na tela (princípio 1:
+  //                         três cópias divergentes mantiveram o arquivamento
+  //                         quebrado por meses). E o filtro excluía justamente
+  //                         o caso de uso: NOTA FISCAL CHEGA DEPOIS. A NF-e
+  //                         retroativa de contrato vencendo ou encerrado é o
+  //                         lançamento mais comum desta tela — o 149/2024 tem
+  //                         nove delas. Contrato de qualquer status aparece,
+  //                         com o status dito na linha; quem lança decide.
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -113,8 +129,6 @@ export default function VinculoContratoSelector({
       .select(
         "id, numero_contrato, objeto, orgao_contratante, tipo_documento, saldo_remanescente, valor_global, status, empresa_id",
       )
-      .eq("user_id", user.id)
-      .in("status", ["vigente", "ativo", "em_execucao", "ativa"])
       .order("data_assinatura", { ascending: false, nullsFirst: false })
       .limit(300);
     q.then(({ data, error }) => {
@@ -461,6 +475,14 @@ export default function VinculoContratoSelector({
                                 </Badge>
                               )}
                               <b className="shrink-0">{c.numero_contrato}</b>
+                              {/* Contrato fora de execução continua na lista —
+                                  a nota retroativa é dele —, mas rotulado,
+                                  para ninguém escolhê-lo sem ver. */}
+                              {c.status && !["vigente", "ativo", "em_execucao", "ativa"].includes(c.status) && (
+                                <Badge variant="outline" className="text-xs py-0 px-1 text-warning border-warning/40">
+                                  {c.status}
+                                </Badge>
+                              )}
                               <span className="text-muted-foreground truncate">
                                 — {c.orgao_contratante}
                               </span>
