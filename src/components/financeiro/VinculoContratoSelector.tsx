@@ -27,6 +27,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
+import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,10 @@ const fmt = (v: number | null | undefined) =>
 
 export interface VinculoContratoValue {
   contrato_id: string | null;
+  /** De qual empenho o pedido sai — é por ele que o saldo do empenho baixa. */
+  empenho_id?: string | null;
+  /** Herdada quando o empenho tem uma cota só; rateio não é decisão desta tela. */
+  cota?: string | null;
   /** Mantido por compatibilidade — corresponde ao primeiro item de `contrato_item_ids`. */
   contrato_item_id: string | null;
   /** Permite vincular um único documento a múltiplos itens do contrato
@@ -98,6 +103,18 @@ export default function VinculoContratoSelector({
   const [contratos, setContratos] = useState<ContratoOpcao[]>([]);
   const [itens, setItens] = useState<ItemOpcao[]>([]);
   const [aditivos, setAditivos] = useState<AditivoOpcao[]>([]);
+  /**
+   * Os empenhos do contrato, para o pedido nascer apontando de qual sai.
+   *
+   * "O empenho autoriza; o pedido consome" — sem este vínculo, o saldo do
+   * empenho não baixa pelo caminho da Extração, e foi exatamente o que o dono
+   * do produto flagrou em 01/09: empenhos registrados na Gestão e o DANFE
+   * subindo sem poder apontá-los.
+   */
+  const [empenhos, setEmpenhos] = useState<Array<{
+    id: string; numero: string; tipo: string;
+    saldoValor: number; cancelado: boolean; cotas: string[];
+  }>>([]);
   const [busca, setBusca] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
@@ -173,6 +190,50 @@ export default function VinculoContratoSelector({
       setAditivos((aRes.data ?? []) as AditivoOpcao[]);
       setLoadingItens(false);
     });
+  }, [value.contrato_id]);
+
+  useEffect(() => {
+    if (!value.contrato_id) { setEmpenhos([]); return; }
+    let vivo = true;
+    (async () => {
+      const { data: es } = await supabase
+        .from("contrato_empenhos" as never)
+        .select("id, numero, tipo")
+        .eq("contrato_id", value.contrato_id)
+        .order("numero");
+      const lista = await Promise.all(
+        ((es ?? []) as unknown as Array<{ id: string; numero: string; tipo: string }>).map(async (e) => {
+          const [{ data: vig }, { data: cot }] = await Promise.all([
+            supabase.rpc("contrato_empenho_valor_vigente" as never, { p_empenho_id: e.id } as never),
+            supabase.rpc("contrato_empenho_saldo_por_cota" as never, { p_empenho_id: e.id } as never),
+          ]);
+          const v = ((vig ?? []) as unknown as Array<{ valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number }>)[0];
+          const cotas = ((cot ?? []) as unknown as Array<{ cota: string; saldo_valor: number }>);
+          return {
+            id: e.id, numero: e.numero, tipo: e.tipo,
+            saldoValor: cotas.reduce((s, c) => s + (Number(c.saldo_valor) || 0), 0),
+            cancelado: empenhoCancelado({
+              valorOriginal: v?.valor_original, reforcos: v?.reforcos, anulacoes: v?.anulacoes,
+            }),
+            cotas: cotas.map((c) => c.cota).filter(Boolean),
+          };
+        }),
+      );
+      if (!vivo) return;
+      setEmpenhos(lista);
+      // Um único empenho vivo dispensa a pergunta — pré-seleciona, com a cota
+      // herdada quando ela é uma só.
+      const vivos = lista.filter((e) => !e.cancelado);
+      if (vivos.length === 1 && !value.empenho_id) {
+        onChange({
+          ...value,
+          empenho_id: vivos[0].id,
+          cota: vivos[0].cotas.length === 1 ? vivos[0].cotas[0] : null,
+        });
+      }
+    })();
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.contrato_id]);
 
   // Sugestão automática por nome do órgão / CNPJ
@@ -569,6 +630,42 @@ export default function VinculoContratoSelector({
               Os alertas são informativos — você pode prosseguir com o lançamento, mas confirme os
               valores antes de impactar o saldo do contrato.
             </p>
+          </div>
+        )}
+
+        {/* ── O empenho que autoriza ──────────────────────────────────────
+            O pedido criado por esta tela nasce apontando de qual empenho sai
+            — é por esse vínculo que o saldo do empenho baixa (art. 60). Um
+            único empenho vivo é pré-selecionado; cancelado fica na lista
+            marcado, porque entrega ANTERIOR ao cancelamento é lançamento
+            legítimo. Contrato sem empenho registrado não mostra o bloco. */}
+        {value.contrato_id && empenhos.length > 0 && (
+          <div>
+            <Label className="text-xs">Empenho que autoriza (art. 60)</Label>
+            <Select
+              value={value.empenho_id ?? "nenhum"}
+              onValueChange={(id) => {
+                const e = empenhos.find((x) => x.id === id);
+                onChange({
+                  ...value,
+                  empenho_id: id === "nenhum" ? null : id,
+                  cota: e && e.cotas.length === 1 ? e.cotas[0] : null,
+                });
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhum" className="text-xs">Sem vínculo com empenho</SelectItem>
+                {empenhos.map((e) => (
+                  <SelectItem key={e.id} value={e.id} className="text-xs">
+                    {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
+                    {e.cancelado
+                      ? " · CANCELADO"
+                      : ` · saldo ${e.saldoValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

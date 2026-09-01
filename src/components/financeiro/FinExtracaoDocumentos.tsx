@@ -376,6 +376,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               p_tipo_documento: (d.tipo_documento as any) ?? "outro",
               p_numero_documento: d.numero_documento ?? null,
               p_chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
+              // De qual empenho o pedido sai — sem isto o saldo do empenho não
+              // baixa pelo caminho da Extração (modelo de 30/08).
+              p_empenho_id: v!.empenho_id ?? null,
+              p_cota: v!.cota ?? null,
               p_pessoa_id: null,
               p_observacoes: [
                 d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
