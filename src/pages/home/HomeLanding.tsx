@@ -90,8 +90,7 @@ function Header() {
         </nav>
 
         <div className="lp-header__cta">
-          <Link to="/auth" className="lp-btn lp-btn--ghost">Entrar</Link>
-          <Link to="/cadastro" className="lp-btn lp-btn--solid">Começar grátis</Link>
+          <Link to="/auth" className="lp-btn lp-btn--solid">Entrar</Link>
           <button
             type="button"
             className="lp-menu-btn"
@@ -207,8 +206,8 @@ function Hero() {
             ))}
           </ul>
           <div className="lp-hero__acoes">
-            <Link to="/cadastro" className="lp-btn lp-btn--solid lp-btn--lg">
-              Começar grátis <ArrowRight size={16} aria-hidden="true" />
+            <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
+              Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
             </Link>
             <a href="#funcionalidades" className="lp-btn lp-btn--ghost lp-btn--lg">
               Ver funcionalidades
@@ -234,8 +233,8 @@ function CtaFinal() {
           Crie a conta, cadastre o perfil da sua empresa e receba os editais certos
           já no primeiro boletim.
         </p>
-        <Link to="/cadastro" className="lp-btn lp-btn--solid lp-btn--lg">
-          Começar grátis <ArrowRight size={16} aria-hidden="true" />
+        <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
+          Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
     </section>
