@@ -2,6 +2,42 @@
 // Usa Lovable AI Gateway (Gemini Vision) como motor primário, com fallback para Claude e OpenAI.
 // Extrai estruturadamente: emitente, valor, vencimento, código de barras, chave NF-e.
 
+/**
+ * Número brasileiro impresso → number, por código e não por modelo.
+ *
+ * O Gemini devolveu "1.300,00" como o número JSON 1.3 e "29.315,00" como
+ * 29.315 — ponto de milhar lido como decimal, TODOS os campos divididos por
+ * mil de forma internamente consistente, o que passa por qualquer conferência
+ * relativa. Por isso os campos *_impresso: o modelo COPIA os caracteres do
+ * papel, e a conversão vira aritmética determinística aqui.
+ *
+ * Regra do formato impresso em nota fiscal: se há vírgula, ela é o decimal e
+ * todo ponto é milhar; sem vírgula, ponto também é milhar (nota brasileira
+ * não imprime decimal com ponto).
+ */
+function brParaNumero(s: unknown): number | null {
+  const t = String(s ?? "").replace(/[^\d.,-]/g, "").trim();
+  if (!t) return null;
+  const semMilhar = t.includes(",")
+    ? t.replace(/\./g, "").replace(",", ".")
+    : t.replace(/\./g, "");
+  const n = Number(semMilhar);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Os literais impressos, quando vieram, mandam sobre a conversão do modelo. */
+function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
+  const pares: Array<[string, string]> = [
+    ["quantidade_total", "quantidade_total_impressa"],
+    ["valor_total", "valor_total_impresso"],
+    ["valor_unitario", "valor_unitario_impresso"],
+  ];
+  for (const [campo, impresso] of pares) {
+    const n = brParaNumero(d[impresso]);
+    if (n !== null && n > 0) d[campo] = n;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -22,8 +58,11 @@ CAMPOS A EXTRAIR (quando visíveis):
 - data_emissao: AAAA-MM-DD
 - data_vencimento: AAAA-MM-DD (boletos)
 - valor_total: número decimal (R$)
-- quantidade_total: SOMA dos valores impressos na coluna QTDE./QTD. dos produtos (ex.: linha com "1.300,00" → 1300). NÃO é o número de linhas/itens da nota; NÃO derive dividindo valores. Atenção ao formato brasileiro: ponto é milhar, vírgula é decimal.
-- valor_unitario: o VALOR UNITÁRIO impresso do item principal (ex.: "22,5500" → 22.55).
+- quantidade_total_impressa: o TEXTO EXATO da coluna QTDE./QTD. do produto principal, copiado como impresso (ex.: "1.300,00"). Se houver várias linhas, o da linha de maior valor. NÃO converta, NÃO some, NÃO interprete — copie os caracteres.
+- valor_total_impresso: o TEXTO EXATO do VALOR TOTAL da nota, como impresso (ex.: "29.315,00").
+- valor_unitario_impresso: o TEXTO EXATO do VALOR UNITÁRIO do item principal, como impresso (ex.: "22,5500").
+- quantidade_total: idem quantidade_total_impressa, convertido para número (1.300,00 → 1300). Ponto é milhar; vírgula é decimal.
+- valor_unitario: o VALOR UNITÁRIO convertido para número ("22,5500" → 22.55).
 - codigo_barras: linha digitável de boleto (47/48 dígitos)
 - descricao: descrição do produto/serviço
 - impostos: { iss, icms, pis, cofins, ir } (quando visíveis)
@@ -50,6 +89,9 @@ const TOOL_SCHEMA = {
         valor_total: { type: "number" },
         quantidade_total: { type: "number" },
         valor_unitario: { type: "number" },
+        quantidade_total_impressa: { type: "string" },
+        valor_total_impresso: { type: "string" },
+        valor_unitario_impresso: { type: "string" },
         codigo_barras: { type: "string" },
         descricao: { type: "string" },
         confianca: { type: "number", description: "0-1, confiança na extração" },
@@ -141,6 +183,7 @@ Deno.serve(async (req) => {
       try {
         const resultado = await tentativa.fn();
         if (resultado && resultado.tipo_documento) {
+          sanearNumerosBrasileiros(resultado);
           return new Response(JSON.stringify({ ok: true, motor: tentativa.motor, dados: resultado }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
