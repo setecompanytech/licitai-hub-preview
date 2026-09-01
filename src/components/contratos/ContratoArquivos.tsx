@@ -56,17 +56,28 @@ const fmtQty = (v: number) => new Intl.NumberFormat('pt-BR').format(v);
 const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isAditivo?: boolean; tipoAditivo?: string; semLimite?: boolean }> = {
   contrato_original: { label: 'Contrato Original', color: 'bg-foreground/10 text-foreground' },
   ata_srp: { label: 'ATA SRP (referência)', color: 'bg-warning/10 text-warning' },
-  aditivo_prazo: { label: 'Termo Aditivo de Prazo', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
-  aditivo_valor: { label: 'Termo Aditivo de Valor', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_quantidade: { label: 'Termo Aditivo de Quantidade', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
-  aditivo_prazo_valor: { label: 'Termo Aditivo de Prazo e Valor', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
-  aditivo_prazo_quantidade: { label: 'Termo Aditivo de Prazo e Quantidade', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
-  aditivo_valor_quantidade: { label: 'Termo Aditivo de Quantidade e Valor', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_escopo: { label: 'Termo Aditivo de Escopo', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
-  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
-  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
-  aditivo_repactuacao: { label: 'Repactuação', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
-  aditivo_reajuste: { label: 'Reajuste', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  // ── Cada rótulo diz o ARTIGO e o que ele faz com o limite ────────────────
+  //
+  // Antes só dois citavam a norma. Escolher entre "Termo Aditivo de Prazo" e
+  // "Termo Aditivo de Prazo e Quantidade" era escolher às cegas: nada dizia
+  // que o segundo dispara o alerta do art. 125 e o primeiro não.
+  //
+  // E faltava a PRORROGAÇÃO do art. 107 — que renova o período de um
+  // fornecimento contínuo sem acrescer nada. Sem ela, quem prorroga escolhe
+  // "Prazo e Quantidade" e o sistema acusa 100% de acréscimo sobre um contrato
+  // que não foi acrescido em nada.
+  aditivo_prazo: { label: 'Aditivo de Prazo (art. 111) — não consome o limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
+  prorrogacao_continuo: { label: 'Prorrogação de fornecimento/serviço contínuo (art. 107) — novo período, não consome o limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
+  aditivo_valor: { label: 'Aditivo de Valor (art. 125) — consome o limite de 25%', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
+  aditivo_quantidade: { label: 'Aditivo de Quantidade (art. 125) — consome o limite de 25%', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_prazo_valor: { label: 'Aditivo de Prazo e Valor — o valor consome o limite (art. 125)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
+  aditivo_prazo_quantidade: { label: 'Aditivo de Prazo e Quantidade — a quantidade consome o limite (art. 125)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
+  aditivo_valor_quantidade: { label: 'Aditivo de Quantidade e Valor (art. 125) — consome o limite de 25%', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_escopo: { label: 'Aditivo de Escopo (art. 124, I) — consome o limite', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
+  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
+  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  aditivo_repactuacao: { label: 'Repactuação (art. 135) — fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste (art. 136, I) — apostila, fora do limite', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
   // 20260830000001, mas nenhum rótulo aqui — e aparecia como "Outro
   // Documento", que é o carimbo de quem não sabe o que guardou. É o documento

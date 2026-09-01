@@ -180,5 +180,20 @@ export function objetoDaAlteracao(tipo: string | null | undefined): string {
  */
 export function consomeLimiteDoArt125(tipo: string | null | undefined): boolean {
   const t = (tipo ?? '').trim().toLowerCase();
-  return t === 'valor' || t === 'quantidade' || t === 'valor_quantidade';
+  // Por INCLUSÃO, e não por exclusão. A cópia que existia no gatilho do banco
+  // era por exclusão, e por isso `prazo_quantidade` — uma prorrogação — entrou
+  // na conta por omissão e acusou 100% de acréscimo no 149/2024. Com lista de
+  // inclusão, tipo novo fica de fora até alguém decidir que ele entra.
+  return ['valor', 'quantidade', 'valor_quantidade', 'escopo'].includes(t);
+}
+
+/**
+ * Prorrogação de fornecimento ou serviço contínuo — art. 107.
+ *
+ * Abre um NOVO período, com a estimativa do período. Não acresce nada ao
+ * anterior e não toca o limite do art. 125. Tratá-la como acréscimo faz todo
+ * contrato contínuo estourar o limite na primeira renovação.
+ */
+export function ehProrrogacaoDeContinuo(tipo: string | null | undefined): boolean {
+  return (tipo ?? '').trim().toLowerCase() === 'prorrogacao';
 }

@@ -8,6 +8,7 @@ import {
   especieDaAlteracao,
   objetoDaAlteracao,
   consomeLimiteDoArt125,
+  ehProrrogacaoDeContinuo,
 } from '@/lib/contratos/rotulos';
 
 describe('nomeDoOrgao', () => {
@@ -144,5 +145,37 @@ describe('consomeLimiteDoArt125', () => {
   it('adesão e remanejamento não tocam o valor original', () => {
     expect(consomeLimiteDoArt125('adesao')).toBe(false);
     expect(consomeLimiteDoArt125('remanejamento')).toBe(false);
+  });
+});
+
+describe('consomeLimiteDoArt125 — lista por inclusão', () => {
+  it('só o que ACRESCE dentro da mesma vigência consome', () => {
+    for (const t of ['valor', 'quantidade', 'valor_quantidade', 'escopo']) {
+      expect(consomeLimiteDoArt125(t)).toBe(true);
+    }
+  });
+
+  it('prorrogação NÃO consome — é art. 107, novo período', () => {
+    // Tratá-la como acréscimo faz todo contrato contínuo estourar o limite na
+    // primeira renovação, e o 149/2024 acusou 100% por isso.
+    expect(consomeLimiteDoArt125('prorrogacao')).toBe(false);
+    expect(ehProrrogacaoDeContinuo('prorrogacao')).toBe(true);
+  });
+
+  it('prazo isolado não consome', () => {
+    expect(consomeLimiteDoArt125('prazo')).toBe(false);
+  });
+
+  it('reequilíbrio, revisão, repactuação e reajuste ficam fora do limite', () => {
+    for (const t of ['reequilibrio', 'revisao', 'repactuacao', 'reajuste']) {
+      expect(consomeLimiteDoArt125(t)).toBe(false);
+    }
+  });
+
+  it('tipo desconhecido NÃO entra na conta por omissão', () => {
+    // É a diferença entre inclusão e exclusão: com exclusão, todo tipo novo
+    // passava a consumir o limite sem ninguém ter decidido isso.
+    expect(consomeLimiteDoArt125('tipo_que_ainda_nao_existe')).toBe(false);
+    expect(consomeLimiteDoArt125(null)).toBe(false);
   });
 });
