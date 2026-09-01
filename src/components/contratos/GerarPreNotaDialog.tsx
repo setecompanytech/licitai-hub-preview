@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
+import { validarFaturamento } from '@/lib/contratos/validar-faturamento';
 import {
   Loader2, FileText, CheckCircle2, Package, MapPin, Truck, Send
 } from 'lucide-react';
@@ -98,6 +99,30 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
   };
 
   const selected = Object.entries(selectedPedidos).filter(([, v]) => v.selected);
+
+  /**
+   * A validação que IMPEDE a emissão — derivada a cada tecla.
+   *
+   * Aqui a nota ainda não existe: barrar custa um clique, deixar passar custa
+   * uma NF-e errada no mundo (a de R$ 22,50 num contrato de R$ 22,55 passou
+   * "sem intervenção humana" e rendeu consumo fantasma). Cada erro aponta o
+   * campo e aparece EM VERMELHO no lugar — "não avança" sem dizer onde é pior
+   * do que avançar.
+   */
+  const errosDeEmissao = validarFaturamento({
+    natureza,
+    freteValor,
+    vuPorItem: Object.fromEntries(itens.map(i => [i.id, i.valor_unitario])),
+    pedidosSelecionados: selected.map(([id, v]) => {
+      const pd = pedidos.find(x => x.id === id)!;
+      return {
+        id, numero_pedido: pd.numero_pedido, quantidade: pd.quantidade,
+        valor_unitario: pd.valor_unitario, contrato_item_id: pd.contrato_item_id,
+        quantidadeDigitada: v.quantidade,
+      };
+    }),
+  });
+  const erroDe = (campo: string) => errosDeEmissao.find(e => e.campo === campo)?.mensagem ?? null;
   const totalValue = selected.reduce((sum, [id, v]) => {
     const pedido = pedidos.find(p => p.id === id);
     if (!pedido) return sum;
@@ -106,7 +131,10 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
   }, 0);
 
   const handleSubmit = async () => {
-    if (!natureza) { toast.error('Selecione a Natureza da Operação'); return; }
+    if (errosDeEmissao.length > 0) {
+      toast.error('A emissão está travada.', { description: errosDeEmissao[0].mensagem });
+      return;
+    }
     if (selected.length === 0) { toast.error('Selecione pelo menos um pedido'); return; }
     if (!user || !empresaAtiva) return;
 
@@ -204,18 +232,26 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{p.descricao || item?.descricao || '—'}</p>
                         {sel?.selected && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <Label className="text-xs whitespace-nowrap">Qtd a faturar:</Label>
-                            <Input
-                              type="number"
-                              step="0.001"
-                              min="0.001"
-                              max={p.quantidade}
-                              value={sel.quantidade}
-                              onChange={e => updateQtd(p.id, e.target.value)}
-                              className="h-7 w-24 text-xs"
-                            />
-                            <span className="text-xs text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs whitespace-nowrap">Qtd a faturar:</Label>
+                              <Input
+                                type="number"
+                                step="0.001"
+                                min="0.001"
+                                max={p.quantidade}
+                                value={sel.quantidade}
+                                onChange={e => updateQtd(p.id, e.target.value)}
+                                className={`h-7 w-24 text-xs ${erroDe(`pedido:${p.id}:quantidade`) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                              />
+                              <span className="text-xs text-muted-foreground">de {p.quantidade} {item?.unidade || 'UN'}</span>
+                            </div>
+                            {erroDe(`pedido:${p.id}:quantidade`) && (
+                              <p className="text-xs font-bold text-destructive mt-1">{erroDe(`pedido:${p.id}:quantidade`)}</p>
+                            )}
+                            {erroDe(`pedido:${p.id}:preco`) && (
+                              <p className="text-xs font-bold text-destructive mt-1">{erroDe(`pedido:${p.id}:preco`)}</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -236,6 +272,21 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           )}
         </div>
 
+        {/* Todos os erros de uma vez, em vermelho — corrigir um por um às
+            cegas é tortura, e o botão só destrava quando a lista zera. */}
+        {errosDeEmissao.length > 0 && selected.length > 0 && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+            <p className="text-xs font-bold text-destructive mb-1">
+              A emissão está travada — {errosDeEmissao.length} ponto(s) a corrigir:
+            </p>
+            <ul className="space-y-0.5">
+              {errosDeEmissao.map((e, i) => (
+                <li key={i} className="text-xs font-bold text-destructive">• {e.mensagem}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <Separator />
 
         {/* 2. Natureza da Operação */}
@@ -247,7 +298,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
           <div>
             <Label className="text-xs">Natureza da Operação <span className="text-destructive">*</span></Label>
             <Select value={natureza} onValueChange={setNatureza}>
-              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectTrigger className={erroDe('natureza') ? 'border-destructive' : ''}><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
                 {NATUREZAS.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
               </SelectContent>
@@ -323,7 +374,8 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={saving || selected.length === 0 || !natureza}>
+          <Button onClick={handleSubmit} disabled={saving || errosDeEmissao.length > 0}
+            title={errosDeEmissao.length > 0 ? 'Corrija os pontos em vermelho para emitir' : undefined}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
             Enviar ao Financeiro
           </Button>
