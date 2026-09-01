@@ -584,9 +584,13 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               <p className="text-sm font-medium truncate">{d.file.name}</p>
                               <Badge variant="outline" className="text-xs uppercase">{d.kind}</Badge>
                               {d.status === "ok" && (
-                                <Badge variant="default" className="text-xs gap-1">
+                                // O nome do motor ("gemini_2.5_pro") é dado de
+                                // engenharia, não de operação — na tela vira
+                                // ruído. Fica no hover para diagnóstico.
+                                <Badge variant="default" className="text-xs gap-1"
+                                  title={d.motor ? `Lido por ${d.motor}` : undefined}>
                                   <CheckCircle2 className="w-3 h-3" />
-                                  {d.motor ?? "extraído"}
+                                  lido
                                 </Badge>
                               )}
                               {d.status === "erro" && (
@@ -662,9 +666,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                     {d.documentoId ? " · documento arquivado junto" : " · documento NÃO arquivado"}
                                   </p>
                                 </div>
+                                {/* Fechar É a ação: o modal cobre a própria
+                                    lista de Contas a Receber/Pagar, e o
+                                    lançamento novo está nela. "Ver na lista"
+                                    prometia navegação que não existia. */}
                                 <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                                  title="Fecha esta janela — o lançamento está na lista logo atrás"
                                   onClick={() => onOpenChange(false)}>
-                                  Ver na lista
+                                  Fechar e ver a lista
                                 </Button>
                               </div>
                             )}
