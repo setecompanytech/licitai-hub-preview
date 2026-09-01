@@ -4,6 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
 import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -399,7 +400,14 @@ export default function KanbanPage() {
                             <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1 min-w-0">
-                                <span className="text-xs tabular-nums text-muted-foreground truncate">{lic.numero}</span>
+                                {/* "033" sozinho não identifica um processo —
+                                    quem trabalha licitação nomeia por
+                                    MODALIDADE + NÚMERO. Os dados sempre
+                                    vieram na consulta; faltava mostrá-los. */}
+                                <span className="text-xs font-semibold tabular-nums truncate"
+                                  title={lic.modalidade ?? undefined}>
+                                  {identidadeDoProcesso(lic)}
+                                </span>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -433,6 +441,11 @@ export default function KanbanPage() {
                               {/* text-base fazia o objeto dominar o card — três
                                   cards por tela. Em text-sm o quadro volta a
                                   ser quadro: vê-se a coluna, não um card. */}
+                              {lic.orgao && (
+                                <p className="text-[11px] text-muted-foreground truncate" title={lic.orgao}>
+                                  {lic.orgao}
+                                </p>
+                              )}
                               <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
                                 {lic.objeto}
                               </p>
@@ -493,7 +506,7 @@ export default function KanbanPage() {
           style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY, width: 240 }}
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
-            <p className="text-xs tabular-nums text-muted-foreground truncate">{draggedItem.numero}</p>
+            <p className="text-xs font-semibold tabular-nums truncate">{identidadeDoProcesso(draggedItem)}</p>
             <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
             {draggedItem.municipio && draggedItem.uf && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
