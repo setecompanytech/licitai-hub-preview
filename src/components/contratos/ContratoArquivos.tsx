@@ -68,14 +68,28 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   // O efeito no limite do art. 125 NÃO entra no rótulo — vai na linha de ajuda
   // abaixo do seletor. Rótulo é nome de instituto; consequência é outra coisa,
   // e misturar as duas produz um menu que ninguém lê até o fim.
+  // ── Uma hipótese legal, uma opção ────────────────────────────────────────
+  //
+  // O art. 124, I, "b" descreve UMA hipótese: "modificação do valor contratual
+  // EM DECORRÊNCIA de acréscimo ou diminuição quantitativa de seu objeto".
+  // Quantidade é a causa; valor é o efeito — não são espécies alternativas. As
+  // três opções anteriores (Quantidade / Valor / Quantidade e Valor)
+  // fragmentavam a mesma hipótese, e quem registrava escolhia no palpite.
+  // Viram UMA, com os dois campos numéricos no formulário: impacto financeiro
+  // é campo do documento, não categoria classificatória.
+  //
+  // As duas mistas ("Prorrogação e Alteração — Valor/— Quantidade") citavam o
+  // art. 124 para o aumento que decorre da RENOVAÇÃO do período — fundamento
+  // errado: pagar mais um período é consequência do art. 107, não alteração
+  // do 124. A prorrogação de contínuo passa a carregar a ESTIMATIVA do novo
+  // período nos próprios campos (soma no saldo; NÃO consome o art. 125). A
+  // mista única que restou é para o caso genuíno — prorrogar E acrescer
+  // dentro da vigência — e grava tipo `valor_quantidade`, que conta no limite.
   aditivo_prazo: { label: 'Prorrogação de Contrato por Escopo (art. 111)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo' },
   prorrogacao_continuo: { label: 'Prorrogação de Fornecimento ou Serviço Contínuo (art. 107)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prorrogacao' },
   aditivo_escopo: { label: 'Alteração Qualitativa — Projeto ou Especificações (art. 124, I, \u201ca\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'escopo' },
-  aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
-  aditivo_valor: { label: 'Alteração Quantitativa — Valor (art. 124, I, \u201cb\u201d)', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
-  aditivo_valor_quantidade: { label: 'Alteração Quantitativa — Quantidade e Valor (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
-  aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
-  aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
+  aditivo_valor_quantidade: { label: 'Alteração Quantitativa (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
+  aditivo_prazo_alteracao: { label: 'Prorrogação com Alteração Quantitativa (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'valor_quantidade' },
   // ── Uma opção, não duas ──────────────────────────────────────────────────
   //
   // "Reequilíbrio Econômico-Financeiro" e "Revisão Contratual" citavam a MESMA
@@ -90,7 +104,7 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   // soma por tipo. O rótulo único nomeia instrumento e finalidade juntos.
   aditivo_reequilibrio: { label: 'Revisão para Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
   aditivo_repactuacao: { label: 'Repactuação (art. 135)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
-  aditivo_reajuste: { label: 'Reajuste por Apostila (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
+  aditivo_reajuste: { label: 'Reajuste (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
   // 20260830000001, mas nenhum rótulo aqui — e aparecia como "Outro
   // Documento", que é o carimbo de quem não sabe o que guardou. É o documento
@@ -151,6 +165,12 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   // Saiu do seletor na fusão com o reequilíbrio (mesma alínea, mesmo
   // instituto); fica aqui para o arquivo antigo continuar nomeado.
   aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  // Saíram na fusão da tríade do art. 124, I, "b" e das duas mistas
+  // (01/09/2026) — a hipótese legal é uma; o impacto virou campo numérico.
+  aditivo_quantidade: { label: 'Alteração Quantitativa — Quantidade (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'quantidade' },
+  aditivo_valor: { label: 'Alteração Quantitativa — Valor (art. 124, I, \u201cb\u201d)', color: 'bg-success/10 text-success', isAditivo: true, tipoAditivo: 'valor' },
+  aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
+  aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
 };
 
 /** Nome do tipo de aditivo, para a confirmação dizer o que será apagado. */
@@ -162,9 +182,14 @@ const TIPOS_ADITIVO_LABEL: Record<string, string> = {
 };
 
 const TIPOS_ARQUIVO_SEM_LIMITE = ['aditivo_reequilibrio', 'aditivo_revisao', 'aditivo_repactuacao', 'aditivo_reajuste', 'ata_aditivo_revisao', 'apostilamento_reajuste'];
-const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_escopo', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
-const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento'].includes(tipo);
-const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade', 'ata_aditivo_prazo'].includes(tipo);
+// `prorrogacao_continuo` entra nos dois: a renovação registra a ESTIMATIVA do
+// novo período (art. 107). O gatilho de saldos soma sem olhar tipo, então o
+// lastro entra; o alerta do art. 125 ignora `prorrogacao` por lista de
+// inclusão — lastro sim, limite não. Era a ausência daqui que fazia a
+// reclassificação de ontem GRAVAR ZERO e derrubar o saldo de 7.200 para 3.600.
+const showValueFields = (tipo: string) => ['aditivo_valor', 'aditivo_valor_quantidade', 'aditivo_prazo_valor', 'aditivo_prazo_alteracao', 'prorrogacao_continuo', 'aditivo_escopo', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento', ...TIPOS_ARQUIVO_SEM_LIMITE].includes(tipo);
+const showQtyFields = (tipo: string) => ['aditivo_quantidade', 'aditivo_valor_quantidade', 'aditivo_prazo_quantidade', 'aditivo_prazo_alteracao', 'prorrogacao_continuo', 'ata_aditivo_adesao', 'ata_aditivo_remanejamento'].includes(tipo);
+const showDateField = (tipo: string) => ['aditivo_prazo', 'aditivo_prazo_valor', 'aditivo_prazo_quantidade', 'aditivo_prazo_alteracao', 'prorrogacao_continuo', 'ata_aditivo_prazo'].includes(tipo);
 const isAditivoType = (tipo: string) => TIPOS_ARQUIVO[tipo]?.isAditivo === true;
 
 function formatBytes(bytes: number | null): string {

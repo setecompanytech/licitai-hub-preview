@@ -189,9 +189,13 @@ describe('efeitoNoLimite', () => {
     expect(f).toContain('50%');
   });
 
-  it('prorrogação diz que abre novo período e não consome', () => {
-    expect(efeitoNoLimite('prorrogacao')).toContain('novo período');
-    expect(efeitoNoLimite('prorrogacao')).toContain('não consome');
+  it('prorrogação: novo período, estimativa nos campos, fora do limite', () => {
+    const f = efeitoNoLimite('prorrogacao');
+    expect(f).toContain('novo período');
+    expect(f).toContain('ESTIMATIVA');
+    expect(f).toContain('NÃO consomem');
+    // O fundamento da distinção fica dito: pagar mais um período é art. 107.
+    expect(f).toContain('art. 107');
   });
 
   it('o misto diz o que o cálculo faz: renovação de período fora do limite', () => {

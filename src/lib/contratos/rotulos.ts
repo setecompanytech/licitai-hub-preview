@@ -216,8 +216,10 @@ export function efeitoNoLimite(tipo: string | null | undefined): string {
       + '50% em reforma de edifício ou de equipamento.';
   }
   if (t === 'prorrogacao') {
-    return 'Abre novo período de vigência. Não acresce ao anterior e não consome o '
-      + 'limite do art. 125 — mas conta para a vigência máxima decenal do art. 107.';
+    return 'Abre novo período de vigência (máxima decenal, art. 107). Os campos de '
+      + 'quantidade e valor registram a ESTIMATIVA do novo período: somam no saldo '
+      + 'do contrato, e NÃO consomem o limite do art. 125 — pagar mais um período '
+      + 'é consequência do art. 107, não alteração do art. 124.';
   }
   if (t === 'prazo') {
     return 'Prorroga pelo tempo necessário à conclusão do objeto (art. 111). Não '
