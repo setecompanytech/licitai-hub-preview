@@ -356,6 +356,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       cota: string; saldo_qtd: number; qtd_empenhada: number;
       /** Do empenho inteiro, não da cota: é o que diz se ele foi cancelado. */
       valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number;
+      reforcado: boolean;
       // O saldo em VALOR. No estimativo é ele que vale: a quantidade impressa
       // na nota é formalidade — o 149/2024 traz "1 pacote" num contrato de
       // 3.600 —, e o que o empenho reservou de fato é dinheiro.
@@ -527,6 +528,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               saldoQtd: emp.saldo_qtd,
               saldoValor: emp.saldo_valor,
               tipo: emp.tipo,
+              reforcado: emp.reforcado,
             }
           : null,
         item: item?.saldo_quantitativo != null
@@ -683,6 +685,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               reforcos: Number(v?.reforcos) || 0,
               anulacoes: Number(v?.anulacoes) || 0,
               valor_vigente: Number(v?.valor_vigente) || 0,
+              reforcado: (Number(v?.reforcos) || 0) > 0 || (Number(v?.anulacoes) || 0) > 0,
             });
           }
         }
@@ -2186,10 +2189,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     {cotas.map(c => (
                       <span key={c.cota} className="text-xs text-muted-foreground">
                         {c.cota === 'reservada' ? 'Cota reservada' : 'Cota principal'}:{' '}
-                        <b className="text-foreground tabular-nums">
-                          {c.saldo_qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                        </b>{' '}
-                        de {c.qtd_empenhada.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} disponíveis
+                        {c.reforcado ? (
+                          // Empenho com reforço mede-se em DINHEIRO: reforço é
+                          // ato de valor, e a quantidade da nota original fica
+                          // obsoleta no primeiro. "−395 de 2.802" acusava
+                          // déficit num empenho com R$ 63 mil positivos.
+                          <>
+                            <b className="text-foreground tabular-nums">
+                              {c.saldo_valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </b>{' '}
+                            disponíveis (com reforços — a régua é o valor)
+                          </>
+                        ) : (
+                          <>
+                            <b className="text-foreground tabular-nums">
+                              {c.saldo_qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                            </b>{' '}
+                            de {c.qtd_empenhada.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} disponíveis
+                          </>
+                        )}
                       </span>
                     ))}
                   </div>

@@ -71,6 +71,15 @@ export type SaldosDisponiveis = {
     saldoQtd: number | null;
     saldoValor?: number | null;
     tipo?: string | null;
+    /**
+     * O empenho tem reforços ou anulações registrados?
+     *
+     * Reforço é ato de VALOR: a quantidade impressa na nota original fica
+     * obsoleta no primeiro reforço. O 2025NE000064 acusava "−395 de 2.802"
+     * em quantidade enquanto tinha R$ 63 mil positivos em valor — a nota
+     * original dizia 2.802 CX, e os dez reforços autorizaram muito mais.
+     */
+    reforcado?: boolean;
   } | null;
   /** Saldo do item do contrato, em quantidade. */
   item?: { rotulo: string; saldoQtd: number | null } | null;
@@ -129,16 +138,23 @@ export function avaliarCabimento(
   // ele de fato reservou.
   if (saldos.empenho) {
     const ehEstimativo = saldos.empenho.tipo === 'estimativo';
+    // Estimativo OU reforçado: a régua é o VALOR. No estimativo, porque a
+    // quantidade da nota é formalidade; no reforçado, porque os reforços são
+    // atos de valor e a quantidade original ficou para trás. A diferença
+    // entre eles: o estimativo só AVISA (saldo sabidamente parcial); o
+    // reforçado BARRA, porque o vigente com os movimentos registrados é
+    // número completo e confiável.
+    const confereEmValor = ehEstimativo || !!saldos.empenho.reforcado;
     const providencia = ehEstimativo
       ? 'Peça o reforço do empenho antes de faturar — no estimativo isso é rotina, não irregularidade.'
       : 'Peça novo empenho: entregar além do empenhado é despesa sem cobertura (Lei 4.320/64, art. 60).';
 
-    if (ehEstimativo) {
+    if (confereEmValor) {
       if (saldos.empenho.saldoValor != null) {
         const disp = saldos.empenho.saldoValor;
         limites.push({
           origem: 'empenho',
-          rotulo: `${saldos.empenho.rotulo} (valor empenhado)`,
+          rotulo: `${saldos.empenho.rotulo} (valor empenhado${saldos.empenho.reforcado ? ', com reforços' : ''})`,
           disponivel: disp,
           solicitado: pedido.valor,
           unidade: 'valor',
@@ -154,8 +170,9 @@ export function avaliarCabimento(
           // o sistema conhece é reconhecidamente parcial. Afirmar "não cabe"
           // com base nele seria acusar falta a partir do que não se sabe — e
           // quem governa a quantidade no estimativo é o contrato, que está
-          // sendo conferido logo abaixo.
-          informativo: true,
+          // sendo conferido logo abaixo. O ordinário/global REFORÇADO não é
+          // informativo: barra, porque o vigente é completo.
+          informativo: ehEstimativo ? true : undefined,
         });
       }
     } else if (saldos.empenho.saldoQtd != null) {

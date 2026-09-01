@@ -183,3 +183,46 @@ describe('a espécie do empenho muda a unidade conferida', () => {
     expect(r.limites.find(l => l.origem === 'item')).toBeTruthy();
   });
 });
+
+
+describe('empenho reforçado confere pelo VALOR — e barra', () => {
+  it('o −395 do 2025NE000064: quantidade estourada, valor saudável → cabe', () => {
+    // A nota original diz 2.802 CX; dez reforços de VALOR autorizaram muito
+    // mais. Conferir a quantidade da nota acusava déficit num empenho com
+    // R$ 63 mil positivos — reforço é ato de valor, e a régua vai junto.
+    const r = avaliarCabimento(
+      { quantidade: 300, valor: 6765 },
+      {
+        empenho: { rotulo: 'empenho 2025NE000064', saldoQtd: -395, saldoValor: 63165.2, tipo: 'ordinario', reforcado: true },
+        item: { rotulo: 'item 1', saldoQtd: 4003 },
+        contrato: { saldoValor: 90267.65 },
+      },
+    );
+    expect(r.cabe).toBe(true);
+    const doEmpenho = r.limites.find(l => l.origem === 'empenho')!;
+    expect(doEmpenho.unidade).toBe('valor');
+    expect(doEmpenho.informativo).toBeUndefined();
+  });
+
+  it('reforçado que estoura o VALOR barra — o vigente é número completo', () => {
+    const r = avaliarCabimento(
+      { quantidade: 3000, valor: 67650 },
+      {
+        empenho: { rotulo: 'empenho', saldoQtd: 500, saldoValor: 63165.2, tipo: 'ordinario', reforcado: true },
+        contrato: { saldoValor: 90267.65 },
+      },
+    );
+    expect(r.cabe).toBe(false);
+    expect(r.gargalo?.origem).toBe('empenho');
+    expect(r.gargalo?.unidade).toBe('valor');
+  });
+
+  it('ordinário SEM reforço segue conferido por quantidade', () => {
+    const r = avaliarCabimento(
+      { quantidade: 120, valor: 500 },
+      { empenho: { rotulo: 'cota', saldoQtd: 100, saldoValor: 99999, tipo: 'ordinario', reforcado: false } },
+    );
+    expect(r.cabe).toBe(false);
+    expect(r.gargalo?.unidade).toBe('quantidade');
+  });
+});
