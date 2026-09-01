@@ -76,8 +76,19 @@ const TIPOS_ARQUIVO_CONTRATO: Record<string, { label: string; color: string; isA
   aditivo_valor_quantidade: { label: 'Alteração Quantitativa — Quantidade e Valor (art. 124, I, \u201cb\u201d)', color: 'bg-info/10 text-info', isAditivo: true, tipoAditivo: 'valor_quantidade' },
   aditivo_prazo_valor: { label: 'Prorrogação e Alteração Quantitativa — Valor (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_valor' },
   aditivo_prazo_quantidade: { label: 'Prorrogação e Alteração Quantitativa — Quantidade (arts. 107 e 124, I, \u201cb\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'prazo_quantidade' },
-  aditivo_reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
-  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
+  // ── Uma opção, não duas ──────────────────────────────────────────────────
+  //
+  // "Reequilíbrio Econômico-Financeiro" e "Revisão Contratual" citavam a MESMA
+  // alínea (art. 124, II, "d") — e são a mesma coisa vista de dois ângulos:
+  // REVISÃO é o instrumento, REEQUILÍBRIO é a finalidade. O art. 124, II, "d"
+  // é a via para força maior, caso fortuito, fato do príncipe e fato
+  // imprevisível; as outras duas vias do reequilíbrio têm artigos próprios
+  // (reajuste: 136, I; repactuação: 135) e opções próprias abaixo.
+  //
+  // Duas opções com o mesmo fundamento fazem quem registra escolher no
+  // palpite — e metade dos registros cair em cada tipo, quebrando qualquer
+  // soma por tipo. O rótulo único nomeia instrumento e finalidade juntos.
+  aditivo_reequilibrio: { label: 'Revisão para Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reequilibrio', semLimite: true },
   aditivo_repactuacao: { label: 'Repactuação (art. 135)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'repactuacao', semLimite: true },
   aditivo_reajuste: { label: 'Reajuste por Apostila (art. 136, I)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'reajuste', semLimite: true },
   // A nota de empenho tinha `tipo = 'ordem_fornecimento'` gravado desde a
@@ -137,6 +148,9 @@ const TIPOS_ARQUIVO: Record<string, { label: string; color: string; isAditivo?: 
   // "Outro Documento", o carimbo de quem não sabe o que guardou.
   ordem_fornecimento: { label: 'Ordem de Fornecimento / Nota de Empenho', color: 'bg-info/10 text-info' },
   apostilamento: { label: 'Apostilamento', color: 'bg-warning/10 text-warning' },
+  // Saiu do seletor na fusão com o reequilíbrio (mesma alínea, mesmo
+  // instituto); fica aqui para o arquivo antigo continuar nomeado.
+  aditivo_revisao: { label: 'Revisão Contratual (art. 124, II, \u201cd\u201d)', color: 'bg-warning/10 text-warning', isAditivo: true, tipoAditivo: 'revisao', semLimite: true },
 };
 
 /** Nome do tipo de aditivo, para a confirmação dizer o que será apagado. */
