@@ -384,11 +384,16 @@ export default function KanbanPage() {
                           key={lic.id}
                           ref={lic.id === focoId ? focoRef : undefined}
                           className={cn(
-                            'bg-card rounded-lg border border-border/50 p-3 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
+                            'bg-card rounded-lg border border-border/50 p-2.5 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
                             draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-grab',
                             lic.id === focoId && 'ring-2 ring-accent border-accent/50'
                           )}
                           onPointerDown={(e) => handlePointerDown(e, lic.id)}
+                          // Duplo clique abre a edição — o mesmo gesto do
+                          // financeiro. O arrasto só arma com movimento, então
+                          // os dois convivem.
+                          onDoubleClick={() => handleEdit(lic)}
+                          title="Duplo clique para abrir"
                         >
                           <div className="flex items-start gap-1.5">
                             <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
@@ -425,7 +430,10 @@ export default function KanbanPage() {
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
+                              {/* text-base fazia o objeto dominar o card — três
+                                  cards por tela. Em text-sm o quadro volta a
+                                  ser quadro: vê-se a coluna, não um card. */}
+                              <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
                                 {lic.objeto}
                               </p>
                               {/* Arquivar guarda o processo, não apaga o que
@@ -440,7 +448,7 @@ export default function KanbanPage() {
                                   desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
                                 </span>
                               )}
-                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                                 {lic.municipio && lic.uf && (
                                   <span className="flex items-center gap-0.5">
                                     <MapPin className="w-2.5 h-2.5" />
@@ -457,7 +465,7 @@ export default function KanbanPage() {
                               {/* Valor é dado, não ação: hierarquia por peso, não por cor
                                   (regra da auditoria — laranja só para ação/foco). */}
                               {lic.valor_estimado && (
-                                <p className="text-sm font-semibold text-foreground mt-1.5">{formatCurrency(lic.valor_estimado)}</p>
+                                <p className="text-sm font-semibold text-foreground mt-1 tabular-nums">{formatCurrency(lic.valor_estimado)}</p>
                               )}
                             </div>
                           </div>
@@ -486,7 +494,7 @@ export default function KanbanPage() {
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
             <p className="text-xs tabular-nums text-muted-foreground truncate">{draggedItem.numero}</p>
-            <p className="text-base font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
+            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
             {draggedItem.municipio && draggedItem.uf && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
                 <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}

@@ -55,6 +55,9 @@ import { useQueryClient } from "@tanstack/react-query";
 type ColunaKanban = "aberto" | "vence_7d" | "vencido" | "pago";
 
 const COLUNAS: { id: ColunaKanban; nome: string; cor: string; icone: typeof Clock }[] = [
+  // As três primeiras são DERIVADAS da data de vencimento — o lançamento se
+  // move sozinho conforme o calendário anda. Só "Concluído" é um estado que se
+  // escolhe (arrastar para cá marca pago/recebido; tirar daqui reabre).
   { id: "aberto",   nome: "Em aberto",        cor: "bg-info/10 border-info/30",               icone: FileText },
   { id: "vence_7d", nome: "Vence em 7 dias",  cor: "bg-warning/10 border-warning/30",         icone: Clock },
   { id: "vencido",  nome: "Vencido",          cor: "bg-destructive/10 border-destructive/30", icone: AlertCircle },
@@ -375,6 +378,16 @@ export default function FinKanban({ tipo }: Props) {
         qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
         qc.invalidateQueries({ queryKey: ["fin-resumo"] });
         toast.success("Lançamento marcado como concluído.");
+      } else if (lanc.status !== "realizado") {
+        // ── As colunas de vencimento são AUTOMÁTICAS ─────────────────────
+        // A posição vem da data: "Em aberto", "Vence em 7 dias" e "Vencido"
+        // são leituras do vencimento, não estados que se escolhem. Arrastar
+        // um previsto entre elas não tem efeito possível — e o silêncio
+        // deixava parecer que o quadro "não funcionou". Agora ele explica.
+        toast.info("Esta coluna é automática pela data de vencimento.", {
+          description: "Para mover o lançamento, edite a data de vencimento (duplo clique abre).",
+        });
+        return;
       } else {
         // Tirar de "pago" → volta para previsto; reverte saldo
         await upsert.mutateAsync({
@@ -726,8 +739,13 @@ export default function FinKanban({ tipo }: Props) {
                             draggable
                             onDragStart={handleDragStart(l.id)}
                             onDragEnd={handleDragEnd}
+                            // Duplo clique abre — o lápis continua para quem o
+                            // procura, mas o gesto natural sobre um card é
+                            // clicar nele, não achar o ícone de 24px.
+                            onDoubleClick={() => abrirEditar(l)}
+                            title="Duplo clique para abrir"
                           >
-                            <CardContent className="p-3 space-y-1.5 kanban-card-body">
+                            <CardContent className="p-2.5 space-y-1 kanban-card-body">
                               <div className="flex items-start gap-1.5 min-w-0 max-w-full">
                                 {col.id !== "pago" && (
                                   <Checkbox
@@ -764,18 +782,20 @@ export default function FinKanban({ tipo }: Props) {
                                 </div>
                               </div>
 
-                              {l.pessoa?.nome && (
+                              {/* Cliente e documento numa linha só: eram duas
+                                  linhas cheias por card, e a coluna virava uma
+                                  fileira comprida de rolagem. Um separador
+                                  visual e o title guardam o texto completo. */}
+                              {(l.pessoa?.nome || l.numero_documento) && (
                                 <p
-                                  className="kanban-card-meta"
-                                  title={`${tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: ${l.pessoa.nome}`}
+                                  className="kanban-card-meta truncate"
+                                  title={[
+                                    l.pessoa?.nome ? `${tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: ${l.pessoa.nome}` : null,
+                                    l.numero_documento ? `Doc: ${l.numero_documento}${l.serie_documento ? ` / ${l.serie_documento}` : ""}` : null,
+                                  ].filter(Boolean).join(" · ")}
                                 >
-                                  {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}: {l.pessoa.nome}
-                                </p>
-                              )}
-                              {l.numero_documento && (
-                                <p className="kanban-card-meta">
-                                  Doc: {l.numero_documento}
-                                  {l.serie_documento ? ` / ${l.serie_documento}` : ""}
+                                  {[l.pessoa?.nome, l.numero_documento ? `Doc ${l.numero_documento}` : null]
+                                    .filter(Boolean).join(" · ")}
                                 </p>
                               )}
 
@@ -799,7 +819,7 @@ export default function FinKanban({ tipo }: Props) {
                                   justamente o número que a pessoa está
                                   procurando. Agora o valor tem a linha inteira
                                   e a data fica acima, discreta. */}
-                              <div className="pt-1 border-t border-border/40 mt-1.5">
+                              <div className="pt-1 border-t border-border/40 mt-1">
                                 <div className="flex items-baseline justify-between gap-2">
                                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                                     Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
@@ -821,7 +841,7 @@ export default function FinKanban({ tipo }: Props) {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full h-7 text-xs"
+                                  className="w-full h-6 text-xs"
                                   onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
                                   disabled={upsert.isPending}
                                 >
