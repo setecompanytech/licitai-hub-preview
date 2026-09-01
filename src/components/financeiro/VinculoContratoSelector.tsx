@@ -83,6 +83,15 @@ interface Props {
   hintNome?: string | null;
   hintCnpj?: string | null;
   valorTotal?: number | null;
+  /**
+   * A quantidade que a NOTA declara (QTD. do DANFE / soma de q_com do XML).
+   *
+   * Sem ela, a sugestão era valorTotal ÷ preço do CONTRATO — que produzia
+   * 498,8914 caixas para uma nota de 500 CX a R$ 22,50, porque o preço
+   * faturado (22,50) difere do contratado (22,55). Quantidade é o que a nota
+   * ATESTA; dividir dinheiro por preço é conta de cabeça, e fracionária.
+   */
+  quantidadeDaNota?: number | null;
   value: VinculoContratoValue;
   onChange: (v: VinculoContratoValue) => void;
   /** Em a_receber, listamos contratos onde o órgão é o pagador (cliente). Em a_pagar, idem (fornecedor). */
@@ -93,6 +102,7 @@ export default function VinculoContratoSelector({
   hintNome,
   hintCnpj,
   valorTotal,
+  quantidadeDaNota,
   value,
   onChange,
   tipo,
@@ -321,6 +331,26 @@ export default function VinculoContratoSelector({
       valorTotal ?? (value.quantidade || 0) * (value.valor_unitario || 0),
     );
 
+    // 0) Preço faturado ≠ preço contratado — informativo, não barra.
+    //    A nota de 500 CX saiu a R$ 22,50 num contrato de R$ 22,55: pode ser
+    //    desconto, reajuste ou erro do emissor. O pedido usa o faturado (é o
+    //    que foi cobrado); quem confere precisa VER a diferença.
+    if (
+      itemSel?.valor_unitario &&
+      value.quantidade > 0 &&
+      valorLancamento > 0
+    ) {
+      const vuFaturado = valorLancamento / value.quantidade;
+      const vuContratado = Number(itemSel.valor_unitario);
+      if (Math.abs(vuFaturado - vuContratado) > 0.005) {
+        alerts.push({
+          level: "warning",
+          titulo: "Preço faturado difere do contratado",
+          detalhe: `Nota: ${fmt(vuFaturado)}/un · Contrato: ${fmt(vuContratado)}/un. O pedido usa o faturado — confira se há reajuste, desconto ou erro do emissor.`,
+        });
+      }
+    }
+
     // 1) Valor do documento > saldo remanescente do CONTRATO
     const saldoContrato = Number(contratoSel.saldo_remanescente ?? contratoSel.valor_global);
     if (valorLancamento > 0 && valorLancamento - saldoContrato > TOL_VALOR) {
@@ -400,12 +430,19 @@ export default function VinculoContratoSelector({
     const novos = Array.from(atuais);
     const itensMarcados = itens.filter((i) => novos.includes(i.id));
 
-    // Quando há vários itens, somamos quantidades de saldo (sugestão inicial)
-    // e usamos o valor unitário do primeiro como referência editável.
-    const qtdSugerida =
-      itensMarcados.length > 0 && valorTotal && itensMarcados[0].valor_unitario
+    // A quantidade da NOTA manda; a divisão por preço é último recurso.
+    // E quando a quantidade vem da nota, o VU sugerido é o FATURADO
+    // (valorTotal ÷ qtd) — senão 500 × 22,55 ≠ 11.250 e o pedido nasceria
+    // internamente incoerente.
+    const qtdDaNota = Number(quantidadeDaNota) || 0;
+    const qtdSugerida = qtdDaNota > 0
+      ? qtdDaNota
+      : itensMarcados.length > 0 && valorTotal && itensMarcados[0].valor_unitario
         ? Number((Number(valorTotal) / Number(itensMarcados[0].valor_unitario)).toFixed(4))
         : value.quantidade;
+    const vuSugerido = qtdDaNota > 0 && valorTotal
+      ? Number((Number(valorTotal) / qtdDaNota).toFixed(4))
+      : itensMarcados[0]?.valor_unitario ?? value.valor_unitario;
 
     onChange({
       ...value,
@@ -413,7 +450,7 @@ export default function VinculoContratoSelector({
       contrato_item_id: novos[0] ?? null,
       origem_aditivo_id:
         itensMarcados[0]?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
-      valor_unitario: itensMarcados[0]?.valor_unitario ?? value.valor_unitario,
+      valor_unitario: vuSugerido,
       quantidade:
         value.quantidade && value.quantidade > 0 ? value.quantidade : qtdSugerida,
     });

@@ -177,6 +177,17 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         if (!resultado || resultado.status === "erro") {
           return { ...item, status: "erro", erro: resultado?.erro ?? "Falha na importação" };
         }
+        // A QUANTIDADE que a nota declara (soma de q_com dos itens). Sem ela,
+        // o vínculo sugeria valorTotal ÷ preço do contrato — 498,8914 caixas
+        // para uma nota de 500. Quantidade é o que a nota atesta.
+        let quantidadeTotal: number | null = null;
+        try {
+          const { parseNFeXML } = await import("@/lib/parseNFe");
+          const nfe = parseNFeXML(await item.file.text());
+          const soma = (nfe.itens ?? []).reduce(
+            (acc: number, i: { q_com?: number | null }) => acc + (Number(i.q_com) || 0), 0);
+          if (soma > 0) quantidadeTotal = soma;
+        } catch { /* nota sem itens legíveis: segue sem quantidade */ }
         return {
           ...item,
           status: "ok",
@@ -186,6 +197,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             valor_total: resultado.valor,
             data_emissao: resultado.competencia,
             chave_nfe: resultado.chave,
+            quantidade_total: quantidadeTotal,
             descricao: `${(resultado.tipo ?? "nota").toUpperCase()} ${resultado.chave ?? ""}`.trim(),
             _direcao: resultado.direcao,
             _ja_lancada: true,
@@ -348,8 +360,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             : Math.round(((valorTotal * pesos[idx]) / somaPesos) * 100) / 100;
           restante = Math.round((restante - fatia) * 100) / 100;
 
+          // A quantidade INFORMADA (da nota, ou ajustada pela pessoa) manda,
+          // rateada pela fatia quando há mais de um item. A divisão por preço
+          // é último recurso — era ela que produzia 498,8914 caixas.
+          const qtdInformada = Number(v!.quantidade) || 0;
           const vu = v!.valor_unitario || valorTotal;
-          const qtd = vu > 0 ? Number((fatia / vu).toFixed(4)) : v!.quantidade || 1;
+          const qtd = qtdInformada > 0 && valorTotal > 0
+            ? Number(((qtdInformada * fatia) / valorTotal).toFixed(4))
+            : vu > 0 ? Number((fatia / vu).toFixed(4)) : 1;
+          // O VU gravado fecha com o par (fatia, qtd) — 500 × 22,50 = 11.250.
+          const vuCoerente = qtd > 0 ? Number((fatia / qtd).toFixed(4)) : vu;
 
           const { data: rpcData, error: rpcErr } = await supabase.rpc(
             "vincular_lancamento_a_pedido" as any,
@@ -364,7 +384,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               p_descricao:
                 descricaoBase + (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
               p_quantidade: qtd || 1,
-              p_valor_unitario: vu,
+              p_valor_unitario: vuCoerente,
               p_valor_total: fatia,
               p_data_pedido: d.data_emissao ?? hojeLocal(),
               p_tipo: tipo,
@@ -687,6 +707,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                           : d.dados?.emitente_cnpj
                                       }
                                       valorTotal={d.dados?.valor_total ?? null}
+                                      quantidadeDaNota={d.dados?.quantidade_total ?? null}
                                       value={d.vinculo ?? VINCULO_VAZIO}
                                       onChange={(v) => setVinculo(d.id, v)}
                                     />
