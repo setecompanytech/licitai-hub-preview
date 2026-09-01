@@ -745,7 +745,7 @@ export default function FinKanban({ tipo }: Props) {
                             onDoubleClick={() => abrirEditar(l)}
                             title="Duplo clique para abrir"
                           >
-                            <CardContent className="p-2.5 space-y-1 kanban-card-body">
+                            <CardContent className="p-2 space-y-1 kanban-card-body">
                               <div className="flex items-start gap-1.5 min-w-0 max-w-full">
                                 {col.id !== "pago" && (
                                   <Checkbox
@@ -757,7 +757,10 @@ export default function FinKanban({ tipo }: Props) {
                                   />
                                 )}
                                 <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
-                                <p className="kanban-card-title flex-1" title={l.descricao}>
+                                {/* Uma linha: o title e o duplo clique dão o
+                                    resto. Duas linhas de título eram o maior
+                                    ladrão de altura da coluna. */}
+                                <p className="text-sm font-medium truncate min-w-0 flex-1" title={l.descricao}>
                                   {l.descricao}
                                 </p>
                                 <div className="flex items-center gap-0.5 shrink-0">
@@ -819,13 +822,17 @@ export default function FinKanban({ tipo }: Props) {
                                   justamente o número que a pessoa está
                                   procurando. Agora o valor tem a linha inteira
                                   e a data fica acima, discreta. */}
+                              {/* O botão de LINHA INTEIRA em todo card era o
+                                  segundo ladrão de altura. A ação vira o botão
+                                  compacto ✓ na própria linha do valor — mesma
+                                  função, um terço do espaço. */}
                               <div className="pt-1 border-t border-border/40 mt-1">
-                                <div className="flex items-baseline justify-between gap-2">
+                                <div className="flex items-center justify-between gap-1.5">
                                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                                     Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
                                   </span>
                                   <span className={cn(
-                                    "text-sm font-bold tabular-nums whitespace-nowrap",
+                                    "text-sm font-bold tabular-nums whitespace-nowrap ml-auto",
                                     col.id === "vencido" && "text-destructive",
                                     col.id === "pago" && "text-success",
                                   )}>
@@ -834,20 +841,20 @@ export default function FinKanban({ tipo }: Props) {
                                       currency: "BRL",
                                     })}
                                   </span>
+                                  {col.id !== "pago" && (
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      className="h-6 w-6 shrink-0 text-success hover:text-success hover:bg-success/10"
+                                      onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
+                                      disabled={upsert.isPending}
+                                      title={tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
-
-                              {col.id !== "pago" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full h-6 text-xs"
-                                  onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
-                                  disabled={upsert.isPending}
-                                >
-                                  {tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
-                                </Button>
-                              )}
                             </CardContent>
                           </Card>
                         );

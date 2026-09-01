@@ -336,8 +336,16 @@ export default function KanbanPage() {
                     ref={(el) => { columnRefs.current[col.id] = el; }}
                     onClick={() => recolhida && setMostrarVazias(true)}
                     title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
+                    // A cor de cada estado saía num pontinho de 10px — o
+                    // financeiro veste a coluna inteira, e a paridade foi
+                    // pedida. Barra superior na cor + lavagem a 7%: identidade
+                    // sem gritar sobre os cards.
+                    style={{
+                      borderTop: `3px solid ${col.color}`,
+                      background: `color-mix(in srgb, ${col.color} 7%, transparent)`,
+                    }}
                     className={cn(
-                      'rounded-xl bg-muted/20 border border-border/40 transition-all',
+                      'rounded-xl border border-border/40 transition-all',
                       // Coluna vazia vira uma faixa estreita em vez de ocupar a
                       // largura de uma cheia. São oito colunas: em notebook de
                       // 1.366px elas nunca caberiam abertas, e a última saía
