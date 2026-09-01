@@ -12,6 +12,7 @@ import {
   avaliarCertidoes, podeEnviar, type CertidaoAvaliada, type DocumentoEmpresa,
 } from '@/lib/faturamento/certidoes';
 import { baixarCertidoes, indiceDoKit, montarPdfUnico, montarZip, baixar } from '@/lib/faturamento/kit';
+import { numeroDoEmpenho } from '@/lib/faturamento/numero-do-empenho';
 import { gerarReciboPdf, type DadosDoRecibo } from '@/lib/faturamento/recibo';
 
 /**
@@ -116,11 +117,61 @@ export default function KitFaturamento({ pedido }: Props) {
         .eq('empresa_id', empresaAtiva.id)
         .limit(1).maybeSingle();
 
+      // ── O empenho do recibo, pelas fontes certas ──────────────────────
+      //
+      // Antes: `pedido.numero_pedido` vestido de empenho — o recibo dizia
+      // "NOTA DE EMPENHO nº 001" quando o empenho é 2025NE000064. Recibo se
+      // APRESENTA ao órgão; número errado é devolução na certa.
+      //
+      // 1º o vínculo (quem criou o pedido disse de qual empenho ele sai);
+      // 2º as Informações Complementares da própria NF-e; sem nenhum, o
+      // recibo omite a menção em vez de inventar.
+      let empenhoDoVinculo: string | null = null;
+      let infComplementares: string | null = null;
+      const { data: ped } = await supabase
+        .from('contrato_pedidos')
+        .select('empenho_id')
+        .eq('id', pedido.id)
+        .maybeSingle();
+      const empenhoId = (ped as unknown as { empenho_id: string | null } | null)?.empenho_id;
+      if (empenhoId) {
+        const { data: emp } = await supabase
+          .from('contrato_empenhos' as never)
+          .select('numero')
+          .eq('id', empenhoId)
+          .maybeSingle();
+        empenhoDoVinculo = (emp as unknown as { numero: string } | null)?.numero ?? null;
+      }
+      if (!empenhoDoVinculo) {
+        const { data: lanc } = await supabase
+          .from('financeiro_lancamentos')
+          .select('id')
+          .eq('contrato_pedido_id', pedido.id)
+          .limit(1)
+          .maybeSingle();
+        const lancId = (lanc as unknown as { id: string } | null)?.id;
+        if (lancId) {
+          const { data: doc } = await supabase
+            .from('financeiro_documentos_fiscais' as never)
+            .select('ocr_data')
+            .eq('lancamento_id', lancId)
+            .limit(1)
+            .maybeSingle();
+          const ocr = (doc as unknown as { ocr_data: Record<string, unknown> | null } | null)?.ocr_data;
+          const inf = ocr?.['inf_compl'] ?? ocr?.['informacoes_complementares'];
+          infComplementares = typeof inf === 'string' ? inf : null;
+        }
+      }
+      const empenhoResolvido = numeroDoEmpenho({
+        doVinculo: empenhoDoVinculo,
+        textoDaNota: infComplementares,
+      });
+
       const dados: DadosDoRecibo = {
         orgao: contrato.orgao ?? '—',
         valor: Number(pedido.valor_total) || 0,
         notaFiscal: pedido.nota_fiscal ?? null,
-        empenho: pedido.numero_pedido ?? null,
+        empenho: empenhoResolvido?.numero ?? null,
         remessa,
         numeroContrato: contrato.numero,
       };
