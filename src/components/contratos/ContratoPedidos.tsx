@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { avaliarCabimento, fraseDoLimite } from '@/lib/contratos/cabimento';
+import { auditarPedidos } from '@/lib/contratos/auditoria-de-pedidos';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
 import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO, empenhoCancelado } from '@/lib/contratos/empenho';
 import {
@@ -2068,6 +2069,42 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </Dialog>
         </div>
       </div>
+
+      {/* ── A auditoria dos lançamentos: o alerta que fica ────────────────
+          Política definida em 01/09 sobre o caso real: uma NF-e com VU errado
+          (22,50 num contrato de 22,55) seguiu "sem intervenção humana" e a
+          entrega entrou DUAS vezes — R$ 33.750 de consumo fantasma que só a
+          conferência contra o Portal pegou. Não se barra (erro humano é
+          exceção legítima); ALERTA-SE, persistentemente, com o IMPACTO em
+          reais. Derivado a cada render — quando os dados são corrigidos, o
+          aviso morre sozinho. */}
+      {(() => {
+        const suspeitas = auditarPedidos(
+          pedidos.map(p => ({
+            id: p.id, numero_pedido: p.numero_pedido,
+            quantidade: p.quantidade, valor_unitario: p.valor_unitario,
+            valor_total: p.valor_total, data_pedido: p.data_pedido,
+            contrato_item_id: p.contrato_item_id, status: p.status,
+          })),
+          itens.length === 1 ? itens[0].valor_unitario : null,
+        );
+        if (suspeitas.length === 0) return null;
+        return (
+          <Card className="p-4 mb-3 border-warning/40 bg-warning/5">
+            <h4 className="text-sm font-semibold text-warning mb-2">
+              Auditoria dos lançamentos — {suspeitas.length} ponto(s) a revisar
+            </h4>
+            <div className="space-y-2">
+              {suspeitas.map((sp, i) => (
+                <div key={i} className="text-xs">
+                  <p className="text-foreground">{sp.frase}</p>
+                  <p className="text-muted-foreground mt-0.5">{sp.providencia}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* ── Os empenhos do contrato ───────────────────────────────────────
           Faltava esta lista, e a falta tinha consequência: o 2026NE003716
