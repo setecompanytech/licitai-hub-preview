@@ -552,7 +552,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   <ScrollArea className="h-[min(52vh,520px)] pr-3">
                     <div className="space-y-2">
                       {docs.map((d) => (
-                        <div key={d.id} className="border rounded-md p-2.5 flex items-start gap-3">
+                        <div key={d.id} className="border rounded-md p-2.5 flex items-start gap-3 flex-wrap">
                           <div className="mt-0.5">
                             {d.kind === "xml" && <FileText className="w-5 h-5 text-info" />}
                             {d.kind === "pdf" && <FileText className="w-5 h-5 text-destructive" />}
@@ -696,7 +696,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                             )}
                           </div>
 
-                          <div className="flex flex-col gap-1 shrink-0">
+                          {/* flex-wrap no card + linha no mobile: quando a coluna de botões
+    não cabe ao lado, ela DESCE inteira em vez de ser cortada pela
+    borda do modal — "Lançar e vinc…" truncado era isso. */}
+<div className="flex flex-row sm:flex-col flex-wrap gap-1 shrink-0 ml-auto">
                             {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && (
                               <>
                                 <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>
