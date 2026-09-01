@@ -224,7 +224,16 @@ export function efeitoNoLimite(tipo: string | null | undefined): string {
       + 'consome o limite do art. 125.';
   }
   if (t === 'prazo_valor' || t === 'prazo_quantidade') {
-    return 'Prorroga E acresce. Só a parte do acréscimo consome o limite do art. 125.';
+    // A frase anterior dizia "a parte do acréscimo consome o limite" — mas o
+    // cálculo do alerta (20260831000008) deixa o misto FORA da soma, de
+    // propósito: o uso real deste tipo é a RENOVAÇÃO de contínuo, onde o
+    // "acréscimo" é a estimativa do novo período (art. 107) e não consome
+    // limite nenhum. Rótulo afirmando o que o cálculo não faz é o pior dos
+    // mundos; agora os dois dizem a mesma coisa. O 149/2024 usa exatamente
+    // assim: +3.600 do novo período anual.
+    return 'Prorroga e registra a estimativa do novo período (art. 107) — esse acréscimo '
+      + 'NÃO consome o limite do art. 125. Acréscimo genuíno dentro da mesma vigência '
+      + 'deve ser registrado como Alteração Quantitativa.';
   }
   if (t === 'reajuste') {
     return 'Registro por apostila — não é alteração contratual e não consome o limite.';

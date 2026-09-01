@@ -194,9 +194,13 @@ describe('efeitoNoLimite', () => {
     expect(efeitoNoLimite('prorrogacao')).toContain('não consome');
   });
 
-  it('o misto separa o que consome do que não', () => {
-    // Prazo e quantidade no mesmo termo: só a parte do acréscimo conta.
-    expect(efeitoNoLimite('prazo_quantidade')).toContain('Só a parte do acréscimo');
+  it('o misto diz o que o cálculo faz: renovação de período fora do limite', () => {
+    // Rótulo afirmando o que o cálculo não faz é o pior dos mundos: a
+    // 20260831000008 deixa o misto fora da soma do art. 125, e a frase
+    // acompanha. O caminho para acréscimo genuíno é dito na própria frase.
+    const f = efeitoNoLimite('prazo_quantidade');
+    expect(f).toContain('NÃO consome');
+    expect(f).toContain('Alteração Quantitativa');
   });
 
   it('reajuste é apostila, não alteração', () => {
