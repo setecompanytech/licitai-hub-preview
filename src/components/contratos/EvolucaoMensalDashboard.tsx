@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,8 +51,35 @@ const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorGlobal = 0, dataInicio, dataFim }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('12m');
   const [visual, setVisual] = useState<Visual>('composto');
+  /** O período foi expandido pelo próprio gráfico? A frase de aviso depende disto. */
+  const [expandidoAutomaticamente, setExpandidoAutomaticamente] = useState(false);
 
   const ativos = useMemo(() => pedidos.filter(p => p.status !== 'cancelado' && p.data_pedido), [pedidos]);
+
+  /**
+   * A janela nunca abre vazia quando há dados fora dela.
+   *
+   * O 149/2024 expôs o caso: cinco pedidos lançados, todos de fev–set/2025 —
+   * e a janela padrão de 12 meses começa em out/2025. O painel dizia
+   * "5 pedidos, R$ 81 mil" com o gráfico zerado ao lado, sem uma palavra de
+   * explicação. O gráfico estava certo e inútil ao mesmo tempo: recorte que
+   * esconde todos os dados não é recorte, é apagão.
+   *
+   * Só age na janela PADRÃO e uma vez — escolha manual de período nunca é
+   * desfeita por máquina.
+   */
+  useEffect(() => {
+    if (expandidoAutomaticamente || periodo !== '12m' || ativos.length === 0) return;
+    const hoje = new Date();
+    const inicioJanela = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
+    const chaveInicio = `${inicioJanela.getFullYear()}-${String(inicioJanela.getMonth() + 1).padStart(2, '0')}`;
+    const algumNaJanela = ativos.some(p => p.data_pedido!.substring(0, 7) >= chaveInicio);
+    if (!algumNaJanela) {
+      setPeriodo('all');
+      setExpandidoAutomaticamente(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos]);
 
   const series = useMemo(() => {
     if (ativos.length === 0) return [];
@@ -161,6 +188,11 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
           <BarChart3 className="w-4 h-4 text-muted-foreground" />
           <h4 className="text-xs sm:text-sm font-semibold">Evolução Mensal</h4>
           <Badge variant="outline" className="text-xs">{series.length} {series.length === 1 ? 'mês' : 'meses'}</Badge>
+          {expandidoAutomaticamente && (
+            <span className="text-[11px] text-muted-foreground">
+              período expandido: os pedidos deste contrato são anteriores aos últimos 12 meses
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Select value={periodo} onValueChange={(v: Periodo) => setPeriodo(v)}>
