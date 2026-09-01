@@ -22,7 +22,8 @@ CAMPOS A EXTRAIR (quando visíveis):
 - data_emissao: AAAA-MM-DD
 - data_vencimento: AAAA-MM-DD (boletos)
 - valor_total: número decimal (R$)
-- quantidade_total: soma da coluna QTD. dos itens da nota (número; NF-e/DANFE). Copie o número impresso — NÃO derive dividindo valores.
+- quantidade_total: SOMA dos valores impressos na coluna QTDE./QTD. dos produtos (ex.: linha com "1.300,00" → 1300). NÃO é o número de linhas/itens da nota; NÃO derive dividindo valores. Atenção ao formato brasileiro: ponto é milhar, vírgula é decimal.
+- valor_unitario: o VALOR UNITÁRIO impresso do item principal (ex.: "22,5500" → 22.55).
 - codigo_barras: linha digitável de boleto (47/48 dígitos)
 - descricao: descrição do produto/serviço
 - impostos: { iss, icms, pis, cofins, ir } (quando visíveis)
@@ -48,6 +49,7 @@ const TOOL_SCHEMA = {
         data_vencimento: { type: "string" },
         valor_total: { type: "number" },
         quantidade_total: { type: "number" },
+        valor_unitario: { type: "number" },
         codigo_barras: { type: "string" },
         descricao: { type: "string" },
         confianca: { type: "number", description: "0-1, confiança na extração" },

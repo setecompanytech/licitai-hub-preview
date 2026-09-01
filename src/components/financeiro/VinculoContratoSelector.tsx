@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/command";
 import { Card, CardContent } from "@/components/ui/card";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
+import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -434,7 +435,14 @@ export default function VinculoContratoSelector({
     // E quando a quantidade vem da nota, o VU sugerido é o FATURADO
     // (valorTotal ÷ qtd) — senão 500 × 22,55 ≠ 11.250 e o pedido nasceria
     // internamente incoerente.
-    const qtdDaNota = Number(quantidadeDaNota) || 0;
+    // A leitura só vale se fizer sentido aritmético: a IA já devolveu "1"
+    // para uma nota de 1.300 (leu "quantidade de itens"), e o VU implícito
+    // ficou 1.300× fora do contrato. Leitura rejeitada volta à derivação.
+    const qtdDaNota = quantidadeConfiavel({
+      qtdLida: quantidadeDaNota,
+      valorTotal,
+      vuReferencia: itensMarcados[0]?.valor_unitario,
+    }) ?? 0;
     const qtdSugerida = qtdDaNota > 0
       ? qtdDaNota
       : itensMarcados.length > 0 && valorTotal && itensMarcados[0].valor_unitario
