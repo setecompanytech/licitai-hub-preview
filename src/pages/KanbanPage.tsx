@@ -327,34 +327,16 @@ export default function KanbanPage() {
             </div>
           ) : (
             <>
-            {/* O controle das COLUNAS ganhou o irmão das LINHAS: um dilata a
-                largura, o outro a altura. Juntos, o quadro vai de mapa denso
-                (tudo recolhido) a leitura completa (tudo aberto) em um clique
-                — e o clique individual por card continua valendo depois. */}
-            <div className="mb-2 flex items-center gap-4">
-              {vazias > 0 && (
-                <button
-                  onClick={() => setMostrarVazias(v => !v)}
-                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                >
-                  {mostrarVazias
-                    ? 'Recolher colunas vazias'
-                    : `Mostrar ${vazias} coluna(s) vazia(s)`}
-                </button>
-              )}
+            {vazias > 0 && (
               <button
-                onClick={() =>
-                  setCardsAbertos(prev =>
-                    prev.size >= items.length ? new Set() : new Set(items.map(i => i.id)),
-                  )
-                }
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                onClick={() => setMostrarVazias(v => !v)}
+                className="mb-2 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
               >
-                {cardsAbertos.size >= items.length && items.length > 0
-                  ? 'Recolher todos os processos'
-                  : 'Expandir todos os processos'}
+                {mostrarVazias
+                  ? 'Recolher colunas vazias'
+                  : `Mostrar ${vazias} coluna(s) vazia(s)`}
               </button>
-            </div>
+            )}
             <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
                 const colItems = items.filter((i) => colunaDe(i) === col.id);

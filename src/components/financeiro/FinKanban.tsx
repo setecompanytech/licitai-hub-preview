@@ -523,18 +523,6 @@ export default function FinKanban({ tipo }: Props) {
             {c.label}
           </Button>
         ))}
-        <button
-          onClick={() =>
-            setCardsAbertos(prev =>
-              prev.size >= lancamentos.length ? new Set() : new Set(lancamentos.map(l => l.id)),
-            )
-          }
-          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1"
-        >
-          {cardsAbertos.size >= lancamentos.length && lancamentos.length > 0
-            ? 'Recolher todos'
-            : 'Expandir todos'}
-        </button>
         {filtrosAtivos > 0 && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={limparFiltros}>
             <X className="w-3.5 h-3.5 mr-1" />
