@@ -128,6 +128,13 @@ export default function VinculoContratoSelector({
   }>>([]);
   const [busca, setBusca] = useState("");
   const [loading, setLoading] = useState(false);
+  /** Selecionar fecha a lista — dropdown que fica aberto após o clique parece
+   *  não ter reagido, e a pessoa clica de novo. */
+  const [listaAberta, setListaAberta] = useState(false);
+  /** O contrato foi pré-selecionado pelo destinatário lido do documento? A
+   *  tela diz — seleção silenciosa parece campo que "já veio assim", e a
+   *  pessoa não sabe se pode confiar nem que pode trocar. */
+  const [escolhidoPelaLeitura, setEscolhidoPelaLeitura] = useState(false);
   const [loadingItens, setLoadingItens] = useState(false);
 
   // ── Por que esta consulta NÃO filtra por user_id nem por status ─────────
@@ -266,6 +273,7 @@ export default function VinculoContratoSelector({
     });
     if (match) {
       setBusca(match.orgao_contratante);
+      setEscolhidoPelaLeitura(true);
       onChange({ ...value, contrato_id: match.id });
     }
   }, [hintNome, contratos]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -415,6 +423,8 @@ export default function VinculoContratoSelector({
   }, [contratoSel, itemSel, value.quantidade, value.valor_unitario, valorTotal]);
 
   const setContrato = (id: string) => {
+    setListaAberta(false);
+    setEscolhidoPelaLeitura(false);
     onChange({
       ...value,
       contrato_id: id || null,
@@ -483,7 +493,7 @@ export default function VinculoContratoSelector({
         {/* Combobox único: lista filtrada de contratos pré-cadastrados em GESTÃO */}
         <div>
           <Label className="text-xs">Contrato / ATA SRP</Label>
-          <Popover>
+          <Popover open={listaAberta} onOpenChange={setListaAberta}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -568,7 +578,11 @@ export default function VinculoContratoSelector({
                           key={c.id}
                           value={c.id}
                           onSelect={() => setContrato(c.id)}
-                          className="flex items-start gap-2 text-xs cursor-pointer"
+                          // O destaque padrão pinta bg-accent CHAPADO — o
+                          // laranja da marca em força total — e os textos
+                          // internos (muted, saldo verde/vermelho) somem nele.
+                          // Fundo a 15% destaca sem engolir o texto.
+                          className="flex items-start gap-2 text-xs cursor-pointer data-[selected=true]:bg-accent/15 data-[selected=true]:text-foreground"
                         >
                           <Check
                             className={cn(
@@ -625,6 +639,11 @@ export default function VinculoContratoSelector({
             </PopoverContent>
           </Popover>
 
+          {contratoSel && escolhidoPelaLeitura && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Selecionado automaticamente pelo destinatário lido do documento — confira e troque se não for este.
+            </p>
+          )}
           {contratoSel && (
             <div className="flex items-center justify-between mt-1.5">
               <p className="text-xs text-muted-foreground truncate">
