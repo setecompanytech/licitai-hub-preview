@@ -723,6 +723,51 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       return;
     }
 
+    // ── Transferência EDITADA: a perna irmã acompanha ─────────────────────
+    //
+    // A criação sempre foi em par; a edição não era — mudar valor ou data de
+    // uma perna deixava o espelho para trás EM SILÊNCIO: R$ 300.000 saindo do
+    // Itaú e R$ 250.000 entrando no Banpará é dinheiro nascendo entre contas,
+    // e nada avisava. O que é da OPERAÇÃO (valor, datas, descrição, status)
+    // sincroniza; o que é de CADA PERNA (conta, natureza) fica — trocada a
+    // conta de origem/destino, o espelho recebe a inversão.
+    if (isTransferencia && editando && initial?.id) {
+      const saved = await upsert.mutateAsync({ id: initial.id, ...baseBody });
+
+      const { data: minha } = await supabase
+        .from("financeiro_lancamentos")
+        .select("origem_lote_id")
+        .eq("id", initial.id)
+        .maybeSingle();
+      const lote = (minha as { origem_lote_id: string | null } | null)?.origem_lote_id;
+      if (lote) {
+        const { error: espErr } = await supabase
+          .from("financeiro_lancamentos")
+          .update({
+            valor: baseBody.valor,
+            descricao: baseBody.descricao,
+            data_competencia: baseBody.data_competencia,
+            data_vencimento: baseBody.data_vencimento ?? null,
+            data_realizado: baseBody.data_realizado ?? null,
+            status: baseBody.status,
+            conta_id: contaDestinoId || null,
+            conta_destino_id: contaId || null,
+          } as never)
+          .eq("origem_lote_id", lote)
+          .neq("id", initial.id);
+        if (espErr) {
+          toast.warning("A perna espelhada não pôde ser sincronizada.", {
+            description: "As duas pontas da transferência podem estar divergentes — confira na lista.",
+          });
+        } else {
+          toast.success("Transferência atualizada nas duas pontas.");
+        }
+      }
+      if (saved && onSaved) onSaved(saved as unknown as Lancamento);
+      onOpenChange(false);
+      return;
+    }
+
     if (parcelar && podeParcelar && qtdParcelas >= 2 && dataVencimento) {
       await gerarParcelas.mutateAsync({
         ...baseBody,
