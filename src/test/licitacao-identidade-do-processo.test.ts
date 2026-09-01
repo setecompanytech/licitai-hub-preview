@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { identidadeDoProcesso, siglaDaModalidade } from '@/lib/licitacao/identidade-do-processo';
+import { identidadeDoProcesso, siglaDaModalidade, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
 
 describe('identidadeDoProcesso', () => {
   it('o caso do print: "033" ganha a modalidade e vira identidade', () => {
@@ -32,5 +32,30 @@ describe('identidadeDoProcesso', () => {
   it('nunca devolve vazio — card sem identidade é o defeito de origem', () => {
     expect(identidadeDoProcesso({})).toBe('Processo manual');
     expect(identidadeDoProcesso({ numero: '', modalidade: '' })).toBe('Processo manual');
+  });
+});
+
+describe('objetoLegivel', () => {
+  it('caixa alta inteira vira caixa de sentença', () => {
+    expect(objetoLegivel('REGISTRO DE PREÇO PARA AQUISIÇÃO DE MATERIAL DE ESCRITÓRIO'))
+      .toBe('Registro de preço para aquisição de material de escritório');
+  });
+
+  it('texto misto fica como veio — já foi escrito por gente', () => {
+    expect(objetoLegivel('Registro de preços para a aquisição de gêneros alimentícios'))
+      .toBe('Registro de preços para a aquisição de gêneros alimentícios');
+  });
+
+  it('sentenças múltiplas recapitalizam após o ponto', () => {
+    expect(objetoLegivel('AQUISIÇÃO DE CARNES. ENTREGA PARCELADA.'))
+      .toBe('Aquisição de carnes. Entrega parcelada.');
+  });
+
+  it('texto curto demais não é julgado', () => {
+    expect(objetoLegivel('PMPA')).toBe('PMPA');
+  });
+
+  it('vazio devolve vazio', () => {
+    expect(objetoLegivel(null)).toBe('');
   });
 });

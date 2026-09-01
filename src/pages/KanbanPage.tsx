@@ -4,7 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { identidadeDoProcesso } from '@/lib/licitacao/identidade-do-processo';
+import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
 import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -107,6 +107,13 @@ export default function KanbanPage() {
   ).length;
 
   const handleEdit = (lic: LicitacaoKanban) => { setEditItem(lic); setEditOpen(true); };
+  /** Cards com o objeto aberto para leitura completa. Clique na linha alterna. */
+  const [objetosAbertos, setObjetosAbertos] = useState<Set<string>>(new Set());
+  const alternarObjeto = (id: string) => setObjetosAbertos(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const handleSaved = (updated: LicitacaoKanban) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
   const handleDeleted = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
 
@@ -454,8 +461,23 @@ export default function KanbanPage() {
                                   {lic.orgao}
                                 </p>
                               )}
-                              <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]" title={lic.objeto}>
-                                {lic.objeto}
+                              {/* UMA linha por padrão — clique na própria
+                                  linha abre a leitura completa e clica de novo
+                                  fecha. Menos uma linha em todo card, e a
+                                  leitura inteira a um clique, sem depender do
+                                  tooltip. A caixa é padronizada: edital
+                                  GRITADO em maiúsculas vira caixa de
+                                  sentença; texto normal fica como veio. */}
+                              <p
+                                className={cn(
+                                  "text-sm font-medium mt-0.5 leading-snug break-words [overflow-wrap:anywhere] cursor-pointer",
+                                  !objetosAbertos.has(lic.id) && "line-clamp-1",
+                                )}
+                                title={objetosAbertos.has(lic.id) ? "Clique para recolher" : "Clique para ler o objeto completo"}
+                                onClick={(e) => { e.stopPropagation(); alternarObjeto(lic.id); }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                {objetoLegivel(lic.objeto)}
                               </p>
                               {/* Arquivar guarda o processo, não apaga o que
                                   aconteceu com ele. A coluna Arquivada nasce de
@@ -515,7 +537,7 @@ export default function KanbanPage() {
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
             <p className="text-xs font-semibold tabular-nums truncate">{identidadeDoProcesso(draggedItem)}</p>
-            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">{draggedItem.objeto}</p>
+            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-1 break-words [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
             {draggedItem.municipio && draggedItem.uf && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
                 <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}

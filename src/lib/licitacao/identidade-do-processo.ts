@@ -58,3 +58,29 @@ export function identidadeDoProcesso(p: {
   if (sigla) return `${sigla} · processo manual`;
   return 'Processo manual';
 }
+
+/**
+ * O objeto do edital, em caixa de leitura.
+ *
+ * Cada órgão publica como quer: uns em CAIXA ALTA INTEIRA, outros em caixa
+ * normal — e o quadro misturava os dois, sem padrão. A regra: texto GRITADO
+ * (maioria esmagadora de maiúsculas) é rebaixado para caixa de sentença;
+ * texto misto fica como veio, porque já foi escrito por gente.
+ *
+ * Siglas perdem o formato no rebaixamento ("PMPA" → "pmpa") — é o preço da
+ * legibilidade num card informativo, e o texto original continua no title.
+ */
+export function objetoLegivel(texto: string | null | undefined): string {
+  const t = String(texto ?? '').trim();
+  if (!t) return '';
+
+  const letras = t.replace(/[^a-záàâãéêíóôõúüç]/gi, '');
+  if (letras.length < 8) return t;
+  const maiusculas = (t.match(/[A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ]/g) ?? []).length;
+  if (maiusculas / letras.length < 0.7) return t;
+
+  const baixo = t.toLowerCase();
+  // Primeira letra da sentença, e depois de ponto final/exclamação/interrogação.
+  return baixo.replace(/(^\s*[a-záàâãéêíóôõúüç])|([.!?]\s+[a-záàâãéêíóôõúüç])/g,
+    (m) => m.toUpperCase());
+}
