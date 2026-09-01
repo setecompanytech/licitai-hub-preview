@@ -6,6 +6,7 @@ import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { exigeDocumento } from "@/lib/financeiro/anexo-do-lancamento";
 import { hojeLocal } from "@/lib/financeiro/data-local";
+import { DataDaBaixaDialog } from "./DataDaBaixaDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -140,12 +141,20 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     else { setSortKey(k); setSortDir("asc"); }
   };
 
-  const marcarPago = async (l: LancamentoRow) => {
-    await upsert.mutateAsync({
-      id: l.id,
-      status: "realizado",
-      data_realizado: hojeLocal(),
-    } as any);
+  /** A baixa pergunta a data do pagamento — a do extrato, não a do clique. */
+  const [baixaPendente, setBaixaPendente] = useState<string | null>(null);
+  const marcarPago = (l: LancamentoRow) => setBaixaPendente(l.id);
+  const confirmarBaixa = async (data: string) => {
+    if (!baixaPendente) return;
+    try {
+      await upsert.mutateAsync({
+        id: baixaPendente,
+        status: "realizado",
+        data_realizado: data,
+      } as any);
+    } finally {
+      setBaixaPendente(null);
+    }
   };
 
   const abrirNovo = () => { setEditing(null); setDialogOpen(true); };
@@ -470,6 +479,14 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
         onOpenChange={setDialogOpen}
         initial={editing}
         defaultTipo={tipo}
+      />
+
+      <DataDaBaixaDialog
+        aberto={!!baixaPendente}
+        tipo={tipo}
+        quantidade={1}
+        onConfirmar={confirmarBaixa}
+        onFechar={() => setBaixaPendente(null)}
       />
 
       <VincularContratoDialog

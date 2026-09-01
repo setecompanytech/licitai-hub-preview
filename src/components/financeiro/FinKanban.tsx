@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { hojeLocal } from "@/lib/financeiro/data-local";
+import { DataDaBaixaDialog } from "./DataDaBaixaDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -251,37 +251,40 @@ export default function FinKanban({ tipo }: Props) {
   };
   const selecionarTodosVisiveis = () => setSelecionados(new Set(idsSelecionaveis));
   const limparSelecao = () => setSelecionados(new Set());
-  const marcarSelecionadosPagos = async () => {
-    const hoje = hojeLocal();
-    const ids = Array.from(selecionados);
+  /**
+   * A baixa não carimba data sozinha: pergunta. O ✓ gravava hojeLocal() em
+   * silêncio, e quem baixava retroativamente ganhava um pagamento datado do
+   * dia do clique — foi assim que a curva mensal descolou do extrato.
+   */
+  const [baixaPendente, setBaixaPendente] = useState<string[] | null>(null);
+  const pedirBaixa = (ids: string[]) => {
+    if (ids.length > 0) setBaixaPendente(ids);
+  };
+  const confirmarBaixa = async (data: string) => {
+    const ids = baixaPendente ?? [];
     try {
       await Promise.all(
-        ids.map(async (id) => {
-          await upsert.mutateAsync({ id, status: "realizado", data_realizado: hoje } as any);
-        }),
+        ids.map((id) =>
+          upsert.mutateAsync({ id, status: "realizado", data_realizado: data } as any),
+        ),
       );
       qc.invalidateQueries({ queryKey: ["fin-contas"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo"] });
-      toast.success(`${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`);
-      limparSelecao();
+      toast.success(
+        ids.length > 1
+          ? `${ids.length} lançamento(s) marcados como ${tipo === "a_pagar" ? "pagos" : "recebidos"}.`
+          : `Lançamento marcado como ${tipo === "a_pagar" ? "pago" : "recebido"}.`,
+      );
+      if (ids.length > 1) limparSelecao();
     } catch {
       toast.error("Falha ao atualizar alguns lançamentos.");
+    } finally {
+      setBaixaPendente(null);
     }
   };
-
-  const marcarPago = async (l: LancamentoCard) => {
-    await upsert.mutateAsync({
-      id: l.id,
-      status: "realizado",
-      data_realizado: hojeLocal(),
-    } as any);
-    if (l.conta_id) {
-      qc.invalidateQueries({ queryKey: ["fin-contas"] });
-      qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
-      qc.invalidateQueries({ queryKey: ["fin-resumo"] });
-    }
-  };
+  const marcarSelecionadosPagos = () => pedirBaixa(Array.from(selecionados));
+  const marcarPago = (l: LancamentoCard) => pedirBaixa([l.id]);
 
   const agendarExclusao = (l: LancamentoCard) => {
     const id = l.id;
@@ -382,15 +385,7 @@ export default function FinKanban({ tipo }: Props) {
 
     try {
       if (colId === "pago") {
-        await upsert.mutateAsync({
-          id,
-          status: "realizado",
-          data_realizado: hojeLocal(),
-        } as any);
-        qc.invalidateQueries({ queryKey: ["fin-contas"] });
-        qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
-        qc.invalidateQueries({ queryKey: ["fin-resumo"] });
-        toast.success("Lançamento marcado como concluído.");
+        pedirBaixa([id]);
       } else if (lanc.status !== "realizado") {
         // ── As colunas de vencimento são AUTOMÁTICAS ─────────────────────
         // A posição vem da data: "Em aberto", "Vence em 7 dias" e "Vencido"
@@ -882,6 +877,14 @@ export default function FinKanban({ tipo }: Props) {
         onOpenChange={setDialogOpen}
         initial={editing}
         defaultTipo={tipo}
+      />
+
+      <DataDaBaixaDialog
+        aberto={!!baixaPendente}
+        tipo={tipo}
+        quantidade={baixaPendente?.length ?? 1}
+        onConfirmar={confirmarBaixa}
+        onFechar={() => setBaixaPendente(null)}
       />
 
       <FinExtracaoDocumentos

@@ -126,8 +126,12 @@ export default function FinBaixaLote() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Data da operação</Label>
+              <Label>Data do pagamento</Label>
               <Input type="date" value={dataPadrao} onChange={(e) => setDataPadrao(e.target.value)} />
+              <p className="text-xs text-muted-foreground">
+                A do extrato — o dia em que o dinheiro de fato saiu. Com outra
+                data, os lançamentos contam no mês errado.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Buscar</Label>
