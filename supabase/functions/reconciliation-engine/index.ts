@@ -300,7 +300,13 @@ Responda em JSON estrito: {"escolha_id": "<o ID exato do candidato escolhido, ou
             matches.push({
               movimento_id: mov.id,
               lancamento_id: lancEscolhido.id,
-              score: Math.min(100, Math.round(confianca)),
+              // IA SUGERE, nunca aplica sozinha: com tolerância de ±5% no
+              // valor e confiança autodeclarada pelo modelo, auto-aplicar
+              // engolia diferenças (10.000 × 9.520 conciliados e R$ 480
+              // sumindo do registro — C4 da auditoria). Score máximo 89 =
+              // sempre abaixo do gatilho de auto-aplicação (90); o humano
+              // vê a sugestão com a justificativa e decide.
+              score: Math.min(89, Math.round(confianca)),
               metodo: "ia",
               motivos: {
                 ia: true,
