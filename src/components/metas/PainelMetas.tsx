@@ -20,7 +20,7 @@ import {
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { formatBRL, formatPercent } from '@/lib/financeiro/formatters';
+import { formatBRL, formatFracao } from '@/lib/financeiro/formatters';
 import { paraCentavos, paraReais } from '@/lib/metas/dinheiro';
 import { apurarTickets } from '@/lib/metas/tickets';
 import { resolverValoresAlvo } from '@/lib/metas/valores-alvo';
@@ -326,7 +326,7 @@ export default function PainelMetas() {
               <div className="text-base">
                 <p className="font-semibold">{ESTILO_ALERTA[analise.severidade].titulo}</p>
                 <p className="opacity-90 mt-0.5">
-                  {formatPercent(analise.projecao.percentualRealizado, 0)} da meta com{' '}
+                  {formatFracao(analise.projecao.percentualRealizado, 0)} da meta com{' '}
                   {analise.projecao.diasUteisRestantes} dia(s) útil(eis) restante(s).
                   Abaixo do mínimo de {Number(config?.alerta_percentual_minimo ?? 70)}% configurado.
                 </p>
@@ -345,7 +345,7 @@ export default function PainelMetas() {
             <Indicador
               rotulo="Realizado"
               valor={formatBRL(paraReais(analise.projecao.realizadoCent))}
-              detalhe={`${formatPercent(analise.projecao.percentualRealizado, 1)} da meta`}
+              detalhe={`${formatFracao(analise.projecao.percentualRealizado, 1)} da meta`}
               icone={Trophy}
               destaque
             />
@@ -435,7 +435,7 @@ export default function PainelMetas() {
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                 <span>Progresso</span>
                 <span className="tabular-nums">
-                  {formatPercent(analise.projecao.percentualRealizado, 1)}
+                  {formatFracao(analise.projecao.percentualRealizado, 1)}
                 </span>
               </div>
               <Progress
@@ -494,7 +494,7 @@ export default function PainelMetas() {
                       ? 'sem ritmo apurado ainda'
                       : analise.projecao.gapRitmo <= 0
                         ? 'ritmo suficiente'
-                        : `precisa subir ${formatPercent(analise.projecao.gapRitmo, 0)}`}
+                        : `precisa subir ${formatFracao(analise.projecao.gapRitmo, 0)}`}
                   </p>
                 </div>
               </div>
@@ -545,13 +545,13 @@ export default function PainelMetas() {
                 <div>
                   <p className="text-xs text-muted-foreground">Conversão participado → ganho</p>
                   <p className="font-semibold tabular-nums mt-0.5">
-                    {formatPercent(analise.projecao.premissas.txGanho, 1)}
+                    {formatFracao(analise.projecao.premissas.txGanho, 1)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Conversão ganho → faturado</p>
                   <p className="font-semibold tabular-nums mt-0.5">
-                    {formatPercent(analise.projecao.premissas.txFaturamento, 1)}
+                    {formatFracao(analise.projecao.premissas.txFaturamento, 1)}
                   </p>
                 </div>
                 <div>
@@ -576,7 +576,7 @@ export default function PainelMetas() {
                   <div className="flex flex-wrap gap-1.5">
                     {analise.tickets.map((t) => (
                       <Badge key={t.modalidade} variant="outline" className="text-xs font-normal">
-                        {rotuloModalidade(t.modalidade)} · {formatPercent(t.mix, 0)} ·{' '}
+                        {rotuloModalidade(t.modalidade)} · {formatFracao(t.mix, 0)} ·{' '}
                         {formatBRL(paraReais(t.ticketCent))} ({t.amostra})
                       </Badge>
                     ))}

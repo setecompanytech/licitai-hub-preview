@@ -14,13 +14,21 @@ export const formatBRL = (n: number | null | undefined): string => {
 };
 
 export const formatBRLCompact = (n: number): string => {
-  if (Math.abs(n) >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `R$ ${(n / 1_000).toFixed(1)}K`;
+  // Decimal em vírgula: "R$ 1,2M", não "R$ 1.2M" — moeda nacional até no atalho.
+  const um = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (Math.abs(n) >= 1_000_000) return `R$ ${um(n / 1_000_000)}M`;
+  if (Math.abs(n) >= 1_000) return `R$ ${um(n / 1_000)}K`;
   return formatBRL(n);
 };
 
-export const formatPercent = (n: number, decimals = 1): string =>
-  `${(n * 100).toFixed(decimals)}%`;
+/**
+ * FRAÇÃO 0–1 → "x,x%". O nome declara a convenção (regra do CLAUDE.md):
+ * existiu um formatPercent que multiplicava por 100 ao lado de outro que não
+ * multiplicava — o vetor do erro 100×. Alíquota legal (0–100) usa
+ * formatPercentual onde for exibida.
+ */
+export const formatFracao = (n: number, decimals = 1): string =>
+  `${(n * 100).toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}%`;
 
 // ----------------------------------------------------------------------------
 // Datas

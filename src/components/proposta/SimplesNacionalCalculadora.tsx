@@ -63,7 +63,8 @@ export default function SimplesNacionalCalculadora({ valorGlobal, itensResumo }:
   const valorLiquido = valorGlobal - impostoTotal;
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formatPercent = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  // Percentual 0–100 transcrito de tabela legal — só formata, nunca converte.
+  const formatPercentual = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 
   const handleAnaliseIA = async () => {
     if (!resultado) {
@@ -83,17 +84,17 @@ export default function SimplesNacionalCalculadora({ valorGlobal, itensResumo }:
 ## Dados Tributários do Simples Nacional – Anexo I (Comércio)
 - Receita Bruta em 12 meses (RBT12): ${formatCurrency(rbt12Num)}
 - Faixa: ${resultado.faixa}
-- Alíquota Nominal: ${formatPercent(resultado.aliquotaNominal)}
+- Alíquota Nominal: ${formatPercentual(resultado.aliquotaNominal)}
 - Valor a Deduzir: ${formatCurrency(resultado.deducao)}
-- Alíquota Efetiva Calculada: ${formatPercent(resultado.aliquotaEfetiva)}
+- Alíquota Efetiva Calculada: ${formatPercentual(resultado.aliquotaEfetiva)}
 
 ## Repartição dos Tributos (sobre a alíquota efetiva)
-- CPP: ${formatPercent(resultado.reparticao.cpp)}
-- CSLL: ${formatPercent(resultado.reparticao.csll)}
-- ICMS: ${resultado.reparticao.icms > 0 ? formatPercent(resultado.reparticao.icms) : 'Recolhido à parte (ICMS-ST ou fora do Simples)'}
-- IRPJ: ${formatPercent(resultado.reparticao.irpj)}
-- COFINS: ${formatPercent(resultado.reparticao.cofins)}
-- PIS/PASEP: ${formatPercent(resultado.reparticao.pis)}
+- CPP: ${formatPercentual(resultado.reparticao.cpp)}
+- CSLL: ${formatPercentual(resultado.reparticao.csll)}
+- ICMS: ${resultado.reparticao.icms > 0 ? formatPercentual(resultado.reparticao.icms) : 'Recolhido à parte (ICMS-ST ou fora do Simples)'}
+- IRPJ: ${formatPercentual(resultado.reparticao.irpj)}
+- COFINS: ${formatPercentual(resultado.reparticao.cofins)}
+- PIS/PASEP: ${formatPercentual(resultado.reparticao.pis)}
 
 ## Dados da Proposta Comercial
 - Valor Global da Proposta: ${formatCurrency(valorGlobal)}
@@ -144,11 +145,11 @@ ${itensResumo}
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Alíq. Nominal</p>
-                  <p className="font-semibold">{formatPercent(resultado.aliquotaNominal)}</p>
+                  <p className="font-semibold">{formatPercentual(resultado.aliquotaNominal)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Alíq. Efetiva</p>
-                  <p className="font-bold text-foreground">{formatPercent(resultado.aliquotaEfetiva)}</p>
+                  <p className="font-bold text-foreground">{formatPercentual(resultado.aliquotaEfetiva)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Dedução</p>
@@ -183,7 +184,7 @@ ${itensResumo}
               {FAIXAS_ANEXO_I.map((f, i) => (
                 <tr key={i} className={`border-t border-border/50 ${resultado?.faixa === f.faixa ? 'bg-muted font-semibold' : ''}`}>
                   <td className="px-2 py-1">{f.faixa}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(f.aliquota)}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(f.aliquota)}</td>
                   <td className="px-2 py-1 text-right">{f.deducao > 0 ? formatCurrency(f.deducao) : '–'}</td>
                   <td className="px-2 py-1">
                     {f.limiteInf === 0 ? 'Até' : 'De ' + formatCurrency(f.limiteInf) + ' a'} {formatCurrency(f.limiteSup)}
@@ -213,12 +214,12 @@ ${itensResumo}
               {REPARTICAO.map((r, i) => (
                 <tr key={i} className={`border-t border-border/50 ${resultado?.faixa.startsWith(r.faixa) ? 'bg-muted font-semibold' : ''}`}>
                   <td className="px-2 py-1">{r.faixa}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(r.cpp)}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(r.csll)}</td>
-                  <td className="px-2 py-1 text-right">{r.icms > 0 ? formatPercent(r.icms) : '–'}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(r.irpj)}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(r.cofins)}</td>
-                  <td className="px-2 py-1 text-right">{formatPercent(r.pis)}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(r.cpp)}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(r.csll)}</td>
+                  <td className="px-2 py-1 text-right">{r.icms > 0 ? formatPercentual(r.icms) : '–'}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(r.irpj)}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(r.cofins)}</td>
+                  <td className="px-2 py-1 text-right">{formatPercentual(r.pis)}</td>
                 </tr>
               ))}
             </tbody>
@@ -240,7 +241,7 @@ ${itensResumo}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Alíq. Efetiva</p>
-              <p className="font-bold text-warning">{formatPercent(resultado.aliquotaEfetiva)}</p>
+              <p className="font-bold text-warning">{formatPercentual(resultado.aliquotaEfetiva)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Imposto Estimado</p>
@@ -269,7 +270,7 @@ ${itensResumo}
                   <div key={t.label} className="text-center">
                     <p className="text-muted-foreground">{t.label}</p>
                     <p className="font-semibold">{t.pct > 0 ? formatCurrency(valorTrib) : '–'}</p>
-                    <p className="text-muted-foreground">{t.pct > 0 ? formatPercent(t.pct) : 'Fora SN'}</p>
+                    <p className="text-muted-foreground">{t.pct > 0 ? formatPercentual(t.pct) : 'Fora SN'}</p>
                   </div>
                 );
               })}

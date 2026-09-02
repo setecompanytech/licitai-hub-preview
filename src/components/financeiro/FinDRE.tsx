@@ -26,7 +26,7 @@ import {
   type ModoComparacao,
   type DRECellComparada,
 } from "@/hooks/useDREComparativa";
-import { formatBRL, formatPercent } from "@/lib/financeiro/formatters";
+import { formatBRL, formatFracao } from "@/lib/financeiro/formatters";
 import {
   RefreshCw,
   TrendingUp,
@@ -82,8 +82,8 @@ function exportCSV(
           : "";
       row.push(
         c,
-        l.valor.variacaoAbs != null
-          ? valorComSinal(l.chave, l.valor.variacaoAbs).toFixed(2)
+        l.valor.comparado != null
+          ? (valorComSinal(l.chave, l.valor.atual) - valorComSinal(l.chave, l.valor.comparado)).toFixed(2)
           : "",
         l.valor.variacaoPct != null ? (l.valor.variacaoPct * 100).toFixed(2) : ""
       );
@@ -232,7 +232,7 @@ export default function FinDRE() {
                   ) : (
                     <TrendingDown className="h-3 w-3" />
                   )}
-                  {formatPercent(atual.margemLiquida)}
+                  {formatFracao(atual.margemLiquida)}
                 </Badge>
               </div>
             </div>
@@ -351,19 +351,20 @@ function LinhaDRE({
   const valorAtual = valorComSinal(chave, valor.atual);
   const valorComp =
     valor.comparado != null ? valorComSinal(chave, valor.comparado) : null;
+  // A variação se calcula ENTRE OS VALORES ASSINADOS — aplicar −abs() sobre a
+  // diferença destruía o sinal: custo que caía imprimia −R$ 20.000 na AH R$
+  // (contradizendo o +16,7% da AH %) e custo que explodia ficava verde.
+  // Na convenção assinada, variação positiva é SEMPRE melhora: receita
+  // subindo (+) e custo encolhendo (−120 → −100 = +20) apontam igual.
   const variacaoAbs =
-    valor.variacaoAbs != null ? valorComSinal(chave, valor.variacaoAbs) : null;
+    valorComp != null ? valorAtual - valorComp : null;
 
-  // AH "boa" = mais receita ou menos despesa.
   const isLinhaCusto = linhasNegativas.has(chave);
-  const ahPositivaEhBoa = !isLinhaCusto;
 
   const corVariacao = (() => {
     if (variacaoAbs == null) return "text-muted-foreground";
     if (Math.abs(variacaoAbs) < 0.005) return "text-muted-foreground";
-    const subiu = variacaoAbs > 0;
-    const ehBom = ahPositivaEhBoa ? subiu : !subiu;
-    return ehBom ? "text-success" : "text-destructive";
+    return variacaoAbs > 0 ? "text-success" : "text-destructive";
   })();
 
   return (

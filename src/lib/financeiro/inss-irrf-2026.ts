@@ -196,7 +196,12 @@ export function calcularIRRF(p: ParametrosIRRF): ResultadoIRRF {
   }
 
   // Aplica tabela progressiva
-  const faixa = TABELA_IRRF_2026.find((f) => base >= f.inicio && base <= f.fim)!;
+  // Faixas com vão de 1 centavo + resíduo de ponto flutuante: uma base como
+  // 2428.8000000000002 não casa em nenhuma e o «!» derrubava a folha inteira.
+  const faixa =
+    TABELA_IRRF_2026.find((f) => base >= f.inicio && base <= f.fim) ??
+    TABELA_IRRF_2026.find((f) => base <= f.fim) ??
+    TABELA_IRRF_2026[TABELA_IRRF_2026.length - 1];
   const faixaIndex = TABELA_IRRF_2026.indexOf(faixa);
   const impostoTabela = Math.max(0, round2(base * faixa.aliquota - faixa.parcelaDeduzir));
 
