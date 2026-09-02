@@ -44,7 +44,7 @@ const parseBRLInput = (value: string): string => {
 import {
   FileText, Plus, Search, Calendar, DollarSign, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Building2, Loader2, Trash2,
-  ArrowLeft, Package, ShoppingCart, BarChart3, FilePlus2, Paperclip, ScrollText, Link2
+  Package, ShoppingCart, BarChart3, FilePlus2, Paperclip, ScrollText, Link2
 , User as UserIcon } from 'lucide-react';
 import ContratoItens from '@/components/contratos/ContratoItens';
 import ContratoPedidos from '@/components/contratos/ContratoPedidos';
@@ -125,6 +125,29 @@ export default function GestaoContratos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState<Contrato | null>(null);
+
+  // ═══ A PASTA DO CONTRATO MORA NA URL ═══
+  // ?contrato=<id> diz qual detalhe está aberto. Assim o Voltar comum do
+  // layout fecha a pasta como fecha qualquer tela (histórico), o botão
+  // "Todos os contratos" duplicado morre, e F5/link compartilhado reabrem o
+  // contrato certo — o mesmo padrão do ?lid= das licitações.
+  const contratoNaUrl = searchParams.get('contrato');
+  useEffect(() => {
+    if (!contratoNaUrl) { setSelectedContrato(null); return; }
+    setSelectedContrato(prev =>
+      contratos.find(x => x.id === contratoNaUrl) ?? (contratos.length ? null : prev));
+  }, [contratoNaUrl, contratos]);
+
+  const abrirContrato = (c: Contrato) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('contrato', c.id);
+    setSearchParams(next);
+  };
+  const fecharContrato = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('contrato');
+    setSearchParams(next, { replace: true });
+  };
   const [aExcluir, setAExcluir] = useState<Contrato | null>(null);
   // Documento assinado anexado no próprio cadastro: sem isso era preciso salvar,
   // reabrir o contrato e ir à aba Arquivos — três passos para guardar o papel
@@ -220,10 +243,6 @@ export default function GestaoContratos() {
     // marcados vivem só na seção Lixeira, de onde se restauram.
     setContratos(list.filter(c => !c.excluido_em));
     setExcluidos(list.filter(c => !!c.excluido_em));
-    if (selectedContrato) {
-      const updated = list.find(c => c.id === selectedContrato.id);
-      if (updated) setSelectedContrato(updated);
-    }
     setLoading(false);
   };
 
@@ -394,7 +413,7 @@ export default function GestaoContratos() {
       .eq('id', id);
     if (error) { toast.error('Não foi possível excluir: ' + error.message); return; }
     toast.success('Enviado à lixeira', { description: 'Restaurável na seção Lixeira, no fim da lista.' });
-    if (selectedContrato?.id === id) setSelectedContrato(null);
+    if (selectedContrato?.id === id) fecharContrato();
     setAExcluir(null);
     loadContratos();
   };
@@ -513,12 +532,6 @@ export default function GestaoContratos() {
     return (
       <AppLayout>
         <div className="mb-4">
-          {/* Rótulo distinto do Voltar do layout, que fica logo acima: este
-              fecha o contrato aberto e devolve à lista; aquele sai da tela. Dois
-              "Voltar" iguais lado a lado não deixam escolher. */}
-          <Button variant="ghost" size="sm" onClick={() => setSelectedContrato(null)} className="mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Todos os contratos
-          </Button>
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -533,7 +546,7 @@ export default function GestaoContratos() {
                 {c.uf && <span>{c.uf}{c.municipio ? `/${c.municipio}` : ''}</span>}
                 {ataOrigem && (
                   <button
-                    onClick={() => setSelectedContrato(ataOrigem)}
+                    onClick={() => abrirContrato(ataOrigem)}
                     className="flex items-center gap-1 text-accent hover:underline"
                     title="Abrir ATA SRP de origem"
                   >
@@ -601,7 +614,7 @@ export default function GestaoContratos() {
           {!isAta && <TabsContent value="pedidos"><ContratoPedidos contratoId={c.id} /></TabsContent>}
           {isAta && (
             <TabsContent value="contratos-derivados">
-              <ContratosDerivadosList ataId={c.id} contratos={contratos} onSelect={setSelectedContrato} />
+              <ContratosDerivadosList ataId={c.id} contratos={contratos} onSelect={abrirContrato} />
             </TabsContent>
           )}
           <TabsContent value="contratos-aditivos">
@@ -1090,7 +1103,7 @@ export default function GestaoContratos() {
             const Icon = cfg.icon;
             const dias = c.data_fim ? Math.ceil((new Date(c.data_fim).getTime() - Date.now()) / 86400000) : null;
             return (
-              <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-l-4 border-l-accent' : ''}`} onClick={() => setSelectedContrato(c)}>
+              <Card key={c.id} className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${isAta ? 'border-l-4 border-l-accent' : ''}`} onClick={() => abrirContrato(c)}>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     {/* 1º — Órgão/cliente */}
