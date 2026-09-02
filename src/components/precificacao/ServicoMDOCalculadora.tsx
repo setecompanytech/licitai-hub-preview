@@ -683,12 +683,12 @@ export default function ServicoMDOCalculadora({ licitacaoId, regimeLabel, regime
           <p className="text-xs text-muted-foreground">Exporte os resultados em formato XLSX (compatível com a planilha do Portal de Compras) ou PDF.</p>
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={() => { exportMDOXLSX(result, inputs); toast.success('XLSX exportado!'); }} className="h-16 flex-col gap-1">
-              <FileText className="w-5 h-5 text-green-600" />
+              <FileText className="w-5 h-5 text-success" />
               <span className="text-xs font-medium">Exportar XLSX</span>
               <span className="text-xs text-muted-foreground">2 abas: Custo + Consolidação</span>
             </Button>
             <Button variant="outline" onClick={() => { exportMDOPDF(result, inputs); toast.success('PDF exportado!'); }} className="h-16 flex-col gap-1">
-              <FileText className="w-5 h-5 text-red-600" />
+              <FileText className="w-5 h-5 text-destructive" />
               <span className="text-xs font-medium">Exportar PDF</span>
               <span className="text-xs text-muted-foreground">Layout oficial ABNT</span>
             </Button>

@@ -246,10 +246,10 @@ export default function FinDRE() {
           parecia completo justamente onde estava mais incompleto. */}
       {atual &&
         (atual.semClassificacao.linhas > 0 || atual.movimentacaoExcluida.linhas > 0) && (
-          <Card className="border-amber-500/40">
+          <Card className="border-warning/40">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <AlertTriangle className="w-4 h-4 text-warning" />
                 Fora do resultado
               </CardTitle>
             </CardHeader>

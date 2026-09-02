@@ -55,6 +55,11 @@
     --chart-3: 152 55% 40%;
     --chart-4: 270 40% 55%;
     --chart-5: 38 85% 48%;
+    /* 6 a 8 nasceram como hex solto nos gráficos de ContratosGov e
+       TransparenciaPA, que precisam de 8 séries. Aqui viram uma fonte só. */
+    --chart-6: 258 90% 66%;
+    --chart-7: 330 81% 60%;
+    --chart-8: 189 94% 43%;
 
     --border: 218 16% 87%;
     --input: 218 16% 87%;
@@ -140,6 +145,9 @@
     --chart-3: 152 55% 45%;
     --chart-4: 270 45% 62%;
     --chart-5: 38 90% 55%;
+    --chart-6: 258 88% 72%;
+    --chart-7: 330 80% 66%;
+    --chart-8: 189 88% 50%;
 
     --border: 215 28% 18%;
     --input: 215 28% 18%;

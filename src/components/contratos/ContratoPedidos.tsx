@@ -1776,11 +1776,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     Empenhar não é entregar: enquanto a nota criava pedidos, o
                     saldo caía no instante em que o dinheiro era reservado. */}
                 {extractedData && documentoCria === 'empenho' && (
-                    <div className="p-3 rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 space-y-2">
-                      <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                    <div className="p-3 rounded-lg border border-info/40 bg-info/10 space-y-2">
+                      <p className="text-xs font-semibold text-info">
                         Nota de empenho — <b>autoriza</b>, não consome
                       </p>
-                      <p className="text-xs text-blue-900/80 dark:text-blue-200/80">
+                      <p className="text-xs text-info/80">
                         Vai ser registrada como empenho do contrato. Nenhum saldo de item ou de
                         contrato é abatido: isso acontece quando as entregas forem lançadas contra
                         ela.
@@ -1919,7 +1919,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   Não dizer qual das duas é apresentar palpite
                                   com a mesma cara de fato. */}
                               {ei.cota_origem === 'proporcao' && (
-                                <p className="text-[11px] text-amber-700 dark:text-amber-500 mt-1">
+                                <p className="text-[11px] text-warning mt-1">
                                   {ROTULO_DA_ORIGEM_DA_COTA.proporcao}
                                 </p>
                               )}
@@ -2169,7 +2169,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     ) : (
                       // Empenho sem PDF é autorização que não se prova. Dizer
                       // qual está sem documento é o que permite ir buscá-lo.
-                      <span className="text-[11px] text-amber-700 dark:text-amber-500">
+                      <span className="text-[11px] text-warning">
                         sem documento anexado
                       </span>
                     )}

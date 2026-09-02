@@ -38,10 +38,10 @@ const MODALIDADES = [
 const CORES_PERFIL = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 const CLASSIFICACAO_CONFIG: Record<string, { label: string; cor: string; icon: any }> = {
-  quente: { label: '🔥 Quente', cor: 'bg-red-500', icon: Flame },
-  urgente: { label: '⚡ Urgente', cor: 'bg-orange-500', icon: Clock },
-  premium: { label: '⭐ Premium', cor: 'bg-yellow-500', icon: Star },
-  regional: { label: '📍 Regional', cor: 'bg-blue-500', icon: MapPin },
+  quente: { label: '🔥 Quente', cor: 'bg-destructive', icon: Flame },
+  urgente: { label: '⚡ Urgente', cor: 'bg-warning', icon: Clock },
+  premium: { label: '⭐ Premium', cor: 'bg-chart-5', icon: Star },
+  regional: { label: '📍 Regional', cor: 'bg-info', icon: MapPin },
   normal: { label: '📋 Normal', cor: 'bg-muted', icon: Search },
 };
 
@@ -493,7 +493,7 @@ export default function PerfisAlerta() {
                     <div className="text-xs text-muted-foreground">Enviados</div>
                   </Card>
                   <Card className="p-4 text-center">
-                    <Flame className="w-5 h-5 mx-auto mb-1 text-red-500" />
+                    <Flame className="w-5 h-5 mx-auto mb-1 text-destructive" />
                     <div className="text-2xl font-bold">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.quente, 0)}
                     </div>

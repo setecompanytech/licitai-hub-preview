@@ -12,7 +12,7 @@
 | --- | --- |
 | Direção visual | `prototype-praefectus/index.html` — aprovada pelo Rafael |
 | Frente | Ian + Caio Gabriel (`gabrielcgm-web`) |
-| Onde | branch única `rebrand`, compartilhada pelos dois; `main` é produção |
+| Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; `main` é produção |
 | Status | preparação |
 | Última revisão | 02/09/2026 |
 
@@ -50,7 +50,7 @@ A `main` é o que está no ar e recebe **cerca de 30 commits por dia**, de três
 pessoas mais o Lovable, que commita sozinho. Mexer no visual direto ali seria
 arriscado para todo mundo.
 
-Então o rebrand vive numa **branch única, a `rebrand`, compartilhada por Ian e
+Então o rebrand vive numa **branch única, a `feature/rebrand-ui-ux`, compartilhada por Ian e
 Caio** — decisão do Giovanny, uma frente só, sem branch por pessoa. Ela volta
 para a `main` em **fatias a cada poucos dias**, não numa entrega única no fim.
 Três consequências:
@@ -63,7 +63,7 @@ Se uma fatia der problema, ela volta atrás sozinha, sem levar junto o trabalho
 de Contratos, Financeiro ou Robô de Lances.
 
 Branch compartilhada tem uma exigência técnica própria, e ela está na seção 4:
-**nunca rebasear a `rebrand` contra o `main`** — o rebase reescreve o histórico
+**nunca rebasear a `feature/rebrand-ui-ux` contra o `main`** — o rebase reescreve o histórico
 que o outro já baixou. Ali entra `merge`.
 
 ## 3. Onde estamos hoje
@@ -103,21 +103,21 @@ o seu Claude também vai lê-lo sozinho.
 
 ### A branch
 
-**Uma só, `rebrand`, compartilhada entre Ian e Caio.** Decisão do Giovanny. Ela
+**Uma só, `feature/rebrand-ui-ux`, compartilhada entre Ian e Caio.** Decisão do Giovanny. Ela
 sobrevive às fatias: não se cria branch nova a cada entrega, a mesma continua
 viva depois que cada fatia volta para o `main`.
 
 ```sh
 git checkout main
 git pull --rebase origin main
-git checkout -b rebrand          # só na criação; depois é sempre checkout
-git push -u origin rebrand
+git checkout -b feature/rebrand-ui-ux          # só na criação; depois é sempre checkout
+git push -u origin feature/rebrand-ui-ux
 ```
 
 Quem chegar depois:
 
 ```sh
-git checkout rebrand             # a branch já existe no remoto
+git checkout feature/rebrand-ui-ux             # a branch já existe no remoto
 ```
 
 ### ⚠️ Branch compartilhada: rebase contra o `main` é proibido
@@ -129,12 +129,12 @@ branch de uma pessoa só, tudo bem. Numa compartilhada, quebra o clone do outro:
 o próximo `pull` dele falha e ele só se recupera com `reset --hard`, perdendo o
 que tiver local.
 
-Então, para trazer o `main` para dentro da `rebrand`:
+Então, para trazer o `main` para dentro da `feature/rebrand-ui-ux`:
 
 ```sh
 git fetch origin
 git merge origin/main            # MERGE. Nunca rebase.
-git push origin rebrand
+git push origin feature/rebrand-ui-ux
 ```
 
 **Um de vocês faz isso, uma vez por dia, e avisa o outro.** Os dois no mesmo dia
@@ -144,7 +144,7 @@ O `--rebase` continua valendo **entre vocês, dentro da branch** — ali ele só
 reordena o que você ainda não enviou, e isso é seguro:
 
 ```sh
-git pull --rebase origin rebrand    # ok
+git pull --rebase origin feature/rebrand-ui-ux    # ok
 ```
 
 A diferença: rebase de commit que ninguém baixou é seguro; rebase de commit que
@@ -152,7 +152,7 @@ o outro já tem, não.
 
 ### ⚠️ O fluxo obrigatório: status → pull → commit → pull → push
 
-**Ninguém pode sobrescrever o trabalho do outro.** Como a `rebrand` é
+**Ninguém pode sobrescrever o trabalho do outro.** Como a `feature/rebrand-ui-ux` é
 compartilhada, esta sequência é obrigatória em toda entrega. Não é preferência
 de estilo — é o que impede perda de código.
 
@@ -161,7 +161,7 @@ de estilo — é o que impede perda de código.
 git status
 
 # 2. TRAZER o que o outro fez
-git pull --rebase origin rebrand
+git pull --rebase origin feature/rebrand-ui-ux
 
 # 3. CONFERIR que nada quebrou com o que veio
 npx tsc --noEmit -p tsconfig.app.json
@@ -173,10 +173,10 @@ git add <arquivos>          # nomeados, não `git add .`
 git commit -m "feat(rebrand): ..."
 
 # 5. TRAZER de novo — o outro pode ter enviado enquanto você commitava
-git pull --rebase origin rebrand
+git pull --rebase origin feature/rebrand-ui-ux
 
 # 6. ENVIAR
-git push origin rebrand
+git push origin feature/rebrand-ui-ux
 
 # 7. CONFERIR que subiu
 git status                  # deve dizer "nothing to commit, working tree clean"
@@ -454,22 +454,22 @@ vazar para o histórico principal):
 
 ```sh
 # 1. a branch precisa estar em dia com o main
-git checkout rebrand
+git checkout feature/rebrand-ui-ux
 git fetch origin && git merge origin/main
 npx tsc --noEmit -p tsconfig.app.json && npm run test -- --run
-git push origin rebrand
+git push origin feature/rebrand-ui-ux
 
 # 2. a fatia entra no main como UM commit
 git checkout main
 git pull --rebase origin main
-git merge --squash rebrand
+git merge --squash feature/rebrand-ui-ux
 git commit          # mensagem descrevendo a fatia inteira
 git push origin main
 
 # 3. a branch continua, agora já contendo o que foi entregue
-git checkout rebrand
+git checkout feature/rebrand-ui-ux
 git merge origin/main
-git push origin rebrand
+git push origin feature/rebrand-ui-ux
 ```
 
 O passo 3 importa: sem ele, a próxima fatia levaria de novo o que já está no ar.
@@ -491,13 +491,19 @@ normalização dos 6 arquivos abaixo.
 | `components/financeiro/FinDRE.tsx` | `border-amber-500/40`, `text-amber-500` | `--warning` |
 | `components/precificacao/ServicoMDOCalculadora.tsx` | `text-green-600`, `text-red-600` | `--success`, `--destructive` |
 | `components/contratos/ContratoPedidos.tsx` | `bg-blue-50`, `text-blue-900`, `text-amber-700` | `--info`, `--warning` |
-| `pages/PerfisAlerta.tsx` | `CORES_PERFIL` (8 hex) + `bg-red-500`/`orange`/`yellow`/`blue` | `--chart-1..5` + `--cat-*` |
+| `pages/PerfisAlerta.tsx` | `CLASSIFICACAO_CONFIG` com `bg-red-500`/`orange`/`yellow`/`blue`, e `text-red-500` | `--destructive`, `--warning`, `--chart-5`, `--info` |
+
+**Feito em 02/09/2026.** Os gráficos de `ContratosGov` e `TransparenciaPA` pedem
+8 séries e o app só tinha 5 tokens de gráfico, então nasceram **`--chart-6`,
+`--chart-7` e `--chart-8`** em `index.css` (claro e escuro) e no
+`tailwind.config.ts` — as três cores que estavam soltas em hex, agora numa fonte
+só que o rebrand retune de uma vez.
 
 > ⚠️ `ContratoPedidos.tsx` está no módulo de Contratos, que recebe commits todo
 > dia. São 5 linhas — fazer isolado e commitar sozinho, para não brigar com quem
 > está mexendo lá.
 
-#### Os 8 que escrevem cor à mão COM RAZÃO — não tocar
+#### Os 9 que escrevem cor à mão COM RAZÃO — não tocar
 
 Estes **não** entram no rebrand. Mudá-los quebraria coisa:
 
@@ -511,6 +517,7 @@ Estes **não** entram no rebrand. Mudá-los quebraria coisa:
 | `components/precificacao/AureliaPrecificacaoChat.tsx` | documento gerado |
 | `components/gestao-compras/PedidosOmie.tsx` | documento gerado |
 | `pages/AuditoriaBancos.tsx` | documento gerado |
+| `pages/PerfisAlerta.tsx` — só o `CORES_PERFIL` | é **dado, não tema**: a cor escolhida é gravada no banco, e a tela a usa como `p.cor + '20'` para compor o alfa. Token viraria `hsl(var(--x))20`, que não é cor. O resto do arquivo já foi normalizado |
 
 **A regra por trás da divisão:** cor de **interface** vem de variável, porque
 muda com o tema. Cor de **documento gerado** e de **marca de terceiro** é fixa,
@@ -524,8 +531,10 @@ grep -rlE '#[0-9a-fA-F]{6}' --include='*.tsx' src
 grep -rlE '\b(bg|text|border)-(slate|gray|zinc|red|orange|amber|yellow|green|emerald|teal|cyan|blue|indigo|violet|purple|pink)-[0-9]{2,3}' --include='*.tsx' src
 ```
 
-Depois da normalização, os dois comandos devem retornar **só os 8 da lista de
+Depois da normalização, os dois comandos devem retornar **só os 9 da lista de
 cima**. Qualquer nome novo é cor escapando do sistema.
+
+Conferido em 02/09/2026 — é exatamente o que eles retornam.
 
 ---
 
