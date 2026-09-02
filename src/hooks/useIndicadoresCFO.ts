@@ -111,7 +111,9 @@ export function useIndicadoresCFO() {
       const temDadosNoMes = mesesComDados.includes(mesCorrente);
       const mesAtualKey = temDadosNoMes ? mesCorrente : mesesComDados[mesesComDados.length - 1] ?? mesCorrente;
       const realizadoMes = lancs.filter(
-        (l) => l.status !== "cancelado" && (l.data_realizado ?? l.data_competencia ?? "").startsWith(mesAtualKey)
+        // "Realizado" de verdade: previsto/em_atraso inflavam os cards (M3).
+        (l) => ["realizado", "conciliado"].includes(l.status as string) &&
+               (l.data_realizado ?? l.data_competencia ?? "").startsWith(mesAtualKey)
       );
       const receitaLiquida = realizadoMes
         .filter((l) => l.natureza === "receita")
@@ -185,6 +187,12 @@ export function useIndicadoresCFO() {
       const projecao90d: { dia: string; saldo_projetado: number }[] = [];
       let saldoAcum = saldoCaixaAtual;
       const burnDiario = burnMensal / 30;
+      // Ou títulos, ou burn — NUNCA os dois: os previstos JÁ SÃO as contas
+      // dos próximos 90 dias, e o burn é a média das mesmas contas; subtrair
+      // os dois deixava a curva R$ 300 mil abaixo do real (M4 da auditoria).
+      // Com carteira lançada, projeta-se pelos títulos; sem carteira, o burn
+      // médio é a única informação disponível e assume o posto.
+      const usarBurn = previstos.length === 0;
       let idx = 0;
       for (let d = 0; d <= 90; d++) {
         const dia = somarDiasLocal(d, hoje);
@@ -194,8 +202,7 @@ export function useIndicadoresCFO() {
           saldoAcum += previstos[idx].tipo === "a_receber" ? v : -v;
           idx++;
         }
-        // burn diário acumulado
-        const saldoFinal = saldoAcum - burnDiario * d;
+        const saldoFinal = usarBurn ? saldoAcum - burnDiario * d : saldoAcum;
         if (d % 3 === 0) {
           projecao90d.push({
             dia,

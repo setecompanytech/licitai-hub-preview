@@ -99,7 +99,7 @@ export function useDashboardExecutivo() {
 
       // ----- Dias médio recebimento (PMR) -----
       const recebidos = lancs.filter(
-        (l) => l.tipo === "a_receber" && l.status === "realizado" && l.data_vencimento && l.data_realizado
+        (l) => l.tipo === "a_receber" && ["realizado", "conciliado"].includes(l.status as string) && l.data_vencimento && l.data_realizado
       );
       const diasMedioRecebimento =
         recebidos.length > 0
@@ -112,7 +112,10 @@ export function useDashboardExecutivo() {
 
       // ----- Mês atual -----
       const realizadoMes = lancs.filter(
-        (l) => l.status !== "cancelado" && (l.data_realizado ?? l.data_competencia ?? "").startsWith(mesAtualKey)
+        // O nome promete REALIZADO: previsto/em_atraso inflavam "Receita do
+        // mês" e a margem com dinheiro que ainda não entrou (M3 da auditoria).
+        (l) => ["realizado", "conciliado"].includes(l.status as string) &&
+               (l.data_realizado ?? l.data_competencia ?? "").startsWith(mesAtualKey)
       );
       const receitaMes = realizadoMes
         .filter((l) => l.natureza === "receita")

@@ -243,6 +243,9 @@ export default function FinRelatorios() {
   }
 
   async function gerarDRESimplificada(filename: string, titulo: string) {
+    // Este relatório filtra por data_realizado: é REGIME DE CAIXA — diferente
+    // do DRE oficial (competência). O título passa a dizer isso.
+    titulo = `${titulo} — regime de caixa`;
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
       .select("valor, tipo, natureza, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza)")
@@ -283,9 +286,15 @@ export default function FinRelatorios() {
         rows.push(["", cat, fmtBRL(val)]);
       }
     }
-    const resultado = totalReceitas - totalCustos + totalOutros;
+    // Movimentação (aporte, transferência, empréstimo de sócio) não é
+    // resultado: somá-la inflava o "lucro" do PDF em cada aporte (M2). O DRE
+    // oficial a exclui e declara — este relatório passa a fazer o mesmo.
+    const resultado = totalReceitas - totalCustos;
     rows.push(["", "", ""]);
     rows.push(["RESULTADO LÍQUIDO", "", fmtBRL(resultado)]);
+    if (totalOutros !== 0) {
+      rows.push(["MOVIMENTAÇÃO (fora do resultado)", "", fmtBRL(totalOutros)]);
+    }
 
     const headers = ["Grupo", "Categoria", "Valor"];
 
@@ -305,6 +314,7 @@ export default function FinRelatorios() {
       .from("financeiro_lancamentos")
       .select("data_competencia, data_realizado, descricao, valor, tipo, status, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
       .eq("empresa_id", empresaAtiva!.id)
+      .neq("status", "cancelado")
       .gte("data_competencia", periodo.inicio)
       .lte("data_competencia", periodo.fim)
       .order("data_competencia", { ascending: true });
@@ -359,8 +369,11 @@ export default function FinRelatorios() {
       const id = l.pessoa?.id || "sem";
       const nome = l.pessoa?.nome || "Sem pessoa";
       const v = Number(l.valor) || 0;
+      // Só título é posição com pessoa: movimento de extrato/transferência
+      // caía no "else" e virava "a pagar" da pessoa (M2).
+      if (l.tipo !== "a_receber" && l.tipo !== "a_pagar") continue;
       const m = (mapa[id] ||= { nome, receberAberto: 0, receberLiquidado: 0, pagarAberto: 0, pagarLiquidado: 0 });
-      const isReceita = l.natureza === "receita" || l.tipo === "a_receber";
+      const isReceita = l.tipo === "a_receber";
       const isLiquidado = l.status === "realizado" || l.status === "conciliado";
       if (isReceita) {
         if (isLiquidado) m.receberLiquidado += v;
