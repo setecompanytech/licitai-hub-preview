@@ -81,6 +81,25 @@ serve(async (req) => {
     // Create PaymentIntent with boleto
     const amountCents = Math.round(valor * 100);
 
+    // Dias até o vencimento comparando DATAS no fuso de Brasília — comparar
+    // instantes com ceil() empurrava o boleto para um dia depois do pedido
+    // (M14 da auditoria). Stripe limita a 60 dias: acima disso, erro claro
+    // em vez de exceção críptica.
+    const hojeBR = new Date(
+      new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }) + "T12:00:00Z",
+    );
+    const vencBR = new Date(dueDate.toISOString().slice(0, 10) + "T12:00:00Z");
+    const diasAteVencimento = Math.max(
+      1,
+      Math.round((vencBR.getTime() - hojeBR.getTime()) / 86400000),
+    );
+    if (diasAteVencimento > 60) {
+      return new Response(
+        JSON.stringify({ error: "Vencimento além de 60 dias — o limite do boleto Stripe. Escolha uma data mais próxima." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      );
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: "brl",
@@ -88,7 +107,7 @@ serve(async (req) => {
       payment_method_types: ["boleto"],
       payment_method_options: {
         boleto: {
-          expires_after_days: Math.max(1, Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+          expires_after_days: diasAteVencimento,
         },
       },
       description: descricao || `Boleto ${numero_documento || ""}`.trim(),
@@ -122,16 +141,23 @@ serve(async (req) => {
       },
     });
 
-    // Extract boleto details from next_action
-    const linhaDigitavel = null;
-    const codigoBarras = null;
-    const urlPdf = null;
-    let urlPagamento = null;
+    // O Stripe devolve a linha digitável (number) e o PDF — eram descartados
+    // e a tabela guardava NULL: boleto impagável offline e inconciliável pelo
+    // próprio leitor do sistema (C9 da auditoria).
+    let linhaDigitavel: string | null = null;
+    let urlPdf: string | null = null;
+    let urlPagamento: string | null = null;
 
     if (confirmedIntent.next_action?.type === "boleto_display_details") {
-      const boletoDetails = confirmedIntent.next_action.boleto_display_details;
+      const boletoDetails = confirmedIntent.next_action.boleto_display_details as {
+        hosted_voucher_url?: string | null;
+        number?: string | null;
+        pdf?: string | null;
+      } | null;
       if (boletoDetails) {
         urlPagamento = boletoDetails.hosted_voucher_url ?? null;
+        linhaDigitavel = boletoDetails.number ?? null;
+        urlPdf = boletoDetails.pdf ?? null;
       }
     }
 
@@ -139,12 +165,13 @@ serve(async (req) => {
     const { error: updateError } = await supabaseClient.from("boletos").update({
       status: "registrado",
       linha_digitavel: linhaDigitavel,
-      codigo_barras: codigoBarras,
+      codigo_barras: linhaDigitavel,
       nosso_numero: paymentIntent.id,
       api_response: {
         stripe_payment_intent_id: paymentIntent.id,
         stripe_status: confirmedIntent.status,
         url_pagamento: urlPagamento,
+        url_pdf: urlPdf,
       },
     }).eq("id", body.boleto_id);
 
@@ -157,6 +184,7 @@ serve(async (req) => {
       payment_intent_id: paymentIntent.id,
       status: confirmedIntent.status,
       url_pagamento: urlPagamento,
+      url_pdf: urlPdf,
       linha_digitavel: linhaDigitavel,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
