@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2
 } from 'lucide-react';
 import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
 import SecaoDoDocumento from '@/components/documento/SecaoDoDocumento';
@@ -97,6 +97,24 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       supabase.removeChannel(channel);
     };
   }, [contratoId]);
+
+  // Resposta ao questionamento em hipótese: grava a forma que o usuário declarou.
+  const definirFormaFornecimento = async (forma: 'unico' | 'continuo') => {
+    const { error } = await supabase
+      .from('contratos')
+      .update({ forma_fornecimento: forma } as never)
+      .eq('id', contratoId);
+    if (error) {
+      toast.error(`Não foi possível registrar: ${error.message}`);
+      return;
+    }
+    toast.success(forma === 'unico'
+      ? 'Registrado: entrega única — o alerta de saldo não se aplica a este contrato.'
+      : 'Registrado: fornecimento contínuo — o alerta de saldo continua ativo.');
+    setData(prev => prev
+      ? { ...prev, contrato: { ...prev.contrato, forma_fornecimento: forma } }
+      : prev);
+  };
 
   const calc = useMemo(() => {
     if (!data?.contrato) return null;
@@ -190,6 +208,18 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     });
 
     const itensAlertaSaldo = itensComAditivo.filter((i: any) => i.quantidade_contratada_total > 0 && (i.quantidade_consumida / i.quantidade_contratada_total) * 100 >= 80);
+    /**
+     * Forma de fornecimento (decisão do dono, 02/09): em entrega ÚNICA, saldo
+     * esgotado é conclusão, não alerta — o aviso existe para proteger pedidos
+     * FUTUROS, que ali não existem. NULL = ninguém informou: comportamento
+     * clássico + pergunta quando a hipótese surge. Hipótese, não regra.
+     */
+    const formaFornecimento: 'unico' | 'continuo' | null = (c as any)?.forma_fornecimento ?? null;
+    const saldoEsgotado = itensAlertaSaldo.some((i: any) =>
+      Number(i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo) <= 0);
+    const alertasSaldoVisiveis = formaFornecimento === 'unico' ? [] : itensAlertaSaldo;
+    const entregaUnicaConcluida = formaFornecimento === 'unico' && saldoEsgotado;
+    const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado;
     // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
     // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
     // andando com quilos parados = contratos derivados com quantidade zerada —
@@ -203,14 +233,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -244,7 +274,41 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           nenhum indicador de consumo importa antes dessa resposta. */}
       <ContratoEficacia contratoId={contratoId} />
 
-      {(itensAlertaSaldo.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
+      {entregaUnicaConcluida && (
+        <div className="rounded-xl p-4 border bg-success/5 border-success/30 nao-imprime">
+          <p className="text-xs font-semibold text-success flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4" /> Entrega única concluída
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            O fornecimento integral foi entregue e o saldo se esgotou — aqui isso é conclusão,
+            não alerta. Se não restam outras obrigações, o contrato pode ser marcado como
+            Encerrado (lápis do Valor Global → status).
+          </p>
+        </div>
+      )}
+
+      {perguntarFormaFornecimento && (
+        <div className="rounded-xl p-4 border bg-muted/40 border-border nao-imprime">
+          <p className="text-xs font-semibold">O saldo se esgotou — este contrato é de entrega única?</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Em entrega única (comum na dispensa), saldo zerado significa fornecimento concluído e
+            o alerta deixa de fazer sentido. Em fornecimento contínuo/parcelado, o alerta protege
+            os próximos pedidos. O contrato costuma dizer na cláusula de entrega/execução.
+          </p>
+          <div className="flex gap-2 mt-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => definirFormaFornecimento('unico')}>
+              É entrega única
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => definirFormaFornecimento('continuo')}>
+              É fornecimento contínuo
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
           <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
@@ -298,7 +362,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               <p className="text-xs text-muted-foreground mt-1">{excesso.providencia}</p>
             </div>
           )}
-          {itensAlertaSaldo.map((i: any) => (
+          {alertasSaldoVisiveis.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
         </div>

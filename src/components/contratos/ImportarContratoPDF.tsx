@@ -20,6 +20,7 @@ type ExtractedData = {
   data_fim?: string;
   vigencia_meses?: number;
   modalidade?: string;
+  forma_fornecimento?: 'unico' | 'continuo' | null;
   uf?: string;
   municipio?: string;
   fiscal_nome?: string;

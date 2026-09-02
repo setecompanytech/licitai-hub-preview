@@ -207,6 +207,7 @@ export default function GestaoContratos() {
     forma_execucao: 'contrato_formal',
     art95_fundamento: '',
     especie_objeto: '',
+    forma_fornecimento: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '',
     valor_global: '', valor_consumido: '0', data_assinatura: '',
@@ -280,7 +281,7 @@ export default function GestaoContratos() {
 
   const resetForm = () => { setLicitacaoSearch(''); setForm({
     tipo_documento: 'contrato', tipo_estrutura: 'itens', ata_srp_id: '', numero_ata: '', validade_ata_meses: '', permite_carona: true,
-    forma_execucao: 'contrato_formal', art95_fundamento: '', especie_objeto: '',
+    forma_execucao: 'contrato_formal', art95_fundamento: '', especie_objeto: '', forma_fornecimento: '',
     licitacao_id: '',
     numero_contrato: '', objeto: '', orgao_contratante: '', valor_global: '', valor_consumido: '0',
     data_assinatura: '', data_inicio: '', data_fim: '', vigencia_meses: '',
@@ -329,6 +330,7 @@ export default function GestaoContratos() {
       art95_fundamento: form.tipo_documento === 'ata_srp' && form.forma_execucao === 'empenho'
         ? (form.art95_fundamento || null) : null,
       especie_objeto: form.especie_objeto || null,
+      forma_fornecimento: form.forma_fornecimento || null,
       numero_contrato: form.numero_contrato, objeto: form.objeto,
       orgao_contratante: form.orgao_contratante, valor_global: val, valor_global_original: val, valor_consumido: consumed,
       data_assinatura: form.data_assinatura || null, data_inicio: form.data_inicio || null,
@@ -488,6 +490,7 @@ export default function GestaoContratos() {
       orgao_contratante: data.orgao_contratante || '',
       valor_global: data.valor_global != null ? String(data.valor_global) : '',
       valor_consumido: '0',
+      forma_fornecimento: data.forma_fornecimento === 'unico' || data.forma_fornecimento === 'continuo' ? data.forma_fornecimento : '',
       data_assinatura: data.data_assinatura || '',
       data_inicio: data.data_inicio || '',
       data_fim: data.data_fim || '',
@@ -992,6 +995,24 @@ export default function GestaoContratos() {
                   </p>
                 )}
                 {avisoVigencia && <p className="text-xs text-warning mt-1">{avisoVigencia}</p>}
+              </div>
+              <div className="md:col-span-2">
+                <Label>Forma de fornecimento</Label>
+                <Select value={form.forma_fornecimento || 'nao_informado'} onValueChange={v => setForm(f => ({ ...f, forma_fornecimento: v === 'nao_informado' ? '' : v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="O contrato costuma dizer na cláusula de entrega" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_informado">— Não informado —</SelectItem>
+                    <SelectItem value="unico">Entrega única (integral)</SelectItem>
+                    <SelectItem value="continuo">Fornecimento contínuo / parcelado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {form.forma_fornecimento === 'unico'
+                    ? 'Saldo esgotado será tratado como conclusão do fornecimento — sem alerta de saldo baixo.'
+                    : form.forma_fornecimento === 'continuo'
+                      ? 'O alerta de saldo baixo protege os próximos pedidos deste contrato.'
+                      : 'Se não informado, o painel pergunta quando o saldo se esgotar.'}
+                </p>
               </div>
               <div><Label>Vigência (meses)</Label><Input type="number" value={form.vigencia_meses} onChange={e => setForm(f => ({ ...f, vigencia_meses: e.target.value }))} /></div>
               <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="vigente">Vigente</SelectItem><SelectItem value="vencendo">Vencendo</SelectItem><SelectItem value="encerrado">Encerrado</SelectItem><SelectItem value="suspenso">Suspenso</SelectItem></SelectContent></Select></div>
