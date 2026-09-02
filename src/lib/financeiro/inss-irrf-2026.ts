@@ -98,20 +98,24 @@ export function calcularINSS(salarioBruto: number): ResultadoINSS {
     const faixa = TABELA_INSS_2026[i];
     if (base <= faixa.inicio - 0.01) break;
 
-    const limite_inferior = i === 0 ? 0 : faixa.inicio;
+    // O piso é o FIM da faixa anterior (não o início desta, que carrega o
+    // +0,01): usar o início perdia um centavo de base por faixa, e arredondar
+    // POR FAIXA acumulava erro de ponto flutuante — no teto o INSS saía
+    // 988,08, um centavo abaixo do máximo legal (M13 da auditoria).
+    const limite_inferior = i === 0 ? 0 : TABELA_INSS_2026[i - 1].fim;
     const limite_superior = Math.min(base, faixa.fim);
     const parcela = Math.max(0, limite_superior - limite_inferior);
 
     if (parcela <= 0) continue;
 
-    const contribuicao = round2(parcela * faixa.aliquota);
+    const contribuicao = parcela * faixa.aliquota;
     detalhamento.push({
       faixa: i + 1,
       inicio: faixa.inicio,
       fim: faixa.fim,
       aliquota: faixa.aliquota,
       parcela: round2(parcela),
-      contribuicao,
+      contribuicao: round2(contribuicao),
     });
     total += contribuicao;
   }
@@ -182,18 +186,21 @@ export function calcularIRRF(p: ParametrosIRRF): ResultadoIRRF {
   const deducaoDependentes = dependentes * DEDUCAO_DEPENDENTE_2026;
   const deducaoLegal = p.inssDescontado + deducaoDependentes + pensao + outras;
 
+  // A parcela isenta do 65+ (Lei 7.713, art. 6º, XV) é ISENÇÃO sobre o
+  // rendimento — abate ANTES da escolha entre deduções legais e desconto
+  // simplificado. Aplicá-la depois do simplificado acumulava dois benefícios
+  // e distorcia a própria escolha (M15 da auditoria).
+  const rendimentoTributavel = p.idadeMaisDe65
+    ? Math.max(0, p.rendimentoBruto - ISENCAO_IDOSO_65_2026)
+    : p.rendimentoBruto;
+
   // Decide entre dedução legal vs simplificada (R$ 607,20)
   // O contribuinte pode escolher; default = a maior
   const deducaoSimplificada = DESCONTO_SIMPLIFICADO_2026;
   const usarSimplificado = p.usarSimplificado ?? (deducaoSimplificada > deducaoLegal);
   const deducaoTotal = usarSimplificado ? deducaoSimplificada : deducaoLegal;
 
-  let base = Math.max(0, p.rendimentoBruto - deducaoTotal);
-
-  // Aposentado/pensionista 65+ tem isenção adicional
-  if (p.idadeMaisDe65) {
-    base = Math.max(0, base - ISENCAO_IDOSO_65_2026);
-  }
+  const base = Math.max(0, rendimentoTributavel - deducaoTotal);
 
   // Aplica tabela progressiva
   // Faixas com vão de 1 centavo + resíduo de ponto flutuante: uma base como
