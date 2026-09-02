@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { useColaboradores } from '@/hooks/useMetasComercial';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -74,6 +76,15 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   // guard deixava de disparar — tela branca em produção (02/09, versão .5).
   const { isCompanyAdmin: isEmpresaAdmin } = useAuthorization();
   const [excluindo, setExcluindo] = useState<string | null>(null);
+  const [motivoExclusao, setMotivoExclusao] = useState('');
+  const [exclusoes, setExclusoes] = useState<Array<{
+    id: string; motivo: string; excluido_por: string; excluido_em: string; registro: any;
+  }>>([]);
+  const { data: colaboradores = [] } = useColaboradores();
+  const nomeDoAutor = (uid: string) => {
+    const c = colaboradores.find((x: any) => x.user_id === uid);
+    return c?.nome || c?.email || 'membro da equipe';
+  };
   /**
    * O recorte do Diário, esperando o Registrar.
    *
@@ -219,34 +230,41 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
    * "funcionava" sem fazer nada e sem dizer nada. A policy restringe exclusão
    * a administradores da empresa, e agora a tela diz isso em voz alta.
    */
+  /**
+   * Política decidida pelo dono (02/09): QUALQUER membro exclui — com motivo
+   * obrigatório e histórico imutável para o administrador. A RPC
+   * excluir_publicacao_com_motivo valida, congela o registro e apaga numa
+   * transação só; ninguém passa por fora da porta que registra.
+   */
   const pedirExclusao = (id: string) => {
-    if (!isEmpresaAdmin) {
-      toast.error('Exclusão restrita', {
-        description: 'Somente administradores da empresa podem excluir registros de publicação.',
-      });
-      return;
-    }
+    setMotivoExclusao('');
     setExcluindo(id);
   };
 
+  const carregarExclusoes = useCallback(async () => {
+    const { data } = await supabase
+      .from('contrato_publicacoes_exclusoes' as never)
+      .select('id, motivo, excluido_por, excluido_em, registro')
+      .eq('contrato_id', contratoId)
+      .order('excluido_em', { ascending: false });
+    setExclusoes(((data ?? []) as unknown) as typeof exclusoes);
+  }, [contratoId]);
+
+  useEffect(() => { void carregarExclusoes(); }, [carregarExclusoes]);
+
   const excluir = async () => {
     const id = excluindo;
+    const motivo = motivoExclusao.trim();
+    if (!id || motivo.length < 5) return;
     setExcluindo(null);
-    if (!id) return;
-    const { data, error } = await supabase
-      .from('contrato_publicacoes' as never)
-      .delete()
-      .eq('id', id)
-      .select('id');
+    const { error } = await (supabase as any).rpc('excluir_publicacao_com_motivo', {
+      p_publicacao_id: id,
+      p_motivo: motivo,
+    });
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
-    if (!data || (data as unknown[]).length === 0) {
-      toast.error('Nada foi excluído', {
-        description: 'O registro não existe mais, ou a exclusão é restrita a administradores da empresa.',
-      });
-      return;
-    }
-    toast.success('Registro de publicação excluído.');
+    toast.success('Registro excluído e motivo arquivado no histórico.');
     void carregar();
+    void carregarExclusoes();
     recarregarSituacao();
   };
 
@@ -377,7 +395,7 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto shrink-0 nao-imprime"
-                  title={isEmpresaAdmin ? 'Excluir registro de publicação' : 'Somente administradores da empresa excluem publicações'}
+                  title="Excluir registro de publicação (o motivo fica no histórico)"
                   onClick={() => pedirExclusao(p.id)}>
                   <Trash2 className="w-3 h-3 text-destructive" />
                 </Button>
@@ -480,18 +498,53 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
           </div>
         )}
       </Card>
-          <AlertDialog open={!!excluindo} onOpenChange={(o) => !o && setExcluindo(null)}>
+          {isEmpresaAdmin && exclusoes.length > 0 && (
+        <div className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 nao-imprime">
+          <p className="text-xs font-medium text-muted-foreground mb-1">
+            Histórico de exclusões ({exclusoes.length}) — visível ao administrador
+          </p>
+          <div className="space-y-1">
+            {exclusoes.map((e) => (
+              <p key={e.id} className="text-xs text-muted-foreground">
+                {new Date(e.excluido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {' · '}{e.registro?.veiculo ?? '—'} {e.registro?.data_publicacao ?? ''}
+                {' · por '}{nomeDoAutor(e.excluido_por)}
+                {' — '}<span className="italic" title={e.motivo}>{e.motivo}</span>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={!!excluindo} onOpenChange={(o) => !o && setExcluindo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir registro de publicação?</AlertDialogTitle>
             <AlertDialogDescription>
               O registro sai da lista de extratos e publicações deste contrato.
-              O arquivo do recorte, se houver, não é apagado do repositório.
+              O arquivo do recorte, se houver, não é apagado do repositório. O
+              motivo abaixo fica arquivado no histórico de exclusões, visível
+              ao administrador.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="motivo-exclusao-pub">Motivo da exclusão *</Label>
+            <Textarea
+              id="motivo-exclusao-pub"
+              value={motivoExclusao}
+              onChange={(e) => setMotivoExclusao(e.target.value)}
+              placeholder="Ex.: registro duplicado — o extrato do DOE foi lançado duas vezes."
+              rows={3}
+            />
+            {motivoExclusao.trim().length > 0 && motivoExclusao.trim().length < 5 && (
+              <p className="text-xs text-destructive">Descreva o motivo com pelo menos 5 caracteres.</p>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={excluir}>Excluir</AlertDialogAction>
+            <AlertDialogAction onClick={excluir} disabled={motivoExclusao.trim().length < 5}>
+              Excluir e registrar motivo
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
