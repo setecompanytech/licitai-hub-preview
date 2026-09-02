@@ -186,10 +186,15 @@ export function lerLinhaDigitavel(valor: unknown, referenciaISO: string): DadosD
       barras += bloco;
     }
     const centavos = Number(barras.slice(4, 15));
+    // Identificador de valor (posição 3): 6 e 8 = valor EM REAIS; 7 e 9 =
+    // QUANTIDADE DE MOEDA de referência — nesse caso o campo não é dinheiro
+    // e o valor em R$ simplesmente não está no código. Mesmo princípio do
+    // vencimento: inventar seria adivinhar (M17 da auditoria).
+    const valorEmReais = d[2] === '6' || d[2] === '8';
     return {
       formato: 'arrecadacao',
       linha: d,
-      valor: centavos > 0 ? centavos / 100 : null,
+      valor: valorEmReais && centavos > 0 ? centavos / 100 : null,
       // O código da arrecadação não carrega vencimento. Inventar um a partir
       // do campo livre seria adivinhar: cada convênio o usa de um jeito.
       vencimento: null,

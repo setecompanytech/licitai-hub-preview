@@ -72,9 +72,9 @@ export default function FinDemonstracoes() {
     queryFn: async () => {
       const { data } = await supabase
         .from("financeiro_contas")
-        .select("id, nome, tipo, saldo_inicial")
+        .select("id, nome, tipo, saldo_inicial, saldo_atual")
         .eq("empresa_id", empresaId!);
-      return (data ?? []) as Array<{ id: string; nome: string; tipo: string; saldo_inicial: number | null }>;
+      return (data ?? []) as Array<{ id: string; nome: string; tipo: string; saldo_inicial: number | null; saldo_atual: number | null }>;
     },
   });
 
@@ -105,15 +105,20 @@ export default function FinDemonstracoes() {
       }
     }
 
-    const lucroBruto = receitas - custos - impostos;
+    // Estrutura da Lei 6.404/76, art. 187 (M5 da auditoria):
+    //   Lucro Bruto = Receita − CMV (impostos sobre o LUCRO não entram aqui);
+    //   EBITDA = resultado operacional ANTES de juros e impostos;
+    //   IR/CSLL abatem por último.
+    const lucroBruto = receitas - custos;
     const ebitda = lucroBruto - despesas;
-    const resultadoLiquido = ebitda + financeiras_receita - financeiras_despesa;
+    const resultadoLiquido = ebitda + financeiras_receita - financeiras_despesa - impostos;
 
-    // Saldo de caixa (ATIVO Circulante)
+    // Caixa do BP: o saldo ATUAL derivado pela régua única — somar
+    // saldo_inicial (de quando a conta foi cadastrada) com o resultado do
+    // período produzia um balanço que só fechava por coincidência.
     const saldoCaixa = contas
       .filter((c) => ["corrente", "poupanca", "caixa"].includes(c.tipo))
-      .reduce((acc, c) => acc + Number(c.saldo_inicial ?? 0), 0)
-      + (receitas - custos - despesas - impostos + financeiras_receita - financeiras_despesa);
+      .reduce((acc, c) => acc + Number(c.saldo_atual ?? 0), 0);
 
     // Estrutura básica BP (modelo simplificado)
     const ativoCirculante = saldoCaixa;
