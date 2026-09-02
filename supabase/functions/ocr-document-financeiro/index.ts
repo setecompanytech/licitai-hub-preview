@@ -34,8 +34,41 @@ function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
   ];
   for (const [campo, impresso] of pares) {
     const n = brParaNumero(d[impresso]);
-    if (n !== null && n > 0) d[campo] = n;
+    // >= 0: um documento legitimamente zerado ("0,00" impresso) também manda
+    // sobre o palpite do modelo — antes só valores positivos sobrescreviam.
+    if (n !== null && n >= 0) d[campo] = n;
   }
+}
+
+/**
+ * Datas do modelo sem defesa nenhuma eram gravadas como competência e
+ * vencimento (A1 da auditoria): "03/04" lido como 2026-03-04 punha a receita
+ * no mês errado — sintaticamente válido, indetectável. Regra determinística:
+ * ISO plausível passa; DD/MM/AAAA é convertido aqui (a mesma filosofia dos
+ * literais impressos); qualquer outra coisa vira null — campo vazio é
+ * honesto, data errada é armadilha.
+ */
+function sanearData(v: unknown): string | null {
+  const t = String(v ?? "").trim();
+  if (!t) return null;
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const [, , m, d] = iso;
+    const mes = Number(m), dia = Number(d);
+    return mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31 ? t : null;
+  }
+  const br = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) {
+    const [, d, m, a] = br;
+    const mes = Number(m), dia = Number(d);
+    return mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31 ? `${a}-${m}-${d}` : null;
+  }
+  return null;
+}
+
+function sanearDatas(d: Record<string, unknown>): void {
+  d.data_emissao = sanearData(d.data_emissao);
+  d.data_vencimento = sanearData(d.data_vencimento);
 }
 
 const corsHeaders = {
@@ -58,7 +91,7 @@ CAMPOS A EXTRAIR (quando visíveis):
 - data_emissao: AAAA-MM-DD
 - data_vencimento: AAAA-MM-DD (boletos)
 - valor_total: número decimal (R$)
-- quantidade_total_impressa: o TEXTO EXATO da coluna QTDE./QTD. do produto principal, copiado como impresso (ex.: "1.300,00"). Se houver várias linhas, o da linha de maior valor. NÃO converta, NÃO some, NÃO interprete — copie os caracteres.
+- quantidade_total_impressa: o TEXTO EXATO da coluna QTDE./QTD. do produto principal, copiado como impresso (ex.: "1.300,00"). Se houver várias linhas, o da linha de maior valor. NÃO é o número de linhas/itens da nota — é a QUANTIDADE impressa daquele item. NÃO converta, NÃO some, NÃO interprete — copie os caracteres.
 - valor_total_impresso: o TEXTO EXATO do VALOR TOTAL da nota, como impresso (ex.: "29.315,00").
 - valor_unitario_impresso: o TEXTO EXATO do VALOR UNITÁRIO do item principal, como impresso (ex.: "22,5500").
 - quantidade_total: idem quantidade_total_impressa, convertido para número (1.300,00 → 1300). Ponto é milhar; vírgula é decimal.
@@ -141,12 +174,12 @@ async function callClaude(imageDataUrl: string) {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "claude-sonnet-5",
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
-        { type: "text", text: "Extraia os campos estruturados em JSON puro (sem markdown). Use as chaves: tipo_documento, emitente_nome, emitente_cnpj, destinatario_nome, destinatario_cnpj_cpf, numero_documento, chave_nfe, data_emissao, data_vencimento, valor_total, codigo_barras, descricao, confianca." },
+        { type: "text", text: "Extraia os campos estruturados em JSON puro (sem markdown). Use as chaves: tipo_documento, emitente_nome, emitente_cnpj, destinatario_nome, destinatario_cnpj_cpf, numero_documento, chave_nfe, data_emissao, data_vencimento, valor_total, quantidade_total, valor_unitario, quantidade_total_impressa, valor_total_impresso, valor_unitario_impresso, codigo_barras, descricao, confianca." },
       ]}],
     }),
   });
@@ -169,13 +202,14 @@ Deno.serve(async (req) => {
     const intentos: { motor: string; fn: () => Promise<any> }[] = [];
 
     if (preferredModel === "claude" && Deno.env.get("ANTHROPIC_API_KEY")) {
-      intentos.push({ motor: "claude_sonnet_4", fn: () => callClaude(imageDataUrl) });
+      intentos.push({ motor: "claude_sonnet_5", fn: () => callClaude(imageDataUrl) });
     }
-    intentos.push({ motor: "gemini_2.5_pro", fn: () => callLovableAI(imageDataUrl, "gpt-4o") });
-    intentos.push({ motor: "gemini_3_flash", fn: () => callLovableAI(imageDataUrl, "gpt-4o-mini") });
+    // O rótulo é gravado nas observações do lançamento: diz o modelo que RODOU.
+    intentos.push({ motor: "gpt_4o", fn: () => callLovableAI(imageDataUrl, "gpt-4o") });
+    intentos.push({ motor: "gpt_4o_mini", fn: () => callLovableAI(imageDataUrl, "gpt-4o-mini") });
     intentos.push({ motor: "gpt_5_mini", fn: () => callLovableAI(imageDataUrl, "openai/gpt-5-mini") });
     if (Deno.env.get("ANTHROPIC_API_KEY") && preferredModel !== "claude") {
-      intentos.push({ motor: "claude_sonnet_4", fn: () => callClaude(imageDataUrl) });
+      intentos.push({ motor: "claude_sonnet_5", fn: () => callClaude(imageDataUrl) });
     }
 
     let lastError = "";
@@ -184,6 +218,7 @@ Deno.serve(async (req) => {
         const resultado = await tentativa.fn();
         if (resultado && resultado.tipo_documento) {
           sanearNumerosBrasileiros(resultado);
+          sanearDatas(resultado);
           return new Response(JSON.stringify({ ok: true, motor: tentativa.motor, dados: resultado }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
