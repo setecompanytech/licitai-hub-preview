@@ -79,12 +79,23 @@ export function useSalvarRateios() {
         throw new Error(`Soma dos percentuais (${total.toFixed(2)}%) excede 100%.`);
       }
 
-      const payload = itens.map((r) => ({
-        lancamento_id: lancamentoId,
-        centro_custo_id: r.centro_custo_id,
-        percentual: r.percentual,
-        valor: Math.round(((r.percentual / 100) * valorBase) * 100) / 100,
-      }));
+      // Cada fatia arredondada isolada não fecha a soma (0,05 em 3× dava
+      // 0,02+0,02+0,02 = 0,06). A última fatia carrega a sobra — o mesmo
+      // padrão das parcelas de faturamento e da extração de documentos.
+      let acumulado = 0;
+      const payload = itens.map((r, i) => {
+        const ultimo = i === itens.length - 1;
+        const fatia = ultimo
+          ? +(valorBase - acumulado).toFixed(2)
+          : Math.round(((r.percentual / 100) * valorBase) * 100) / 100;
+        acumulado += fatia;
+        return {
+          lancamento_id: lancamentoId,
+          centro_custo_id: r.centro_custo_id,
+          percentual: r.percentual,
+          valor: fatia,
+        };
+      });
 
       const { error: insErr } = await (supabase as any)
         .from("fin_lancamento_rateios")

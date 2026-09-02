@@ -30,3 +30,25 @@ describe('parcelas de faturamento', () => {
     expect(alvo.getDate()).toBe(28);   // 2026 não é bissexto
   });
 });
+
+describe('rateio por centro de custo (A11)', () => {
+  const ratear = (valorBase: number, percentuais: number[]) => {
+    let acumulado = 0;
+    return percentuais.map((p, i) => {
+      const ultimo = i === percentuais.length - 1;
+      const fatia = ultimo
+        ? +(valorBase - acumulado).toFixed(2)
+        : Math.round(((p / 100) * valorBase) * 100) / 100;
+      acumulado += fatia;
+      return fatia;
+    });
+  };
+  it('R$ 0,05 em 3 fatias de ~33% fecha em 0,05 (não 0,06)', () => {
+    const v = ratear(0.05, [33.33, 33.33, 33.34]);
+    expect(+v.reduce((s, x) => s + x, 0).toFixed(2)).toBe(0.05);
+  });
+  it('R$ 1.000,00 em 3× iguais fecha ao centavo', () => {
+    const v = ratear(1000, [33.33, 33.33, 33.34]);
+    expect(+v.reduce((s, x) => s + x, 0).toFixed(2)).toBe(1000);
+  });
+});
