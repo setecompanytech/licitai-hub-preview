@@ -69,6 +69,11 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   const [indisponivel, setIndisponivel] = useState(false);
   const { situacao: s, leituraDaAssinatura, recarregar: recarregarSituacao } = useSituacaoJuridica(contratoId);
   const [conferindo, setConferindo] = useState(false);
+  // Hooks SEMPRE antes dos returns antecipados (linhas de guarda abaixo):
+  // declarados no meio do componente, quebravam a ordem de hooks quando o
+  // guard deixava de disparar — tela branca em produção (02/09, versão .5).
+  const { isCompanyAdmin: isEmpresaAdmin } = useAuthorization();
+  const [excluindo, setExcluindo] = useState<string | null>(null);
   /**
    * O recorte do Diário, esperando o Registrar.
    *
@@ -214,9 +219,6 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
    * "funcionava" sem fazer nada e sem dizer nada. A policy restringe exclusão
    * a administradores da empresa, e agora a tela diz isso em voz alta.
    */
-  const { isCompanyAdmin: isEmpresaAdmin } = useAuthorization();
-  const [excluindo, setExcluindo] = useState<string | null>(null);
-
   const pedirExclusao = (id: string) => {
     if (!isEmpresaAdmin) {
       toast.error('Exclusão restrita', {
