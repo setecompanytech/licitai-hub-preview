@@ -135,7 +135,7 @@ export default function AtivacaoChecklist() {
       online?: boolean;
       agentes?: Array<{ online?: boolean; erro?: string | null; versao?: string | null;
         capacidade?: { ram_total_mb?: number; max_sessoes?: number; slots_disponiveis?: number };
-        certificado?: { carregado?: boolean; path?: string } | null }>;
+        certificado?: { carregado?: boolean; path?: string; motivo?: string | null } | null }>;
     } | null = null;
     try {
       const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
@@ -211,7 +211,13 @@ export default function AtivacaoChecklist() {
       // Duas fontes falavam do mesmo fato e discordavam: o registro de upload
       // no banco dizia "faltando" enquanto o agente reportava o .pfx carregado
       // na VPS. O que vale é o certificado estar onde ele é usado — no agente.
+      //
+      // O agente respondia `carregado: true` olhando só se a variável CERT_PATH
+      // estava preenchida, nunca se o arquivo existia — a pasta certs/ estava
+      // vazia e esta linha ficava verde. Agora ele confere o arquivo e, quando
+      // não acha, diz onde procurou; esse `motivo` aparece aqui.
       const certNoAgente = agenteVivo?.certificado?.carregado === true;
+      const motivoCert = agenteVivo?.certificado?.motivo;
 
       newItems.push({
         id: 'certificado',
@@ -220,6 +226,8 @@ export default function AtivacaoChecklist() {
           ? 'Certificado recebido e vinculado à empresa'
           : certNoAgente
           ? `Instalado no agente${agenteVivo?.certificado?.path ? ` (${agenteVivo.certificado.path})` : ''} — envie por aqui para o sistema também versionar e alertar o vencimento`
+          : motivoCert
+          ? `Ausente no agente: ${motivoCert}. Sem ele o login por certificado falha antes de qualquer portal`
           : tokenPendente
           ? 'Link de upload enviado — aguardando envio do certificado'
           : 'Envie o certificado digital (.pfx) para autenticação nos portais',

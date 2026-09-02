@@ -181,9 +181,14 @@
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-wrap: anywhere;
+    /* break-word, NUNCA anywhere — e hyphens manual, NUNCA auto: os dois são
+       HERDADOS, então o body contamina até quem não está na lista de tags
+       abaixo (button, a). `anywhere` esmagava dígitos de valores monetários;
+       `auto` partia palavra no meio com hífen ("venci-do") em célula
+       espremida de tabela. Prosa longa não existe nesta UI para justificá-los. */
+    overflow-wrap: break-word;
     word-break: normal;
-    hyphens: auto;
+    hyphens: manual;
   }
 
   /* ============================================================

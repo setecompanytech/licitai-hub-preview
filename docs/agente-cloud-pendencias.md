@@ -33,6 +33,8 @@ para quem for reimplementar.
 | 12 | Robô de Lances não parte da pasta do processo | Praefectus | ✅ resolvido — atalho em Módulos, processo ativo e pré-seleção |
 | 13 | `src/portals/index.js` saía do gerador com sintaxe inválida | template | ✅ **resolvido em 31/08** — ver seção 8 |
 | 14 | Checklist consultava `credenciais_portal` (singular) | Praefectus | ✅ **resolvido em 31/08** — ver seção 9 |
+| 15 | "Certificado instalado" era verde sem arquivo existir | agente | ✅ **resolvido em 02/09** — ver seção 10 |
+| 16 | "Healthcheck de Seletores" não testava seletor nenhum | Praefectus | ✅ **resolvido em 02/09** — ver seção 10 |
 
 ## O que falta agora
 
@@ -423,6 +425,61 @@ Corrigido para a view `credenciais_portais_safe` com `select('id')` — nome cer
 e o `senha_hash` deixa de ser trafegado para o navegador só para contar linhas.
 O erro passa a aparecer na descrição do item, com estado `erro` em vez de
 `pendente`.
+
+## 10. Duas telas verdes sem lastro — RESOLVIDAS em 02/09/2026
+
+Apareceram ao preparar a validação dos portais, e as duas seguem o mesmo molde:
+**verificar o proxy fácil em vez do fato.**
+
+### O certificado que não existia
+
+O checklist mostrava, em verde: *"Certificado Digital — Instalado no agente
+(./certs/certificado.pfx)"*. A pasta `certs/` **estava vazia**.
+
+O `/health` do agente respondia assim:
+
+```js
+certificado: {
+  carregado: !!process.env.CERT_PATH,   // só olha se a VARIÁVEL existe
+  path: process.env.CERT_PATH || null,
+}
+```
+
+Conferia a variável de ambiente, nunca o arquivo. Corrigido para checar o disco
+e, quando não acha, dizer onde procurou:
+
+```json
+{"carregado": false, "path": "./certs/certificado.pfx",
+ "motivo": "arquivo nao encontrado em /opt/agente-lances/certs/certificado.pfx"}
+```
+
+**Por que importava:** o `comprasgov.js` autentica por certificado digital. Sem o
+`.pfx`, o login falha antes de qualquer seletor ser exercitado — e alguém iria
+depurar o botão de certificado quando o problema é não haver certificado.
+
+### O healthcheck que não testava seletores
+
+O card se chamava *"Healthcheck de Seletores — Portais"* e mostrava **"12 OK"**.
+A edge function `portal-healthcheck` faz `HEAD`/`GET` na URL e olha o status
+HTTP — **nunca abre navegador, nunca executa seletor** —, mas gravava o resultado
+em campos chamados `seletores_ok` e `seletores_falhos`.
+
+"12 seletores OK" queria dizer "12 sites responderam a um GET".
+
+As colunas do banco mantêm os nomes (renomear exigiria migration, deploy e front
+por um ganho cosmético). O que mudou foi o que a tela **afirma**:
+
+| Antes | Agora |
+| --- | --- |
+| "Healthcheck de Seletores — Portais" | "Portais no ar" |
+| "12 OK" · "3 falhas" | "12 responderam" · "3 fora do ar" |
+| "Operacional" | "Responde" |
+| — | subtítulo dizendo que **não** testa a automação |
+
+**A regra que as duas violavam** é o princípio 3 do `CLAUDE.md`: falha silenciosa
+é proibida. Aqui era pior que silêncio — era afirmação positiva sem lastro. Um
+seletor quebrado que a tela jura estar "Operacional" só aparece no meio de uma
+disputa real.
 
 ---
 

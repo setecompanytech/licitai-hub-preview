@@ -2303,14 +2303,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                         </button>
                       ) : '—'}
                     </TableCell>
-                    <TableCell className="text-sm text-right whitespace-nowrap">{p.quantidade}</TableCell>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
+                      {p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                    </TableCell>
                     <TableCell className="text-sm text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
                     {/* Sem `whitespace-nowrap` na célula inteira: o aviso de
                         prazo — "Prazo vencido há 113 dia(s) — limite era
                         10/05/2026" — travava a coluna nessa largura e empurrava
                         a NF-e para baixo da coluna fixa de ações. A DATA
                         continua numa linha só; o aviso quebra. */}
-                    <TableCell className="text-sm text-center max-w-[11rem]">
+                    {/* min-w: sem ela, a largura desta coluna é o que sobra
+                        das vizinhas (a pílula da NF-e com "• Quitada" alarga a
+                        própria coluna), e o aviso de prazo era espremido até
+                        quebrar no meio da palavra. */}
+                    <TableCell className="text-sm text-center min-w-[9rem] max-w-[11rem]">
                       <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                       {/* O prazo que começou a correr quando este pedido foi
                           lançado. Antes a coluna mostrava a data e parava aí.
