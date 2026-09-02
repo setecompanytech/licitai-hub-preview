@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 
 type DocumentoLinha = { id: string; lancamento_id: string; storage_path: string; arquivo_nome: string };
 
-function useDocumentosPorLancamento() {
+export function useDocumentosPorLancamento() {
   const { empresaAtiva } = useEmpresa();
   return useQuery({
     queryKey: ['fin-documentos-por-lancamento', empresaAtiva?.id],

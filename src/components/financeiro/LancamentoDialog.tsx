@@ -23,7 +23,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle } from "lucide-react";
+import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle, Link2 } from "lucide-react";
+import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -102,11 +103,15 @@ type Props = {
   initial?: Partial<Lancamento> | null;
   defaultTipo?: Tipo;
   onSaved?: (lancamento: Lancamento) => void;
+  /** Quando o pai sabe abrir o diálogo do elo, o toast pós-salvar ganha o
+   *  botão "Vincular agora" — a ponte entre criar a receber com nota e o
+   *  vínculo com contrato deixa de depender de a pessoa descobrir o ícone. */
+  onVincularContrato?: (l: LancamentoParaVincular) => void;
 };
 
 const today = () => hojeLocal();
 
-export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo, onSaved }: Props) {
+export default function LancamentoDialog({ open, onOpenChange, initial, defaultTipo, onSaved, onVincularContrato }: Props) {
   const { data: contas = [] } = useContas();
   const { data: categorias = [] } = useCategorias();
   const { data: pessoas = [] } = usePessoas();
@@ -786,6 +791,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       // uma só, e fica com o registro que a originou.
       if (initial?.id) await guardarDocumentos(initial.id);
     } else {
+      // Antes de guardar: `guardarDocumentos` limpa os estados do anexo.
+      const tinhaNota = !!(arquivoPdf || arquivoXml);
       const saved = await upsert.mutateAsync({ id: initial?.id, ...baseBody });
       if (saved && onSaved) onSaved(saved as unknown as Lancamento);
 
@@ -794,6 +801,37 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       // quando o lançamento troca de conta.
 
       await guardarDocumentos((saved as unknown as { id?: string })?.id ?? initial?.id ?? null);
+
+      // ── A etapa que a tela nunca anunciava ────────────────────────────────
+      //
+      // A receber criado à mão com nota anexada nasce sem vínculo com
+      // contrato — invisível para a Gestão (saldo, faturamento) até alguém
+      // achar o ícone de elo por conta própria. O caminho da extração vincula
+      // no ato; este aqui vincula na etapa seguinte. A etapa existe; o que
+      // faltava era dizê-lo no momento em que ela se torna a próxima.
+      if (!editando && tipo === "a_receber" && tinhaNota && saved) {
+        const row = saved as unknown as LancamentoParaVincular;
+        if (onVincularContrato) {
+          toast.info("Nota guardada — falta o vínculo com o contrato.", {
+            description:
+              "Sem ele, o recebimento não consome saldo nem aparece no faturamento do contrato na Gestão.",
+            duration: 12000,
+            action: {
+              label: "Vincular agora",
+              onClick: () => onVincularContrato({
+                ...row,
+                pessoa_nome: pessoas.find((pp) => pp.id === pessoaId)?.nome ?? null,
+              }),
+            },
+          });
+        } else {
+          toast.info("Nota guardada — falta o vínculo com o contrato.", {
+            description:
+              "Use o ícone de elo (🔗) na linha do lançamento, em Contas a Receber, para ligá-lo ao contrato/ATA.",
+            duration: 12000,
+          });
+        }
+      }
     }
     onOpenChange(false);
   };
@@ -1366,6 +1404,17 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   </div>
                 )}
               </div>
+
+              {tipo === "a_receber" && (
+                <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    O anexo não liga o recebimento a um contrato — essa é a etapa seguinte, pelo
+                    ícone de elo na linha do lançamento. A quantidade lida desta nota vai junto
+                    para o vínculo.
+                  </span>
+                </p>
+              )}
             </TabsContent>
 
             {/* ===================== RATEIO ===================== */}
