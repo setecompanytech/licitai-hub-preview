@@ -169,6 +169,9 @@ export default function FinKanban({ tipo }: Props) {
     const vMin = valorMin ? Number(valorMin) : null;
     const vMax = valorMax ? Number(valorMax) : null;
     return lancamentos.filter((l) => {
+      // Cancelado não é trabalho pendente nem dinheiro em aberto: fora do
+      // quadro — ele somava no "em aberto" e podia até ser baixado em lote.
+      if (l.status === "cancelado") return false;
       if (pendingDeleteIds.has(l.id)) return false;
       if (filtroVendedor !== "todos" && (l as any).vendedor_responsavel_id !== filtroVendedor) return false;
       if (filtroCategoria !== "todos" && l.categoria_id !== filtroCategoria) return false;

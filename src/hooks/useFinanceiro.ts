@@ -849,7 +849,7 @@ export function useResumoFinanceiro() {
       // Top 5 despesas (realizadas) por categoria
       const despesasMap = new Map<string, number>();
       lancs
-        .filter((l) => l.natureza === "despesa" && l.status !== "cancelado")
+        .filter((l) => l.natureza === "despesa" && ["realizado", "conciliado"].includes(l.status as string))
         .forEach((l) => {
           const nome = (l.categoria as { nome?: string } | null)?.nome ?? "Sem categoria";
           despesasMap.set(nome, (despesasMap.get(nome) ?? 0) + Number(l.valor ?? 0));
@@ -866,6 +866,8 @@ export function useResumoFinanceiro() {
         fluxoMap.set(dataLocal(d).slice(0, 7), { entrada: 0, saida: 0 });
       }
       lancs.forEach((l) => {
+        // "Fluxo de caixa" é o que aconteceu: previsto e cancelado ficam fora.
+        if (!["realizado", "conciliado"].includes(l.status as string)) return;
         const mes = (l.data_competencia ?? "").slice(0, 7);
         const bucket = fluxoMap.get(mes);
         if (!bucket) return;

@@ -83,8 +83,10 @@ export default function FinRelatorioConciliacao() {
     const total = movimentos.length;
     const conciliados = movimentos.filter((m) => m.conciliado).length;
     const pendentes = total - conciliados;
-    const valorTotal = movimentos.reduce((s, m) => s + Number(m.valor), 0);
-    const valorConciliado = movimentos.filter((m) => m.conciliado).reduce((s, m) => s + Number(m.valor), 0);
+    // Em módulo: crédito e débito com sinal se anulavam e "Pendentes"
+    // chegava a sair negativo no resumo e no CSV.
+    const valorTotal = movimentos.reduce((s, m) => s + Math.abs(Number(m.valor)), 0);
+    const valorConciliado = movimentos.filter((m) => m.conciliado).reduce((s, m) => s + Math.abs(Number(m.valor)), 0);
     const valorPendente = valorTotal - valorConciliado;
     const taxa = total > 0 ? (conciliados / total) * 100 : 0;
 

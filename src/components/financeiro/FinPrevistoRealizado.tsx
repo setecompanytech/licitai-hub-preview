@@ -35,6 +35,8 @@ export default function FinPrevistoRealizado() {
       const bucket = map.get(mes);
       if (!bucket) return;
       const v = Number(l.valor);
+      // Venda cancelada não é meta: mantê-la no "previsto" achata o % do ano.
+      if (l.status === "cancelado") return;
       const realizado = ["realizado", "conciliado"].includes(l.status as string);
       if (l.tipo === "a_receber") {
         bucket.receitaPrev += v;

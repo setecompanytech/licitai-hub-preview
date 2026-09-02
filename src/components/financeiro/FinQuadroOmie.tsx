@@ -79,8 +79,10 @@ function useQuadroOmie() {
         const key = String(l.data_competencia).slice(0, 7);
         const m = movMap.get(key);
         if (!m) return;
+        // Só título é entrada/saída de resultado: transferência própria e
+        // movimento de extrato inflavam a barra vermelha em cada repasse.
         if (l.tipo === "a_receber") m.entradas += Number(l.valor);
-        else m.saidas += Number(l.valor);
+        else if (l.tipo === "a_pagar") m.saidas += Number(l.valor);
       });
       const movimentacao = Array.from(movMap.values());
 
