@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { hojeLocal } from "@/lib/financeiro/data-local";
+import { hojeLocal, dataLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,8 +89,8 @@ function periodoDefault() {
   const hoje = new Date();
   const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   return {
-    inicio: inicio.toISOString().slice(0, 10),
-    fim: hoje.toISOString().slice(0, 10),
+    inicio: dataLocal(inicio),
+    fim: dataLocal(hoje),
   };
 }
 

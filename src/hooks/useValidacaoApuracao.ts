@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { dataLocal } from '@/lib/financeiro/data-local';
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import type { Apuracao } from "./useApuracaoTributaria";
@@ -43,7 +44,7 @@ export function useValidacaoApuracao() {
     // Período expandido: do início do menor mês até o fim do maior
     const dataInicio = min;
     const [yMax, mMax] = max.split("-").map(Number);
-    const fimMes = new Date(yMax, mMax, 0).toISOString().slice(0, 10);
+    const fimMes = dataLocal(new Date(yMax, mMax, 0));
 
     const { data: lanc, error } = await (supabase as any)
       .from("financeiro_lancamentos")
@@ -60,7 +61,7 @@ export function useValidacaoApuracao() {
     for (const ap of apuracoes) {
       const [y, m] = ap.competencia.split("-").map(Number);
       const inicio = `${y}-${String(m).padStart(2, "0")}-01`;
-      const fim = new Date(y, m, 0).toISOString().slice(0, 10);
+      const fim = dataLocal(new Date(y, m, 0));
 
       const linhasMes = (lanc ?? []).filter((l: any) =>
         l.data_competencia >= inicio && l.data_competencia <= fim

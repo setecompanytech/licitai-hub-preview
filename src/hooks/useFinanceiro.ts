@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
-import { hojeLocal, somarDiasLocal, mesLocal } from "@/lib/financeiro/data-local";
+import { hojeLocal, somarDiasLocal, mesLocal, dataLocal, deDataLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -814,8 +814,8 @@ export function useResumoFinanceiro() {
     enabled: !!empresaId,
     queryFn: async (): Promise<ResumoFinanceiro> => {
       const hoje = new Date();
-      const mesAtual = hoje.toISOString().slice(0, 7);
-      const inicio6m = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().slice(0, 10);
+      const mesAtual = mesLocal(hoje);
+      const inicio6m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1));
 
       const [contasRes, lancRes] = await Promise.all([
         supabase.from("financeiro_contas").select("saldo_atual").eq("empresa_id", empresaId!).eq("ativa", true),
@@ -863,7 +863,7 @@ export function useResumoFinanceiro() {
       const fluxoMap = new Map<string, { entrada: number; saida: number }>();
       for (let i = 5; i >= 0; i--) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        fluxoMap.set(d.toISOString().slice(0, 7), { entrada: 0, saida: 0 });
+        fluxoMap.set(dataLocal(d).slice(0, 7), { entrada: 0, saida: 0 });
       }
       lancs.forEach((l) => {
         const mes = (l.data_competencia ?? "").slice(0, 7);
@@ -1527,8 +1527,8 @@ export function useResumoVisorFinanceiro() {
 
       // Top atrasos
       const mapAtraso = (l: typeof atrasos[number]) => {
-        const venc = new Date(l.data_vencimento ?? hojeStr);
-        const dias = Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / 86400000));
+        const venc = deDataLocal(l.data_vencimento ?? hojeStr);
+        const dias = Math.max(0, Math.floor((deDataLocal(hojeLocal()).getTime() - venc.getTime()) / 86400000));
         return {
           id: l.id,
           descricao: l.descricao ?? "Sem descrição",

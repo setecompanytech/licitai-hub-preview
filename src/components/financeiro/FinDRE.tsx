@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mesLocal } from '@/lib/financeiro/data-local';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +107,7 @@ function exportCSV(
 // Componente principal
 // ----------------------------------------------------------------------------
 export default function FinDRE() {
-  const hoje = new Date().toISOString().slice(0, 7);
+  const hoje = mesLocal();
   const [competencia, setCompetencia] = useState(hoje);
   const [modo, setModo] = useState<ModoComparacao>("mes_anterior");
 

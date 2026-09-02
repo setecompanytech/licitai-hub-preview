@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { hojeLocal } from '@/lib/financeiro/data-local';
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -256,7 +257,7 @@ export function useApuracaoTributaria() {
   const marcarComoPago = useCallback(async (id: string) => {
     const { error } = await (supabase as any)
       .from("financeiro_apuracoes")
-      .update({ status: "pago", pago_em: new Date().toISOString().slice(0, 10) })
+      .update({ status: "pago", pago_em: hojeLocal() })
       .eq("id", id);
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success("Apuração marcada como paga.");

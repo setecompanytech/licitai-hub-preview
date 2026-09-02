@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mesLocal } from '@/lib/financeiro/data-local';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,7 +165,7 @@ function FuncionariosTab() {
 function ProcessamentoTab() {
   const { data: competencias = [] } = useCompetencias();
   const processar = useProcessarFolha();
-  const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
+  const [mes, setMes] = useState(() => mesLocal());
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const { data: holerites = [] } = useHoleritesCompetencia(selecionada);
 

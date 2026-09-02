@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { hojeLocal } from "@/lib/financeiro/data-local";
+import { hojeLocal, dataLocal } from "@/lib/financeiro/data-local";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ const today = () => hojeLocal();
 const firstDayMonth = () => {
   const d = new Date();
   d.setDate(1);
-  return d.toISOString().slice(0, 10);
+  return dataLocal(d);
 };
 
 export default function FinDREporCentroCusto() {

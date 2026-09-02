@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { dataLocal, mesLocal, somarDiasLocal } from '@/lib/financeiro/data-local';
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { toast } from "sonner";
@@ -51,8 +52,8 @@ export function useIndicadoresCFO() {
     enabled: !!empresaId,
     queryFn: async (): Promise<IndicadoresCFO> => {
       const hoje = new Date();
-      const inicio6m = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().slice(0, 10);
-      const hojeStr = hoje.toISOString().slice(0, 10);
+      const inicio6m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1));
+      const hojeStr = dataLocal(hoje);
 
       // Paginação para evitar truncamento silencioso (limite default Supabase: 1000)
       const fetchLancsPaginado = async () => {
@@ -98,7 +99,7 @@ export function useIndicadoresCFO() {
 
       // ===== Rentabilidade (DRE simplificada do mês corrente) =====
       // Janela: usa o mês corrente; se vazio, faz fallback para o último mês com dados (ambientes mock)
-      const mesCorrente = hoje.toISOString().slice(0, 7);
+      const mesCorrente = mesLocal(hoje);
       const mesesComDados = Array.from(
         new Set(
           lancs
@@ -157,7 +158,7 @@ export function useIndicadoresCFO() {
       // Burn dos últimos 3 meses
       const burns: number[] = [];
       for (let i = 1; i <= 3; i++) {
-        const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1).toISOString().slice(0, 7);
+        const ref = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)).slice(0, 7);
         const recM = lancs
           .filter((l) => l.natureza === "receita" && l.status !== "cancelado" && (l.data_realizado ?? l.data_competencia ?? "").startsWith(ref))
           .reduce((s, l) => s + Number(l.valor ?? 0), 0);
@@ -170,7 +171,7 @@ export function useIndicadoresCFO() {
       const runwayMeses = burnMensal > 0 && saldoCaixaAtual > 0 ? saldoCaixaAtual / burnMensal : null;
 
       // ===== Projeção 90d — algoritmo O(n+90) com varredura única =====
-      const proximos90 = new Date(hoje.getTime() + 90 * 86400000).toISOString().slice(0, 10);
+      const proximos90 = somarDiasLocal(90, hoje);
       const previstos = lancs
         .filter(
           (l) =>
@@ -186,7 +187,7 @@ export function useIndicadoresCFO() {
       const burnDiario = burnMensal / 30;
       let idx = 0;
       for (let d = 0; d <= 90; d++) {
-        const dia = new Date(hoje.getTime() + d * 86400000).toISOString().slice(0, 10);
+        const dia = somarDiasLocal(d, hoje);
         // aplica todos os eventos cujo vencimento <= dia, marcha avante
         while (idx < previstos.length && previstos[idx].data_vencimento! <= dia) {
           const v = Number(previstos[idx].valor ?? 0);
@@ -257,7 +258,7 @@ export function useGerarInsightsCFO() {
       const { data, error } = await supabase.functions.invoke("cfo-insights", {
         body: {
           empresa_id: empresaId,
-          contexto: { mes: hoje.toISOString().slice(0, 7) },
+          contexto: { mes: mesLocal(hoje) },
           indicadores: {
             ebitda: indicadores.ebitda,
             margemEbitda: indicadores.margemEbitda,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { dataLocal } from '@/lib/financeiro/data-local';
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export default function FinSaldosAbertura() {
   const { toast } = useToast();
   const [dataCorte, setDataCorte] = useState(() => {
     const d = new Date(); d.setMonth(0); d.setDate(1);
-    return d.toISOString().slice(0, 10);
+    return dataLocal(d);
   });
   const [contas, setContas] = useState<ContaPC[]>([]);
   const [saldos, setSaldos] = useState<Map<string, Saldo>>(new Map());

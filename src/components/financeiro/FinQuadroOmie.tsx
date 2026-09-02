@@ -10,6 +10,7 @@
  * que dispara navegação programática via window event "fin:navigate".
  */
 import { useQuery } from "@tanstack/react-query";
+import { dataLocal, mesLocal } from '@/lib/financeiro/data-local';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +38,7 @@ function useQuadroOmie() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const hoje = new Date();
-      const ini12m = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1).toISOString().slice(0, 10);
+      const ini12m = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1));
 
       const [pessoasRes, lancsRes, contasRes, comissoesRes] = await Promise.all([
         supabase.from("financeiro_pessoas").select("id, tipo").eq("empresa_id", empresaId!).eq("ativo", true),
@@ -70,7 +71,7 @@ function useQuadroOmie() {
       const movMap = new Map<string, { mes: string; entradas: number; saidas: number }>();
       for (let i = 11; i >= 0; i--) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        const key = d.toISOString().slice(0, 7);
+        const key = dataLocal(d).slice(0, 7);
         movMap.set(key, { mes: MESES_CURTO[d.getMonth()], entradas: 0, saidas: 0 });
       }
       lancs.forEach((l) => {
@@ -84,7 +85,7 @@ function useQuadroOmie() {
       const movimentacao = Array.from(movMap.values());
 
       // Previsto x Realizado do mês corrente
-      const mesAtual = hoje.toISOString().slice(0, 7);
+      const mesAtual = mesLocal(hoje);
       const noMes = lancs.filter((l) => String(l.data_competencia).slice(0, 7) === mesAtual);
       const previstoReceitas = noMes.filter((l) => l.tipo === "a_receber").reduce((s, l) => s + Number(l.valor), 0);
       const realizadoReceitas = noMes.filter((l) => l.tipo === "a_receber" && ["realizado", "conciliado"].includes(l.status as string)).reduce((s, l) => s + Number(l.valor), 0);

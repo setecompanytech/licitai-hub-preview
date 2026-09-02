@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { dataLocal } from '@/lib/financeiro/data-local';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ export default function FinCalculadoraMargem() {
       const meses = parseInt(periodo, 10);
       const dataInicio = new Date();
       dataInicio.setMonth(dataInicio.getMonth() - meses);
-      const inicioISO = dataInicio.toISOString().slice(0, 10);
+      const inicioISO = dataLocal(dataInicio);
 
       // O lançamento tem DUAS chaves para categorias — `categoria_id` (a
       // classificada) e `categoria_sugerida_id` (o palpite da conciliação) —
