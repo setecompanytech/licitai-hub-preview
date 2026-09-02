@@ -142,4 +142,24 @@ describe('montarDRE', () => {
     expect(dre.margemLiquida).toBe(0);
     expect(dre.resultadoLiquido).toBe(-800);
   });
+
+  it('devolução ABATE o grupo em que vive — a natureza manda no sinal', () => {
+    // O caso real: PIX de R$ 5.040,00 devolvido pelo fornecedor (06/08). Como
+    // receita dentro de cmv_cps, deve REDUZIR o custo — a soma cega antiga o
+    // aumentaria. O espelho vale para devolução de venda na receita bruta.
+    const dre = montarDRE(
+      [
+        linha({ grupo_dre: 'receita_bruta', natureza: 'receita', total: 10000 }),
+        linha({ grupo_dre: 'receita_bruta', natureza: 'despesa', total: 500 }),
+        linha({ grupo_dre: 'cmv_cps', natureza: 'despesa', total: 4000 }),
+        linha({ grupo_dre: 'cmv_cps', natureza: 'receita', total: 5040 }),
+      ],
+      '2026-08',
+    );
+    expect(dre.receitaBruta).toBe(9500);
+    // Devolução maior que o custo do mês: o grupo pode ficar negativo, e o
+    // Lucro Bruto sobe — dinheiro que voltou é resultado a favor.
+    expect(dre.custos).toBe(4000 - 5040);
+    expect(dre.lucroBruto).toBe(9500 - (4000 - 5040));
+  });
 });

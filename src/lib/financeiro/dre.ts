@@ -115,8 +115,22 @@ export function montarDRE(linhas: DRELinhaRaw[], competencia: string): DREResumo
   }
 
   const grupos = Array.from(gruposMap.values()).sort((a, b) => b.total - a.total);
-  const sumGrupo = (nome: string) =>
-    grupos.filter((g) => g.grupo === nome).reduce((s, g) => s + g.total, 0);
+
+  // A natureza manda no sinal — a mesma regra do saldo, agora no resultado.
+  //
+  // Cada grupo tem uma polaridade dominante (custos são despesa; receita bruta
+  // é receita). Lançamento de natureza OPOSTA dentro do grupo é estorno e
+  // ABATE: devolução de compra é receita em cmv_cps e reduz o custo;
+  // devolução de venda é despesa em receita_bruta e reduz a receita. Antes,
+  // tudo somava positivo — a devolução de R$ 5.040 do fornecedor AUMENTARIA
+  // o custo em vez de abatê-lo.
+  const GRUPOS_DE_RECEITA = new Set(["receita_bruta", "receita_financeira"]);
+  const sumGrupo = (nome: string) => {
+    const polaridade = GRUPOS_DE_RECEITA.has(nome) ? "receita" : "despesa";
+    return grupos
+      .filter((g) => g.grupo === nome)
+      .reduce((s, g) => s + (g.natureza === polaridade ? g.total : -g.total), 0);
+  };
 
   const receitaBruta = sumGrupo("receita_bruta");
   const deducoes = sumGrupo("deducoes");
