@@ -86,7 +86,7 @@ export function parseOFX(content: string): OFXStatement {
 
     const trnType = getInBlock(block, "TRNTYPE") ?? "OTHER";
     const dtposted = parseOFXDate(getInBlock(block, "DTPOSTED") ?? "");
-    const trnamt = parseFloat(getInBlock(block, "TRNAMT") ?? "0");
+    const trnamt = parseValorOFX(getInBlock(block, "TRNAMT") ?? "0");
     const memo = getInBlock(block, "MEMO") ?? "";
     const name = getInBlock(block, "NAME") ?? "";
     const desc = (name || memo).trim();
@@ -114,7 +114,7 @@ export function parseOFX(content: string): OFXStatement {
     accountType: get("BANKACCTFROM", "ACCTTYPE") ?? "CHECKING",
     startDate: parseOFXDate(get("BANKTRANLIST", "DTSTART") ?? ""),
     endDate: parseOFXDate(get("BANKTRANLIST", "DTEND") ?? ""),
-    finalBalance: parseFloat(get("LEDGERBAL", "BALAMT") ?? "0"),
+    finalBalance: parseValorOFX(get("LEDGERBAL", "BALAMT") ?? "0"),
     currency: get("CURDEF", "CURDEF") ?? "BRL",
     transactions,
   };
@@ -125,6 +125,30 @@ function sgmlToXml(sgml: string): string {
     if (val.trim() === "") return `<${tag}>`;
     return `<${tag}>${val}</${tag}>`;
   });
+}
+
+
+/**
+ * TRNAMT pelo espírito da spec é ponto-decimal — mas banco brasileiro emite
+ * "1234,56" e até "1.234,56". parseFloat pararia na vírgula e os CENTAVOS
+ * sumiriam em silêncio. Mesma gramática do valor-colado: o separador que
+ * aparece por último é o decimal.
+ */
+function parseValorOFX(s: string): number {
+  const t = s.trim();
+  if (!t) return 0;
+  const temVirgula = t.includes(",");
+  const temPonto = t.includes(".");
+  let norm = t;
+  if (temVirgula && temPonto) {
+    norm = t.lastIndexOf(",") > t.lastIndexOf(".")
+      ? t.replace(/\./g, "").replace(",", ".")
+      : t.replace(/,/g, "");
+  } else if (temVirgula) {
+    norm = t.replace(",", ".");
+  }
+  const n = parseFloat(norm);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function parseOFXDate(s: string): string {

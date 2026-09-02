@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -43,8 +44,9 @@ function parseCSV(text: string): LinhaImport[] {
 
   return linhas.slice(1).map((linha): LinhaImport => {
     const cols = linha.split(sep);
-    const valorRaw = (cols[iValor] || "").trim().replace(/\./g, "").replace(",", ".");
-    const valor = parseFloat(valorRaw);
+    // interpretarValorColado decide o decimal pelo separador que aparece por
+    // último: "3500.00" ficava 100× maior no replace cego de pontos.
+    const valor = interpretarValorColado((cols[iValor] || "").trim()) ?? NaN;
     const desc = (cols[iDesc] || "").trim();
     const venc = (cols[iVenc] || "").trim();
     const comp = (cols[iComp] || venc).trim();

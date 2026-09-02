@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from "react";
+import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -125,10 +126,8 @@ function autoMatch(headers: string[], schema: CampoDef[]): Record<string, number
 
 function parseValor(v: any): number {
   if (typeof v === "number") return v;
-  const s = String(v ?? "").trim();
-  if (!s) return NaN;
-  const limpo = s.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
-  return parseFloat(limpo);
+  // "3500.00" exportado em locale en-US virava 350000 no replace cego.
+  return interpretarValorColado(String(v ?? "")) ?? NaN;
 }
 
 function parseData(v: any): string {

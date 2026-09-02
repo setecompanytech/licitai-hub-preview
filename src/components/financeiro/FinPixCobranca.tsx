@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,13 +62,18 @@ export default function FinPixCobranca() {
     }
     setEmitting(true);
     try {
+      const valorNumerico = interpretarValorColado(form.valor);
+      if (valorNumerico === null || valorNumerico <= 0) {
+        toast.error("Valor inválido — use o formato 1.234,56.");
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("emitir-pix", {
         body: {
           empresa_id: empresaAtiva.id,
           chave_pix: form.chave_pix.trim(),
           beneficiario_nome: form.beneficiario_nome.trim(),
           beneficiario_cidade: form.beneficiario_cidade.trim(),
-          valor: Number(form.valor.replace(",", ".")),
+          valor: valorNumerico,
           descricao: form.descricao.trim() || undefined,
         },
       });
