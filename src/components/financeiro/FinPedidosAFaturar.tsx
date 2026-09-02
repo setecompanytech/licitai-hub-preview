@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { dataLocal, hojeLocal } from '@/lib/financeiro/data-local';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,21 +130,31 @@ export default function FinPedidosAFaturar() {
     setSaving(true);
     try {
       const nParcelas = Math.max(1, parseInt(parcelas) || 1);
-      const valorParcela = faturando.valor_total / nParcelas;
+      // A última parcela carrega a sobra do arredondamento: 10.000 em 3×
+      // gravava 3.333,33 ×3 = 9.999,99 e um centavo sumia do contrato.
+      const valorParcela = Math.round((faturando.valor_total / nParcelas) * 100) / 100;
+      const valorUltima = +(faturando.valor_total - valorParcela * (nParcelas - 1)).toFixed(2);
       const hoje = new Date();
+      const diaBase = hoje.getDate();
 
       const inserts = Array.from({ length: nParcelas }, (_, i) => {
-        const venc = new Date(hoje);
-        venc.setMonth(venc.getMonth() + i + 1);
+        // Mês a mês com dia grampeado no fim do mês: somar mês a partir do
+        // dia 31 estourava (31/jan em 3× dava 03/mar, 31/mar e 01/mai).
+        const alvo = new Date(hoje.getFullYear(), hoje.getMonth() + i + 1, 1, 12);
+        const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+        alvo.setDate(Math.min(diaBase, ultimoDia));
+        const venc = alvo;
         return {
           empresa_id: faturando.empresa_id,
           tipo: 'a_receber' as const,
           natureza: 'receita' as const,
           status: 'previsto' as const,
           descricao: `${faturando.contrato_numero ?? 'Contrato'} · Pedido ${faturando.numero_pedido}${nParcelas > 1 ? ` — Parcela ${i + 1}/${nParcelas}` : ''}`,
-          valor: parseFloat(valorParcela.toFixed(2)),
-          data_competencia: venc.toISOString().slice(0, 10),
-          data_emissao: hoje.toISOString().slice(0, 10),
+          valor: i === nParcelas - 1 ? valorUltima : valorParcela,
+          data_competencia: dataLocal(venc),
+          // Sem vencimento a parcela ficava invisível para o fluxo de caixa.
+          data_vencimento: dataLocal(venc),
+          data_emissao: hojeLocal(),
           conta_id: contaId,
           contrato_id: faturando.contrato_id,
           contrato_pedido_id: faturando.id,

@@ -206,11 +206,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     else setNatureza("movimentacao");
   }, [tipo]);
 
-  // Quando o usuário informa a data de pagamento/recebimento, a competência
-  // deve refletir essa data (regime de caixa). O usuário pode alterar manualmente.
-  useEffect(() => {
-    if (dataRealizado) setDataCompetencia(dataRealizado);
-  }, [dataRealizado]);
+  // A competência acompanha a data de pagamento QUANDO O USUÁRIO A DIGITA —
+  // nunca por efeito de carga. O useEffect antigo disparava também quando o
+  // diálogo abria um lançamento existente: editar a descrição de uma NF de
+  // competência 15/08 paga em 05/09 regravava a competência como 05/09 e
+  // mudava dois meses do DRE (C7 da auditoria). A sincronização vive agora no
+  // onChange do campo de pagamento.
 
   const valorLiquido = useMemo(
     () => Math.max(0, Number(valor) + Number(valorJuros) + Number(valorMulta) + Number(valorTarifa) - Number(valorDesconto)),
@@ -1019,7 +1020,7 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   </div>
                   <div className="space-y-1.5">
                     <Label>Pago / recebido em</Label>
-                    <Input type="date" value={dataRealizado} onChange={(e) => setDataRealizado(e.target.value)} />
+                    <Input type="date" value={dataRealizado} onChange={(e) => { setDataRealizado(e.target.value); if (e.target.value) setDataCompetencia(e.target.value); }} />
                   </div>
                 </div>
               </div>

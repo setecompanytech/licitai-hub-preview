@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { lerLinhaDigitavel } from '@/lib/financeiro/boleto';
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
@@ -256,6 +257,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       boleto: "boleto", recibo: "recibo", contrato: "contrato",
       duplicata: "duplicata", fatura: "fatura",
     };
+    // O código de barras é o único campo com dígito verificador — no lote ele
+    // ia para as observações enquanto valor e vencimento entravam da leitura
+    // sem conferência. Mesma precedência do LancamentoDialog: o DV manda.
+    const boleto = d.codigo_barras ? lerLinhaDigitavel(String(d.codigo_barras), hojeLocal()) : null;
     const obsContrato = item.vinculo?.contrato_id
       ? `Vínculo: contrato ${item.vinculo.contrato_id}${
           item.vinculo.contrato_item_ids?.length
@@ -270,9 +275,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       descricao: d.descricao
         || `${(d.tipo_documento ?? "Documento").toString().toUpperCase()} ${d.numero_documento ?? ""}`.trim()
         || item.file.name,
-      valor: Number(d.valor_total ?? 0),
+      valor: boleto?.valor ?? Number(d.valor_total ?? 0),
       data_competencia: d.data_emissao ?? hojeLocal(),
-      data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
+      data_vencimento: boleto?.vencimento ?? d.data_vencimento ?? null,
       data_emissao: d.data_emissao ?? null,
       tipo_documento: tipoDocBruto ? (tipoDocMap[tipoDocBruto] ?? "outro") : "outro",
       numero_documento: d.numero_documento ?? null,
