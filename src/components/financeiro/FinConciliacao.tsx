@@ -16,7 +16,7 @@ import {
   useUpsertLancamento,
   useEmpresaId,
 } from "@/hooks/useFinanceiro";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -384,15 +384,25 @@ export default function FinConciliacao() {
     return (movimentos ?? []).reduce((s: number, m: any) => s + Number(m.valor), 0);
   }, [movimentos]);
 
-  const saldoSistema = useMemo(() => {
-    if (!contaSelecionada) return 0;
-    return (lancamentosTodos ?? [])
-      .filter((l: any) => l.conta_id === contaSelecionada && l.status !== "cancelado")
-      .reduce((s: number, l: any) => {
-        const val = Number(l.valor);
-        return l.natureza === "receita" ? s + val : s - val;
-      }, 0);
-  }, [lancamentosTodos, contaSelecionada]);
+  /**
+   * O "saldo do sistema" vem da RÉGUA ÚNICA do banco (financeiro_saldo_derivado)
+   * — a mesma que o recálculo grava e a conferência mede. A cópia local que
+   * vivia aqui divergia em três pontos (contava previsto, tratava movimentação
+   * como saída e ignorava conta_destino_id): uma transferência de linha única
+   * de 50 mil fazia a tela acusar 50 mil de divergência inexistente no destino
+   * (A9 da auditoria). Uma fórmula, um lugar — também no cliente.
+   */
+  const { data: saldoSistema = 0 } = useQuery({
+    queryKey: ["fin-saldo-derivado", contaSelecionada],
+    enabled: !!contaSelecionada,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("financeiro_saldo_derivado", {
+        p_conta_id: contaSelecionada,
+      });
+      if (error) throw error;
+      return Number(data) || 0;
+    },
+  });
 
   const movimentosAgrupados = useMemo(() => {
     const grupos = new Map<string, any[]>();

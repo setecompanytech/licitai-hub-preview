@@ -1350,7 +1350,8 @@ export function useFluxoCaixa(diasFrente = 90) {
     enabled: !!empresaId,
     queryFn: async (): Promise<{ saldoInicial: number; dias: FluxoDia[] }> => {
       const hoje = new Date();
-      const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const hojeStr = hojeLocal();
+      const inicio = dataLocal(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
       const fim = somarDiasLocal(diasFrente);
 
       const [contasRes, fluxoRes] = await Promise.all([
@@ -1369,12 +1370,15 @@ export function useFluxoCaixa(diasFrente = 90) {
       const saldoInicial = (contasRes.data ?? []).reduce((s, c) => s + Number(c.saldo_atual ?? 0), 0);
       const linhas = (fluxoRes.data ?? []) as unknown as Omit<FluxoDia, "saldo_dia" | "saldo_acumulado">[];
 
+      // O saldo das contas JÁ contém tudo que se realizou: acumular de novo os
+      // dias passados contava o realizado uma segunda vez na projeção (A8).
+      // O passado aparece nas barras; o acumulado só anda com o futuro.
       let acumulado = saldoInicial;
       const dias: FluxoDia[] = linhas.map((l) => {
         const entrada = Number(l.entradas_previstas ?? 0) + Number(l.entradas_realizadas ?? 0);
         const saida = Number(l.saidas_previstas ?? 0) + Number(l.saidas_realizadas ?? 0);
         const saldo_dia = entrada - saida;
-        acumulado += saldo_dia;
+        if (l.data > hojeStr) acumulado += saldo_dia;
         return {
           data: l.data,
           entradas_previstas: Number(l.entradas_previstas ?? 0),
