@@ -29,7 +29,7 @@ function competenciaAtual(): string {
 }
 
 export default function FinApuracao() {
-  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular } = useApuracaoTributaria();
+  const { config, apuracoes, loading, salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular, montarTrimestre } = useApuracaoTributaria();
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const [receitaComercio, setReceitaComercio] = useState(0);
   const [receitaServico, setReceitaServico] = useState(0);
@@ -55,10 +55,22 @@ export default function FinApuracao() {
     if (config) setLimiteAdicional(Number(config.limite_adicional_irpj) || 0);
   }, [config]);
 
+  /** Contexto trimestral do adicional de IRPJ (posição no trimestre + base
+   *  acumulada dos meses irmãos) — recarregado quando a competência muda. */
+  const [trimestre, setTrimestre] = useState<
+    { posicao: number; baseIrpjMesesAnteriores: number } | undefined
+  >(undefined);
+  useEffect(() => {
+    let vivo = true;
+    setTrimestre(undefined);
+    montarTrimestre(competencia).then((t) => { if (vivo) setTrimestre(t); });
+    return () => { vivo = false; };
+  }, [competencia, montarTrimestre]);
+
   const resultado = useMemo(() => {
     if (!config) return {};
-    return calcular(receitaComercio, receitaServico, rbt12, despesas, creditos);
-  }, [config, receitaComercio, receitaServico, rbt12, despesas, creditos, calcular]);
+    return calcular(receitaComercio, receitaServico, rbt12, despesas, creditos, trimestre);
+  }, [config, receitaComercio, receitaServico, rbt12, despesas, creditos, calcular, trimestre]);
 
   const totalDevido = useMemo(() => {
     if (resultado.simples) return resultado.simples.valorDevido;
@@ -291,7 +303,7 @@ export default function FinApuracao() {
                         <TableRow><TableCell>Base CSLL (presunção)</TableCell><TableCell className="text-right">{fmt(resultado.presumido.baseCsll)}</TableCell></TableRow>
                       </>}
                       <TableRow><TableCell>IRPJ</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.irpj)}</TableCell></TableRow>
-                      <TableRow><TableCell>Adicional IRPJ</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.adicionalIrpj)}</TableCell></TableRow>
+                      <TableRow><TableCell>Adicional IRPJ{resultado.presumido && trimestre ? ` — trimestral, mês ${trimestre.posicao}/3` : ""}</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.adicionalIrpj)}</TableCell></TableRow>
                       <TableRow><TableCell>CSLL</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.csll)}</TableCell></TableRow>
                       <TableRow><TableCell>PIS {resultado.real ? "(não-cumulativo)" : "(cumulativo)"}</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.pis)}</TableCell></TableRow>
                       <TableRow><TableCell>COFINS {resultado.real ? "(não-cumulativo)" : "(cumulativo)"}</TableCell><TableCell className="text-right">{fmt((resultado.presumido ?? resultado.real)!.cofins)}</TableCell></TableRow>
@@ -305,7 +317,7 @@ export default function FinApuracao() {
             )}
 
             <div className="flex justify-end">
-              <Button onClick={() => salvarApuracao(competencia, receitaComercio, receitaServico, rbt12, resultado)}>
+              <Button onClick={() => salvarApuracao(competencia, receitaComercio, receitaServico, rbt12, resultado, { despesasOperacionais: despesas, creditosPisCofins: creditos })}>
                 <Save className="w-4 h-4 mr-1.5" />Salvar apuração
               </Button>
             </div>

@@ -109,9 +109,13 @@ export default function FinCalculadoraMargem() {
         const ehServico = config.regime === "simples" && (config.anexo_simples ?? 1) >= 3;
         const rComercio = ehServico ? 0 : receita;
         const rServico = ehServico ? receita : 0;
-        const r = calcular(rComercio, rServico, receita * 12 / meses, despesa, 0);
+        // Mensaliza antes de calcular: o limite do adicional de IRPJ é por
+        // período — aplicá-lo uma vez sobre base de N meses superestimava o
+        // adicional (B15 da auditoria). A carga percentual mensal é a do período.
+        const rMes = receita / meses;
+        const r = calcular(rComercio / meses, rServico / meses, receita * 12 / meses, despesa / meses, 0);
         const total = r.simples?.valorDevido ?? r.presumido?.total ?? r.real?.total ?? 0;
-        cargaTributariaPerc = receita > 0 ? (total / receita) * 100 : 0;
+        cargaTributariaPerc = rMes > 0 ? (total / rMes) * 100 : 0;
       }
 
       setAnalise({

@@ -147,6 +147,7 @@ export function useApuracaoTributaria() {
     rbt12: number,
     despesasOperacionais = 0,
     creditosPisCofins = 0,
+    trimestre?: { posicao: number; baseIrpjMesesAnteriores: number },
   ): { simples?: ResultadoSimples; presumido?: ResultadoPresumido; real?: ResultadoReal } => {
     if (!config) return {};
     const receitaMes = receitaComercio + receitaServico;
@@ -171,6 +172,8 @@ export function useApuracaoTributaria() {
           aliquotaCofins: config.aliquota_cofins,
           aliquotaIss: config.aliquota_iss,
           aliquotaIcms: config.aliquota_icms,
+          posicaoNoTrimestre: trimestre?.posicao,
+          baseIrpjMesesAnterioresTrimestre: trimestre?.baseIrpjMesesAnteriores,
         }),
       };
     }
@@ -190,12 +193,35 @@ export function useApuracaoTributaria() {
     };
   }, [config]);
 
+  /**
+   * O contexto trimestral do adicional de IRPJ (Lei 9.430/96): posição do mês
+   * no trimestre e a base de presunção já acumulada nos meses anteriores —
+   * lida da MESMA RPC de receita, com as MESMAS presunções da configuração.
+   */
+  const montarTrimestre = useCallback(async (competencia: string) => {
+    if (!config || config.regime !== "presumido") return undefined;
+    const [ano, mes] = competencia.slice(0, 7).split("-").map(Number);
+    const posicao = ((mes - 1) % 3) + 1;
+    let baseIrpjMesesAnteriores = 0;
+    for (let k = 1; k < posicao; k++) {
+      const m = mes - k;
+      const comp = `${ano}-${String(m).padStart(2, "0")}-01`;
+      const r = await buscarReceita(comp);
+      if (!r) continue;
+      baseIrpjMesesAnteriores +=
+        (Number(r.comercio) || 0) * (config.presuncao_irpj_comercio / 100) +
+        (Number(r.servico) || 0) * (config.presuncao_irpj_servico / 100);
+    }
+    return { posicao, baseIrpjMesesAnteriores };
+  }, [config, buscarReceita]);
+
   const salvarApuracao = useCallback(async (
     competencia: string,
     receitaComercio: number,
     receitaServico: number,
     rbt12: number,
     resultado: ReturnType<typeof calcular>,
+    entradas?: { despesasOperacionais: number; creditosPisCofins: number },
   ) => {
     if (!empresaAtiva?.id || !config) return;
     const r = resultado.simples ?? resultado.presumido ?? resultado.real;
@@ -211,7 +237,7 @@ export function useApuracaoTributaria() {
       receita_bruta_total: receitaComercio + receitaServico,
       rbt12,
       valor_total: total,
-      detalhes: r,
+      detalhes: entradas ? { ...r, entradas } : r,
       status: "apurado",
     };
 
@@ -267,13 +293,31 @@ export function useApuracaoTributaria() {
   /** Recalcula uma apuração existente: reimporta receita da competência, refaz o cálculo e regrava. */
   const recalcular = useCallback(async (apuracao: Apuracao) => {
     if (!config) return;
+    // C6 da auditoria: recalcular com despesas=0 no Lucro Real tributava a
+    // receita inteira e regravava por cima. As entradas vivem em `detalhes`;
+    // sem elas, no Real, o botão se recusa em vez de destruir a apuração.
+    const entradas = (apuracao.detalhes as any)?.entradas as
+      | { despesasOperacionais: number; creditosPisCofins: number }
+      | undefined;
+    if (config.regime === "real" && !entradas) {
+      toast.error(
+        "Esta apuração de Lucro Real não guarda as despesas informadas — recalcule pela aba Apuração, informando-as de novo.",
+      );
+      return;
+    }
     const receita = await buscarReceita(apuracao.competencia);
     if (!receita) return;
     const rComercio = Number(receita.comercio) || 0;
     const rServico = Number(receita.servico) || 0;
     const rbt = Number(receita.rbt12) || 0;
-    const r = calcular(rComercio, rServico, rbt, 0, 0);
-    await salvarApuracao(apuracao.competencia, rComercio, rServico, rbt, r);
+    const trimestre = await montarTrimestre(apuracao.competencia);
+    const r = calcular(
+      rComercio, rServico, rbt,
+      entradas?.despesasOperacionais ?? 0,
+      entradas?.creditosPisCofins ?? 0,
+      trimestre,
+    );
+    await salvarApuracao(apuracao.competencia, rComercio, rServico, rbt, r, entradas);
     // Limpa o flag de desatualizada (o upsert não cobre, fazemos UPDATE explícito)
     await (supabase as any)
       .from("financeiro_apuracoes")
@@ -285,6 +329,6 @@ export function useApuracaoTributaria() {
 
   return {
     config, apuracoes, loading,
-    salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular,
+    salvarConfig, buscarReceita, calcular, salvarApuracao, marcarComoPago, carregar, recalcular, montarTrimestre,
   };
 }

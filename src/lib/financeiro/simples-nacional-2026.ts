@@ -131,6 +131,17 @@ export interface ParametrosPresumido {
   aliquotaCofins: number;          // % cumulativo
   aliquotaIss: number;             // % sobre serviços
   aliquotaIcms: number;            // % sobre comércio
+  /**
+   * Apuração TRIMESTRAL do adicional (Lei 9.430/96, arts. 1º e 25): o limite
+   * é R$ 60.000 por trimestre, não R$ 20.000 por mês. Informando a posição do
+   * mês no trimestre (1–3) e a base de IRPJ já acumulada nos meses
+   * anteriores, o adicional devolvido é o INCREMENTO do mês — a soma dos três
+   * meses fecha exatamente o valor trimestral devido (um mês pode devolver
+   * ajuste negativo, compensando excesso estimado antes). Sem informar,
+   * comporta-se como mês isolado (posição 1, base zero).
+   */
+  posicaoNoTrimestre?: number;
+  baseIrpjMesesAnterioresTrimestre?: number;
 }
 
 export interface ResultadoPresumido {
@@ -159,8 +170,15 @@ export function calcularPresumido(p: ParametrosPresumido): ResultadoPresumido {
     p.receitaServico * (p.presuncaoCsllServico / 100);
 
   const irpj = baseIrpj * (p.aliquotaIrpj / 100);
-  const excedente = Math.max(0, baseIrpj - p.limiteAdicionalIrpj);
-  const adicional = excedente * (p.adicionalIrpj / 100);
+  // Adicional por acumulação trimestral: devido-até-aqui menos o que os meses
+  // anteriores do trimestre já apuraram. Σ dos 3 meses = exato pela lei.
+  const pos = Math.min(3, Math.max(1, p.posicaoNoTrimestre ?? 1));
+  const baseAnterior = p.baseIrpjMesesAnterioresTrimestre ?? 0;
+  const acumDevido =
+    Math.max(0, baseAnterior + baseIrpj - p.limiteAdicionalIrpj * pos) * (p.adicionalIrpj / 100);
+  const jaDevido =
+    Math.max(0, baseAnterior - p.limiteAdicionalIrpj * (pos - 1)) * (p.adicionalIrpj / 100);
+  const adicional = acumDevido - jaDevido;
   const csll = baseCsll * (p.aliquotaCsll / 100);
 
   // PIS/COFINS no presumido = regime cumulativo sobre receita bruta
