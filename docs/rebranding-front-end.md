@@ -23,7 +23,7 @@
 O protótipo nasceu como apresentação. O Rafael aprovou a direção, e agora o app
 migra para ela.
 
-**Não é uma cópia do protótipo.** O protótipo desenhou 37 telas; o app tem 91
+**Não é uma cópia do protótipo.** O protótipo desenhou 43 telas; o app tem 89
 rotas. Ele é direção, não especificação — as melhorias vão aparecer ao longo do
 trabalho, e o desenho das telas que faltam vem depois.
 
@@ -70,18 +70,25 @@ que o outro já baixou. Ali entra `merge`.
 
 | | App hoje | Protótipo |
 | --- | --- | --- |
-| Telas | 91 rotas | 37 |
-| Cores definidas | 101 variáveis | 64 variáveis |
+| Telas | 89 rotas | 43 |
+| Cores definidas | 60 variáveis | 75 variáveis |
 | Formato da cor | `215 55% 20%` (HSL) | `#2563EB` (hex) |
 | Primária | azul-marinho | azul-marinho + azul vivo |
 | Destaque | laranja | ciano e dourado |
 | Tema escuro | funcionando | **não existe** |
 | Corpo | Plus Jakarta Sans | Inter |
-| Títulos | Cinzel | Cinzel + Playfair Display |
+| Títulos | Cinzel | Cinzel (Playfair só na tela de login) |
+
+> **Números reconferidos em 02/09/2026.** A versão anterior desta tabela dizia
+> "91 rotas / 37 telas / 101 variáveis / 64 variáveis". Os valores corretos são
+> os acima. E a Playfair Display aparece numa única regra do protótipo
+> (`index.html:3350`, o logo do login), mas **não está no `<link>` do Google
+> Fonts** (`index.html:8` carrega só Inter e Cinzel) — hoje ela cai em Georgia.
+> Decidir na fatia 2 se carrega ou se o logo do login vai para Cinzel.
 
 **O número que define o tamanho do trabalho:** de **448 arquivos** de tela, só
 **6** escrevem cor de interface à mão. Os outros herdam das variáveis. Trocar as
-variáveis repinta o app quase inteiro — inclusive as ~54 telas que o protótipo
+variáveis repinta o app quase inteiro — inclusive as ~46 telas que o protótipo
 nunca desenhou.
 
 É por isso que a primeira fatia é a de maior efeito e menor risco.
@@ -347,7 +354,25 @@ brilho e navegação. O protótipo tem três candidatas:
 usa em foco, link e estado ativo — exatamente onde o laranja está hoje. O ciano
 fica para a família `--cat-banco`, e o céu para gráficos.
 
-Confirmar com o Caio antes de aplicar.
+> ✅ **Confirmado pelo Caio em 02/09/2026.** `--accent: 221 83% 53%`.
+> Confirmadas na mesma conversa: `--primary` = navy `217 48% 12%` com foreground
+> branco, `--ring` = azul `221 83% 53%`, e o tema escuro derivado por regra.
+
+### 6.2.1 A cor predominante é o navy — e ela emparelha com a logo dourada
+
+Apontado pelo Caio e conferido no protótipo: **`--navy #101B2D` é a cor
+predominante do rebranding**, e o header, o splash de carregamento e o véu da
+tela de login são todos exatamente esse hex — `.topbar` (`index.html:141`),
+`--boot-bg` (`:73`) e `--lg-veu-3: rgba(16,27,45,.44)` (`:111`) compartilham o
+token de propósito.
+
+O par dele é a **logo dourada**: `.logo{color:var(--logo-accent)}` `#F0D77B` no
+header (`:145`) e `.boot__logo{color:var(--gold)}` `#D4AF37` no splash (`:247`).
+
+Consequência para os tokens de navegação: **`--nav-active` sai do laranja
+(`25 95% 53%`) e vira `--gold`**. É a cor de marca sobre o navy no protótipo, e
+mantê-la laranja deixaria o único resquício da paleta velha justamente no
+elemento mais visível do app.
 
 ### 6.3 Famílias novas — entram no app
 
@@ -418,9 +443,15 @@ como estão, o app fica meio repaginado — gráfico e navegação com a cara ve
 **O protótipo não tem tema escuro.** Zero ocorrências de `.dark`,
 `prefers-color-scheme` ou `data-theme` nas 16.390 linhas.
 
-O app tem: **44 variáveis** redefinidas em `.dark`
-([src/index.css:98](../src/index.css#L98)) e o botão de alternar no cabeçalho.
+O app tem: **47 variáveis** redefinidas em `.dark`
+([src/index.css:103](../src/index.css#L103)) e o botão de alternar no cabeçalho.
 É funcionalidade em produção.
+
+**As 13 que o `.dark` NÃO redefine são uma armadilha:** `--radius`, os 6
+`--gradient-*` e os 6 `--shadow-*`. `--gradient-card` é branco→cinza-claro e
+`--gradient-warm` é bege — ambos continuam claros no tema escuro. E as sombras
+usam `hsl(215 45% 12% / α)`: sombra escura sobre fundo escuro, que não aparece.
+As duas famílias precisam ganhar bloco `.dark` na derivação.
 
 **Decisão tomada:** a paleta escura será **derivada por regra** da clara nova —
 inverter a luminosidade, preservar matiz e saturação — e depois ajustada à mão
@@ -567,8 +598,126 @@ Na dúvida, tire da fatia.
 
 - **Lovable e a branch** — ele commita sozinho na `main`; confirmar que continua
   apontado para lá e não passa a mexer na branch
-- **`--accent`** — confirmar a recomendação da seção 6.2 com o Caio
-- **As ~54 telas sem desenho** — herdam a paleta pelos tokens, mas layout e
+- ~~**`--accent`**~~ — decidido em 02/09/2026: azul `221 83% 53%` (seção 6.2)
+- **As ~46 telas sem desenho** — herdam a paleta pelos tokens, mas layout e
   composição seguem como estão até alguém desenhar
 - **Tema escuro** — a derivação automática precisa de uma passada de ajuste
   manual; quando, e por quem
+
+---
+
+## 11. Checklist de módulos
+
+> Autorizado pelo Yrmih em 02/09/2026. Esta é a folha de acompanhamento do
+> rebrand: as 89 rotas de [src/App.tsx](../src/App.tsx) agrupadas em 22 módulos
+> de negócio. **Marcar a cada etapa concluída.**
+
+Como ler as colunas:
+
+| Coluna | Fecha quando |
+| --- | --- |
+| **Prot.** | ✅ = o protótipo desenhou este módulo · — = não desenhou, herda só a paleta |
+| **Tok** | a fatia 1 entrou — o módulo já está com a paleta nova |
+| **Tip** | a fatia 2 entrou — Inter no corpo e a escala densa aplicada |
+| **Comp** | a fatia 3 entrou — raio, altura, densidade e forma dos componentes |
+| **Lay** | a fatia 4 passou por este módulo — layout e composição |
+| **☾** | claro **e** escuro percorridos nas telas do módulo, sem quebra |
+
+A fatia 1 marca a coluna **Tok** de todos de uma vez — é o efeito de repintar 442
+telas com dois arquivos. As demais avançam módulo a módulo.
+
+| # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
+| --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 9 | Compras & Fornecedores | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 12 | Apoio Contábil | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 14 | Metas | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 15 | IA & Assistentes | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 16 | Comunicação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 17 | Documentos & Cadastro | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 18 | Agenda | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 19 | Equipe & Configurações | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 20 | Admin | 7 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 21 | Conteúdo & Suporte | 9 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 22 | Institucional & Legal | 17 | — | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+**Onde está o trabalho sem desenho.** O módulo 22 (17 rotas: landing, sobre,
+contato, soluções, demo, investidores e as 11 páginas legais) é o único grupo
+inteiro que o protótipo não cobriu. Somado às telas internas dos outros módulos
+que ficaram de fora, dá as ~46 telas sem referência visual: elas herdam a paleta
+pelos tokens e mantêm o layout atual até alguém desenhar.
+
+### As rotas de cada módulo
+
+| # | Módulo | Rotas |
+| --- | --- | --- |
+| 1 | Autenticação & Onboarding | `/auth` `/cadastro` `/reset-password` `/aceitar-convite` `/certificado-upload` |
+| 2 | Painel & Navegação | `/` `/dashboard` `/avisos` |
+| 3 | Licitações & Kanban | `/licitacoes` `/kanban` `/licitacoes-estrategicas` `/historico-licitacoes` `/processo/:id` |
+| 4 | Monitoramento & Busca | `/monitoramento-editais` `/diarios-oficiais` `/busca-inteligente` `/boletins` `/perfis-alerta` `/configuracoes/alertas` |
+| 5 | Precificação | `/precificacao` `/produtos` |
+| 6 | Proposta & Envio | `/proposta-tecnica` `/comprasgov-envio` |
+| 7 | Robô de Lances | `/robo-lances` |
+| 8 | Contratos | `/gestao-contratos` `/indices-repactuacao` |
+| 9 | Compras & Fornecedores | `/gestao-compras` |
+| 10 | Financeiro | `/financeiro` `/financeiro/:view` `/auditoria-bancos` `/relatorio-contabil` `/admin/financeiro` |
+| 11 | Apoio Jurídico | `/apoio-juridico` `/apoio-juridico/redigir/:modeloId` |
+| 12 | Apoio Contábil | `/apoio-contabil` |
+| 13 | Análise de Mercado & Concorrentes | `/analise-mercado` `/concorrentes` |
+| 14 | Metas | `/metas-comercial` `/definir-metas` |
+| 15 | IA & Assistentes | `/assistente` `/aurelia` `/assistente-especializado` `/agente` `/workflow-ia` `/ferramentas` |
+| 16 | Comunicação | `/whatsapp-crm` `/whatsapp-setores` `/monitoramento-chat` |
+| 17 | Documentos & Cadastro | `/documentos` `/assessoria-cadastral` `/empresas` |
+| 18 | Agenda | `/calendario` `/meus-compromissos` |
+| 19 | Equipe & Configurações | `/equipe` `/equipe/permissoes` `/configuracoes` |
+| 20 | Admin | `/admin/templates` `/admin/fontes-fabricantes` `/admin/marketing` `/admin/auditoria` `/admin/distribuicao` `/admin/mural-telemetria` `/admin/metricas-saas` |
+| 21 | Conteúdo & Suporte | `/blog` `/ebook` `/tutorial` `/suporte` `/ajuda` `/faq` `/api-integracao` `/analytics` `/status` |
+| 22 | Institucional & Legal | `/landing` `/index` `/sobre` `/contato` `/solucoes` `/demo` `/investidores` `/termos-de-uso` `/politica-de-privacidade` `/lgpd` `/dpa` `/compliance` `/seguranca-informacao` `/politica-cookies` `/politica-sla` `/aviso-legal` `/unsubscribe` |
+
+### As lacunas do protótipo que esta frente precisa cobrir
+
+O protótipo é direção, não gabarito — e tem buracos reconhecidos. Copiá-lo tal
+como está deixaria o app pior em cinco pontos. Cada um vira decisão nossa:
+
+| Lacuna no protótipo | O que fazemos | Fatia |
+| --- | --- | --- |
+| **Sem tema escuro** (zero `.dark` em 19.227 linhas) | derivar as 47 variáveis por regra e ajustar à mão | 1 |
+| **28 `box-shadow` escritas à mão**, contra 4 tokens | derivar uma escala de 6 e expor em `boxShadow` no config | 1 |
+| **10 gradientes, nenhum tokenizado** | refazer os 6 `--gradient-*` do app com navy→azul→dourado | 1 |
+| **`--linha` e `--linha-tint` são variáveis fantasma** — usadas em `.secao-cat__head` e `.mod__ic`, injetadas inline pelo JS, ausentes do `:root` | viram tokens de verdade (é o mesmo defeito já corrigido em `--text-primary`, documentado no próprio protótipo) | 1 |
+| **Nenhum `:focus-visible` em `.btn`, `.aba`, `.tag`, `.chip` ou links** — o único anel padronizado é o `0 0 0 3px var(--primary-tint)` do `.campo` | **não copiar a falha.** O app já tem `focus-visible:ring-2` em todo componente shadcn; mantemos, tokenizado com o `--ring` azul novo | 3 |
+| **Faltam tokens para `20px`** (a pílula universal: tags, badges, contadores, barras) **e `6px`** (pílula interna de segmented control) | nascem junto com `--radius-sm/md/lg` | 3 |
+| **11 famílias de KPI e 4 de cartão**, fragmentadas | consolidar nas duas boas — `.crt-*` e `.mk-kpi`, que usam `auto-fit` + `clamp()` + `min()` e dispensam breakpoint | 3 |
+
+### O que o `tailwind.config.ts` hoje não entrega
+
+Descoberto ao conferir, e muda o alcance da fatia 1: **não existe chave
+`boxShadow` no config**. As classes `shadow-sm`/`shadow-md`/`shadow-lg` usadas em
+`card.tsx`, `.stat-card` e `.glass-card` são as **sombras default do Tailwind** —
+não os tokens `--shadow-*`, que só chegam à tela em 2 regras de CSS e 1
+ocorrência em `.tsx`. Trocar `--shadow-*` hoje quase não muda nada.
+
+Mesma situação com `--gradient-*`: sem `backgroundImage` no config, apenas 4
+ocorrências em `.tsx` os consomem.
+
+Expor as duas famílias no config é a mudança de maior alcance visual pelo menor
+diff — e é token, não lógica.
+
+Duas limpezas para a mesma passada:
+
+- **`--sidebar-bg` é código morto** — declarada duas vezes (`:100` e `:170`) e com
+  **zero consumidores** no repositório inteiro. O `sidebar.DEFAULT` do Tailwind
+  aponta para `--sidebar-background`, não para ela.
+- **`.kanban-card` está declarada duas vezes** em `index.css` (linhas 356 e 449,
+  em blocos `@layer utilities` diferentes). As duas se somam por cascata; mexer
+  numa sem a outra é armadilha.
