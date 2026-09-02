@@ -1002,7 +1002,7 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
                   <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${saldoExtrato >= 0 ? "text-success" : "text-destructive"}`}>
+                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${saldoExtrato >= 0 ? "text-success" : "text-destructive"}`}>
                   {formatBRL(saldoExtrato)}
                 </span>
                 <div className="text-xs text-muted-foreground">
@@ -1018,7 +1018,7 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
                   <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-destructive"}`}>
+                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${saldoSistema >= 0 ? "text-foreground" : "text-destructive"}`}>
                   {formatBRL(saldoSistema)}
                 </span>
                 <div className="text-xs text-muted-foreground">Lançamentos da conta</div>
@@ -1032,7 +1032,7 @@ export default function FinConciliacao() {
                     ? <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                     : <XCircle className="w-3.5 h-3.5 text-warning" />}
                 </div>
-                <span className={`text-base font-semibold tabular-nums ${emEquilibrio ? "text-success" : "text-warning"}`}>
+                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${emEquilibrio ? "text-success" : "text-warning"}`}>
                   {emEquilibrio ? "Em dia" : formatBRL(Math.abs(diferenca))}
                 </span>
                 <div className="text-xs text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
@@ -1044,7 +1044,7 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                 </div>
-                <span className="text-base font-semibold tabular-nums">
+                <span className="text-base font-semibold tabular-nums whitespace-nowrap">
                   {resumoGeral.conciliados}
                   <span className="text-sm text-muted-foreground font-normal"> / {resumoGeral.total}</span>
                 </span>
@@ -1059,7 +1059,7 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
                   <Clock className="w-3.5 h-3.5 text-warning" />
                 </div>
-                <span className="text-base font-semibold tabular-nums text-warning">
+                <span className="text-base font-semibold tabular-nums whitespace-nowrap text-warning">
                   {resumoGeral.pendentes}
                 </span>
                 <div className="text-xs text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
@@ -1071,7 +1071,7 @@ export default function FinConciliacao() {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">A conciliar</span>
                   <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <span className="text-base font-semibold tabular-nums text-foreground">
+                <span className="text-base font-semibold tabular-nums whitespace-nowrap text-foreground">
                   {formatBRL(valorPendente)}
                 </span>
                 <div className="text-xs text-muted-foreground">
@@ -1211,7 +1211,7 @@ export default function FinConciliacao() {
                           <TableCell>
                             {mov ? (
                               <div>
-                                <div className="font-medium truncate max-w-[220px]">{mov.descricao}</div>
+                                <div className="font-medium truncate max-w-[220px]" title={mov.descricao}>{mov.descricao}</div>
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   {formatDate(mov.data_movimento)} ·{" "}
                                   <span className={Number(mov.valor) >= 0 ? "text-success" : "text-destructive"}>
@@ -1224,7 +1224,7 @@ export default function FinConciliacao() {
                           <TableCell>
                             {lanc ? (
                               <div>
-                                <div className="font-medium truncate max-w-[220px]">{lanc.descricao}</div>
+                                <div className="font-medium truncate max-w-[220px]" title={lanc.descricao}>{lanc.descricao}</div>
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   {lanc.data_vencimento ? `Venc.: ${formatDate(lanc.data_vencimento)}` : "—"} · {formatBRL(Number(lanc.valor))}
                                 </div>
@@ -1797,7 +1797,7 @@ export default function FinConciliacao() {
                                 <Link2 className="w-3 h-3 mr-1" />Tratar<ChevronDown className="w-3 h-3 ml-1" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-60">
+                            <DropdownMenuContent align="end" className="w-60 max-h-[60vh] overflow-y-auto">
                               <DropdownMenuLabel className="text-xs text-muted-foreground">
                                 {isCredito ? "+" : ""}{formatBRL(Number(m.valor))} · {formatDate(m.data_movimento)}
                               </DropdownMenuLabel>
@@ -1815,7 +1815,7 @@ export default function FinConciliacao() {
                                     }
                                   >
                                     <Sparkles className="w-3.5 h-3.5 text-muted-foreground mr-2 shrink-0" />
-                                    <span className="truncate flex-1">
+                                    <span className="truncate flex-1" title={lancSug.descricao}>
                                       {lancSug.descricao}
                                       {/* No menu o espaço é curto: só o número
                                           do contrato, que já basta para não
@@ -1944,7 +1944,7 @@ function StatCard({
         <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</span>
         <Icon className={`w-3.5 h-3.5 ${cls}`} />
       </div>
-      <span className={`text-base font-semibold tabular-nums ${cls}`}>{value}</span>
+      <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${cls}`}>{value}</span>
     </div>
   );
 }

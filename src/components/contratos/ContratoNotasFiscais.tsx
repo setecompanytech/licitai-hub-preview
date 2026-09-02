@@ -171,7 +171,7 @@ export default function ContratoNotasFiscais({ contratoId }: { contratoId: strin
                       </p>
                     )}
                     {nf.chave_acesso && (
-                      <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5 break-all">
                         Chave: {nf.chave_acesso}
                       </p>
                     )}

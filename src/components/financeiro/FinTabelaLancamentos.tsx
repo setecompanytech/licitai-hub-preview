@@ -367,7 +367,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       </TableCell>
                       <TableCell className="max-w-xs">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="font-medium line-clamp-1">{l.descricao}</p>
+                          <p className="font-medium line-clamp-1" title={l.descricao}>{l.descricao}</p>
                           {/* O documento que originou o lançamento, ao lado dele.
                               Pasta de arquivos que não aponta para os lançamentos
                               é arquivo morto: existe, e ninguém abre. */}
@@ -388,7 +388,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
                         )}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
+                      <TableCell className="max-w-[200px] truncate" title={l.pessoa?.nome ?? undefined}>
                         {l.pessoa?.nome ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-xs">
@@ -406,7 +406,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           </Badge>
                         ) : <span className="text-muted-foreground text-xs">—</span>}
                       </TableCell>
-                      <TableCell className="text-xs max-w-[140px] truncate">
+                      <TableCell className="text-xs max-w-[140px] truncate" title={vendedor ?? undefined}>
                         {vendedor ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>

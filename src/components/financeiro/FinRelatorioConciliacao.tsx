@@ -376,7 +376,7 @@ export default function FinRelatorioConciliacao() {
                     <TableRow key={m.id}>
                       <TableCell className="whitespace-nowrap">{formatDate(m.data_movimento)}</TableCell>
                       <TableCell className="text-xs">{m.conta?.nome ?? "—"}</TableCell>
-                      <TableCell className="text-sm max-w-[420px] truncate">{m.descricao}</TableCell>
+                      <TableCell className="text-sm max-w-[420px] truncate" title={m.descricao}>{m.descricao}</TableCell>
                       <TableCell className={`text-right tabular-nums font-mono ${Number(m.valor) >= 0 ? "text-success" : "text-destructive"}`}>
                         {formatBRL(Number(m.valor))}
                       </TableCell>

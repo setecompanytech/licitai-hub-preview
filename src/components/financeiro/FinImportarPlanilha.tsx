@@ -235,7 +235,7 @@ export default function FinImportarPlanilha() {
                         {l._erro && <Badge variant="destructive" className="text-xs mt-0.5">{l._erro}</Badge>}
                       </div>
                       <span className="w-24 text-right text-xs text-muted-foreground">{l.data_vencimento || "—"}</span>
-                      <span className="w-28 text-right tabular-nums">
+                      <span className="w-32 text-right tabular-nums whitespace-nowrap">
                         R$ {l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </span>
                     </div>

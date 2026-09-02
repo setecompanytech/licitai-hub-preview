@@ -486,7 +486,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                     <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-xs font-medium w-28 text-right">{fmt(item.valor)}</span>
+                  <span className="text-xs font-medium w-32 text-right tabular-nums whitespace-nowrap">{fmt(item.valor)}</span>
                   <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
                 </div>
               );

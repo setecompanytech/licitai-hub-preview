@@ -272,8 +272,8 @@ export default function EventoAuditoriaDetalheDialog({
                     {ctx.contratosDerivados.map((c) => (
                       <li key={c.id} className="border rounded-md p-2 text-xs flex items-start justify-between gap-2 bg-muted/20">
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{c.numero_contrato || '(sem número)'}</div>
-                          <div className="text-muted-foreground truncate">{c.objeto || '—'}</div>
+                          <div className="font-medium truncate" title={c.numero_contrato || undefined}>{c.numero_contrato || '(sem número)'}</div>
+                          <div className="text-muted-foreground truncate" title={c.objeto || undefined}>{c.objeto || '—'}</div>
                           <div className="text-muted-foreground text-xs mt-0.5">
                             {/* "— → —" era hieróglifo: sem nenhuma data, o que há
                                 para dizer é que a vigência não foi informada. */}

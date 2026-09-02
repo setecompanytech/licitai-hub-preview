@@ -230,7 +230,7 @@ export default function GerarPreNotaDialog({ open, onOpenChange, contratoId, ped
                           <span className="text-xs font-mono font-medium">{p.numero_pedido}</span>
                           <span className="text-xs font-medium">{fmt(p.valor_total)}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{p.descricao || item?.descricao || '—'}</p>
+                        <p className="text-xs text-muted-foreground truncate" title={p.descricao || item?.descricao || undefined}>{p.descricao || item?.descricao || '—'}</p>
                         {sel?.selected && (
                           <div className="mt-2">
                             <div className="flex items-center gap-2">

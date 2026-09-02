@@ -172,7 +172,7 @@ export default function VincularLancamentoDialog({
                 <Checkbox checked={escolhidos.has(t.id)} onCheckedChange={() => alternar(t.id)} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium truncate">{t.descricao}</span>
+                    <span className="text-sm font-medium truncate" title={t.descricao}>{t.descricao}</span>
                     <span className="text-sm font-semibold tabular-nums">{fmt(Number(t.valor))}</span>
                     <Badge variant="outline" className="text-xs">{t.status}</Badge>
                     {t.contrato_pedido_id === pedido.id && (

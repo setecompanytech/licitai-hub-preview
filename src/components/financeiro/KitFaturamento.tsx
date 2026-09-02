@@ -217,7 +217,7 @@ export default function KitFaturamento({ pedido }: Props) {
       </Button>
 
       <Dialog open={aberto} onOpenChange={setAberto}>
-        <DialogContent className="sm:max-w-[560px]">
+        <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-4 h-4 text-muted-foreground" /> Kit de faturamento

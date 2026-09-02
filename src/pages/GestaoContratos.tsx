@@ -550,7 +550,7 @@ export default function GestaoContratos() {
                 <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
                 {isAta && c.permite_carona && <Badge variant="outline" className="text-xs">Permite carona</Badge>}
               </div>
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{c.objeto}</p>
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2" title={c.objeto}>{c.objeto}</p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                 <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{nomeDoOrgao(c.orgao_contratante)}</span>
                 {c.uf && <span>{c.uf}{c.municipio ? `/${c.municipio}` : ''}</span>}
@@ -593,9 +593,9 @@ export default function GestaoContratos() {
                 })()}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground">Valor Global</p>
-              <p className="text-lg font-bold">{formatCurrency(c.valor_global)}</p>
+              <p className="text-lg font-bold whitespace-nowrap">{formatCurrency(c.valor_global)}</p>
               <Progress value={Math.min(pct, 100)} className="h-1.5 w-40 mt-1" />
               <p className="text-xs text-muted-foreground">{pct.toFixed(1)}% consumido</p>
             </div>
@@ -1033,8 +1033,8 @@ export default function GestaoContratos() {
         <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4 shrink-0" /> Vencendo 60d</div><p className={`${VALOR_KPI} text-warning`}>{vencendo}</p></Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar por número, objeto ou órgão..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-4">
+        <div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar por número, objeto ou órgão..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" /></div>
         <Select value={tipoFilter} onValueChange={(v: any) => setTipoFilter(v)}>
           <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -1119,7 +1119,7 @@ export default function GestaoContratos() {
                     {/* 1º — Órgão/cliente */}
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-semibold truncate">{nomeDoOrgao(c.orgao_contratante)}</span>
+                      <span className="text-sm font-semibold truncate" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
                     </div>
                     {/* 2º — Número + tipo + badges de status */}
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1157,7 +1157,7 @@ export default function GestaoContratos() {
                       {c.ata_srp_id && <Badge variant="outline" className="text-xs text-muted-foreground border-border">Origem: ATA</Badge>}
                     </div>
                     {/* 3º — Objeto */}
-                    <p className="text-xs text-muted-foreground line-clamp-1">{c.objeto}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1" title={c.objeto}>{c.objeto}</p>
                     {/* 4º — Data fim */}
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                       {c.data_fim && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Até {new Date(c.data_fim).toLocaleDateString('pt-BR')}</span>}
@@ -1188,12 +1188,12 @@ export default function GestaoContratos() {
                       </span>
                     </div>
                     <div className="mt-2">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground mb-1">
                         {/* Era "Saldo registrado", ao lado de um "Saldo" com outro
                             número: dois saldos diferentes na mesma linha. Este
                             valor é o que já saiu, não o que resta. */}
-                        <span>{isAta ? 'Consumido da ata' : 'Consumido'}: {formatCurrency(c.valor_consumido)}</span>
-                        <span>Saldo: {formatCurrency(c.saldo_remanescente || 0)}</span>
+                        <span className="whitespace-nowrap">{isAta ? 'Consumido da ata' : 'Consumido'}: {formatCurrency(c.valor_consumido)}</span>
+                        <span className="whitespace-nowrap">Saldo: {formatCurrency(c.saldo_remanescente || 0)}</span>
                       </div>
                       <Progress value={Math.min(pct, 100)} className="h-2" />
                     </div>
@@ -1234,7 +1234,7 @@ export default function GestaoContratos() {
                 <span className="text-sm font-medium">
                   {rotuloDoDocumento(c.tipo_documento, c.tipo_documento === 'ata_srp' ? (c.numero_ata || c.numero_contrato) : c.numero_contrato)}
                 </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[280px]">{nomeDoOrgao(c.orgao_contratante)}</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[280px]" title={nomeDoOrgao(c.orgao_contratante)}>{nomeDoOrgao(c.orgao_contratante)}</span>
                 {c.excluido_em && (
                   <span className="text-xs text-muted-foreground">
                     excluído em {new Date(c.excluido_em).toLocaleDateString('pt-BR')}
@@ -1320,7 +1320,7 @@ function ContratosDerivadosList({ ataId, contratos, onSelect }: { ataId: string;
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.objeto}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" title={c.objeto}>{c.objeto}</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs text-muted-foreground">Valor</p>

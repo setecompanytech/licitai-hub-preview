@@ -1209,12 +1209,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                   </div>
                 </div>
                 {temAcrescimos && (
-                  <div className="flex items-center justify-end gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center justify-end gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
                     <Info className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">
                       Valor líquido a {tipo === "a_pagar" ? "pagar" : "receber"}:
                     </span>
-                    <span className="font-semibold tabular-nums">
+                    <span className="font-semibold tabular-nums whitespace-nowrap">
                       {valorLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </span>
                   </div>

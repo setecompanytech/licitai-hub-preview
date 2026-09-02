@@ -619,7 +619,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
                             {d.status === "ok" && d.dados && (
                               <div className="text-xs text-muted-foreground mt-1 grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-0.5">
-                                {d.dados.emitente_nome && <span className="truncate"><b>Emit:</b> {d.dados.emitente_nome}</span>}
+                                {d.dados.emitente_nome && <span className="truncate" title={d.dados.emitente_nome}><b>Emit:</b> {d.dados.emitente_nome}</span>}
                                 {d.dados.numero_documento && <span><b>Nº:</b> {d.dados.numero_documento}</span>}
                                 {d.dados.data_emissao && <span><b>Emissão:</b> {d.dados.data_emissao}</span>}
                                 {d.dados.data_vencimento && <span><b>Venc:</b> {d.dados.data_vencimento}</span>}

@@ -443,7 +443,7 @@ export default function VincularContratoDialog({
                       <span className="font-medium">{p.numero_pedido}</span>
                       <span className="tabular-nums">{brl(Number(p.valor_total) || 0)}</span>
                     </div>
-                    <p className="text-muted-foreground truncate">{p.descricao}</p>
+                    <p className="text-muted-foreground truncate" title={p.descricao}>{p.descricao}</p>
                   </button>
                 ))}
               </div>

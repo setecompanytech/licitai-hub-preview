@@ -245,7 +245,7 @@ export default function FinPedidosAFaturar() {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs font-mono font-medium">{r.numero_pedido}</TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{r.descricao || '—'}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate" title={r.descricao || undefined}>{r.descricao || '—'}</TableCell>
                     <TableCell className="text-xs text-right font-semibold">{fmt(r.valor_total)}</TableCell>
                     <TableCell className="text-xs text-center">
                       {r.data_pedido

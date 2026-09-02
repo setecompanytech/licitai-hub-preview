@@ -249,7 +249,7 @@ export default function FinAtividadeUsuarios() {
                                           {OPERACAO_LABEL[ev.operacao]}
                                         </Badge>
                                       </td>
-                                      <td className="py-0.5 pr-3 truncate max-w-xs">{ev.descricao}</td>
+                                      <td className="py-0.5 pr-3 truncate max-w-xs" title={ev.descricao}>{ev.descricao}</td>
                                       <td className="py-0.5 pr-3 tabular-nums whitespace-nowrap text-right w-28">{formatBRL(ev.valor)}</td>
                                       <td className="py-0.5 pr-3 text-muted-foreground tabular-nums w-24">
                                         {ev.data_evento && ev.data_evento.length >= 10 ? format(new Date(ev.data_evento), "dd/MM/yyyy") : "—"}

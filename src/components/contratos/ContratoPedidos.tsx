@@ -2669,11 +2669,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               };
               const st = statusMap[pn.status] || statusMap.pendente;
               return (
-                <div key={pn.id} className="flex items-center justify-between p-2 rounded border bg-muted/30 text-xs">
-                  <div className="flex items-center gap-2">
+                <div key={pn.id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border bg-muted/30 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
                     <span>{pn.natureza_operacao}</span>
-                    <span className="font-medium">{fmt(pn.valor_total)}</span>
+                    <span className="font-medium whitespace-nowrap">{fmt(pn.valor_total)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
@@ -2870,7 +2870,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           pedido. Abrir o formulário de edição para isso põe campo gravável
           na frente de quem só queria conferir. */}
       <Dialog open={!!lendo} onOpenChange={(o) => !o && setLendo(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Pedido {lendo?.numero_pedido}</DialogTitle>
           </DialogHeader>

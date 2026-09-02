@@ -1527,7 +1527,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{formatBytes(arq.tamanho_bytes)}</span>
                     <span>{new Date(arq.created_at).toLocaleDateString('pt-BR')}</span>
-                    {arq.descricao && <span className="truncate">{arq.descricao}</span>}
+                    {arq.descricao && <span className="truncate" title={arq.descricao}>{arq.descricao}</span>}
                   </div>
                   {/* Onde a leitura está. Sem isto o OCR de um documento
                       escaneado — que leva minutos — é um spinner mudo, e a

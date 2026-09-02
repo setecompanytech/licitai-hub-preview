@@ -182,29 +182,29 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><DollarSign className="w-3 h-3" /> Faturamento</div>
-          <p className="text-sm font-bold text-foreground">{fmt(valorFaturado)}</p>
+          <p className="text-sm font-bold text-foreground whitespace-nowrap tabular-nums">{fmt(valorFaturado)}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Receipt className="w-3 h-3" /> Custos Totais</div>
-          <p className="text-sm font-bold text-destructive">{fmt(totalCustos)}</p>
+          <p className="text-sm font-bold text-destructive whitespace-nowrap tabular-nums">{fmt(totalCustos)}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3 h-3" /> Lucro Bruto</div>
-          <p className={`text-sm font-bold ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
+          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroBruto >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroBruto)}</p>
           <p className="text-xs text-muted-foreground">Margem: {margemBruta.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><TrendingDown className="w-3 h-3" /> Lucro Líquido</div>
-          <p className={`text-sm font-bold ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
+          <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>{fmt(lucroLiquido)}</p>
           <p className="text-xs text-muted-foreground">Margem: {margemLiquida.toFixed(1)}%</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Percent className="w-3 h-3" /> Tributos</div>
-          <p className="text-sm font-bold text-warning">{fmt(tributos)}</p>
+          <p className="text-sm font-bold text-warning whitespace-nowrap tabular-nums">{fmt(tributos)}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1"><Truck className="w-3 h-3" /> Frete/Logística</div>
-          <p className="text-sm font-bold text-foreground">{fmt(custosPorTipo['frete_logistica'] || 0)}</p>
+          <p className="text-sm font-bold text-foreground whitespace-nowrap tabular-nums">{fmt(custosPorTipo['frete_logistica'] || 0)}</p>
         </Card>
       </div>
 
@@ -313,7 +313,7 @@ export default function ContratoCustos({ contratoId, valorFaturado }: { contrato
                         {tipoCfg && <tipoCfg.Icon className="w-3 h-3" />} {tipoCfg?.label || c.tipo}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{c.descricao}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate" title={c.descricao}>{c.descricao}</TableCell>
                     <TableCell className="text-xs text-right font-medium text-destructive">{fmt(c.valor)}</TableCell>
                     <TableCell className="text-xs text-center">{c.data_lancamento ? new Date(c.data_lancamento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                     <TableCell className="text-xs">{c.categoria || '—'}</TableCell>

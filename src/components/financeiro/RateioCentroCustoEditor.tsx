@@ -101,7 +101,7 @@ export default function RateioCentroCustoEditor({ lancamentoId, valorBase }: Pro
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium text-sm">Distribuir lançamento entre centros de custo</p>
           <p className="text-xs text-muted-foreground">

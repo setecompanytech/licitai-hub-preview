@@ -242,7 +242,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
                       </TableCell>
                       <TableCell className="text-right">{l.notas_encontradas ?? 0}</TableCell>
                       <TableCell className="text-right">{l.notas_importadas ?? 0}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate">
+                      <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate" title={l.erro_mensagem ?? undefined}>
                         {l.erro_mensagem ?? `${l.duracao_ms ?? 0}ms`}
                       </TableCell>
                     </TableRow>

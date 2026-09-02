@@ -484,7 +484,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                       )}
                     </div>
                     {a.justificativa && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.justificativa}</p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2" title={a.justificativa}>{a.justificativa}</p>
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">

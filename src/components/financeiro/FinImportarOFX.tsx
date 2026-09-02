@@ -615,7 +615,7 @@ export default function FinImportarOFX() {
                       <ArrowUpCircle className="w-4 h-4 text-destructive shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="truncate">{m.memo}</p>
+                      <p className="truncate" title={m.memo}>{m.memo}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs text-muted-foreground tabular-nums">
                           {format(
@@ -694,7 +694,7 @@ export default function FinImportarOFX() {
           open={editIdx !== null}
           onOpenChange={(o) => !o && setEditIdx(null)}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-base">
                 Novo Lançamento de Conta Corrente

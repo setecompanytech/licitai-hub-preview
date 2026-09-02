@@ -224,23 +224,23 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Nota original</p>
-                  <p className="font-medium tabular-nums">{brl(vigente.valor_original)}</p>
+                  <p className="font-medium tabular-nums whitespace-nowrap">{brl(vigente.valor_original)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Reforços</p>
-                  <p className="font-medium tabular-nums text-success">
+                  <p className="font-medium tabular-nums text-success whitespace-nowrap">
                     {vigente.reforcos > 0 ? `+ ${brl(vigente.reforcos)}` : '—'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Anulações</p>
-                  <p className="font-medium tabular-nums text-warning">
+                  <p className="font-medium tabular-nums text-warning whitespace-nowrap">
                     {vigente.anulacoes > 0 ? `− ${brl(vigente.anulacoes)}` : '—'}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Empenhado hoje</p>
-                  <p className="font-semibold tabular-nums">{brl(vigente.valor_vigente)}</p>
+                  <p className="font-semibold tabular-nums whitespace-nowrap">{brl(vigente.valor_vigente)}</p>
                 </div>
               </div>
             )}
@@ -270,7 +270,7 @@ export default function MovimentosDoEmpenho({ empenho, onFechar, onMudou }: Prop
                     <Badge variant="outline" className="text-[11px] shrink-0">{ROTULO[m.tipo] ?? m.tipo}</Badge>
                     {m.numero && <span className="tabular-nums shrink-0">{m.numero}</span>}
                     <span className="text-muted-foreground shrink-0">{dataBr(m.data_movimento)}</span>
-                    {m.observacao && <span className="text-muted-foreground truncate">{m.observacao}</span>}
+                    {m.observacao && <span className="text-muted-foreground truncate" title={m.observacao}>{m.observacao}</span>}
                     <span className={`ml-auto font-medium tabular-nums shrink-0 ${
                       m.tipo === 'anulacao' ? 'text-warning' : 'text-success'
                     }`}>

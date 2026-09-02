@@ -132,7 +132,7 @@ export default function FinAuditoriaConciliacao() {
                       <TableCell className="text-right font-mono text-xs">
                         {log.confianca ? `${log.confianca.toFixed(0)}%` : "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate">
+                      <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate" title={log.detalhes?.justificativa_ia || log.detalhes?.motivo || undefined}>
                         {log.detalhes?.justificativa_ia || log.detalhes?.motivo || JSON.stringify(log.detalhes).slice(0, 80)}
                       </TableCell>
                       <TableCell className="text-right">

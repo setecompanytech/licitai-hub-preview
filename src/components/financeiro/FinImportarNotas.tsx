@@ -127,7 +127,7 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
                 <TableBody>
                   {ultimoLote.map((r, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-xs max-w-[260px] truncate">{r.nome}</TableCell>
+                      <TableCell className="text-xs max-w-[260px] truncate" title={r.nome}>{r.nome}</TableCell>
                       <TableCell>{r.tipo?.toUpperCase() ?? "—"}</TableCell>
                       <TableCell>{r.direcao ?? "—"}</TableCell>
                       <TableCell className="text-right">{r.valor ? fmt(r.valor) : "—"}</TableCell>
@@ -184,7 +184,7 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
                       <TableCell className="text-xs">{n.data_emissao}</TableCell>
                       <TableCell><Badge variant="outline">{n.tipo.toUpperCase()}</Badge></TableCell>
                       <TableCell className="text-xs">{n.numero}/{n.serie ?? "—"}</TableCell>
-                      <TableCell className="text-xs max-w-[280px] truncate">
+                      <TableCell className="text-xs max-w-[280px] truncate" title={(n.direcao === "saida" ? n.nome_destinatario : n.nome_emitente) ?? undefined}>
                         {n.direcao === "saida" ? n.nome_destinatario : n.nome_emitente}
                       </TableCell>
                       <TableCell>

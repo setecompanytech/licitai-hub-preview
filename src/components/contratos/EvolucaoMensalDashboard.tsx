@@ -225,13 +225,13 @@ export default function EvolucaoMensalDashboard({ pedidos, podeVerCustos, valorG
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="rounded-lg border border-border p-2.5 bg-muted/30">
           <p className="text-xs text-muted-foreground">Faturamento</p>
-          <p className="text-sm font-bold">{fmtBRL(totais.faturamento)}</p>
-          <p className="text-xs text-muted-foreground">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
+          <p className="text-sm font-bold whitespace-nowrap tabular-nums">{fmtBRL(totais.faturamento)}</p>
+          <p className="text-xs text-muted-foreground whitespace-nowrap">Média/mês: {fmtBRL(totais.mediaMensal)}</p>
         </div>
         <div className="rounded-lg border border-border p-2.5 bg-muted/30">
           <p className="text-xs text-muted-foreground">Pedidos</p>
           <p className="text-sm font-bold">{fmtNum(totais.pedidos)}</p>
-          <p className="text-xs text-muted-foreground">Ticket: {fmtBRL(totais.ticketMedio)}</p>
+          <p className="text-xs text-muted-foreground whitespace-nowrap">Ticket: {fmtBRL(totais.ticketMedio)}</p>
         </div>
         {podeVerCustos ? (
           <>

@@ -515,7 +515,7 @@ export default function KanbanPage() {
                                           )}
                                         </div>
                                         {lic.valor_estimado && (
-                                          <p className="text-sm font-semibold text-foreground mt-1 tabular-nums">{formatCurrency(lic.valor_estimado)}</p>
+                                          <p className="text-sm font-semibold text-foreground mt-1 tabular-nums whitespace-nowrap">{formatCurrency(lic.valor_estimado)}</p>
                                         )}
                                       </>
                                     )}

@@ -307,7 +307,7 @@ export default function ImportarContratoPDF({ onExtracted, onCadastroManual }: I
                 <div><span className="text-muted-foreground">Órgão:</span> <strong>{extracted.orgao_contratante}</strong></div>
               )}
               {extracted.objeto && (
-                <div><span className="text-muted-foreground">Objeto:</span> <span className="line-clamp-2">{extracted.objeto}</span></div>
+                <div><span className="text-muted-foreground">Objeto:</span> <span className="line-clamp-2" title={extracted.objeto}>{extracted.objeto}</span></div>
               )}
               {extracted.valor_global != null && (
                 <div><span className="text-muted-foreground">Valor Global:</span> <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(extracted.valor_global)}</strong></div>

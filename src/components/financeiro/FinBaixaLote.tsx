@@ -165,13 +165,13 @@ export default function FinBaixaLote() {
                     <div key={l.id} className="flex items-center gap-3 p-3 border-b hover:bg-muted/20 text-sm">
                       <Checkbox checked={checked} onCheckedChange={() => toggle(l.id)} />
                       <div className="flex-1 min-w-0">
-                        <p className="truncate">{l.descricao}</p>
+                        <p className="truncate" title={l.descricao}>{l.descricao}</p>
                         {atrasado && <Badge variant="destructive" className="text-xs mt-0.5">Em atraso</Badge>}
                       </div>
                       <span className="w-24 text-right text-xs text-muted-foreground">
                         {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
                       </span>
-                      <span className="w-32 text-right font-medium tabular-nums">
+                      <span className="w-32 text-right font-medium tabular-nums whitespace-nowrap">
                         R$ {Number(l.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </span>
                     </div>

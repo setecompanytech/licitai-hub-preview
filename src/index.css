@@ -184,9 +184,14 @@
      (cards, tabelas, badges, listas, dialogs, formulários)
      ============================================================ */
 
-  /* Parágrafos, spans, divs com texto longo quebram corretamente */
+  /* Parágrafos, spans, divs com texto longo quebram corretamente.
+     break-word, NUNCA anywhere: `anywhere` reduz a largura mínima de
+     qualquer texto a 1 caractere e deixa o flexbox esmagar valores
+     monetários — foi a causa-raiz de "R$ 13.721.710,66" partir no meio
+     dos dígitos em tela após tela. Token longo sem espaços (chave de
+     NF-e) usa `break-all` localmente. */
   p, span, div, li, td, th, dd, dt, label, figcaption, blockquote {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   /* Cabeçalhos: quebra suave preservando legibilidade */
