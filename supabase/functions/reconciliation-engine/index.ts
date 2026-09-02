@@ -258,9 +258,9 @@ Movimento bancário:
 - Descrição: "${mov.descricao}"
 
 Candidatos (lançamentos previstos):
-${candidatos.map((c: Lancamento, i: number) => `${i}. ID=${c.id} | data=${c.data_vencimento || c.data_competencia} | valor=R$ ${Number(c.valor).toFixed(2)} | descrição="${c.descricao}"`).join("\n")}
+${candidatos.map((c: Lancamento, i: number) => `${i + 1}. ID=${c.id} | data=${c.data_vencimento || c.data_competencia} | valor=R$ ${Number(c.valor).toFixed(2)} | descrição="${c.descricao}"`).join("\n")}
 
-Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, "confianca": <0-100>, "justificativa": "<frase curta em PT-BR explicando o match ou a recusa>"}`;
+Responda em JSON estrito: {"escolha_id": "<o ID exato do candidato escolhido, ou null>", "confianca": <0-100>, "justificativa": "<frase curta em PT-BR explicando o match ou a recusa>"}`;
 
             const resp = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
@@ -283,12 +283,19 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
             const content = json?.choices?.[0]?.message?.content;
             if (!content) continue;
             const parsed = JSON.parse(content);
-            const idx = parsed?.escolha;
+            // Escolha por ID textual: a lista numerada de 0 fazia "1" (o
+            // primeiro, na cabeça do modelo) selecionar o SEGUNDO candidato; e
+            // resposta não-numérica virava NaN, que passava no guard de faixa
+            // (NaN < 0 é false) e explodia adiante, engolida pelo catch.
+            const escolhaId = parsed?.escolha_id ?? parsed?.escolha ?? null;
             const confianca = Number(parsed?.confianca ?? 0);
             const justificativa = String(parsed?.justificativa ?? "").slice(0, 280);
-            if (idx === null || idx === undefined || idx < 0 || idx >= candidatos.length) continue;
-            if (confianca < 60) continue; // gate mínimo de confiança
-            const lancEscolhido = candidatos[idx] as Lancamento;
+            if (escolhaId === null || escolhaId === undefined) continue;
+            const lancEscolhido = candidatos.find(
+              (c: Lancamento) => c.id === String(escolhaId).trim(),
+            ) as Lancamento | undefined;
+            if (!lancEscolhido) continue;
+            if (!Number.isFinite(confianca) || confianca < 60) continue; // gate mínimo
             const dataLanc = lancEscolhido.data_vencimento || lancEscolhido.data_competencia;
             matches.push({
               movimento_id: mov.id,
