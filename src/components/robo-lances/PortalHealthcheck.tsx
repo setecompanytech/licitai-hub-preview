@@ -18,10 +18,12 @@ type HealthEntry = {
   detalhes: Record<string, unknown>;
 };
 
+// "Operacional" sugeria que o robô opera naquele portal. O que se mede é se o
+// endereço responde — nada além disso.
 const STATUS_CONFIG: Record<string, { icon: typeof Shield; cor: string; label: string }> = {
-  ok: { icon: CheckCircle2, cor: 'text-success', label: 'Operacional' },
-  alerta: { icon: AlertTriangle, cor: 'text-warning', label: 'Alerta' },
-  falha: { icon: XCircle, cor: 'text-destructive', label: 'Falha' },
+  ok: { icon: CheckCircle2, cor: 'text-success', label: 'Responde' },
+  alerta: { icon: AlertTriangle, cor: 'text-warning', label: 'Respondeu com erro' },
+  falha: { icon: XCircle, cor: 'text-destructive', label: 'Fora do ar' },
   desconhecido: { icon: Globe, cor: 'text-muted-foreground', label: 'Não verificado' },
 };
 
@@ -59,23 +61,36 @@ export default function PortalHealthcheck() {
     }
   };
 
+  // As colunas do banco se chamam `seletores_ok` e `seletores_falhos` desde
+  // março, mas a função só faz HEAD/GET na URL do portal e olha o status HTTP —
+  // nunca abre navegador nem testa seletor. "12 seletores OK" queria dizer "12
+  // sites responderam", o que é confiança sem lastro: seletor quebrado só
+  // aparece no meio de uma disputa. Os nomes das colunas ficam; o que a tela
+  // afirma passa a ser o que de fato foi medido.
   const okCount = entries.filter(e => e.seletores_ok).length;
   const failCount = entries.filter(e => !e.seletores_ok).length;
 
   return (
     <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Shield className="w-4 h-4 text-muted-foreground" />
-          Healthcheck de Seletores — Portais
-        </h3>
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Shield className="w-4 h-4 text-muted-foreground" />
+            Portais no ar
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-xl">
+            Confere se o endereço de cada portal responde. <strong>Não testa a automação</strong> —
+            se o robô consegue fazer login, achar a sala da disputa e enviar lance
+            só se sabe rodando uma sessão de verdade.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
-            {okCount} OK
+            {okCount} responderam
           </Badge>
           {failCount > 0 && (
             <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-xs">
-              {failCount} falhas
+              {failCount} fora do ar
             </Badge>
           )}
           <Button
