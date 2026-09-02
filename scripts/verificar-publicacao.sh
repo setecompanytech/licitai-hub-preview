@@ -80,7 +80,11 @@ checar "criador da empresa entra com nome"   "nome_completo, username"
 checar "kit de faturamento"                  "Kit de faturamento"
 checar "kit em PDF único"                    "Baixar PDF único"
 checar "subtela do financeiro no caminho"    "/financeiro/lancamentos"
-checar "rótulos distintos de Voltar"         "Todos os contratos"
+# A checagem "rótulos distintos de Voltar" procurava "Todos os contratos" —
+# rótulo que a correção seguinte (apagar o Voltar duplicado, 01/09) removeu de
+# propósito. Assinatura de texto morre quando o texto morre; o carimbo de
+# versão acima é quem responde por essas correções agora.
+checar "forma de fornecimento no contrato"   "Entrega única (integral)"
 
 # Checagem invertida. Identificador que o código NÃO declara não pode ser
 # renomeado pelo minificador — sobra literal no bundle. Foi assim que a aba
