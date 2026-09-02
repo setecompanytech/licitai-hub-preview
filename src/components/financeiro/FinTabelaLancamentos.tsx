@@ -228,18 +228,22 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
       {/* Cabeçalho */}
       <Card>
         <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex gap-6">
+          <div className="flex gap-6 shrink-0">
             <div>
               <p className="text-xs text-muted-foreground">Total em aberto</p>
-              <p className="text-xl font-bold tabular-nums">
+              <p className="text-xl font-bold tabular-nums whitespace-nowrap">
                 {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total pago</p>
-              <p className="text-xl font-bold tabular-nums text-success">
+              <p className="text-xl font-bold tabular-nums text-success whitespace-nowrap">
                 {totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Lançamentos</p>
+              <p className="text-xl font-bold tabular-nums">{filtrados.length}</p>
             </div>
           </div>
 
@@ -276,7 +280,6 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <Badge variant="outline">{filtrados.length} lançamentos</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" disabled={filtrados.length === 0}>
