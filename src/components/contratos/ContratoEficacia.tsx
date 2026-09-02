@@ -81,6 +81,20 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     id: string; motivo: string; excluido_por: string; excluido_em: string; registro: any;
   }>>([]);
   const { data: colaboradores = [] } = useColaboradores();
+  // TODO hook vive AQUI EM CIMA, antes dos guards `return null` lá embaixo.
+  // Já quebramos esta regra DUAS vezes hoje (.5 e .7): hook depois de return
+  // antecipado some no primeiro render e explode quando os dados chegam —
+  // tela branca. A regra react-hooks/rules-of-hooks agora é erro de lint.
+  const carregarExclusoes = useCallback(async () => {
+    const { data } = await supabase
+      .from('contrato_publicacoes_exclusoes' as never)
+      .select('id, motivo, excluido_por, excluido_em, registro')
+      .eq('contrato_id', contratoId)
+      .order('excluido_em', { ascending: false });
+    setExclusoes(((data ?? []) as unknown) as typeof exclusoes);
+  }, [contratoId]);
+  useEffect(() => { void carregarExclusoes(); }, [carregarExclusoes]);
+
   const nomeDoAutor = (uid: string) => {
     const c = colaboradores.find((x: any) => x.user_id === uid);
     return c?.nome || c?.email || 'membro da equipe';
@@ -240,17 +254,6 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     setMotivoExclusao('');
     setExcluindo(id);
   };
-
-  const carregarExclusoes = useCallback(async () => {
-    const { data } = await supabase
-      .from('contrato_publicacoes_exclusoes' as never)
-      .select('id, motivo, excluido_por, excluido_em, registro')
-      .eq('contrato_id', contratoId)
-      .order('excluido_em', { ascending: false });
-    setExclusoes(((data ?? []) as unknown) as typeof exclusoes);
-  }, [contratoId]);
-
-  useEffect(() => { void carregarExclusoes(); }, [carregarExclusoes]);
 
   const excluir = async () => {
     const id = excluindo;

@@ -22,6 +22,11 @@ Fora do Claude: `npm run run-local` ou `run-local.cmd` na raiz.
 > que pega isso é `npx tsc --noEmit -p tsconfig.app.json`, e ela é obrigatória antes de
 > commitar edição feita por script: uma substituição que não casa falha em silêncio, o
 > build passa e a tela quebra em branco no navegador.
+>
+> ⚠️ E o tsc **não vê hook depois de return antecipado** — a tela branca de 02/09 veio
+> daí, duas vezes no mesmo dia. Quem pega é `npx eslint <arquivos tocados>`
+> (react-hooks/rules-of-hooks é erro). Editou componente → lint no arquivo antes do
+> commit, sempre.
 
 ## Comandos
 
