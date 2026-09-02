@@ -44,6 +44,7 @@ export default function FinApuracao() {
    */
   const [limiteAdicional, setLimiteAdicional] = useState(0);
   const [carregandoReceita, setCarregandoReceita] = useState(false);
+  const [receitaSemClassificacao, setReceitaSemClassificacao] = useState(0);
   const { validar } = useValidacaoApuracao();
   const navigate = useNavigate();
   const { empresaAtiva } = useEmpresa();
@@ -87,6 +88,7 @@ export default function FinApuracao() {
   async function importarReceita() {
     setCarregandoReceita(true);
     const data = await buscarReceita(competencia);
+    setReceitaSemClassificacao(Number((data as any)?.sem_classificacao) || 0);
     if (data) {
       setReceitaComercio(Number(data.comercio) || 0);
       setReceitaServico(Number(data.servico) || 0);
@@ -254,6 +256,17 @@ export default function FinApuracao() {
             </div>
 
             <Separator />
+
+            {receitaSemClassificacao > 0.005 && (
+              <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                <AlertTriangle className="w-4 h-4 mt-0.5 text-warning shrink-0" />
+                <span>
+                  <strong>{fmt(receitaSemClassificacao)}</strong> de receita da competência estão em
+                  categorias <strong>sem tipo (comércio/serviço)</strong> e ficaram FORA da base de
+                  cálculo. Classifique as categorias antes de salvar — apurar assim tributa de menos.
+                </span>
+              </div>
+            )}
 
             {/* Resultado */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

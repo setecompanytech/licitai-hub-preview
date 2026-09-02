@@ -70,12 +70,17 @@ export function useValidacaoApuracao() {
       // Receitas por tipo de serviço (plano de contas)
       let recComercio = 0;
       let recServico = 0;
+      let recSemClassificacao = 0;
       for (const l of linhasMes) {
         if (l.natureza !== "receita") continue;
+        // Mesma partição de três vias da RPC: jogar o "sem tipo" em comércio
+        // fazia validador e apuração divergirem por desenho (A4 da auditoria).
+        if ((l as any).tipo === "transferencia") continue;
         const tipoServ = l.financeiro_categorias?.tipo_servico;
         const v = Number(l.valor) || 0;
         if (tipoServ === "servico") recServico += v;
-        else recComercio += v;
+        else if (tipoServ === "comercio") recComercio += v;
+        else recSemClassificacao += v;
       }
 
       const recTotal = recComercio + recServico;
