@@ -171,7 +171,9 @@ Deno.serve(async (req) => {
 
     for (const mov of (movimentos || []) as Movimento[]) {
       const valorAbs = Math.abs(mov.valor);
-      const naturezaEsperada = mov.valor >= 0 ? "credito" : "debito";
+      // Lançamento fala receita/despesa — comparar com "credito"/"debito"
+      // fazia TODO candidato reprovar, e o motor nunca sugeria nada.
+      const naturezaEsperada = mov.valor >= 0 ? "receita" : "despesa";
 
       const candidatos = (lancamentos || []).filter((l: Lancamento) => {
         if (lancUsados.has(l.id)) return false;
@@ -233,7 +235,7 @@ Deno.serve(async (req) => {
         const MAX_IA = 30;
         for (const mov of movsSemMatch.slice(0, MAX_IA)) {
           const valorAbs = Math.abs(mov.valor);
-          const naturezaEsperada = mov.valor >= 0 ? "credito" : "debito";
+          const naturezaEsperada = mov.valor >= 0 ? "receita" : "despesa";
           const candidatos = (lancamentos || [])
             .filter((l: Lancamento) => {
               if (lancUsados.has(l.id)) return false;
@@ -338,9 +340,18 @@ Responda em JSON estrito: {"escolha": <índice numérico do candidato ou null>, 
           .from("financeiro_extrato_movimentos")
           .update({ conciliado: true, lancamento_id: m.lancamento_id })
           .eq("id", m.movimento_id);
+        // A data do pagamento é a do BANCO — sem ela, o lançamento conciliado
+        // conta pela competência e a curva mensal deriva (a doença de julho).
+        const movDoMatch = ((movimentos || []) as Movimento[]).find(
+          (x) => x.id === m.movimento_id,
+        );
         await supabase
           .from("financeiro_lancamentos")
-          .update({ status: "conciliado", data_conciliado: new Date().toISOString() })
+          .update({
+            status: "conciliado",
+            data_conciliado: new Date().toISOString(),
+            ...(movDoMatch ? { data_realizado: movDoMatch.data_movimento } : {}),
+          })
           .eq("id", m.lancamento_id);
         // Log reversível
         await supabase.from("fin_conciliacao_log").insert({
