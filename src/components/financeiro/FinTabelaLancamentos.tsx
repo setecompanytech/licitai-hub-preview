@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import DocumentoDoLancamento from "./DocumentoDoLancamento";
+import DocumentoDoLancamento, { useDocumentosPorLancamento } from "./DocumentoDoLancamento";
 import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { exigeDocumento } from "@/lib/financeiro/anexo-do-lancamento";
@@ -74,6 +74,8 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
   const qc = useQueryClient();
 
   const { data = [], isLoading } = useLancamentos({ tipo });
+  // Mesmo mapa batched do clipe — nenhuma consulta nova por linha.
+  const { data: docsPorLancamento } = useDocumentosPorLancamento();
   const { data: membros = [] } = useMembrosEmpresa();
   const upsert = useUpsertLancamento();
 
@@ -383,6 +385,20 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             // de uma das duas cópias.
                             exigeDocumento={exigeDocumento(l.tipo_documento)}
                           />
+                          {/* Nota guardada e nenhum pedido: é a população que
+                              nasce do preenchimento manual e fica invisível
+                              para a Gestão. A pendência aparece — e leva
+                              direto ao elo. */}
+                          {tipo === "a_receber" && !l.contrato_pedido_id && !!docsPorLancamento?.[l.id] && (
+                            <Badge
+                              variant="outline"
+                              className="bg-warning/10 text-warning border-warning/30 cursor-pointer shrink-0 text-[10px] px-1.5"
+                              title="Tem nota guardada, mas não está ligado a nenhum contrato — não consome saldo nem aparece no faturamento da Gestão. Clique para vincular."
+                              onClick={() => setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null })}
+                            >
+                              sem vínculo
+                            </Badge>
+                          )}
                         </div>
                         {l.categoria?.nome && (
                           <p className="text-xs text-muted-foreground">{l.categoria.nome}</p>
@@ -482,6 +498,9 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
         onOpenChange={setDialogOpen}
         initial={editing}
         defaultTipo={tipo}
+        // Só nesta página o diálogo do elo abre em modo receita; a receber
+        // salvo a partir da página de A Pagar cai no toast sem botão.
+        onVincularContrato={tipo === "a_receber" ? setVinculando : undefined}
       />
 
       <DataDaBaixaDialog
