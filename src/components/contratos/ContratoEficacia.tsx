@@ -1,4 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -202,10 +207,43 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
     window.open(url.signedUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const excluir = async (id: string) => {
-    if (!confirm('Excluir este registro de publicação?')) return;
-    const { error } = await supabase.from('contrato_publicacoes' as never).delete().eq('id', id);
+  /**
+   * Exclusão com as duas lições da auditoria: (1) window.confirm pode ser
+   * suprimido pelo navegador — o diálogo da casa não; (2) DELETE barrado por
+   * RLS devolve SUCESSO com zero linhas — sem conferir o efeito, o botão
+   * "funcionava" sem fazer nada e sem dizer nada. A policy restringe exclusão
+   * a administradores da empresa, e agora a tela diz isso em voz alta.
+   */
+  const { isCompanyAdmin: isEmpresaAdmin } = useAuthorization();
+  const [excluindo, setExcluindo] = useState<string | null>(null);
+
+  const pedirExclusao = (id: string) => {
+    if (!isEmpresaAdmin) {
+      toast.error('Exclusão restrita', {
+        description: 'Somente administradores da empresa podem excluir registros de publicação.',
+      });
+      return;
+    }
+    setExcluindo(id);
+  };
+
+  const excluir = async () => {
+    const id = excluindo;
+    setExcluindo(null);
+    if (!id) return;
+    const { data, error } = await supabase
+      .from('contrato_publicacoes' as never)
+      .delete()
+      .eq('id', id)
+      .select('id');
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
+    if (!data || (data as unknown[]).length === 0) {
+      toast.error('Nada foi excluído', {
+        description: 'O registro não existe mais, ou a exclusão é restrita a administradores da empresa.',
+      });
+      return;
+    }
+    toast.success('Registro de publicação excluído.');
     void carregar();
     recarregarSituacao();
   };
@@ -337,7 +375,8 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto shrink-0 nao-imprime"
-                  onClick={() => excluir(p.id)}>
+                  title={isEmpresaAdmin ? 'Excluir registro de publicação' : 'Somente administradores da empresa excluem publicações'}
+                  onClick={() => pedirExclusao(p.id)}>
                   <Trash2 className="w-3 h-3 text-destructive" />
                 </Button>
               </div>
@@ -439,6 +478,21 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
           </div>
         )}
       </Card>
+          <AlertDialog open={!!excluindo} onOpenChange={(o) => !o && setExcluindo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir registro de publicação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O registro sai da lista de extratos e publicações deste contrato.
+              O arquivo do recorte, se houver, não é apagado do repositório.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={excluir}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
