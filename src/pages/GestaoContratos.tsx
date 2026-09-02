@@ -141,6 +141,7 @@ export default function GestaoContratos() {
   const abrirContrato = (c: Contrato) => {
     const next = new URLSearchParams(searchParams);
     next.set('contrato', c.id);
+    next.delete('aba');
     setSearchParams(next);
   };
   const fecharContrato = () => {
@@ -219,7 +220,16 @@ export default function GestaoContratos() {
   });
   const { data: membrosEquipe } = useColaboradores();
   const [pendingItens, setPendingItens] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // A aba do detalhe também mora na URL (&aba=): F5 devolve o usuário à
+  // MESMA visão, não à visão-base. 'dashboard' é o padrão e fica fora da URL.
+  const abaAtiva = searchParams.get('aba') ?? 'dashboard';
+  const [activeTab, setActiveTab] = useState(abaAtiva);
+  const trocarAba = (v: string) => {
+    setActiveTab(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === 'dashboard') next.delete('aba'); else next.set('aba', v);
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     if (!user || !empresaAtiva) return;
@@ -597,7 +607,7 @@ export default function GestaoContratos() {
             abria o contrato com a aba interna ainda em "derivados", que não
             existe no contrato: conteúdo em branco, nenhuma aba acesa. A chave
             por identidade remonta e todo registro abre no Dashboard. */}
-        <Tabs key={c.id} defaultValue="dashboard" className="space-y-4" onValueChange={(v) => setActiveTab(v)}>
+        <Tabs key={c.id} value={abaAtiva} className="space-y-4" onValueChange={trocarAba}>
           <TabsList className="flex-wrap nao-imprime">
             <TabsTrigger value="dashboard"><BarChart3 className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
             <TabsTrigger value="itens"><Package className="w-3.5 h-3.5 mr-1" /> Itens/Lotes</TabsTrigger>
