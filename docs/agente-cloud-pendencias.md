@@ -1,24 +1,27 @@
-# Agente Cloud — pendências no agente (VPS em v2.1.0, template em v2.2.0)
+# Agente Cloud — pendências no agente (VPS em v2.2.0)
 
-Diagnóstico feito em 16/08/2026 sondando `https://agente.praefectus.com.br`
-diretamente. **Nada aqui depende do Praefectus** — são rotas que o sistema
-chama e que o agente ainda não implementa. O lado do Praefectus já foi
-corrigido para não mentir enquanto isso.
+Começou como diagnóstico em 16/08/2026, sondando
+`https://agente.praefectus.com.br` de fora. Virou o registro de como as
+pendências foram fechadas — e as especificações continuam valendo como contrato
+para quem for reimplementar.
 
-> **Reteste em 31/08/2026** pelo botão "Testar freio" do Checklist de Ativação:
-> o agente respondeu **404** ao `POST /kill-switch`. O item 1 continua aberto.
+> ## ✅ Resolvido em produção em 02/09/2026
 >
-> **O que mudou desde então: as três pendências do agente foram escritas no
-> template deste repositório** (`src/lib/agente-template-generator.ts`), que
-> passou a **v2.2.0**. Falta só o deploy na VPS — ver "O que falta agora".
+> As três pendências do agente foram implementadas **direto no código que roda
+> na VPS** (`/opt/agente-lances`), que passou a **v2.2.0**. O botão "Testar
+> freio" do Checklist de Ativação respondeu **"Freio de emergência confirmado
+> pelo agente. Níveis 2 e 3 liberados."**
+>
+> O que sobra é o item 3 desta lista — a automação de navegador por portal —,
+> que não é rota e sim trabalho de portal.
 
 ## Situação em uma olhada
 
 | # | Pendência | Onde | Status |
 | --- | --- | --- | --- |
-| 1 | **`POST /kill-switch`** — freio de emergência | **agente** | 🚚 **no template; falta deploy — bloqueia níveis 2 e 3** |
-| 2 | `POST /api/proposta/enviar` — envio da proposta | **agente** | 🚚 rota no template; formulário por portal a implementar |
-| 3 | Declarar as rotas disponíveis no `/health` | **agente** | ✅ resolvido no template (`rotas: [...]`) |
+| 1 | **`POST /kill-switch`** — freio de emergência | **agente** | ✅ **resolvido em 02/09 — níveis 2 e 3 liberados** |
+| 2 | `POST /api/proposta/enviar` — envio da proposta | **agente** | ✅ rota no ar; responde 501 nomeando o portal cujo formulário falta |
+| 3 | Declarar as rotas disponíveis no `/health` | **agente** | ✅ resolvido — campo `rotas` com as 6 |
 | 4 | Heartbeat (sinal de vida) | Praefectus | ✅ resolvido — passamos a puxar via `/health` |
 | 5 | Selo "Agente Online" mentiroso | Praefectus | ✅ resolvido — healthcheck real, três estados |
 | 6 | Kill-switch anunciando parada não confirmada | Praefectus | ✅ resolvido — relata o resultado real |
@@ -31,42 +34,111 @@ corrigido para não mentir enquanto isso.
 | 13 | `src/portals/index.js` saía do gerador com sintaxe inválida | template | ✅ **resolvido em 31/08** — ver seção 8 |
 | 14 | Checklist consultava `credenciais_portal` (singular) | Praefectus | ✅ **resolvido em 31/08** — ver seção 9 |
 
-**Enquanto o item 1 não for implementado, o envio automático (níveis 2 e 3) fica
-bloqueado pelo próprio sistema.** Nível 1 (assistente, sem envio automático)
-segue liberado.
-
 ## O que falta agora
 
-Um passo, e ele é na VPS:
+**Uma coisa só, e ela não é rota:** o método `enviarProposta(dados)` e a
+automação de lance em cada `src/portals/<portal>.js` da VPS. O contrato está
+documentado em `base-portal.js`; os seletores dependem de abrir o portal e
+olhar, e não podem ser escritos às cegas.
 
-```sh
-# na VPS, a partir do ZIP gerado em Robô de Lances → Agente Cloud → baixar template
-npm install && pm2 restart agente-lances    # ou o gestor de processo em uso
-curl -s https://agente.praefectus.com.br/health | jq '.version, .rotas'
-# esperado: "2.2.0" e a lista com 9 rotas
+Enquanto nenhum portal implementar, `POST /api/proposta/enviar` responde **501
+nomeando o portal** — que é o estado honesto: a rota existe, o formulário
+daquele portal ainda não foi automatizado. O 404 anterior não distinguia as
+duas coisas.
+
+## Como o servidor foi acessado
+
+Registrado porque descobrir isso custou uma tarde em 02/09/2026.
+
+O Rafael tem **duas contas HostGator**. A `xfin` está vazia — o VPS dela
+(`129.121.46.35`) foi cancelado em abril/2026 por falta de pagamento, e o painel
+diz "Nenhum servidor ainda", o que leva à conclusão errada de que não há acesso.
+A conta certa é a **`praefectusbrasil`**, com outro Google.
+
+```
+IP      129.121.48.145        VPS OCI NVMe 8
+SSH     porta 22022           — a 22 e a 2222 estão fechadas
+código  /opt/agente-lances
+proc    pm2: agente-lances (cluster) + vnc-stack
+proxy   nginx: agente.praefectus.com.br → http://127.0.0.1:3500
 ```
 
-Depois disso, "Testar freio" no Checklist de Ativação deve passar e liberar os
-níveis 2 e 3. O `POST /api/proposta/enviar` passa a responder **501** nomeando o
-portal — que é o estado honesto: a rota existe, o formulário daquele portal ainda
-não foi automatizado. O 404 atual não distinguia as duas coisas.
+Acesso por chave: **VPS → Gerenciar → Chaves SSH → Adicionar chave**. A chave
+entra sem senha e sincroniza sozinha com o servidor.
 
-**O que continua sendo trabalho de portal, não de rota:** o método
-`enviarProposta(dados)` em cada `src/portals/<portal>.js`. O contrato está
-documentado em `base-portal.js`; os seletores dependem de acesso ao portal e não
-podem ser escritos às cegas.
+## O que foi aplicado em 02/09/2026
 
-## O que o agente responde hoje
+Três mudanças, **uma de cada vez, com verificação entre elas** — se as três
+fossem juntas e o freio falhasse, o espaço de busca triplicaria.
 
-| Rota | Método | Resposta | Situação |
+**1. As rotas.** `killAll()` no `session-manager.js`, espelhando o `endSession()`
+que já existia; `POST /kill-switch` e `POST /api/proposta/enviar` no `index.js`;
+campo `rotas` no `/health`. Testado antes numa cópia completa do agente
+(`/opt/staging-agente`, porta 3599) — 8 casos, do 403 sem chave ao 501 por
+portal. Verificado pelo botão "Testar freio" do app, que é o caminho inteiro:
+navegador → edge function → Cloudflare → agente → gravação no banco.
+
+**2. `CALLBACK_URL` apontava para o projeto Supabase errado.**
+
+```
+antes   https://sbnlovigyifvrkgsoalj.supabase.co/functions/v1/robo-lances-webhook/callback
+depois  https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-webhook/callback
+```
+
+Todo callback do agente — lance enviado, sessão encerrada, heartbeat — ia para
+um projeto que não é o nosso. **Esta é a causa raiz do item 4 desta lista**, o
+`ultimo_heartbeat` parado em 01/06: o Praefectus passou a *puxar* o `/health`, o
+que resolveu o sintoma, mas os callbacks continuavam se perdendo. Com o
+`/kill-switch` funcionando isso passou a importar mais — o `killAll()` avisa pelo
+callback que a sessão morreu, e sem o destino certo o freio pararia o robô sem o
+painel ficar sabendo.
+
+**3. A porta 3500 estava aberta na internet.** `app.listen(PORT)` escutava em
+`*`, então `http://129.121.48.145:3500/health` respondia direto, contornando o
+Cloudflare e entregando versão, RAM, sessões e portais a qualquer um. Passou a
+`app.listen(PORT, "127.0.0.1")` — o nginx continua alcançando, o mundo externo
+não.
+
+> **Por que não firewall:** ligar o `ufw` numa máquina com SSH em porta
+> não-padrão (22022) derruba a sessão no mesmo instante se a regra não for criada
+> antes. Bind no loopback resolve sem esse risco.
+
+**Backups, na VPS:**
+
+```
+/opt/agente-lances.bak-2026-09-02-1536      diretório inteiro, v2.1.0
+/opt/agente-lances/.env.bak-2026-09-02-1603 antes do CALLBACK_URL
+/opt/agente-lances/src/index.js.bak-bind    antes do bind no loopback
+/opt/agente-lances/package.json.bak-*       antes do bump de versão
+```
+
+## Uma lição sobre número de versão
+
+A VPS e o template deste repo se declaravam **ambos v2.1.0** sendo código
+diferente — a VPS rodava a versão de março, com 6 rotas e 9 portais; o template
+já tinha crescido. Foi isso que escondeu por semanas qual código estava onde.
+
+Agora as quatro fontes dizem a mesma coisa: `package.json`, `/health`, o `pm2` e
+o log de boot. **Ao mexer no agente, mude a versão em todas.**
+
+## O que o agente responde hoje (após 02/09/2026)
+
+| Rota | Método | Sem chave | Situação |
 | --- | --- | --- | --- |
-| `/health` | GET | **200** em ~0,4s | ✅ funcionando |
-| `/sessao/iniciar` | POST | **403** (exige autenticação) | ✅ existe e está protegida |
+| `/health` | GET | **200** | ✅ público, com o campo `rotas` |
+| `/sessao/iniciar` | POST | **403** | ✅ existe e está protegida |
+| `/sessao/pausar` · `/sessao/encerrar` | POST | **403** | ✅ |
+| `/kill-switch` | POST | **403** | ✅ **existe** — com a chave, 200 |
+| `/api/proposta/enviar` | POST | **403** | ✅ **existe** — com a chave, 501 por portal |
 | `/vnc/vnc.html` | GET | **200** | ✅ serve a interface noVNC |
-| `/kill-switch` | POST | **404** | ❌ **não existe** |
-| `/api/proposta/enviar` | POST | **404** | ❌ **não existe** |
+| qualquer rota inventada | POST | **404** | é o que prova que o 403 significa algo |
 
-Payload atual do `/health` (referência do que o agente já expõe):
+O par 403/404 é o teste que importa: **403 quer dizer "a rota existe e exige
+chave"; 404 quer dizer "não existe".** Antes de 02/09, `/kill-switch` e
+`/api/proposta/enviar` devolviam 404.
+
+Payload do `/health` antes das correções, mantido como referência histórica —
+hoje ele traz também o campo `rotas` e diz `"version": "2.2.0"`:
 
 ```json
 {
@@ -88,7 +160,14 @@ existem, não é caso de renomear a chamada.
 
 ---
 
-## 1. `POST /kill-switch` — PRIORIDADE ALTA (segurança)
+## 1. `POST /kill-switch` — RESOLVIDO em 02/09/2026
+
+> Implementado na VPS: `killAll()` no `session-manager.js` e a rota no
+> `index.js`. O botão "Testar freio" confirmou. **O contrato abaixo permanece
+> como especificação** — é o que a rota cumpre, e o que qualquer reimplementação
+> precisa continuar cumprindo.
+
+### Contrato (mantido como referência)
 
 **Quem chama:** edge function `robo-lances-webhook`, ação `kill-switch`, acionada
 pelo botão de parada emergencial.
@@ -113,19 +192,31 @@ pode continuar dando lances depois do "pare". A tela agora avisa o operador em
 vermelho quando o agente não confirma a parada — mas o aviso é um paliativo, não
 a solução.
 
-**Enquanto não existir:** o Praefectus **bloqueia** os níveis 2 e 3. A liberação
-não é manual nem por confiança: existe a etapa "Freio de emergência verificado"
-no Checklist de Ativação, com o botão **Testar freio**, que aciona
-`POST /kill-switch` de propósito (recusado pelo servidor se houver disputa em
-andamento, para não abortar lances reais) e grava o resultado. Só depois de o
-agente confirmar a parada é que o envio automático é liberado.
+**Como a liberação acontece:** o Praefectus bloqueia os níveis 2 e 3 até o agente
+provar que para. Não é manual nem por confiança — existe a etapa "Freio de
+emergência verificado" no Checklist de Ativação, com o botão **Testar freio**,
+que aciona `POST /kill-switch` de propósito (recusado pelo servidor se houver
+disputa em andamento, para não abortar lances reais) e grava o resultado em
+`agente_externo_config.capacidades.kill_switch`.
+
+**O bloqueio lê o registro gravado, não consulta o agente na hora.** Então, depois
+de qualquer mudança no agente, é preciso rodar "Testar freio" de novo — senão a
+tela repete o último resultado conhecido, mesmo que a rota já funcione.
 
 **Como validar do lado do agente:** implemente a rota, deixe o robô parado e peça
 ao operador para clicar em "Testar freio". A requisição chega com
 `{"motivo": "...", "teste": true}` — se preferir, trate `teste: true` como
 verificação (responder 200 sem efeito) e a ausência do campo como parada real.
 
-## 2. `POST /api/proposta/enviar` — prioridade média
+## 2. `POST /api/proposta/enviar` — ROTA RESOLVIDA em 02/09/2026
+
+> A rota existe na VPS e responde: 400 para payload inválido, 400 para portal
+> desconhecido, **501 nomeando o portal** cujo formulário ainda não foi
+> automatizado, 503 sem slot de RAM, 500 com screenshot em caso de falha.
+> **O que falta é o `enviarProposta()` de cada portal** — trabalho de portal, não
+> de rota. O contrato abaixo permanece como especificação.
+
+### Contrato (mantido como referência)
 
 **Quem chama:** edge function `enviar-proposta-portal` (botão "Enviar Proposta"
 na aba Proposta).
@@ -157,9 +248,11 @@ X-Agent-Key: <api_key_hash do agente>
 **Resposta esperada:** `200` para aceite (o sistema registra a sessão como
 `proposta_em_envio`); qualquer não-2xx é tratado como erro e mostrado ao usuário.
 
-**Estado atual:** o Praefectus **já trata o 404 corretamente** — devolve 502,
-grava em `agent_acoes_log` e exibe "Falha ao conectar com o Agente Cloud". Nenhum
-usuário é enganado; a função simplesmente não opera até a rota existir.
+**Estado atual:** a rota existe e responde. Enquanto nenhum portal implementar o
+`enviarProposta()`, ela devolve **501 nomeando o portal** — e o Praefectus trata
+qualquer não-2xx como erro visível, com 502 e registro em `agent_acoes_log`.
+A diferença em relação ao 404 anterior é que agora a mensagem diz *qual* portal
+falta, em vez de sugerir que o agente está fora do ar.
 
 **Segurança — já corrigido no Praefectus:** esta chamada usava o `CRON_SECRET`,
 o mesmo segredo dos jobs de sincronização do PNCP; rotacionar o segredo do agente
