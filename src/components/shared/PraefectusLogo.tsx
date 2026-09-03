@@ -15,8 +15,12 @@ const sizeClasses = {
 };
 
 export default function PraefectusLogo({ size = 'md', className, variant = 'default' }: PraefectusLogoProps) {
+  // O dourado da marca agora existe como token. Antes esta linha apontava para
+  // `--accent`, que era o laranja — a variável já se chamava `goldColor`, então
+  // a intenção era essa desde o começo. No protótipo o dourado é a cor da
+  // logo, e só dela.
   const navyColor = variant === 'light' ? 'text-white' : 'text-primary';
-  const goldColor = 'text-accent';
+  const goldColor = 'text-gold-logo';
 
   return (
     <span
