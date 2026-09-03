@@ -101,10 +101,12 @@ export default function KitFaturamento({ pedido }: Props) {
           .select('numero_contrato, orgao_contratante')
           .eq('id', pedido.contrato_id)
           .maybeSingle(),
+        // Sem filtro de cancelamento: `cancelado` NÃO é coluna — é derivado
+        // dos movimentos de anulação no painel. Filtrar por coluna inexistente
+        // fazia a consulta falhar em silêncio e a lista vinha vazia.
         supabase.from('contrato_empenhos' as never)
           .select('id, numero')
           .eq('contrato_id', pedido.contrato_id)
-          .eq('cancelado', false)
           .order('numero'),
         supabase.from('contrato_pedidos')
           .select('empenho_id')
