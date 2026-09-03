@@ -2194,18 +2194,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <Ban className="w-3 h-3 mr-1 inline" /> Cancelado
                         </Badge>
                       )}
-                      {/* O valor total vigente do empenho (original + reforços
-                          − anulações) — a mesma régua da RPC. Sem valor
-                          registrado, nada é inventado. */}
-                      {!e.cancelado && (cotas[0]?.valor_vigente ?? 0) > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          Valor:{' '}
-                          <b className="text-foreground tabular-nums">
-                            {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </b>
-                          {cotas[0].reforcado && ' (com reforços)'}
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-1">
                     {/* A vida do empenho: original, reforços, anulações. O
@@ -2242,6 +2230,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
                     </p>
                   ) : (
+                  <>
                   <div className="flex gap-4 flex-wrap mt-1.5">
                     {cotas.map(c => (
                       <span key={c.cota} className="text-xs text-muted-foreground">
@@ -2268,6 +2257,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </span>
                     ))}
                   </div>
+                  {/* O valor total vigente (original + reforços − anulações),
+                      abaixo das cotas — a mesma régua da RPC. Sem valor
+                      registrado, nada é inventado. */}
+                  {(cotas[0]?.valor_vigente ?? 0) > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Valor:{' '}
+                      <b className="text-foreground tabular-nums">
+                        {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </b>
+                      {cotas[0].reforcado && ' (com reforços)'}
+                    </p>
+                  )}
+                  </>
                   )}
                 </div>
               );
