@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -123,6 +124,7 @@ export default function MeusCompromissos() {
   const [iaResult, setIaResult] = useState<Record<string, string>>({});
   const [arquivando, setArquivando] = useState<string | null>(null);
   const { arquivarProcesso } = useLicitacaoIntegration();
+  const qc = useQueryClient();
   // Aba "Removidos": o log de exclusões sempre existiu (processos_exclusao_log,
   // com o motivo digitado em cada remoção) — só não tinha tela. Sem esta
   // consulta, remover parecia "sumir sem rastro".
@@ -145,15 +147,22 @@ export default function MeusCompromissos() {
 
   const carregarProcessos = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
+    // Semente da última visita: pinta já e atualiza em silêncio. Também
+    // desliga o spinner das recargas por realtime — piscava a tela inteira a
+    // cada mudança de linha.
+    const semente = qc.getQueryData<ProcessoInteresse[]>(['compromissos-semente', user.id]);
+    if (semente && semente.length > 0) { setProcessos(semente); setLoading(false); }
+    else setLoading(true);
     const { data } = await supabase
       .from('processos_interesse')
       .select('*')
       .eq('user_id', user.id)
       .order('data_encerramento', { ascending: true });
-    setProcessos((data || []) as ProcessoInteresse[]);
+    const linhas = (data || []) as ProcessoInteresse[];
+    setProcessos(linhas);
+    qc.setQueryData(['compromissos-semente', user.id], linhas);
     setLoading(false);
-  }, [user]);
+  }, [user, qc]);
 
   useEffect(() => { carregarProcessos(); }, [carregarProcessos]);
 
