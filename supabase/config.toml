@@ -125,3 +125,6 @@ project_id = "uwtyuwktxalnpgrcbbgk"
 
   [functions.semear-acervo-pncp]
     verify_jwt = false
+
+  [functions.normalizar-arquivos-documentos]
+    verify_jwt = false
