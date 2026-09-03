@@ -2194,6 +2194,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <Ban className="w-3 h-3 mr-1 inline" /> Cancelado
                         </Badge>
                       )}
+                      {/* O valor total vigente do empenho (original + reforços
+                          − anulações) — a mesma régua da RPC. Sem valor
+                          registrado, nada é inventado. */}
+                      {!e.cancelado && (cotas[0]?.valor_vigente ?? 0) > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          Valor:{' '}
+                          <b className="text-foreground tabular-nums">
+                            {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </b>
+                          {cotas[0].reforcado && ' (com reforços)'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                     {/* A vida do empenho: original, reforços, anulações. O
