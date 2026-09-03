@@ -29,6 +29,8 @@ type ResultadoGov = {
   numero_compra: string;
   tipo_registro?: string;
   situacao?: string;
+  fornecedor?: string;
+  marca?: string;
 };
 
 type ResumoGov = {
@@ -384,6 +386,14 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Building2 className="w-3 h-3" /> {r.orgao}
                     </span>
+                    {r.fornecedor && (
+                      <span className="text-xs text-muted-foreground">venceu: {r.fornecedor}</span>
+                    )}
+                    {isHomologado && (
+                      <span className="text-xs text-muted-foreground">
+                        marca: {r.marca || 'não informada pelo órgão'}
+                      </span>
+                    )}
                     {(r.municipio || r.uf) && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />

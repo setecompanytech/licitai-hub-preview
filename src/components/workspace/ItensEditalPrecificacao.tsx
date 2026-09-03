@@ -370,6 +370,10 @@ export default function ItensEditalPrecificacao({
                                 <span className="font-medium text-foreground tabular-nums shrink-0">{brl(f.preco)}</span>
                                 {f.situacao && <span className="shrink-0 border border-border/60 rounded px-1">{f.situacao}</span>}
                                 <span className="truncate">{f.orgao || f.titulo}</span>
+                                {f.fornecedor && <span className="truncate">· venceu: {f.fornecedor}</span>}
+                                {f.situacao === 'Homologado' && (
+                                  <span className="shrink-0">· marca: {f.marca || 'não informada pelo órgão'}</span>
+                                )}
                                 {f.data && <span className="shrink-0">{f.data.split('-').reverse().join('/')}</span>}
                                 {f.url && (
                                   <a href={f.url} target="_blank" rel="noreferrer" className="shrink-0 text-accent hover:underline">

@@ -27,6 +27,9 @@ export type FornecedorCotado = {
   orgao?: string;
   data?: string;
   situacao?: string;
+  /** Fase 2 — resultado por item: quem venceu e, quando o órgão preencheu, a marca. */
+  fornecedor?: string;
+  marca?: string;
 };
 
 export type CotacaoItem = {
@@ -158,7 +161,7 @@ export async function cotarItens(
         let pncpVazio = false;
         if (pncp.status === 'fulfilled' && pncp.value.data?.success) {
           const d = pncp.value.data as {
-            resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string }>;
+            resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string; fornecedor?: string; marca?: string }>;
             resumo?: { mediana?: number; total_registros?: number };
           };
           fornecedores.push(
@@ -174,6 +177,8 @@ export async function cotarItens(
                 orgao: r.orgao || '',
                 data: (r.data_compra || '').slice(0, 10),
                 situacao: r.situacao || '',
+                fornecedor: r.fornecedor || undefined,
+                marca: r.marca || undefined,
               })),
           );
           const resumo = d.resumo as { mediana?: number | null; total_registros?: number; total_homologados?: number } | undefined;

@@ -75,7 +75,9 @@ Deno.serve(async (req) => {
           p_cnpj: cnpj,
           p_desde: desdeStr,
           p_limite: limite,
-          p_similaridade_min: 0.25,
+          // 0.35: o teste de 03/09 mostrou o piso de 0.25 deixando entrar
+          // vizinhos fracos (frascos de tiossulfato a 55% de "água mineral").
+          p_similaridade_min: 0.35,
         });
         if (!error && Array.isArray(data)) {
           resultados = data;
