@@ -69,6 +69,9 @@ export default function KitFaturamento({ pedido }: Props) {
   const [empenhoSel, setEmpenhoSel] = useState('');
   const [contas, setContas] = useState<ContaBancaria[]>([]);
   const [contaSel, setContaSel] = useState('');
+  /** O empenho_id que o pedido JÁ tinha — para gravar o vínculo só quando a
+   *  escolha do kit acrescenta informação nova. */
+  const [vinculoOriginal, setVinculoOriginal] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [gerando, setGerando] = useState<'zip' | 'pdf' | null>(null);
   const [certidoes, setCertidoes] = useState<CertidaoAvaliada[]>([]);
@@ -131,6 +134,7 @@ export default function KitFaturamento({ pedido }: Props) {
       const listaEmp = ((empenhosRes.data as unknown as Array<{ id: string; numero: string }>) ?? []);
       setEmpenhos(listaEmp);
       const empenhoVinculadoId = (pedRes.data as unknown as { empenho_id: string | null } | null)?.empenho_id;
+      setVinculoOriginal(empenhoVinculadoId ?? null);
       const doVinculo = listaEmp.find((e) => e.id === empenhoVinculadoId)?.numero;
       // Pré-escolha sem ambiguidade: o vínculo do pedido; senão, empenho único.
       setEmpenhoSel(doVinculo ?? (listaEmp.length === 1 ? listaEmp[0].numero : ''));
@@ -178,6 +182,25 @@ export default function KitFaturamento({ pedido }: Props) {
       // A seleção do diálogo manda (pré-preenchida pelo vínculo/empenho único);
       // sem seleção, resta a leitura das Informações Complementares da NF-e.
       const empenhoDoVinculo: string | null = empenhoSel || null;
+
+      // A escolha feita aqui É o vínculo que faltava (pedidos anteriores a
+      // 30/08 nasceram antes da coluna empenho_id): grava no pedido, e o
+      // próximo kit pré-seleciona sozinho — e o saldo do empenho passa a
+      // contar esta entrega, como manda o desenho.
+      const empenhoEscolhido = empenhos.find((e) => e.numero === empenhoSel);
+      if (empenhoEscolhido && vinculoOriginal !== empenhoEscolhido.id) {
+        const { data: gravado } = await supabase
+          .from('contrato_pedidos')
+          .update({ empenho_id: empenhoEscolhido.id } as never)
+          .eq('id', pedido.id)
+          .select('id');
+        if (gravado?.length) {
+          setVinculoOriginal(empenhoEscolhido.id);
+          toast.info(`Vínculo gravado: pedido ${pedido.numero_pedido} sai do empenho ${empenhoEscolhido.numero}.`, {
+            description: 'O saldo do empenho passa a contar esta entrega, e o próximo kit já vem pré-selecionado.',
+          });
+        }
+      }
       let infComplementares: string | null = null;
       if (!empenhoDoVinculo) {
         const { data: lanc } = await supabase
