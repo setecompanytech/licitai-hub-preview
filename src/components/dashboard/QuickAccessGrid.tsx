@@ -107,33 +107,32 @@ export default function QuickAccessGrid() {
     }))
     .filter((g) => g.items.length > 0);
 
-  // A grade acompanha quantos grupos SOBRARAM depois do filtro. Fixa em 6
-  // colunas, cinco cartões deixavam uma coluna vazia à direita e a fileira
-  // não alcançava a largura da linha de indicadores logo abaixo. Classes
-  // estáticas de propósito: nome de classe montado em tempo de execução não
-  // sobrevive à compilação do Tailwind.
-  const colunasXl = {
-    1: 'xl:grid-cols-1', 2: 'xl:grid-cols-2', 3: 'xl:grid-cols-3',
-    4: 'xl:grid-cols-4', 5: 'xl:grid-cols-5', 6: 'xl:grid-cols-6',
-  }[Math.min(Math.max(gruposVisiveis.length, 1), 6)] ?? 'xl:grid-cols-6';
-
+  // REBRAND — a grade segue o protótipo: os GRUPOS em duas colunas largas, e
+  // os itens de cada grupo em ladrilhos de três por fileira, com o ícone em
+  // cima do nome. Antes eram seis colunas estreitas com lista vertical, e o
+  // nome de cada item quebrava em duas linhas.
+  // Duas colunas dispensam o cálculo de coluna que existia aqui: qualquer
+  // número de grupos preenche as fileiras sem deixar buraco à direita.
   return (
-    <div className={cn('grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3', colunasXl)}>
+    <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
       {gruposVisiveis.map((group) => (
         <div
           key={group.title}
           className={cn(
-            'rounded-xl border p-2.5 sm:p-3 space-y-1.5 sm:space-y-2',
-            group.accent
-              ? 'border-accent/30 bg-accent/5'
-              : 'border-border/60 bg-card/50'
+            'rounded-2xl p-5 shadow-sm',
+            group.accent ? 'bg-primary-tint/50' : 'bg-card'
           )}
         >
-          {/* Rótulo de categoria — opção B da auditoria: 14px, sem caixa alta */}
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            {group.title}
-          </h3>
-          <div className="space-y-0.5">
+          <div className="flex items-center gap-2.5 mb-4">
+            <h3 className="text-lg font-semibold">{group.title}</h3>
+            {group.accent && (
+              <span className="text-xs font-bold uppercase tracking-wider bg-success text-success-foreground px-2 py-0.5 rounded-full leading-none">
+                Destaque
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
             {group.items.map((item) => {
               const Icon = item.icon;
               return (
@@ -141,16 +140,23 @@ export default function QuickAccessGrid() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate(item.path)}
-                      className="group flex items-center gap-1.5 sm:gap-2 w-full px-1.5 sm:px-2 py-1.5 rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-foreground transition-colors text-left min-h-[32px]"
+                      className="group relative flex flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-2 py-5 text-center transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      {/* Regra de ícone da auditoria: neutro por padrão, laranja só no hover */}
-                      <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0" />
-                      <span className="break-words leading-tight line-clamp-2">{item.label}</span>
                       {item.badge && (
-                        <span className="ml-auto text-xs font-bold bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
-                          Novo
+                        // O selo fica ACIMA do ladrilho, montado na borda, como
+                        // no protótipo — dentro, ele empurraria o ícone e
+                        // desalinharia a fileira inteira.
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-bold bg-success text-success-foreground px-2 py-0.5 rounded-full leading-none whitespace-nowrap">
+                          Novidade
                         </span>
                       )}
+                      <Icon
+                        className="w-5 h-5 text-accent transition-colors"
+                        aria-hidden="true"
+                      />
+                      <span className="text-sm font-medium leading-tight line-clamp-2">
+                        {item.label}
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">

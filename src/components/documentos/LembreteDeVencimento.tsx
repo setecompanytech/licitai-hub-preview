@@ -31,20 +31,27 @@ import {
 /** Quantos cabem na caixa antes de virar parede de texto. */
 const VISIVEIS = 3;
 
+/**
+ * REBRAND — o aviso segue o desenho de toast do protótipo: cartão branco,
+ * borda fina em volta e uma FAIXA de 3px colorida só na esquerda. Antes o
+ * cartão inteiro era tingido pela gravidade, e três avisos empilhados viravam
+ * três blocos coloridos disputando a atenção. A faixa diz a mesma coisa sem
+ * pintar a caixa.
+ */
 const ESTILO = {
   vencido: {
-    caixa: 'bg-destructive/10 border-destructive/30',
-    texto: 'text-destructive',
+    caixa: 'border-l-destructive',
+    texto: 'text-destructive-ink',
     Icone: AlertTriangle,
   },
   critico: {
-    caixa: 'bg-destructive/5 border-destructive/20',
-    texto: 'text-destructive',
+    caixa: 'border-l-destructive',
+    texto: 'text-destructive-ink',
     Icone: AlertTriangle,
   },
   atencao: {
-    caixa: 'bg-warning/10 border-warning/30',
-    texto: 'text-warning',
+    caixa: 'border-l-warning',
+    texto: 'text-warning-ink',
     Icone: Clock,
   },
 } as const;
@@ -97,7 +104,7 @@ export default function LembreteDeVencimento() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed right-3 top-16 z-40 flex w-[min(22rem,calc(100vw-1.5rem))] flex-col gap-2"
+      className="fixed right-5 top-[76px] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5"
     >
       {mostrados.map((l) => {
         const { caixa, texto, Icone } = ESTILO[l.gravidade];
@@ -105,8 +112,7 @@ export default function LembreteDeVencimento() {
           <div
             key={l.chave}
             className={cn(
-              'animate-fade-in rounded-lg border p-3 shadow-lg backdrop-blur-sm',
-              'bg-card/95 supports-[backdrop-filter]:bg-card/80',
+              'animate-fade-in rounded-xl border border-border border-l-[3px] bg-card px-3.5 py-3 shadow-md',
               caixa,
             )}
           >

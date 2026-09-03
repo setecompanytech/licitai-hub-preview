@@ -3,9 +3,10 @@ import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
+import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
+import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download, Menu } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AlertaBadge from '@/components/alertas/AlertaBadge';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
@@ -42,6 +43,18 @@ const profileMenuItems = [
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: boolean }>(function AppLayout({ children, amplo = false }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  /* A escolha de recolher a coluna fica gravada no navegador: quem trabalha
+     com ela fechada não quer reabrir a cada tela. `try` porque navegador em
+     janela privada pode recusar o armazenamento. */
+  const [menuAberto, setMenuAberto] = useState(() => {
+    try { return localStorage.getItem('praefectus:menu-lateral') !== 'oculto'; }
+    catch { return true; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('praefectus:menu-lateral', menuAberto ? 'visivel' : 'oculto'); }
+    catch { /* sem armazenamento: a preferência vale só nesta sessão */ }
+  }, [menuAberto]);
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -116,16 +129,37 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   return (
     <div className="min-h-screen bg-background">
       {/* Top header bar */}
-      <header className="nao-imprime sticky top-0 z-40 h-12 sm:h-14 bg-card/90 backdrop-blur-xl border-b border-border flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-4">
-        {/* Logo */}
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
-          <PraefectusLogo size="md" />
+      {/* REBRAND — a barra do topo é navy nos DOIS temas, como no protótipo:
+          ela é a moldura da marca, e é sobre ela que o dourado da logo lê.
+          Antes seguia a superfície do tema (branca no claro), e aí o dourado
+          ficaria invisível. */}
+      <header className="nao-imprime sticky top-0 z-40 h-12 sm:h-14 bg-navy border-b border-navy-hover flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-3">
+        {/* Recolhe e mostra a coluna lateral. Fica à ESQUERDA da marca, como no
+            protótipo, e só existe onde a coluna existe — abaixo de 768px quem
+            navega é a gaveta, e um botão que não recolhe nada confundiria. */}
+        <button
+          onClick={() => setMenuAberto((o) => !o)}
+          aria-expanded={menuAberto}
+          aria-label={menuAberto ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+          title={menuAberto ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+          className="hidden md:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+        >
+          <Menu className="w-[18px] h-[18px]" />
         </button>
 
-        {/* Navigation — fills center */}
-        <div className="flex-1 flex items-center justify-center min-w-0">
+        {/* Logo */}
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
+          <PraefectusLogo size="md" variant="light" />
+        </button>
+
+        {/* REBRAND — a partir de `lg` quem navega é a barra lateral, como no
+            protótipo. O menu horizontal continua vivo abaixo desse ponto: ele
+            é quem carrega a gaveta do mobile. As duas leem a MESMA lista de
+            navegação, então não divergem. */}
+        <div className="flex-1 flex items-center min-w-0 md:hidden">
           <AppTopNav />
         </div>
+        <div className="hidden md:block flex-1" />
 
         {/* Right: Tools */}
         <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
@@ -133,8 +167,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
             <EmpresaSelector />
           </div>
 
+          {/* Sobre o navy, os controles do topo são claros — eles não seguem a
+              superfície do tema, seguem a barra. */}
           <button
-            className="hidden sm:flex p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="hidden sm:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => navigate('/configuracoes')}
             title="Configurações"
           >
@@ -148,10 +184,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           
 
           <button
-            className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+            className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
           >
-            <Bell className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-muted-foreground" />
+            <Bell className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
             {unreadCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-destructive text-destructive-foreground text-xs sm:text-xs font-bold flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -162,7 +198,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-foreground text-xs sm:text-xs font-bold hover:ring-2 hover:ring-accent/30 transition-all cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/15 flex items-center justify-center text-white text-xs sm:text-xs font-bold hover:ring-2 hover:ring-white/30 transition-all cursor-pointer"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
@@ -220,8 +256,12 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         </div>
       </header>
 
-      {/* Main content */}
-      <main className={`${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
+      {/* Corpo: barra lateral fixa + conteúdo, como no protótipo */}
+      <div className="flex items-start">
+        <AppSidebar aberta={menuAberto} />
+
+        {/* Main content */}
+        <main className={`flex-1 min-w-0 ${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">
@@ -238,7 +278,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
             Nas demais telas, continua sendo o caminho de volta. */}
         {location.pathname !== '/dashboard' && <BotaoVoltar />}
         {children}
-      </main>
+        </main>
+      </div>
 
       <NotificationCenter
         open={notifOpen}

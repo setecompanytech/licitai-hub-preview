@@ -129,7 +129,12 @@ const PlanPages = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    {/* REBRAND — o protótipo aprovado é claro, e o app abria no escuro. Nenhum
+        acerto de cor faria as telas se parecerem com o desenho enquanto o
+        padrão fosse o oposto dele. Quem já usa o sistema não sente a mudança:
+        a preferência de cada pessoa fica gravada no navegador e continua
+        valendo; isto muda o primeiro acesso. */}
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
