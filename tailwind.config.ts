@@ -14,27 +14,44 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
         brand: ["Cinzel", "Georgia", "serif"],
       },
       /**
-       * Escala tipográfica única (auditoria 2026-08).
-       * Disciplina de uso: xs SÓ para metadados/badges/timestamps; sm SÓ para
-       * UI densa (tabelas, sidebar, chips). Texto de leitura — parágrafos,
-       * descrições, labels de conteúdo — começa em base.
-       * xl..4xl são maiores que o default do Tailwind de propósito: headings
-       * do app inteiro crescem por definição, sem caçar classe.
+       * Escala tipográfica — REBRAND, fatia 2.
+       *
+       * Cada degrau agora corresponde a um papel real do protótipo, e não a
+       * uma progressão abstrata. A densidade é o que dá a cara de sistema de
+       * gestão: o protótipo trabalha o corpo entre 11,5px e 13,5px, onde o app
+       * usava 14px e 16px.
+       *
+       *   xs   11,5px  meta, badge, timestamp        (o mais usado: 5.570 vezes)
+       *   sm   12,5px  corpo secundário, UI densa    (o mais usado no protótipo)
+       *   base 13,5px  botão, campo, texto de leitura
+       *   lg   15px    título de cartão
+       *   xl   17px    título de modal e de estado vazio
+       *   2xl  22px    KPI médio, h1 de módulo secundário
+       *   3xl  26px    h1 de página
+       *   4xl  30px    KPI de destaque
+       *
+       * Disciplina de uso preservada: xs SÓ para metadados; sm para UI densa;
+       * texto de leitura começa em base.
+       *
+       * O entrelinha aperta junto com o corpo — número grande fica em 1,1 a 1,2
+       * e prosa em 1,5 a 1,55, como no protótipo. E o espacejamento fica
+       * negativo só nos corpos grandes, que é onde ele lá aparece (−0,3px no
+       * h1 de 26px).
        */
       fontSize: {
-        xs: ["0.75rem", { lineHeight: "1rem", letterSpacing: "0.01em" }],
-        sm: ["0.875rem", { lineHeight: "1.25rem" }],
-        base: ["1rem", { lineHeight: "1.625rem" }],
-        lg: ["1.125rem", { lineHeight: "1.8125rem" }],
-        xl: ["1.375rem", { lineHeight: "1.875rem", letterSpacing: "-0.01em" }],
-        "2xl": ["1.75rem", { lineHeight: "2.25rem", letterSpacing: "-0.015em" }],
-        "3xl": ["2.25rem", { lineHeight: "2.75rem", letterSpacing: "-0.02em" }],
-        "4xl": ["3rem", { lineHeight: "3.5rem", letterSpacing: "-0.025em" }],
+        xs: ["0.71875rem", { lineHeight: "1.0625rem", letterSpacing: "0.01em" }],
+        sm: ["0.78125rem", { lineHeight: "1.1875rem" }],
+        base: ["0.84375rem", { lineHeight: "1.3125rem" }],
+        lg: ["0.9375rem", { lineHeight: "1.375rem" }],
+        xl: ["1.0625rem", { lineHeight: "1.5rem", letterSpacing: "-0.008em" }],
+        "2xl": ["1.375rem", { lineHeight: "1.8125rem", letterSpacing: "-0.009em" }],
+        "3xl": ["1.625rem", { lineHeight: "1.9375rem", letterSpacing: "-0.012em" }],
+        "4xl": ["1.875rem", { lineHeight: "2.0625rem", letterSpacing: "-0.015em" }],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -45,14 +62,37 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          tint: "hsl(var(--primary-tint))",
+        },
+        // Navy da marca, em três passos. É a cor predominante do rebrand:
+        // header, splash e véu do login são todos ela.
+        navy: {
+          DEFAULT: "hsl(var(--navy))",
+          hover: "hsl(var(--navy-hover))",
+          tint: "hsl(var(--navy-tint))",
+        },
+        // Dourado da marca. Assinatura, não cor de interface — no painel do
+        // protótipo ele aparece só na logo. Usar com parcimônia.
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          deep: "hsl(var(--gold-deep))",
+          hi: "hsl(var(--gold-hi))",
+          logo: "hsl(var(--logo-accent))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
+        // Os três estados ganharam o trio do protótipo — fundo tingido
+        // (`tint`), texto legível sobre ele (`ink`) e borda (`line`). Substitui
+        // a composição de alfa na mão (`bg-warning/10 text-warning`), que muda
+        // de contraste conforme a superfície embaixo.
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          tint: "hsl(var(--destructive-tint))",
+          ink: "hsl(var(--destructive-ink))",
+          line: "hsl(var(--destructive-line))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -65,10 +105,16 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          tint: "hsl(var(--success-tint))",
+          ink: "hsl(var(--success-ink))",
+          line: "hsl(var(--success-line))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          tint: "hsl(var(--warning-tint))",
+          ink: "hsl(var(--warning-ink))",
+          line: "hsl(var(--warning-line))",
         },
         info: {
           DEFAULT: "hsl(var(--info))",
@@ -116,6 +162,32 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      /**
+       * Sombra e gradiente NÃO existiam aqui — e por isso os tokens
+       * `--shadow-*` e `--gradient-*` do `index.css` quase não chegavam à
+       * tela: `shadow-sm`/`shadow-md`/`shadow-lg` em card.tsx, .stat-card e
+       * .glass-card eram as sombras DEFAULT do Tailwind, não as nossas.
+       * Mapeando aqui, trocar o token passa a repintar de verdade — e a
+       * sombra ganha override no escuro, onde a antiga (navy sobre fundo
+       * escuro) simplesmente não aparecia.
+       */
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        DEFAULT: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
+        glow: "var(--shadow-glow)",
+        "glow-sm": "var(--shadow-glow-sm)",
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-hero": "var(--gradient-hero)",
+        "gradient-card": "var(--gradient-card)",
+        "gradient-dark": "var(--gradient-dark)",
+        "gradient-accent-subtle": "var(--gradient-accent-subtle)",
+        "gradient-warm": "var(--gradient-warm)",
       },
       keyframes: {
         "accordion-down": {

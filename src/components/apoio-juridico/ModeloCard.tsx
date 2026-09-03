@@ -24,7 +24,7 @@ interface Props {
 
 /**
  * Linha forense estilo Vade Mecum / Diário Oficial.
- * Tipografia do sistema (Plus Jakarta Sans) em todos os textos.
+ * Tipografia do sistema (Inter) em todos os textos.
  * Numeração arábica à esquerda, fundamentação centralizada, ações à direita.
  */
 export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir }: Props) {
