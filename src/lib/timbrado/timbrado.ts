@@ -23,7 +23,7 @@ export type AjustesTimbrado = {
   footerWidth: number; footerOffsetY: number;
 };
 
-const AJUSTES_PADRAO: AjustesTimbrado = {
+export const AJUSTES_PADRAO: AjustesTimbrado = {
   marginTop: 3, marginBottom: 2, marginLeft: 3, marginRight: 2,
   headerHeight: 2.5, footerHeight: 2,
   headerAlign: 'esticar', headerWidth: 100, headerOffsetY: 0,

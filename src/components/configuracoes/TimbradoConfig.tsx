@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ImageIcon, Loader2, Save, Eye } from 'lucide-react';
-import { aplicarTimbrado, carregarTimbrado, limparCacheTimbrado, type Timbrado } from '@/lib/timbrado/timbrado';
+import { AJUSTES_PADRAO, aplicarTimbrado, carregarTimbrado, limparCacheTimbrado, type Timbrado } from '@/lib/timbrado/timbrado';
 
 /**
  * Configurações → Timbrado: a identidade que TODO documento gerado veste —
@@ -112,7 +112,15 @@ export default function TimbradoConfig() {
           img.src = dataUrl;
         });
       }
-      t = { logoDataUrl: dataUrl, logoRatio: ratio, cabecalho: cabecalho.trim() || null, rodape: rodape.trim() || null };
+      t = {
+        logoDataUrl: dataUrl,
+        logoRatio: ratio,
+        cabecalho: cabecalho.trim() || null,
+        rodape: rodape.trim() || null,
+        cabecalhoImg: t?.cabecalhoImg ?? null,
+        rodapeImg: t?.rodapeImg ?? null,
+        ajustes: t?.ajustes ?? AJUSTES_PADRAO,
+      };
     }
     if (!t) { toast.info('Preencha o cabeçalho, o rodapé ou o logotipo para pré-visualizar.'); return; }
     const doc = new jsPDF({ unit: 'mm', orientation: orientacao });

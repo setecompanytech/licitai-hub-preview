@@ -247,8 +247,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
   useEffect(() => {
     if (!empresaId) return;
-    supabase.from('empresas')
-      .select('timbrado_url, timbrado_path, cabecalho_url, cabecalho_path, rodape_url, rodape_path, timbrado_ajustes' as never)
+    (supabase.from('empresas') as any)
+      .select('timbrado_url, timbrado_path, cabecalho_url, cabecalho_path, rodape_url, rodape_path, timbrado_ajustes')
       .eq('id', empresaId)
       .single()
       .then(({ data }) => {
