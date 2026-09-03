@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Save, Calculator, ArrowRight, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cotarItens, getEstadoCotacao, subscribeCotacao } from '@/lib/precificacao/cotarItens';
+import HistoricoDoOrgao from '@/components/precificacao/HistoricoDoOrgao';
 
 /**
  * Fase 2 do prontuário integrado — precificação IN-CONTEXT.
@@ -40,12 +41,15 @@ export default function ItensEditalPrecificacao({
   onSaved,
   onIrParaProposta,
   pncpCoords,
+  objetoProcesso,
 }: {
   licitacaoId: string;
   onSaved?: () => void;
   onIrParaProposta?: () => void;
   /** Coordenadas PNCP do processo — excluídas da cotação (cotar a si mesmo é circular). */
   pncpCoords?: { cnpj: string; ano: string; seq: string } | null;
+  /** Objeto do edital — âncora do Histórico do órgão (recorrência por descrição). */
+  objetoProcesso?: string;
 }) {
   const { user } = useAuth();
   const [itens, setItens] = useState<ItemEdital[]>([]);
@@ -178,6 +182,7 @@ export default function ItensEditalPrecificacao({
   }
 
   return (
+    <div className="space-y-4">
     <Card className="p-4 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <Calculator className="w-4 h-4 text-accent" />
@@ -421,5 +426,10 @@ export default function ItensEditalPrecificacao({
         </span>
       </div>
     </Card>
+
+    {objetoProcesso && objetoProcesso.trim().length >= 8 && (
+      <HistoricoDoOrgao cnpjInicial={pncpCoords?.cnpj ?? null} objeto={objetoProcesso} />
+    )}
+    </div>
   );
 }

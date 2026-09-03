@@ -714,6 +714,7 @@ export default function ProcessoWorkspace() {
               licitacaoId={lic.id}
               onSaved={loadPrecificacao}
               onIrParaProposta={() => setAba('proposta')}
+              objetoProcesso={lic.objeto ?? ''}
               pncpCoords={(() => {
                 const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
                 if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
