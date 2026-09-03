@@ -39,10 +39,13 @@ export default function ItensEditalPrecificacao({
   licitacaoId,
   onSaved,
   onIrParaProposta,
+  pncpCoords,
 }: {
   licitacaoId: string;
   onSaved?: () => void;
   onIrParaProposta?: () => void;
+  /** Coordenadas PNCP do processo — excluídas da cotação (cotar a si mesmo é circular). */
+  pncpCoords?: { cnpj: string; ano: string; seq: string } | null;
 }) {
   const { user } = useAuth();
   const [itens, setItens] = useState<ItemEdital[]>([]);
@@ -50,6 +53,9 @@ export default function ItensEditalPrecificacao({
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [fontesAbertas, setFontesAbertas] = useState<string | null>(null);
+  const [editandoTermo, setEditandoTermo] = useState<string | null>(null);
+  const [termoDraft, setTermoDraft] = useState('');
+  const opcoesCotacao = { excluir: pncpCoords ?? undefined };
   // Cotação automática roda FORA do React (lib/precificacao/cotarItens):
   // trocar de aba não interrompe a série de pesquisas.
   const cotacao = useSyncExternalStore(
@@ -183,7 +189,7 @@ export default function ItensEditalPrecificacao({
           size="sm"
           variant="outline"
           className="ml-auto"
-          onClick={() => cotarItens(licitacaoId, itens)}
+          onClick={() => cotarItens(licitacaoId, itens, opcoesCotacao)}
           disabled={cotacao.rodando}
         >
           {cotacao.rodando
@@ -253,7 +259,7 @@ export default function ItensEditalPrecificacao({
                       <button
                         type="button"
                         className="text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => cotarItens(licitacaoId, [it])}
+                        onClick={() => cotarItens(licitacaoId, [it], opcoesCotacao)}
                         disabled={cotacao.rodando}
                       >
                         <Search className="w-3 h-3 inline mr-1" />cotar
@@ -304,6 +310,43 @@ export default function ItensEditalPrecificacao({
                           Usar médio ({brl(cot.precoMedio)})
                         </Button>
                       </div>
+                      {/* O que foi comparado tem de estar à vista: a busca usa
+                          um recorte curto da descrição, não as especificações —
+                          sem dizer isso, cotação de cadeira genérica parecia
+                          prova de sobrepreço da especificada. */}
+                      <div className="flex items-center gap-2 mb-1.5 text-xs text-muted-foreground flex-wrap">
+                        <span>Termo pesquisado:</span>
+                        {editandoTermo === it.id ? (
+                          <>
+                            <Input
+                              value={termoDraft}
+                              onChange={(e) => setTermoDraft(e.target.value)}
+                              className="h-6 text-xs w-80"
+                              maxLength={120}
+                            />
+                            <Button size="sm" variant="outline" className="h-6 text-xs"
+                              onClick={() => {
+                                setEditandoTermo(null);
+                                cotarItens(licitacaoId, [it], { ...opcoesCotacao, termos: { [it.id]: termoDraft }, forcar: [it.id] });
+                              }}>
+                              Recotar
+                            </Button>
+                            <button type="button" className="underline-offset-2 hover:underline"
+                              onClick={() => setEditandoTermo(null)}>cancelar</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-foreground">«{cot.termoUsado || '—'}»</span>
+                            <button type="button" className="text-accent underline-offset-2 hover:underline"
+                              onClick={() => { setEditandoTermo(it.id); setTermoDraft(cot.termoUsado || it.descricao.slice(0, 80)); }}>
+                              editar e recotar
+                            </button>
+                          </>
+                        )}
+                        <span className="text-muted-foreground/70">
+                          As especificações completas não entram na busca — confira a equivalência técnica nos links antes de usar um preço.
+                        </span>
+                      </div>
                       {cot.pncpVazio && !cot.fornecedores.some((f) => f.origem === 'pncp') && (
                         <p className="text-xs text-muted-foreground mb-1.5">
                           Painel Gov.br (PNCP): nenhuma ATA ou contrato encontrado para este termo nos últimos 3 anos.
@@ -312,7 +355,9 @@ export default function ItensEditalPrecificacao({
                       {cot.fornecedores.some((f) => f.origem === 'pncp') && (
                         <div className="mb-1.5">
                           <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                            Homologados no PNCP (ATAs/contratos{cot.pncpRegistros ? ` · ${cot.pncpRegistros} registros` : ''})
+                            {cot.pncpApenasEstimados
+                              ? 'Referências no PNCP — apenas ESTIMATIVAS de outros editais (nenhum preço homologado para este termo)'
+                              : `Homologados no PNCP (ATAs/contratos${cot.pncpRegistros ? ` · ${cot.pncpRegistros} registros` : ''})`}
                           </p>
                           <div className="space-y-0.5">
                             {cot.fornecedores.filter((f) => f.origem === 'pncp').map((f, fi) => (

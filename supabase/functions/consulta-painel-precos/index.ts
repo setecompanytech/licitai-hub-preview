@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    const { termo, anoInicio, anoFim, uf, municipio } = await req.json();
+    const { termo, anoInicio, anoFim, uf, municipio, excluir } = await req.json();
     if (!termo) {
       return json({ error: "Termo de busca é obrigatório" }, 400);
     }
@@ -43,8 +43,27 @@ serve(async (req) => {
     console.log(`[painel-precos] Buscando "${termo}" de ${yearStart} a ${yearEnd} em ${escopo}`);
 
     // Phase 1: Use Firecrawl/Google to find relevant PNCP procurement pages
-    const pncpLinks = await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY, filtro);
-    console.log(`[painel-precos] ${pncpLinks.length} links PNCP encontrados via busca`);
+    const pncpLinksBrutos = await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY, filtro);
+    // A contratação que ORIGINOU a cotação não pode cotar a si mesma: sem este
+    // filtro, os estimados do próprio edital voltavam como "referência" e a
+    // mediana virava a média das estimativas da própria Administração
+    // (circular, e ainda misturando os demais itens do edital).
+    const exc = excluir?.cnpj && excluir?.ano && excluir?.seq
+      ? {
+          cnpj: String(excluir.cnpj).replace(/\D/g, ""),
+          ano: String(excluir.ano),
+          seq: String(Number(excluir.seq)),
+        }
+      : null;
+    const pncpLinks = exc
+      ? pncpLinksBrutos.filter(
+          (l) => !(l.cnpj === exc.cnpj && l.ano === exc.ano && String(Number(l.seq)) === exc.seq),
+        )
+      : pncpLinksBrutos;
+    console.log(
+      `[painel-precos] ${pncpLinks.length} links PNCP via busca` +
+      (exc ? ` (${pncpLinksBrutos.length - pncpLinks.length} da própria contratação excluídos)` : ""),
+    );
 
     if (pncpLinks.length === 0) {
       return json({
@@ -71,13 +90,20 @@ serve(async (req) => {
 
     // Calculate stats
     const precos = sorted.filter((r) => r.preco_unitario > 0).map((r) => r.preco_unitario);
+    // A mediana-âncora usa SÓ preços homologados: estimativa de edital não é
+    // preço praticado (IN 65/2021, art. 5º, I — contratações CONCLUÍDAS).
+    // Estimados continuam listados como contexto, com o selo dizendo o que são.
+    const homologados = sorted
+      .filter((r) => r.situacao === "Homologado" && r.preco_unitario > 0)
+      .map((r) => r.preco_unitario);
     const resumo =
       precos.length > 0
         ? {
             menor_preco: Math.min(...precos),
             maior_preco: Math.max(...precos),
             preco_medio: +(precos.reduce((a, b) => a + b, 0) / precos.length).toFixed(2),
-            mediana: calcMediana(precos),
+            mediana: homologados.length > 0 ? calcMediana(homologados) : null,
+            total_homologados: homologados.length,
             total_registros: sorted.length,
             periodo: `${yearStart}-${yearEnd}`,
             escopo,

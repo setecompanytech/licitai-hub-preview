@@ -714,6 +714,15 @@ export default function ProcessoWorkspace() {
               licitacaoId={lic.id}
               onSaved={loadPrecificacao}
               onIrParaProposta={() => setAba('proposta')}
+              pncpCoords={(() => {
+                const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+                if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
+                if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
+                  return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
+                const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+                if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
+                return null;
+              })()}
             />
             <div className="flex items-center justify-between">
               <div>
