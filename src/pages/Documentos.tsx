@@ -30,6 +30,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { useColaboradores } from '@/hooks/useMetasComercial';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type DocStatus = 'ok' | 'vencido' | 'ausente';
@@ -250,6 +252,35 @@ export default function Documentos() {
   const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  // Trilha de auditoria (03/09): quem alterou o quê, para o Admin. Hooks no
+  // topo, SEMPRE — a tela branca de 02/09 veio de hook depois de return.
+  const { isCompanyAdmin } = useAuthorization();
+  const { data: colaboradores = [] } = useColaboradores();
+  const [historico, setHistorico] = useState<Array<{
+    id: string; documento_nome: string; acao: string; autor: string | null;
+    validade_nova: string | null; criado_em: string;
+  }>>([]);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+  const [historicoCarregando, setHistoricoCarregando] = useState(false);
+
+  const nomeDoAutor = (uid: string | null) => {
+    if (!uid) return 'sistema';
+    const c = (colaboradores as Array<{ user_id: string; nome?: string; email?: string }>).find((x) => x.user_id === uid);
+    return c?.nome || c?.email || 'membro da equipe';
+  };
+
+  const abrirHistorico = async () => {
+    setHistoricoAberto((v) => !v);
+    if (historicoAberto || historico.length > 0 || !empresaAtiva) return;
+    setHistoricoCarregando(true);
+    const { data } = await (supabase.from('documentos_historico' as never) as any)
+      .select('id, documento_nome, acao, autor, validade_nova, criado_em')
+      .eq('empresa_id', empresaAtiva.id)
+      .order('criado_em', { ascending: false })
+      .limit(100);
+    setHistorico(data ?? []);
+    setHistoricoCarregando(false);
+  };
 
   // Validade dialog state
   const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
@@ -842,6 +873,52 @@ export default function Documentos() {
 
             {/* Atestados de Capacidade Técnica — subcategorias por segmento */}
             <AtestadosCapacidadeTecnica />
+
+            {/* ── Trilha de auditoria — só o Admin vê ─────────────────────
+                O registro nasce de GATILHO no banco: envio, substituição,
+                renovação, compartilhamento e remoção deixam rastro por
+                qualquer caminho, não só por esta tela. */}
+            {isCompanyAdmin && (
+              <div className="rounded-lg border border-border">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/40"
+                  onClick={abrirHistorico}
+                >
+                  <span>Histórico de alterações (Admin)</span>
+                  <span className="text-xs text-muted-foreground">{historicoAberto ? 'recolher' : 'ver'}</span>
+                </button>
+                {historicoAberto && (
+                  <div className="border-t border-border divide-y divide-border/60 max-h-80 overflow-y-auto">
+                    {historicoCarregando && (
+                      <p className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando registros…
+                      </p>
+                    )}
+                    {!historicoCarregando && historico.length === 0 && (
+                      <p className="p-3 text-xs text-muted-foreground">
+                        Nenhum registro ainda — a trilha passa a gravar a partir da migration 20260903000006.
+                      </p>
+                    )}
+                    {historico.map((h) => (
+                      <div key={h.id} className="px-4 py-2 text-xs flex items-center gap-2 flex-wrap">
+                        <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+                          {new Date(h.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">{h.acao}</Badge>
+                        <span className="font-medium truncate">{h.documento_nome}</span>
+                        <span className="text-muted-foreground">por {nomeDoAutor(h.autor)}</span>
+                        {h.validade_nova && (
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            · validade {h.validade_nova.slice(0, 10).split('-').reverse().join('/')}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="merge">
