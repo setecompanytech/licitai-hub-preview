@@ -109,6 +109,11 @@ const ProcessoWorkspace = lazyPage(() => import("./pages/ProcessoWorkspace"));
 
 // queryClient definido em src/lib/query-client.ts (singleton compartilhado).
 
+import { useAvisoDeNovaVersao } from '@/hooks/useAvisoDeNovaVersao';
+
+/** Sentinela do bundle: avisa quando um Publish saiu depois desta aba carregar. */
+const AvisoDeNovaVersao = () => { useAvisoDeNovaVersao(); return null; };
+
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-background">
     <div className="flex flex-col items-center gap-4">
@@ -133,6 +138,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <AvisoDeNovaVersao />
       <BrowserRouter>
         <RegistroDeRota />
         <AuthProvider>
