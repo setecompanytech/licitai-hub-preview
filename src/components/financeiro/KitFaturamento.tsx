@@ -17,6 +17,7 @@ import {
 import { baixarCertidoes, indiceDoKit, montarPdfUnico, montarZip, baixar } from '@/lib/faturamento/kit';
 import { numeroDoEmpenho } from '@/lib/faturamento/numero-do-empenho';
 import { gerarReciboPdf, type DadosDoRecibo } from '@/lib/faturamento/recibo';
+import { carregarTimbrado } from '@/lib/timbrado/timbrado';
 
 /**
  * Kit que acompanha a NF-e: recibo de quitação + certidões negativas.
@@ -235,7 +236,8 @@ export default function KitFaturamento({ pedido }: Props) {
         remessa,
         numeroContrato: contrato.numero,
       };
-      const recibo = gerarReciboPdf(empresa as never, (conta as never) ?? null, dados);
+      const timbrado = await carregarTimbrado(empresaAtiva.id);
+      const recibo = gerarReciboPdf(empresa as never, (conta as never) ?? null, dados, timbrado);
 
       const { pecas, falhas } = await baixarCertidoes(certidoes);
       const nomeBase = `kit-faturamento-${(pedido.nota_fiscal || pedido.numero_pedido || 'pedido')

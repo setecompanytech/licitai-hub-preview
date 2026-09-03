@@ -13,6 +13,7 @@
  */
 
 import jsPDF from 'jspdf';
+import { aplicarTimbrado, type Timbrado } from '@/lib/timbrado/timbrado';
 import { valorPorExtenso } from '@/lib/numero-extenso';
 
 export type EmpresaDoRecibo = {
@@ -100,19 +101,30 @@ export function gerarReciboPdf(
   empresa: EmpresaDoRecibo,
   conta: ContaDoRecibo | null,
   dados: DadosDoRecibo,
+  timbrado?: Timbrado | null,
 ): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const M = 20;                       // margem
   const L = 210 - M * 2;              // largura útil
   let y = M;
+  let limiteRodape = 297 - M;
 
-  // Cabeçalho: qualificação em corpo pequeno, sob um filete
-  doc.setLineWidth(0.4);
-  doc.line(M, y, M + L, y);
-  y += 5;
-  doc.setFont('helvetica', 'bold').setFontSize(7);
-  doc.text(doc.splitTextToSize(qualificacaoDaEmpresa(empresa), L), M, y);
-  y += 14;
+  if (timbrado) {
+    // Identidade configurada em Configurações → Timbrado: logotipo,
+    // cabeçalho e rodapé valem para todo documento da empresa.
+    const molde = aplicarTimbrado(doc, timbrado);
+    y = molde.topoY + 4;
+    limiteRodape = molde.rodapeY;
+  } else {
+    // Sem timbrado, o recibo mantém a identidade de sempre: qualificação
+    // em corpo pequeno sob um filete (princípio 7 — nada muda sem escolha).
+    doc.setLineWidth(0.4);
+    doc.line(M, y, M + L, y);
+    y += 5;
+    doc.setFont('helvetica', 'bold').setFontSize(7);
+    doc.text(doc.splitTextToSize(qualificacaoDaEmpresa(empresa), L), M, y);
+    y += 14;
+  }
 
   doc.setFont('times', 'bold').setFontSize(16);
   doc.text('RECIBO', 105, y, { align: 'center' });
@@ -140,7 +152,7 @@ export function gerarReciboPdf(
   }
 
   // Assinatura — bloco à direita, sobre a linha, como no modelo
-  y = Math.max(y + 26, 200);
+  y = Math.max(y + 26, Math.min(200, limiteRodape - 40));
   doc.setLineWidth(0.3);
   doc.line(M + L - 110, y, M + L, y);
   y += 5;
@@ -154,13 +166,16 @@ export function gerarReciboPdf(
   ].filter(Boolean);
   assinatura.forEach((linha) => { doc.text(linha, M + L, y, { align: 'right' }); y += 5; });
 
-  // Rodapé: a mesma qualificação, como no modelo
-  const rodape = doc.splitTextToSize(qualificacaoDaEmpresa(empresa), L);
-  const alturaRodape = rodape.length * 3.6;
-  doc.setLineWidth(0.4);
-  doc.line(M, 297 - M - alturaRodape - 4, M + L, 297 - M - alturaRodape - 4);
-  doc.setFont('helvetica', 'bold').setFontSize(7);
-  doc.text(rodape, M, 297 - M - alturaRodape);
+  // Rodapé: com timbrado, o rodapé é o do timbrado (já desenhado);
+  // sem ele, a mesma qualificação de sempre.
+  if (!timbrado) {
+    const rodape = doc.splitTextToSize(qualificacaoDaEmpresa(empresa), L);
+    const alturaRodape = rodape.length * 3.6;
+    doc.setLineWidth(0.4);
+    doc.line(M, 297 - M - alturaRodape - 4, M + L, 297 - M - alturaRodape - 4);
+    doc.setFont('helvetica', 'bold').setFontSize(7);
+    doc.text(rodape, M, 297 - M - alturaRodape);
+  }
 
   return doc.output('blob');
 }
