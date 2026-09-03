@@ -184,6 +184,7 @@ const cors = require('cors');
 const { SessionManager } = require('./session-manager');
 const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
+const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
 const fs = require('fs');
 const path = require('path');
 
@@ -244,6 +245,9 @@ app.get('/health', (req, res) => {
     sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
     rotas: ROTAS,
+    // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
+    // mas nao submete nada. O painel precisa poder mostrar isso.
+    portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
     certificado: certificadoInstalado(),
   });
 });
@@ -596,6 +600,7 @@ class SessionManager {
         // A conta vivia aqui dentro e cobria o proprio lance quando liderava,
         // descendo o preco ate o piso sem concorrente nenhum.
         const decisao = decidirLance({
+          portalId: session.portal_id,
           valorAtual: session.valor_atual,
           valorMinimo: session.valor_minimo,
           melhorLance,

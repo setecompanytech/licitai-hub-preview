@@ -268,6 +268,39 @@ Mais o contrato novo `souLider()` no `BasePortal`, devolvendo `null` por padrão
 dizer quem lidera não dá lance**, que é o comportamento seguro enquanto os
 seletores não forem validados.
 
+### A trava de liberação por portal
+
+`souLider()` devolvendo `null` já impedia o robô de dar lance. Mas era uma trava
+**forte contra acidente e fraca contra pressa**: o caminho mais curto para
+"fazer funcionar" é escrever
+
+```js
+async souLider() { return false; }
+```
+
+Uma linha, que passa despercebida num diff e reabre exatamente o B1 — "nunca
+estou liderando" faz o robô cobrir o próprio lance a cada rodada.
+
+Então a consequência virou **interruptor com nome, num lugar só**:
+
+```js
+// src/estrategia.js
+const PORTAIS_COM_LANCE_LIBERADO = [];
+```
+
+A checagem vem **antes de qualquer outra** em `decidirLance`, para que corrigir
+um seletor de leitura nunca abra o caminho de escrita por acidente.
+
+| Ganho | Como |
+| --- | --- |
+| Liberar vira decisão assinada | uma linha num arquivo que existe para isso, com autor e data |
+| O atalho para de funcionar | `return false` no portal não basta — ele continua fora da lista |
+| O estado fica visível | o `/health` publica `portais_com_lance_liberado` |
+
+Um teste garante que a lista **nasce e permanece vazia**: se alguém liberar um
+portal, a suíte falha e obriga a explicar por quê. Liberar continua permitido —
+só não pode ser silencioso.
+
 Verificado: `tsc` 0 erros, **1103 testes**, os 31 arquivos do ZIP compilam, e a
 estratégia foi exercitada na própria VPS com os três casos que importam
 (concorrente à frente → lance; liderando → aguarda; leitura falha → aguarda).

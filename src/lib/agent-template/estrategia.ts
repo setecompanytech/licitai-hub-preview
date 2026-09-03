@@ -20,6 +20,29 @@ export const ESTRATEGIA_FILES: Record<string, string> = {
  * provar por teste que o robô não faz besteira com dinheiro.
  */
 
+/**
+ * Portais liberados para ENVIAR LANCE.
+ *
+ * Lista vazia = nenhum portal da lance. Um portal so entra aqui depois que o
+ * souLider() dele foi conferido contra a tela real de uma disputa — nao contra
+ * o que o codigo supoe que a tela tem.
+ *
+ * Por que uma lista, e nao so o souLider() de cada portal: sem ela, o caminho
+ * mais curto para "fazer funcionar" com pressa e escrever
+ * \`async souLider() { return false; }\`. Uma linha, passa despercebida num
+ * diff, e reabre o defeito mais caro da auditoria de 02/09/2026 — "nunca estou
+ * liderando" faz o robo dar lance contra si mesmo ate o piso.
+ *
+ * Com a lista, liberar um portal e um ato deliberado, num arquivo que existe
+ * para isso, com autor e data no historico.
+ */
+const PORTAIS_COM_LANCE_LIBERADO = [];
+
+/** Este portal pode enviar lance? */
+function podeEnviarLance(portalId) {
+  return PORTAIS_COM_LANCE_LIBERADO.includes(portalId);
+}
+
 /** Nunca dar lance sem saber contra quem. */
 const AGUARDAR = (motivo) => ({ acao: 'aguardar', valor: null, motivo });
 const ENCERRAR = (motivo) => ({ acao: 'encerrar', valor: null, motivo });
@@ -27,6 +50,7 @@ const LANCE = (valor, motivo) => ({ acao: 'lance', valor, motivo });
 
 /**
  * @param {object} estado
+ * @param {string}      estado.portalId          id do portal, para a trava de liberacao
  * @param {number}      estado.valorAtual        nosso último lance
  * @param {number}      estado.valorMinimo       piso: o robô nunca ultrapassa
  * @param {number|null} estado.melhorLance       melhor lance lido no portal
@@ -39,6 +63,7 @@ const LANCE = (valor, motivo) => ({ acao: 'lance', valor, motivo });
  */
 function decidirLance(estado) {
   const {
+    portalId,
     valorAtual,
     valorMinimo,
     melhorLance,
@@ -48,6 +73,15 @@ function decidirLance(estado) {
     rodada,
     maxLances,
   } = estado;
+
+  // A trava fica ANTES de tudo: sem ela, corrigir um seletor de leitura poderia
+  // acidentalmente abrir o caminho de escrita.
+  if (!podeEnviarLance(portalId)) {
+    return AGUARDAR(
+      \`Portal "\${portalId || '(nao informado)'}" nao esta liberado para enviar lance — \` +
+      'o souLider() dele ainda nao foi conferido contra a tela real'
+    );
+  }
 
   if (typeof maxLances === 'number' && rodada >= maxLances) {
     return ENCERRAR(\`Teto de \${maxLances} lances atingido\`);
@@ -106,6 +140,6 @@ function decidirLance(estado) {
   return LANCE(novoValor, \`Cobrindo R$ \${melhorLance.toFixed(2)} com decremento de R$ \${decremento.toFixed(2)}\`);
 }
 
-module.exports = { decidirLance };
+module.exports = { decidirLance, podeEnviarLance, PORTAIS_COM_LANCE_LIBERADO };
 `,
 };

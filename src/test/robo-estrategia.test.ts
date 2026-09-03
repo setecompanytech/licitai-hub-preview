@@ -14,17 +14,34 @@ import { ESTRATEGIA_FILES } from '@/lib/agent-template/estrategia';
 
 type Decisao = { acao: 'lance' | 'aguardar' | 'encerrar'; valor: number | null; motivo: string };
 let decidirLance: (estado: Record<string, unknown>) => Decisao;
+let podeEnviarLance: (portalId: string) => boolean;
+let liberados: string[];
 
 beforeAll(() => {
   const codigo = ESTRATEGIA_FILES['src/estrategia.js'];
-  const module = { exports: {} as { decidirLance: typeof decidirLance } };
+  const module = {
+    exports: {} as {
+      decidirLance: typeof decidirLance;
+      podeEnviarLance: typeof podeEnviarLance;
+      PORTAIS_COM_LANCE_LIBERADO: string[];
+    },
+  };
   new vm.Script(codigo, { filename: 'estrategia.js' }).runInNewContext({ module, exports: module.exports });
   decidirLance = module.exports.decidirLance;
+  podeEnviarLance = module.exports.podeEnviarLance;
+  liberados = module.exports.PORTAIS_COM_LANCE_LIBERADO;
 });
 
-/** Disputa saudável: lideramos não, há concorrente à frente, longe do piso. */
+/**
+ * Disputa saudável: não lideramos, há concorrente à frente, longe do piso.
+ *
+ * `portalId` usa um id liberado à força pelos testes desta suíte — a lista real
+ * (PORTAIS_COM_LANCE_LIBERADO) está vazia de propósito, e é o bloco
+ * "trava de liberação" abaixo que garante isso.
+ */
 function cenario(over: Record<string, unknown> = {}) {
   return {
+    portalId: '__teste__',
     valorAtual: 100,
     valorMinimo: 50,
     melhorLance: 90,
@@ -38,6 +55,13 @@ function cenario(over: Record<string, unknown> = {}) {
 }
 
 describe('decidirLance', () => {
+  // A lista é a trava de produção e está vazia. Para exercitar a estratégia em
+  // si, os testes abaixo liberam um portal fictício; o comportamento da trava
+  // é testado no bloco seguinte, com a lista intacta.
+  beforeAll(() => {
+    if (!liberados.includes('__teste__')) liberados.push('__teste__');
+  });
+
   it('cobre o lance do concorrente com o decremento configurado', () => {
     const d = decidirLance(cenario());
     expect(d.acao).toBe('lance');
@@ -141,5 +165,43 @@ describe('decidirLance', () => {
       const d = decidirLance(c);
       expect(d.motivo.length).toBeGreaterThan(10);
     }
+  });
+});
+
+describe('trava de liberação por portal', () => {
+  it('nasce vazia — nenhum portal envia lance sem alguém liberar', () => {
+    // Se este teste falhar, alguém liberou um portal. Isso é permitido, mas
+    // tem de ser deliberado: confira se o souLider() daquele portal foi
+    // conferido contra a tela real de uma disputa.
+    const reais = liberados.filter((p) => p !== '__teste__');
+    expect(reais).toEqual([]);
+  });
+
+  it('portal fora da lista aguarda, mesmo com tudo o mais perfeito', () => {
+    // O atalho perigoso é escrever `async souLider() { return false; }` no
+    // portal: uma linha, passa num diff, e faz o robô cobrir o próprio lance.
+    // A trava vem ANTES de qualquer outra checagem justamente por isso.
+    const d = decidirLance({
+      portalId: 'comprasgov',
+      valorAtual: 100,
+      valorMinimo: 50,
+      melhorLance: 90,
+      souLider: false,
+      decrementoMin: 5,
+      rodada: 1,
+      maxLances: 20,
+    });
+    expect(d.acao).toBe('aguardar');
+    expect(d.motivo).toMatch(/não está liberado|nao esta liberado/i);
+  });
+
+  it('sem portalId também aguarda — não existe padrão permissivo', () => {
+    const d = decidirLance({ valorAtual: 100, valorMinimo: 50, melhorLance: 90, souLider: false, decrementoMin: 5, rodada: 1, maxLances: 20 });
+    expect(d.acao).toBe('aguardar');
+  });
+
+  it('podeEnviarLance responde pela lista, não por adivinhação', () => {
+    expect(podeEnviarLance('bll')).toBe(false);
+    expect(podeEnviarLance('__teste__')).toBe(true); // liberado pelo bloco acima
   });
 });
