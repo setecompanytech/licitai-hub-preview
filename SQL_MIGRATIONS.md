@@ -12582,3 +12582,14 @@ CREATE POLICY timbrado_logo_delete ON storage.objects
   USING (bucket_id = 'empresa-timbrado'
     AND public.is_empresa_admin(auth.uid(), ((storage.foldername(name))[1])::uuid));
 ```
+
+## 2026-09-03 — Ajustes do timbrado (posição/dimensão persistidos)
+
+```sql
+-- Ajustes de posição/dimensão do timbrado de imagem (03/09/2026):
+-- alinhamento, largura e deslocamento do cabeçalho e do rodapé, mais a
+-- configuração de página (papel, orientação, margens) — que até aqui vivia
+-- só no estado da tela e se perdia a cada visita.
+ALTER TABLE public.empresas
+  ADD COLUMN IF NOT EXISTS timbrado_ajustes jsonb;
+```
