@@ -1015,6 +1015,33 @@ export default function MonitoramentoEditais() {
     });
   };
 
+  /**
+   * Sub-tipos com "Todos": o pseudo-item todos_X vale pelo grupo inteiro no
+   * motor de busca, então as caixinhas dos filhos preenchem junto. Desmarcar
+   * um filho com "Todos" ativo degrada para "os outros filhos" — checkbox
+   * marcada que não desmarca é botão mentiroso.
+   */
+  const toggleTipo = (
+    campo: 'tiposConc' | 'tiposPregao' | 'tiposLeilao',
+    todosId: string,
+    id: string,
+  ) => {
+    setFiltros(prev => {
+      const arr = prev[campo] as string[];
+      if (id === todosId) {
+        return { ...prev, [campo]: arr.includes(todosId) ? [] : [todosId] };
+      }
+      if (arr.includes(todosId)) {
+        const grupo = (campo === 'tiposConc' ? TIPOS_CONCORRENCIA : campo === 'tiposPregao' ? TIPOS_PREGAO : TIPOS_LEILAO)
+          .map(t => t.id)
+          .filter(t => t !== todosId && t !== id);
+        return { ...prev, [campo]: grupo };
+      }
+      const next = arr.includes(id) ? arr.filter(v => v !== id) : [...arr, id];
+      return { ...prev, [campo]: next };
+    });
+  };
+
   const setMod = (m: ModalidadeLei14133) => {
     if (m === 'todas') {
       setFiltros(prev => ({ ...prev, modalidades: prev.modalidades.includes('todas') ? [] : ['todas'] }));
@@ -1196,9 +1223,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposConc.includes(t.id) ||
+                          filtros.tiposConc.includes('todos_conc') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposConc', t.id)}
+                        onChange={() => toggleTipo('tiposConc', 'todos_conc', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
                       />
@@ -1213,9 +1241,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposPregao.includes(t.id) ||
+                          filtros.tiposPregao.includes('todos_pregao') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposPregao', t.id)}
+                        onChange={() => toggleTipo('tiposPregao', 'todos_pregao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
                       />
@@ -1230,9 +1259,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposLeilao.includes(t.id) ||
+                          filtros.tiposLeilao.includes('todos_leilao') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposLeilao', t.id)}
+                        onChange={() => toggleTipo('tiposLeilao', 'todos_leilao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
                       />
