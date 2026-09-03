@@ -63,6 +63,32 @@ async function editalMaterializado(
   licitacaoId: string,
   pncp: { cnpj: string; ano: string; seq: string } | null,
 ): Promise<string | null> {
+  // Fonte determinística primeiro: o ANEXO da pasta Edital, pela tabela — quem
+  // anexou pode ter sido qualquer colega, e o caminho carrega o id DELE; a
+  // varredura de pasta abaixo só enxergava a pasta do próprio usuário e era
+  // por isso que "Itens não extraídos" aparecia com o edital dentro de casa.
+  try {
+    const { data: anexos } = await admin
+      .from("processo_anexos")
+      .select("storage_path, nome_arquivo, categoria, created_at")
+      .eq("licitacao_id", licitacaoId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const pdfsAnexo = (anexos || []).filter((x: any) => /\.pdf$/i.test(x.storage_path || ""));
+    const anexoEdital =
+      pdfsAnexo.find((x: any) => x.categoria === "edital") ||
+      pdfsAnexo.find((x: any) => /edital/i.test(x.nome_arquivo || ""));
+    if (anexoEdital?.storage_path) {
+      const { data: signed } = await admin.storage
+        .from("processo-arquivos")
+        .createSignedUrl(anexoEdital.storage_path, 600);
+      if (signed?.signedUrl) {
+        console.log(`[auto-ingest] Edital do anexo do processo: ${anexoEdital.storage_path}`);
+        return signed.signedUrl;
+      }
+    }
+  } catch { /* tabela indisponível — segue para a varredura de pastas */ }
+
   const pastas = [`${userId}/${licitacaoId}/edital`];
   if (pncp) {
     const seqInt = String(parseInt(pncp.seq, 10) || pncp.seq);

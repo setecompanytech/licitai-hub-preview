@@ -140,18 +140,11 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
     }
   };
 
-  // Abre sozinho o que parece ser o edital. A escolha é pelo título/tipo porque
-  // a listagem do PNCP não informa extensão.
-  useEffect(() => {
-    if (selecionado || arquivos.length === 0) return;
-    const ehEdital = (a: ArquivoPncp) => /edital/i.test(a.titulo) || /edital/i.test(a.tipo);
-    const preferido =
-      arquivos.find((a) => ehEdital(a) && !/capa/i.test(a.titulo)) ||
-      arquivos.find((a) => a.extensao === 'pdf') ||
-      arquivos[0];
-    if (preferido) abrirArquivo(preferido);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arquivos]);
+  // Leitura SOB DEMANDA (decisão do dono, 03/09): o card abre compacto — só a
+  // lista de arquivos — e o frame de leitura nasce no clique, como na pasta de
+  // anexos manuais. O auto-abrir tomava a tela inteira com um PDF de 145
+  // páginas que ninguém pediu para ler ainda.
+  const fecharLeitura = () => { setSelecionado(null); setSignedUrl(null); };
 
   if (semFontePncp) return null;
 
@@ -200,7 +193,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
       )}
 
       {arquivos.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-3">
+        <div className={`grid grid-cols-1 gap-3 ${selecionado ? 'lg:grid-cols-[280px_1fr]' : ''}`}>
           {/* Lista de arquivos */}
           <div className="border border-border rounded-md divide-y divide-border/60 max-h-[620px] overflow-y-auto">
             {arquivos.map((a) => {
@@ -234,12 +227,16 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
             })}
           </div>
 
-          {/* Frame do arquivo */}
+          {/* Frame do arquivo — só existe depois do clique */}
+          {selecionado && (
           <div className="border border-border rounded-md overflow-hidden bg-muted/20 min-h-[420px] flex flex-col">
             <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card">
               <span className="text-xs font-medium truncate flex-1">
-                {selecionado ? selecionado.titulo : 'Selecione um arquivo'}
+                {selecionado.titulo}
               </span>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={fecharLeitura} title="Recolher a leitura">
+                Recolher
+              </Button>
               {signedUrl && (
                 <>
                   <Button asChild size="sm" variant="ghost" className="h-7">
@@ -326,6 +323,7 @@ export default function EditalViewer({ licitacaoId, urlEdital, onArquivosPncp }:
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 
