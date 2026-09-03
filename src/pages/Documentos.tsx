@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   FileText, Upload, Repeat, CheckCircle2, AlertTriangle,
-  Shield, FolderOpen, Download, FileArchive, Trash2, Loader2, Eye,
+  Shield, FolderOpen, Download, FileArchive, Trash2, Loader2, Eye, Users,
   CalendarDays, Bot
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -29,6 +29,7 @@ import { extrairValidadeDoTexto, montarData, normalizarEspacos } from '@/lib/doc
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type DocStatus = 'ok' | 'vencido' | 'ausente';
@@ -41,6 +42,10 @@ type Documento = {
   validade?: string;
   arquivo?: string;
   storagePath?: string;
+  /** Id da linha no banco — é por ele que renovação e remoção acontecem. */
+  dbId?: string;
+  /** Linha anterior à conversão para empresa: só o dono vê, até compartilhar. */
+  legadoPrivado?: boolean;
 };
 
 type VisionImage = {
@@ -244,6 +249,7 @@ export default function Documentos() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingUploadIdx = useRef<number | null>(null);
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
 
   // Validade dialog state
   const [validadeDialogOpen, setValidadeDialogOpen] = useState(false);
@@ -272,14 +278,28 @@ export default function Documentos() {
   useEffect(() => {
     if (!user) return;
     const syncFromDB = async () => {
-      const { data } = await supabase
+      // Documento é DA EMPRESA (princípio nº 2): a régua é a empresa ativa.
+      // Linha antiga sem empresa (legado privado) continua visível SÓ para o
+      // dono, exatamente como antes — compartilhar é decisão dele, na tela.
+      let q = supabase
         .from('documentos')
-        .select('id, nome, validade, arquivo_path')
-        .eq('user_id', user.id);
-      if (!data) return;
+        .select('id, nome, validade, arquivo_path, empresa_id, user_id');
+      q = empresaAtiva
+        ? q.or(`empresa_id.eq.${empresaAtiva.id},and(user_id.eq.${user.id},empresa_id.is.null)`)
+        : q.eq('user_id', user.id);
+      const { data: dataRaw } = await q;
+      if (!dataRaw) return;
+      // `empresa_id` nasce na migration 20260903000002; o types.ts gerado
+      // ainda não a conhece — tipagem local, como nas demais colunas novas.
+      const data = dataRaw as unknown as Array<{
+        id: string; nome: string; validade: string | null;
+        arquivo_path: string | null; empresa_id: string | null; user_id: string;
+      }>;
       setDocumentos(
         checklistDocumentos.map((doc) => {
-          const match = data.find((d) => d.nome === doc.nome);
+          // A linha da empresa vence a linha privada de mesmo nome.
+          const match = data.find((d) => d.nome === doc.nome && d.empresa_id)
+            ?? data.find((d) => d.nome === doc.nome);
           if (!match) {
             return { ...doc, status: 'ausente' as DocStatus, validade: undefined, arquivo: undefined, storagePath: undefined };
           }
@@ -293,6 +313,8 @@ export default function Documentos() {
             validade: match.validade || undefined,
             arquivo: match.arquivo_path || undefined,
             storagePath: match.arquivo_path || undefined,
+            dbId: match.id,
+            legadoPrivado: !match.empresa_id,
           };
         })
       );
@@ -300,12 +322,16 @@ export default function Documentos() {
     syncFromDB();
 
     const channel = supabase
-      .channel('documentos-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => syncFromDB())
-      .subscribe();
+      .channel(`documentos-realtime-${empresaAtiva?.id ?? user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `user_id=eq.${user.id}` }, () => syncFromDB());
+    if (empresaAtiva) {
+      // O anexo do colega tem de aparecer aqui sem F5 — é o ponto da conversão.
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: `empresa_id=eq.${empresaAtiva.id}` }, () => syncFromDB());
+    }
+    channel.subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, empresaAtiva]);
 
   const categorias = [...new Set(documentos.map((d) => d.categoria))];
   const filtered = filter === 'todos' ? documentos : documentos.filter((d) => d.status === filter);
@@ -352,10 +378,18 @@ export default function Documentos() {
 
     const slug = documentos[idx].nome.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
     const ext = file.name.split('.').pop();
-    const path = `${user.id}/${slug}.${ext}`;
+    // Arquivo da empresa vive em empresa/<id>/… — é o que as policies do
+    // storage liberam para os colegas. Sem empresa ativa, cai no caminho
+    // pessoal antigo.
+    const path = empresaAtiva
+      ? `empresa/${empresaAtiva.id}/${slug}.${ext}`
+      : `${user.id}/${slug}.${ext}`;
 
-    // Remove old file if exists
-    if (documentos[idx].storagePath) {
+    // Remove o arquivo anterior. Pode falhar quando ele mora na pasta pessoal
+    // de OUTRO colega (legado) — aí só o dono original alcança; o arquivo
+    // antigo fica órfão no bucket, o que é aceitável: a linha passa a apontar
+    // para o novo.
+    if (documentos[idx].storagePath && documentos[idx].storagePath !== path) {
       await supabase.storage.from('documentos-habilitacao').remove([documentos[idx].storagePath!]);
     }
 
@@ -384,36 +418,49 @@ export default function Documentos() {
       if (valDate < new Date()) newStatus = 'vencido';
     }
 
-    const { error: deleteDbError } = await supabase
-      .from('documentos')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('nome', documentos[idx].nome);
+    // Renovar é UPDATE na linha existente (o RLS permite a qualquer membro);
+    // apagar-e-recriar exigiria delete, que é do dono/admin — e renovar a CRF
+    // vencida é exatamente a rotina que o colaborador precisa fazer.
+    const linhaExistente = documentos[idx].dbId;
+    if (linhaExistente) {
+      const { data: atualizadas, error: updateDbError } = await supabase
+        .from('documentos')
+        .update({
+          arquivo_path: path,
+          validade: validadeStr ?? null,
+          tamanho_bytes: file.size,
+          // Renovação com empresa ativa promove a linha legada: o documento
+          // novo já nasce compartilhado.
+          empresa_id: empresaAtiva?.id ?? null,
+        } as never)
+        .eq('id', linhaExistente)
+        .select('id');
+      if (updateDbError || !atualizadas?.length) {
+        toast.error('Erro ao atualizar cadastro do documento: ' + (updateDbError?.message ?? 'sem permissão para esta linha'));
+        setUploadingIdx(null);
+        setPendingFile(null);
+        return;
+      }
+    } else {
+      const { error: insertDbError } = await supabase
+        .from('documentos')
+        .insert({
+          user_id: user.id,
+          empresa_id: empresaAtiva?.id ?? null,
+          nome: documentos[idx].nome,
+          tipo: documentos[idx].categoria,
+          descricao: `${documentos[idx].categoria} • ${documentos[idx].artigo}`,
+          arquivo_path: path,
+          validade: validadeStr,
+          tamanho_bytes: file.size,
+        } as never);
 
-    if (deleteDbError) {
-      toast.error('Erro ao atualizar cadastro do documento: ' + deleteDbError.message);
-      setUploadingIdx(null);
-      setPendingFile(null);
-      return;
-    }
-
-    const { error: insertDbError } = await supabase
-      .from('documentos')
-      .insert({
-        user_id: user.id,
-        nome: documentos[idx].nome,
-        tipo: documentos[idx].categoria,
-        descricao: `${documentos[idx].categoria} • ${documentos[idx].artigo}`,
-        arquivo_path: path,
-        validade: validadeStr,
-        tamanho_bytes: file.size,
-      });
-
-    if (insertDbError) {
-      toast.error('Erro ao salvar metadados do documento: ' + insertDbError.message);
-      setUploadingIdx(null);
-      setPendingFile(null);
-      return;
+      if (insertDbError) {
+        toast.error('Erro ao salvar metadados do documento: ' + insertDbError.message);
+        setUploadingIdx(null);
+        setPendingFile(null);
+        return;
+      }
     }
 
     setDocumentos(prev => prev.map((d, i) =>
@@ -529,31 +576,65 @@ export default function Documentos() {
     toast.success(`"${doc.nome}" baixado com sucesso!`);
   };
 
+  /** Linha anterior à conversão (só o dono vê): move o arquivo para a pasta
+   *  da empresa e grava o empresa_id — compartilhar é decisão de quem anexou,
+   *  nunca efeito de migration (princípio 7). */
+  const compartilharComEmpresa = async (globalIdx: number) => {
+    const doc = documentos[globalIdx];
+    if (!doc.dbId || !empresaAtiva || !user) return;
+    let novoPath = doc.storagePath;
+    if (doc.storagePath && doc.storagePath.startsWith(`${user.id}/`)) {
+      novoPath = `empresa/${empresaAtiva.id}/${doc.storagePath.split('/').pop()}`;
+      const { error: moveErr } = await supabase.storage
+        .from('documentos-habilitacao')
+        .move(doc.storagePath, novoPath);
+      if (moveErr && !/already exists/i.test(moveErr.message)) {
+        toast.error('Não foi possível mover o arquivo: ' + moveErr.message);
+        return;
+      }
+    }
+    const { data: ok, error } = await supabase
+      .from('documentos')
+      .update({ empresa_id: empresaAtiva.id, arquivo_path: novoPath ?? null } as never)
+      .eq('id', doc.dbId)
+      .select('id');
+    if (error || !ok?.length) {
+      toast.error('Não foi possível compartilhar: ' + (error?.message ?? 'linha não encontrada'));
+      return;
+    }
+    toast.success(`Agora toda a equipe de ${empresaAtiva.nome_fantasia ?? empresaAtiva.razao_social} vê este documento.`);
+    setDocumentos(prev => prev.map((d, i) =>
+      i === globalIdx ? { ...d, legadoPrivado: false, storagePath: novoPath, arquivo: novoPath } : d));
+  };
+
   const handleRemove = async (globalIdx: number) => {
     if (!user) return;
     const doc = documentos[globalIdx];
 
     setRemovingIdx(globalIdx);
 
-    if (doc.storagePath) {
-      const { error } = await supabase.storage.from('documentos-habilitacao').remove([doc.storagePath]);
-      if (error) {
-        toast.error('Erro ao remover: ' + error.message);
+    // A LINHA sai primeiro: é nela que o RLS decide (dono ou admin da
+    // empresa). Na ordem inversa, um membro sem permissão perderia o ARQUIVO
+    // e a linha ficaria apontando para o nada.
+    if (doc.dbId) {
+      const { data: removidas, error: deleteDbError } = await supabase
+        .from('documentos')
+        .delete()
+        .eq('id', doc.dbId)
+        .select('id');
+      if (deleteDbError || !removidas?.length) {
+        toast.error(deleteDbError
+          ? 'Erro ao remover cadastro: ' + deleteDbError.message
+          : 'Documento da empresa: só o dono do anexo ou o Admin podem remover.');
         setRemovingIdx(null);
         return;
       }
     }
 
-    const { error: deleteDbError } = await supabase
-      .from('documentos')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('nome', doc.nome);
-
-    if (deleteDbError) {
-      toast.error('Erro ao remover cadastro: ' + deleteDbError.message);
-      setRemovingIdx(null);
-      return;
+    if (doc.storagePath) {
+      // Arquivo em pasta pessoal de outro colega (legado) pode ficar órfão —
+      // aceitável: o registro já se foi e nada mais o alcança pela tela.
+      await supabase.storage.from('documentos-habilitacao').remove([doc.storagePath]);
     }
 
     setDocumentos(prev => prev.map((d, i) =>
@@ -716,13 +797,24 @@ export default function Documentos() {
                                         seta para cima já é o botão "Enviar" da linha sem arquivo. */}
                                     {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Repeat className="w-3 h-3" />}
                                   </Button>
+                                  {doc.legadoPrivado && empresaAtiva && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => compartilharComEmpresa(globalIdx)}
+                                      className="text-warning hover:text-warning"
+                                      title="Hoje só você vê este documento — clique para compartilhar com a equipe da empresa"
+                                    >
+                                      <Users className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleRemove(globalIdx)}
                                     disabled={isRemoving}
                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    title="Remover arquivo"
+                                    title={doc.legadoPrivado ? 'Remover arquivo' : 'Remover (documento da empresa: dono do anexo ou Admin)'}
                                   >
                                     {isRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                                   </Button>
