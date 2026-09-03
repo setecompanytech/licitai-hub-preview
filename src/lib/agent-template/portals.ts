@@ -34,6 +34,24 @@ class BasePortal {
   }
 
   /**
+   * Estamos liderando a disputa?
+   *
+   * O ciclo de lance depende disto: lerMelhorLance() devolve o melhor lance
+   * DA SESSAO, que e o nosso quando lideramos. Sem distinguir, o robo cobria o
+   * proprio lance a cada rodada e descia o preco ate o piso sem nenhum
+   * concorrente ter aparecido — o defeito mais caro achado na auditoria de
+   * 02/09/2026.
+   *
+   * Devolver null quando o portal nao permite saber. A estrategia trata
+   * null como "nao da para decidir" e AGUARDA, em vez de arriscar.
+   *
+   * @returns {Promise<boolean|null>}
+   */
+  async souLider() {
+    return null;
+  }
+
+  /**
    * enviarProposta(dados) — OPCIONAL, e por isso NÃO declarado aqui.
    *
    * A rota POST /api/proposta/enviar checa \`typeof portal.enviarProposta ===
@@ -148,7 +166,7 @@ class ComprasGovPortal extends BasePortal {
    */
   async delayHumano(min = 300, max = 800) {
     const ms = Math.floor(Math.random() * (max - min)) + min;
-    await this.page.waitForTimeout(ms);
+    await new Promise((r) => setTimeout(r, ms));
   }
 
   /**
@@ -161,7 +179,7 @@ class ComprasGovPortal extends BasePortal {
       } catch (err) {
         console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
         if (i === tentativas) throw err;
-        await this.page.waitForTimeout(this.retryDelay * i);
+        await new Promise((r) => setTimeout(r, this.retryDelay * i));
       }
     }
   }
@@ -417,7 +435,7 @@ class ComprasGovPortal extends BasePortal {
         await this.page.keyboard.press('Enter');
       }
 
-      await this.page.waitForTimeout(5000);
+      await new Promise((r) => setTimeout(r, 5000));
       await this.screenshot('busca-resultado');
 
       // Clicar na sala de disputa / resultado
@@ -434,7 +452,7 @@ class ComprasGovPortal extends BasePortal {
       });
 
       if (disputaClicked) {
-        await this.page.waitForTimeout(5000);
+        await new Promise((r) => setTimeout(r, 5000));
       }
 
       await this.screenshot('sala-disputa');
@@ -560,7 +578,7 @@ class ComprasGovPortal extends BasePortal {
         await dialog.accept();
       });
 
-      await this.page.waitForTimeout(3000);
+      await new Promise((r) => setTimeout(r, 3000));
       await this.screenshot('lance-enviado');
 
       if (modalConfirm) {
@@ -668,7 +686,7 @@ class BLLPortal extends BasePortal {
     await this.page.goto(\`\${this.baseUrl}/pregao\`, { waitUntil: 'networkidle2' });
     await this.preencherCampo('input[name="busca"], #busca', edital);
     await this.page.keyboard.press('Enter');
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('busca-edital');
   }
 
@@ -690,8 +708,8 @@ class BLLPortal extends BasePortal {
       if (btn) btn.click();
     });
 
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('lance-bll');
     return true;
   }
@@ -829,7 +847,7 @@ class LicitacoesEPortal extends BasePortal {
 
   async delayHumano(min = 300, max = 800) {
     const ms = Math.floor(Math.random() * (max - min)) + min;
-    await this.page.waitForTimeout(ms);
+    await new Promise((r) => setTimeout(r, ms));
   }
 
   async digitarHumano(selector, texto) {
@@ -846,7 +864,7 @@ class LicitacoesEPortal extends BasePortal {
       } catch (err) {
         console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
         if (i === tentativas) throw err;
-        await this.page.waitForTimeout(this.retryDelay * i);
+        await new Promise((r) => setTimeout(r, this.retryDelay * i));
       }
     }
   }
@@ -1037,7 +1055,7 @@ class LicitacoesEPortal extends BasePortal {
       if (!oferecerClicked) throw new Error('Botão "Oferecer Lance" não encontrado');
 
       // 3. Aguardar modal de confirmação
-      await this.page.waitForTimeout(1000);
+      await new Promise((r) => setTimeout(r, 1000));
       const confirmSel = S.modalConfirmacao || S.botaoConfirmar;
       await this.aguardarElemento(confirmSel, 5000);
 
@@ -1056,7 +1074,7 @@ class LicitacoesEPortal extends BasePortal {
         await dialog.accept();
       });
 
-      await this.page.waitForTimeout(1500);
+      await new Promise((r) => setTimeout(r, 1500));
       await this.screenshot('lance-enviado-licitacoes-e');
     }, 'enviar-lance');
 
@@ -1190,7 +1208,7 @@ class PNCPPortal extends BasePortal {
   async navegarParaDisputa(edital) {
     console.log(\`📋 Buscando edital \${edital} no PNCP\`);
     await this.page.goto(\`\${this.baseUrl}/app/editais?q=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('pncp-busca');
   }
 
@@ -1210,8 +1228,8 @@ class PNCPPortal extends BasePortal {
         .find(b => b.textContent.toLowerCase().includes('enviar') || b.textContent.toLowerCase().includes('confirmar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 }
@@ -1257,7 +1275,7 @@ class BECSPPortal extends BasePortal {
     await this.page.goto(\`\${this.baseUrl}/BECSP/OfertaEletronicaFornecedor\`, { waitUntil: 'networkidle2' });
     await this.preencherCampo('input[name="numOC"], #numOC', edital);
     await this.page.keyboard.press('Enter');
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1276,8 +1294,8 @@ class BECSPPortal extends BasePortal {
         .find(b => (b.value || b.textContent).toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 }
@@ -1325,7 +1343,7 @@ class LicitanetPortal extends BasePortal {
       await this.page.goto(\`\${this.baseUrl}/auth/login\`, { waitUntil: 'networkidle2' });
     }
     
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     
     // Preencher formulário de login (SPA renderiza campos dinamicamente)
     await this.preencherCampo('input[name="email"], input[name="login"], input[type="email"], #email', this.credenciais.login);
@@ -1336,14 +1354,14 @@ class LicitanetPortal extends BasePortal {
                     (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     this.loggedIn = true;
     console.log('✅ Login no Licitanet realizado');
   }
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao/busca?q=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   async lerMelhorLance() {
@@ -1361,8 +1379,8 @@ class LicitanetPortal extends BasePortal {
         .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 }
@@ -1404,7 +1422,7 @@ class PortalComprasPortal extends BasePortal {
       return false;
     });
     
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     
     // Preencher formulário Angular
     await this.preencherCampo('input[name="login"], input[formcontrolname="login"], input[type="text"]:not([readonly]), #login', this.credenciais.login);
@@ -1415,14 +1433,14 @@ class PortalComprasPortal extends BasePortal {
                     (b.textContent || '').toLowerCase().includes('login'));
       if (btn) btn.click();
     });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     this.loggedIn = true;
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/disputa?edital=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   async lerMelhorLance() {
@@ -1440,8 +1458,8 @@ class PortalComprasPortal extends BasePortal {
         .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 }
@@ -1482,7 +1500,7 @@ class BNCPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao/busca?q=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   async lerMelhorLance() {
@@ -1500,8 +1518,8 @@ class BNCPortal extends BasePortal {
         .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 }

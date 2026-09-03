@@ -98,7 +98,7 @@ class BanparanetPortal extends BasePortal {
       if (btn) btn.click();
     });
 
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('banparanet-disputa');
 
     // Clicar no link da disputa encontrada
@@ -108,7 +108,7 @@ class BanparanetPortal extends BasePortal {
           .find(a => a.textContent.toLowerCase().includes('sala') || a.textContent.toLowerCase().includes('disputa'));
       if (link) link.click();
     });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -162,11 +162,11 @@ class BanparanetPortal extends BasePortal {
     });
 
     // Banparanet usa confirmação em 2 etapas
-    this.page.on('dialog', async d => {
+    this.page.once('dialog', async d => {
       console.log(\`📌 Confirmação Banparanet: \${d.message()}\`);
       await d.accept();
     });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Verificar se há botão de confirmação secundária
     await this.page.evaluate(() => {
@@ -176,7 +176,7 @@ class BanparanetPortal extends BasePortal {
       if (confirmBtn) confirmBtn.click();
     });
 
-    await this.page.waitForTimeout(2000);
+    await new Promise((r) => setTimeout(r, 2000));
     await this.screenshot('lance-banparanet');
     return true;
   }
@@ -237,7 +237,7 @@ class ComprasBRPortal extends BasePortal {
   async navegarParaDisputa(edital) {
     console.log(\`📋 Buscando edital \${edital} no ComprasBR\`);
     await this.page.goto(\`\${this.baseUrl}/pregao/busca?q=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Clicar no resultado
     await this.page.evaluate(() => {
@@ -246,7 +246,7 @@ class ComprasBRPortal extends BasePortal {
           .find(el => el.textContent.includes('Sala') || el.textContent.includes('Disputar'));
       if (link) link.click();
     });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('comprasbr-disputa');
   }
 
@@ -282,8 +282,8 @@ class ComprasBRPortal extends BasePortal {
           .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('lance-comprasbr');
     return true;
   }
@@ -382,7 +382,7 @@ class BBMNetPortal extends BasePortal {
       if (btn) btn.click();
     });
 
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('bbmnet-busca');
 
     // Entrar na sala de disputa
@@ -392,7 +392,7 @@ class BBMNetPortal extends BasePortal {
           .find(a => a.textContent.includes('Sala') || a.textContent.includes('Disputar'));
       if (link) link.click();
     });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('bbmnet-disputa');
   }
 
@@ -439,11 +439,11 @@ class BBMNetPortal extends BasePortal {
       if (btn) btn.click();
     });
 
-    this.page.on('dialog', async d => {
+    this.page.once('dialog', async d => {
       console.log(\`📌 Confirmação BBMNet: \${d.message()}\`);
       await d.accept();
     });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('lance-bbmnet');
     return true;
   }
@@ -504,7 +504,7 @@ class LicitarDigitalPortal extends BasePortal {
   async navegarParaDisputa(edital) {
     console.log(\`📋 Buscando edital \${edital} no Licitar Digital\`);
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Angular: clicar na disputa
     await this.page.evaluate(() => {
@@ -513,7 +513,7 @@ class LicitarDigitalPortal extends BasePortal {
           .find(el => el.textContent.includes('Sala') || el.textContent.includes('Disputar'));
       if (link) link.click();
     });
-    await this.page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('licitar-digital-disputa');
   }
 
@@ -548,8 +548,8 @@ class LicitarDigitalPortal extends BasePortal {
           .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('lance-licitar-digital');
     return true;
   }
@@ -619,7 +619,7 @@ class ComprasNetBAPortal extends BasePortal {
           .find(b => (b.textContent || b.value || '').toLowerCase().includes('buscar'));
       if (btn) btn.click();
     });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('comprasnet-ba-disputa');
   }
 
@@ -653,8 +653,8 @@ class ComprasNetBAPortal extends BasePortal {
           .find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     await this.screenshot('lance-comprasnet-ba');
     return true;
   }
@@ -708,7 +708,7 @@ class ComprasNetGOPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?numero=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('comprasnet-go-disputa');
   }
 
@@ -734,8 +734,8 @@ class ComprasNetGOPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -790,7 +790,7 @@ class ComprasMGPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/fornecedor/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('compras-mg-disputa');
   }
 
@@ -814,8 +814,8 @@ class ComprasMGPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -871,7 +871,7 @@ class PEIntegradoPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/fornecedor/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('pe-integrado-disputa');
   }
 
@@ -896,8 +896,8 @@ class PEIntegradoPortal extends BasePortal {
         || [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -948,7 +948,7 @@ class ComprasRJPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?numero=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
     await this.screenshot('compras-rj-disputa');
   }
 
@@ -972,8 +972,8 @@ class ComprasRJPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1024,7 +1024,7 @@ class ComprasPRPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1046,8 +1046,8 @@ class ComprasPRPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1098,7 +1098,7 @@ class ComprasRSPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1120,8 +1120,8 @@ class ComprasRSPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1172,7 +1172,7 @@ class ComprasSCPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1194,8 +1194,8 @@ class ComprasSCPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1249,7 +1249,7 @@ class EComprasDFPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1271,8 +1271,8 @@ class EComprasDFPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1323,7 +1323,7 @@ class EComprasAMPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1345,8 +1345,8 @@ class EComprasAMPortal extends BasePortal {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
@@ -1400,7 +1400,7 @@ class ComprasCEPortal extends BasePortal {
 
   async navegarParaDisputa(edital) {
     await this.page.goto(\`\${this.baseUrl}/pregao?busca=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
-    await this.page.waitForTimeout(5000);
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   async lerMelhorLance() {
@@ -1423,8 +1423,8 @@ class ComprasCEPortal extends BasePortal {
         .find(b => (b.textContent || b.value || '').toLowerCase().includes('enviar'));
       if (btn) btn.click();
     });
-    this.page.on('dialog', async d => await d.accept());
-    await this.page.waitForTimeout(3000);
+    this.page.once('dialog', async d => await d.accept());
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   }
 
