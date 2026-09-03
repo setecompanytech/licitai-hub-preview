@@ -79,19 +79,28 @@ export async function carregarTimbrado(empresaId: string | null | undefined): Pr
     let cabecalhoImg: ImagemTimbrado | null = null;
     let rodapeImg: ImagemTimbrado | null = null;
     let ajustes: AjustesTimbrado = AJUSTES_PADRAO;
+    // As IMAGENS têm consulta própria: pedir junto com timbrado_ajustes fazia
+    // o 42703 da coluna ausente (migration 20260903000008 pendente) derrubar a
+    // consulta INTEIRA — e a arte sumia do recibo em silêncio (caso de 03/09).
     try {
       const { data: emp } = await (supabase.from('empresas') as any)
-        .select('cabecalho_url, rodape_url, timbrado_url, timbrado_ajustes')
+        .select('cabecalho_url, rodape_url, timbrado_url')
         .eq('id', empresaId)
         .maybeSingle();
       if (emp) {
-        if (emp.timbrado_ajustes && typeof emp.timbrado_ajustes === 'object') {
-          ajustes = { ...AJUSTES_PADRAO, ...emp.timbrado_ajustes };
-        }
         cabecalhoImg = await baixarImagem(emp.cabecalho_url || emp.timbrado_url);
         rodapeImg = await baixarImagem(emp.rodape_url);
       }
-    } catch { /* colunas ausentes: segue para a fonte 2 */ }
+    } catch { /* sem as colunas de arte: segue para a fonte 2 */ }
+    try {
+      const { data: aj } = await (supabase.from('empresas') as any)
+        .select('timbrado_ajustes')
+        .eq('id', empresaId)
+        .maybeSingle();
+      if (aj?.timbrado_ajustes && typeof aj.timbrado_ajustes === 'object') {
+        ajustes = { ...AJUSTES_PADRAO, ...aj.timbrado_ajustes };
+      }
+    } catch { /* coluna de ajustes ausente: padrões valem */ }
 
     // Fonte 2 — logotipo + textos (empresa_timbrado): o fallback composto.
     const { data } = await (supabase.from('empresa_timbrado' as never) as any)
