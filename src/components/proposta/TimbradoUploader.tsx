@@ -91,6 +91,29 @@ const DEFAULT_SETUP: PageSetup = {
   footerOffsetY: 0,
 };
 
+/**
+ * PDF de papel timbrado → PNG da 1ª página (04/09). O ramo antigo subia o
+ * PDF cru: a prévia <img> não renderiza PDF (o campo "voltava em branco"),
+ * o gerador recusava application/pdf, e o rodapé nunca nascia. Convertido,
+ * o arquivo entra no MESMO fluxo de recorte das imagens.
+ */
+async function pdfParaPngBlob(file: File): Promise<Blob> {
+  const pdfjsLib = await import('pdfjs-dist');
+  const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pagina = await pdf.getPage(1);
+  const viewport = pagina.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponível');
+  await pagina.render({ canvasContext: ctx, viewport } as never).promise;
+  return await new Promise<Blob>((res, rej) =>
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error('Falha ao converter o PDF'))), 'image/png', 1));
+}
+
 function cropImageToBlob(
   img: HTMLImageElement,
   region: 'top' | 'bottom',
@@ -355,6 +378,17 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         const parts = [headerBlob ? 'cabeçalho' : '', footerBlob ? 'rodapé' : ''].filter(Boolean).join(' e ');
         toast.success(`${parts.charAt(0).toUpperCase() + parts.slice(1)} extraído(s) do documento Word com sucesso!`);
         setUploading(false);
+      } else if (file.type === 'application/pdf' || ext === '.pdf') {
+        // PDF entra no fluxo das imagens: converte a 1ª página e abre o
+        // recorte de cabeçalho/rodapé — nada de PDF cru no banco.
+        toast.info('Convertendo o PDF do timbrado…');
+        const png = await pdfParaPngBlob(file);
+        const localUrl = URL.createObjectURL(png);
+        setSourceImageUrl(localUrl);
+        const path = `${empresaId}/timbrado_full.png`;
+        await supabase.storage.from('timbrados').upload(path, png, { upsert: true, contentType: 'image/png' });
+        setUploading(false);
+        toast.success('PDF convertido! Ajuste as áreas de cabeçalho e rodapé abaixo e confirme o recorte.');
       } else {
         const path = `${empresaId}/cabecalho${ext}`;
         const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
