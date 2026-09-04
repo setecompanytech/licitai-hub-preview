@@ -777,7 +777,7 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 | ◐ | Faixa do painel deixa de anunciar novidade que não existe | `Index.tsx` |
 | ◐ | Esta folha de acompanhamento, preenchida | este arquivo |
 
-**04/09 — telas de maior tráfego** (o prazo virou entrega única; ver seção 8)
+**04/09 — telas de maior tráfego** — _Ian + Claude_ (o prazo virou entrega única; ver seção 8)
 
 | | Entrega | Arquivos |
 | :---: | --- | --- |
@@ -789,7 +789,7 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 | ◐ | **Analytics** — o título deixa de prometer tempo real; o rodapé também. Só texto, o dado sempre foi verdadeiro (achado 2 da seção 12) | `Analytics.tsx` |
 | ◐ | **Varredura de contraste** — 17 pares de texto/fundo calculados nos dois temas | (verificação, sem alteração) |
 
-**04/09 — segunda leva: a jornada de ponta a ponta**
+**04/09 — segunda leva: a jornada de ponta a ponta** — _Ian + Claude_
 
 As quatro primeiras são o percurso de quem trabalha no sistema — **encontrar →
 precificar → propor → disputar → contratar**. O Kanban e o Robô, já entregues
@@ -939,7 +939,7 @@ mesmo dourado.
 > apresentação promete um sistema, o destino mostra outro. Quem cria o caminho
 > responde pelo destino.
 
-**04/09 — terceira leva: as telas de apoio**
+**04/09 — terceira leva: as telas de apoio** — _Ian + Claude_
 
 | | Entrega | Arquivos |
 | :---: | --- | --- |
