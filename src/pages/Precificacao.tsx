@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import AppLayout from '@/components/layout/AppLayout';
+import heroPrecificacao from '@/assets/brand/hero-precificacao-modulo.jpg';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -549,13 +550,112 @@ export default function Precificacao() {
       <div className="space-y-6">
         {/* Declara SOBRE QUAL processo as ações desta tela agem */}
         <ProcessoContextoBanner />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <AbaAtual.icone className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              {AbaAtual.titulo}
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{AbaAtual.subtitulo}</p>
+        {/* ── Herói do módulo ──
+            REBRAND — mesma anatomia do Robô de Lances e dos dois Apoios: faixa
+            navy de 232px, foto sangrando na direita, texto sobre o navy sólido
+            da esquerda. A diferença é que aqui o herói é CAMALEÃO: o título, o
+            subtítulo e o ícone vêm de `AbaAtual`, então ele se reescreve a cada
+            uma das sete abas em vez de anunciar "Precificação" e deixar a
+            pessoa descobrir sozinha onde está.
+
+            A barra de LOCALIZAÇÃO mudou de lugar e veio para dentro dele. Ela
+            vivia solta entre o cabeçalho e as abas, o que a fazia parecer um
+            filtro da página inteira — e ela não é: só duas das sete abas
+            recortam por região. Dentro do herói, que é justamente o bloco que
+            muda com a aba, o vínculo fica visível: quando a aba não usa
+            localização, a barra some junto com o resto do contexto dela.
+
+            `brightness-[.85]` e o véu lateral estendido a 65% pelo mesmo motivo
+            do Apoio Contábil — a juta e o papelão são claros e quentes, e sem
+            isso a foto vira um bloco aceso com emenda na borda esquerda.
+
+            O recorte em 62% (abaixo do centro) é o que mantém a balança na
+            cena: acima disso sobra fundo de madeira, e a gangorra — que é o que
+            faz a foto dizer "comparar preço" em vez de "dinheiro" — sai. */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 hidden w-[520px] max-w-[42%] md:block"
+          >
+            <img
+              src={heroPrecificacao}
+              alt=""
+              className="w-full h-full object-cover object-[center_62%] brightness-[.85]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-65% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/50 to-transparent" />
+          </div>
+
+          <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
+            <div className="flex items-start gap-3">
+              <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+                <AbaAtual.icone className="w-5 h-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 max-w-xl">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                  {AbaAtual.titulo}
+                </h1>
+                <p className="text-sm text-white/75 mt-1 leading-relaxed">{AbaAtual.subtitulo}</p>
+              </div>
+            </div>
+
+            {/* Localização: só nas abas que de fato recortam por ela.
+                Os três seletores ganham pele própria porque sobre navy o
+                `bg-background` do componente é branco no tema claro e quase
+                preto no escuro — a mesma barra teria dois pesos completamente
+                diferentes. Translúcido sobre a faixa fica igual nos dois. */}
+            {AbaAtual.usaLocalizacao && (
+              <div className="flex gap-3 items-center flex-wrap">
+                <div className="flex items-center gap-1.5 text-sm text-white/70">
+                  <MapPin className="w-4 h-4" aria-hidden="true" />
+                  <span className="font-medium">Localização:</span>
+                </div>
+                <Select value={selectedRegiao} onValueChange={handleRegiaoChange}>
+                  <SelectTrigger className="w-[150px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
+                    <Globe className="w-3.5 h-3.5 mr-1 text-white/70" />
+                    <SelectValue placeholder="Região" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as regiões</SelectItem>
+                    {Object.entries(REGIOES_ESTADOS).map(([key, r]) => (
+                      <SelectItem key={key} value={key}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedEstado} onValueChange={handleEstadoChange}>
+                  <SelectTrigger className="w-[180px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os estados</SelectItem>
+                    {availableEstados.map((e) => (
+                      <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedCidade} onValueChange={setSelectedCidade}>
+                  <SelectTrigger className="w-[180px] h-9 bg-white/10 border-white/25 text-white hover:bg-white/15 transition-colors">
+                    <SelectValue placeholder="Cidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as cidades</SelectItem>
+                    {availableCidades.map((c, i) => (
+                      <SelectItem key={`${i}-${c}`} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(selectedRegiao !== 'todos' || selectedEstado !== 'todos' || selectedCidade !== 'todos') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/80 hover:bg-white/10 hover:text-white"
+                    onClick={() => { setSelectedRegiao('todos'); setSelectedEstado('todos'); setSelectedCidade('todos'); }}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -624,55 +724,6 @@ export default function Precificacao() {
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-        )}
-
-        {/* Localização: só nas abas que de fato recortam por ela */}
-        {AbaAtual.usaLocalizacao && (
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4" />
-            <span className="font-medium">Localização:</span>
-          </div>
-          <Select value={selectedRegiao} onValueChange={handleRegiaoChange}>
-            <SelectTrigger className="w-[150px] h-9">
-              <Globe className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-              <SelectValue placeholder="Região" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas as regiões</SelectItem>
-              {Object.entries(REGIOES_ESTADOS).map(([key, r]) => (
-                <SelectItem key={key} value={key}>{r.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedEstado} onValueChange={handleEstadoChange}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os estados</SelectItem>
-              {availableEstados.map((e) => (
-                <SelectItem key={e.uf} value={e.uf}>{e.nome} ({e.uf})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedCidade} onValueChange={setSelectedCidade}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Cidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas as cidades</SelectItem>
-              {availableCidades.map((c, i) => (
-                <SelectItem key={`${i}-${c}`} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {(selectedRegiao !== 'todos' || selectedEstado !== 'todos' || selectedCidade !== 'todos') && (
-            <Button variant="ghost" size="sm" onClick={() => { setSelectedRegiao('todos'); setSelectedEstado('todos'); setSelectedCidade('todos'); }}>
-              Limpar
-            </Button>
-          )}
-        </div>
         )}
 
         {/* Source Tabs */}
