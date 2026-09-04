@@ -64,6 +64,38 @@ Comandos: `git add` dos arquivos relevantes (evite `git add -A` cego se houver r
 - `git push origin <branch-atual>`
 - Se o push for rejeitado (non-fast-forward), volte ao passo 1 (`/sync`) e tente de novo. Nunca force.
 
+### Na `feature/rebrand-ui-ux`, empurre TAMBÉM para o `sete`
+
+```sh
+git push sete feature/rebrand-ui-ux
+```
+
+Essa branch tem **dois destinos**, e eles servem a públicos diferentes:
+
+| Remoto | Repositório | Para quê |
+| --- | --- | --- |
+| `origin` | `xfinconsultoriaempresarial-a11y/licitai-hub` | o repo de trabalho, onde Ian e Caio se encontram |
+| `sete` | `setecompanytech/licitai-hub-preview` | dispara o build do Cloudflare Pages |
+
+O `sete` existe porque a organização principal tinha trava de permissão com a
+Cloudflare. O Pages está ligado a ELE, com `feature/rebrand-ui-ux` como branch
+de produção, e publica em **https://praefectus-preview.pages.dev** — que é onde
+o Rafael navega e avalia.
+
+**Esquecer o segundo push não dá erro nenhum.** O commit entra no `origin`, o
+time vê, tudo parece certo — e o Rafael continua olhando a versão velha, sem
+nada na tela dizendo que está velha. É falha silenciosa, que o `CLAUDE.md`
+proíbe no princípio 3. Por isso o push duplo é parte do passo, não um extra.
+
+Para conferir que o ar recebeu, sem depender do painel da Cloudflare:
+
+```sh
+git rev-parse --short HEAD                              # o que você mandou
+git ls-remote --heads sete feature/rebrand-ui-ux        # o que o Pages vai compilar
+```
+
+Os dois têm que bater. O deploy leva ~2 min depois disso.
+
 ## 7. Resumo final
 
 Reporte em poucas linhas:

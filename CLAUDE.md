@@ -125,6 +125,7 @@ nova — inclusive as commitadas pelo Lovable — deve nascer alinhada a eles:
 6. **Publicação é pelo Lovable** — o domínio é servido por ele; FTP/Hostgator foi
    aposentado. Edge functions: `npx supabase functions deploy <fn> --project-ref
    uwtyuwktxalnpgrcbbgk` (o CLI leva o `_shared/` junto; o dashboard não).
+   **Exceção: a `feature/rebrand-ui-ux` tem publicação própria** — ver abaixo.
 7. **Política de cliente não vira regra de produto** — isto é SaaS: quando uma
    prática soa como "o certo" (bônus só após a NF quitada, meta medida sobre
    faturamento, prazo de convite de 7 dias), quase sempre é a prática de UM
@@ -136,6 +137,45 @@ nova — inclusive as commitadas pelo Lovable — deve nascer alinhada a eles:
    de política é decisão de alguém, nunca efeito colateral de migration), e
    ausência de configuração não é barrada por um padrão inventado — quem ainda
    não escolheu não pode ser bloqueado pela escolha alheia.
+
+## Preview do rebranding — a branch tem DOIS remotos
+
+A `feature/rebrand-ui-ux` está no ar em **https://praefectus-preview.pages.dev**,
+para o Rafael navegar e avaliar sem esperar merge. Por isso ela tem dois destinos:
+
+| Remoto | Repositório | Serve a |
+| --- | --- | --- |
+| `origin` | `xfinconsultoriaempresarial-a11y/licitai-hub` | o time — é onde Ian e Caio se encontram |
+| `sete` | `setecompanytech/licitai-hub-preview` | o Cloudflare Pages, que compila e publica |
+
+O `sete` existe porque a organização principal tinha trava de permissão com a
+Cloudflare. O projeto no Pages é `praefectus-preview`, ligado a esse repo, com
+`npm run build` → `dist` e **`feature/rebrand-ui-ux` como branch de produção**.
+
+```sh
+git push origin feature/rebrand-ui-ux   # o time vê
+git push sete   feature/rebrand-ui-ux   # o Rafael vê  ← não esqueça este
+```
+
+> ⚠️ **Esquecer o segundo push não gera erro.** O commit entra no `origin`, o time
+> vê, tudo parece certo — e o Rafael continua avaliando a versão velha, sem nada
+> na tela avisando. É exatamente a falha silenciosa que o princípio 3 proíbe, e o
+> `/salvar` já foi ajustado para fazer os dois.
+
+Conferir sem abrir o painel da Cloudflare — os dois hashes têm que bater:
+
+```sh
+git rev-parse --short HEAD
+git ls-remote --heads sete feature/rebrand-ui-ux
+```
+
+Para provar que o ar é ESTE código, e não só que respondeu 200: os nomes dos
+assets carregam hash de conteúdo, então `ls dist/assets/` depois de um
+`npm run build` local dá o nome exato que o site tem que servir.
+
+Rota profunda funciona (`/dashboard` sem 404) por causa de `public/_redirects`,
+que traz `/*  /index.html  200`. Se ele sumir, o Rafael cai em 404 ao recarregar
+qualquer tela — e só ele vai notar.
 
 ## Estrutura
 
