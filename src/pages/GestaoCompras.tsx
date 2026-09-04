@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
+import heroEstoque from '@/assets/brand/hero-gestao-estoque-pedidos.jpg';
 import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
@@ -898,25 +899,64 @@ export default function GestaoCompras() {
   // ══ LIST VIEW ════════════════════════════════════════════════
   return (
     <AppLayout>
-      {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Compras e Pedidos</h1>
-          <p className="text-sm text-muted-foreground mt-1">Pedidos, fornecedores, estoque e notas fiscais</p>
+      {/* ── Herói do módulo ──
+          REBRAND — mesma anatomia dos outros heróis (Robô de Lances, os dois
+          Apoios, Precificação): faixa navy de 232px, foto sangrando na direita,
+          texto sobre o navy sólido da esquerda.
+
+          Esta imagem pede menos correção que as demais: já nasce em 1365×587,
+          quase a proporção da própria faixa, e o corredor de galpão é escuro e
+          acinzentado, da família do navy. Daí `brightness-[.95]` em vez de
+          `.85`, e nenhum recorte horizontal — a 620px de painel a foto entra
+          inteira na largura.
+
+          O botão de ação continua aqui dentro, mas trocou de pele: a variante
+          padrão é `bg-primary`, que é navy — navy sobre navy sumiria. Branco
+          com texto navy é o contraste certo para ação primária em faixa
+          escura, e é o mesmo par que a barra do topo já usa. */}
+      <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 hidden w-[620px] max-w-[48%] md:block"
+        >
+          <img
+            src={heroEstoque}
+            alt=""
+            className="w-full h-full object-cover object-[center_50%] brightness-[.95]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-60% to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/55 to-transparent" />
         </div>
-        {!isOnboarding && (
-          <div className="flex gap-2">
-            {mainTab === 'fornecedores' ? (
-              <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
-            ) : mainTab === 'estoque' ? (
-              <Button onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
-            ) : mainTab === 'nfe' ? (
-              <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
-            ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
-              <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Pedido</Button>
-            )}
+
+        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
+          <div className="flex items-start gap-3">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+              <Warehouse className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 max-w-xl">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                Gestão de Compras e Pedidos
+              </h1>
+              <p className="text-sm text-white/75 mt-1 leading-relaxed">
+                Pedidos, fornecedores, estoque e notas fiscais
+              </p>
+            </div>
           </div>
-        )}
+
+          {!isOnboarding && (
+            <div className="flex gap-2">
+              {mainTab === 'fornecedores' ? (
+                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Fornecedor</Button>
+              ) : mainTab === 'estoque' ? (
+                <Button className="bg-white text-navy hover:bg-white/90" onClick={openNovoProduto}><Plus className="w-4 h-4 mr-2" /> Novo Produto</Button>
+              ) : mainTab === 'nfe' ? (
+                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Importar NF-e</Button>
+              ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? null : (
+                <Button className="bg-white text-navy hover:bg-white/90" onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Pedido</Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {!empresaAtiva ? (
