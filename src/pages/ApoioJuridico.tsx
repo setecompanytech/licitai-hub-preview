@@ -55,8 +55,14 @@ export default function ApoioJuridico() {
               <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
               Apoio Jurídico Especializado
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Modelos, templates, geração assistida por IA e reequilíbrio contratual – Lei 14.133/2021. Documentos vinculam-se automaticamente ao processo ativo (barra superior).
+            {/* Duas frases no lugar de uma de 30 palavras. A segunda diz o que
+                a pessoa precisa saber ANTES de gerar a peça — para onde o
+                documento vai —, e isso se perdia no fim de um parágrafo. */}
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+              Modelos, templates, geração assistida por IA e reequilíbrio contratual — Lei 14.133/2021.{' '}
+              <span className="block sm:inline">
+                Os documentos vinculam-se automaticamente ao processo ativo.
+              </span>
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -71,33 +77,36 @@ export default function ApoioJuridico() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 h-auto">
-            <TabsTrigger value="modelos" className="text-xs gap-1 py-2">
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Modelos e Templates</span>
-              <span className="sm:hidden">Modelos</span>
-            </TabsTrigger>
-            <TabsTrigger value="gerador" className="text-xs gap-1 py-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Gerador IA</span>
-              <span className="sm:hidden">Gerador</span>
-            </TabsTrigger>
-            <TabsTrigger value="reequilibrio" className="text-xs gap-1 py-2">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reequilíbrio</span>
-              <span className="sm:hidden">Reequil.</span>
-            </TabsTrigger>
-            <TabsTrigger value="base-juridica" className="text-xs gap-1 py-2">
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Base Jurídica</span>
-              <span className="sm:hidden">Base</span>
-            </TabsTrigger>
-            <TabsTrigger value="legislacao" className="text-xs gap-1 py-2">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Legislação</span>
-              <span className="sm:hidden">Leis</span>
-            </TabsTrigger>
-          </TabsList>
+          {/* REBRAND — a `barra-abas` do protótipo: faixa que ROLA, com o
+              rótulo inteiro.
+
+              A grade de cinco colunas obrigava cada aba a caber numa fração
+              fixa da largura, e a saída tinha sido abreviar: "Reequilíbrio"
+              virava "Reequil.", "Base Jurídica" virava "Base", "Legislação"
+              virava "Leis". Abreviação em rótulo de navegação é a pior troca
+              possível — economiza pixel e cobra do usuário adivinhar o destino,
+              justamente onde ele ainda não sabe o que vai encontrar.
+
+              Numa faixa rolável a largura de cada aba é a do próprio texto.
+              Cabe tudo no desktop, e no celular a pessoa arrasta — gesto que
+              ela já faz o dia inteiro. Como bônus, some a duplicação de cada
+              rótulo em duas versões. */}
+          <div className="-mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto">
+            <TabsList className="inline-flex w-auto h-auto gap-1">
+              {[
+                { v: 'modelos', ic: FileText, r: 'Modelos e Templates' },
+                { v: 'gerador', ic: Sparkles, r: 'Gerador IA' },
+                { v: 'reequilibrio', ic: TrendingUp, r: 'Reequilíbrio' },
+                { v: 'base-juridica', ic: Database, r: 'Base Jurídica' },
+                { v: 'legislacao', ic: BookOpen, r: 'Legislação' },
+              ].map(({ v, ic: Icone, r }) => (
+                <TabsTrigger key={v} value={v} className="gap-1.5 py-2 px-3 text-sm whitespace-nowrap">
+                  <Icone className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {r}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {/* Tab 1: Modelos + Templates com Gerador Integrado */}
           <TabsContent value="modelos" className="space-y-4">
