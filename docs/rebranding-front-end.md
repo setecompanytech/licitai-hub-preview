@@ -302,6 +302,55 @@ Tradução de token é mecânica; forma e composição pedem olho de designer. Q
 um precisar entrar no arquivo do outro, **avise no mesmo dia** — não é proibido,
 só não pode ser silencioso.
 
+---
+
+## ⚠️ 04/09, a partir de agora: os DOIS na branch ao mesmo tempo
+
+Até aqui o trabalho foi alternado — o Caio entregou em 03/09, o Ian seguiu em
+04/09. **Isso mudou: daqui em diante os dois estão escrevendo em paralelo.**
+
+A regra da seção 4 (`status → pull → commit → pull → push`) deixa de ser
+recomendação e passa a ser a única forma de trabalhar. Sem ela, o segundo a
+enviar leva um push recusado, e a saída errada para isso — `--force` — apaga o
+trabalho do outro.
+
+### Quem está com o quê, agora
+
+Esta tabela é o contrato do dia. **Quem pegar um arquivo, escreve aqui antes de
+começar.** Uma linha a mais custa dez segundos; um conflito no
+`MonitoramentoEditais.tsx`, de 2.500 linhas, custa a tarde.
+
+| Arquivo / área | Com quem | Desde |
+| --- | --- | --- |
+| `src/index.css` · `tailwind.config.ts` | **Caio** — é a frente dele desde o começo | 02/09 |
+| `src/components/ui/` (os 51) | **Caio** | 02/09 |
+| `AppSidebar.tsx` · `menu.ts` · `AppTopNav.tsx` | **Caio** (navegação é dele) | 02/09 |
+| As 14 telas que faltam (seção 11) | **livre** — nenhuma reservada | |
+| _(anote aqui ao pegar uma)_ | | |
+
+> **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
+> 04/09, que são território do Caio.** Está tudo enviado, então basta um `pull`
+> para receber. O que entrou: a classe `.eleva` e o bloco `.aurelia-fab` no
+> CSS; o grupo *Painel* saiu do menu e *Inteligência* assumiu o topo; a altura
+> do cabeçalho subiu (e o `top-` da lateral acompanha). **Caio, puxe antes de
+> abrir qualquer um desses quatro.**
+
+### As três perguntas antes de commitar
+
+1. **Puxei agora?** Não "hoje de manhã" — agora. `git pull origin feature/rebrand-ui-ux`
+2. **O arquivo que abri está na tabela acima com o nome do outro?** Se sim, avise antes.
+3. **Vou dar `--force`?** Não. Nunca. Push recusado quer dizer que falta `pull`.
+
+### Três medidas que andam juntas, e quebram calado se separarem
+
+Mexeu numa, confira as outras duas — não há erro de compilação para avisar:
+
+| | Onde |
+| --- | --- |
+| Altura do cabeçalho (`h-14 sm:h-16`) | `AppLayout.tsx` |
+| Onde a lateral gruda (`top-16` / `h-[calc(100vh-4rem)]`) | `AppSidebar.tsx` |
+| A moldura do esqueleto (mesma altura, **e a mesma ordem das peças**) | `SkeletonPagina.tsx` |
+
 ### As outras regras rígidas
 
 **1. `src/lib/versao.ts` é exclusivo da `main`. A branch nunca toca.**
@@ -934,6 +983,54 @@ aba é a do próprio texto, como no `barra-abas` do protótipo.
 > Não foi para a seção 12 porque a seção 12 é para achado que ESPERA, e a regra
 > de lá é explícita: dado errado na tela não espera. Agora passa por
 > `normalizarStatus`, que é a autoridade.
+
+### O que ainda falta — 14 telas, sem dono
+
+**Nenhuma destas está reservada.** Quem pegar escreve o nome na linha e na
+tabela de "quem está com o quê" da seção 5, antes de começar.
+
+A ordem é por quanto o protótipo desenhou: quanto maior o número, mais
+referência visual existe para seguir e menos decisão de desenho sobra.
+
+| | Tela | Rota | Arquivo | Prot. | Hoje |
+| :---: | --- | --- | --- | ---: | ---: |
+| ☐ | Marketing (admin) | `/admin/marketing` | `AdminMarketing.tsx` | 233 | 392 |
+| ☐ | API & Integração | `/api-integracao` | `ApiIntegracao.tsx` | 153 | 138 |
+| ☐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
+| ☐ | Licitações Estratégicas | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
+| ☐ | Chat e Mural | `/monitoramento-chat` | `MonitoramentoChat.tsx` | 100 | 243 |
+| ☐ | Concorrentes | `/concorrentes` | `Concorrentes.tsx` | 99 | 51 |
+| ☐ | Metas do Comercial | `/metas-comercial` | `MetasComercial.tsx` | 97 | 95 |
+| ☐ | WhatsApp CRM | `/whatsapp-crm` | `WhatsAppCRM.tsx` | 75 | 60 |
+| ☐ | Histórico de Licitações | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
+| ☐ | Fontes & Fabricantes | `/admin/fontes-fabricantes` | `AdminFontesFabricantes.tsx` | 67 | 362 |
+| ☐ | Assessoria Cadastral | `/assessoria-cadastral` | `AssessoriaCadastral.tsx` | 53 | 191 |
+| ☐ | Apoio Contábil | `/apoio-contabil` | `ApoioContabil.tsx` | 53 | 160 |
+| ☐ | Workflow IA | `/workflow-ia` | `WorkflowIA.tsx` | 44 | 220 |
+| ☐ | Empresas | `/empresas` | `Empresas.tsx` | 29 | 145 |
+
+**Por onde começar: 4, 6, 7 ou 9.** São as que **fecham módulo inteiro** na
+grade da seção 11 — Estratégicas e Histórico fecham o módulo 3 junto com o
+Kanban; Concorrentes fecha o 13; Metas fecha o 14 sozinha. Terminar um módulo
+vale mais que terminar tela solta: o módulo é a unidade que o tech lead revisa.
+
+**Gestão de Compras é armadilha.** 1.586 linhas, a segunda maior página do
+sistema. Sozinha custa perto do que custam quatro telas médias juntas — merece
+uma leva própria, não entra num pacote de cinco.
+
+**Concorrentes tem 51 linhas contra 99 no protótipo.** Provavelmente é casca,
+não tela. Confira se há dado por trás ANTES de desenhar; se não houver, é
+`TarjaExemplo` ou nada — gráfico bonito com número inventado é pior que gráfico
+feio com número inventado, porque a paleta nova empresta credibilidade que o
+dado não tem.
+
+**Três telas ficam fora desta lista de propósito.** `Configurações`,
+`Ferramentas IA` e `Jurídico` têm 1, 1 e 5 linhas no protótipo — não há
+referência para seguir. Herdam a paleta pelos tokens e ficam como estão até
+alguém desenhá-las. Não são dívida; são trabalho que ainda não existe.
+
+**Nenhuma das 14 encosta** em `index.css`, `tailwind.config.ts`,
+`components/ui/` ou na navegação.
 
 **Caio, três coisas que você precisa saber destas telas:**
 
