@@ -860,40 +860,69 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {/* Left: Form */}
           <div className={`${showPreview && !isMobile ? 'w-1/2 min-w-0' : 'w-full max-w-6xl mx-auto'} space-y-4`}>
 
-        {/* Stepper */}
-        <div className="bg-card rounded-xl border border-border/50 shadow-sm p-3">
-          <div className="flex items-center gap-0.5 overflow-x-auto pb-1">
+        {/* REBRAND — a régua de passos do protótipo (`mstep`).
+            Antes eram oito pastilhas lado a lado, todas do mesmo tamanho: nada
+            dizia que uma vinha DEPOIS da outra, nem quanto faltava. Agora os nós
+            são ligados por um trilho que fica verde onde já passou — a mesma
+            gramática da trilha do Tutorial. Os oito passos, os rótulos, as
+            descrições e o clique para pular continuam idênticos. */}
+        <nav
+          aria-label="Etapas da proposta"
+          className="bg-card rounded-xl border border-border/50 shadow-sm px-3 py-4 overflow-x-auto"
+        >
+          <ol className="flex items-start min-w-max list-none m-0 p-0">
             {STEPS.map((step, idx) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isDone = completed.has(step.id);
+              const proximoFeito = completed.has(STEPS[idx + 1]?.id);
               return (
-                <button
-                  key={step.id}
-                  onClick={() => setCurrentStep(step.id)}
-                  className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
-                    isActive
-                      ? 'bg-accent text-accent-foreground shadow-md'
-                      : isDone
-                        ? 'bg-success/10 text-success hover:bg-success/20'
-                        : 'text-muted-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                    isActive ? 'bg-accent-foreground/20' : isDone ? 'bg-success/20' : 'bg-muted'
-                  }`}>
-                    {isDone && !isActive ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
-                  </div>
-                  <div className="text-left hidden md:block">
-                    <div className="leading-tight">{step.label}</div>
-                    <div className="text-xs opacity-60 leading-tight">{step.desc}</div>
-                  </div>
-                  {idx < STEPS.length - 1 && <ChevronRight className="w-3 h-3 ml-0.5 opacity-20" />}
-                </button>
+                <li key={step.id} className="flex items-start">
+                  <button
+                    onClick={() => setCurrentStep(step.id)}
+                    aria-current={isActive ? 'step' : undefined}
+                    className="flex w-[104px] shrink-0 flex-col items-center gap-2 text-center group"
+                  >
+                    <span
+                      className={`w-[38px] h-[38px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                        isActive
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : isDone
+                            ? 'border-success text-success bg-card'
+                            : 'border-border text-muted-foreground bg-card group-hover:border-muted-foreground'
+                      }`}
+                    >
+                      {isDone && !isActive
+                        ? <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                        : <Icon className="w-4 h-4" aria-hidden="true" />}
+                    </span>
+                    <span className="px-0.5 leading-tight">
+                      <span
+                        className={`block text-xs font-semibold ${
+                          isActive ? 'text-primary' : isDone ? 'text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      <span className="hidden md:block text-xs text-muted-foreground/80 leading-tight mt-0.5">
+                        {step.desc}
+                      </span>
+                    </span>
+                  </button>
+
+                  {idx < STEPS.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className={`h-0.5 w-6 rounded-full mt-[18px] -mx-3 transition-colors ${
+                        isDone && proximoFeito ? 'bg-success' : isDone ? 'bg-success/50' : 'bg-border'
+                      }`}
+                    />
+                  )}
+                </li>
               );
             })}
-          </div>
-        </div>
+          </ol>
+        </nav>
 
         {/* Step Content */}
         <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6">
