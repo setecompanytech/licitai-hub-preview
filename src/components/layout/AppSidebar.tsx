@@ -66,7 +66,7 @@ export default function AppSidebar({ aberta = true }: Props) {
     <aside
       aria-hidden={!aberta}
       className={cn(
-        'nao-imprime hidden md:flex flex-shrink-0 flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card z-30 overflow-hidden transition-[width,border-width] duration-200 ease-out',
+        'nao-imprime hidden md:flex flex-shrink-0 flex-col sticky top-16 h-[calc(100vh-4rem)] bg-card z-30 overflow-hidden transition-[width,border-width] duration-200 ease-out',
         aberta ? 'w-[264px] border-r border-border' : 'w-0 border-r-0',
       )}
     >

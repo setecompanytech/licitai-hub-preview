@@ -69,18 +69,26 @@ export default function SkeletonPagina({
     <div role="status" aria-busy="true" className="min-h-screen bg-background flex flex-col">
       <span className="sr-only">Carregando</span>
 
-      {/* Barra do topo — as mesmas medidas do AppLayout (h-12 / sm:h-14,
+      {/* Barra do topo — as mesmas medidas do AppLayout (h-14 / sm:h-16,
           `bg-navy`), para a barra verdadeira substituir esta sem deslocar um
-          pixel do que está abaixo. */}
+          pixel do que está abaixo. Se a altura do cabeçalho mudar lá, muda aqui
+          e no `top-` da AppSidebar: os três andam juntos. */}
       <div
         aria-hidden="true"
-        className="sticky top-0 z-40 h-12 sm:h-14 bg-navy border-b border-navy-hover flex items-center gap-3 px-2 sm:px-4 lg:px-6"
+        className="sticky top-0 z-40 h-14 sm:h-16 bg-navy border-b border-navy-hover flex items-center gap-3 px-3 sm:px-5 lg:px-7"
       >
         <PraefectusLogo size="md" variant="light" />
-        <div className="ml-auto flex items-center gap-2">
+        {/* A mesma ordem do cabeçalho de verdade — sino, sol, engrenagem,
+            divisória, empresa, avatar. Esqueleto que troca as peças de lugar
+            faz a barra real "corrigir" a posição ao montar, e o olho lê isso
+            como defeito. */}
+        <div className="ml-auto flex items-center gap-1.5">
           <div className="w-8 h-8 rounded-lg bg-white/10" />
-          <div className="w-8 h-8 rounded-lg bg-white/10" />
-          <div className="w-8 h-8 rounded-full bg-white/10" />
+          <div className="hidden sm:block w-8 h-8 rounded-lg bg-white/10" />
+          <div className="hidden sm:block w-8 h-8 rounded-lg bg-white/10" />
+          <span className="hidden lg:block w-px h-6 bg-white/15 mx-1.5" />
+          <div className="hidden lg:block w-[168px] h-9 rounded-lg bg-white/10" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 ring-1 ring-white/20" />
         </div>
       </div>
 
