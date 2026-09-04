@@ -3,6 +3,7 @@ import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AppLayout from '@/components/layout/AppLayout';
+import heroRoboLances from '@/assets/brand/hero-aperto-de-mao-robo-lances.jpeg';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -458,103 +459,143 @@ export default function RoboLances() {
       <div className="mb-3">
         <ProcessoContextoBanner />
       </div>
-      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
-        {/* ── Cabeçalho ──
-            REBRAND — antes título, botão de exportar e as quatro abas dividiam
-            uma linha de `py-2`, e em tela média as abas quebravam por cima do
-            título. Agora são duas fileiras: identidade em cima, navegação
-            embaixo, que é como o protótipo separa `pg-topo` de `barra-abas`.
+      {/* ── Herói do módulo ──
+          REBRAND — o cabeçalho era texto sobre a superfície da página, igual ao
+          de outras 50 telas. O aperto de mão entre a mão robótica e a humana é
+          o assunto DESTA: o robô só dispara lance dentro do que uma pessoa
+          autorizou, que é exatamente o que os Níveis 1/2/3 abaixo governam.
 
-            O selo de nível não é enfeite: é a informação mais cara desta tela.
-            Nível 3 significa que o sistema envia lance com dinheiro da empresa
-            sem ninguém confirmar, e quem abre a página precisa saber disso
-            antes de clicar em qualquer coisa. Ele vinha só dentro da aba de
-            configuração, a dois cliques de distância. */}
-        <div className="border-b border-border bg-card px-4 pt-3 pb-0">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-navy-tint text-navy shrink-0">
-                <Bot className="w-5 h-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h1 className="text-lg font-bold tracking-tight leading-tight">Robô de Lances</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Automação de disputa em portais de licitação
-                </p>
-              </div>
-            </div>
+          A foto sangra na direita em vez de cobrir a faixa inteira. Esticada de
+          ponta a ponta, o recorte de uma faixa baixa corta o aperto de mão em
+          cima e embaixo e sobra só um punhado de dedos — assunto irreconhecível
+          é enfeite, não símbolo. Contida a 512px (a largura NATIVA do arquivo,
+          então zero ampliação) e com a faixa em 232px de altura, o gesto
+          inteiro aparece.
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Armado (nível 2 ou 3), o selo vira ATALHO para a aba de
-                  disputa — que é onde mora a parada de emergência. Antes, de
-                  Portais ou Configurações, o freio ficava a dois cliques e sem
-                  pista de onde estava.
+          Dois véus: o lateral derrete a borda esquerda da foto no navy, para
+          ela não parecer colada por cima; o de topo escurece o alto, onde fica
+          a parte mais clara do braço robótico.
 
-                  É navegação, não capacidade nova: o botão de parada continua
-                  exatamente onde estava, com o mesmo escopo e as mesmas regras.
-                  Só o caminho até ele encurtou. */}
-              {(() => {
-                const armado = nivelAutomacao >= 2;
-                const classe = cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border transition-colors',
-                  nivelAutomacao >= 3
-                    ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
-                    : nivelAutomacao === 2
-                      ? 'border-warning-line bg-warning-tint text-warning-ink'
-                      : 'border-border bg-muted text-muted-foreground',
-                  armado && 'hover:brightness-95 cursor-pointer',
-                );
-                const explica =
-                  nivelAutomacao >= 3
-                    ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
-                    : nivelAutomacao === 2
-                      ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
-                      : 'Somente acompanhamento — nenhum lance é enviado.';
-                const conteudo = (
-                  <>
-                    <Zap className="w-3 h-3" aria-hidden="true" />
-                    Nível {nivelAutomacao}
-                    {armado && <span className="font-normal normal-case opacity-80">· armado</span>}
-                  </>
-                );
-                return armado ? (
-                  <button
-                    type="button"
-                    onClick={() => setActiveMainTab('disputar')}
-                    className={classe}
-                    title={explica}
-                  >
-                    {conteudo}
-                  </button>
-                ) : (
-                  <span className={classe} title={explica}>{conteudo}</span>
-                );
-              })()}
-              <ExportarResultados lances={lances} />
+          Navy nos DOIS temas, pela mesma razão da barra do topo em `AppLayout`:
+          é moldura de marca, não superfície de tema. */}
+      <div className="mb-3 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 hidden w-[512px] max-w-[52%] md:block"
+        >
+          <img
+            src={heroRoboLances}
+            alt=""
+            className="w-full h-full object-cover object-[center_45%]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/45 to-transparent" />
+        </div>
+
+        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
+          <div className="flex items-start gap-3">
+            <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+              <Bot className="w-6 h-6" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 max-w-lg">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                Robô de Lances
+              </h1>
+              <p className="text-sm text-white/75 mt-1 leading-relaxed">
+                Automação de disputa em portais de licitação
+              </p>
             </div>
           </div>
 
-          <TabsList className="bg-transparent p-0 h-auto gap-1 flex-wrap justify-start">
-            <TabsTrigger value="disputar" className="text-xs">
-              <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
-            </TabsTrigger>
-            {/* Credenciais da empresa, infraestrutura do agente e nível de
-                automação (decisão de risco financeiro) são do administrador.
-                Operador e visualizador ficam com a aba de trabalho. */}
-            {isAdmin && (
+          {/* O selo de nível não é enfeite: é a informação mais cara desta tela.
+              Nível 3 significa que o sistema envia lance com dinheiro da empresa
+              sem ninguém confirmar, e quem abre a página precisa saber disso
+              antes de clicar em qualquer coisa. Ele vinha só dentro da aba de
+              configuração, a dois cliques de distância.
+
+              Armado (nível 2 ou 3), o selo vira ATALHO para a aba de disputa —
+              que é onde mora a parada de emergência. Antes, de Portais ou
+              Configurações, o freio ficava a dois cliques e sem pista de onde
+              estava.
+
+              É navegação, não capacidade nova: o botão de parada continua
+              exatamente onde estava, com o mesmo escopo e as mesmas regras. Só
+              o caminho até ele encurtou. */}
+          {(() => {
+            const armado = nivelAutomacao >= 2;
+            const classe = cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border transition-colors',
+              nivelAutomacao >= 3
+                ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
+                : nivelAutomacao === 2
+                  ? 'border-warning-line bg-warning-tint text-warning-ink'
+                  /* Nível 1 sobre navy: `bg-muted` era um chip CLARO no tema
+                     claro — o estado menos importante virava o mais chamativo
+                     da faixa. Neutro translúcido fica quieto nos dois temas. */
+                  : 'border-white/25 bg-white/10 text-white/85',
+              armado && 'hover:brightness-95 cursor-pointer',
+            );
+            const explica =
+              nivelAutomacao >= 3
+                ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
+                : nivelAutomacao === 2
+                  ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
+                  : 'Somente acompanhamento — nenhum lance é enviado.';
+            const conteudo = (
               <>
-                <TabsTrigger value="portais" className="text-xs">
-                  <Globe className="w-3.5 h-3.5 mr-1" /> Portais
-                </TabsTrigger>
-                <TabsTrigger value="agente" className="text-xs">
-                  <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
-                </TabsTrigger>
-                <TabsTrigger value="configuracoes" className="text-xs">
-                  <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
-                </TabsTrigger>
+                <Zap className="w-3 h-3" aria-hidden="true" />
+                Nível {nivelAutomacao}
+                {armado && <span className="font-normal normal-case opacity-80">· armado</span>}
               </>
-            )}
-          </TabsList>
+            );
+            return armado ? (
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('disputar')}
+                className={cn(classe, 'self-start')}
+                title={explica}
+              >
+                {conteudo}
+              </button>
+            ) : (
+              <span className={cn(classe, 'self-start')} title={explica}>{conteudo}</span>
+            );
+          })()}
+        </div>
+      </div>
+
+      <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
+        {/* A faixa de abas ficou só com a NAVEGAÇÃO e o botão de exportar.
+            Título e selo subiram para o herói, e o botão continua aqui porque
+            `variant="outline"` é feito para superfície de tema: sobre navy o
+            texto dele ficaria escuro em cima de escuro. */}
+        <div className="border-b border-border bg-card px-4 pt-3 pb-0">
+          <div className="flex items-end justify-between gap-3">
+            <TabsList className="bg-transparent p-0 h-auto gap-1 flex-wrap justify-start">
+              <TabsTrigger value="disputar" className="text-xs">
+                <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
+              </TabsTrigger>
+              {/* Credenciais da empresa, infraestrutura do agente e nível de
+                  automação (decisão de risco financeiro) são do administrador.
+                  Operador e visualizador ficam com a aba de trabalho. */}
+              {isAdmin && (
+                <>
+                  <TabsTrigger value="portais" className="text-xs">
+                    <Globe className="w-3.5 h-3.5 mr-1" /> Portais
+                  </TabsTrigger>
+                  <TabsTrigger value="agente" className="text-xs">
+                    <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
+                  </TabsTrigger>
+                  <TabsTrigger value="configuracoes" className="text-xs">
+                    <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+            <div className="pb-1.5 shrink-0">
+              <ExportarResultados lances={lances} />
+            </div>
+          </div>
         </div>
 
         {/* ── DISPUTAR TAB ── */}
