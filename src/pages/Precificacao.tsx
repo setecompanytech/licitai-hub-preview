@@ -37,6 +37,7 @@ import InteligenciaUnificada from '@/components/precificacao/InteligenciaUnifica
 import RevisaoItensExtraidos, { type ItemExtraido } from '@/components/precificacao/RevisaoItensExtraidos';
 import EditalItensViewer from '@/components/precificacao/EditalItensViewer';
 import PlanilhaCustosEdital, { type EstatisticasPlanilha } from '@/components/precificacao/PlanilhaCustosEdital';
+import PrecoGraficos from '@/components/precificacao/PrecoGraficos';
 
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificacaoChat';
@@ -601,6 +602,13 @@ export default function Precificacao() {
             </div>
           ))}
         </div>
+        )}
+
+        {/* REBRAND — os dois gráficos do protótipo. Mesma condição dos cartões
+            acima: só existem quando há planilha com o que medir. Leem o detalhe
+            que a varredura da planilha já produzia e ninguém via. */}
+        {abaAtiva === 'extracao-itens' && itensNaPlanilha > 0 && statsPlanilha && (
+          <PrecoGraficos stats={statsPlanilha} />
         )}
 
 

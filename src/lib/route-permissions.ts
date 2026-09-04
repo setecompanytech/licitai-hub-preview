@@ -57,7 +57,7 @@ export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   '/gestao-contratos': ['comercial', 'financeiro', 'juridico'],
   '/gestao-compras':   ['comercial', 'financeiro', 'logistica'],
 
-  // --- Inteligência & Preços
+  // --- Inteligência
   '/precificacao': ['comercial', 'licitacoes', 'financeiro'],
   '/proposta-tecnica': ['comercial', 'licitacoes'],
   '/analise-mercado': ['comercial', 'licitacoes'],

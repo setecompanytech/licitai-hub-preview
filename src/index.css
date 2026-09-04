@@ -454,12 +454,31 @@
   .aurelia-bubble-user { background: hsl(221 45% 25%); }
   .aurelia-bubble-ai { background: hsl(217 28% 15%); }
 
+  /* O pulso de "tem mensagem nova" SOMA ao relevo do botão em vez de trocá-lo.
+     Antes ele redefinia `box-shadow` inteira, e como `hasNotification` nasce
+     ligado, o relevo do FAB era apagado no primeiro segundo de vida da tela —
+     o botão só ganharia profundidade depois que alguém abrisse o chat.
+
+     A solução é o anel viver em `outline`, que é outra propriedade: as duas
+     convivem, e o pulso não sabe nem precisa saber o que a sombra está
+     fazendo. */
   @keyframes aurelia-pulse {
-    0%, 100% { box-shadow: 0 4px 20px hsl(var(--accent) / 0.4); }
-    50% { box-shadow: 0 4px 32px hsl(var(--accent) / 0.8); }
+    0%, 100% {
+      outline-color: hsl(var(--gold) / 0.55);
+      outline-offset: 2px;
+    }
+    50% {
+      outline-color: hsl(var(--gold) / 0);
+      outline-offset: 7px;
+    }
   }
   .aurelia-glow {
-    animation: aurelia-pulse 2s ease-in-out infinite;
+    outline: 2px solid hsl(var(--gold) / 0.55);
+    outline-offset: 2px;
+    animation: aurelia-pulse 2.2s ease-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aurelia-glow { animation: none; }
   }
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-md;
@@ -498,12 +517,138 @@
   .nav-item-idle:hover {
     background: hsl(var(--muted) / 0.6);
   }
+  /* REBRAND — o relevo dos cartões do painel.
+     A borda que acendia em azul no hover saiu. Ela pintava a MOLDURA para dizer
+     "você está aqui", que é a gramática de foco, não a de alvo clicável — e
+     numa grade de 24 ladrilhos o azul brigava com o ícone, que já é azul.
+
+     No lugar entra profundidade: o cartão sobe, cresce um pouco e a sombra
+     abre. É o mesmo gesto de levantar um papel da mesa, e funciona sem cor
+     nenhuma — passa em tela monocromática e para quem não distingue matiz.
+
+     `transform` e `box-shadow` são as duas propriedades que o navegador anima
+     na GPU sem recalcular layout: 24 ladrilhos crescendo ao mesmo tempo não
+     custam nada. Animar `width`, `padding` ou `border-width` custaria.
+
+     A curva (.2, .8, .3, 1) desacelera rápido no fim — o cartão chega e para,
+     em vez de deslizar até o lugar. É o que separa "responde ao cursor" de
+     "está escorregando". */
+  .eleva {
+    box-shadow: var(--shadow-sm);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 200ms ease-out;
+  }
+  .eleva:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+  }
+  /* Ladrilho pequeno cresce mais: 2% em 90px de largura é imperceptível. */
+  .eleva--ladrilho:hover {
+    transform: translateY(-4px) scale(1.05);
+  }
+  .eleva:active {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: 80ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .eleva,
+    .eleva:hover,
+    .eleva:active {
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* REBRAND — o botão flutuante da AURÉLIA.
+     Era um círculo chapado com um escudo e a letra "A". Escudo é símbolo de
+     proteção; a AURÉLIA é consultora, então o ícone contava outra história.
+
+     O relevo vem de três camadas, que é como um objeto real se comporta sob
+     uma luz vinda de cima:
+
+       1. gradiente do claro (topo) ao escuro (base) — a face virada para a luz
+       2. `inset 0 1px 0` branco no topo e `inset 0 -2px 4px` preto embaixo —
+          a quina que pega luz e a que some na sombra
+       3. DUAS sombras externas: uma curta e escura logo abaixo (o contato com
+          a superfície) e uma longa e difusa (a sombra projetada)
+
+     A sombra de contato é o que a maioria dos botões esquece, e é ela que
+     separa "flutuando" de "colado". */
+  .aurelia-fab {
+    background: linear-gradient(160deg, hsl(var(--navy-hover)) 0%, hsl(var(--navy)) 62%);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.20),
+      inset 0 -2px 5px hsl(217 60% 2% / 0.45),
+      0 2px 4px hsl(217 48% 12% / 0.35),
+      0 10px 24px -6px hsl(217 48% 12% / 0.45);
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 220ms ease-out;
+  }
+  .aurelia-fab:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.26),
+      inset 0 -2px 5px hsl(217 60% 2% / 0.45),
+      0 4px 8px hsl(217 48% 12% / 0.30),
+      0 18px 36px -8px hsl(217 48% 12% / 0.55);
+  }
+  .aurelia-fab:active,
+  .aurelia-fab--arrastando {
+    transform: translateY(0) scale(0.97);
+    box-shadow:
+      inset 0 2px 6px hsl(217 60% 2% / 0.55),
+      0 1px 3px hsl(217 48% 12% / 0.35);
+    transition-duration: 90ms;
+  }
+
+  /* O robô, recortado do PNG e pintado com o dourado da logo.
+     `mask` usa só o canal alfa do arquivo — o desenho vira recorte e a cor vem
+     do `background`. É por isso que o ícone azul do arquivo aparece dourado
+     aqui, e por isso ele acompanha o token: mudou `--logo-accent`, mudou o
+     robô, sem reexportar imagem. */
+  .aurelia-fab__robo {
+    /* 32 de 56: o desenho fica com ~52% do círculo, que é onde um ícone de FAB
+       lê sem encostar na borda. A máscara já traz uma folga própria (arte de
+       176 num quadro de 192), então o número aqui é o quadro, não a arte. */
+    width: 32px;
+    height: 32px;
+    display: block;
+    background: hsl(var(--logo-accent));
+    -webkit-mask: url('./assets/brand/icon-robo-mascara.png') center / contain no-repeat;
+    mask: url('./assets/brand/icon-robo-mascara.png') center / contain no-repeat;
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .aurelia-fab:hover .aurelia-fab__robo {
+    transform: scale(1.08);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aurelia-fab,
+    .aurelia-fab:hover,
+    .aurelia-fab:active,
+    .aurelia-fab__robo,
+    .aurelia-fab:hover .aurelia-fab__robo {
+      transform: none;
+      transition: none;
+    }
+  }
+
   .stat-card {
-    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60 shadow-sm transition-all duration-300;
+    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60;
+    box-shadow: var(--shadow-sm);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 200ms ease-out;
   }
   .stat-card:hover {
     box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.01);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stat-card,
+    .stat-card:hover {
+      transform: none;
+      transition: none;
+    }
   }
   .kanban-column {
     @apply bg-muted/50 rounded-xl p-4 min-h-[400px];

@@ -14,6 +14,7 @@ import { Eye, Trophy, DollarSign, XCircle, Clock, Database, CalendarDays } from 
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
 import MascoteBoasVindas, { useMascoteBoasVindas } from '@/components/onboarding/MascoteBoasVindas';
+import NavegadorDeSecoes from '@/components/shared/NavegadorDeSecoes';
 
 import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
 
@@ -58,14 +59,14 @@ export default function Index() {
       </div>
 
       {/* 1. Ferramentas — acesso rápido */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Nossas Ferramentas" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Nossas Ferramentas</h2>
         <QuickAccessGrid />
       </section>
 
       {/* 2. Painel — os números da operação do dia, com a faixa de destaque ao
           lado, como no protótipo. */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Painel" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Painel</h2>
         <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
           <div className="lg:col-span-2 grid grid-cols-2 gap-4 [&>*]:min-w-0">
@@ -118,7 +119,7 @@ export default function Index() {
           Os quatro números são os que o app já apura. O protótipo mostra ainda
           "iminência de deserta" e "baixa concorrência", que não existem como
           dado aqui — ficaram de fora em vez de virar número inventado. */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Oportunidades" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Oportunidades</h2>
         <OportunidadesPainel
           itens={[
@@ -149,13 +150,13 @@ export default function Index() {
       </section>
 
       {/* 4. Distribuição geográfica — onde estão as licitações */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Licitações por estado" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Licitações por estado</h2>
         <MapaLicitacoesPorEstado dados={ufBreakdown} />
       </section>
 
       {/* 5. Calendário dinâmico — datas de processos, certidões e backups */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Agenda Operacional" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4 flex items-center gap-2.5">
           <CalendarDays className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           Agenda Operacional
@@ -164,10 +165,14 @@ export default function Index() {
       </section>
 
       {/* 6. Processos Licitatórios — operação */}
-      <section className="mb-6 sm:mb-8">
+      <section data-secao="Licitações gerenciadas" className="mb-6 sm:mb-8">
         <h2 className="text-2xl font-bold tracking-tight mb-4">Licitações gerenciadas</h2>
         <PainelLicitacoes />
       </section>
+
+      {/* O painel tem seis seções e rola por várias telas. O navegador dá o
+          salto entre elas nomeando o destino — ver NavegadorDeSecoes. */}
+      <NavegadorDeSecoes />
 
       <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
       <MascoteBoasVindas open={mascoteAberto} onClose={fecharMascote} />

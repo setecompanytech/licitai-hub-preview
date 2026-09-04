@@ -21,6 +21,7 @@ import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useAvatarUrl } from '@/hooks/useAvatarPerfil';
 
 const profileMenuItems = [
   { label: 'Dados da Empresa', icon: Building2, path: '/configuracoes', hash: '#empresa' },
@@ -62,6 +63,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   const { user, signOut } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const [unreadCount, setUnreadCount] = useState(0);
+  const avatarUrl = useAvatarUrl();
 
   const userName = user?.user_metadata?.nome_completo || empresaAtiva?.razao_social || user?.email || '';
   const userEmail = user?.email || '';
@@ -133,7 +135,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           ela é a moldura da marca, e é sobre ela que o dourado da logo lê.
           Antes seguia a superfície do tema (branca no claro), e aí o dourado
           ficaria invisível. */}
-      <header className="nao-imprime sticky top-0 z-40 h-12 sm:h-14 bg-navy border-b border-navy-hover flex items-center px-2 sm:px-4 lg:px-6 gap-1.5 sm:gap-3">
+      <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-navy border-b border-navy-hover flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
         {/* Recolhe e mostra a coluna lateral. Fica à ESQUERDA da marca, como no
             protótipo, e só existe onde a coluna existe — abaixo de 768px quem
             navega é a gaveta, e um botão que não recolhe nada confundiria. */}
@@ -161,31 +163,28 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         </div>
         <div className="hidden md:block flex-1" />
 
-        {/* Right: Tools */}
-        <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
-          <div className="hidden lg:block">
-            <EmpresaSelector />
-          </div>
+        {/* Right: Tools
+            A ordem é do EFÊMERO para o PERMANENTE, da esquerda para a direita:
 
+              sino → sol → engrenagem │ empresa │ avatar
+
+            O sino muda sozinho, várias vezes por dia — é o que se olha com mais
+            frequência e o que precisa de menos mira. O sol muda quando a luz da
+            sala muda. A engrenagem, raramente. Depois de uma divisória vêm os
+            dois campos de IDENTIDADE — em qual empresa estou e quem sou eu —,
+            que não são ações: são contexto, e ficam junto do avatar porque
+            respondem à mesma pergunta.
+
+            A divisória não é enfeite: sem ela, o seletor de empresa vira o
+            quarto de uma fileira de cinco botões, e a pessoa procura ação onde
+            só há informação. */}
+        <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
           {/* Sobre o navy, os controles do topo são claros — eles não seguem a
               superfície do tema, seguem a barra. */}
           <button
-            className="hidden sm:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-            onClick={() => navigate('/configuracoes')}
-            title="Configurações"
-          >
-            <Settings className="w-[18px] h-[18px]" />
-          </button>
-
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
-
-          
-
-          <button
             className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
+            title="Notificações"
           >
             <Bell className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
             {unreadCount > 0 && (
@@ -195,21 +194,46 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
             )}
           </button>
 
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+
+          <button
+            className="hidden sm:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            onClick={() => navigate('/configuracoes')}
+            title="Configurações"
+          >
+            <Settings className="w-[18px] h-[18px]" />
+          </button>
+
+          <span
+            aria-hidden="true"
+            className="hidden lg:block w-px h-6 bg-white/15 mx-1.5"
+          />
+
+          <div className="hidden lg:block">
+            <EmpresaSelector />
+          </div>
+
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/15 flex items-center justify-center text-white text-xs sm:text-xs font-bold hover:ring-2 hover:ring-white/30 transition-all cursor-pointer"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/15 ring-1 ring-white/25 flex items-center justify-center text-white text-xs sm:text-sm font-bold hover:ring-2 hover:ring-white/50 transition-all cursor-pointer overflow-hidden shrink-0"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
-              {initials}
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                : initials}
             </button>
 
             {profileOpen && (
               <div className="absolute right-0 top-11 w-[300px] bg-card border border-border rounded-xl shadow-xl z-50 animate-fade-in overflow-hidden">
                 <div className="px-5 pt-5 pb-3 text-center border-b border-border">
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-foreground text-xl font-bold mx-auto mb-3">
-                    {initials}
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-foreground text-xl font-bold mx-auto mb-3 overflow-hidden">
+                    {avatarUrl
+                      ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                      : initials}
                   </div>
                   <p className="font-semibold text-foreground text-sm truncate">{userName}</p>
                   <p className="text-xs text-muted-foreground truncate">{userEmail}</p>

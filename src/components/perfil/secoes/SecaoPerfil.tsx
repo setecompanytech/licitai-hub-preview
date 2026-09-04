@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { AtSign, BadgeCheck, Briefcase, Info, Loader2, Mail, Phone, User } from 'lucide-react';
 import { CampoHub, GradeHub, RodapeHub } from '../PerfilPrimitivos';
+import FotoPerfil from '../FotoPerfil';
 
 /**
  * Meu perfil — o que a pessoa é dentro do sistema.
@@ -100,6 +101,8 @@ export default function SecaoPerfil() {
 
   return (
     <>
+      <FotoPerfil nome={nome} email={email} />
+
       <GradeHub>
         <CampoHub icone={User} rotulo="Nome completo">
           <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" />

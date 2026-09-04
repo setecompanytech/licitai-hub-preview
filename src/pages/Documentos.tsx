@@ -3,7 +3,6 @@ import AppLayout from '@/components/layout/AppLayout';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -707,30 +706,111 @@ export default function Documentos() {
           <TabsContent value="documentos" className="space-y-4">
             <AlertaVencimentoDocumentos documentos={documentos} />
 
-            {/* Progress */}
-            <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-base font-medium">Conformidade Geral</span>
-                <span className="text-base font-bold text-foreground">{progress}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-              <div className="flex gap-4 mt-3">
-                {(['ok', 'vencido', 'ausente'] as DocStatus[]).map((s) => {
-                  const cfg = statusConfig[s];
-                  const count = documentos.filter((d) => d.status === s).length;
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setFilter(filter === s ? 'todos' : s)}
-                      className={`flex items-center gap-1.5 text-sm ${cfg.color} ${filter === s ? 'font-bold underline' : ''}`}
-                    >
-                      <cfg.icon className="w-3 h-3" />
-                      {count} {cfg.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* REBRAND — o `dc-conf` do protótipo, com uma diferença deliberada.
+
+                Era uma barra de progresso ÚNICA: "72%" e um traço azul. Mas a
+                pergunta de quem abre esta tela não é "quanto está pronto" — é
+                "consigo me habilitar hoje". E o que responde isso não é o
+                número, é a COMPOSIÇÃO do que falta: dez pendências ausentes se
+                resolvem pedindo os documentos; UMA vencida barra a empresa no
+                mesmo dia.
+
+                Então a barra virou segmentada: regular, vencido e ausente lado
+                a lado, cada faixa proporcional. A leitura passa a ser
+                instantânea e não depende de ler a legenda embaixo.
+
+                O número grande também mudou de cor conforme a saúde. Verde
+                ganha o direito de dizer "pode ir"; enquanto houver vencido, ele
+                fica vermelho mesmo com 90% de conformidade — porque 90% com uma
+                certidão vencida é inabilitação. */}
+            {(() => {
+              const conta = (s: DocStatus) => documentos.filter((d) => d.status === s).length;
+              const nOk = conta('ok');
+              const nVenc = conta('vencido');
+              const nAus = conta('ausente');
+              const total = documentos.length || 1;
+              const pct = (n: number) => (n / total) * 100;
+
+              const faixas: { s: DocStatus; n: number; cor: string }[] = [
+                { s: 'ok', n: nOk, cor: 'bg-success' },
+                { s: 'vencido', n: nVenc, cor: 'bg-destructive' },
+                { s: 'ausente', n: nAus, cor: 'bg-muted-foreground/40' },
+              ];
+
+              const tomDoNumero = nVenc > 0
+                ? 'text-destructive'
+                : nAus > 0
+                  ? 'text-warning'
+                  : 'text-success';
+
+              return (
+                <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+                  <div className="flex items-end justify-between gap-4 mb-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-muted-foreground">Conformidade geral</p>
+                      <p className={`text-4xl font-bold tabular-nums leading-none mt-1 ${tomDoNumero}`}>
+                        {progress}%
+                      </p>
+                    </div>
+                    <p className="text-sm text-right text-muted-foreground leading-snug">
+                      {nVenc > 0 ? (
+                        <span className="text-destructive font-medium">
+                          {nVenc} {nVenc === 1 ? 'documento vencido' : 'documentos vencidos'} — impedem a habilitação
+                        </span>
+                      ) : nAus > 0 ? (
+                        <>Falta{nAus > 1 ? 'm' : ''} {nAus} {nAus === 1 ? 'documento' : 'documentos'} para o dossiê ficar completo</>
+                      ) : (
+                        <span className="text-success font-medium">Dossiê completo e dentro da validade</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Barra segmentada. O `gap` de 2px entre as faixas é o que
+                      separa "duas fatias" de "uma fatia com sombra". */}
+                  <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden bg-muted">
+                    {faixas.filter((f) => f.n > 0).map((f) => (
+                      <div
+                        key={f.s}
+                        className={`${f.cor} transition-[width] duration-500 motion-reduce:transition-none`}
+                        style={{ width: `${pct(f.n)}%` }}
+                        title={`${f.n} ${statusConfig[f.s].label}`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {faixas.map(({ s, n, cor }) => {
+                      const cfg = statusConfig[s];
+                      const ativo = filter === s;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setFilter(ativo ? 'todos' : s)}
+                          aria-pressed={ativo}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                            ativo
+                              ? 'border-foreground/30 bg-muted font-semibold text-foreground'
+                              : 'border-border text-muted-foreground hover:bg-muted/60'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-sm ${cor}`} aria-hidden="true" />
+                          <span className="tabular-nums font-medium text-foreground">{n}</span>
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                    {filter !== 'todos' && (
+                      <button
+                        onClick={() => setFilter('todos')}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        limpar filtro
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Docs by Category */}
             <div className="space-y-4">

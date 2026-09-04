@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { limparCacheTimbrado } from '@/lib/timbrado/timbrado';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 
@@ -90,6 +91,29 @@ const DEFAULT_SETUP: PageSetup = {
   footerWidth: 100,
   footerOffsetY: 0,
 };
+
+/**
+ * PDF de papel timbrado → PNG da 1ª página (04/09). O ramo antigo subia o
+ * PDF cru: a prévia <img> não renderiza PDF (o campo "voltava em branco"),
+ * o gerador recusava application/pdf, e o rodapé nunca nascia. Convertido,
+ * o arquivo entra no MESMO fluxo de recorte das imagens.
+ */
+async function pdfParaPngBlob(file: Blob): Promise<Blob> {
+  const pdfjsLib = await import('pdfjs-dist');
+  const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pagina = await pdf.getPage(1);
+  const viewport = pagina.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponível');
+  await pagina.render({ canvasContext: ctx, viewport } as never).promise;
+  return await new Promise<Blob>((res, rej) =>
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error('Falha ao converter o PDF'))), 'image/png', 1));
+}
 
 function cropImageToBlob(
   img: HTMLImageElement,
@@ -269,6 +293,25 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         if (isValidImage(hUrl)) {
           setHeader({ url: hUrl, path: hPath });
           setTimbradoUrl(hUrl);
+        } else if (hPath && /\.pdf$/i.test(hPath)) {
+          // Legado (04/09): o timbrado foi salvo como PDF CRU pelo fluxo
+          // antigo — era isto que fazia o campo "voltar em branco": o load
+          // descartava o arquivo salvo em silêncio. Agora o PDF é convertido
+          // aqui mesmo e o recorte abre para o usuário confirmar — um clique
+          // e os PNGs definitivos são persistidos.
+          setHeader({ url: null, path: null });
+          setTimbradoUrl(null);
+          (async () => {
+            try {
+              const { data: blob } = await supabase.storage.from('timbrados').download(hPath);
+              if (!blob) return;
+              const png = await pdfParaPngBlob(blob);
+              setSourceImageUrl(URL.createObjectURL(png));
+              const pathFull = `${empresaId}/timbrado_full.png`;
+              await supabase.storage.from('timbrados').upload(pathFull, png, { upsert: true, contentType: 'image/png' });
+              toast.info('Seu timbrado estava salvo em PDF — convertido. Ajuste o recorte de cabeçalho e rodapé abaixo e confirme.');
+            } catch { /* PDF ilegível: o campo fica para reenvio manual */ }
+          })();
         } else {
           // Non-image timbrado URL — don't use as image, reset so user can re-upload
           setHeader({ url: null, path: null });
@@ -355,6 +398,17 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         const parts = [headerBlob ? 'cabeçalho' : '', footerBlob ? 'rodapé' : ''].filter(Boolean).join(' e ');
         toast.success(`${parts.charAt(0).toUpperCase() + parts.slice(1)} extraído(s) do documento Word com sucesso!`);
         setUploading(false);
+      } else if (file.type === 'application/pdf' || ext === '.pdf') {
+        // PDF entra no fluxo das imagens: converte a 1ª página e abre o
+        // recorte de cabeçalho/rodapé — nada de PDF cru no banco.
+        toast.info('Convertendo o PDF do timbrado…');
+        const png = await pdfParaPngBlob(file);
+        const localUrl = URL.createObjectURL(png);
+        setSourceImageUrl(localUrl);
+        const path = `${empresaId}/timbrado_full.png`;
+        await supabase.storage.from('timbrados').upload(path, png, { upsert: true, contentType: 'image/png' });
+        setUploading(false);
+        toast.success('PDF convertido! Ajuste as áreas de cabeçalho e rodapé abaixo e confirme o recorte.');
       } else {
         const path = `${empresaId}/cabecalho${ext}`;
         const { error } = await supabase.storage.from('timbrados').upload(path, file, { upsert: true });
@@ -450,12 +504,19 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   const salvarAjustes = async () => {
     if (!empresaId) return;
     setSalvandoAjustes(true);
-    const { error } = await supabase.from('empresas')
+    const { data: ok, error } = await supabase.from('empresas')
       .update({ timbrado_ajustes: pageSetup } as never)
-      .eq('id', empresaId);
+      .eq('id', empresaId)
+      .select('id');
     setSalvandoAjustes(false);
-    if (error) toast.error('Não foi possível salvar os ajustes: ' + error.message);
-    else toast.success('Ajustes do timbrado salvos — valem para todos os documentos gerados.');
+    // Contagem de linhas: update barrado por RLS volta sem erro e sem efeito —
+    // o falso sucesso silencioso que a casa já conhece.
+    if (error || !ok?.length) {
+      toast.error('Não foi possível salvar os ajustes: ' + (error?.message ?? 'sem permissão (só o Admin da empresa altera o timbrado)'));
+      return;
+    }
+    limparCacheTimbrado(empresaId);
+    toast.success('Ajustes do timbrado salvos — valem para o próximo documento gerado em cada aba (até 45s de espera).');
   };
 
   const paper = PAPER_SIZES[pageSetup.paperSize];

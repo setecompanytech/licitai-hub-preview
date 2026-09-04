@@ -663,27 +663,27 @@ telas com dois arquivos. As demais avançam módulo a módulo.
 
 | # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | Autenticação & Onboarding | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
-| 2 | Painel & Navegação | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
-| 3 | Licitações & Kanban | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
-| 4 | Monitoramento & Busca | 6 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 5 | Precificação | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 6 | Proposta & Envio | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 7 | Robô de Lances | 1 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
-| 8 | Contratos | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 2 | Painel & Navegação | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 4 | Monitoramento & Busca | 6 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 5 | Precificação | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 6 | Proposta & Envio | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 8 | Contratos | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
 | 9 | Compras & Fornecedores | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 10 | Financeiro | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
-| 11 | Apoio Jurídico | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 11 | Apoio Jurídico | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
 | 12 | Apoio Contábil | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
 | 14 | Metas | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
 | 15 | IA & Assistentes | 6 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
 | 16 | Comunicação | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 17 | Documentos & Cadastro | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 18 | Agenda | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 19 | Equipe & Configurações | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 17 | Documentos & Cadastro | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 18 | Agenda | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 19 | Equipe & Configurações | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
 | 20 | Admin | 7 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
-| 21 | Conteúdo & Suporte | 9 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 21 | Conteúdo & Suporte | 9 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
 | 22 | Institucional & Legal | 17 | — | ◐ | ◐ | ☐ | ☐ | ☐ |
 
 **Onde está o trabalho sem desenho.** O módulo 22 (17 rotas: landing, sobre,
@@ -737,7 +737,203 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 | ◐ | **Kanban** — `kb-barra` do protótipo, com filtro do board por número, órgão e objeto (sem acento, sem caixa) | `KanbanPage.tsx` |
 | ◐ | **Robô de Lances** — cabeçalho em duas fileiras; o selo de nível sobe para ele e vira atalho para a parada de emergência | `RoboLances.tsx` |
 | ◐ | Três esperas do Robô viram esqueleto, cada uma com a forma do que vem | `CredenciaisPortalForm` · `DeteccaoPortais` · `PortalHealthcheck` |
+| ◐ | **Analytics** — o título deixa de prometer tempo real; o rodapé também. Só texto, o dado sempre foi verdadeiro (achado 2 da seção 12) | `Analytics.tsx` |
 | ◐ | **Varredura de contraste** — 17 pares de texto/fundo calculados nos dois temas | (verificação, sem alteração) |
+
+**04/09 — segunda leva: a jornada de ponta a ponta**
+
+As quatro primeiras são o percurso de quem trabalha no sistema — **encontrar →
+precificar → propor → disputar → contratar**. O Kanban e o Robô, já entregues
+acima, ficam no meio dele; estas fecham as pontas. A quinta é diferente: é um
+buraco que a leva anterior abriu.
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Monitoramento de Editais** — o painel SIASG de 19 filtros recolhe sozinho quando a busca volta, e o que estava marcado vira etiqueta legível; a espera virou esqueleto com a forma dos cartões | `MonitoramentoEditais.tsx` |
+| ◐ | **Precificação** — os dois gráficos do protótipo, em dado REAL da planilha aberta | `PrecoGraficos.tsx` (novo) · `PlanilhaCustosEdital.tsx` · `Precificacao.tsx` |
+| ◐ | **Proposta Comercial** — a régua `mstep`: oito nós ligados por um trilho que fica verde onde já passou, no lugar de oito pastilhas soltas | `PropostaTecnica.tsx` |
+| ◐ | **Gestão de Contratos** — anatomia `kpi-meta` nos cinco cartões: rótulo, valor e **nota** de contexto | `GestaoContratos.tsx` |
+| ◐ | **Tutorial** — anel de progresso, trilha que se preenche, conclusão por passo e "continuar de onde parei" | `TutorialPage.tsx` |
+| ◐ | **Fim das telas brancas de carregamento** — sete esperas que mostravam página vazia agora abrem com a moldura do app | `SkeletonPagina.tsx` · 3 guardas · 4 páginas |
+| ◐ | **Barra lateral: "Painel" saiu, "Inteligência" assume o topo** | `menu.ts` · `AppTopNav.tsx` |
+| ◐ | **Relevo dos cartões do painel** — a borda azul do hover vira profundidade | `index.css` · `QuickAccessGrid` · `OportunidadesPainel` · `StatCard` |
+| ◐ | **Mapa do Brasil: malha oficial do IBGE** no lugar dos polígonos à mão | `mapa-brasil-contornos.ts` · `MapaLicitacoesPorEstado.tsx` · `scripts/gerar-mapa-brasil.py` |
+| ◐ | **Foto de perfil** — envio, recorte e remoção; cabeçalho maior | `useAvatarPerfil.ts` · `FotoPerfil.tsx` + 3 telas · **1 migration** |
+| ◐ | **Ordem do cabeçalho** — sino → sol → engrenagem │ empresa │ avatar | `AppLayout.tsx` · `SkeletonPagina.tsx` |
+| ◐ | **Navegador de seções do painel** — salto nomeado entre as seis seções | `NavegadorDeSecoes.tsx` · `Index.tsx` |
+| ◐ | **Item ativo do menu do topo estava sem fundo** — `bg-accent/8` não existe | `AppTopNav.tsx` |
+
+**A ordem do cabeçalho.** Vai do EFÊMERO ao PERMANENTE, da esquerda para a
+direita. O sino muda sozinho várias vezes por dia — é o mais olhado e o que
+precisa de menos mira. O sol muda quando a luz da sala muda. A engrenagem,
+raramente. Depois de uma **divisória** vêm os dois campos de identidade — em
+qual empresa estou, quem sou eu —, que não são ações: são contexto, e respondem
+à mesma pergunta. Sem a divisória, o seletor de empresa vira o quarto de uma
+fileira de cinco botões e a pessoa procura ação onde só há informação.
+
+O `SkeletonPagina` repete a mesma ordem. Esqueleto que troca as peças de lugar
+faz a barra real "corrigir" a posição ao montar, e o olho lê isso como defeito.
+
+**O navegador de seções.** O botão **nomeia o destino** — "Oportunidades ⌄", não
+uma seta solta. Seta que só aponta para baixo é o mesmo que rolar: aperta-se sem
+saber quanto anda nem onde chega. Com o nome, ele vira um sumário de um item.
+Na última seção vira "Voltar ao topo", e traz um traço por seção mostrando
+quanto falta. Lê `[data-secao]` do documento, então a página só marca as seções
+— nenhum índice duplicado para desencontrar.
+
+**A opacidade que não existia.** `bg-accent/8` e `bg-accent/6`, em quatro pontos
+do `AppTopNav`, **não geram classe nenhuma**: a escala de opacidade do Tailwind
+anda de 5 em 5, e valor fora dela é descartado em silêncio. O item ativo do menu
+do topo estava sem fundo desde o commit `fee7938b` (Lovable). Achado por
+varredura — vale repetir de vez em quando:
+
+```sh
+grep -rnE '\b(bg|text|border|ring)-[a-z-]+/[0-9]{1,3}\b' --include='*.tsx' src \
+  | grep -oE '(bg|text|border|ring)-[a-z-]+/[0-9]+' | sort -u \
+  | awk -F/ '$2 % 5 != 0 {print}'
+```
+
+O mesmo erro quase entrou no navegador de seções (`bg-navy/92`), e foi pego
+compilando um HTML de sonda com o Tailwind antes de aceitar a classe.
+
+**O relevo dos cartões.** A borda acendia em azul no hover. Isso pinta a
+*moldura* para dizer "você está aqui", que é a gramática de **foco**, não a de
+alvo clicável — e numa grade de 24 ladrilhos o azul brigava com o ícone, que já
+é azul. No lugar entra profundidade: o cartão sobe, cresce e a sombra abre. É o
+gesto de levantar um papel da mesa, e funciona **sem cor nenhuma** — passa em
+tela monocromática e para quem não distingue matiz. `transform` e `box-shadow`
+são as duas propriedades que o navegador anima na GPU sem recalcular layout: 24
+ladrilhos crescendo juntos não custam nada.
+
+**O mapa.** Os contornos eram polígonos desenhados à mão — 10 a 20 pontos por
+estado, só segmentos retos. Servia para dizer "isto é o Brasil", mas os estados
+não tinham a forma deles, e num painel que usa o mapa para **ler concentração**
+isso é erro de leitura, não de estética: a pessoa procura o estado dela e não
+reconhece.
+
+Agora é a malha oficial do IBGE, projetada em Mercator e simplificada por
+Douglas-Peucker: **5.128 pontos**, 65 KB. Sem biblioteca nova — `react-simple-maps`
+exigiria `d3-geo` + `topojson-client` e uma malha baixada em runtime, para
+entregar o mesmo desenho que um `<path>` estático entrega offline. O gerador
+ficou em `scripts/gerar-mapa-brasil.py`; só roda de novo se o IBGE mudar a malha.
+
+Ganhou também: legenda da escala (sem ela o degradê é decoração — nada dizia que
+escuro é "mais"), foco ligado nos dois sentidos entre a lista e o mapa, siglas
+nos 20 estados que comportam o texto, e o **"N/I" saiu do ranking**. Ele não é
+estado: é licitação sem UF preenchida, e aparecia em segundo lugar, acima do
+Pará. Virou nota — "14 processos estão sem estado informado e ficam fora do
+mapa" —, que é o que ele é: um buraco no cadastro, não um lugar.
+
+**A foto de perfil.** Única entrega da frente que toca o banco, autorizada como
+exceção. Precisou de menos do que parecia: `profiles.avatar_url` **já existia**
+(conferido contra produção — a consulta devolve lista vazia, não `42703`), e
+nunca foi preenchida porque não havia por onde enviar. Não há tabela nova, e não
+deveria haver: **foto é arquivo**, e vai para o Storage, como os outros oito
+buckets do repo.
+
+A migration `20260904000001_foto_de_perfil.sql` cria só o bucket `avatares` e as
+políticas. **Ainda não foi aplicada** — precisa ser colada no SQL Editor.
+
+A imagem é recortada no centro e reduzida para 512px WebP **no navegador**, antes
+de subir: foto de celular chega com 4 MB e 4000px de lado, estouraria o limite de
+2 MB do bucket, e o app a mostraria num círculo de 40px depois de baixar tudo.
+Resolve o limite e o enquadramento sem embarcar um editor de recorte.
+
+O cabeçalho subiu de 48/56px para 56/64px e a esfera do avatar de 28/32px para
+36/40px, com anel — sobre o navy, círculo sem contorno encosta no fundo e some.
+**As três medidas andam juntas**: `AppLayout`, o `top-` da `AppSidebar` e a
+moldura do `SkeletonPagina`.
+
+**Por que o grupo "Painel" deixou de existir.** Ele abria para mostrar
+*Dashboard* e *Analytics* — e "Painel" e "Dashboard" são a mesma palavra em dois
+idiomas. O grupo abria para repetir o próprio nome.
+
+Os dois itens foram para **Inteligência**, que já reunia Precificação, Proposta,
+Análise de Mercado e Concorrentes. A divisão que sobra é limpa: Inteligência
+responde **"como estamos indo"**; os demais grupos respondem **"o que preciso
+fazer agora"**. Analytics é leitura de desempenho e Dashboard é leitura do dia —
+os dois são a primeira pergunta.
+
+O grupo herdou a **primeira posição** da barra, que era a do Painel: quem abre o
+sistema quer o número antes da tarefa. O título perdeu o "& Preços" (com seis
+itens de naturezas diferentes, o recorte ficou estreito demais) e, por caber
+inteiro na coluna de 264px em caixa alta, dispensou o `curto`.
+
+O `AppTopNav` acompanha — o menu do topo lê os mesmos grupos.
+
+**A varredura das telas brancas.** A leva anterior trocou spinner por esqueleto
+em `ProtectedRoute` e no `Suspense` das rotas, mas parou aí — e sobrava um
+caminho inteiro em que a pessoa via **branco**:
+
+| Onde | O que aparecia | Por que passou batido |
+| --- | --- | --- |
+| `MaintenanceGuard` | página vazia com um ponto girando | embrulha **todas** as rotas e consulta o modo manutenção em **todo** carregamento: era a primeira coisa depois do splash |
+| `PlanGuard` (×2) e `AdminGuard` | idem | rodam DEPOIS do `ProtectedRoute` e FORA do `AppLayout` — davam um pisca branco entre o esqueleto e a página |
+| `ProcessoWorkspace` | `h-screen` em branco | desenha a própria moldura, não passa pelo `AppLayout` |
+| `PainelDistribuicao` | idem | mesma razão |
+| `MetricasSaaS`, `PreferenciasAlertas` | spinner dentro do layout | cabeçalho aparecia, mas a espera não tinha forma |
+
+O `SkeletonPagina` passou a desenhar a **moldura**: barra navy com a logo do
+rebrand (`PRAE` em branco + `FECTUS` em `--logo-accent`), coluna lateral de
+264px e o conteúdo em esqueleto — as mesmas medidas do `AppLayout`, para a
+barra verdadeira substituir a falsa sem deslocar um pixel. Quem chama de dentro
+do layout passa `moldura={false}`.
+
+**Splash ou esqueleto?** Os dois, um de cada vez. O splash cobre o vão entre o
+HTML chegar e o React montar; depois disso ele sai e **não volta** — reexibi-lo
+a cada troca de rota faria o app parecer que reinicia. Daí em diante quem espera
+é o esqueleto, e ele herda a identidade do splash: mesma barra navy, mesma logo,
+mesmo dourado.
+
+> A quinta linha é dívida nossa, não escolha de escopo. O modal de boas-vindas
+> entrega o primeiro clique de um usuário novo em uma tela sem rebrand: a
+> apresentação promete um sistema, o destino mostra outro. Quem cria o caminho
+> responde pelo destino.
+
+**04/09 — terceira leva: as telas de apoio**
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Documentos** — a barra de conformidade vira segmentada: regular, vencido e ausente lado a lado | `Documentos.tsx` |
+| ◐ | **Meus Compromissos** — os cinco números viram cartões `kpi-meta` com nota de contexto | `MeusCompromissos.tsx` |
+| ◐ | **Calendário** — mesma anatomia nos cinco cartões + **correção do contador de "Ganhas"** | `CalendarioLicitacoes.tsx` |
+| ◐ | **Equipe** — busca por nome, e-mail ou setor; os oito cartões de equipe passam a filtrar | `EquipeColaboradores.tsx` |
+| ◐ | **Apoio Jurídico** — abas em faixa rolável, com o rótulo inteiro | `ApoioJuridico.tsx` |
+
+**Por que a barra de Documentos ficou segmentada.** A pergunta de quem abre a
+tela não é "quanto está pronto" — é **"consigo me habilitar hoje"**. E quem
+responde isso não é o número, é a composição do que falta: dez pendências
+*ausentes* se resolvem pedindo os documentos; **uma** *vencida* barra a empresa
+no mesmo dia. A barra única de progresso escondia essa diferença. O número
+grande também mudou de cor conforme a saúde: enquanto houver vencido ele fica
+vermelho mesmo com 90% de conformidade, porque 90% com certidão vencida é
+inabilitação.
+
+**Por que as abas do Jurídico mudaram de forma.** A grade de cinco colunas
+obrigava cada aba a caber numa fração fixa da largura, e a saída tinha sido
+abreviar: "Reequilíbrio" virava *Reequil.*, "Base Jurídica" virava *Base*,
+"Legislação" virava *Leis*. Abreviação em rótulo de navegação é a pior troca
+possível — economiza pixel e cobra do usuário adivinhar o destino, justamente
+onde ele ainda não sabe o que vai encontrar. Na faixa rolável a largura de cada
+aba é a do próprio texto, como no `barra-abas` do protótipo.
+
+> ⚠️ **Uma correção de dado saiu junto, e precisa ser conhecida.** O cartão
+> "Ganhas" do Calendário comparava `status` com dois literais escritos na
+> própria tela:
+>
+> ```ts
+> l.status === 'Vencida' || l.status === 'Homologada'
+> ```
+>
+> É exatamente o padrão que o `CLAUDE.md` proíbe no princípio 1, e pelo mesmo
+> motivo histórico (`Homologada` × `Homologado`). A conta perdia processo
+> gravado como `Homologado`, `adjudicada`, `vencedor`, `ata_registro` ou
+> `contrato assinado` — o número aparecia **menor que a realidade**, num cartão
+> que a pessoa usa para conferir resultado.
+>
+> Não foi para a seção 12 porque a seção 12 é para achado que ESPERA, e a regra
+> de lá é explícita: dado errado na tela não espera. Agora passa por
+> `normalizarStatus`, que é a autoridade.
 
 **Caio, três coisas que você precisa saber destas telas:**
 

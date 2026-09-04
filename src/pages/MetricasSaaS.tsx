@@ -1,3 +1,4 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import AppLayout from '@/components/layout/AppLayout';
@@ -66,9 +67,8 @@ export default function MetricasSaaS() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
+        {/* Sem moldura: o AppLayout já desenhou a barra e a coluna. */}
+        <SkeletonPagina moldura={false} />
       </AppLayout>
     );
   }

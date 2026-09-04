@@ -1,3 +1,4 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
@@ -138,9 +139,7 @@ export default function PreferenciasAlertas() {
   if (loading || loadingSeg) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
+        <SkeletonPagina moldura={false} cartoes={2} />
       </AppLayout>
     );
   }
