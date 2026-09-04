@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AnaliseCapag from '@/components/licitacoes/AnaliseCapag';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
 import { useLicitacoesEstrategicas } from '@/hooks/useLicitacoesEstrategicas';
+import LinhaKpis from '@/components/shared/LinhaKpis';
 import {
   Target, Star, AlertTriangle, CheckCircle2,
   Brain, Zap, Eye, BookmarkPlus, Landmark, Search, MapPin,
-  Loader2, RefreshCw, ExternalLink
+  Loader2, RefreshCw, ExternalLink, BarChart3, Trophy, DollarSign
 } from 'lucide-react';
 
 const UFS_BRASIL = [
@@ -29,10 +30,16 @@ const UFS_BRASIL = [
   { sigla: 'TO', nome: 'Tocantins' },
 ];
 
+/**
+ * `tarja` é a faixa de 3px na borda esquerda do cartão — o padrão do protótipo
+ * para dizer o estado antes de a pessoa ler qualquer palavra. Numa grade de
+ * dois por fileira, é o que deixa varrer a lista com o olho: sem ela, todos os
+ * cartões são retângulos brancos iguais e a recomendação só aparece na etiqueta.
+ */
 const recomendacaoConfig = {
-  alta: { label: 'Recomendada', color: 'bg-success/15 text-success border-success/30', icon: Star },
-  media: { label: 'Moderada', color: 'bg-warning/15 text-warning border-warning/30', icon: AlertTriangle },
-  baixa: { label: 'Baixa chance', color: 'bg-destructive/15 text-destructive border-destructive/30', icon: AlertTriangle },
+  alta: { label: 'Recomendada', color: 'bg-success-tint text-success-ink border-success-line', tarja: 'border-l-success', icon: Star },
+  media: { label: 'Moderada', color: 'bg-warning-tint text-warning-ink border-warning-line', tarja: 'border-l-warning', icon: AlertTriangle },
+  baixa: { label: 'Baixa chance', color: 'bg-destructive-tint text-destructive-ink border-destructive-line', tarja: 'border-l-destructive', icon: AlertTriangle },
 };
 
 const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -69,13 +76,13 @@ export default function LicitacoesEstrategicas() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
+              <Target className="w-6 h-6 text-muted-foreground flex-shrink-0" aria-hidden="true" />
               Licitações Estratégicas
             </h1>
-            <p className="text-base text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Análise inteligente das oportunidades com maior chance de sucesso
             </p>
           </div>
@@ -92,24 +99,79 @@ export default function LicitacoesEstrategicas() {
         </div>
 
         <Tabs defaultValue="oportunidades" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          {/* Segmented control, não duas metades de uma barra: as abas ocupam a
+              largura do próprio texto, como no protótipo. Esticadas até a
+              margem, elas competiam com o título por peso visual. */}
+          <TabsList>
             <TabsTrigger value="oportunidades">
-              <Target className="w-4 h-4 mr-1" /> Oportunidades
+              <Target className="w-4 h-4 mr-1.5" aria-hidden="true" /> Oportunidades
             </TabsTrigger>
             <TabsTrigger value="capag">
-              <Landmark className="w-4 h-4 mr-1" /> Análise CAPAG
+              <Landmark className="w-4 h-4 mr-1.5" aria-hidden="true" /> Análise CAPAG
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="oportunidades" className="space-y-4 mt-4">
+          <TabsContent value="oportunidades" className="space-y-4 mt-5">
+            {/* Régua de números — os quatro do protótipo, todos derivados da
+                lista que já está em mãos. Nenhuma consulta nova. */}
+            <LinhaKpis
+              itens={[
+                {
+                  rotulo: 'Oportunidades analisadas',
+                  valor: filtradas.length.toLocaleString('pt-BR'),
+                  icone: BarChart3,
+                  tom: 'info',
+                },
+                {
+                  rotulo: 'Score médio',
+                  valor: filtradas.length
+                    ? `${Math.round(filtradas.reduce((n, o) => n + o.scoreGeral, 0) / filtradas.length)}%`
+                    : '—',
+                  icone: Target,
+                },
+                {
+                  rotulo: 'Alta chance de sucesso',
+                  valor: contadores.alta.toLocaleString('pt-BR'),
+                  icone: Trophy,
+                  tom: 'ok',
+                  aoClicar: () => setFiltro(filtro === 'alta' ? 'todas' : 'alta'),
+                  ativo: filtro === 'alta',
+                },
+                {
+                  rotulo: 'Valor total estimado',
+                  valor: formatCurrency(filtradas.reduce((n, o) => n + (o.valor || 0), 0)),
+                  icone: DollarSign,
+                  tom: 'info',
+                },
+              ]}
+            />
+
             {/* Filtros */}
+            {/* Pastilhas de filtro. O ponto colorido substitui os emojis
+                ⭐ ⚠️ 🔻 que estavam aqui: emoji não existe em nenhuma tela do
+                protótipo, muda de desenho conforme o sistema operacional e não
+                acompanha a paleta — o ⭐ amarelo brigava com o âmbar do próprio
+                âmbar ao lado. O ponto sai dos mesmos tokens da tarja do cartão,
+                então a pastilha e o cartão que ela filtra dizem a mesma cor. */}
             <div className="flex flex-wrap gap-2 items-center">
-              {(['todas', 'alta', 'media', 'baixa'] as const).map(f => (
-                <Button key={f} variant={filtro === f ? 'default' : 'outline'} size="sm" onClick={() => setFiltro(f)}
-                  className={filtro === f ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}>
-                  {f === 'todas' ? `Todas (${contadores.todas})` : f === 'alta' ? `⭐ Alta (${contadores.alta})` : f === 'media' ? `⚠️ Média (${contadores.media})` : `🔻 Baixa (${contadores.baixa})`}
-                </Button>
-              ))}
+              {(['todas', 'alta', 'media', 'baixa'] as const).map(f => {
+                const ponto = { todas: null, alta: 'bg-success', media: 'bg-warning', baixa: 'bg-destructive' }[f];
+                const rotulo = { todas: 'Todas', alta: 'Alta', media: 'Média', baixa: 'Baixa' }[f];
+                const ativo = filtro === f;
+                return (
+                  <Button
+                    key={f}
+                    variant={ativo ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFiltro(f)}
+                    aria-pressed={ativo}
+                  >
+                    {ponto && <span className={`w-2 h-2 rounded-full ${ponto}`} aria-hidden="true" />}
+                    {rotulo}
+                    <span className="tabular-nums opacity-70">({contadores[f]})</span>
+                  </Button>
+                );
+              })}
               <div className="ml-auto">
                 <Select value={filtroUf} onValueChange={(v) => { setFiltroUf(v === 'todas' ? '' : v); recarregar(v === 'todas' ? undefined : v); }}>
                   <SelectTrigger className="w-36 h-8 text-xs">
@@ -138,25 +200,39 @@ export default function LicitacoesEstrategicas() {
 
             {/* Lista */}
             {!loading && (
-              <div className="space-y-4">
+              // Grade de `auto-fill` com mínimo em `min(430px, 100%)`: duas
+              // colunas em tela larga, uma em tela estreita, sem breakpoint
+              // declarado. É o padrão `.crt-grade` do protótipo.
+              <div className="grid gap-4 items-start [grid-template-columns:repeat(auto-fill,minmax(min(430px,100%),1fr))] [&>*]:min-w-0">
                 {filtradas.length === 0 && (
-                  <Card className="border-dashed border-2 border-muted-foreground/20">
-                    <div className="flex flex-col items-center justify-center py-12 gap-3">
-                      <Target className="w-10 h-10 text-muted-foreground/30" />
-                      <p className="text-base text-muted-foreground">Nenhuma licitação estratégica encontrada</p>
-                      <p className="text-base text-muted-foreground">
-                        {licitacoes.length === 0
-                          ? 'Não há licitações com abertura futura no momento. Tente atualizar.'
-                          : 'Nenhuma licitação corresponde ao filtro selecionado.'}
-                      </p>
-                    </div>
+                  <Card className="col-span-full flex flex-col items-center text-center px-5 py-16">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-5">
+                      <Target className="h-7 w-7" aria-hidden="true" />
+                    </span>
+                    <h3 className="text-lg font-semibold">Nenhuma licitação estratégica encontrada</h3>
+                    <p className="text-sm text-muted-foreground max-w-[52ch] mt-2 leading-relaxed">
+                      {licitacoes.length === 0
+                        ? 'Não há licitações com abertura futura no momento. Tente atualizar.'
+                        : 'Nenhuma licitação corresponde ao filtro selecionado.'}
+                    </p>
                   </Card>
                 )}
                 {filtradas.map(lic => {
                   const cfg = recomendacaoConfig[lic.recomendacao];
                   const isExpanded = expandido === lic.id;
                   return (
-                    <Card key={lic.id} className="p-5 hover:shadow-md transition-shadow">
+                    // Aberto, o cartão ocupa a fileira inteira. Não é enfeite:
+                    // dentro dele cabem três barras de score lado a lado, duas
+                    // colunas de fatores e o painel da Aurélia com quatro
+                    // caixas de texto. Em meia largura, cada uma dessas caixas
+                    // vira uma coluna de ~20 caracteres, e o parecer jurídico
+                    // fica ilegível. Fechado, volta para a grade de dois.
+                    <Card
+                      key={lic.id}
+                      className={`p-5 border-l-[3px] hover:shadow-md transition-shadow ${cfg.tarja} ${
+                        isExpanded ? 'col-span-full' : ''
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -280,7 +356,9 @@ export default function LicitacoesEstrategicas() {
                     <SelectValue placeholder="Selecione a UF" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="federal">🏛️ Federal (União)</SelectItem>
+                    {/* Sem emoji, como as demais opções da lista — e o
+                        protótipo escreve exatamente "Federal (União)". */}
+                    <SelectItem value="federal">Federal (União)</SelectItem>
                     {UFS_BRASIL.map(uf => (
                       <SelectItem key={uf.sigla} value={uf.sigla}>{uf.sigla} – {uf.nome}</SelectItem>
                     ))}

@@ -448,11 +448,18 @@
      Por isso continuam literais, e não `hsl(var(--card))`. O que mudou no
      rebrand foi só o matiz: saíram da família 213/215/225 antiga e passaram
      para o 217 do navy da marca. */
-  .aurelia-bg { background: hsl(217 48% 7%); }
-  .aurelia-surface { background: hsl(217 40% 11%); }
-  .aurelia-border { border-color: hsl(217 28% 20%); }
-  .aurelia-bubble-user { background: hsl(221 45% 25%); }
-  .aurelia-bubble-ai { background: hsl(217 28% 15%); }
+  /* Superfícies da Aurélia. Eram escuras FIXAS nos dois temas, e por isso o
+     painel de análise do edital virava uma ilha navy dentro de um cartão
+     branco — texto claro sobre fundo escuro no meio de uma página clara.
+     Agora saem dos tokens e acompanham o tema, como qualquer outra superfície
+     do app. No escuro elas voltam a ser escuras sozinhas.
+     O bloco de código continua fixo (--cod-bg): ali o escuro é semântica de
+     "leitura técnica", não decoração. Aqui era decoração. */
+  .aurelia-bg { background: hsl(var(--muted)); }
+  .aurelia-surface { background: hsl(var(--card)); }
+  .aurelia-border { border-color: hsl(var(--border)); }
+  .aurelia-bubble-user { background: hsl(var(--primary-tint)); }
+  .aurelia-bubble-ai { background: hsl(var(--muted)); }
 
   /* O pulso de "tem mensagem nova" SOMA ao relevo do botão em vez de trocá-lo.
      Antes ele redefinia `box-shadow` inteira, e como `hasNotification` nasce
