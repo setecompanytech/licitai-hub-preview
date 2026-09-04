@@ -84,12 +84,19 @@ export async function carregarTimbrado(empresaId: string | null | undefined): Pr
     // consulta INTEIRA — e a arte sumia do recibo em silêncio (caso de 03/09).
     try {
       const { data: emp } = await (supabase.from('empresas') as any)
-        .select('cabecalho_url, rodape_url, timbrado_url')
+        .select('cabecalho_url, cabecalho_path, rodape_url, rodape_path, timbrado_url, timbrado_path')
         .eq('id', empresaId)
         .maybeSingle();
       if (emp) {
-        cabecalhoImg = await baixarImagem(emp.cabecalho_url || emp.timbrado_url);
-        rodapeImg = await baixarImagem(emp.rodape_url);
+        // PATH primeiro, URL como reserva: as URLs gravadas são assinadas
+        // (expiram) e fetch() exige CORS que a <img> da prévia não exige —
+        // a prévia mostrava a arte e o gerador não a baixava (04/09).
+        cabecalhoImg =
+          (await baixarDoBucket(emp.cabecalho_path || emp.timbrado_path)) ||
+          (await baixarImagem(emp.cabecalho_url || emp.timbrado_url));
+        rodapeImg =
+          (await baixarDoBucket(emp.rodape_path)) ||
+          (await baixarImagem(emp.rodape_url));
       }
     } catch { /* sem as colunas de arte: segue para a fonte 2 */ }
     try {
@@ -133,6 +140,19 @@ export async function carregarTimbrado(empresaId: string | null | undefined): Pr
   }
   cache.set(empresaId, { t, em: Date.now() });
   return t;
+}
+
+async function baixarDoBucket(path: string | null | undefined): Promise<ImagemTimbrado | null> {
+  if (!path) return null;
+  try {
+    const { data: blob } = await supabase.storage.from('timbrados').download(path);
+    if (!blob || !/^image\//.test(blob.type || 'image/png')) return null;
+    const dataUrl = await blobParaDataUrl(blob);
+    const ratio = await medirProporcao(dataUrl).catch(() => 4);
+    return { dataUrl, ratio };
+  } catch {
+    return null;
+  }
 }
 
 async function baixarImagem(url: string | null | undefined): Promise<ImagemTimbrado | null> {
