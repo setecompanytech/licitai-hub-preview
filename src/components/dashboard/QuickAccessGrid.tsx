@@ -119,8 +119,12 @@ export default function QuickAccessGrid() {
         <div
           key={group.title}
           className={cn(
-            'rounded-2xl p-5 shadow-sm',
-            group.accent ? 'bg-primary-tint/50' : 'bg-card'
+            // Borda além da sombra: o painel tem fundo cinza-claro, e só a
+            // sombra não separava o cartão do fundo em tela de baixo contraste.
+            'rounded-2xl p-5 shadow-md border',
+            group.accent
+              ? 'bg-primary-tint/50 border-primary/15'
+              : 'bg-card border-border/70'
           )}
         >
           <div className="flex items-center gap-2.5 mb-4">
@@ -140,7 +144,7 @@ export default function QuickAccessGrid() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate(item.path)}
-                      className="group relative flex flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-2 py-5 text-center transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="eleva eleva--ladrilho group relative flex flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-2 py-5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       {item.badge && (
                         // O selo fica ACIMA do ladrilho, montado na borda, como
@@ -150,8 +154,11 @@ export default function QuickAccessGrid() {
                           Novidade
                         </span>
                       )}
+                      {/* O ícone cresce junto, um pouco mais que o ladrilho —
+                          é o que faz o gesto parecer que o cartão se aproxima,
+                          e não que foi só esticado. */}
                       <Icon
-                        className="w-5 h-5 text-accent transition-colors"
+                        className="w-5 h-5 text-accent transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none motion-reduce:transition-none"
                         aria-hidden="true"
                       />
                       <span className="text-sm font-medium leading-tight line-clamp-2">

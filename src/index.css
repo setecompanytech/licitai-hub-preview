@@ -498,12 +498,65 @@
   .nav-item-idle:hover {
     background: hsl(var(--muted) / 0.6);
   }
+  /* REBRAND — o relevo dos cartões do painel.
+     A borda que acendia em azul no hover saiu. Ela pintava a MOLDURA para dizer
+     "você está aqui", que é a gramática de foco, não a de alvo clicável — e
+     numa grade de 24 ladrilhos o azul brigava com o ícone, que já é azul.
+
+     No lugar entra profundidade: o cartão sobe, cresce um pouco e a sombra
+     abre. É o mesmo gesto de levantar um papel da mesa, e funciona sem cor
+     nenhuma — passa em tela monocromática e para quem não distingue matiz.
+
+     `transform` e `box-shadow` são as duas propriedades que o navegador anima
+     na GPU sem recalcular layout: 24 ladrilhos crescendo ao mesmo tempo não
+     custam nada. Animar `width`, `padding` ou `border-width` custaria.
+
+     A curva (.2, .8, .3, 1) desacelera rápido no fim — o cartão chega e para,
+     em vez de deslizar até o lugar. É o que separa "responde ao cursor" de
+     "está escorregando". */
+  .eleva {
+    box-shadow: var(--shadow-sm);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 200ms ease-out;
+  }
+  .eleva:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+  }
+  /* Ladrilho pequeno cresce mais: 2% em 90px de largura é imperceptível. */
+  .eleva--ladrilho:hover {
+    transform: translateY(-4px) scale(1.05);
+  }
+  .eleva:active {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: 80ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .eleva,
+    .eleva:hover,
+    .eleva:active {
+      transform: none;
+      transition: none;
+    }
+  }
+
   .stat-card {
-    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60 shadow-sm transition-all duration-300;
+    @apply bg-card rounded-xl p-3 sm:p-5 border border-border/60;
+    box-shadow: var(--shadow-sm);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.3, 1),
+                box-shadow 200ms ease-out;
   }
   .stat-card:hover {
     box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.01);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stat-card,
+    .stat-card:hover {
+      transform: none;
+      transition: none;
+    }
   }
   .kanban-column {
     @apply bg-muted/50 rounded-xl p-4 min-h-[400px];
