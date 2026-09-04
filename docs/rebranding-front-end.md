@@ -1000,6 +1000,7 @@ aba é a do próprio texto, como no `barra-abas` do protótipo.
 | ◐ | **Apoio Contábil** — mesmo herói; **só o cabeçalho**, o resto da tela segue livre | `ApoioContabil.tsx` |
 | ◐ | **Precificação** — herói camaleão (reescreve nos 7 abas) e a barra de localização entra nele | `Precificacao.tsx` |
 | ◐ | **Gestão de Compras** — herói com o corredor de galpão; **só o cabeçalho**, o resto segue livre | `GestaoCompras.tsx` |
+| ◐ | **Gestão de Contratos** — herói com o martelo sobre o teclado; a linha de ações sai da faixa | `GestaoContratos.tsx` |
 | ◐ | Ícone do grupo **Inteligência**: `Tag` → `Brain` | `menu.ts` |
 | ◐ | **FAB da Aurélia no tema escuro**: dourado com o robô preto | `index.css` |
 
@@ -1017,14 +1018,14 @@ véu 2      de topo — h-[70%], from-navy/N to-transparent
 texto      relative, chip dourado + h1 branco + descrição white/75 + selos white/10
 ```
 
-| | Robô de Lances | Apoio Jurídico | Apoio Contábil | Precificação | Gestão de Compras |
-| --- | --- | --- | --- | --- | --- |
-| Arquivo | 512×288 | 1280×720 | 1000×667 | 1280×949 | 1365×587 |
-| Largura do painel | 512px | 560px | 640px | 520px | 620px |
-| Recorte vertical | 45% | 50% | 45% | 62% | 50% |
-| Véu lateral até | 50% | 55% | 70% | 65% | 60% |
-| Véu de topo | 45% | 55% | 50% | 50% | 55% |
-| `brightness` | — | — | `.85` | `.85` | `.95` |
+| | Robô de Lances | Apoio Jurídico | Apoio Contábil | Precificação | Gestão de Compras | Gestão de Contratos |
+| --- | --- | --- | --- | --- | --- | --- |
+| Arquivo | 512×288 | 1280×720 | 1000×667 | 1280×949 | 1365×587 | 600×400 |
+| Largura do painel | 512px | 560px | 640px | 520px | 620px | 560px |
+| Recorte vertical | 45% | 50% | 45% | 62% | 50% | 45% |
+| Véu lateral até | 50% | 55% | 70% | 65% | 60% | 55% |
+| Véu de topo | 45% | 55% | 50% | 50% | 55% | 55% |
+| `brightness` | — | — | `.85` | `.85` | `.95` | `.85` |
 
 Lendo a tabela de trás para frente dá para prever o ajuste de uma imagem nova:
 **quanto mais clara e quente a foto, mais longe o véu lateral tem que ir e mais
