@@ -116,7 +116,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                   onClick={() => handleNav(groups[0].items[0].path)}
                   className={cn(
                     'px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
-                    active ? 'text-accent bg-accent/8' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    active ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   )}
                 >
                   {link.label}
@@ -131,7 +131,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                 onClick={() => setOpenDropdown(isOpen ? null : link.label)}
                 className={cn(
                   'flex items-center gap-1 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all',
-                  active ? 'text-accent bg-accent/8' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  active ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 )}
               >
                 {link.label}
@@ -164,7 +164,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                               className={cn(
                                 'w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors',
                                 isActive
-                                  ? 'text-accent bg-accent/6 font-semibold'
+                                  ? 'text-accent bg-accent/5 font-semibold'
                                   : 'text-foreground hover:bg-muted/50 hover:text-foreground'
                               )}
                             >
@@ -188,7 +188,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                             className={cn(
                               'w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors',
                               location.pathname === item.path
-                                ? 'text-accent bg-accent/6 font-semibold'
+                                ? 'text-accent bg-accent/5 font-semibold'
                                 : 'text-foreground hover:bg-muted/50 hover:text-foreground'
                             )}
                           >
