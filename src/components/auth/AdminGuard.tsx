@@ -1,6 +1,7 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AdminGuardProps {
@@ -15,12 +16,12 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   const { isSystemAdmin, loading } = useAuthorization();
   const navigate = useNavigate();
 
+  /* Esta guarda roda FORA do AppLayout — quem desenha a barra é a página que
+     vem depois dela. Com um spinner solto aqui, a sequência era: esqueleto do
+     ProtectedRoute (com moldura) → tela branca → página. O esqueleto com
+     moldura elimina o pisca. */
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonPagina />;
   }
 
   if (!isSystemAdmin) {

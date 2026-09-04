@@ -1,8 +1,9 @@
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 
 interface MaintenanceGuardProps {
   children: React.ReactNode;
@@ -16,12 +17,14 @@ export default function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   // authLoading só importa quando o modo manutenção está ativo (para decidir se o admin bypass)
   const loading = maintLoading || (isMaintenanceMode && (authLoading || (user && roleLoading)));
 
+  /* REBRAND — esta era a tela branca do app.
+     A guarda embrulha TODAS as rotas e consulta o modo manutenção a cada
+     carregamento, então todo mundo passava por aqui: o splash saía, e no lugar
+     dele vinha uma página vazia com um ponto girando no meio — antes ainda do
+     esqueleto do `ProtectedRoute`. Agora a espera já mostra o app montado:
+     barra navy com a logo, coluna lateral e o conteúdo em esqueleto. */
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonPagina />;
   }
 
   // If not in maintenance mode, render normally

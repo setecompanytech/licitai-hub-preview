@@ -1,3 +1,4 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useEffect, useRef, useState } from 'react';
 import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
@@ -329,7 +330,11 @@ export default function ProcessoWorkspace() {
   };
   const temEspelho = Object.values(espelho).some((v) => v !== null && v !== undefined && v !== '');
 
-  if (loading) return <div className="flex items-center justify-center h-screen"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  /* Esta tela desenha a própria moldura (não passa pelo AppLayout), então na
+     espera não sobrava nada: `h-screen` em branco com um ponto girando. O
+     esqueleto com moldura devolve a barra navy e a coluna lateral enquanto o
+     processo carrega. */
+  if (loading) return <SkeletonPagina />;
   if (!lic) return (
     <div className="p-8 text-center">
       <p className="text-muted-foreground mb-4">Processo não encontrado.</p>

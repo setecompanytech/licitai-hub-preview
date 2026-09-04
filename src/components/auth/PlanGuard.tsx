@@ -1,8 +1,9 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { getRequiredPlan, planDisplayNames } from '@/data/plan-features';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PlanGuardProps {
@@ -19,23 +20,16 @@ export default function PlanGuard({ children }: PlanGuardProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Mesma razão do AdminGuard: fora do AppLayout, spinner solto vira branco.
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonPagina />;
   }
 
   // Bypass total só para o administrador do sistema — ver canAccessByPlan.
   if (isSystemAdmin) return <>{children}</>;
 
   if (subscription.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonPagina />;
   }
 
   if (canAccessByPlan(location.pathname)) return <>{children}</>;

@@ -1,3 +1,4 @@
+import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import BotaoVoltar from '@/components/layout/BotaoVoltar';
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,12 +145,9 @@ export default function PainelDistribuicao() {
     return true;
   });
 
+  // Sem AppLayout nesta rota: na espera a tela ficava vazia de ponta a ponta.
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SkeletonPagina />;
   }
 
   return (
