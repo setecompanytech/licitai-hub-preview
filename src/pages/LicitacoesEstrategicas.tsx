@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import heroEstrategicas from '@/assets/brand/hero-licitacao-estrategica.jpg';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -76,25 +77,77 @@ export default function LicitacoesEstrategicas() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
-              <Target className="w-6 h-6 text-muted-foreground flex-shrink-0" aria-hidden="true" />
-              Licitações Estratégicas
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Análise inteligente das oportunidades com maior chance de sucesso
-            </p>
+        {/* ── Herói do módulo ──
+            REBRAND — mesma anatomia dos outros seis heróis: faixa navy de
+            232px, foto sangrando na direita, texto sobre o navy sólido da
+            esquerda.
+
+            O xadrez é o assunto exato desta tela: ela não lista licitações, ela
+            diz em QUAIS vale entrar. Escolher a peça a mover, com o tabuleiro
+            todo disponível, é a decisão que a tela existe para apoiar.
+
+            Um parâmetro foge do padrão: o véu lateral para em **35%**, contra
+            55-70% dos outros. A mão e o rei — o assunto — ficam no CENTRO desta
+            foto, e como o painel tem quase a largura da imagem, um véu de 55%
+            os dissolveria no navy e sobrariam só os peões da direita. Véu curto
+            costuma deixar emenda visível; aqui não deixa porque a borda
+            esquerda da foto é a manga escura do terno, que já é da cor do véu.
+
+            ⚠️ SÓ O CABEÇALHO. Esta tela está reservada pelo Caio desde 04/09 e
+            continua dele: o corpo — abas, cartões de oportunidade, filtros — é
+            trabalho dele. O herói entrou com o Caio avisado antes. */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 hidden w-[620px] max-w-[48%] md:block"
+          >
+            <img
+              src={heroEstrategicas}
+              alt=""
+              className="w-full h-full object-cover object-[center_50%] brightness-[.85]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-35% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/45 to-transparent" />
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {fonteClassificacao && (
-              <Badge variant="outline" className={fonteClassificacao === 'ia' ? 'bg-muted text-muted-foreground border-border' : 'bg-muted text-muted-foreground'}>
-                <Brain className="w-3 h-3 mr-1" /> {fonteClassificacao === 'ia' ? 'Classificada por IA' : 'Sem IA'}
-              </Badge>
-            )}
-            <Button variant="outline" size="sm" onClick={() => recarregar(filtroUf || undefined)} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Atualizar
-            </Button>
+
+          <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
+            <div className="flex items-start gap-3">
+              <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+                <Target className="w-5 h-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 max-w-xl">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                  Licitações Estratégicas
+                </h1>
+                <p className="text-sm text-white/75 mt-1 leading-relaxed">
+                  Análise inteligente das oportunidades com maior chance de sucesso
+                </p>
+              </div>
+            </div>
+
+            {/* O selo e o botão couberam DENTRO da faixa porque os dois são
+                escritos aqui: o `bg-muted` do selo é um chip claro no tema claro
+                e escuro no escuro — dois pesos opostos sobre o mesmo navy —, e a
+                variante `outline` do botão vira texto escuro em fundo escuro.
+                Como as duas classes moram nesta página, e não dentro de um
+                componente compartilhado, deu para vesti-los para o navy sem
+                abrir nada de ninguém. */}
+            <div className="flex items-center gap-2">
+              {fonteClassificacao && (
+                <Badge variant="outline" className="border-white/25 bg-white/10 text-white">
+                  <Brain className="w-3 h-3 mr-1" /> {fonteClassificacao === 'ia' ? 'Classificada por IA' : 'Sem IA'}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                onClick={() => recarregar(filtroUf || undefined)}
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+              </Button>
+            </div>
           </div>
         </div>
 

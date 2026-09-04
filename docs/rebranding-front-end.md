@@ -326,6 +326,7 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 | `src/components/ui/` (os 51) | **Caio** | 02/09 |
 | `AppSidebar.tsx` · `menu.ts` · `AppTopNav.tsx` | **Caio** (navegação é dele) | 02/09 |
 | `LicitacoesEstrategicas.tsx` · `HistoricoLicitacoes.tsx` | **Caio** — fecham o módulo 3 junto com o Kanban | 04/09 |
+| ↳ o **herói** das Estratégicas | **Ian** (feito, com o Caio avisado antes) — o corpo continua do Caio | 04/09 |
 | `ApoioContabil.tsx` · `GestaoCompras.tsx` — **só o herói** | **Ian** (feito); o corpo das telas segue livre | 04/09 |
 | `Precificacao.tsx` | **Ian** | 04/09 |
 | `src/assets/brand/` (heróis dos módulos) | **Ian** | 04/09 |
@@ -1017,6 +1018,8 @@ aba é a do próprio texto, como no `barra-abas` do protótipo.
 | ◐ | **Apoio Contábil** — mesmo herói; **só o cabeçalho**, o resto da tela segue livre | `ApoioContabil.tsx` |
 | ◐ | **Precificação** — herói camaleão (reescreve nos 7 abas) e a barra de localização entra nele | `Precificacao.tsx` |
 | ◐ | **Gestão de Compras** — herói com o corredor de galpão; **só o cabeçalho**, o resto segue livre | `GestaoCompras.tsx` |
+| ◐ | **Gestão de Contratos** — herói com o martelo sobre o teclado; a linha de ações sai da faixa | `GestaoContratos.tsx` |
+| ◐ | **Licitações Estratégicas** — herói com o xadrez; **só o cabeçalho**, a tela é do Caio | `LicitacoesEstrategicas.tsx` |
 | ◐ | Ícone do grupo **Inteligência**: `Tag` → `Brain` | `menu.ts` |
 | ◐ | **FAB da Aurélia no tema escuro**: dourado com o robô preto | `index.css` |
 
@@ -1034,14 +1037,22 @@ véu 2      de topo — h-[70%], from-navy/N to-transparent
 texto      relative, chip dourado + h1 branco + descrição white/75 + selos white/10
 ```
 
-| | Robô de Lances | Apoio Jurídico | Apoio Contábil | Precificação | Gestão de Compras |
-| --- | --- | --- | --- | --- | --- |
-| Arquivo | 512×288 | 1280×720 | 1000×667 | 1280×949 | 1365×587 |
-| Largura do painel | 512px | 560px | 640px | 520px | 620px |
-| Recorte vertical | 45% | 50% | 45% | 62% | 50% |
-| Véu lateral até | 50% | 55% | 70% | 65% | 60% |
-| Véu de topo | 45% | 55% | 50% | 50% | 55% |
-| `brightness` | — | — | `.85` | `.85` | `.95` |
+| | Robô de Lances | Apoio Jurídico | Apoio Contábil | Precificação | Gestão de Compras | Gestão de Contratos | Estratégicas |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Arquivo | 512×288 | 1280×720 | 1000×667 | 1280×949 | 1365×587 | 600×400 | 880×293 |
+| Largura do painel | 512px | 560px | 640px | 520px | 620px | 560px | 620px |
+| Recorte vertical | 45% | 50% | 45% | 62% | 50% | 45% | 50% |
+| Véu lateral até | 50% | 55% | 70% | 65% | 60% | 55% | **35%** |
+| Véu de topo | 45% | 55% | 50% | 50% | 55% | 55% | 45% |
+| `brightness` | — | — | `.85` | `.85` | `.95` | `.85` | `.85` |
+
+**O véu de 35% das Estratégicas é a exceção que ensina a regra.** Em todas as
+outras fotos o assunto está à direita do quadro, e o véu longo só come fundo. Na
+do xadrez o assunto — a mão e o rei — está no CENTRO, e como o painel tem quase
+a largura da imagem, um véu de 55% dissolveria justamente ele, sobrando os peões
+da direita. Ou seja: **o véu é função de ONDE está o assunto, não um número
+fixo.** Véu curto normalmente deixa emenda visível; ali não deixa porque a borda
+esquerda da foto é a manga escura de um terno, que já é da cor do véu.
 
 Lendo a tabela de trás para frente dá para prever o ajuste de uma imagem nova:
 **quanto mais clara e quente a foto, mais longe o véu lateral tem que ir e mais
@@ -1124,14 +1135,15 @@ referência visual existe para seguir e menos decisão de desenho sobra.
 
 **Legenda da primeira coluna:** ☐ livre, ninguém pegou · ◔ **reservada**, alguém
 já está nela (o nome vai na linha) · ◐ **parcial**, uma parte já foi feita e o
-resto continua livre — a linha diz qual parte.
+resto continua livre — a linha diz qual parte · ◔◐ reservada **e** com uma parte
+já pronta: o dono da reserva continua sendo o dono do resto.
 
 | | Tela | Rota | Arquivo | Prot. | Hoje |
 | :---: | --- | --- | --- | ---: | ---: |
 | ☐ | Marketing (admin) | `/admin/marketing` | `AdminMarketing.tsx` | 233 | 392 |
 | ☐ | API & Integração | `/api-integracao` | `ApiIntegracao.tsx` | 153 | 138 |
 | ◐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
-| ◔ | Licitações Estratégicas — **Caio** | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
+| ◔◐ | Licitações Estratégicas — **Caio** (herói já feito) | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
 | ☐ | Chat e Mural | `/monitoramento-chat` | `MonitoramentoChat.tsx` | 100 | 243 |
 | ☐ | Concorrentes | `/concorrentes` | `Concorrentes.tsx` | 99 | 51 |
 | ☐ | Metas do Comercial | `/metas-comercial` | `MetasComercial.tsx` | 97 | 95 |

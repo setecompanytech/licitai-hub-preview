@@ -10,6 +10,7 @@ import LocalDoOrgao from '@/components/contratos/LocalDoOrgao';
 import { salvarNaPastaDoProcesso } from '@/lib/processo/salvarNaPasta';
 import { ehMeu, noEscopo, type EscopoResponsavel } from '@/lib/equipe/escopoProprio';
 import AppLayout from '@/components/layout/AppLayout';
+import heroContratos from '@/assets/brand/hero-gestao-contratos.jpg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -704,12 +705,60 @@ export default function GestaoContratos() {
 
   return (
     <AppLayout>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Contratos e ATAs SRP</h1>
-          <p className="text-sm text-muted-foreground mt-1">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
+      {/* ── Herói do módulo ──
+          REBRAND — mesma anatomia dos outros cinco heróis: faixa navy de 232px,
+          foto sangrando na direita, texto sobre o navy sólido da esquerda.
+
+          O martelo mora aqui porque este é o módulo do OUTRO LADO da batida: a
+          homologação é o que transforma uma licitação em contrato, e é do
+          contrato que esta tela trata. Não colide com o martelo do Apoio
+          Jurídico — lá ele é a lei sendo aplicada, aqui é a decisão já tomada
+          virando obrigação.
+
+          Este arquivo é o menor do conjunto, 600×400, abaixo do piso de 640px
+          que o próprio documento fixou. Cabe porque o painel aqui é de 560px:
+          1,1× de ampliação, que não aparece atrás do véu. Foi a exceção
+          medida, não a regra afrouxada — em painel de 640 ela borraria.
+
+          `brightness-[.85]` pelo mesmo motivo do Contábil e da Precificação: a
+          madeira do martelo é quente e clara. Sob o véu ela vira bronze, que é
+          vizinho do dourado da marca em vez de concorrente dele. */}
+      <div className="mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 hidden w-[560px] max-w-[48%] md:block"
+        >
+          <img
+            src={heroContratos}
+            alt=""
+            className="w-full h-full object-cover object-[center_45%] brightness-[.85]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-55% to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/55 to-transparent" />
         </div>
-        <div className="flex gap-2">
+
+        <div className="relative flex flex-col justify-center gap-4 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px]">
+          <div className="flex items-start gap-3">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+              <ScrollText className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 max-w-xl">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">Gestão de Contratos e ATAs SRP</h1>
+              <p className="text-sm text-white/75 mt-1 leading-relaxed">Controle ATAs de Registro de Preços, contratos derivados, aditivos, itens e pedidos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* As ações ficam FORA do herói, como no Robô de Lances e ao contrário da
+          Gestão de Compras. O critério é sempre o mesmo: sobrevive ao navy?
+          Ali o botão era só `bg-primary` e bastou trocar por branco sobre navy.
+          Aqui o `ImportarContratoPDF` traz `variant="outline"` de dentro do
+          próprio componente — variante feita para superfície de tema, que sobre
+          navy vira texto escuro em fundo escuro. Consertar exigiria abrir um
+          componente compartilhado para passar classe de fora, e a linha de ação
+          logo abaixo da faixa resolve sem tocar em nada de ninguém. */}
+      <div className="mb-6 flex gap-2">
           <ImportarContratoPDF
             onExtracted={handleImportExtracted}
             onCadastroManual={() => { resetForm(); setDialogOpen(true); }}
@@ -1046,7 +1095,6 @@ export default function GestaoContratos() {
             </div>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
       {/* REBRAND — a anatomia `kpi-meta` do protótipo: rótulo e ícone em cima,
