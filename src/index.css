@@ -133,6 +133,13 @@
     --warning-tint: 48 96% 89%;       --warning-ink: 26 90% 37%;       --warning-line: 44 67% 76%;
     --destructive-tint: 0 93% 94%;    --destructive-ink: 0 74% 42%;    --destructive-line: 0 68% 85%;
 
+    /* Carregamento — a base do skeleton e a faixa clara que o varre.
+       Valores do protótipo (#E3E9F1 / #F1F5FA). A base precisa destacar do
+       `--card`: skeleton da cor do cartão não comunica que algo está vindo,
+       comunica que o cartão está vazio. */
+    --skeleton-bg: 214 33% 92%;
+    --skeleton-hi: 213 47% 96%;
+
     /* A navegação é navy nos dois temas. Estes cinco tokens estão hoje SEM
        consumidor no repositório — o AppTopNav pinta com os tokens base. Ficam
        alinhados à paleta nova para não apodrecerem divergentes; quem de fato
@@ -267,6 +274,12 @@
     --success-tint: 142 40% 13%;      --success-ink: 142 60% 62%;      --success-line: 142 32% 28%;
     --warning-tint: 32 45% 13%;       --warning-ink: 32 90% 62%;       --warning-line: 32 38% 30%;
     --destructive-tint: 0 45% 13%;    --destructive-ink: 0 74% 68%;    --destructive-line: 0 38% 30%;
+
+    /* No escuro o skeleton sobe em vez de descer: fica acima do `--card`
+       (217 40% 11%) e abaixo do `--border` (217 28% 20%), que é a faixa onde
+       ele lê como superfície aguardando conteúdo. */
+    --skeleton-bg: 217 30% 16%;
+    --skeleton-hi: 217 26% 24%;
 
     --nav-bg: 217 48% 5%;
     --nav-fg: 215 16% 72%;
@@ -708,4 +721,58 @@
    bloco @media para não depender da ordem de especificidade do Tailwind. */
 .so-impresso {
   display: none;
+}
+
+/* ============================================================================
+   Skeleton — a varredura de luz do protótipo (`.sk`, index.html:261-262)
+   ============================================================================
+
+   O protótipo anima `background-position` sobre um gradiente de 400% de
+   largura. Funciona, mas repinta o elemento inteiro a cada quadro: com vinte
+   skeletons numa tabela, é vinte repinturas por quadro, e em máquina fraca a
+   varredura engasga justamente quando a tela está mais ocupada carregando.
+
+   Aqui a faixa é um `::after` deslocado por `transform`. Transform é composto
+   na GPU e não dispara repintura — o custo para de crescer com a quantidade de
+   skeletons na tela. Mesmo desenho, conta diferente.
+
+   Vive em `@layer components` de propósito: as utilitárias do Tailwind entram
+   depois e vencem por ordem de camada, então `<Skeleton className="rounded-full" />`
+   continua redondo, e o `overflow: hidden` faz a faixa acompanhar o recorte.
+   ========================================================================== */
+@layer components {
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    background: hsl(var(--skeleton-bg));
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--skeleton-hi) / 0.9) 50%,
+      transparent 100%
+    );
+    animation: skeleton-varrer 1.3s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-varrer {
+  to { transform: translateX(100%); }
+}
+
+/* Movimento infinito é gatilho de enxaqueca e de desconforto vestibular, e a
+   tela de carregamento é onde ele mais aparece. Quem pediu menos movimento
+   fica com a base sólida — ela já comunica "conteúdo a caminho" sozinha. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    opacity: 0;
+  }
 }

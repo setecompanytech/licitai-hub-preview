@@ -16,7 +16,7 @@ import AdminGuard from "@/components/auth/AdminGuard";
 import MaintenanceGuard from "@/components/auth/MaintenanceGuard";
 import { Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import SkeletonPagina from "@/components/shared/SkeletonPagina";
 import { lazyImportWithRecovery } from "@/lib/chunk-recovery";
 
 // Static imports — always needed immediately
@@ -109,14 +109,10 @@ const ProcessoWorkspace = lazyPage(() => import("./pages/ProcessoWorkspace"));
 
 // queryClient definido em src/lib/query-client.ts (singleton compartilhado).
 
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      <span className="text-sm text-muted-foreground">Carregando módulo...</span>
-    </div>
-  </div>
-);
+/* A espera da rota que ainda está baixando. Era um spinner no meio do vazio,
+   que não diz o que vem e faz a página saltar quando o conteúdo chega; o
+   esqueleto reserva o espaço na forma certa. */
+const PageLoader = () => <SkeletonPagina />;
 
 const ProtectedPages = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>{children}</ProtectedRoute>
