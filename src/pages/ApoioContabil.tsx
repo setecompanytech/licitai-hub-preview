@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import heroContabil from '@/assets/brand/hero-apoio-contabil-modulo.jpg';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -49,14 +50,57 @@ export default function ApoioContabil() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-            Apoio Contábil Especializado
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Análises contábeis, tributárias e precificação assistida por IA – NBC, CFC, Lei 14.133/2021
-          </p>
+        {/* ── Herói do módulo ──
+            REBRAND — mesma anatomia do Apoio Jurídico, o módulo irmão: faixa
+            navy de 232px, foto sangrando na direita, texto sobre o navy sólido
+            da esquerda.
+
+            Dois ajustes que esta foto exigiu e as outras não. Ela é CLARA —
+            papel branco, mesa branca, pele — enquanto o martelo do Jurídico e o
+            aperto de mão do Robô já são azul-escuros. Sobre navy isso vira um
+            bloco aceso com emenda visível na borda esquerda, então:
+
+              • `brightness-[.85]` baixa a foto para perto da família do navy;
+              • o véu lateral se estende a 70% (contra 55% no Jurídico), dando
+                mais caminho para a transição — é o que apaga a emenda.
+
+            O painel é mais largo, 640px, porque o arquivo é 3:2 e não 16:9:
+            no mesmo recorte de 232px de altura ele mostraria menos cena. */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 hidden w-[640px] max-w-[52%] md:block"
+          >
+            <img
+              src={heroContabil}
+              alt=""
+              className="w-full h-full object-cover object-[center_45%] brightness-[.85]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-70% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/50 to-transparent" />
+          </div>
+
+          <div className="relative flex items-start gap-3 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px] md:items-center">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+              <Calculator className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 max-w-xl">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                Apoio Contábil Especializado
+              </h1>
+              <p className="text-sm text-white/75 mt-1 leading-relaxed">
+                Análises contábeis, tributárias e precificação assistida por IA — NBC, CFC, Lei 14.133/2021
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Badge variant="outline" className="text-xs gap-1 border-white/25 bg-white/10 text-white">
+                  <BookOpen className="w-3 h-3" /> NBC · CFC
+                </Badge>
+                <Badge variant="outline" className="text-xs gap-1 border-white/25 bg-white/10 text-white">
+                  <Sparkles className="w-3 h-3" /> IA Contábil
+                </Badge>
+              </div>
+            </div>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
