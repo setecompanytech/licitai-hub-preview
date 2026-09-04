@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import {
   Building2, Search, Download, PieChart, Activity, Landmark, FileText, Shield
 } from 'lucide-react';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
+import TarjaExemplo from '@/components/shared/TarjaExemplo';
+import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import ContratosGov from '@/components/analise-mercado/ContratosGov';
 import ContratosTransparencia from '@/components/analise-mercado/ContratosTransparencia';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
@@ -34,13 +36,11 @@ const precosData = [
   { mes: 'Fev', medio: 3200000, maximo: 23000000, minimo: 520000 },
 ];
 
-const modalidadeData = [
-  { name: 'Pregão Eletrônico', value: 45 },
-  { name: 'Concorrência', value: 20 },
-  { name: 'Dispensa', value: 18 },
-  { name: 'Tomada de Preço', value: 10 },
-  { name: 'Outros', value: 7 },
-];
+/* `modalidadeData` fixo saiu daqui: a distribuição por modalidade passou a vir
+   do `useAnalyticsData`, que o app já carrega. Virou dado real sem custar
+   consulta nova — mas mudou de assunto, e o título diz isso: é a carteira DA
+   EMPRESA, não o mercado. Confundir as duas seria trocar um número inventado
+   por um número verdadeiro respondendo a pergunta errada. */
 
 const produtosMaisSolicitados = [
   { item: 'Serviços de engenharia civil', qtd: 342, valorMedio: 'R$ 4.500.000' },
@@ -60,6 +60,17 @@ const formatCurrency = (v: number) => (v / 1000000).toFixed(0) + 'M';
 export default function AnaliseMercado() {
   const [busca, setBusca] = useState('');
   const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
+
+  /* A única coisa desta aba que o app sabe de verdade: a carteira da empresa.
+     Vem do mesmo hook do painel, então não custa consulta nova. */
+  const { modalidadeBreakdown } = useAnalyticsData();
+  const modalidadePorCarteira = useMemo(
+    () =>
+      modalidadeBreakdown
+        .map((m) => ({ name: m.modalidade, value: m.total }))
+        .sort((a, b) => b.value - a.value),
+    [modalidadeBreakdown],
+  );
 
   const portalAtual: TransparenciaPortal = transparenciaPortais.find(p => `${p.tipo}-${p.sigla}-${p.nome}` === portalSelecionado)
     || transparenciaPortais.find(p => p.tipo === 'estado' && p.sigla === 'PA')!;
@@ -86,7 +97,15 @@ export default function AnaliseMercado() {
           </Button>
         </div>
 
-        {/* KPIs */}
+        {/* KPIs — os quatro números e as quatro variações são fixos no código.
+            A tarja fica ACIMA da grade, não em cada cartão: quatro tarjas
+            iguais viram padrão visual e param de ser lidas; uma sobre o
+            conjunto cobre o conjunto. */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-sm font-semibold">Panorama do mercado</h2>
+            <TarjaExemplo detalhe="Exige uma fonte agregada de mercado; o app hoje só conhece a carteira da empresa." />
+          </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
@@ -120,6 +139,7 @@ export default function AnaliseMercado() {
             <p className="text-2xl font-bold">R$ 687 mil</p>
             <span className="text-xs text-destructive flex items-center gap-0.5"><TrendingDown className="w-3 h-3" /> -3% vs mês anterior</span>
           </div>
+        </div>
         </div>
 
         <Tabs defaultValue="transparencia" className="space-y-4">
@@ -175,36 +195,68 @@ export default function AnaliseMercado() {
           <TabsContent value="segmentos" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4">Licitações por Segmento</h3>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-semibold">Licitações por Segmento</h3>
+                  <TarjaExemplo detalhe="Exige uma fonte de mercado por CNAE — não existe no banco hoje." />
+                </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={segmentoData}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="segmento" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
-                    <Bar dataKey="licitacoes" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="licitacoes" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
+
+              {/* Este é REAL: sai do useAnalyticsData, escopado por empresa_id.
+                  O título carrega "Sua carteira" porque a resposta mudou de
+                  pergunta — é a distribuição dos SEUS processos, não a do
+                  mercado. */}
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4">Distribuição por Modalidade</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RPieChart>
-                    <Pie data={modalidadeData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }) => `${name} ${value}%`}>
-                      {modalidadeData.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RPieChart>
-                </ResponsiveContainer>
+                <div className="flex items-start justify-between gap-3 mb-1">
+                  <h3 className="text-sm font-semibold">Distribuição por Modalidade</h3>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-success-line bg-success-tint px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-success-ink">
+                    Sua carteira
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Os processos desta empresa, por modalidade.
+                </p>
+                {modalidadePorCarteira.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-20 text-center">
+                    Nenhum processo cadastrado ainda — o gráfico aparece assim que houver o primeiro.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={270}>
+                    <RPieChart>
+                      <Pie
+                        data={modalidadePorCarteira}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={95}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
+                      >
+                        {modalidadePorCarteira.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number, n: string) => [`${v} processo${v === 1 ? '' : 's'}`, n]} />
+                    </RPieChart>
+                  </ResponsiveContainer>
+                )}
               </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="precos">
             <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Evolução de Preços – Últimos 6 Meses (em milhões R$)</h3>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <h3 className="text-sm font-semibold">Evolução de Preços – Últimos 6 Meses (em milhões R$)</h3>
+                <TarjaExemplo detalhe="Exige série histórica de preços homologados; o app guarda os processos, não a série do mercado." />
+              </div>
               <ResponsiveContainer width="100%" height={350}>
                 <LineChart data={precosData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -223,7 +275,10 @@ export default function AnaliseMercado() {
           <TabsContent value="produtos">
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold">Produtos e Serviços Mais Solicitados</h3>
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="text-sm font-semibold">Produtos e Serviços Mais Solicitados</h3>
+                  <TarjaExemplo detalhe="Exige o catálogo de itens dos editais agregado por descrição." />
+                </div>
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Buscar item..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10 h-8 text-sm" />
