@@ -663,28 +663,28 @@ telas com dois arquivos. As demais avançam módulo a módulo.
 
 | # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 9 | Compras & Fornecedores | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 12 | Apoio Contábil | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 14 | Metas | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 15 | IA & Assistentes | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 16 | Comunicação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 17 | Documentos & Cadastro | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 18 | Agenda | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 19 | Equipe & Configurações | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 20 | Admin | 7 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 21 | Conteúdo & Suporte | 9 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 22 | Institucional & Legal | 17 | — | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 2 | Painel & Navegação | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 4 | Monitoramento & Busca | 6 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 5 | Precificação | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 6 | Proposta & Envio | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 8 | Contratos | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 9 | Compras & Fornecedores | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 11 | Apoio Jurídico | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 12 | Apoio Contábil | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 14 | Metas | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 15 | IA & Assistentes | 6 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 16 | Comunicação | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 17 | Documentos & Cadastro | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 18 | Agenda | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 19 | Equipe & Configurações | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 20 | Admin | 7 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 21 | Conteúdo & Suporte | 9 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 22 | Institucional & Legal | 17 | — | ◐ | ◐ | ☐ | ☐ | ☐ |
 
 **Onde está o trabalho sem desenho.** O módulo 22 (17 rotas: landing, sobre,
 contato, soluções, demo, investidores e as 11 páginas legais) é o único grupo
@@ -704,12 +704,12 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 
 | | Entrega | Arquivos |
 | :---: | --- | --- |
-| ☐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
-| ☐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
-| ☐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
-| ☐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
-| ☐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
-| ☐ | Tema padrão passa de escuro para claro | `App.tsx` |
+| ◐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
+| ◐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
+| ◐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
+| ◐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
+| ◐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
+| ◐ | Tema padrão passa de escuro para claro | `App.tsx` |
 
 #### Ian + Claude — 03 a 04/09/2026
 
