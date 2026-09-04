@@ -151,15 +151,34 @@ git push origin feature/rebrand-ui-ux
 **Um de vocês faz isso, uma vez por dia, e avisa o outro.** Os dois no mesmo dia
 viram merges concorrentes.
 
-O `--rebase` continua valendo **entre vocês, dentro da branch** — ali ele só
-reordena o que você ainda não enviou, e isso é seguro:
+### ⚠️ Correção de 04/09: `--rebase` saiu do fluxo, inclusive dentro da branch
 
-```sh
-git pull --rebase origin feature/rebrand-ui-ux    # ok
+A versão anterior deste documento dizia que `git pull --rebase origin
+feature/rebrand-ui-ux` era seguro "entre vocês, dentro da branch". **Era, até a
+branch receber o primeiro merge da `main`.** Agora não é mais.
+
+**Rebase achata merge.** Com um commit de merge no histórico da branch, o
+`--rebase` desfaz esse merge e tenta reaplicar, um a um, todos os commits que
+ele havia trazido. Aconteceu aqui em 04/09: a branch estava **zero commits
+atrás**, não havia nada a trazer, e mesmo assim o rebase começou a replayar 31
+commits da `main` e travou no primeiro conflito.
+
+```
+interactive rebase in progress; onto 0c98a14e
+Last commands done (13 commands done)
+Next commands to do (18 remaining)
 ```
 
-A diferença: rebase de commit que ninguém baixou é seguro; rebase de commit que
-o outro já tem, não.
+**Se acontecer com você:**
+
+```sh
+git rebase --abort      # volta tudo ao estado anterior. Nada se perde.
+```
+
+E então `git pull` sem `--rebase`.
+
+**O reflexo errado é `--force`.** Se o push for recusado depois de um rebase
+confuso, `--force` apaga o trabalho do outro. Aborte e use merge.
 
 ### ⚠️ O fluxo obrigatório: status → pull → commit → pull → push
 
@@ -171,8 +190,8 @@ de estilo — é o que impede perda de código.
 # 1. VER onde você está, antes de qualquer coisa
 git status
 
-# 2. TRAZER o que o outro fez
-git pull --rebase origin feature/rebrand-ui-ux
+# 2. TRAZER o que o outro fez  —  SEM --rebase, ver o aviso abaixo
+git pull origin feature/rebrand-ui-ux
 
 # 3. CONFERIR que nada quebrou com o que veio
 npx tsc --noEmit -p tsconfig.app.json
@@ -184,7 +203,7 @@ git add <arquivos>          # nomeados, não `git add .`
 git commit -m "feat(rebrand): ..."
 
 # 5. TRAZER de novo — o outro pode ter enviado enquanto você commitava
-git pull --rebase origin feature/rebrand-ui-ux
+git pull origin feature/rebrand-ui-ux
 
 # 6. ENVIAR
 git push origin feature/rebrand-ui-ux
