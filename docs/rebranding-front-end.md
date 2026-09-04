@@ -325,10 +325,11 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 | `src/index.css` · `tailwind.config.ts` | **Caio** — é a frente dele desde o começo | 02/09 |
 | `src/components/ui/` (os 51) | **Caio** | 02/09 |
 | `AppSidebar.tsx` · `menu.ts` · `AppTopNav.tsx` | **Caio** (navegação é dele) | 02/09 |
-| As 14 telas que faltam (seção 11) | **livre** — nenhuma reservada | |
-| `ApoioContabil.tsx` · `GestaoCompras.tsx` — **só o herói** | **Ian** (feito); o resto das telas segue livre | 04/09 |
+| `LicitacoesEstrategicas.tsx` · `HistoricoLicitacoes.tsx` | **Caio** — fecham o módulo 3 junto com o Kanban | 04/09 |
+| `ApoioContabil.tsx` · `GestaoCompras.tsx` — **só o herói** | **Ian** (feito); o corpo das telas segue livre | 04/09 |
 | `Precificacao.tsx` | **Ian** | 04/09 |
 | `src/assets/brand/` (heróis dos módulos) | **Ian** | 04/09 |
+| As outras 12 telas da seção 11 | **livre** — nenhuma reservada | |
 | _(anote aqui ao pegar uma)_ | | |
 
 > **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
@@ -717,28 +718,28 @@ telas com dois arquivos. As demais avançam módulo a módulo.
 
 | # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 9 | Compras & Fornecedores | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 12 | Apoio Contábil | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
-| 14 | Metas | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 15 | IA & Assistentes | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 16 | Comunicação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 17 | Documentos & Cadastro | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 18 | Agenda | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 19 | Equipe & Configurações | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 20 | Admin | 7 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 21 | Conteúdo & Suporte | 9 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 22 | Institucional & Legal | 17 | — | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 2 | Painel & Navegação | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 4 | Monitoramento & Busca | 6 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 5 | Precificação | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 6 | Proposta & Envio | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 8 | Contratos | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 9 | Compras & Fornecedores | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 11 | Apoio Jurídico | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 12 | Apoio Contábil | 1 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ◐ |
+| 14 | Metas | 2 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 15 | IA & Assistentes | 6 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 16 | Comunicação | 3 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 17 | Documentos & Cadastro | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 18 | Agenda | 2 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 19 | Equipe & Configurações | 3 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 20 | Admin | 7 | ✅ | ◐ | ◐ | ☐ | ☐ | ☐ |
+| 21 | Conteúdo & Suporte | 9 | ✅ | ◐ | ◐ | ☐ | ◐ | ☐ |
+| 22 | Institucional & Legal | 17 | — | ◐ | ◐ | ☐ | ☐ | ☐ |
 
 **Onde está o trabalho sem desenho.** O módulo 22 (17 rotas: landing, sobre,
 contato, soluções, demo, investidores e as 11 páginas legais) é o único grupo
@@ -753,17 +754,18 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 
 #### Caio Gabriel — commits `c520f26a` e `a63f2dcc`
 
-> Deixei sem marca de propósito: **quem marca é quem fez.** Caio, é só trocar
-> ☐ por ◐ nas linhas abaixo e nas colunas Tok/Tip/Lay da grade acima.
+> Marcado pelo Caio em 04/09. A grade acima também: Cor e Tipografia em todos os
+> 22, porque as duas fatias moram em dois arquivos que as 442 telas herdam.
 
 | | Entrega | Arquivos |
 | :---: | --- | --- |
-| ☐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
-| ☐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
-| ☐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
-| ☐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
-| ☐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
-| ☐ | Tema padrão passa de escuro para claro | `App.tsx` |
+| ◐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
+| ◐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
+| ◐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
+| ◐ | **Limpeza do menu do topo — +1 / −104.** As 104 linhas da lista saíram de dentro do componente. Não é só menos código: enquanto a lista morava ali, ela era uma constante exportada de um arquivo de componente, o que **desliga a atualização instantânea da tela** naquele arquivo (o `Could not Fast Refresh` que o Vite acusava). E era o caminho aberto para a segunda cópia — o defeito que o `CLAUDE.md` descreve como tendo mantido o arquivamento automático quebrado por meses | `AppTopNav.tsx` |
+| ◐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
+| ◐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
+| ◐ | Tema padrão passa de escuro para claro | `App.tsx` |
 
 #### Ian + Claude — 03 a 04/09/2026
 
@@ -1103,17 +1105,21 @@ tabela de "quem está com o quê" da seção 5, antes de começar.
 A ordem é por quanto o protótipo desenhou: quanto maior o número, mais
 referência visual existe para seguir e menos decisão de desenho sobra.
 
+**Legenda da primeira coluna:** ☐ livre, ninguém pegou · ◔ **reservada**, alguém
+já está nela (o nome vai na linha) · ◐ **parcial**, uma parte já foi feita e o
+resto continua livre — a linha diz qual parte.
+
 | | Tela | Rota | Arquivo | Prot. | Hoje |
 | :---: | --- | --- | --- | ---: | ---: |
 | ☐ | Marketing (admin) | `/admin/marketing` | `AdminMarketing.tsx` | 233 | 392 |
 | ☐ | API & Integração | `/api-integracao` | `ApiIntegracao.tsx` | 153 | 138 |
 | ◐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
-| ☐ | Licitações Estratégicas | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
+| ◔ | Licitações Estratégicas — **Caio** | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
 | ☐ | Chat e Mural | `/monitoramento-chat` | `MonitoramentoChat.tsx` | 100 | 243 |
 | ☐ | Concorrentes | `/concorrentes` | `Concorrentes.tsx` | 99 | 51 |
 | ☐ | Metas do Comercial | `/metas-comercial` | `MetasComercial.tsx` | 97 | 95 |
 | ☐ | WhatsApp CRM | `/whatsapp-crm` | `WhatsAppCRM.tsx` | 75 | 60 |
-| ☐ | Histórico de Licitações | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
+| ◔ | Histórico de Licitações — **Caio** | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
 | ☐ | Fontes & Fabricantes | `/admin/fontes-fabricantes` | `AdminFontesFabricantes.tsx` | 67 | 362 |
 | ☐ | Assessoria Cadastral | `/assessoria-cadastral` | `AssessoriaCadastral.tsx` | 53 | 191 |
 | ◐ | Apoio Contábil | `/apoio-contabil` | `ApoioContabil.tsx` | 53 | 160 |
@@ -1129,10 +1135,20 @@ referência visual existe para seguir e menos decisão de desenho sobra.
 > Isso NÃO tira Gestão de Compras da lista nem diminui o aviso abaixo: as 1.586
 > linhas continuam inteiras, o herói são 40 delas.
 
-**Por onde começar: 4, 6, 7 ou 9.** São as que **fecham módulo inteiro** na
-grade da seção 11 — Estratégicas e Histórico fecham o módulo 3 junto com o
-Kanban; Concorrentes fecha o 13; Metas fecha o 14 sozinha. Terminar um módulo
-vale mais que terminar tela solta: o módulo é a unidade que o tech lead revisa.
+**Por onde começar: Concorrentes ou Metas do Comercial.** São as que ainda
+**fecham módulo inteiro** na grade da seção 11 — Concorrentes fecha o 13, Metas
+fecha o 14 sozinha. Terminar um módulo vale mais que terminar tela solta: o
+módulo é a unidade que o tech lead revisa.
+
+> As outras duas que fechavam módulo — **Estratégicas e Histórico**, que fecham
+> o 3 junto com o Kanban — **o Caio reservou em 04/09**. Elas continuam na
+> tabela como ◔ para ninguém começar por cima; quem chegar agora pega
+> Concorrentes ou Metas.
+>
+> E as telas aqui são nomeadas, não numeradas, de propósito: a versão anterior
+> deste parágrafo dizia "comece pelas 4, 6, 7 ou 9", contando linhas da tabela.
+> Bastou o Caio reservar duas para o conselho mandar todo mundo para telas
+> ocupadas. Referência posicional em tabela que muda envelhece calada.
 
 **Gestão de Compras é armadilha.** 1.586 linhas, a segunda maior página do
 sistema. Sozinha custa perto do que custam quatro telas médias juntas — merece
