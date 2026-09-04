@@ -376,27 +376,51 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="p-4 text-center">
-            <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
-          </Card>
-          <Card className="p-4 text-center border-info/30">
-            <p className="text-2xl font-bold text-info">{stats.interessados}</p>
-            <p className="text-xs text-muted-foreground">Interessados</p>
-          </Card>
-          <Card className="p-4 text-center border-success/30">
-            <p className="text-2xl font-bold text-success">{stats.aprovados}</p>
-            <p className="text-xs text-muted-foreground">Aprovados</p>
-          </Card>
-          <Card className="p-4 text-center border-border">
-            <p className="text-2xl font-bold text-foreground">{stats.cadastrados}</p>
-            <p className="text-xs text-muted-foreground">Cadastrados</p>
-          </Card>
-          <Card className="p-4 text-center border-destructive/30">
-            <p className="text-2xl font-bold text-destructive">{stats.urgentes}</p>
-            <p className="text-xs text-muted-foreground">Urgentes (&lt;3d)</p>
+        {/* REBRAND — a anatomia `kpi-meta`, a mesma dos Contratos: rótulo e
+            ícone em cima, valor grande alinhado à esquerda, e uma NOTA embaixo.
+
+            Antes eram cinco números centralizados com um rótulo de 12px. Número
+            centralizado sem contexto é placar, não painel: "3" não diz se é
+            muito, se é bom, nem o que fazer com isso.
+
+            Os quatro primeiros são estados do funil e ficam neutros — a cor
+            neles era decorativa (azul para "interessado", verde para
+            "aprovado") e competia com o quinto, que é o único que pede ação
+            hoje. "Encerra em menos de 3 dias" acende inteiro quando há o que
+            olhar, e fica quieto quando não há. */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {([
+            { rot: 'Total', val: stats.total, ic: ListChecks, nota: 'Sem os arquivados' },
+            { rot: 'Interessados', val: stats.interessados, ic: Bell, nota: 'Aguardando decisão' },
+            { rot: 'Aprovados', val: stats.aprovados, ic: CheckCircle2, nota: 'Liberados para disputar' },
+            { rot: 'Cadastrados', val: stats.cadastrados, ic: Building2, nota: 'Já viraram processo' },
+          ] as const).map(({ rot, val, ic: Icone, nota }) => (
+            <Card key={rot} className="p-4 min-w-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <span className="text-xs text-muted-foreground">{rot}</span>
+                <Icone className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums leading-none">{val}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{nota}</p>
+            </Card>
+          ))}
+
+          <Card className={`p-4 min-w-0 ${stats.urgentes > 0 ? 'border-destructive-line bg-destructive-tint' : ''}`}>
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className={`text-xs ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
+                Encerra em 3 dias
+              </span>
+              <AlertTriangle
+                className={`w-4 h-4 shrink-0 ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground/70'}`}
+                aria-hidden="true"
+              />
+            </div>
+            <p className={`text-2xl font-bold tabular-nums leading-none ${stats.urgentes > 0 ? 'text-destructive-ink' : ''}`}>
+              {stats.urgentes}
+            </p>
+            <p className={`text-xs mt-1.5 ${stats.urgentes > 0 ? 'text-destructive-ink' : 'text-muted-foreground'}`}>
+              {stats.urgentes > 0 ? 'Decida hoje ou perde o prazo' : 'Nenhum prazo apertado'}
+            </p>
           </Card>
         </div>
 
