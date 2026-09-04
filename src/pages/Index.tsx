@@ -77,11 +77,23 @@ export default function Index() {
           <StatCard label="Perdidas" value={analyticsKpis.perdidas.toString()} icon={XCircle} accentColor="var(--destructive)" />
           </div>
 
+          {/* TEXTO FIXO, de propósito — não há dado por trás deste cartão.
+              Por isso ele APONTA para uma funcionalidade em vez de anunciar
+              novidade: "Agenda atualizada" e "Novidades no Robô de Lances"
+              seriam mentira já no segundo mês, para todo cliente, no lugar mais
+              visível do painel.
+              Quando alguém for alimentá-lo com dado de verdade, o candidato
+              natural é a próxima sessão da empresa — o `useAnalyticsData` desta
+              mesma página já traz `data_abertura`, `orgao`, `numero` e `objeto`.
+              Filtrar por STATUS_ANDAMENTO de @/lib/licitacao/status, nunca por
+              lista de status reescrita aqui. Sem sessão futura, o cartão some e
+              a grade de KPIs ocupa as três colunas: cartão vazio dizendo
+              "nada agendado" gasta o melhor espaço da tela para não dizer nada. */}
           <BannerDestaque
-            etiqueta="Agenda atualizada"
-            titulo="Novidades no Robô de Lances"
-            descricao="Automatize disputas com mais precisão e velocidade, direto do Praefectus."
-            chamada="Ver detalhes"
+            etiqueta="Automação"
+            titulo="Robô de Lances"
+            descricao="Acompanhe disputas e envie lances sem ficar preso à tela do portal."
+            chamada="Conhecer"
             para="/robo-lances"
           />
         </div>
