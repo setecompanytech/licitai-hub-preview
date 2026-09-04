@@ -756,6 +756,93 @@ buraco que a leva anterior abriu.
 | ◐ | **Tutorial** — anel de progresso, trilha que se preenche, conclusão por passo e "continuar de onde parei" | `TutorialPage.tsx` |
 | ◐ | **Fim das telas brancas de carregamento** — sete esperas que mostravam página vazia agora abrem com a moldura do app | `SkeletonPagina.tsx` · 3 guardas · 4 páginas |
 | ◐ | **Barra lateral: "Painel" saiu, "Inteligência" assume o topo** | `menu.ts` · `AppTopNav.tsx` |
+| ◐ | **Relevo dos cartões do painel** — a borda azul do hover vira profundidade | `index.css` · `QuickAccessGrid` · `OportunidadesPainel` · `StatCard` |
+| ◐ | **Mapa do Brasil: malha oficial do IBGE** no lugar dos polígonos à mão | `mapa-brasil-contornos.ts` · `MapaLicitacoesPorEstado.tsx` · `scripts/gerar-mapa-brasil.py` |
+| ◐ | **Foto de perfil** — envio, recorte e remoção; cabeçalho maior | `useAvatarPerfil.ts` · `FotoPerfil.tsx` + 3 telas · **1 migration** |
+| ◐ | **Ordem do cabeçalho** — sino → sol → engrenagem │ empresa │ avatar | `AppLayout.tsx` · `SkeletonPagina.tsx` |
+| ◐ | **Navegador de seções do painel** — salto nomeado entre as seis seções | `NavegadorDeSecoes.tsx` · `Index.tsx` |
+| ◐ | **Item ativo do menu do topo estava sem fundo** — `bg-accent/8` não existe | `AppTopNav.tsx` |
+
+**A ordem do cabeçalho.** Vai do EFÊMERO ao PERMANENTE, da esquerda para a
+direita. O sino muda sozinho várias vezes por dia — é o mais olhado e o que
+precisa de menos mira. O sol muda quando a luz da sala muda. A engrenagem,
+raramente. Depois de uma **divisória** vêm os dois campos de identidade — em
+qual empresa estou, quem sou eu —, que não são ações: são contexto, e respondem
+à mesma pergunta. Sem a divisória, o seletor de empresa vira o quarto de uma
+fileira de cinco botões e a pessoa procura ação onde só há informação.
+
+O `SkeletonPagina` repete a mesma ordem. Esqueleto que troca as peças de lugar
+faz a barra real "corrigir" a posição ao montar, e o olho lê isso como defeito.
+
+**O navegador de seções.** O botão **nomeia o destino** — "Oportunidades ⌄", não
+uma seta solta. Seta que só aponta para baixo é o mesmo que rolar: aperta-se sem
+saber quanto anda nem onde chega. Com o nome, ele vira um sumário de um item.
+Na última seção vira "Voltar ao topo", e traz um traço por seção mostrando
+quanto falta. Lê `[data-secao]` do documento, então a página só marca as seções
+— nenhum índice duplicado para desencontrar.
+
+**A opacidade que não existia.** `bg-accent/8` e `bg-accent/6`, em quatro pontos
+do `AppTopNav`, **não geram classe nenhuma**: a escala de opacidade do Tailwind
+anda de 5 em 5, e valor fora dela é descartado em silêncio. O item ativo do menu
+do topo estava sem fundo desde o commit `fee7938b` (Lovable). Achado por
+varredura — vale repetir de vez em quando:
+
+```sh
+grep -rnE '\b(bg|text|border|ring)-[a-z-]+/[0-9]{1,3}\b' --include='*.tsx' src \
+  | grep -oE '(bg|text|border|ring)-[a-z-]+/[0-9]+' | sort -u \
+  | awk -F/ '$2 % 5 != 0 {print}'
+```
+
+O mesmo erro quase entrou no navegador de seções (`bg-navy/92`), e foi pego
+compilando um HTML de sonda com o Tailwind antes de aceitar a classe.
+
+**O relevo dos cartões.** A borda acendia em azul no hover. Isso pinta a
+*moldura* para dizer "você está aqui", que é a gramática de **foco**, não a de
+alvo clicável — e numa grade de 24 ladrilhos o azul brigava com o ícone, que já
+é azul. No lugar entra profundidade: o cartão sobe, cresce e a sombra abre. É o
+gesto de levantar um papel da mesa, e funciona **sem cor nenhuma** — passa em
+tela monocromática e para quem não distingue matiz. `transform` e `box-shadow`
+são as duas propriedades que o navegador anima na GPU sem recalcular layout: 24
+ladrilhos crescendo juntos não custam nada.
+
+**O mapa.** Os contornos eram polígonos desenhados à mão — 10 a 20 pontos por
+estado, só segmentos retos. Servia para dizer "isto é o Brasil", mas os estados
+não tinham a forma deles, e num painel que usa o mapa para **ler concentração**
+isso é erro de leitura, não de estética: a pessoa procura o estado dela e não
+reconhece.
+
+Agora é a malha oficial do IBGE, projetada em Mercator e simplificada por
+Douglas-Peucker: **5.128 pontos**, 65 KB. Sem biblioteca nova — `react-simple-maps`
+exigiria `d3-geo` + `topojson-client` e uma malha baixada em runtime, para
+entregar o mesmo desenho que um `<path>` estático entrega offline. O gerador
+ficou em `scripts/gerar-mapa-brasil.py`; só roda de novo se o IBGE mudar a malha.
+
+Ganhou também: legenda da escala (sem ela o degradê é decoração — nada dizia que
+escuro é "mais"), foco ligado nos dois sentidos entre a lista e o mapa, siglas
+nos 20 estados que comportam o texto, e o **"N/I" saiu do ranking**. Ele não é
+estado: é licitação sem UF preenchida, e aparecia em segundo lugar, acima do
+Pará. Virou nota — "14 processos estão sem estado informado e ficam fora do
+mapa" —, que é o que ele é: um buraco no cadastro, não um lugar.
+
+**A foto de perfil.** Única entrega da frente que toca o banco, autorizada como
+exceção. Precisou de menos do que parecia: `profiles.avatar_url` **já existia**
+(conferido contra produção — a consulta devolve lista vazia, não `42703`), e
+nunca foi preenchida porque não havia por onde enviar. Não há tabela nova, e não
+deveria haver: **foto é arquivo**, e vai para o Storage, como os outros oito
+buckets do repo.
+
+A migration `20260904000001_foto_de_perfil.sql` cria só o bucket `avatares` e as
+políticas. **Ainda não foi aplicada** — precisa ser colada no SQL Editor.
+
+A imagem é recortada no centro e reduzida para 512px WebP **no navegador**, antes
+de subir: foto de celular chega com 4 MB e 4000px de lado, estouraria o limite de
+2 MB do bucket, e o app a mostraria num círculo de 40px depois de baixar tudo.
+Resolve o limite e o enquadramento sem embarcar um editor de recorte.
+
+O cabeçalho subiu de 48/56px para 56/64px e a esfera do avatar de 28/32px para
+36/40px, com anel — sobre o navy, círculo sem contorno encosta no fundo e some.
+**As três medidas andam juntas**: `AppLayout`, o `top-` da `AppSidebar` e a
+moldura do `SkeletonPagina`.
 
 **Por que o grupo "Painel" deixou de existir.** Ele abria para mostrar
 *Dashboard* e *Analytics* — e "Painel" e "Dashboard" são a mesma palavra em dois
