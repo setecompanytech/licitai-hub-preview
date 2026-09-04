@@ -693,6 +693,9 @@ export default function GestaoContratos() {
   const totalValor = soContratos.reduce((s, c) => s + c.valor_global, 0);
   const totalSaldo = soContratos.reduce((s, c) => s + (c.saldo_remanescente || 0), 0);
   const vencendo = soContratos.filter(c => { if (!c.data_fim) return false; const d = (new Date(c.data_fim).getTime() - Date.now()) / 86400000; return d > 0 && d <= 60; }).length;
+  // Contrato que nasceu de uma ATA: mora dentro da pasta dela na lista, então
+  // some da contagem visível. A nota do cartão devolve esse número.
+  const derivadosDeAta = soContratos.filter(c => !!c.ata_srp_id).length;
 
   const isAtaForm = form.tipo_documento === 'ata_srp';
   // Dez anos só cabem em serviço contínuo; compra imediata se esgota no ato.
@@ -1046,12 +1049,67 @@ export default function GestaoContratos() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><FileText className="w-4 h-4 shrink-0" /> Contratos</div><p className={VALOR_KPI}>{soContratos.length}</p></Card>
-        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><ScrollText className="w-4 h-4 shrink-0" /> ATAs SRP</div><p className={VALOR_KPI}>{soAtas.length}</p></Card>
-        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-4 h-4 shrink-0" /> Valor Total</div><p className={VALOR_KPI} title={formatCurrency(totalValor)}>{formatCurrency(totalValor)}</p></Card>
-        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><TrendingUp className="w-4 h-4 shrink-0" /> Saldo Total</div><p className={`${VALOR_KPI} text-success`} title={formatCurrency(totalSaldo)}>{formatCurrency(totalSaldo)}</p></Card>
-        <Card className="p-4 min-w-0"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><AlertTriangle className="w-4 h-4 shrink-0" /> Vencendo 60d</div><p className={`${VALOR_KPI} text-warning`}>{vencendo}</p></Card>
+      {/* REBRAND — a anatomia `kpi-meta` do protótipo: rótulo e ícone em cima,
+          valor grande, e uma NOTA embaixo. A nota é o que faltava: "R$ 2,4 mi"
+          sozinho não diz se é muito, de quantos instrumentos veio nem quanto já
+          foi consumido. Todas as notas saem de dado já carregado — nenhuma
+          consulta nova, nenhum número inventado.
+          O cartão "Vencendo" NÃO virou botão de propósito: ele conta por
+          `data_fim` dentro de 60 dias, e o filtro de status conta pelo campo
+          `status` gravado. Os dois conjuntos não são o mesmo, e um clique que
+          entrega lista diferente do número clicado ensina o usuário a
+          desconfiar da tela. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <Card className="p-4 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">Contratos</span>
+            <FileText className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          </div>
+          <p className={VALOR_KPI}>{soContratos.length}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {derivadosDeAta > 0 ? `${derivadosDeAta} derivado(s) de ATA` : 'Nenhum derivado de ATA'}
+          </p>
+        </Card>
+
+        <Card className="p-4 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">ATAs SRP</span>
+            <ScrollText className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          </div>
+          <p className={VALOR_KPI}>{soAtas.length}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Registro de preços vigente</p>
+        </Card>
+
+        <Card className="p-4 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">Valor total</span>
+            <DollarSign className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          </div>
+          <p className={VALOR_KPI} title={formatCurrency(totalValor)}>{formatCurrency(totalValor)}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Soma dos contratos, sem as ATAs</p>
+        </Card>
+
+        <Card className="p-4 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">Saldo remanescente</span>
+            <TrendingUp className="w-4 h-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          </div>
+          <p className={`${VALOR_KPI} text-success`} title={formatCurrency(totalSaldo)}>{formatCurrency(totalSaldo)}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {totalValor > 0 ? `${Math.round((totalSaldo / totalValor) * 100)}% do valor total` : 'Sem valor contratado'}
+          </p>
+        </Card>
+
+        <Card className={`p-4 min-w-0 ${vencendo > 0 ? 'border-warning-line bg-warning-tint' : ''}`}>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className={`text-xs ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>Vencendo em 60 dias</span>
+            <AlertTriangle className={`w-4 h-4 shrink-0 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground/70'}`} aria-hidden="true" />
+          </div>
+          <p className={`${VALOR_KPI} ${vencendo > 0 ? 'text-warning-ink' : ''}`}>{vencendo}</p>
+          <p className={`text-xs mt-1.5 ${vencendo > 0 ? 'text-warning-ink' : 'text-muted-foreground'}`}>
+            {vencendo > 0 ? 'Prazo para prorrogar ou encerrar' : 'Nenhum prazo apertado'}
+          </p>
+        </Card>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-4">
