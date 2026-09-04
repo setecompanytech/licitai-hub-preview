@@ -71,6 +71,13 @@ export interface EstatisticasPlanilha {
   /** Quanto o preço cotado fica abaixo da referência do edital (R$). */
   economia: number;
   atualizadoEm: Date | null;
+  /** Economia item a item, para o gráfico do topo. Sai da MESMA varredura que
+   *  apura os totais — nenhuma consulta a mais, nenhum dado novo: é o que já
+   *  estava na planilha, agora visível. */
+  economiaPorItem: { descricao: string; referencia: number; cotado: number; economia: number }[];
+  /** Quantos itens têm 3+ fontes, 2, 1 e nenhuma. Confiança de uma cotação é
+   *  quantas fontes independentes a sustentam — um preço só não é pesquisa. */
+  confianca: { tresOuMais: number; duas: number; uma: number; semCotacao: number };
 }
 
 interface PlanilhaCustosEditalProps {
@@ -258,16 +265,44 @@ export default function PlanilhaCustosEdital({
     const fontes = new Set<string>();
     let itensPesquisados = 0;
     let economia = 0;
+    const porItem: EstatisticasPlanilha['economiaPorItem'] = [];
+    const confianca = { tresOuMais: 0, duas: 0, uma: 0, semCotacao: 0 };
+
     for (const it of itens) {
-      if (it.fontes?.length) {
+      const qtdFontes = it.fontes?.length ?? 0;
+      if (qtdFontes) {
         itensPesquisados++;
-        for (const f of it.fontes) fontes.add(f.vendedor || FONTE_LABELS[f.fonte] || f.fonte);
+        for (const f of it.fontes!) fontes.add(f.vendedor || FONTE_LABELS[f.fonte] || f.fonte);
       }
+      if (qtdFontes >= 3) confianca.tresOuMais++;
+      else if (qtdFontes === 2) confianca.duas++;
+      else if (qtdFontes === 1) confianca.uma++;
+      else confianca.semCotacao++;
+
       const ref = it.valorUnitarioRef ?? 0;
       const un = it.valorUnitario ?? 0;
-      if (ref > 0 && un > 0 && ref > un) economia += (ref - un) * (it.quantidade || 0);
+      if (ref > 0 && un > 0 && ref > un) {
+        const dif = (ref - un) * (it.quantidade || 0);
+        economia += dif;
+        porItem.push({
+          descricao: it.descricao,
+          referencia: ref * (it.quantidade || 0),
+          cotado: un * (it.quantidade || 0),
+          economia: dif,
+        });
+      }
     }
-    return { itensPesquisados, fontesConsultadas: fontes.size, economia };
+
+    // O gráfico mostra os dez maiores: com 200 itens de edital, uma barra por
+    // item vira um borrão — e quem precisa decidir olha os que pesam.
+    porItem.sort((a, b) => b.economia - a.economia);
+    return {
+      itensPesquisados,
+      fontesConsultadas: fontes.size,
+      economia,
+      economiaPorItem: porItem.slice(0, 10),
+      confianca,
+    };
   }, [itens]);
 
   useEffect(() => {
@@ -277,11 +312,14 @@ export default function PlanilhaCustosEdital({
       fontesConsultadas: stats.fontesConsultadas,
       economia: stats.economia,
       atualizadoEm: lastSaved ?? null,
+      economiaPorItem: stats.economiaPorItem,
+      confianca: stats.confianca,
     });
-    // Deps primitivas de propósito: emitir objeto novo a cada render do pai
-    // criaria laço. Só reporta quando um número muda.
+    // `stats` é memoizado em [itens]: só muda quando a planilha muda, então
+    // depender do objeto inteiro não recria o laço que as deps primitivas
+    // evitavam — e as duas listas novas não têm forma primitiva.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itens.length, stats.itensPesquisados, stats.fontesConsultadas, stats.economia, lastSaved]);
+  }, [itens.length, stats, lastSaved]);
 
   const handleCotarTodos = async () => {
     if (isCotando) return;
