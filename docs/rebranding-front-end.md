@@ -13,7 +13,7 @@
 | Direção visual | `prototype-praefectus/index.html` — aprovada pelo Rafael |
 | Frente | Ian + Caio Gabriel (`gabrielcgm-web`) |
 | Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; `main` é produção |
-| Status | fatia 1 escrita na branch; login, splash, skeleton, mascote e hub de perfil entregues |
+| Status | **entrega única em 04/09**, após avaliação do tech lead — o plano de fatias a cada poucos dias caiu com o prazo |
 | Última revisão | 04/09/2026 |
 
 ---
@@ -646,17 +646,17 @@ telas com dois arquivos. As demais avançam módulo a módulo.
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 9 | Compras & Fornecedores | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 12 | Apoio Contábil | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 14 | Metas | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 15 | IA & Assistentes | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 16 | Comunicação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
@@ -708,6 +708,36 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 | ◐ | **Hub de perfil** — 7 seções no lugar de 3 campos, sem coluna nova de banco | `perfil/` (6 arquivos) |
 | ◐ | Faixa do painel deixa de anunciar novidade que não existe | `Index.tsx` |
 | ◐ | Esta folha de acompanhamento, preenchida | este arquivo |
+
+**04/09 — telas de maior tráfego** (o prazo virou entrega única; ver seção 8)
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Financeiro** — herói com saldo, projeção e curva de 6 meses. Dado REAL, `useResumoFinanceiro`, zero consulta nova. Aditivo: entra acima do `FinHomeHub`, que continua inteiro | `FinHeroPainel.tsx` (novo) · `Financeiro.tsx` |
+| ◐ | **Análise de Mercado** — modalidade passa a ler o banco e vira "Sua carteira"; os 4 blocos que continuam fixos ganham tarja | `AnaliseMercado.tsx` · `TarjaExemplo.tsx` (novo) |
+| ◐ | **Kanban** — `kb-barra` do protótipo, com filtro do board por número, órgão e objeto (sem acento, sem caixa) | `KanbanPage.tsx` |
+| ◐ | **Robô de Lances** — cabeçalho em duas fileiras; o selo de nível sobe para ele e vira atalho para a parada de emergência | `RoboLances.tsx` |
+| ◐ | Três esperas do Robô viram esqueleto, cada uma com a forma do que vem | `CredenciaisPortalForm` · `DeteccaoPortais` · `PortalHealthcheck` |
+| ◐ | **Varredura de contraste** — 17 pares de texto/fundo calculados nos dois temas | (verificação, sem alteração) |
+
+**Caio, três coisas que você precisa saber destas telas:**
+
+1. **`TarjaExemplo` é para usar.** Todo bloco com número fixo no código leva a
+   tarja — sem exceção para "é só um exemplo". Gráfico bonito com número
+   inventado é PIOR que gráfico feio com número inventado: a paleta nova
+   empresta credibilidade que o dado não tem. Se a tela fica mais convincente,
+   o aviso precisa ficar mais visível junto. Quando o bloco passar a ler o
+   banco, a tarja sai.
+
+2. **O protótipo está errado no healthcheck do Robô.** Ele traz "Healthcheck de
+   Seletores — 12 OK · 3 falhas". A verificação faz uma requisição HTTP: nunca
+   abre navegador, nunca testa seletor. O texto certo, que está no app desde
+   02/09, é "Portais no ar — 12 responderam". **Não alinhe ao protótipo aqui.**
+
+3. **Contraste: a sua paleta passou inteira.** Zero pares abaixo de 4.5:1 (AA)
+   nos dois temas. Os mais apertados são `warning-ink` sobre `warning-tint`
+   (4.53) e `success-ink` sobre `success-tint` (4.64) no claro — passam, mas
+   sem folga. Se alguém escurecer a tinta, quebram.
 
 Conferido a cada entrega: `npx tsc --noEmit -p tsconfig.app.json` limpo,
 `npx eslint` sem erro novo nos arquivos tocados, e a suíte em 73 arquivos /
