@@ -13,8 +13,8 @@
 | Direção visual | `prototype-praefectus/index.html` — aprovada pelo Rafael |
 | Frente | Ian + Caio Gabriel (`gabrielcgm-web`) |
 | Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; `main` é produção |
-| Status | preparação |
-| Última revisão | 02/09/2026 |
+| Status | fatia 1 escrita na branch; login, splash, skeleton, mascote e hub de perfil entregues |
+| Última revisão | 04/09/2026 |
 
 ---
 
@@ -84,7 +84,11 @@ que o outro já baixou. Ali entra `merge`.
 > os acima. E a Playfair Display aparece numa única regra do protótipo
 > (`index.html:3350`, o logo do login), mas **não está no `<link>` do Google
 > Fonts** (`index.html:8` carrega só Inter e Cinzel) — hoje ela cai em Georgia.
-> Decidir na fatia 2 se carrega ou se o logo do login vai para Cinzel.
+>
+> **Decidido em 04/09/2026: carrega.** A Playfair entra por `src/styles/login.css`,
+> junto do resto do estilo da tela de login, e não pelo `index.css` — assim ela
+> não pesa no primeiro carregamento de quem já está autenticado, que é quem abre
+> o app todo dia. Georgia continua no fallback.
 
 **O número que define o tamanho do trabalho:** de **448 arquivos** de tela, só
 **6** escrevem cor de interface à mão. Os outros herdam das variáveis. Trocar as
@@ -623,12 +627,24 @@ Como ler as colunas:
 | **Lay** | a fatia 4 passou por este módulo — layout e composição |
 | **☾** | claro **e** escuro percorridos nas telas do módulo, sem quebra |
 
+E o que cada marca quer dizer:
+
+| Marca | Onde está |
+| :---: | --- |
+| ☐ | não começou |
+| **◐** | **feito, e vivendo na `feature/rebrand-ui-ux`** — ainda não voltou para a `main` |
+| ✔ | mesclado na `main`, valendo em produção |
+
+O ◐ existe porque sem ele o checklist mente nos dois sentidos: marcar ✔ o que
+está só na branch faz parecer publicado, e deixar ☐ o que já foi escrito faz
+parecer que ninguém trabalhou. Fatia entregue vira ✔ no merge, não antes.
+
 A fatia 1 marca a coluna **Tok** de todos de uma vez — é o efeito de repintar 442
 telas com dois arquivos. As demais avançam módulo a módulo.
 
 | # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
@@ -656,6 +672,75 @@ contato, soluções, demo, investidores e as 11 páginas legais) é o único gru
 inteiro que o protótipo não cobriu. Somado às telas internas dos outros módulos
 que ficaram de fora, dá as ~46 telas sem referência visual: elas herdam a paleta
 pelos tokens e mantêm o layout atual até alguém desenhar.
+
+### O que já está escrito, e por quem
+
+Atualizado em 03/09/2026. Tudo abaixo vive na `feature/rebrand-ui-ux` e **ainda
+não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
+
+#### Caio Gabriel — commits `c520f26a` e `a63f2dcc`
+
+> Deixei sem marca de propósito: **quem marca é quem fez.** Caio, é só trocar
+> ☐ por ◐ nas linhas abaixo e nas colunas Tok/Tip/Lay da grade acima.
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ☐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
+| ☐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
+| ☐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
+| ☐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
+| ☐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
+| ☐ | Tema padrão passa de escuro para claro | `App.tsx` |
+
+#### Ian + Claude — 03 a 04/09/2026
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | Imagens da marca — mascote e foto do login, com README de uso | `src/assets/brand/` |
+| ◐ | **Splash de abertura** — navy, Cinzel dourado; cobre o branco entre o HTML chegar e o React montar | `index.html` · `main.tsx` |
+| ◐ | **Tela de login** — foto, véu de dois gradientes, cartão de vidro, Playfair na marca | `Auth.tsx` · `src/styles/login.css` |
+| ◐ | **Skeleton com varredura de luz** no lugar do pulsar — `transform` em vez de `background-position`, sem repintura | `skeleton.tsx` · `index.css` |
+| ◐ | Espera de rota e de sessão viram esqueleto, não spinner | `SkeletonPagina.tsx` · `App.tsx` · `ProtectedRoute.tsx` |
+| ◐ | Tokens `--skeleton-bg` / `--skeleton-hi`, claro e escuro | `src/index.css` |
+| ◐ | **Modal do mascote** no primeiro acesso, com holofote na barra lateral e conector refeito | `MascoteBoasVindas.tsx` · `src/styles/mascote.css` |
+| ◐ | Fila entre wizard e mascote — `onboardingCarregado` distingue "ainda não sei" de "não precisa" | `OnboardingWizard.tsx` · `Index.tsx` |
+| ◐ | Âncora `data-grupo` na barra lateral, para o holofote medir o alvo certo | `AppSidebar.tsx` |
+| ◐ | **Hub de perfil** — 7 seções no lugar de 3 campos, sem coluna nova de banco | `perfil/` (6 arquivos) |
+| ◐ | Faixa do painel deixa de anunciar novidade que não existe | `Index.tsx` |
+| ◐ | Esta folha de acompanhamento, preenchida | este arquivo |
+
+Conferido a cada entrega: `npx tsc --noEmit -p tsconfig.app.json` limpo,
+`npx eslint` sem erro novo nos arquivos tocados, e a suíte em 73 arquivos /
+1091 testes passando.
+
+Três decisões tomadas no caminho, todas divergindo do protótipo de propósito:
+
+1. **A seta do mascote foi refeita.** A do protótipo é uma bezier de ~525px com
+   ponta arredondada — traço longo, curvatura baixa e cabeça pequena, que é a
+   receita do rabisco a lápis. Aqui o card encosta na coluna e o conector é
+   curto, com ponta reta e cabeça sólida. O holofote e o anel pulsante, que são
+   a parte boa, ficaram como estavam.
+2. **O acesso de demonstração do login não veio** (`caio-teste@… / 123456`), nem
+   a área de arrastar certificado, nem o "Manter conectado". Os dois últimos não
+   têm lógica atrás no app: caixa que aceita arquivo sem receber arquivo e
+   caixinha marcada que não liga nada são promessa falsa na porta de entrada.
+3. **O "Celular" do hub de perfil ficou de fora.** `profiles` tem `telefone`, não
+   tem `celular`. Campo que aceita digitação sem ter onde guardar é pior que
+   campo ausente. Entra quando alguém decidir a coluna.
+
+E dois achados que **não são do rebranding**, mas apareceram e precisam de dono:
+
+- **A faixa de destaque do painel é texto fixo.** Dizia "Agenda atualizada" e
+  "Novidades no Robô de Lances" para todo cliente, para sempre. Trocado por um
+  texto que aponta a funcionalidade em vez de anunciar novidade, e marcado no
+  código como provisório. Quando ganhar dado de verdade, o candidato natural é a
+  próxima sessão da empresa — o `useAnalyticsData` do painel já traz
+  `data_abertura`, `orgao`, `numero` e `objeto`.
+- **O cadastro descarta oito dos nove campos que coleta.** `signUp()` manda só
+  `nome_completo`; cargo, celular, telefone empresarial, CNPJ, UF, como conheceu,
+  quantidade de funcionários, licitações por mês e faturamento somem em silêncio
+  ([AuthContext.tsx:222](../src/contexts/AuthContext.tsx#L222)). Por isso
+  `profiles.cargo` e `profiles.telefone` chegam vazios no hub de perfil.
 
 ### As rotas de cada módulo
 
@@ -721,3 +806,37 @@ Duas limpezas para a mesma passada:
 - **`.kanban-card` está declarada duas vezes** em `index.css` (linhas 356 e 449,
   em blocos `@layer utilities` diferentes). As duas se somam por cascata; mexer
   numa sem a outra é armadilha.
+
+---
+
+## 12. Achados de lógica — fora do escopo desta frente
+
+Esta etapa mexe só na aparência; a regra está na seção 1 e vale. Mas quem
+repinta 448 arquivos passa por trechos que ninguém abria há meses, e algumas
+coisas aparecem no caminho.
+
+**Nada aqui foi consertado.** Cada item é defeito de comportamento ou de
+verdade, não de cor — arrumar dentro do rebrand romperia a garantia de que
+"nenhuma tela deixa de fazer o que fazia", e é o tipo de mudança que precisa de
+dono, decisão e teste próprios.
+
+Estão listados para virar tarefa. Quem for pegar: leia a coluna "Por que
+importa" antes de estimar — algumas parecem cosméticas e não são.
+
+| # | Achado | Onde | Por que importa | Custo |
+| --- | --- | --- | --- | --- |
+| 1 | **O cadastro descarta 8 dos 9 campos que coleta.** `signUp()` manda só `nome_completo`; cargo, celular, telefone empresarial, CNPJ, UF, como conheceu, nº de funcionários, licitações/mês e faturamento somem em silêncio | [`AuthContext.tsx:222`](../src/contexts/AuthContext.tsx#L222) | A pessoa preenche um formulário longo achando que informou. E é por isso que `profiles.cargo` e `profiles.telefone` chegam vazios no hub de perfil | médio — decidir onde cada campo mora antes de gravar |
+| 2 | **Analytics não é tempo real.** `useAnalyticsData` busca uma vez, na montagem e na troca de empresa: sem `subscribe`, sem `refetchInterval` | [`useAnalyticsData.ts`](../src/hooks/useAnalyticsData.ts) | O texto que prometia isso já foi corrigido (04/09). Ligar de verdade é barato: o Realtime do Supabase já roda em **29 arquivos** deste repo, e o padrão é de 5 linhas. **Não usar `refetchInterval`** — a consulta puxa todas as licitações da empresa sem `limit`, e pesquisar a cada 30s custaria milhares de linhas por minuto para um dado que muda poucas vezes ao dia | baixo — ~30 min |
+| 3 | **A faixa de destaque do painel é texto fixo.** Dizia "Agenda atualizada" e "Novidades no Robô de Lances" para todo cliente, para sempre | [`Index.tsx`](../src/pages/Index.tsx) · `BannerDestaque.tsx` | O texto já foi trocado por um que aponta a funcionalidade em vez de anunciar novidade, e está marcado como provisório no código. Para virar dado de verdade, o candidato natural é a **próxima sessão da empresa** — o `useAnalyticsData` da mesma página já traz `data_abertura`, `orgao`, `numero` e `objeto`, então custa zero consulta nova. Filtrar por `STATUS_ANDAMENTO` de [`licitacao/status.ts`](../src/lib/licitacao/status.ts), nunca por lista reescrita no componente | baixo |
+| 4 | **`/admin/mural-telemetria` não aparece em menu nenhum.** É rota real, com `AdminGuard` | [`App.tsx:180`](../src/App.tsx#L180) · `menu.ts` | Só chega quem digita a URL. São 7 de 8 rotas de admin no menu; esta é a que falta | trivial — uma linha |
+| 5 | **`profiles` não tem `celular`.** O protótipo mostra "Telefone" e "Celular" separados; o banco tem um campo só | `profiles` · `perfil/secoes/SecaoPerfil.tsx` | O hub de perfil ficou com um campo só, de propósito: caixa que aceita digitação sem ter onde guardar é pior que campo ausente. Se os dois forem mesmo necessários, é migration | trivial + migration |
+
+### O que fazer quando aparecer mais um
+
+Não conserte no meio de uma fatia de rebrand — **acrescente uma linha aqui**. O
+custo de anotar é um minuto; o de misturar comportamento com aparência é uma
+fatia que ninguém consegue reverter sem levar junto o que funcionava.
+
+Se o achado for grave o bastante para não esperar (dado errado na tela, algo que
+faz o usuário perder prazo), aí sai desta lista e vira correção na `main`, na
+frente própria — não na branch do rebrand.
