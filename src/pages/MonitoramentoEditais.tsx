@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import MunicipiosByUFSelect from '@/components/monitoramento/MunicipiosByUFSelect';
@@ -276,6 +277,13 @@ export default function MonitoramentoEditais() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [buscaRealizada, setBuscaRealizada] = useState(false);
+  /* REBRAND — o painel SIASG tem 19 linhas de filtro e ocupava a tela inteira
+     PARA SEMPRE. Depois de pesquisar, o resultado nascia abaixo de tudo isso:
+     a pessoa buscava e precisava rolar o formulário inteiro para ver o que
+     achou. Agora ele recolhe sozinho quando a busca volta, e o que estava
+     marcado vira uma fileira de etiquetas legíveis no cabeçalho. Nada do
+     formulário mudou — nem campo, nem validação, nem consulta. */
+  const [painelAberto, setPainelAberto] = useState(true);
 
   const [favoritos, setFavoritos] = useState<Set<string>>(() => {
     try {
@@ -1086,6 +1094,41 @@ export default function MonitoramentoEditais() {
     return n;
   }, [filtros]);
 
+  /* As etiquetas do painel recolhido. Só entra o que a pessoa realmente
+     escolheu — filtro vazio não vira etiqueta "todos", que seria ruído. */
+  const resumoFiltros = useMemo(() => {
+    const t: string[] = [];
+    if (filtros.numero) t.push(`Nº ${filtros.numero}${filtros.ano ? `/${filtros.ano}` : ''}`);
+    if (filtros.dataIni || filtros.dataFim) {
+      t.push(`Publicação ${filtros.dataIni || '…'} – ${filtros.dataFim || '…'}`);
+    }
+    if (filtros.objeto) t.push(`Objeto: ${filtros.objeto}`);
+    if (filtros.modalidades.length) t.push(`${filtros.modalidades.length} modalidade(s)`);
+    if (filtros.ufs.length) t.push(filtros.ufs.length <= 4 ? filtros.ufs.join(' · ') : `${filtros.ufs.length} UFs`);
+    if (filtros.municipios.length) t.push(`${filtros.municipios.length} município(s)`);
+    if (filtros.cnpjs.length) t.push(`${filtros.cnpjs.length} CNPJ(s)`);
+    if (filtros.uasgs.length) t.push(`${filtros.uasgs.length} UASG(s)`);
+    if (filtros.esferas.length) t.push(filtros.esferas.join(' · '));
+    if (filtros.poderes.length) t.push(filtros.poderes.join(' · '));
+    if (filtros.tiposInstrumento.length) t.push(`${filtros.tiposInstrumento.length} instrumento(s)`);
+    if (filtros.statusFiltro.length) t.push(filtros.statusFiltro.join(' · '));
+    if (filtros.orgaoTexto) t.push(`Órgão: ${filtros.orgaoTexto}`);
+    if (filtros.unidadeTexto) t.push(`Unidade: ${filtros.unidadeTexto}`);
+    if (filtros.conteudoNacional) t.push(`Conteúdo nacional: ${filtros.conteudoNacional}`);
+    if (filtros.emendaParlamentar) t.push(`Emenda parlamentar: ${filtros.emendaParlamentar}`);
+    return t;
+  }, [filtros]);
+
+  /* Busca voltou → recolhe. Erro → reabre: quem errou o filtro precisa dele na
+     frente para corrigir, não escondido atrás de um botão. */
+  useEffect(() => {
+    if (resultado) setPainelAberto(false);
+  }, [resultado]);
+
+  useEffect(() => {
+    if (erro) setPainelAberto(true);
+  }, [erro]);
+
   return (
     <AppLayout>
       <div className="space-y-5">
@@ -1121,22 +1164,62 @@ export default function MonitoramentoEditais() {
 
         {/* Painel de filtros estilo SIASG */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <span className="font-semibold text-foreground">Pesquisa de licitações</span>
-              {filtrosAtivosCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-muted text-foreground text-xs font-medium">
-                  {filtrosAtivosCount} filtro(s)
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Caso não seja informado o número da licitação, será obrigatório informar o Período de Publicação e Modalidade.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setPainelAberto(v => !v)}
+            aria-expanded={painelAberto}
+            className="w-full text-left px-5 py-3 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors flex items-center gap-3"
+          >
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="font-semibold text-foreground text-sm">Pesquisa de licitações</span>
+            {filtrosAtivosCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-navy text-primary-foreground text-xs font-semibold shrink-0">
+                {filtrosAtivosCount}
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+              {painelAberto ? 'Recolher' : 'Alterar filtros'}
+              {painelAberto
+                ? <ChevronUp className="w-4 h-4" />
+                : <ChevronDown className="w-4 h-4" />}
+            </span>
+          </button>
 
-          <div className="p-5 space-y-5">
+          {/* Recolhido: as escolhas viram etiquetas. Sem isso, fechar o painel
+              esconderia o que está filtrando, e o número de resultados passaria
+              a ser um dado sem contexto. */}
+          {!painelAberto && (
+            <div className="px-5 py-3 flex flex-wrap items-center gap-1.5">
+              {resumoFiltros.length === 0 ? (
+                <span className="text-xs text-muted-foreground">Nenhum filtro aplicado</span>
+              ) : (
+                resumoFiltros.map((t) => (
+                  <span
+                    key={t}
+                    className="max-w-[280px] truncate rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-foreground"
+                    title={t}
+                  >
+                    {t}
+                  </span>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                Limpar
+              </button>
+            </div>
+          )}
+
+          <div className={painelAberto ? 'p-5 space-y-5' : 'hidden'}>
+            <p className="text-xs text-muted-foreground -mb-1">
+              Caso não seja informado o número da licitação, será obrigatório informar o
+              Período de Publicação e Modalidade.
+            </p>
+
             {/* Linha 1: Número / Período */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
               <Label className="md:col-span-2 text-xs text-muted-foreground pt-2">Número da Licitação</Label>
@@ -1583,11 +1666,34 @@ export default function MonitoramentoEditais() {
           </div>
         )}
 
-        {/* Loading */}
+        {/* Espera — esqueleto com a forma do que vem, não um spinner girando no
+            vazio. Quem espera já vê quantos cartões chegam e onde cada dado vai
+            cair, então a tela não "pula" quando o resultado monta. */}
         {carregando && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground text-sm">Consultando base de editais…</p>
+          <div className="space-y-3" role="status" aria-label="Consultando base de editais">
+            <div className="flex items-center justify-between px-1">
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-6 w-24 rounded-full shrink-0" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Skeleton className="h-6 w-20 rounded-md" />
+                  <Skeleton className="h-6 w-28 rounded-md" />
+                  <Skeleton className="h-6 w-24 rounded-md" />
+                </div>
+              </div>
+            ))}
+            <span className="sr-only">Consultando base de editais…</span>
           </div>
         )}
 
