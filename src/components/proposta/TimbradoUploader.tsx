@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Upload, ImageIcon, X, Loader2, FileText, Eye, ArrowUp, ArrowDown, Printer, RotateCw, Settings2, Ruler, FileImage, Monitor, Scissors, SplitSquareHorizontal, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { limparCacheTimbrado } from '@/lib/timbrado/timbrado';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 
@@ -503,12 +504,19 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   const salvarAjustes = async () => {
     if (!empresaId) return;
     setSalvandoAjustes(true);
-    const { error } = await supabase.from('empresas')
+    const { data: ok, error } = await supabase.from('empresas')
       .update({ timbrado_ajustes: pageSetup } as never)
-      .eq('id', empresaId);
+      .eq('id', empresaId)
+      .select('id');
     setSalvandoAjustes(false);
-    if (error) toast.error('Não foi possível salvar os ajustes: ' + error.message);
-    else toast.success('Ajustes do timbrado salvos — valem para todos os documentos gerados.');
+    // Contagem de linhas: update barrado por RLS volta sem erro e sem efeito —
+    // o falso sucesso silencioso que a casa já conhece.
+    if (error || !ok?.length) {
+      toast.error('Não foi possível salvar os ajustes: ' + (error?.message ?? 'sem permissão (só o Admin da empresa altera o timbrado)'));
+      return;
+    }
+    limparCacheTimbrado(empresaId);
+    toast.success('Ajustes do timbrado salvos — valem para o próximo documento gerado em cada aba (até 45s de espera).');
   };
 
   const paper = PAPER_SIZES[pageSetup.paperSize];

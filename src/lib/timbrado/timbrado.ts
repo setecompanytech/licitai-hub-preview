@@ -46,7 +46,9 @@ export type Timbrado = {
 };
 
 const cache = new Map<string, { t: Timbrado | null; em: number }>();
-const CACHE_MS = 5 * 60_000;
+// 45s, não 5min: o ciclo real é "ajustar em Configurações → gerar de novo"
+// — com 5 minutos, o ajuste salvo não aparecia no documento seguinte (04/09).
+const CACHE_MS = 45_000;
 
 function blobParaDataUrl(blob: Blob): Promise<string> {
   return new Promise((res, rej) => {
