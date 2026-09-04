@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, Minimize2, Shield } from 'lucide-react';
+import { X, Send, Loader2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { streamAIChat, ChatMessage, ToolEvent } from '@/lib/ai-stream';
@@ -7,6 +7,7 @@ import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useFabArrastavel } from '@/hooks/useFabArrastavel';
+import roboAvatar from '@/assets/brand/icon-robo-avatar.png';
 
 export default function AureliaChat() {
   const [open, setOpen] = useState(false);
@@ -110,18 +111,24 @@ export default function AureliaChat() {
               setOpen(true);
             }}
             className={cn(
-              "fixed z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-shadow touch-none select-none",
-              fab.arrastando ? "cursor-grabbing scale-105" : "cursor-grab",
-              "bg-accent hover:bg-accent/90 text-accent-foreground",
+              "aurelia-fab fixed z-50 w-14 h-14 rounded-full flex items-center justify-center touch-none select-none",
+              fab.arrastando ? "cursor-grabbing aurelia-fab--arrastando" : "cursor-grab",
               hasNotification && "aurelia-glow"
             )}
             title="Consultar AURÉLIA — arraste para reposicionar"
             aria-label="Consultar AURÉLIA. Arraste para reposicionar o botão."
           >
-            <div className="flex items-center justify-center pointer-events-none">
-              <Shield className="w-5 h-5 mr-[-2px]" />
-              <span className="text-xs font-bold">A</span>
-            </div>
+            {/* REBRAND — o escudo com um "A" saiu. Escudo é o símbolo de
+                proteção/segurança, e a AURÉLIA é consultora: o ícone contava
+                outra história. Entra o robô da marca, em dourado sobre o navy
+                do cabeçalho.
+
+                O robô é pintado por MÁSCARA, não exibido como imagem: o PNG é
+                azul, e a cor pedida é o dourado da logo. A máscara usa só o
+                canal alfa do arquivo — o desenho vira recorte, e a cor vem do
+                `background`. Assim ele acompanha o token, e se o dourado mudar
+                um dia o ícone muda junto. */}
+            <span className="aurelia-fab__robo pointer-events-none" aria-hidden="true" />
             {hasNotification && (
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
             )}
@@ -148,8 +155,15 @@ export default function AureliaChat() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center border border-accent/80">
-                  <span className="text-xs font-bold text-accent-foreground">AU</span>
+                {/* O robô da marca no lugar do "AU".
+                    Aqui ele vai nas cores ORIGINAIS — azul sobre círculo claro.
+                    No botão flutuante ele é dourado porque lá o fundo é o navy
+                    do cabeçalho e o dourado é a cor da marca sobre navy; neste
+                    cabeçalho de chat, que é quase preto, o mesmo dourado
+                    disputaria com o texto. Fundo claro devolve o contraste e
+                    mantém o desenho como foi desenhado. */}
+                <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/25">
+                  <img src={roboAvatar} alt="" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-[hsl(215,14%,92%)] tracking-wide">AURÉLIA</h3>
