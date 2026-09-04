@@ -44,12 +44,12 @@ import {
   Users,
   Workflow,
   // Ícones de GRUPO — usados só na barra lateral, um por categoria.
+  Brain,
   CircleDollarSign,
   FileSearch,
   Map,
   MessageCircle,
   Sparkles,
-  Tag,
 } from 'lucide-react';
 import type { ElementType } from 'react';
 
@@ -89,7 +89,12 @@ export const navGroups: NavGroup[] = [
      coluna de 264px em caixa alta. */
   {
     title: 'Inteligência',
-    icone: Tag,
+    /* `Tag` era etiqueta de preço — herança de quando o grupo se chamava
+       "Inteligência & Preços". Com Dashboard e Analytics dentro, o grupo deixou
+       de ser sobre preço e o ícone virava promessa errada. `Brain` é o que o
+       título já diz, e não colide com nenhum outro grupo (`Sparkles` é a IA,
+       `TrendingUp` é item, não grupo). */
+    icone: Brain,
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
       { icon: BarChart3, label: 'Analytics', path: '/analytics' },

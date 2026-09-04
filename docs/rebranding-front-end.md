@@ -326,15 +326,20 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 | `src/components/ui/` (os 51) | **Caio** | 02/09 |
 | `AppSidebar.tsx` · `menu.ts` · `AppTopNav.tsx` | **Caio** (navegação é dele) | 02/09 |
 | `LicitacoesEstrategicas.tsx` · `HistoricoLicitacoes.tsx` | **Caio** — fecham o módulo 3 junto com o Kanban | 04/09 |
+| `ApoioContabil.tsx` · `GestaoCompras.tsx` — **só o herói** | **Ian** (feito); o corpo das telas segue livre | 04/09 |
+| `Precificacao.tsx` | **Ian** | 04/09 |
+| `src/assets/brand/` (heróis dos módulos) | **Ian** | 04/09 |
 | As outras 12 telas da seção 11 | **livre** — nenhuma reservada | |
 | _(anote aqui ao pegar uma)_ | | |
 
 > **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
 > 04/09, que são território do Caio.** Está tudo enviado, então basta um `pull`
 > para receber. O que entrou: a classe `.eleva` e o bloco `.aurelia-fab` no
-> CSS; o grupo *Painel* saiu do menu e *Inteligência* assumiu o topo; a altura
-> do cabeçalho subiu (e o `top-` da lateral acompanha). **Caio, puxe antes de
-> abrir qualquer um desses quatro.**
+> CSS; o grupo *Painel* saiu do menu e *Inteligência* assumiu o topo (e o ícone
+> dele virou `Brain` — `Tag` era etiqueta de preço, herança de quando o grupo
+> se chamava "Inteligência & Preços"); a altura do cabeçalho subiu (e o `top-`
+> da lateral acompanha); e o `.aurelia-fab` ganhou um bloco `.dark`. **Caio,
+> puxe antes de abrir qualquer um desses quatro.**
 
 ### As três perguntas antes de commitar
 
@@ -986,6 +991,112 @@ aba é a do próprio texto, como no `barra-abas` do protótipo.
 > de lá é explícita: dado errado na tela não espera. Agora passa por
 > `normalizarStatus`, que é a autoridade.
 
+**04/09 — heróis de módulo, ícone da Inteligência e o FAB no escuro** — _Ian + Claude_
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Robô de Lances** — herói navy com o aperto de mão robô–humano; título e selo de nível sobem para ele, a faixa de baixo fica só com abas + exportar | `RoboLances.tsx` |
+| ◐ | **Apoio Jurídico** — herói navy com o martelo sobre o teclado | `ApoioJuridico.tsx` |
+| ◐ | **Apoio Contábil** — mesmo herói; **só o cabeçalho**, o resto da tela segue livre | `ApoioContabil.tsx` |
+| ◐ | **Precificação** — herói camaleão (reescreve nos 7 abas) e a barra de localização entra nele | `Precificacao.tsx` |
+| ◐ | **Gestão de Compras** — herói com o corredor de galpão; **só o cabeçalho**, o resto segue livre | `GestaoCompras.tsx` |
+| ◐ | Ícone do grupo **Inteligência**: `Tag` → `Brain` | `menu.ts` |
+| ◐ | **FAB da Aurélia no tema escuro**: dourado com o robô preto | `index.css` |
+
+### A anatomia do herói de módulo
+
+Os três são o mesmo desenho, e o próximo também deve ser. Vale a pena ter isto
+escrito porque **quase todo parâmetro aqui foi decidido renderizando a faixa e
+olhando**, não escolhendo número bonito.
+
+```
+faixa      rounded-xl, bg-gradient-to-r from-navy-hover to-navy, md:min-h-[232px]
+foto       absolute inset-y-0 right-0, w-[LARGURA] max-w-[52%], hidden md:block
+véu 1      lateral — from-navy via-navy/0 via-N% to-transparent
+véu 2      de topo — h-[70%], from-navy/N to-transparent
+texto      relative, chip dourado + h1 branco + descrição white/75 + selos white/10
+```
+
+| | Robô de Lances | Apoio Jurídico | Apoio Contábil | Precificação | Gestão de Compras |
+| --- | --- | --- | --- | --- | --- |
+| Arquivo | 512×288 | 1280×720 | 1000×667 | 1280×949 | 1365×587 |
+| Largura do painel | 512px | 560px | 640px | 520px | 620px |
+| Recorte vertical | 45% | 50% | 45% | 62% | 50% |
+| Véu lateral até | 50% | 55% | 70% | 65% | 60% |
+| Véu de topo | 45% | 55% | 50% | 50% | 55% |
+| `brightness` | — | — | `.85` | `.85` | `.95` |
+
+Lendo a tabela de trás para frente dá para prever o ajuste de uma imagem nova:
+**quanto mais clara e quente a foto, mais longe o véu lateral tem que ir e mais
+o `brightness` tem que descer.** O corredor de galpão é escuro e acinzentado e
+quase não precisou de nada; a mesa de contabilidade, branca, precisou dos dois
+no talo. E **quanto mais próxima a foto já é da proporção da faixa, menor o
+painel pode ser** — a de Precificação é 4:3 e precisa de recorte agressivo
+(62%) para a balança não sair da cena.
+
+**Por que a foto não cobre a faixa inteira.** Esticada de ponta a ponta, uma
+foto 16:9 numa faixa de 1400×232 vira uma fatia de 6:1 — o martelo deixou de
+ser martelo e virou um cilindro escuro, o aperto de mão virou um punhado de
+dedos. Assunto irreconhecível é enfeite, não símbolo. Contida à direita, a foto
+aparece quase inteira e o texto fica sobre navy sólido, sem depender de véu
+para ter contraste.
+
+**Por que 232px.** É a altura em que o assunto das três fotos aparece inteiro.
+Abaixo disso o corte come a cena. E é a MESMA nos três de propósito: módulo
+irmão com faixa de outro tamanho lê como descuido.
+
+**Os dois véus fazem trabalhos diferentes.** O lateral derrete a borda esquerda
+da foto no navy, para ela não parecer colada por cima da faixa. O de topo apaga
+a área mais clara de cada imagem — o brilho da tela do notebook no Jurídico, o
+braço robótico no Robô.
+
+**A foto do Contábil precisou de dois ajustes que as outras não.** Ela é clara
+— papel branco, mesa branca, pele — enquanto as outras duas já são azul-escuras.
+Sobre navy isso vira um bloco aceso com **emenda visível** na borda esquerda. O
+`brightness-[.85]` aproxima a foto da família do navy, e o véu lateral se
+estende a 70% em vez de 55%, dando mais caminho para a transição.
+
+> **Para escolher a próxima imagem.** Quatro critérios, nesta ordem:
+> **1.** 640px de largura no mínimo — o painel chega a 640, e ampliar borra;
+> **2.** paisagem, nunca retrato;
+> **3.** escura ou azulada de preferência (clara funciona, mas custa os dois
+> ajustes do Contábil);
+> **4.** nada importante no terço esquerdo da foto — é justamente onde o véu a
+> dissolve no navy.
+>
+> **E antes de commitar: converta para JPEG e limite a 1280px de largura.** A
+> imagem de Precificação chegou como PNG de **2,4 MB** — PNG é formato de
+> desenho com transparência, não de fotografia, e cada byte aqui entra no
+> bundle que TODO usuário baixa. Em JPEG q85 a 1280px ela virou **229 KB**, dez
+> vezes menor, sem diferença visível: o painel tem no máximo 640 CSS px, então
+> 1280 já cobre tela retina. A de Apoio Contábil caiu de 426 KB para 77 KB pelo
+> mesmo caminho. Cinco heróis a 2 MB seriam 10 MB de bundle por uma faixa
+> decorativa.
+>
+> ```sh
+> python3 -c "
+> from PIL import Image
+> im = Image.open('ORIGEM').convert('RGB')
+> if im.width > 1280: im = im.resize((1280, round(im.height*1280/im.width)), Image.LANCZOS)
+> im.save('DESTINO.jpg', 'JPEG', quality=85, optimize=True, progressive=True)"
+> ```
+>
+> E o critério que não é técnico: **o símbolo tem que ser do módulo, não de um
+> vizinho.** O martelo foi cogitado para o Robô de Lances e recusado por isso —
+> martelo é Jurídico, e o app tem um módulo Jurídico. Pôr ali faria duas telas
+> disputarem o mesmo símbolo, e a que perde é a que tem razão.
+
+**Por que o FAB inverte no escuro.** No claro o botão é navy porque precisa se
+destacar de uma página branca; no escuro a página já é navy e o botão sumia,
+sobrando só a sombra segurando a silhueta. Invertido, ele vira o ponto mais
+claro da interface. O relevo dos três níveis continua — muda de que lado vem a
+luz: sobre dourado o brilho de cima é quase branco e a sombra de baixo é
+**bronze, não preta** (preto sobre amarelo suja em vez de aprofundar), e a
+sombra externa ganha um halo dourado porque sombra preta em página escura não
+aparece. O anel de pulso também mudou: dourado em volta de botão dourado deixa
+de ler como pulso e vira contorno, então no escuro ele sobe para
+`--logo-accent`.
+
 ### O que ainda falta — 14 telas, sem dono
 
 **Nenhuma destas está reservada.** Quem pegar escreve o nome na linha e na
@@ -994,11 +1105,15 @@ tabela de "quem está com o quê" da seção 5, antes de começar.
 A ordem é por quanto o protótipo desenhou: quanto maior o número, mais
 referência visual existe para seguir e menos decisão de desenho sobra.
 
+**Legenda da primeira coluna:** ☐ livre, ninguém pegou · ◔ **reservada**, alguém
+já está nela (o nome vai na linha) · ◐ **parcial**, uma parte já foi feita e o
+resto continua livre — a linha diz qual parte.
+
 | | Tela | Rota | Arquivo | Prot. | Hoje |
 | :---: | --- | --- | --- | ---: | ---: |
 | ☐ | Marketing (admin) | `/admin/marketing` | `AdminMarketing.tsx` | 233 | 392 |
 | ☐ | API & Integração | `/api-integracao` | `ApiIntegracao.tsx` | 153 | 138 |
-| ☐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
+| ◐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
 | ◔ | Licitações Estratégicas — **Caio** | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
 | ☐ | Chat e Mural | `/monitoramento-chat` | `MonitoramentoChat.tsx` | 100 | 243 |
 | ☐ | Concorrentes | `/concorrentes` | `Concorrentes.tsx` | 99 | 51 |
@@ -1007,14 +1122,33 @@ referência visual existe para seguir e menos decisão de desenho sobra.
 | ◔ | Histórico de Licitações — **Caio** | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
 | ☐ | Fontes & Fabricantes | `/admin/fontes-fabricantes` | `AdminFontesFabricantes.tsx` | 67 | 362 |
 | ☐ | Assessoria Cadastral | `/assessoria-cadastral` | `AssessoriaCadastral.tsx` | 53 | 191 |
-| ☐ | Apoio Contábil | `/apoio-contabil` | `ApoioContabil.tsx` | 53 | 160 |
+| ◐ | Apoio Contábil | `/apoio-contabil` | `ApoioContabil.tsx` | 53 | 160 |
 | ☐ | Workflow IA | `/workflow-ia` | `WorkflowIA.tsx` | 44 | 220 |
 | ☐ | Empresas | `/empresas` | `Empresas.tsx` | 29 | 145 |
 
-**Por onde começar: 4, 6, 7 ou 9.** São as que **fecham módulo inteiro** na
-grade da seção 11 — Estratégicas e Histórico fecham o módulo 3 junto com o
-Kanban; Concorrentes fecha o 13; Metas fecha o 14 sozinha. Terminar um módulo
-vale mais que terminar tela solta: o módulo é a unidade que o tech lead revisa.
+> **Duas linhas estão ◐, não ☐: Gestão de Compras e Apoio Contábil.** Em 04/09
+> o Ian trocou nelas só o **cabeçalho**, pelo herói navy com foto. O resto de
+> cada tela — abas, busca, cartões, tabelas — continua com o layout antigo e
+> continua **livre**. Quem pegar: mexa do `<Tabs>` para baixo e **deixe o herói
+> como está**, para os módulos não divergirem entre si.
+>
+> Isso NÃO tira Gestão de Compras da lista nem diminui o aviso abaixo: as 1.586
+> linhas continuam inteiras, o herói são 40 delas.
+
+**Por onde começar: Concorrentes ou Metas do Comercial.** São as que ainda
+**fecham módulo inteiro** na grade da seção 11 — Concorrentes fecha o 13, Metas
+fecha o 14 sozinha. Terminar um módulo vale mais que terminar tela solta: o
+módulo é a unidade que o tech lead revisa.
+
+> As outras duas que fechavam módulo — **Estratégicas e Histórico**, que fecham
+> o 3 junto com o Kanban — **o Caio reservou em 04/09**. Elas continuam na
+> tabela como ◔ para ninguém começar por cima; quem chegar agora pega
+> Concorrentes ou Metas.
+>
+> E as telas aqui são nomeadas, não numeradas, de propósito: a versão anterior
+> deste parágrafo dizia "comece pelas 4, 6, 7 ou 9", contando linhas da tabela.
+> Bastou o Caio reservar duas para o conselho mandar todo mundo para telas
+> ocupadas. Referência posicional em tabela que muda envelhece calada.
 
 **Gestão de Compras é armadilha.** 1.586 linhas, a segunda maior página do
 sistema. Sozinha custa perto do que custam quatro telas médias juntas — merece
