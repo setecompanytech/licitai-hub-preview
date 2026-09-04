@@ -218,7 +218,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const saldoEsgotado = itensAlertaSaldo.some((i: any) =>
       Number(i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo) <= 0);
     const alertasSaldoVisiveis = formaFornecimento === 'unico' ? [] : itensAlertaSaldo;
-    const entregaUnicaConcluida = formaFornecimento === 'unico' && saldoEsgotado;
+    // Saldo esgotado mede pedidos LANÇADOS; concluído exige pedidos ENTREGUES.
+    // Empenhado não é entregue (04/09): com os pedidos em Separar Estoque, o
+    // painel dizia "fornecimento integral foi entregue" — mentira de estado.
+    const todosEntregues = pedidosAtivos.length > 0 && pedidosAtivos.every((p: any) => p.status === 'entregue');
+    const entregaUnicaConcluida = formaFornecimento === 'unico' && saldoEsgotado && todosEntregues;
+    const entregaUnicaEmAndamento = formaFornecimento === 'unico' && saldoEsgotado && !todosEntregues;
+    const pedidosEntregues = pedidosAtivos.filter((p: any) => p.status === 'entregue').length;
+    const pedidosAtivosTotal = pedidosAtivos.length;
     const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado;
     // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
     // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
@@ -233,14 +240,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -273,6 +280,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           ajuste ineficaz é entregar sem título que sustente a cobrança, e
           nenhum indicador de consumo importa antes dessa resposta. */}
       <ContratoEficacia contratoId={contratoId} />
+
+      {entregaUnicaEmAndamento && (
+        <div className="rounded-xl p-4 border bg-info/5 border-info/30 nao-imprime">
+          <p className="text-xs font-semibold text-info flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4" /> Entrega única — fornecimento integral pedido, entrega em andamento
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Os pedidos lançados cobrem todo o fornecimento ({pedidosEntregues} de {pedidosAtivosTotal} entregues).
+            Saldo esgotado aqui é compromisso, não conclusão: o contrato conclui quando os pedidos forem marcados
+            como Entregues, na aba Pedidos.
+          </p>
+        </div>
+      )}
 
       {entregaUnicaConcluida && (
         <div className="rounded-xl p-4 border bg-success/5 border-success/30 nao-imprime">
