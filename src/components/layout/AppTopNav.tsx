@@ -30,10 +30,11 @@ const adminItems: NavItem[] = [
 
 // Top-level nav links shown in the horizontal bar
 const topNavLinks = [
-  { label: 'Painel', groups: ['Painel'] },
+  // Inteligência assume a primeira posição — era a do Painel, que deixou de
+  // existir quando Dashboard e Analytics vieram para cá (ver menu.ts).
+  { label: 'Inteligência', groups: ['Inteligência'] },
   { label: 'Monitoramento', groups: ['Monitoramento'] },
   { label: 'Gestão', groups: ['Gestão de Processos'] },
-  { label: 'Inteligência', groups: ['Inteligência & Preços'] },
   { label: 'Jurídico', groups: ['Jurídico & Contábil'] },
   { label: 'Financeiro', groups: ['Financeiro'] },
   { label: 'Comunicação', groups: ['Comunicação'] },

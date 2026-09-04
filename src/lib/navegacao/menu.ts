@@ -76,12 +76,27 @@ export interface NavGroup {
 }
 
 export const navGroups: NavGroup[] = [
+  /* "Painel" saiu, e Dashboard e Analytics vieram para cá.
+     "Painel" e "Dashboard" são a mesma palavra em dois idiomas: um grupo
+     chamado Painel cujo primeiro item se chama Dashboard fazia a barra abrir
+     para repetir o próprio nome. E os dois itens sempre pertenceram aqui —
+     Analytics é leitura de desempenho, Dashboard é leitura do dia; ambos
+     respondem "como estamos indo", que é a pergunta deste grupo, e não "o que
+     preciso fazer agora", que é a dos outros.
+     O grupo é o primeiro da barra porque era a posição do Painel: quem abre o
+     sistema quer o número antes da tarefa.
+     `curto` deixou de existir: com o "& Preços" fora, o título cabe inteiro na
+     coluna de 264px em caixa alta. */
   {
-    title: 'Painel',
-    icone: LayoutDashboard,
+    title: 'Inteligência',
+    icone: Tag,
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
       { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
+      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
+      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
+      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
     ],
   },
   {
@@ -109,17 +124,6 @@ export const navGroups: NavGroup[] = [
       { icon: Gauge, label: 'Metas do Comercial', path: '/metas-comercial' },
       { icon: FileText,     label: 'Contratos', path: '/gestao-contratos' },
       { icon: ShoppingCart, label: 'Compras, Pedidos e Estoque', path: '/gestao-compras' },
-    ],
-  },
-  {
-    title: 'Inteligência & Preços',
-    curto: 'Inteligência',
-    icone: Tag,
-    items: [
-      { icon: DollarSign, label: 'Precificação', path: '/precificacao' },
-      { icon: FileBarChart, label: 'Proposta Comercial', path: '/proposta-tecnica' },
-      { icon: TrendingUp, label: 'Análise de Mercado', path: '/analise-mercado' },
-      { icon: Users, label: 'Concorrentes', path: '/concorrentes' },
     ],
   },
   {
