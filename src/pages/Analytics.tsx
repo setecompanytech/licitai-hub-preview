@@ -3,7 +3,7 @@ import AnalyticsKpiCards from '@/components/dashboard/AnalyticsKpiCards';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Wifi } from 'lucide-react';
+import { Activity, RefreshCw } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
@@ -26,13 +26,24 @@ export default function Analytics() {
     <AppLayout>
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
+          {/* O título dizia "Analytics em Tempo Real" e o subtítulo, "Dados
+              sincronizados automaticamente", com um ícone de wi-fi verde
+              pulsando. Nada disso acontece: `useAnalyticsData` busca uma vez,
+              na montagem e na troca de empresa — sem `subscribe`, sem
+              `refetchInterval`. Aba aberta, o número congela.
+
+              O dado é verdadeiro; a promessa é que não era. Ligar o tempo real
+              é barato (o Realtime do Supabase já roda em 29 arquivos deste
+              repo), mas é mudança de comportamento e ficou registrada na seção
+              12 de docs/rebranding-front-end.md. Até lá, o texto diz o que a
+              tela faz. */}
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
             <Activity className="w-6 h-6 text-muted-foreground" />
-            Analytics em Tempo Real
+            Analytics
           </h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Wifi className="w-3 h-3 text-success animate-pulse" />
-            Dados sincronizados automaticamente
+            <RefreshCw className="w-3 h-3" />
+            Apurado ao abrir a tela — recarregue a página para ver mudanças recentes
           </p>
         </div>
         <EmpresaSelector />
