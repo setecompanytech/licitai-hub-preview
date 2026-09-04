@@ -13,6 +13,7 @@ import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { Eye, Trophy, DollarSign, XCircle, Clock, Database, CalendarDays } from 'lucide-react';
 import RelatorioGerencialPDF from '@/components/relatorios/RelatorioGerencialPDF';
 import OnboardingWizard, { useOnboarding } from '@/components/onboarding/OnboardingWizard';
+import MascoteBoasVindas, { useMascoteBoasVindas } from '@/components/onboarding/MascoteBoasVindas';
 
 import ColaboradorIdentificacaoModal from '@/components/auth/ColaboradorIdentificacaoModal';
 
@@ -23,7 +24,13 @@ export default function Index() {
   const { empresaAtiva, todasSelecionadas } = useEmpresa();
   const { kpis } = useDashboardData();
   const { kpis: analyticsKpis, ufBreakdown } = useAnalyticsData();
-  const { showOnboarding, dismissOnboarding } = useOnboarding();
+  const { showOnboarding, dismissOnboarding, onboardingCarregado } = useOnboarding();
+  /* O mascote entra na fila DEPOIS do wizard: os dois nascem da mesma condição
+     de primeiro acesso, e empilhados um cobriria o outro. Configura a conta,
+     depois é apresentado ao guia. */
+  const { mascoteAberto, fecharMascote } = useMascoteBoasVindas(
+    onboardingCarregado && !showOnboarding,
+  );
 
   const empresaLabel = todasSelecionadas
     ? 'Todas as Empresas'
@@ -151,6 +158,7 @@ export default function Index() {
       </section>
 
       <OnboardingWizard open={showOnboarding} onClose={dismissOnboarding} />
+      <MascoteBoasVindas open={mascoteAberto} onClose={fecharMascote} />
       <ColaboradorIdentificacaoModal />
     </AppLayout>
   );

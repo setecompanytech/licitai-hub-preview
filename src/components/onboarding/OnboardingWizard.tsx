@@ -57,7 +57,15 @@ export function useOnboarding() {
     setShow(false);
   };
 
-  return { showOnboarding: loaded ? show : false, dismissOnboarding: dismiss };
+  /* `onboardingCarregado` existe para quem precisa distinguir "ainda não sei"
+     de "não precisa". Só `showOnboarding: false` confunde os dois, e quem
+     esperar o wizard sair para agir dispararia durante a checagem — antes de
+     haver resposta. É o caso do MascoteBoasVindas. */
+  return {
+    showOnboarding: loaded ? show : false,
+    dismissOnboarding: dismiss,
+    onboardingCarregado: loaded,
+  };
 }
 
 type Props = {

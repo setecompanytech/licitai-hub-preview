@@ -105,6 +105,7 @@ export default function AppSidebar({ aberta = true }: Props) {
             return (
               <button
                 key={grupo.title}
+                data-grupo={grupo.title}
                 onClick={() => navigate(unico.path)}
                 className={cn(
                   'relative flex items-center gap-3 w-full px-2.5 py-2 rounded-lg text-sm text-left transition-colors',
@@ -121,7 +122,11 @@ export default function AppSidebar({ aberta = true }: Props) {
 
           return (
             <div key={grupo.title}>
+              {/* `data-grupo` é âncora de medição, não estilo: o holofote de
+                  boas-vindas (MascoteBoasVindas) precisa de um alvo estável
+                  para recortar o véu em cima do grupo certo. */}
               <button
+                data-grupo={grupo.title}
                 onClick={() => setFechados((f) => ({ ...f, [grupo.title]: !aberto ? false : true }))}
                 aria-expanded={aberto}
                 className={cn(

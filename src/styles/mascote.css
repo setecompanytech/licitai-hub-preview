@@ -1,0 +1,269 @@
+/* ============================================================================
+   Modal de boas-vindas do mascote
+   ============================================================================
+
+   Baseado no bloco `.mascote` do protótipo (index.html:3001-3046). O holofote,
+   o anel pulsante e o card vieram como estão — são a parte boa do desenho.
+
+   O QUE MUDOU, e por quê: a seta.
+
+   No protótipo ela é uma bezier de ~525px atravessando a tela, traço 2.6 com
+   ponta arredondada e uma seta de 10×12 na ponta. Três coisas a fazem parecer
+   rabisco a lápis: comprimento grande com curvatura baixa, ponta arredondada
+   (que é a assinatura visual de caneta) e cabeça pequena demais para o traço.
+
+   Aqui o card encosta na coluna, então o vão é curto — e sobre vão curto o
+   conector pode ser firme: traço reto de 3px com ponta quadrada, uma curvatura
+   só, e cabeça sólida proporcional. É a linguagem de diagrama técnico, que é o
+   que um sistema de licitação deveria falar.
+   ========================================================================== */
+
+.masc {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 18px;
+}
+
+/* Sem alvo medível (coluna recolhida, tela estreita) não há para onde apontar:
+   o véu volta a ser um véu comum e o card assume o centro, sem seta órfã. */
+.masc--sem-alvo {
+  justify-content: center;
+  background: rgba(10, 17, 30, 0.62);
+}
+
+.masc__foco {
+  position: fixed;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 9999px rgba(10, 17, 30, 0.62),
+    0 0 0 2px hsl(var(--logo-accent));
+}
+
+.masc__foco::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 16px;
+  border: 2px solid hsl(var(--logo-accent));
+  animation: masc-pulso 1.9s ease-out infinite;
+}
+
+@keyframes masc-pulso {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.14); opacity: 0; }
+}
+
+.masc__seta {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* `butt` no lugar de `round`: ponta arredondada é o que dá o ar de caneta.
+   3px porque sobre vão curto o traço fino some contra o véu. */
+.masc__seta path {
+  fill: none;
+  stroke: hsl(var(--logo-accent));
+  stroke-width: 3;
+  stroke-linecap: butt;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  animation: masc-desenha 0.5s 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes masc-desenha {
+  to { stroke-dashoffset: 0; }
+}
+
+.masc__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 224px 1fr;
+  width: min(720px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  background: hsl(var(--card));
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(10, 17, 30, 0.48);
+  overflow: hidden;
+  animation: masc-entra 0.5s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+}
+
+@keyframes masc-entra {
+  from { opacity: 0; transform: translateY(24px) scale(0.965); }
+  to { opacity: 1; transform: none; }
+}
+
+.masc__robo {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px 14px 0;
+  background: linear-gradient(158deg, hsl(var(--navy-tint)) 0%, hsl(var(--muted)) 100%);
+}
+
+/* A sombra elíptica no chão é o que impede o robô de flutuar sem peso. */
+.masc__robo::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: 128px;
+  height: 16px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(16, 27, 45, 0.13);
+  filter: blur(7px);
+}
+
+.masc__robo img {
+  position: relative;
+  width: 100%;
+  max-width: 188px;
+  height: auto;
+  display: block;
+  animation: masc-flutua 3.6s ease-in-out infinite;
+}
+
+@keyframes masc-flutua {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.masc__txt {
+  padding: 30px 34px 26px;
+  overflow-y: auto;
+}
+
+.masc__selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: hsl(var(--navy));
+  color: hsl(var(--logo-accent));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.masc__t {
+  font-size: clamp(19px, 2.2vw, 23px);
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  margin: 15px 0 12px;
+  color: hsl(var(--foreground));
+}
+
+.masc__d {
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.68;
+}
+
+.masc__d + .masc__d {
+  margin-top: 11px;
+}
+
+.masc__d b {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.masc__caminho {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 19px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.masc__caminho:hover {
+  border-color: hsl(var(--navy));
+  background: hsl(var(--navy-tint));
+}
+
+.masc__caminho svg {
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.masc__pe {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 23px;
+}
+
+.masc__ok {
+  padding: 11px 20px;
+  border-radius: 10px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: filter 0.15s ease;
+}
+
+.masc__ok:hover {
+  filter: brightness(1.12);
+}
+
+.masc__dica {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.masc__x {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  padding: 6px;
+  border-radius: 8px;
+  color: hsl(var(--muted-foreground));
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.masc__x:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 680px) {
+  .masc__card { grid-template-columns: 1fr; }
+  .masc__robo img { max-width: 138px; }
+  .masc__robo::before { display: none; }
+  .masc__txt { padding: 24px 22px 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masc__card,
+  .masc__robo img,
+  .masc__foco::after {
+    animation: none;
+  }
+  .masc__seta path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
