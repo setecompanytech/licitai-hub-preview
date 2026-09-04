@@ -97,6 +97,20 @@ export async function carregarTimbrado(empresaId: string | null | undefined): Pr
         rodapeImg =
           (await baixarDoBucket(emp.rodape_path)) ||
           (await baixarImagem(emp.rodape_url));
+
+        // O timbrado da Santa Rosa entrou como PDF INTEIRO (a sonda de 04/09
+        // achou 'cabecalho.pdf' e rodapé nulo): renderiza a 1ª página e
+        // recorta topo e base — o mesmo recorte que a prévia faz em memória.
+        if (!cabecalhoImg || !rodapeImg) {
+          const pdfBlob = await baixarBlob(emp.cabecalho_path || emp.timbrado_path, emp.cabecalho_url || emp.timbrado_url);
+          if (pdfBlob && /pdf/i.test(pdfBlob.type)) {
+            const fatias = await fatiarPdfDeTimbrado(pdfBlob).catch(() => null);
+            if (fatias) {
+              cabecalhoImg = cabecalhoImg ?? fatias.cabecalho;
+              rodapeImg = rodapeImg ?? fatias.rodape;
+            }
+          }
+        }
       }
     } catch { /* sem as colunas de arte: segue para a fonte 2 */ }
     try {
@@ -140,6 +154,58 @@ export async function carregarTimbrado(empresaId: string | null | undefined): Pr
   }
   cache.set(empresaId, { t, em: Date.now() });
   return t;
+}
+
+async function baixarBlob(path: string | null | undefined, url: string | null | undefined): Promise<Blob | null> {
+  if (path) {
+    try {
+      const { data } = await supabase.storage.from('timbrados').download(path);
+      if (data) return data;
+    } catch { /* tenta a URL */ }
+  }
+  if (url && /^https?:/i.test(url)) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return await r.blob();
+    } catch { /* sem rede/CORS */ }
+  }
+  return null;
+}
+
+/**
+ * Papel timbrado guardado como PDF de página inteira: renderiza a 1ª página
+ * (pdfjs, o mesmo carregamento do resto da casa) e recorta topo (cabeçalho)
+ * e base (rodapé) nas proporções padrão do editor (15% / 10%).
+ */
+async function fatiarPdfDeTimbrado(blob: Blob): Promise<{ cabecalho: ImagemTimbrado; rodape: ImagemTimbrado } | null> {
+  const pdfjsLib = await import('pdfjs-dist');
+  const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdf = await pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+  const pagina = await pdf.getPage(1);
+  const viewport = pagina.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  await pagina.render({ canvasContext: ctx, viewport } as never).promise;
+
+  const recortar = (deY: number, altura: number): ImagemTimbrado => {
+    const c = document.createElement('canvas');
+    c.width = canvas.width;
+    c.height = Math.max(1, Math.round(altura));
+    const cx = c.getContext('2d')!;
+    cx.drawImage(canvas, 0, deY, canvas.width, c.height, 0, 0, canvas.width, c.height);
+    return { dataUrl: c.toDataURL('image/png'), ratio: c.width / c.height };
+  };
+
+  const hCab = canvas.height * 0.15;
+  const hRod = canvas.height * 0.10;
+  return {
+    cabecalho: recortar(0, hCab),
+    rodape: recortar(canvas.height - hRod, hRod),
+  };
 }
 
 async function baixarDoBucket(path: string | null | undefined): Promise<ImagemTimbrado | null> {
