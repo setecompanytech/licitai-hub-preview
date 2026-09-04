@@ -325,7 +325,8 @@ começar.** Uma linha a mais custa dez segundos; um conflito no
 | `src/index.css` · `tailwind.config.ts` | **Caio** — é a frente dele desde o começo | 02/09 |
 | `src/components/ui/` (os 51) | **Caio** | 02/09 |
 | `AppSidebar.tsx` · `menu.ts` · `AppTopNav.tsx` | **Caio** (navegação é dele) | 02/09 |
-| As 14 telas que faltam (seção 11) | **livre** — nenhuma reservada | |
+| `LicitacoesEstrategicas.tsx` · `HistoricoLicitacoes.tsx` | **Caio** — fecham o módulo 3 junto com o Kanban | 04/09 |
+| As outras 12 telas da seção 11 | **livre** — nenhuma reservada | |
 | _(anote aqui ao pegar uma)_ | | |
 
 > **Ian tocou em `index.css`, `menu.ts`, `AppTopNav.tsx` e `AppSidebar.tsx` em
@@ -748,14 +749,15 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 
 #### Caio Gabriel — commits `c520f26a` e `a63f2dcc`
 
-> Deixei sem marca de propósito: **quem marca é quem fez.** Caio, é só trocar
-> ☐ por ◐ nas linhas abaixo e nas colunas Tok/Tip/Lay da grade acima.
+> Marcado pelo Caio em 04/09. A grade acima também: Cor e Tipografia em todos os
+> 22, porque as duas fatias moram em dois arquivos que as 442 telas herdam.
 
 | | Entrega | Arquivos |
 | :---: | --- | --- |
 | ◐ | Paleta navy + dourada, tipografia Inter, escala compacta | `src/index.css` · `tailwind.config.ts` |
 | ◐ | Barra lateral nova, com busca e grupos recolhíveis | `AppSidebar.tsx` (novo) |
 | ◐ | Menu como autoridade única, lido pela lateral **e** pelo topo | `src/lib/navegacao/menu.ts` (novo) |
+| ◐ | **Limpeza do menu do topo — +1 / −104.** As 104 linhas da lista saíram de dentro do componente. Não é só menos código: enquanto a lista morava ali, ela era uma constante exportada de um arquivo de componente, o que **desliga a atualização instantânea da tela** naquele arquivo (o `Could not Fast Refresh` que o Vite acusava). E era o caminho aberto para a segunda cópia — o defeito que o `CLAUDE.md` descreve como tendo mantido o arquivamento automático quebrado por meses | `AppTopNav.tsx` |
 | ◐ | Painel: faixa de destaque, oportunidades, mapa por estado | `Index.tsx` · 4 componentes novos em `dashboard/` |
 | ◐ | Central de avisos agrupada por dia | `CentralAvisos.tsx` |
 | ◐ | Tema padrão passa de escuro para claro | `App.tsx` |
@@ -997,12 +999,12 @@ referência visual existe para seguir e menos decisão de desenho sobra.
 | ☐ | Marketing (admin) | `/admin/marketing` | `AdminMarketing.tsx` | 233 | 392 |
 | ☐ | API & Integração | `/api-integracao` | `ApiIntegracao.tsx` | 153 | 138 |
 | ☐ | **Gestão de Compras** | `/gestao-compras` | `GestaoCompras.tsx` | 171 | **1.586** |
-| ☐ | Licitações Estratégicas | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
+| ◔ | Licitações Estratégicas — **Caio** | `/licitacoes-estrategicas` | `LicitacoesEstrategicas.tsx` | 121 | 336 |
 | ☐ | Chat e Mural | `/monitoramento-chat` | `MonitoramentoChat.tsx` | 100 | 243 |
 | ☐ | Concorrentes | `/concorrentes` | `Concorrentes.tsx` | 99 | 51 |
 | ☐ | Metas do Comercial | `/metas-comercial` | `MetasComercial.tsx` | 97 | 95 |
 | ☐ | WhatsApp CRM | `/whatsapp-crm` | `WhatsAppCRM.tsx` | 75 | 60 |
-| ☐ | Histórico de Licitações | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
+| ◔ | Histórico de Licitações — **Caio** | `/historico-licitacoes` | `HistoricoLicitacoes.tsx` | 70 | 435 |
 | ☐ | Fontes & Fabricantes | `/admin/fontes-fabricantes` | `AdminFontesFabricantes.tsx` | 67 | 362 |
 | ☐ | Assessoria Cadastral | `/assessoria-cadastral` | `AssessoriaCadastral.tsx` | 53 | 191 |
 | ☐ | Apoio Contábil | `/apoio-contabil` | `ApoioContabil.tsx` | 53 | 160 |
