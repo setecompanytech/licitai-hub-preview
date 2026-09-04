@@ -737,7 +737,71 @@ não voltou para a `main`** — é o que o ◐ da grade acima quer dizer.
 | ◐ | **Kanban** — `kb-barra` do protótipo, com filtro do board por número, órgão e objeto (sem acento, sem caixa) | `KanbanPage.tsx` |
 | ◐ | **Robô de Lances** — cabeçalho em duas fileiras; o selo de nível sobe para ele e vira atalho para a parada de emergência | `RoboLances.tsx` |
 | ◐ | Três esperas do Robô viram esqueleto, cada uma com a forma do que vem | `CredenciaisPortalForm` · `DeteccaoPortais` · `PortalHealthcheck` |
+| ◐ | **Analytics** — o título deixa de prometer tempo real; o rodapé também. Só texto, o dado sempre foi verdadeiro (achado 2 da seção 12) | `Analytics.tsx` |
 | ◐ | **Varredura de contraste** — 17 pares de texto/fundo calculados nos dois temas | (verificação, sem alteração) |
+
+**04/09 — segunda leva: a jornada de ponta a ponta**
+
+As quatro primeiras são o percurso de quem trabalha no sistema — **encontrar →
+precificar → propor → disputar → contratar**. O Kanban e o Robô, já entregues
+acima, ficam no meio dele; estas fecham as pontas. A quinta é diferente: é um
+buraco que a leva anterior abriu.
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Monitoramento de Editais** — o painel SIASG de 19 filtros recolhe sozinho quando a busca volta, e o que estava marcado vira etiqueta legível; a espera virou esqueleto com a forma dos cartões | `MonitoramentoEditais.tsx` |
+| ◐ | **Precificação** — os dois gráficos do protótipo, em dado REAL da planilha aberta | `PrecoGraficos.tsx` (novo) · `PlanilhaCustosEdital.tsx` · `Precificacao.tsx` |
+| ◐ | **Proposta Comercial** — a régua `mstep`: oito nós ligados por um trilho que fica verde onde já passou, no lugar de oito pastilhas soltas | `PropostaTecnica.tsx` |
+| ◐ | **Gestão de Contratos** — anatomia `kpi-meta` nos cinco cartões: rótulo, valor e **nota** de contexto | `GestaoContratos.tsx` |
+| ◐ | **Tutorial** — anel de progresso, trilha que se preenche, conclusão por passo e "continuar de onde parei" | `TutorialPage.tsx` |
+| ◐ | **Fim das telas brancas de carregamento** — sete esperas que mostravam página vazia agora abrem com a moldura do app | `SkeletonPagina.tsx` · 3 guardas · 4 páginas |
+| ◐ | **Barra lateral: "Painel" saiu, "Inteligência" assume o topo** | `menu.ts` · `AppTopNav.tsx` |
+
+**Por que o grupo "Painel" deixou de existir.** Ele abria para mostrar
+*Dashboard* e *Analytics* — e "Painel" e "Dashboard" são a mesma palavra em dois
+idiomas. O grupo abria para repetir o próprio nome.
+
+Os dois itens foram para **Inteligência**, que já reunia Precificação, Proposta,
+Análise de Mercado e Concorrentes. A divisão que sobra é limpa: Inteligência
+responde **"como estamos indo"**; os demais grupos respondem **"o que preciso
+fazer agora"**. Analytics é leitura de desempenho e Dashboard é leitura do dia —
+os dois são a primeira pergunta.
+
+O grupo herdou a **primeira posição** da barra, que era a do Painel: quem abre o
+sistema quer o número antes da tarefa. O título perdeu o "& Preços" (com seis
+itens de naturezas diferentes, o recorte ficou estreito demais) e, por caber
+inteiro na coluna de 264px em caixa alta, dispensou o `curto`.
+
+O `AppTopNav` acompanha — o menu do topo lê os mesmos grupos.
+
+**A varredura das telas brancas.** A leva anterior trocou spinner por esqueleto
+em `ProtectedRoute` e no `Suspense` das rotas, mas parou aí — e sobrava um
+caminho inteiro em que a pessoa via **branco**:
+
+| Onde | O que aparecia | Por que passou batido |
+| --- | --- | --- |
+| `MaintenanceGuard` | página vazia com um ponto girando | embrulha **todas** as rotas e consulta o modo manutenção em **todo** carregamento: era a primeira coisa depois do splash |
+| `PlanGuard` (×2) e `AdminGuard` | idem | rodam DEPOIS do `ProtectedRoute` e FORA do `AppLayout` — davam um pisca branco entre o esqueleto e a página |
+| `ProcessoWorkspace` | `h-screen` em branco | desenha a própria moldura, não passa pelo `AppLayout` |
+| `PainelDistribuicao` | idem | mesma razão |
+| `MetricasSaaS`, `PreferenciasAlertas` | spinner dentro do layout | cabeçalho aparecia, mas a espera não tinha forma |
+
+O `SkeletonPagina` passou a desenhar a **moldura**: barra navy com a logo do
+rebrand (`PRAE` em branco + `FECTUS` em `--logo-accent`), coluna lateral de
+264px e o conteúdo em esqueleto — as mesmas medidas do `AppLayout`, para a
+barra verdadeira substituir a falsa sem deslocar um pixel. Quem chama de dentro
+do layout passa `moldura={false}`.
+
+**Splash ou esqueleto?** Os dois, um de cada vez. O splash cobre o vão entre o
+HTML chegar e o React montar; depois disso ele sai e **não volta** — reexibi-lo
+a cada troca de rota faria o app parecer que reinicia. Daí em diante quem espera
+é o esqueleto, e ele herda a identidade do splash: mesma barra navy, mesma logo,
+mesmo dourado.
+
+> A quinta linha é dívida nossa, não escolha de escopo. O modal de boas-vindas
+> entrega o primeiro clique de um usuário novo em uma tela sem rebrand: a
+> apresentação promete um sistema, o destino mostra outro. Quem cria o caminho
+> responde pelo destino.
 
 **Caio, três coisas que você precisa saber destas telas:**
 
