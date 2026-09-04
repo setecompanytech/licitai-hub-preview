@@ -63,9 +63,11 @@ interface PageSetup {
   headerAlign: AlinhamentoImg;
   headerWidth: number;   // % da largura da página (10–100)
   headerOffsetY: number; // cm, empurra para baixo
+  headerOffsetX: number; // cm, arrasto horizontal
   footerAlign: AlinhamentoImg;
   footerWidth: number;
   footerOffsetY: number; // cm, empurra para cima
+  footerOffsetX: number;
 }
 
 const PAPER_SIZES: Record<PaperSize, { label: string; w: number; h: number }> = {
@@ -87,9 +89,11 @@ const DEFAULT_SETUP: PageSetup = {
   headerAlign: 'esticar',
   headerWidth: 100,
   headerOffsetY: 0,
+  headerOffsetX: 0,
   footerAlign: 'esticar',
   footerWidth: 100,
   footerOffsetY: 0,
+  footerOffsetX: 0,
 };
 
 /**
@@ -501,6 +505,76 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
   };
 
   const [salvandoAjustes, setSalvandoAjustes] = useState(false);
+  /** Edição MANUAL no mockup (04/09): arrastar move, alça redimensiona. */
+  const arrastoRef = useRef<{
+    alvo: 'header' | 'footer';
+    modo: 'mover' | 'redimensionar';
+    x0: number; y0: number;
+    base: { offsetX: number; offsetY: number; width: number; align: AlinhamentoImg };
+  } | null>(null);
+
+  const iniciarArrasto = (
+    e: React.PointerEvent,
+    alvo: 'header' | 'footer',
+    modo: 'mover' | 'redimensionar',
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const s = pageSetup;
+    arrastoRef.current = {
+      alvo, modo, x0: e.clientX, y0: e.clientY,
+      base: alvo === 'header'
+        ? { offsetX: s.headerOffsetX, offsetY: s.headerOffsetY, width: s.headerWidth, align: s.headerAlign }
+        : { offsetX: s.footerOffsetX, offsetY: s.footerOffsetY, width: s.footerWidth, align: s.footerAlign },
+    };
+  };
+
+  useEffect(() => {
+    const mover = (e: PointerEvent) => {
+      const d = arrastoRef.current;
+      if (!d) return;
+      const escala = 460 / (pageSetup.orientation === 'landscape'
+        ? PAPER_SIZES[pageSetup.paperSize].h : PAPER_SIZES[pageSetup.paperSize].w);
+      const dxCm = (e.clientX - d.x0) / escala / 10;
+      const dyCm = (e.clientY - d.y0) / escala / 10;
+      setPageSetup((prev) => {
+        if (d.modo === 'redimensionar') {
+          const larguraPagina = pageSetup.orientation === 'landscape'
+            ? PAPER_SIZES[prev.paperSize].h : PAPER_SIZES[prev.paperSize].w;
+          const deltaPct = (dxCm * 10 / larguraPagina) * 100;
+          const nova = Math.min(100, Math.max(10, d.base.width + deltaPct));
+          // Redimensionar sai do "esticar": largura manual pede alinhamento real.
+          const align = d.base.align === 'esticar' ? 'esquerda' : d.base.align;
+          return d.alvo === 'header'
+            ? { ...prev, headerWidth: Math.round(nova), headerAlign: align }
+            : { ...prev, footerWidth: Math.round(nova), footerAlign: align };
+        }
+        const arred = (v: number) => Math.round(v * 10) / 10;
+        if (d.alvo === 'header') {
+          return {
+            ...prev,
+            headerAlign: d.base.align === 'esticar' ? 'esquerda' : d.base.align,
+            headerOffsetX: arred(d.base.offsetX + dxCm),
+            headerOffsetY: Math.max(0, arred(d.base.offsetY + dyCm)),
+          };
+        }
+        return {
+          ...prev,
+          footerAlign: d.base.align === 'esticar' ? 'esquerda' : d.base.align,
+          footerOffsetX: arred(d.base.offsetX + dxCm),
+          footerOffsetY: Math.max(0, arred(d.base.offsetY - dyCm)),
+        };
+      });
+    };
+    const soltar = () => { arrastoRef.current = null; };
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+    return () => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSetup.orientation, pageSetup.paperSize]);
   const salvarAjustes = async () => {
     if (!empresaId) return;
     setSalvandoAjustes(true);
@@ -858,11 +932,23 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                   paddingTop: pageSetup.headerOffsetY * 10 * scaleFactor,
                 }}
               >
-                <img src={header.url} alt="Cabeçalho"
+                <div
+                  className="relative h-full cursor-move group"
                   style={{
                     width: pageSetup.headerAlign === 'esticar' ? '100%' : `${pageSetup.headerWidth}%`,
-                    height: '100%', objectFit: 'contain',
-                  }} />
+                    transform: `translateX(${pageSetup.headerOffsetX * 10 * scaleFactor}px)`,
+                  }}
+                  onPointerDown={(e) => iniciarArrasto(e, 'header', 'mover')}
+                  title="Arraste para posicionar o cabeçalho"
+                >
+                  <img src={header.url} alt="Cabeçalho" draggable={false}
+                    className="w-full h-full object-contain pointer-events-none select-none" />
+                  <span
+                    className="absolute -bottom-1 -right-1 w-3 h-3 rounded-sm bg-accent border border-background cursor-nwse-resize opacity-0 group-hover:opacity-100"
+                    onPointerDown={(e) => iniciarArrasto(e, 'header', 'redimensionar')}
+                    title="Arraste para redimensionar"
+                  />
+                </div>
               </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -892,11 +978,23 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
                   paddingBottom: pageSetup.footerOffsetY * 10 * scaleFactor,
                 }}
               >
-                <img src={footer.url} alt="Rodapé"
+                <div
+                  className="relative h-full cursor-move group"
                   style={{
                     width: pageSetup.footerAlign === 'esticar' ? '100%' : `${pageSetup.footerWidth}%`,
-                    height: '100%', objectFit: 'contain',
-                  }} />
+                    transform: `translateX(${pageSetup.footerOffsetX * 10 * scaleFactor}px)`,
+                  }}
+                  onPointerDown={(e) => iniciarArrasto(e, 'footer', 'mover')}
+                  title="Arraste para posicionar o rodapé"
+                >
+                  <img src={footer.url} alt="Rodapé" draggable={false}
+                    className="w-full h-full object-contain pointer-events-none select-none" />
+                  <span
+                    className="absolute -top-1 -right-1 w-3 h-3 rounded-sm bg-accent border border-background cursor-nesw-resize opacity-0 group-hover:opacity-100"
+                    onPointerDown={(e) => iniciarArrasto(e, 'footer', 'redimensionar')}
+                    title="Arraste para redimensionar"
+                  />
+                </div>
               </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -913,6 +1011,12 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <span className="absolute text-muted-foreground/40 select-none" style={{ fontSize: Math.max(7, scaleFactor * 3), top: mTop * 0.3, right: mRight + 4 }}>1</span>
         </div>
 
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>✥ Arraste a arte para posicionar · alça no canto redimensiona · confirme em “Salvar ajustes”.</span>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={salvarAjustes} disabled={salvandoAjustes}>
+            {salvandoAjustes ? 'Salvando…' : 'Salvar ajustes'}
+          </Button>
+        </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/20 rounded-md px-3 py-1.5">
           <span className="font-medium text-foreground">{PAPER_SIZES[pageSetup.paperSize].label}</span>
           <span>•</span>

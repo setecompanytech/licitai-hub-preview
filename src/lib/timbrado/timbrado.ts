@@ -18,16 +18,16 @@ export type AjustesTimbrado = {
   marginTop: number; marginBottom: number; marginLeft: number; marginRight: number;
   headerHeight: number; footerHeight: number;
   headerAlign: 'esticar' | 'esquerda' | 'centro' | 'direita';
-  headerWidth: number; headerOffsetY: number;
+  headerWidth: number; headerOffsetY: number; headerOffsetX: number;
   footerAlign: 'esticar' | 'esquerda' | 'centro' | 'direita';
-  footerWidth: number; footerOffsetY: number;
+  footerWidth: number; footerOffsetY: number; footerOffsetX: number;
 };
 
 export const AJUSTES_PADRAO: AjustesTimbrado = {
   marginTop: 3, marginBottom: 2, marginLeft: 3, marginRight: 2,
   headerHeight: 2.5, footerHeight: 2,
-  headerAlign: 'esticar', headerWidth: 100, headerOffsetY: 0,
-  footerAlign: 'esticar', footerWidth: 100, footerOffsetY: 0,
+  headerAlign: 'esticar', headerWidth: 100, headerOffsetY: 0, headerOffsetX: 0,
+  footerAlign: 'esticar', footerWidth: 100, footerOffsetY: 0, footerOffsetX: 0,
 };
 
 type ImagemTimbrado = { dataUrl: string; ratio: number };
@@ -285,6 +285,8 @@ export function aplicarTimbrado(doc: jsPDF, t: Timbrado): { topoY: number; rodap
       const pos = caberNaCaixa(t.cabecalhoImg,
         { x: 0, y: aj.headerOffsetY * 10, w: W, h: areaH },
         aj.headerAlign, aj.headerWidth);
+      // Arrasto manual: desloca e prende dentro da página.
+      pos.x = Math.min(Math.max(pos.x + (aj.headerOffsetX || 0) * 10, 0), W - pos.w);
       try {
         doc.addImage(t.cabecalhoImg.dataUrl, formatoDaImagem(t.cabecalhoImg.dataUrl), pos.x, pos.y, pos.w, pos.h);
       } catch { /* imagem ilegível: o conteúdo segue com margem padrão */ }
@@ -296,6 +298,7 @@ export function aplicarTimbrado(doc: jsPDF, t: Timbrado): { topoY: number; rodap
       const pos = caberNaCaixa(t.rodapeImg,
         { x: 0, y: caixaY, w: W, h: areaH },
         aj.footerAlign, aj.footerWidth);
+      pos.x = Math.min(Math.max(pos.x + (aj.footerOffsetX || 0) * 10, 0), W - pos.w);
       // Ancorado na base da caixa, como no papel timbrado real.
       const y = caixaY + areaH - pos.h;
       try {
