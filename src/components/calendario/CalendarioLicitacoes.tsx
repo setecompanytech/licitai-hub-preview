@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
-  ChevronRight, Shield, Building2, Database,
+  ChevronRight, Shield, Building2, Database, Trophy, FileWarning,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// Autoridade única do vocabulário de status (CLAUDE.md, princípio 1).
+import { normalizarStatus } from '@/lib/licitacao/status';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -689,41 +691,56 @@ export default function CalendarioLicitacoes() {
         </Card>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-accent">{licitacoes.length}</p>
-          <p className="text-xs text-muted-foreground uppercase">Total Processos</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-warning">{urgentes.length}</p>
-          <p className="text-xs text-muted-foreground uppercase">Urgentes (3d)</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-foreground">{upcoming.length}</p>
-          <p className="text-xs text-muted-foreground uppercase">Próximos 30d</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-success">
-            {licitacoes.filter((l) => l.status === 'Vencida' || l.status === 'Homologada').length}
-          </p>
-          <p className="text-xs text-muted-foreground uppercase">Ganhas</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p
-            className={cn(
-              'text-2xl font-bold',
-              docsAlerta.filter((d) => d.status === 'vencido').length > 0
-                ? 'text-destructive'
-                : docsAlerta.length > 0
-                ? 'text-warning'
-                : 'text-success'
-            )}
-          >
-            {docsAlerta.length}
-          </p>
-          <p className="text-xs text-muted-foreground uppercase">Docs Alerta</p>
-        </Card>
+      {/* REBRAND — anatomia `kpi-meta`, a mesma dos Contratos e dos
+          Compromissos: rótulo e ícone em cima, valor grande à esquerda, nota
+          de contexto embaixo. Antes eram cinco números centralizados com o
+          rótulo em CAIXA ALTA — caixa alta em rótulo de 12px é o que mais
+          atrasa a leitura, porque tira a silhueta da palavra.
+
+          ⚠ CORREÇÃO DE DADO, não de aparência. A contagem de "Ganhas" comparava
+          `status` com dois literais escritos aqui:
+
+              l.status === 'Vencida' || l.status === 'Homologada'
+
+          É o padrão que o CLAUDE.md proíbe no princípio 1 — e pelo mesmo motivo
+          histórico (`Homologada` × `Homologado`). A lista perdia processo
+          gravado como `Homologado`, `adjudicada`, `vencedor`, `ata_registro` ou
+          `contrato assinado`: o número aparecia MENOR do que a realidade, num
+          cartão que a pessoa usa para conferir resultado.
+          Agora passa por `normalizarStatus`, que é a autoridade. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {(() => {
+          const ganhas = licitacoes.filter((l) => {
+            const s = normalizarStatus(l.status);
+            return s === 'Vencida' || s === 'Homologada';
+          }).length;
+          const vencidos = docsAlerta.filter((d) => d.status === 'vencido').length;
+
+          const cartoes = [
+            { rot: 'Total de processos', val: licitacoes.length, ic: CalendarDays, nota: 'Com data no calendário' },
+            { rot: 'Encerra em 3 dias', val: urgentes.length, ic: AlertTriangle, nota: urgentes.length > 0 ? 'Exige decisão hoje' : 'Nenhum prazo apertado', alerta: urgentes.length > 0 },
+            { rot: 'Próximos 30 dias', val: upcoming.length, ic: Clock, nota: 'Abertura ou encerramento' },
+            { rot: 'Ganhas', val: ganhas, ic: Trophy, nota: 'Vencidas e homologadas', bom: ganhas > 0 },
+            { rot: 'Documentos em alerta', val: docsAlerta.length, ic: FileWarning, nota: vencidos > 0 ? `${vencidos} já ${vencidos === 1 ? 'vencido' : 'vencidos'}` : 'Nenhum vencido', alerta: vencidos > 0 },
+          ];
+
+          return cartoes.map(({ rot, val, ic: Icone, nota, alerta, bom }) => (
+            <Card key={rot} className={cn('p-4 min-w-0', alerta && 'border-warning-line bg-warning-tint')}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <span className={cn('text-xs', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{rot}</span>
+                <Icone className={cn('w-4 h-4 shrink-0', alerta ? 'text-warning-ink' : 'text-muted-foreground/70')} aria-hidden="true" />
+              </div>
+              <p className={cn(
+                'text-2xl font-bold tabular-nums leading-none',
+                alerta && 'text-warning-ink',
+                bom && 'text-success',
+              )}>
+                {val}
+              </p>
+              <p className={cn('text-xs mt-1.5', alerta ? 'text-warning-ink' : 'text-muted-foreground')}>{nota}</p>
+            </Card>
+          ));
+        })()}
       </div>
     </div>
   );
