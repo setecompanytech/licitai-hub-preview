@@ -97,7 +97,7 @@ const DEFAULT_SETUP: PageSetup = {
  * o gerador recusava application/pdf, e o rodapé nunca nascia. Convertido,
  * o arquivo entra no MESMO fluxo de recorte das imagens.
  */
-async function pdfParaPngBlob(file: File): Promise<Blob> {
+async function pdfParaPngBlob(file: Blob): Promise<Blob> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
@@ -292,6 +292,25 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         if (isValidImage(hUrl)) {
           setHeader({ url: hUrl, path: hPath });
           setTimbradoUrl(hUrl);
+        } else if (hPath && /\.pdf$/i.test(hPath)) {
+          // Legado (04/09): o timbrado foi salvo como PDF CRU pelo fluxo
+          // antigo — era isto que fazia o campo "voltar em branco": o load
+          // descartava o arquivo salvo em silêncio. Agora o PDF é convertido
+          // aqui mesmo e o recorte abre para o usuário confirmar — um clique
+          // e os PNGs definitivos são persistidos.
+          setHeader({ url: null, path: null });
+          setTimbradoUrl(null);
+          (async () => {
+            try {
+              const { data: blob } = await supabase.storage.from('timbrados').download(hPath);
+              if (!blob) return;
+              const png = await pdfParaPngBlob(blob);
+              setSourceImageUrl(URL.createObjectURL(png));
+              const pathFull = `${empresaId}/timbrado_full.png`;
+              await supabase.storage.from('timbrados').upload(pathFull, png, { upsert: true, contentType: 'image/png' });
+              toast.info('Seu timbrado estava salvo em PDF — convertido. Ajuste o recorte de cabeçalho e rodapé abaixo e confirme.');
+            } catch { /* PDF ilegível: o campo fica para reenvio manual */ }
+          })();
         } else {
           // Non-image timbrado URL — don't use as image, reset so user can re-upload
           setHeader({ url: null, path: null });
