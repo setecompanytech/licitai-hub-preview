@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
@@ -6,7 +6,7 @@ import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/lic
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
-import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, GripVertical, Plus, Pencil, LayoutDashboard, ListChecks, History, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -100,6 +100,10 @@ export default function KanbanPage() {
   // Colunas sem nenhum processo ficam recolhidas por padrão: são oito ao todo,
   // e em notebook comum elas não cabem abertas.
   const [mostrarVazias, setMostrarVazias] = useState(false);
+  /* Filtro do board, como a `kb-barra` do protótipo. Vale a pena porque a
+     coluna rola horizontalmente: com trinta processos, achar um exige varrer
+     o board com o olho. Filtra o que já está em memória — sem consulta nova. */
+  const [filtro, setFiltro] = useState('');
 
   useEffect(() => { itemsRef.current = items; }, [items]);
 
@@ -304,6 +308,19 @@ export default function KanbanPage() {
 
   const totalValor = items.reduce((sum, i) => sum + (i.valor_estimado || 0), 0);
 
+  /* Filtro do board. Busca em número, órgão e objeto — os três campos por onde
+     alguém procura um processo. Normaliza acento e caixa para "orgao" achar
+     "órgão", que é o erro de digitação mais comum aqui. */
+  const itensFiltrados = useMemo(() => {
+    const termo = filtro.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!termo) return items;
+    return items.filter((i) =>
+      [i.numero, i.orgao, i.objeto]
+        .filter(Boolean)
+        .some((c) => String(c).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(termo)),
+    );
+  }, [items, filtro]);
+
   // Ghost card (segue o cursor durante o drag)
   const draggedItem = draggedId ? items.find(i => i.id === draggedId) : null;
   const ds = dragStateRef.current;
@@ -337,19 +354,44 @@ export default function KanbanPage() {
             </div>
           ) : (
             <>
-            {vazias > 0 && (
-              <button
-                onClick={() => setMostrarVazias(v => !v)}
-                className="mb-2 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-              >
-                {mostrarVazias
-                  ? 'Recolher colunas vazias'
-                  : `Mostrar ${vazias} coluna(s) vazia(s)`}
-              </button>
-            )}
+            {/* REBRAND — a `kb-barra` do protótipo: controle de colunas vazias à
+                esquerda, filtro à direita.
+                Os botões "Compartilhar", "Gerar .xlsx" e "Imprimir" do desenho
+                NÃO vieram: no protótipo eles não fazem nada, e botão que não
+                faz nada num board de processo é pior que botão ausente. */}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {vazias > 0 && (
+                  <button
+                    onClick={() => setMostrarVazias(v => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                  >
+                    {mostrarVazias
+                      ? 'Recolher colunas vazias'
+                      : `Mostrar ${vazias} coluna(s) vazia(s)`}
+                  </button>
+                )}
+                {filtro && (
+                  <span className="text-xs text-muted-foreground">
+                    {itensFiltrados.length} de {items.length} processos
+                  </span>
+                )}
+              </div>
+
+              <label className="relative w-full sm:w-[250px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+                <input
+                  value={filtro}
+                  onChange={(e) => setFiltro(e.target.value)}
+                  placeholder="Filtrar no board..."
+                  aria-label="Filtrar processos no board"
+                  className="w-full h-8 pl-9 pr-3 text-sm rounded-lg border border-border bg-card focus:border-accent focus:outline-none transition-colors"
+                />
+              </label>
+            </div>
             <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
               {columns.map((col) => {
-                const colItems = items.filter((i) => colunaDe(i) === col.id);
+                const colItems = itensFiltrados.filter((i) => colunaDe(i) === col.id);
                 const isOver = overColId === col.id;
                 // Enquanto se arrasta, tudo abre: esconder o destino seria pior
                 // que ocupar espaço.
