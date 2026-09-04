@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -107,8 +108,17 @@ export default function PortalHealthcheck() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        /* A lista que vem é uma linha por portal. O esqueleto tem essa forma
+           para a caixa não pular de altura quando os doze chegarem. */
+        <div className="space-y-1.5" role="status" aria-busy="true">
+          <span className="sr-only">Consultando portais</span>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-2.5 py-1.5">
+              <Skeleton className="h-2 w-2 rounded-full shrink-0" />
+              <Skeleton className="h-3 flex-1 max-w-[180px]" />
+              <Skeleton className="h-3 w-14 shrink-0 ml-auto" />
+            </div>
+          ))}
         </div>
       ) : entries.length === 0 ? (
         <div className="text-center py-6">

@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -288,8 +289,21 @@ export default function CredenciaisPortalForm() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        /* Esqueleto com a forma da lista que vem — três linhas de credencial.
+           O ponto girando não dizia o que estava chegando, e a caixa saltava
+           de altura quando a lista aparecia. */
+        <div className="space-y-2" role="status" aria-busy="true">
+          <span className="sr-only">Carregando credenciais</span>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4">
+              <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-7 w-16 rounded-md shrink-0" />
+            </div>
+          ))}
         </div>
       ) : credenciais.length === 0 ? (
         <div className="bg-card rounded-xl border border-border/50 p-8 text-center">

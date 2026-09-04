@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -98,9 +99,14 @@ export default function DeteccaoPortais() {
   const comCertificado = portais.filter((p) => p.temCertificado).length;
 
   if (loading) {
+    /* O resultado é uma fileira de pastilhas de portal — o esqueleto tem essa
+       forma, para a caixa não mudar de altura quando elas chegarem. */
     return (
-      <div className="flex justify-center py-4">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="flex flex-wrap gap-2 py-1" role="status" aria-busy="true">
+        <span className="sr-only">Detectando portais</span>
+        <Skeleton className="h-7 w-28 rounded-full" />
+        <Skeleton className="h-7 w-36 rounded-full" />
+        <Skeleton className="h-7 w-24 rounded-full" />
       </div>
     );
   }

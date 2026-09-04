@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -458,16 +459,82 @@ export default function RoboLances() {
         <ProcessoContextoBanner />
       </div>
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="h-full flex flex-col">
-        {/* ── Top Header ── */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border bg-card px-4 py-2">
-          <div className="flex items-center gap-3">
-            <Bot className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            <h1 className="text-base sm:text-lg font-bold tracking-tight">Robô de Lances</h1>
+        {/* ── Cabeçalho ──
+            REBRAND — antes título, botão de exportar e as quatro abas dividiam
+            uma linha de `py-2`, e em tela média as abas quebravam por cima do
+            título. Agora são duas fileiras: identidade em cima, navegação
+            embaixo, que é como o protótipo separa `pg-topo` de `barra-abas`.
+
+            O selo de nível não é enfeite: é a informação mais cara desta tela.
+            Nível 3 significa que o sistema envia lance com dinheiro da empresa
+            sem ninguém confirmar, e quem abre a página precisa saber disso
+            antes de clicar em qualquer coisa. Ele vinha só dentro da aba de
+            configuração, a dois cliques de distância. */}
+        <div className="border-b border-border bg-card px-4 pt-3 pb-0">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-navy-tint text-navy shrink-0">
+                <Bot className="w-5 h-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold tracking-tight leading-tight">Robô de Lances</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Automação de disputa em portais de licitação
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Armado (nível 2 ou 3), o selo vira ATALHO para a aba de
+                  disputa — que é onde mora a parada de emergência. Antes, de
+                  Portais ou Configurações, o freio ficava a dois cliques e sem
+                  pista de onde estava.
+
+                  É navegação, não capacidade nova: o botão de parada continua
+                  exatamente onde estava, com o mesmo escopo e as mesmas regras.
+                  Só o caminho até ele encurtou. */}
+              {(() => {
+                const armado = nivelAutomacao >= 2;
+                const classe = cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border transition-colors',
+                  nivelAutomacao >= 3
+                    ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
+                    : nivelAutomacao === 2
+                      ? 'border-warning-line bg-warning-tint text-warning-ink'
+                      : 'border-border bg-muted text-muted-foreground',
+                  armado && 'hover:brightness-95 cursor-pointer',
+                );
+                const explica =
+                  nivelAutomacao >= 3
+                    ? 'O sistema envia lances sem confirmação humana. Clique para ir à disputa, onde fica a parada de emergência.'
+                    : nivelAutomacao === 2
+                      ? 'O sistema sugere; o envio pede confirmação. Clique para ir à disputa.'
+                      : 'Somente acompanhamento — nenhum lance é enviado.';
+                const conteudo = (
+                  <>
+                    <Zap className="w-3 h-3" aria-hidden="true" />
+                    Nível {nivelAutomacao}
+                    {armado && <span className="font-normal normal-case opacity-80">· armado</span>}
+                  </>
+                );
+                return armado ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveMainTab('disputar')}
+                    className={classe}
+                    title={explica}
+                  >
+                    {conteudo}
+                  </button>
+                ) : (
+                  <span className={classe} title={explica}>{conteudo}</span>
+                );
+              })()}
+              <ExportarResultados lances={lances} />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <ExportarResultados lances={lances} />
-          </div>
-          <TabsList className="bg-muted/50 flex-wrap h-auto">
+
+          <TabsList className="bg-transparent p-0 h-auto gap-1 flex-wrap justify-start">
             <TabsTrigger value="disputar" className="text-xs">
               <Zap className="w-3.5 h-3.5 mr-1" /> Disputar
             </TabsTrigger>
