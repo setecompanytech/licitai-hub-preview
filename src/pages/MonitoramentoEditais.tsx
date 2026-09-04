@@ -627,6 +627,12 @@ export default function MonitoramentoEditais() {
         );
 
         logCtx({ etapa: 'live_inicio', chamadas: liveCalls.length, pageSize: tamanho });
+        // O acervo local corre em PARALELO com o live e entra SEMPRE na união.
+        // O PNCP pagina por publicação: edital visto ontem sai da página de
+        // hoje — mas ele já está no cache (a edge function grava cada busca).
+        // Sem a união, recarregar a página "apagava" editais da lista.
+        const cachePromise = consultarCache(dataIniEfetiva, dataFimEfetiva)
+          .catch((e) => { logCtx({ etapa: 'merge_cache_erro', erro: String(e) }); return { rows: [] as any[], totalSomado: 0 }; });
         const liveRespostas = await Promise.allSettled(liveCalls);
         rowsRaw = liveRespostas.flatMap((resp) => {
           if (resp.status !== 'fulfilled' || resp.value.error) {
@@ -681,13 +687,25 @@ export default function MonitoramentoEditais() {
         });
         logCtx({ etapa: 'live_fim', ok: liveOk, erros: liveErr, registros: rowsRaw.length, totalLive });
 
+        // União com o acervo: só ACRESCENTA o que o live desta página não
+        // trouxe; nunca remove. O dedup adiante mantém a linha do live, que
+        // carrega a situação mais fresca.
+        if (liveOk > 0) {
+          const acervo = await cachePromise;
+          if (acervo.rows.length > 0) {
+            totalCache = acervo.totalSomado;
+            logCtx({ etapa: 'merge_cache', do_acervo: acervo.rows.length, do_live: rowsRaw.length });
+            rowsRaw = rowsRaw.concat(acervo.rows);
+          }
+        }
+
         // Se todas as chamadas falharam E não trouxeram nada, tenta o cache RPC diretamente
         // (fallback duplo: a edge function já tenta o cache internamente, mas pode falhar no timeout)
         if (liveOk === 0 && rowsRaw.length === 0) {
           pncpIndisponivel = true;
           logCtx({ etapa: 'cache_fallback_direto' });
           try {
-            const cacheRes = await consultarCache(dataIniEfetiva, dataFimEfetiva);
+            const cacheRes = await cachePromise;
             rowsRaw = cacheRes.rows;
             totalCache = cacheRes.totalSomado;
             usouCache = true;
@@ -804,6 +822,11 @@ export default function MonitoramentoEditais() {
         return true;
       });
 
+      // A união chega em blocos (live primeiro, acervo depois); reordenada por
+      // data, a lista lê como uma linha do tempo única.
+      filtrados.sort((a, b) => String(b.data_publicacao_pncp || b.data_abertura_proposta || '')
+        .localeCompare(String(a.data_publicacao_pncp || a.data_abertura_proposta || '')));
+
       const editais: Edital[] = filtrados.map(r => ({
         id: r.id,
         numeroCompra: r.numero_compra ?? '',
@@ -841,7 +864,7 @@ export default function MonitoramentoEditais() {
       //    que a fonte reportou totais inconsistentes; nesse caso usamos o que veio.
       // 2) Após dedup, o total único nunca pode exceder o reportado; corrigimos divergências.
       // 3) Se filtros client-side reduziram o conjunto, o total passa a refletir o filtrado.
-      const totalSomado = usouCache ? totalCache : totalLive;
+      const totalSomado = usouCache ? totalCache : Math.max(totalLive, totalCache);
       const totalRecebido = rowsRaw.length;
       const totalUnico = rows.length;
 
@@ -890,7 +913,7 @@ export default function MonitoramentoEditais() {
       // Telemetria de consistência: registra a busca no banco para investigação posterior.
       try {
         const fonteUsada: 'live' | 'cache' | 'misto' | 'nenhuma' =
-          totalRecebido === 0 ? 'nenhuma' : usouCache ? 'cache' : 'live';
+          totalRecebido === 0 ? 'nenhuma' : usouCache ? 'cache' : totalCache > 0 ? 'misto' : 'live';
         const temDivergencia = Object.keys(divergencias).length > 0;
         const severidade: 'info' | 'warning' | 'error' =
           liveErr > 0 && liveOk === 0 ? 'error'
@@ -989,6 +1012,33 @@ export default function MonitoramentoEditais() {
       const arr = prev[campo] as any[];
       const next = arr.includes(valor) ? arr.filter(v => v !== valor) : [...arr, valor];
       return { ...prev, [campo]: next } as FiltrosLei14133;
+    });
+  };
+
+  /**
+   * Sub-tipos com "Todos": o pseudo-item todos_X vale pelo grupo inteiro no
+   * motor de busca, então as caixinhas dos filhos preenchem junto. Desmarcar
+   * um filho com "Todos" ativo degrada para "os outros filhos" — checkbox
+   * marcada que não desmarca é botão mentiroso.
+   */
+  const toggleTipo = (
+    campo: 'tiposConc' | 'tiposPregao' | 'tiposLeilao',
+    todosId: string,
+    id: string,
+  ) => {
+    setFiltros(prev => {
+      const arr = prev[campo] as string[];
+      if (id === todosId) {
+        return { ...prev, [campo]: arr.includes(todosId) ? [] : [todosId] };
+      }
+      if (arr.includes(todosId)) {
+        const grupo = (campo === 'tiposConc' ? TIPOS_CONCORRENCIA : campo === 'tiposPregao' ? TIPOS_PREGAO : TIPOS_LEILAO)
+          .map(t => t.id)
+          .filter(t => t !== todosId && t !== id);
+        return { ...prev, [campo]: grupo };
+      }
+      const next = arr.includes(id) ? arr.filter(v => v !== id) : [...arr, id];
+      return { ...prev, [campo]: next };
     });
   };
 
@@ -1173,9 +1223,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposConc.includes(t.id) ||
+                          filtros.tiposConc.includes('todos_conc') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposConc', t.id)}
+                        onChange={() => toggleTipo('tiposConc', 'todos_conc', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('concorrencia') && !filtros.modalidades.includes('todas')}
                       />
@@ -1190,9 +1241,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposPregao.includes(t.id) ||
+                          filtros.tiposPregao.includes('todos_pregao') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposPregao', t.id)}
+                        onChange={() => toggleTipo('tiposPregao', 'todos_pregao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('pregao') && !filtros.modalidades.includes('todas')}
                       />
@@ -1207,9 +1259,10 @@ export default function MonitoramentoEditais() {
                         key={t.id}
                         checked={
                           filtros.tiposLeilao.includes(t.id) ||
+                          filtros.tiposLeilao.includes('todos_leilao') ||
                           filtros.modalidades.includes('todas')
                         }
-                        onChange={() => toggleArr('tiposLeilao', t.id)}
+                        onChange={() => toggleTipo('tiposLeilao', 'todos_leilao', t.id)}
                         label={t.label}
                         disabled={!filtros.modalidades.includes('leilao') && !filtros.modalidades.includes('todas')}
                       />

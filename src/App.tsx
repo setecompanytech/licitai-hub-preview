@@ -109,6 +109,11 @@ const ProcessoWorkspace = lazyPage(() => import("./pages/ProcessoWorkspace"));
 
 // queryClient definido em src/lib/query-client.ts (singleton compartilhado).
 
+import { useAvisoDeNovaVersao } from '@/hooks/useAvisoDeNovaVersao';
+
+/** Sentinela do bundle: avisa quando um Publish saiu depois desta aba carregar. */
+const AvisoDeNovaVersao = () => { useAvisoDeNovaVersao(); return null; };
+
 /* A espera da rota que ainda está baixando. Era um spinner no meio do vazio,
    que não diz o que vem e faz a página saltar quando o conteúdo chega; o
    esqueleto reserva o espaço na forma certa. */
@@ -134,6 +139,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <AvisoDeNovaVersao />
       <BrowserRouter>
         <RegistroDeRota />
         <AuthProvider>

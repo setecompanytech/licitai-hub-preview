@@ -293,7 +293,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     quantidade: '', valor_unitario: '', data_pedido: '',
     data_entrega: '', status: 'pendente', nota_fiscal: '', observacoes: '',
     numero_empenho: '', tipo_empenho: '', valor_empenho: '', cota: '',
+    empenho_id: '',
   });
+  const [reenviandoOrdem, setReenviandoOrdem] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Delete audit dialog
@@ -1422,6 +1424,45 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
+  /**
+   * Reenvia o PDF da Ordem/Empenho de um pedido existente: guarda em
+   * contratos-docs, registra em contrato_arquivos e atualiza o
+   * arquivo_ordem_id — o dossiê passa a apontar o documento novo, sem apagar
+   * o antigo (histórico é histórico).
+   */
+  const reenviarOrdem = async (file: File) => {
+    if (!editingPedido || !user?.id) return;
+    setReenviandoOrdem(true);
+    try {
+      const caminho = `${user.id}/${contratoId}/ordens/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+      const { error: upErr } = await supabase.storage
+        .from('contratos-docs')
+        .upload(caminho, file, { upsert: false, contentType: file.type });
+      if (upErr) { toast.error('O PDF não pôde ser guardado: ' + upErr.message); return; }
+      const { data: arq, error: arqErr } = await supabase
+        .from('contrato_arquivos')
+        .insert({
+          contrato_id: contratoId,
+          nome_arquivo: file.name,
+          storage_path: caminho,
+          tipo: 'ordem_fornecimento',
+          user_id: user.id,
+        } as never)
+        .select('id')
+        .single();
+      if (arqErr || !arq) { toast.error('O arquivo subiu, mas o registro falhou: ' + (arqErr?.message ?? '')); return; }
+      const novoId = (arq as unknown as { id: string }).id;
+      const { error: pedErr } = await supabase
+        .from('contrato_pedidos')
+        .update({ arquivo_ordem_id: novoId } as never)
+        .eq('id', editingPedido.id);
+      if (pedErr) { toast.error('Não foi possível apontar o pedido para o novo documento: ' + pedErr.message); return; }
+      toast.success('Ordem/Empenho reenviada — o pedido passa a apontar o documento novo.');
+    } finally {
+      setReenviandoOrdem(false);
+    }
+  };
+
   const openEditDialog = (p: Pedido) => {
     setEditingPedido(p);
     setEditForm({
@@ -1439,6 +1480,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       tipo_empenho: (p as { tipo_empenho?: string }).tipo_empenho || '',
       valor_empenho: String((p as { valor_empenho?: number }).valor_empenho ?? ''),
       cota: (p as { cota?: string }).cota || '',
+      empenho_id: (p as { empenho_id?: string | null }).empenho_id || '',
     });
     setEditDialogOpen(true);
   };
@@ -1464,6 +1506,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       numero_empenho: normalizarNumeroEmpenho(editForm.numero_empenho),
       tipo_empenho: tipoDeEmpenho(editForm.tipo_empenho),
       valor_empenho: parseFloat(editForm.valor_empenho) || null,
+      // O vínculo com o empenho JÁ ANEXADO — é dele que a cota consome e é
+      // ele que o kit de faturamento pré-seleciona.
+      empenho_id: editForm.empenho_id || null,
     } as any).eq('id', editingPedido.id);
     setSavingEdit(false);
     if (error) { toast.error('Erro ao atualizar: ' + error.message); return; }
@@ -2185,6 +2230,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
                     </p>
                   ) : (
+                  <>
                   <div className="flex gap-4 flex-wrap mt-1.5">
                     {cotas.map(c => (
                       <span key={c.cota} className="text-xs text-muted-foreground">
@@ -2211,6 +2257,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       </span>
                     ))}
                   </div>
+                  {/* O valor total vigente (original + reforços − anulações),
+                      abaixo das cotas — a mesma régua da RPC. Sem valor
+                      registrado, nada é inventado. */}
+                  {(cotas[0]?.valor_vigente ?? 0) > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Valor:{' '}
+                      <b className="text-foreground tabular-nums">
+                        {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </b>
+                      {cotas[0].reforcado && ' (com reforços)'}
+                    </p>
+                  )}
+                  </>
                   )}
                 </div>
               );
@@ -2536,10 +2595,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </Button>
                         )}
-                        {(isFinanceiro || isAdmin) && (
+                        {/* Todo membro exclui — o precedente das publicações
+                            (02/09): a exclusão EXIGE motivo e grava snapshot em
+                            pedidos_exclusoes para o Admin; o RLS é por membro
+                            desde 22/06. Esconder do colaborador só o obrigava a
+                            pedir a um admin o que a auditoria já cobre. */}
+                        {!p.nf_quitada && (
                           <Button
                             size="icon" variant="ghost" className="h-7 w-7"
-                            title="Excluir pedido"
+                            title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
                             onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
                           >
                             <Trash2 className="w-3.5 h-3.5 text-destructive" />
@@ -2814,6 +2878,44 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <div>
                 <Label className="text-xs">Valor Unitário</Label>
                 <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
+              </div>
+            </div>
+
+            {/* ── Empenho / Ordem de fornecimento — vínculo e documento ──────
+                Pedidos anteriores a 30/08 nasceram antes do vínculo
+                empenho_id; aqui a edição resolve os dois lados: escolher o
+                empenho já anexado e reenviar o PDF da ordem. */}
+            <div className="rounded-lg border border-border p-3 space-y-2.5">
+              <p className="text-xs font-semibold">Empenho / Ordem de fornecimento</p>
+              <div>
+                <Label className="text-xs">Empenho que autoriza (já anexados ao contrato)</Label>
+                <Select value={editForm.empenho_id || 'nenhum'} onValueChange={v => setEditForm(f => ({ ...f, empenho_id: v === 'nenhum' ? '' : v }))}>
+                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">— Sem vínculo —</SelectItem>
+                    {empenhosDoContrato.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.numero}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  É deste empenho que a cota consome — e é ele que o kit de faturamento pré-seleciona.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Reenviar o PDF da Ordem/Empenho</Label>
+                <Input
+                  type="file"
+                  accept="application/pdf"
+                  className="mt-1 h-8 text-xs"
+                  disabled={reenviandoOrdem}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void reenviarOrdem(f); e.target.value = ''; }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {reenviandoOrdem
+                    ? 'Enviando…'
+                    : 'Atualiza o documento que o dossiê aponta; o anterior permanece no histórico de arquivos.'}
+                </p>
               </div>
             </div>
 

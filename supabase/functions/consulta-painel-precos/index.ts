@@ -8,6 +8,13 @@ const corsHeaders = {
 };
 
 const PNCP_BASE = "https://pncp.gov.br/api/pncp/v1";
+// A busca TEXTUAL oficial vive em outra base (a mesma que serve o app do
+// portal); a de cima é a de detalhe (orgaos/compras/itens/resultados).
+const CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1";
+const FETCH_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "Praefectus/1.0 (licitacoes@praefectus.com.br)",
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -20,7 +27,7 @@ serve(async (req) => {
   }
 
   try {
-    const { termo, anoInicio, anoFim, uf, municipio } = await req.json();
+    const { termo, anoInicio, anoFim, uf, municipio, excluir } = await req.json();
     if (!termo) {
       return json({ error: "Termo de busca é obrigatório" }, 400);
     }
@@ -42,9 +49,42 @@ serve(async (req) => {
     const escopo = escopoLabel(filtro);
     console.log(`[painel-precos] Buscando "${termo}" de ${yearStart} a ${yearEnd} em ${escopo}`);
 
-    // Phase 1: Use Firecrawl/Google to find relevant PNCP procurement pages
-    const pncpLinks = await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY, filtro);
-    console.log(`[painel-precos] ${pncpLinks.length} links PNCP encontrados via busca`);
+    // Phase 0 — A BASE responde por ela mesma: /contratacoes/publicacao?q=
+    // é a busca oficial do PNCP (a mesma que serve pncp.gov.br/app). Perguntar
+    // ao Google onde a base está (Firecrawl) virou COMPLEMENTO, não fonte
+    // primária — o confronto de 03/09 mostrou a diferença de precisão.
+    const linksOficiais = await buscaOficial(termo, filtro);
+    console.log(`[painel-precos] ${linksOficiais.length} links pela API oficial`);
+
+    // Phase 1 (complemento): Firecrawl/Google, só quando a oficial rendeu pouco
+    const pncpLinksWeb = linksOficiais.length >= 3
+      ? []
+      : await findPncpLinks(termo, yearStart, yearEnd, FIRECRAWL_KEY, filtro);
+    const vistosOficial = new Set(linksOficiais.map((l) => `${l.cnpj}/${l.ano}/${Number(l.seq)}`));
+    const pncpLinksBrutos = [
+      ...linksOficiais,
+      ...pncpLinksWeb.filter((l) => !vistosOficial.has(`${l.cnpj}/${l.ano}/${Number(l.seq)}`)),
+    ].slice(0, 24);
+    // A contratação que ORIGINOU a cotação não pode cotar a si mesma: sem este
+    // filtro, os estimados do próprio edital voltavam como "referência" e a
+    // mediana virava a média das estimativas da própria Administração
+    // (circular, e ainda misturando os demais itens do edital).
+    const exc = excluir?.cnpj && excluir?.ano && excluir?.seq
+      ? {
+          cnpj: String(excluir.cnpj).replace(/\D/g, ""),
+          ano: String(excluir.ano),
+          seq: String(Number(excluir.seq)),
+        }
+      : null;
+    const pncpLinks = exc
+      ? pncpLinksBrutos.filter(
+          (l) => !(l.cnpj === exc.cnpj && l.ano === exc.ano && String(Number(l.seq)) === exc.seq),
+        )
+      : pncpLinksBrutos;
+    console.log(
+      `[painel-precos] ${pncpLinks.length} links PNCP (oficial + web)` +
+      (exc ? ` (${pncpLinksBrutos.length - pncpLinks.length} da própria contratação excluídos)` : ""),
+    );
 
     if (pncpLinks.length === 0) {
       return json({
@@ -69,15 +109,28 @@ serve(async (req) => {
       (a, b) => new Date(b.data_compra || "2020-01-01").getTime() - new Date(a.data_compra || "2020-01-01").getTime()
     );
 
+    // Fase 2 — resultado por item: fornecedor vencedor e valor homologado
+    // REAL para os primeiros itens com resultado. Marca só quando o órgão
+    // preencheu (em regra o PNCP não a registra — ressalva do dono, 03/09):
+    // ausente vira null e a tela diz "não informada", nunca um palpite.
+    await enriquecerComResultados(sorted);
+
     // Calculate stats
     const precos = sorted.filter((r) => r.preco_unitario > 0).map((r) => r.preco_unitario);
+    // A mediana-âncora usa SÓ preços homologados: estimativa de edital não é
+    // preço praticado (IN 65/2021, art. 5º, I — contratações CONCLUÍDAS).
+    // Estimados continuam listados como contexto, com o selo dizendo o que são.
+    const homologados = sorted
+      .filter((r) => r.situacao === "Homologado" && r.preco_unitario > 0)
+      .map((r) => r.preco_unitario);
     const resumo =
       precos.length > 0
         ? {
             menor_preco: Math.min(...precos),
             maior_preco: Math.max(...precos),
             preco_medio: +(precos.reduce((a, b) => a + b, 0) / precos.length).toFixed(2),
-            mediana: calcMediana(precos),
+            mediana: homologados.length > 0 ? calcMediana(homologados) : null,
+            total_homologados: homologados.length,
             total_registros: sorted.length,
             periodo: `${yearStart}-${yearEnd}`,
             escopo,
@@ -342,6 +395,9 @@ async function fetchPncpItems(
         tipo_registro: tipoRegistro,
         situacao: isHomologado ? "Homologado" : "Estimado",
         match_score: matchScore,
+        numero_item: item.numeroItem ?? null,
+        tem_resultado: Boolean(item.temResultado),
+        _coords: { cnpj: link.cnpj, ano: link.ano, seq: link.seq },
       });
     }
 
@@ -375,4 +431,95 @@ function json(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+
+// ============================================================
+// Fase 0: busca oficial por texto na API de consulta do PNCP
+// ============================================================
+async function buscaOficial(termo: string, filtro: FiltroLocal): Promise<PncpLink[]> {
+  // Modalidades com volume de fornecimento: pregão-e, dispensa,
+  // concorrência-e, inexigibilidade. 3 janelas anuais (limite do endpoint).
+  const MODS = [6, 8, 4, 9];
+  const hoje = new Date();
+  const janelas: Array<[string, string]> = [];
+  for (let a = 0; a < 3; a++) {
+    const fim = new Date(hoje);
+    fim.setFullYear(hoje.getFullYear() - a);
+    const ini = new Date(fim);
+    ini.setFullYear(fim.getFullYear() - 1);
+    ini.setDate(ini.getDate() + 1);
+    janelas.push([
+      ini.toISOString().slice(0, 10).replace(/-/g, ""),
+      fim.toISOString().slice(0, 10).replace(/-/g, ""),
+    ]);
+  }
+  const links: PncpLink[] = [];
+  for (const [ini, fim] of janelas) {
+    for (const m of MODS) {
+      const p = new URLSearchParams({
+        q: termo,
+        codigoModalidadeContratacao: String(m),
+        dataInicial: ini,
+        dataFinal: fim,
+        pagina: "1",
+        tamanhoPagina: "50",
+      });
+      if (filtro.uf) p.set("uf", filtro.uf.toUpperCase());
+      try {
+        const r = await fetch(`${CONSULTA_BASE}/contratacoes/publicacao?${p}`, {
+          headers: FETCH_HEADERS,
+          signal: AbortSignal.timeout(12_000),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          for (const raw of (d?.data || []) as Record<string, any>[]) {
+            const o = raw?.orgaoEntidade || {};
+            if (o.cnpj && raw.anoCompra && raw.sequencialCompra) {
+              links.push({
+                cnpj: String(o.cnpj),
+                ano: String(raw.anoCompra),
+                seq: String(raw.sequencialCompra),
+                title: raw.objetoCompra || "",
+                orgao: o.razaoSocial || "",
+                dataPublicacao: raw.dataPublicacaoPncp || "",
+              });
+            }
+          }
+        }
+      } catch (_) { /* janela indisponível: as demais seguem */ }
+      // Espaçamento anti-429 — regra operacional do portal.
+      await new Promise((res) => setTimeout(res, 400));
+    }
+  }
+  return links;
+}
+
+// ============================================================
+// Fase 2: resultado por item — fornecedor vencedor e marca (quando houver)
+// ============================================================
+async function enriquecerComResultados(sorted: any[]): Promise<void> {
+  const alvos = sorted
+    .filter((r) => r.tem_resultado && r._coords && r.numero_item != null)
+    .slice(0, 8);
+  for (const r of alvos) {
+    try {
+      const url = `${PNCP_BASE}/orgaos/${r._coords.cnpj}/compras/${r._coords.ano}/${r._coords.seq}/itens/${r.numero_item}/resultados`;
+      const resp = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10_000) });
+      if (!resp.ok) continue;
+      const resultados = await resp.json();
+      const res = Array.isArray(resultados) ? resultados[0] : null;
+      if (!res) continue;
+      r.fornecedor = res.nomeRazaoSocialFornecedor || null;
+      r.marca = res.marca || res.marcaItem || null;
+      if (res.valorUnitarioHomologado) {
+        r.preco_unitario = Number(res.valorUnitarioHomologado);
+        r.situacao = "Homologado";
+      }
+      r.data_resultado = String(res.dataResultado || "").slice(0, 10) || null;
+    } catch (_) { /* item sem resultado alcançável: segue sem enriquecer */ }
+    await new Promise((res) => setTimeout(res, 300));
+  }
+  // _coords é andaime interno — não vaza na resposta.
+  for (const r of sorted) delete r._coords;
 }

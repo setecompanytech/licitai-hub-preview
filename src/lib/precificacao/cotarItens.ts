@@ -27,6 +27,9 @@ export type FornecedorCotado = {
   orgao?: string;
   data?: string;
   situacao?: string;
+  /** Fase 2 — resultado por item: quem venceu e, quando o órgão preencheu, a marca. */
+  fornecedor?: string;
+  marca?: string;
 };
 
 export type CotacaoItem = {
@@ -41,7 +44,23 @@ export type CotacaoItem = {
   pncpVazio?: boolean;
   /** Marca/fabricante do resultado de mercado mais frequente — sugestão, quem confirma é o usuário. */
   marcaSugerida?: string;
+  /** O que foi efetivamente pesquisado no PNCP — o usuário audita e pode editar. */
+  termoUsado?: string;
+  /** Quantos registros do PNCP têm preço HOMOLOGADO (a mediana usa só estes). */
+  pncpHomologados?: number;
+  /** Houve resultados no PNCP, mas todos estimativas de outros editais. */
+  pncpApenasEstimados?: boolean;
   erro?: string;
+};
+
+export type OpcoesCotacao = {
+  /** A contratação de origem (cnpj/ano/sequencial) — excluída da consulta ao
+   *  PNCP: cotar um edital com as estimativas dele mesmo é referência circular. */
+  excluir?: { cnpj: string; ano: string; seq: string };
+  /** Termo digitado pelo usuário, por id do item — substitui o recorte automático. */
+  termos?: Record<string, string>;
+  /** Ids a recotar mesmo já cotados nesta sessão (recotação com termo editado). */
+  forcar?: string[];
 };
 
 /**
@@ -95,11 +114,14 @@ export function subscribeCotacao(licitacaoId: string, cb: () => void): () => voi
 export async function cotarItens(
   licitacaoId: string,
   itens: Array<{ id: string; descricao: string }>,
+  opcoes: OpcoesCotacao = {},
 ): Promise<void> {
   const estado = getEstadoCotacao(licitacaoId);
   if (estado.rodando) return; // já em andamento — a UI só observa
 
-  const pendentes = itens.filter((it) => estado.cotacoes[it.id]?.status !== 'cotado');
+  const pendentes = itens.filter(
+    (it) => opcoes.forcar?.includes(it.id) || estado.cotacoes[it.id]?.status !== 'cotado',
+  );
   if (!pendentes.length) return;
 
   setEstado(licitacaoId, { rodando: true, feitos: 0, total: pendentes.length });
@@ -115,12 +137,17 @@ export async function cotarItens(
       let resultado: CotacaoItem;
       try {
         const anoAtual = new Date().getFullYear();
+        // Termo editado pelo usuário vale VERBATIM nas duas fontes — quem
+        // digitou escolheu o recorte; o automático continua sendo o fallback.
+        const termoLivre = opcoes.termos?.[item.id]?.trim();
+        const termoInternet = (termoLivre || item.descricao).slice(0, 120);
+        const termoPncp = termoLivre ? termoLivre.slice(0, 80) : termoCurto(item.descricao);
         const [internet, pncp] = await Promise.allSettled([
           supabase.functions.invoke('pesquisa-preco-real', {
-            body: { termo: item.descricao.slice(0, 120) },
+            body: { termo: termoInternet },
           }),
           supabase.functions.invoke('consulta-painel-precos', {
-            body: { termo: termoCurto(item.descricao), anoInicio: anoAtual - 2, anoFim: anoAtual },
+            body: { termo: termoPncp, anoInicio: anoAtual - 2, anoFim: anoAtual, excluir: opcoes.excluir },
           }),
         ]);
 
@@ -129,10 +156,12 @@ export async function cotarItens(
         // PNCP primeiro: preço homologado é a referência prioritária (IN 65/2021)
         let pncpMediana: number | undefined;
         let pncpRegistros: number | undefined;
+        let pncpHomologados: number | undefined;
+        let pncpApenasEstimados = false;
         let pncpVazio = false;
         if (pncp.status === 'fulfilled' && pncp.value.data?.success) {
           const d = pncp.value.data as {
-            resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string }>;
+            resultados?: Array<{ descricao?: string; orgao?: string; preco_unitario?: number; data_compra?: string; url?: string; situacao?: string; fornecedor?: string; marca?: string }>;
             resumo?: { mediana?: number; total_registros?: number };
           };
           fornecedores.push(
@@ -148,13 +177,18 @@ export async function cotarItens(
                 orgao: r.orgao || '',
                 data: (r.data_compra || '').slice(0, 10),
                 situacao: r.situacao || '',
+                fornecedor: r.fornecedor || undefined,
+                marca: r.marca || undefined,
               })),
           );
-          if (d.resumo?.mediana) {
-            pncpMediana = d.resumo.mediana;
-            pncpRegistros = d.resumo.total_registros;
+          const resumo = d.resumo as { mediana?: number | null; total_registros?: number; total_homologados?: number } | undefined;
+          if (resumo) {
+            pncpMediana = resumo.mediana ?? undefined;
+            pncpRegistros = resumo.total_registros;
+            pncpHomologados = resumo.total_homologados;
           }
           if (!(d.resultados || []).length) pncpVazio = true;
+          else pncpApenasEstimados = (resumo?.total_homologados ?? 0) === 0;
         } else {
           pncpVazio = true;
         }
@@ -195,7 +229,10 @@ export async function cotarItens(
             precoMedio: Math.round((precos.reduce((a, b) => a + b, 0) / precos.length) * 100) / 100,
             pncpMediana,
             pncpRegistros,
+            pncpHomologados,
+            pncpApenasEstimados,
             pncpVazio,
+            termoUsado: termoPncp,
             marcaSugerida,
           };
           comPreco++;

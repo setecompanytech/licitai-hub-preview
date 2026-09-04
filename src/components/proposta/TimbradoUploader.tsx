@@ -46,6 +46,8 @@ type UploadSlot = {
 type PageOrientation = 'portrait' | 'landscape';
 type PaperSize = 'a4' | 'letter' | 'legal' | 'oficio';
 
+type AlinhamentoImg = 'esticar' | 'esquerda' | 'centro' | 'direita';
+
 interface PageSetup {
   orientation: PageOrientation;
   paperSize: PaperSize;
@@ -55,6 +57,14 @@ interface PageSetup {
   marginRight: number;
   headerHeight: number;
   footerHeight: number;
+  /** Posição/dimensão da ARTE dentro da área (03/09): mover/editar a
+   *  logomarca para adequar ao documento — pedido do dono. */
+  headerAlign: AlinhamentoImg;
+  headerWidth: number;   // % da largura da página (10–100)
+  headerOffsetY: number; // cm, empurra para baixo
+  footerAlign: AlinhamentoImg;
+  footerWidth: number;
+  footerOffsetY: number; // cm, empurra para cima
 }
 
 const PAPER_SIZES: Record<PaperSize, { label: string; w: number; h: number }> = {
@@ -73,6 +83,12 @@ const DEFAULT_SETUP: PageSetup = {
   marginRight: 2,
   headerHeight: 2.5,
   footerHeight: 2,
+  headerAlign: 'esticar',
+  headerWidth: 100,
+  headerOffsetY: 0,
+  footerAlign: 'esticar',
+  footerWidth: 100,
+  footerOffsetY: 0,
 };
 
 function cropImageToBlob(
@@ -231,8 +247,8 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
 
   useEffect(() => {
     if (!empresaId) return;
-    supabase.from('empresas')
-      .select('timbrado_url, timbrado_path, cabecalho_url, cabecalho_path, rodape_url, rodape_path')
+    (supabase.from('empresas') as any)
+      .select('timbrado_url, timbrado_path, cabecalho_url, cabecalho_path, rodape_url, rodape_path, timbrado_ajustes')
       .eq('id', empresaId)
       .single()
       .then(({ data }) => {
@@ -241,6 +257,10 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         const hPath = (data as any).cabecalho_path || data.timbrado_path || null;
         const fUrl = (data as any).rodape_url || null;
         const fPath = (data as any).rodape_path || null;
+        const ajustes = (data as any).timbrado_ajustes;
+        if (ajustes && typeof ajustes === 'object') {
+          setPageSetup((prev) => ({ ...prev, ...ajustes }));
+        }
 
         // If saved URL points to a non-image file (e.g. .docx), clear it
         // so the user can re-upload properly
@@ -426,6 +446,18 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
     toast.success('Timbrado removido.');
   };
 
+  const [salvandoAjustes, setSalvandoAjustes] = useState(false);
+  const salvarAjustes = async () => {
+    if (!empresaId) return;
+    setSalvandoAjustes(true);
+    const { error } = await supabase.from('empresas')
+      .update({ timbrado_ajustes: pageSetup } as never)
+      .eq('id', empresaId);
+    setSalvandoAjustes(false);
+    if (error) toast.error('Não foi possível salvar os ajustes: ' + error.message);
+    else toast.success('Ajustes do timbrado salvos — valem para todos os documentos gerados.');
+  };
+
   const paper = PAPER_SIZES[pageSetup.paperSize];
   const isLandscape = pageSetup.orientation === 'landscape';
   const pageW = isLandscape ? paper.h : paper.w;
@@ -439,7 +471,7 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           type="number"
           step="0.1"
           min="0"
-          max="10"
+          max={unit === '%' ? 100 : 10}
           value={pageSetup[field] as number}
           onChange={(e) => setPageSetup(prev => ({ ...prev, [field]: parseFloat(e.target.value) || 0 }))}
           className="h-8 text-xs pr-8"
@@ -661,6 +693,49 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
         </div>
       </div>
 
+      {/* ── Mover/editar a arte dentro da área (03/09) ─────────────────── */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold">Posição da logomarca — Cabeçalho</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Alinhamento</Label>
+            <select
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+              value={pageSetup.headerAlign}
+              onChange={(e) => setPageSetup((prev) => ({ ...prev, headerAlign: e.target.value as AlinhamentoImg }))}
+            >
+              <option value="esticar">Preencher a área</option>
+              <option value="esquerda">Esquerda</option>
+              <option value="centro">Centro</option>
+              <option value="direita">Direita</option>
+            </select>
+          </div>
+          {renderMarginInput('Largura', 'headerWidth', '%')}
+          {renderMarginInput('Descer', 'headerOffsetY')}
+        </div>
+        <Label className="text-xs font-semibold">Posição da logomarca — Rodapé</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Alinhamento</Label>
+            <select
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+              value={pageSetup.footerAlign}
+              onChange={(e) => setPageSetup((prev) => ({ ...prev, footerAlign: e.target.value as AlinhamentoImg }))}
+            >
+              <option value="esticar">Preencher a área</option>
+              <option value="esquerda">Esquerda</option>
+              <option value="centro">Centro</option>
+              <option value="direita">Direita</option>
+            </select>
+          </div>
+          {renderMarginInput('Largura', 'footerWidth', '%')}
+          {renderMarginInput('Subir', 'footerOffsetY')}
+        </div>
+        <Button size="sm" className="mt-1" onClick={salvarAjustes} disabled={salvandoAjustes}>
+          {salvandoAjustes ? 'Salvando…' : 'Salvar ajustes da página'}
+        </Button>
+      </div>
+
       <div className="space-y-2">
         <Label className="text-xs font-semibold">Predefinições Rápidas</Label>
         <div className="flex flex-wrap gap-1.5">
@@ -714,7 +789,20 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <div className="absolute overflow-hidden" style={{ top: 0, left: 0, right: 0, height: mTop + hHeight }}>
             <div className="absolute inset-0 bg-black/[0.04] border-b border-dashed border-border" />
             {header.url && isImageUrl(header.url) ? (
-              <img src={header.url} alt="Cabeçalho" className="relative z-10 w-full h-full object-contain" />
+              <div
+                className="relative z-10 w-full h-full flex"
+                style={{
+                  justifyContent: pageSetup.headerAlign === 'esquerda' ? 'flex-start'
+                    : pageSetup.headerAlign === 'direita' ? 'flex-end' : 'center',
+                  paddingTop: pageSetup.headerOffsetY * 10 * scaleFactor,
+                }}
+              >
+                <img src={header.url} alt="Cabeçalho"
+                  style={{
+                    width: pageSetup.headerAlign === 'esticar' ? '100%' : `${pageSetup.headerWidth}%`,
+                    height: '100%', objectFit: 'contain',
+                  }} />
+              </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                 <span className="text-black/40 italic" style={{ fontSize: Math.max(7, hHeight * 0.25) }}>
@@ -735,7 +823,20 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           <div className="absolute overflow-hidden" style={{ bottom: 0, left: 0, right: 0, height: mBottom + fHeight }}>
             <div className="absolute inset-0 bg-black/[0.04] border-t border-dashed border-border" />
             {footer.url && isImageUrl(footer.url) ? (
-              <img src={footer.url} alt="Rodapé" className="relative z-10 w-full h-full object-contain" />
+              <div
+                className="relative z-10 w-full h-full flex"
+                style={{
+                  justifyContent: pageSetup.footerAlign === 'esquerda' ? 'flex-start'
+                    : pageSetup.footerAlign === 'direita' ? 'flex-end' : 'center',
+                  paddingBottom: pageSetup.footerOffsetY * 10 * scaleFactor,
+                }}
+              >
+                <img src={footer.url} alt="Rodapé"
+                  style={{
+                    width: pageSetup.footerAlign === 'esticar' ? '100%' : `${pageSetup.footerWidth}%`,
+                    height: '100%', objectFit: 'contain',
+                  }} />
+              </div>
             ) : (
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                 <span className="text-black/40 italic" style={{ fontSize: Math.max(7, fHeight * 0.25) }}>

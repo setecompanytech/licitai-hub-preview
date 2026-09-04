@@ -7,6 +7,9 @@ import {
 import { FileArchive, FileText, Loader2, Package, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   avaliarCertidoes, podeEnviar, type CertidaoAvaliada, type DocumentoEmpresa,
@@ -14,6 +17,7 @@ import {
 import { baixarCertidoes, indiceDoKit, montarPdfUnico, montarZip, baixar } from '@/lib/faturamento/kit';
 import { numeroDoEmpenho } from '@/lib/faturamento/numero-do-empenho';
 import { gerarReciboPdf, type DadosDoRecibo } from '@/lib/faturamento/recibo';
+import { carregarTimbrado } from '@/lib/timbrado/timbrado';
 
 /**
  * Kit que acompanha a NF-e: recibo de quitação + certidões negativas.
@@ -53,9 +57,22 @@ type Props = {
   };
 };
 
+type ContaBancaria = { id: string; nome: string; banco_nome: string | null; agencia: string | null; conta: string | null };
+
 export default function KitFaturamento({ pedido }: Props) {
   const { empresaAtiva } = useEmpresa();
+  const { user } = useAuth();
   const [aberto, setAberto] = useState(false);
+  // O recibo se APRESENTA ao órgão: empenho e conta são conferidos por quem
+  // gera, não adivinhados pelo sistema — seleção explícita, com pré-escolha
+  // quando as fontes não deixam dúvida.
+  const [empenhos, setEmpenhos] = useState<Array<{ id: string; numero: string }>>([]);
+  const [empenhoSel, setEmpenhoSel] = useState('');
+  const [contas, setContas] = useState<ContaBancaria[]>([]);
+  const [contaSel, setContaSel] = useState('');
+  /** O empenho_id que o pedido JÁ tinha — para gravar o vínculo só quando a
+   *  escolha do kit acrescenta informação nova. */
+  const [vinculoOriginal, setVinculoOriginal] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [gerando, setGerando] = useState<'zip' | 'pdf' | null>(null);
   const [certidoes, setCertidoes] = useState<CertidaoAvaliada[]>([]);
@@ -70,12 +87,14 @@ export default function KitFaturamento({ pedido }: Props) {
     let vivo = true;
     (async () => {
       setCarregando(true);
-      const [docsRes, pedidosRes, contratoRes] = await Promise.all([
-        // `as any`: empresa_id foi criada na migration 20260818000007 e os tipos
-        // gerados ainda não a conhecem — sem isso o TS estoura em recursão.
+      const [docsRes, pedidosRes, contratoRes, empenhosRes, pedRes, contasRes] = await Promise.all([
+        // A MESMA régua da página Jurídico → Documentos: linhas da empresa +
+        // legado privado do próprio usuário. Só empresa_id estrito deixava o
+        // colega gerar kit com uma certidão só — as demais eram linhas que o
+        // colega dono ainda não compartilhou.
         (supabase.from('documentos') as any)
-          .select('id, nome, validade, arquivo_path')
-          .eq('empresa_id', empresaAtiva.id),
+          .select('id, nome, validade, arquivo_path, empresa_id')
+          .or(`empresa_id.eq.${empresaAtiva.id},and(user_id.eq.${user?.id ?? '00000000-0000-0000-0000-000000000000'},empresa_id.is.null)`),
         // Qual remessa é esta dentro do contrato — "8ª remessa" no recibo.
         supabase.from('contrato_pedidos')
           .select('id, data_pedido')
@@ -86,9 +105,45 @@ export default function KitFaturamento({ pedido }: Props) {
           .select('numero_contrato, orgao_contratante')
           .eq('id', pedido.contrato_id)
           .maybeSingle(),
+        // Sem filtro de cancelamento: `cancelado` NÃO é coluna — é derivado
+        // dos movimentos de anulação no painel. Filtrar por coluna inexistente
+        // fazia a consulta falhar em silêncio e a lista vinha vazia.
+        supabase.from('contrato_empenhos' as never)
+          .select('id, numero')
+          .eq('contrato_id', pedido.contrato_id)
+          .order('numero'),
+        supabase.from('contrato_pedidos')
+          .select('empenho_id')
+          .eq('id', pedido.id)
+          .maybeSingle(),
+        // A conta do recibo vem do Financeiro DE VERDADE (financeiro_contas).
+        // `fin_contas` é a família legada morta — a consulta voltava vazia e o
+        // recibo saía sem banco/agência/conta desde sempre.
+        supabase.from('financeiro_contas')
+          .select('id, nome, banco_nome, agencia, conta')
+          .eq('empresa_id', empresaAtiva.id)
+          .order('nome'),
       ]);
       if (!vivo) return;
-      setCertidoes(avaliarCertidoes((docsRes.data as DocumentoEmpresa[]) ?? []));
+      // Linha da empresa vence a linha legada de mesmo nome.
+      const brutos = ((docsRes.data as Array<DocumentoEmpresa & { empresa_id: string | null }>) ?? []);
+      const porNome = new Map<string, DocumentoEmpresa>();
+      for (const d of brutos) if (d.empresa_id) porNome.set(d.nome, d);
+      for (const d of brutos) if (!porNome.has(d.nome)) porNome.set(d.nome, d);
+      setCertidoes(avaliarCertidoes([...porNome.values()]));
+
+      const listaEmp = ((empenhosRes.data as unknown as Array<{ id: string; numero: string }>) ?? []);
+      setEmpenhos(listaEmp);
+      const empenhoVinculadoId = (pedRes.data as unknown as { empenho_id: string | null } | null)?.empenho_id;
+      setVinculoOriginal(empenhoVinculadoId ?? null);
+      const doVinculo = listaEmp.find((e) => e.id === empenhoVinculadoId)?.numero;
+      // Pré-escolha sem ambiguidade: o vínculo do pedido; senão, empenho único.
+      setEmpenhoSel(doVinculo ?? (listaEmp.length === 1 ? listaEmp[0].numero : ''));
+
+      const listaContas = ((contasRes.data as unknown as ContaBancaria[]) ?? [])
+        .filter((c) => c.banco_nome || c.agencia || c.conta);
+      setContas(listaContas);
+      setContaSel(listaContas.length === 1 ? listaContas[0].id : '');
       const ordem = ((pedidosRes.data as { id: string }[]) ?? []).findIndex((p) => p.id === pedido.id);
       setRemessa(ordem >= 0 ? ordem + 1 : null);
       const c = contratoRes.data as { numero_contrato?: string; orgao_contratante?: string } | null;
@@ -111,11 +166,10 @@ export default function KitFaturamento({ pedido }: Props) {
     try {
       const { data: empresa } = await supabase
         .from('empresas').select('*').eq('id', empresaAtiva.id).maybeSingle();
-      const { data: conta } = await supabase
-        .from('fin_contas' as never)
-        .select('banco_nome, agencia, numero_conta')
-        .eq('empresa_id', empresaAtiva.id)
-        .limit(1).maybeSingle();
+      const contaEscolhida = contas.find((c) => c.id === contaSel) ?? null;
+      const conta = contaEscolhida
+        ? { banco_nome: contaEscolhida.banco_nome, agencia: contaEscolhida.agencia, numero_conta: contaEscolhida.conta }
+        : null;
 
       // ── O empenho do recibo, pelas fontes certas ──────────────────────
       //
@@ -126,22 +180,29 @@ export default function KitFaturamento({ pedido }: Props) {
       // 1º o vínculo (quem criou o pedido disse de qual empenho ele sai);
       // 2º as Informações Complementares da própria NF-e; sem nenhum, o
       // recibo omite a menção em vez de inventar.
-      let empenhoDoVinculo: string | null = null;
-      let infComplementares: string | null = null;
-      const { data: ped } = await supabase
-        .from('contrato_pedidos')
-        .select('empenho_id')
-        .eq('id', pedido.id)
-        .maybeSingle();
-      const empenhoId = (ped as unknown as { empenho_id: string | null } | null)?.empenho_id;
-      if (empenhoId) {
-        const { data: emp } = await supabase
-          .from('contrato_empenhos' as never)
-          .select('numero')
-          .eq('id', empenhoId)
-          .maybeSingle();
-        empenhoDoVinculo = (emp as unknown as { numero: string } | null)?.numero ?? null;
+      // A seleção do diálogo manda (pré-preenchida pelo vínculo/empenho único);
+      // sem seleção, resta a leitura das Informações Complementares da NF-e.
+      const empenhoDoVinculo: string | null = empenhoSel || null;
+
+      // A escolha feita aqui É o vínculo que faltava (pedidos anteriores a
+      // 30/08 nasceram antes da coluna empenho_id): grava no pedido, e o
+      // próximo kit pré-seleciona sozinho — e o saldo do empenho passa a
+      // contar esta entrega, como manda o desenho.
+      const empenhoEscolhido = empenhos.find((e) => e.numero === empenhoSel);
+      if (empenhoEscolhido && vinculoOriginal !== empenhoEscolhido.id) {
+        const { data: gravado } = await supabase
+          .from('contrato_pedidos')
+          .update({ empenho_id: empenhoEscolhido.id } as never)
+          .eq('id', pedido.id)
+          .select('id');
+        if (gravado?.length) {
+          setVinculoOriginal(empenhoEscolhido.id);
+          toast.info(`Vínculo gravado: pedido ${pedido.numero_pedido} sai do empenho ${empenhoEscolhido.numero}.`, {
+            description: 'O saldo do empenho passa a contar esta entrega, e o próximo kit já vem pré-selecionado.',
+          });
+        }
       }
+      let infComplementares: string | null = null;
       if (!empenhoDoVinculo) {
         const { data: lanc } = await supabase
           .from('financeiro_lancamentos')
@@ -175,7 +236,8 @@ export default function KitFaturamento({ pedido }: Props) {
         remessa,
         numeroContrato: contrato.numero,
       };
-      const recibo = gerarReciboPdf(empresa as never, (conta as never) ?? null, dados);
+      const timbrado = await carregarTimbrado(empresaAtiva.id);
+      const recibo = gerarReciboPdf(empresa as never, (conta as never) ?? null, dados, timbrado);
 
       const { pecas, falhas } = await baixarCertidoes(certidoes);
       const nomeBase = `kit-faturamento-${(pedido.nota_fiscal || pedido.numero_pedido || 'pedido')
@@ -251,6 +313,43 @@ export default function KitFaturamento({ pedido }: Props) {
                   </div>
                 </div>
               )}
+
+              <div className="rounded-lg border border-border p-3 space-y-2.5">
+                <p className="text-xs font-semibold">Recibo — referências que o órgão confere</p>
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-xs">Nota de empenho</Label>
+                    <Select value={empenhoSel || 'nenhum'} onValueChange={(v) => setEmpenhoSel(v === 'nenhum' ? '' : v)}>
+                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nenhum">— Sem menção ao empenho —</SelectItem>
+                        {empenhos.map((e) => (
+                          <SelectItem key={e.id} value={e.numero}>{e.numero}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Conta para recebimento</Label>
+                    <Select value={contaSel || 'nenhuma'} onValueChange={(v) => setContaSel(v === 'nenhuma' ? '' : v)}>
+                      <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nenhuma">— Sem dados bancários —</SelectItem>
+                        {contas.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {[c.banco_nome || c.nome, c.agencia && `ag. ${c.agencia}`, c.conta && `c/c ${c.conta}`].filter(Boolean).join(' · ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {contas.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Nenhuma conta com dados bancários no Financeiro → Contas — cadastre banco, agência e conta lá para o recibo carregá-los.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div className="rounded-lg border border-border divide-y divide-border">
                 {certidoes.map((c) => (

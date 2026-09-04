@@ -39,7 +39,8 @@ export const CERTIDOES_DO_FATURAMENTO = [
   'Certidão Negativa de Débitos Estaduais',
   'Certidão Negativa de Débitos Municipais',
   'CNDT – Certidão Trabalhista',
-  'Certidão Negativa de Falência',
+  // Falência ficou de fora por decisão do dono (03/09/2026): é peça de
+  // HABILITAÇÃO, não de faturamento — continua no checklist do Jurídico.
 ] as const;
 
 /** Janela de alerta: certidão que vence dentro disso ainda serve, mas avisa. */

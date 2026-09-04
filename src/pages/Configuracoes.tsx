@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TimbradoConfig from '@/components/configuracoes/TimbradoConfig';
 import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, MapPin, BarChart3 } from 'lucide-react';
 import CnaesSecundarios from '@/components/configuracoes/CnaesSecundarios';
 import SegurancaConta from '@/components/configuracoes/SegurancaConta';
@@ -379,11 +380,20 @@ export default function Configuracoes() {
               <BarChart3 className="w-4 h-4" />
               Regime Tributário
             </TabsTrigger>
+            <TabsTrigger value="timbrado" className="gap-2">
+              <ImageIcon className="w-4 h-4" />
+              Timbrado
+            </TabsTrigger>
             <TabsTrigger value="seguranca" className="gap-2">
               <Shield className="w-4 h-4" />
               Segurança
             </TabsTrigger>
           </TabsList>
+
+          {/* ── Tab: Timbrado ── */}
+          <TabsContent value="timbrado" className="space-y-6">
+            <TimbradoConfig />
+          </TabsContent>
 
           {/* ── Tab: Configurações Gerais ── */}
           <TabsContent value="geral" className="space-y-6">

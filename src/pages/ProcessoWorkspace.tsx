@@ -554,6 +554,26 @@ export default function ProcessoWorkspace() {
                       </div>
                     )}
 
+                    {/* Ausência não pode ser silêncio: sem este bloco, a seção
+                        de itens simplesmente não existia e ninguém sabia se era
+                        instabilidade, contratação sem itens ou extração pendente. */}
+                    {!pncpCarregando && itensEspelho.length === 0 && (
+                      <div className="pt-3 border-t border-border/40">
+                        <p className="text-xs text-muted-foreground mb-1 font-medium">Itens</p>
+                        <p className="text-xs text-muted-foreground">
+                          Nenhum item veio do PNCP nesta consulta — pode ser instabilidade do portal
+                          ou contratação sem itens publicados.{' '}
+                          <button
+                            type="button"
+                            className="underline underline-offset-2 hover:text-foreground"
+                            onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
+                          >
+                            Consultar novamente
+                          </button>
+                        </p>
+                      </div>
+                    )}
+
                     {/* Itens da contratação — espelho fiel da aba Itens do PNCP:
                         mesmos rótulos de coluna, descrição integral, cabeçalho em
                         negrito como no portal. */}
@@ -694,6 +714,16 @@ export default function ProcessoWorkspace() {
               licitacaoId={lic.id}
               onSaved={loadPrecificacao}
               onIrParaProposta={() => setAba('proposta')}
+              objetoProcesso={lic.objeto ?? ''}
+              pncpCoords={(() => {
+                const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+                if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
+                if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
+                  return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
+                const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+                if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
+                return null;
+              })()}
             />
             <div className="flex items-center justify-between">
               <div>

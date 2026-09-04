@@ -122,3 +122,9 @@ project_id = "uwtyuwktxalnpgrcbbgk"
     verify_jwt = false
   [functions.pesquisa-tempo-real]
     verify_jwt = false
+
+  [functions.semear-acervo-pncp]
+    verify_jwt = false
+
+  [functions.normalizar-arquivos-documentos]
+    verify_jwt = false

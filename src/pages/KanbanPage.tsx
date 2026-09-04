@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
@@ -79,6 +80,7 @@ export default function KanbanPage() {
   const focoRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<LicitacaoKanban[]>([]);
   const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [editItem, setEditItem] = useState<LicitacaoKanban | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
@@ -247,6 +249,12 @@ export default function KanbanPage() {
   useEffect(() => {
     if (!user) return;
     const loadData = async () => {
+      // Semente da última visita: o quadro pinta na hora com o que já se viu,
+      // e a consulta fresca corrige em silêncio logo atrás. O spinner só
+      // existe na primeira carga a frio — era ele o "delay" de toda visita.
+      const chaveSemente = ['kanban-semente', empresaAtiva?.id ?? user.id];
+      const semente = qc.getQueryData<LicitacaoKanban[]>(chaveSemente);
+      if (semente && semente.length > 0) { setItems(semente); setLoading(false); }
       // Quadro da equipe: escopo por empresa, não por usuário. O RLS já limita
       // às empresas das quais a pessoa é membro.
       let q = supabase
@@ -254,13 +262,15 @@ export default function KanbanPage() {
         .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento, arquivado_em');
       if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
       const { data } = await q.order('created_at', { ascending: false });
-      setItems((data || []).map(item => ({ ...item, status: normalizeStatus(item.status) })));
+      const mapeados = (data || []).map(item => ({ ...item, status: normalizeStatus(item.status) }));
+      setItems(mapeados);
+      qc.setQueryData(chaveSemente, mapeados);
       setLoading(false);
     };
     loadData();
 
     return undefined;
-  }, [user, empresaAtiva]);
+  }, [user, empresaAtiva, qc]);
 
   // Rola até o card destacado assim que ele existe no DOM.
   useEffect(() => {

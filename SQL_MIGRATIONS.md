@@ -12134,3 +12134,462 @@ COMMENT ON COLUMN public.contratos.forma_fornecimento IS
   '(parcelado — saldo esgotado alerta pedidos futuros). NULL = não informado: '
   'comportamento clássico, e a tela pergunta quando o saldo zerar.';
 ```
+
+## 2026-09-03 — Histórico do órgão no acervo (Fase 1 da recorrência)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Histórico do órgão — a consulta da recorrência (Fase 1 do estudo de 03/09)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- "Este órgão já licitou objeto similar?" — a pergunta que nenhuma tela fazia.
+-- A busca semântica existente (busca_editais_semantica) não filtra por CNPJ
+-- nem por período, e ignora processos encerrados — que são exatamente o que a
+-- recorrência procura: o ciclo do ano anterior.
+--
+-- O casamento é pela DESCRIÇÃO DO OBJETO (embedding), nunca por marca: o PNCP
+-- em regra não registra marca na listagem, e a descrição é o campo fiel —
+-- decisão do dono, 03/09/2026.
+
+CREATE OR REPLACE FUNCTION public.historico_orgao_semantico(
+  p_embedding extensions.vector(1536),
+  p_cnpj text DEFAULT NULL,
+  p_desde date DEFAULT NULL,
+  p_limite integer DEFAULT 12,
+  p_similaridade_min real DEFAULT 0.25
+)
+RETURNS TABLE (
+  id uuid,
+  pncp_id text,
+  numero_controle_pncp text,
+  cnpj_orgao text,
+  orgao text,
+  objeto text,
+  modalidade_nome text,
+  uf text,
+  municipio text,
+  valor_total_estimado numeric,
+  data_publicacao_pncp timestamptz,
+  numero_compra text,
+  ano_compra text,
+  sequencial_compra text,
+  url_pncp text,
+  similaridade real
+)
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'extensions'
+AS $$
+  SELECT
+    e.id, e.pncp_id, e.numero_controle_pncp, e.cnpj_orgao, e.orgao, e.objeto,
+    e.modalidade_nome, e.uf, e.municipio, e.valor_total_estimado,
+    e.data_publicacao_pncp, e.numero_compra, e.ano_compra, e.sequencial_compra,
+    e.url_pncp,
+    (1 - (e.embedding <=> p_embedding))::real AS similaridade
+  FROM public.pncp_editais_cache e
+  WHERE e.embedding IS NOT NULL
+    AND (p_cnpj IS NULL OR regexp_replace(COALESCE(e.cnpj_orgao, ''), '\D', '', 'g') = p_cnpj)
+    AND (p_desde IS NULL OR e.data_publicacao_pncp >= p_desde)
+    AND (1 - (e.embedding <=> p_embedding)) >= p_similaridade_min
+  ORDER BY e.embedding <=> p_embedding
+  LIMIT p_limite;
+$$;
+```
+
+## 2026-09-03 — Controle de Documentos da empresa (linha + arquivo)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Controle de Documentos passa a ser DA EMPRESA (03/09/2026)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- A tabela `documentos` nasceu pessoal (RLS auth.uid() = user_id, FOR ALL):
+-- cada colaborador via só o que ele mesmo anexou — mas contrato social,
+-- certidões e balanço são documentos DA EMPRESA (princípio nº 2 da
+-- arquitetura). Conversão nos moldes da casa:
+--   · linha nova nasce com empresa_id (a tela envia);
+--   · linha antiga herda a empresa quando o dono pertence a UMA só
+--     (sem ambiguidade); quem pertence a várias mantém a linha privada e
+--     ganha o botão "Compartilhar com a equipe" na tela — mudança de
+--     alcance é decisão de alguém, nunca efeito de migration (princípio 7);
+--   · leitura/renovação por qualquer membro; exclusão da linha por dono ou
+--     admin (padrão delete-admin da casa).
+
+ALTER TABLE public.documentos
+  ADD COLUMN IF NOT EXISTS empresa_id uuid REFERENCES public.empresas(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_documentos_empresa ON public.documentos(empresa_id);
+
+-- Herança sem ambiguidade: só usuários com exatamente UMA empresa.
+UPDATE public.documentos d
+SET empresa_id = m.empresa_id
+FROM (
+  SELECT user_id, min(empresa_id::text)::uuid AS empresa_id
+  FROM public.empresa_membros
+  GROUP BY user_id
+  HAVING count(DISTINCT empresa_id) = 1
+) m
+WHERE d.empresa_id IS NULL
+  AND d.user_id = m.user_id
+RETURNING d.id;
+
+DROP POLICY IF EXISTS "Users can CRUD own documentos" ON public.documentos;
+DROP POLICY IF EXISTS documentos_select_empresa ON public.documentos;
+DROP POLICY IF EXISTS documentos_insert_empresa ON public.documentos;
+DROP POLICY IF EXISTS documentos_update_empresa ON public.documentos;
+DROP POLICY IF EXISTS documentos_delete_empresa ON public.documentos;
+
+CREATE POLICY documentos_select_empresa ON public.documentos
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id OR (empresa_id IS NOT NULL AND public.is_empresa_member(auth.uid(), empresa_id)));
+
+CREATE POLICY documentos_insert_empresa ON public.documentos
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id AND (empresa_id IS NULL OR public.is_empresa_member(auth.uid(), empresa_id)));
+
+-- Renovar certidão vencida é rotina de equipe: update por membro.
+CREATE POLICY documentos_update_empresa ON public.documentos
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id OR (empresa_id IS NOT NULL AND public.is_empresa_member(auth.uid(), empresa_id)))
+  WITH CHECK (empresa_id IS NULL OR public.is_empresa_member(auth.uid(), empresa_id));
+
+CREATE POLICY documentos_delete_empresa ON public.documentos
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id OR (empresa_id IS NOT NULL AND public.is_empresa_admin(auth.uid(), empresa_id)));
+
+-- ── Storage: arquivos da empresa vivem em empresa/<empresa_id>/… ────────────
+-- Os caminhos antigos (<user_id>/…) continuam válidos para o dono; sem estas
+-- policies, o colega veria a LINHA e não abriria o ARQUIVO.
+DROP POLICY IF EXISTS docs_habilitacao_empresa_select ON storage.objects;
+DROP POLICY IF EXISTS docs_habilitacao_empresa_insert ON storage.objects;
+DROP POLICY IF EXISTS docs_habilitacao_empresa_update ON storage.objects;
+DROP POLICY IF EXISTS docs_habilitacao_empresa_delete ON storage.objects;
+
+CREATE POLICY docs_habilitacao_empresa_select ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'documentos-habilitacao'
+    AND (storage.foldername(name))[1] = 'empresa'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[2])::uuid));
+
+CREATE POLICY docs_habilitacao_empresa_insert ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'documentos-habilitacao'
+    AND (storage.foldername(name))[1] = 'empresa'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[2])::uuid));
+
+CREATE POLICY docs_habilitacao_empresa_update ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'documentos-habilitacao'
+    AND (storage.foldername(name))[1] = 'empresa'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[2])::uuid));
+
+CREATE POLICY docs_habilitacao_empresa_delete ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'documentos-habilitacao'
+    AND (storage.foldername(name))[1] = 'empresa'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[2])::uuid));
+```
+
+## 2026-09-03 — Cron diário dos embeddings do acervo (03h35 BRT)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Embeddings do acervo PNCP ganham o cron que nunca tiveram (03/09/2026)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- A infraestrutura de abril (coluna vector, índice HNSW, função de geração)
+-- nunca teve agendamento: em 03/09 o acervo tinha 15.861 editais e ZERO
+-- embeddings — o mesmo padrão do licitacoes-cleanup que rodou meses sem
+-- existir. O backfill inicial foi disparado manualmente em 03/09; este cron
+-- cobre o dia a dia: vetoriza o que as buscas e o sync incluíram na véspera.
+--
+-- 06:35 UTC = 03:35 em Brasília — janela de madrugada recomendada pelo PNCP,
+-- depois do sync das 03:05 (para vetorizar o que ele acabou de trazer).
+-- Lote 500: a função processa ~1,7/s; meio-dia de publicações cabe num lote.
+
+SELECT cron.unschedule('pncp-embeddings-diario')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'pncp-embeddings-diario');
+
+SELECT cron.schedule(
+  'pncp-embeddings-diario',
+  '35 6 * * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/pncp-gerar-embeddings',
+    headers := public.cron_auth_header(),
+    body := '{"limite": 500}'::jsonb
+  );
+  $$
+);
+```
+
+## 2026-09-03 — Semeadura do acervo PA + janela de embeddings na madrugada
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Semeadura do acervo: Pará, 3 anos, 6 modalidades (03/09/2026)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- O teste de 03/09 mostrou o acervo sem NENHUM edital paraense de água
+-- mineral — os órgãos dos contratos da casa (PMPA, CBMPA, FSCMPA) eram
+-- desconhecidos do Histórico do órgão. A semeadura varre o PNCP oficial
+-- (contratacoes/publicacao, UF=PA) na madrugada, em fatias que respeitam o
+-- rate limit, e SE DESLIGA ao concluir (princípio nº 5: rotina temporária
+-- nasce com condição de parada).
+
+CREATE TABLE IF NOT EXISTS public.pncp_semeadura_progresso (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  uf text NOT NULL,
+  modalidade_id integer NOT NULL,
+  data_inicial date NOT NULL,
+  data_final date NOT NULL,
+  pagina_atual integer NOT NULL DEFAULT 1,
+  total_paginas integer,
+  registros_gravados integer NOT NULL DEFAULT 0,
+  concluido boolean NOT NULL DEFAULT false,
+  atualizado_em timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (uf, modalidade_id, data_inicial)
+);
+
+-- Tabela de infraestrutura: RLS ligado SEM policies = só service role alcança.
+ALTER TABLE public.pncp_semeadura_progresso ENABLE ROW LEVEL SECURITY;
+
+-- 6 modalidades × 3 janelas anuais (o PNCP limita cada consulta a ~1 ano).
+INSERT INTO public.pncp_semeadura_progresso (uf, modalidade_id, data_inicial, data_final)
+SELECT 'PA', m, j.ini, j.fim
+FROM unnest(ARRAY[6, 8, 9, 4, 5, 7]) AS m,
+     (VALUES
+       (DATE '2023-09-04', DATE '2024-09-03'),
+       (DATE '2024-09-04', DATE '2025-09-03'),
+       (DATE '2025-09-04', DATE '2026-09-03')
+     ) AS j(ini, fim)
+ON CONFLICT (uf, modalidade_id, data_inicial) DO NOTHING;
+
+-- A condição de parada: quando tudo concluir, a própria função chama isto.
+CREATE OR REPLACE FUNCTION public.pncp_semeadura_finalizar()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'cron'
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.pncp_semeadura_progresso WHERE NOT concluido) THEN
+    RETURN false;
+  END IF;
+  PERFORM cron.unschedule('pncp-semeadura-pa')
+  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'pncp-semeadura-pa');
+  RETURN true;
+END;
+$$;
+
+-- Madrugada de Brasília (01h00–05h59 BRT), a cada 4 min: ~90 fatias/noite.
+SELECT cron.unschedule('pncp-semeadura-pa')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'pncp-semeadura-pa');
+
+SELECT cron.schedule(
+  'pncp-semeadura-pa',
+  '*/4 4-8 * * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/semear-acervo-pncp',
+    headers := public.cron_auth_header(),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+-- Os embeddings acompanham o volume: a janela substitui o lote único das
+-- 06h35 (migration 20260903000003) — a cada 10 min na madrugada, parando
+-- sozinha quando não há pendentes (lote vazio custa quase nada).
+SELECT cron.unschedule('pncp-embeddings-diario')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'pncp-embeddings-diario');
+
+SELECT cron.schedule(
+  'pncp-embeddings-diario',
+  '*/10 4-8 * * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/pncp-gerar-embeddings',
+    headers := public.cron_auth_header(),
+    body := '{"limite": 400}'::jsonb
+  );
+  $$
+);
+```
+
+## 2026-09-03 — Higiene: remove policy ampla remanescente de documentos
+
+```sql
+-- Higiene: a migration 20260818000007 (Lovable) criou a policy ampla
+-- "Membros gerenciam documentos da empresa" (FOR ALL por membro). A conversão
+-- de 20260903000002 instituiu o conjunto fino (leitura/renovação por membro,
+-- exclusão por dono ou admin) — policies permissivas somam por OU, então a
+-- antiga, se aplicada, devolveria a exclusão a qualquer membro.
+DROP POLICY IF EXISTS "Membros gerenciam documentos da empresa" ON public.documentos;
+```
+
+## 2026-09-03 — Trilha de auditoria do Controle de Documentos (gatilho + tabela imutável)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Trilha de auditoria do Controle de Documentos (03/09/2026)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Qualquer membro alimenta o módulo (envio, substituição, renovação,
+-- compartilhamento, remoção) e o efeito é instantâneo para todos — o Admin
+-- precisa do rastro de QUEM fez O QUÊ. O registro nasce em GATILHO no banco:
+-- todo caminho que tocar a tabela deixa história, sem depender de tela
+-- lembrar de registrar. Tabela imutável (sem policy de UPDATE/DELETE; só o
+-- gatilho, como definer, escreve) — o padrão do histórico de exclusões de
+-- publicações.
+
+CREATE TABLE IF NOT EXISTS public.documentos_historico (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid,
+  documento_nome text NOT NULL,
+  acao text NOT NULL,
+  autor uuid,
+  validade_anterior date,
+  validade_nova date,
+  arquivo_anterior text,
+  arquivo_novo text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_historico_empresa
+  ON public.documentos_historico (empresa_id, criado_em DESC);
+
+ALTER TABLE public.documentos_historico ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS documentos_historico_select_admin ON public.documentos_historico;
+-- Leitura: só o Admin da empresa — é para ele que o registro existe.
+CREATE POLICY documentos_historico_select_admin ON public.documentos_historico
+  FOR SELECT TO authenticated
+  USING (empresa_id IS NOT NULL AND public.is_empresa_admin(auth.uid(), empresa_id));
+
+CREATE OR REPLACE FUNCTION public.registrar_alteracao_documento()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.documentos_historico
+      (empresa_id, documento_nome, acao, autor, validade_nova, arquivo_novo)
+    VALUES (NEW.empresa_id, NEW.nome, 'enviado', auth.uid(), NEW.validade, NEW.arquivo_path);
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    INSERT INTO public.documentos_historico
+      (empresa_id, documento_nome, acao, autor,
+       validade_anterior, validade_nova, arquivo_anterior, arquivo_novo)
+    VALUES (
+      COALESCE(NEW.empresa_id, OLD.empresa_id),
+      NEW.nome,
+      CASE
+        WHEN OLD.empresa_id IS NULL AND NEW.empresa_id IS NOT NULL THEN 'compartilhado'
+        WHEN OLD.arquivo_path IS DISTINCT FROM NEW.arquivo_path THEN 'substituído'
+        WHEN OLD.validade IS DISTINCT FROM NEW.validade THEN 'validade alterada'
+        ELSE 'editado'
+      END,
+      auth.uid(), OLD.validade, NEW.validade, OLD.arquivo_path, NEW.arquivo_path);
+    RETURN NEW;
+  ELSE
+    INSERT INTO public.documentos_historico
+      (empresa_id, documento_nome, acao, autor, validade_anterior, arquivo_anterior)
+    VALUES (OLD.empresa_id, OLD.nome, 'removido', auth.uid(), OLD.validade, OLD.arquivo_path);
+    RETURN OLD;
+  END IF;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_documentos_historico ON public.documentos;
+CREATE TRIGGER trg_documentos_historico
+  AFTER INSERT OR UPDATE OR DELETE ON public.documentos
+  FOR EACH ROW EXECUTE FUNCTION public.registrar_alteracao_documento();
+```
+
+## 2026-09-03 — Timbrado da empresa (tabela + bucket do logotipo)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Timbrado da empresa — identidade única para todo documento gerado (03/09)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Cada empresa configura UMA vez (Configurações → Timbrado): logotipo,
+-- cabeçalho (qualificação) e rodapé (contatos). Todo gerador de documento —
+-- recibo, relatórios, cabeçalho impresso, e os que vierem — consome a mesma
+-- fonte, em retrato e paisagem. Sem configuração, nada muda: cada documento
+-- mantém o cabeçalho que já tinha (princípio 7 — ausência de configuração
+-- não é barrada por padrão inventado).
+
+CREATE TABLE IF NOT EXISTS public.empresa_timbrado (
+  empresa_id uuid PRIMARY KEY REFERENCES public.empresas(id) ON DELETE CASCADE,
+  logo_path text,
+  cabecalho text,
+  rodape text,
+  atualizado_em timestamptz NOT NULL DEFAULT now(),
+  atualizado_por uuid
+);
+
+ALTER TABLE public.empresa_timbrado ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS empresa_timbrado_select ON public.empresa_timbrado;
+DROP POLICY IF EXISTS empresa_timbrado_insert ON public.empresa_timbrado;
+DROP POLICY IF EXISTS empresa_timbrado_update ON public.empresa_timbrado;
+
+-- Todo membro LÊ (é ele quem gera documentos); só o Admin define a identidade.
+CREATE POLICY empresa_timbrado_select ON public.empresa_timbrado
+  FOR SELECT TO authenticated
+  USING (public.is_empresa_member(auth.uid(), empresa_id));
+
+CREATE POLICY empresa_timbrado_insert ON public.empresa_timbrado
+  FOR INSERT TO authenticated
+  WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
+
+CREATE POLICY empresa_timbrado_update ON public.empresa_timbrado
+  FOR UPDATE TO authenticated
+  USING (public.is_empresa_admin(auth.uid(), empresa_id))
+  WITH CHECK (public.is_empresa_admin(auth.uid(), empresa_id));
+
+-- ── Bucket do logotipo: <empresa_id>/logo.png ───────────────────────────────
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('empresa-timbrado', 'empresa-timbrado', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS timbrado_logo_select ON storage.objects;
+DROP POLICY IF EXISTS timbrado_logo_insert ON storage.objects;
+DROP POLICY IF EXISTS timbrado_logo_update ON storage.objects;
+DROP POLICY IF EXISTS timbrado_logo_delete ON storage.objects;
+
+CREATE POLICY timbrado_logo_select ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'empresa-timbrado'
+    AND public.is_empresa_member(auth.uid(), ((storage.foldername(name))[1])::uuid));
+
+CREATE POLICY timbrado_logo_insert ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'empresa-timbrado'
+    AND public.is_empresa_admin(auth.uid(), ((storage.foldername(name))[1])::uuid));
+
+CREATE POLICY timbrado_logo_update ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'empresa-timbrado'
+    AND public.is_empresa_admin(auth.uid(), ((storage.foldername(name))[1])::uuid));
+
+CREATE POLICY timbrado_logo_delete ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'empresa-timbrado'
+    AND public.is_empresa_admin(auth.uid(), ((storage.foldername(name))[1])::uuid));
+```
+
+## 2026-09-03 — Ajustes do timbrado (posição/dimensão persistidos)
+
+```sql
+-- Ajustes de posição/dimensão do timbrado de imagem (03/09/2026):
+-- alinhamento, largura e deslocamento do cabeçalho e do rodapé, mais a
+-- configuração de página (papel, orientação, margens) — que até aqui vivia
+-- só no estado da tela e se perdia a cada visita.
+ALTER TABLE public.empresas
+  ADD COLUMN IF NOT EXISTS timbrado_ajustes jsonb;
+```

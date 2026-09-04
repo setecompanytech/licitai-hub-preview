@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { PORTAL_FILES } from './agent-template/portals';
 import { PORTAL_ESTADUAIS_FILES } from './agent-template/portals-estaduais';
 import { INFRA_FILES } from './agent-template/infrastructure';
+import { ESTRATEGIA_FILES } from './agent-template/estrategia';
 
 const CORE_FILES: Record<string, string> = {
   'package.json': `{
@@ -183,6 +184,9 @@ const cors = require('cors');
 const { SessionManager } = require('./session-manager');
 const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
+const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -209,6 +213,18 @@ const ROTAS = [
   'POST /api/proposta/enviar',
 ];
 
+// Conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se o arquivo
+// existia — a pasta certs/ da VPS estava vazia e o checklist ficava verde.
+function certificadoInstalado() {
+  const configurado = process.env.CERT_PATH || null;
+  if (!configurado) return { carregado: false, path: null, motivo: 'CERT_PATH nao configurado' };
+  const caminho = path.isAbsolute(configurado)
+    ? configurado
+    : path.resolve(__dirname, '..', configurado);
+  const existe = fs.existsSync(caminho);
+  return { carregado: existe, path: configurado, motivo: existe ? null : 'arquivo nao encontrado em ' + caminho };
+}
+
 function authMiddleware(req, res, next) {
   const key = req.headers['x-agent-key'];
   if (AGENT_KEY && key !== AGENT_KEY) {
@@ -229,10 +245,10 @@ app.get('/health', (req, res) => {
     sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
     rotas: ROTAS,
-    certificado: {
-      carregado: !!process.env.CERT_PATH,
-      path: process.env.CERT_PATH || null,
-    },
+    // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
+    // mas nao submete nada. O painel precisa poder mostrar isso.
+    portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
+    certificado: certificadoInstalado(),
   });
 });
 
@@ -448,6 +464,7 @@ app.listen(PORT, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
+const { decidirLance } = require('./estrategia');
 const os = require('os');
 
 /**
@@ -468,7 +485,10 @@ class SessionManager {
   getCapacity() {
     const totalMB = Math.floor(os.totalmem() / 1024 / 1024);
     const freeMB = Math.floor(os.freemem() / 1024 / 1024);
-    const activeSessions = this.getActiveSessions().length;
+    // Sessao pausada mantem o Chromium aberto (~500MB). Contar so as 'ativo'
+    // liberava o slot enquanto a memoria seguia ocupada: pausar tres e abrir
+    // tres novas dava seis navegadores em tres slots, ate estourar a RAM.
+    const activeSessions = this.getSessionsComBrowser().length;
     const calculatedMax = Math.max(1, Math.floor((totalMB - 512) / 500));
     const effectiveMax = Math.min(this.maxParallel, calculatedMax);
 
@@ -541,6 +561,9 @@ class SessionManager {
       console.error(\`❌ Erro ao iniciar sessão \${config.sessao_id}:\`, err);
       sendCallback(session, 'erro', { mensagem: err.message });
       session.status = 'erro';
+      // Sem isto, cada sessao que falha deixa um timer de 30s batendo no
+      // callback para sempre — e hoje TODA sessao falha antes de comecar.
+      if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
       // Liberar browser para não travar slots
       if (session.browser) session.browser.close().catch(() => {});
     }
@@ -561,8 +584,10 @@ class SessionManager {
       try {
         session.rodada++;
 
-        // 1. Ler melhor lance atual no portal
+        // 1. Ler o estado da disputa no portal
         const melhorLance = await session.portal.lerMelhorLance();
+        const souLider = await session.portal.souLider?.() ?? null;
+
         if (melhorLance !== null && melhorLance < session.valor_atual) {
           await sendCallback(session, 'lance-concorrente', {
             rodada: session.rodada,
@@ -571,32 +596,68 @@ class SessionManager {
           });
         }
 
-        // 2. Calcular novo lance
-        const decremento = session.decremento_min ||
-          session.valor_atual * ((session.decremento_percentual || 1) / 100);
-        const novoValor = Math.max(
-          (melhorLance || session.valor_atual) - decremento,
-          session.valor_minimo
-        );
+        // 2. Decidir — função pura, testada em src/test/robo-estrategia.test.ts.
+        // A conta vivia aqui dentro e cobria o proprio lance quando liderava,
+        // descendo o preco ate o piso sem concorrente nenhum.
+        const decisao = decidirLance({
+          portalId: session.portal_id,
+          valorAtual: session.valor_atual,
+          valorMinimo: session.valor_minimo,
+          melhorLance,
+          souLider,
+          decrementoMin: session.decremento_min,
+          decrementoPercentual: session.decremento_percentual,
+          rodada: session.rodada,
+          maxLances: session.max_lances,
+        });
 
-        if (novoValor <= session.valor_minimo) {
-          console.log(\`[\${session.sessao_id}] Valor mínimo atingido\`);
+        if (decisao.acao === 'encerrar') {
+          console.log(\`[\${session.sessao_id}] \${decisao.motivo}\`);
           this.endSession(session.sessao_id);
           return;
         }
 
+        if (decisao.acao === 'aguardar') {
+          console.log(\`[\${session.sessao_id}] Rodada \${session.rodada} sem lance: \${decisao.motivo}\`);
+          await sendCallback(session, 'rodada-sem-lance', {
+            rodada: session.rodada,
+            motivo: decisao.motivo,
+            melhor_lance: melhorLance,
+            sou_lider: souLider,
+          });
+          return;
+        }
+
+        const novoValor = decisao.valor;
+
         // 3. Enviar lance real no portal
         await session.portal.enviarLance(novoValor);
-        session.valor_atual = novoValor;
 
-        // 4. Verificar resultado
-        const resultado = await session.portal.verificarResultado?.() || 'enviado';
+        // 4. Conferir se o portal ACEITOU. Antes o resultado era lido e
+        // descartado: lance recusado virava valor_atual e a rodada seguinte
+        // partia de uma premissa falsa.
+        const resultado = (await session.portal.verificarResultado?.()) || 'enviado';
+        const recusado = typeof resultado === 'string' &&
+          /recus|rejeit|inval|erro|negad/i.test(resultado);
+
+        if (recusado) {
+          console.warn(\`[\${session.sessao_id}] Lance RECUSADO pelo portal: \${resultado}\`);
+          await sendCallback(session, 'lance-recusado', {
+            rodada: session.rodada,
+            valor: novoValor,
+            resultado,
+          });
+          return; // valor_atual NAO avanca
+        }
+
+        session.valor_atual = novoValor;
 
         await sendCallback(session, 'lance-enviado', {
           rodada: session.rodada,
           valor: novoValor,
           tipo_lance: 'meu',
           resultado,
+          motivo: decisao.motivo,
           metadata: { timestamp: new Date().toISOString() },
         });
 
@@ -616,6 +677,9 @@ class SessionManager {
     if (!session) return null;
     session.status = 'pausado';
     if (session.interval) clearInterval(session.interval);
+    // O heartbeat segue: sessao pausada continua existindo e o painel precisa
+    // saber. O que NAO pode e o Chromium sumir da contabilidade — ver
+    // getCapacity, que passou a contar pausadas.
     console.log(\`⏸️ Sessão \${sessaoId} pausada. Ativas: \${this.getActiveSessions().length}\`);
     return session;
   }
@@ -670,6 +734,13 @@ class SessionManager {
     }
     
     return ativas.length;
+  }
+
+  /** Sessoes que ainda seguram um navegador aberto — e portanto RAM. */
+  getSessionsComBrowser() {
+    return [...this.sessions.values()].filter(
+      (s) => (s.status === 'ativo' || s.status === 'pausado') && s.browser
+    );
   }
 
   getActiveSessions() {
@@ -783,7 +854,10 @@ module.exports = { launchBrowser, getCertConfig };
   }
 
   try {
-    const resp = await fetch(url, {
+    // Sem timeout, uma conexao pendurada trava o envio para sempre. E como o
+    // callback e o unico canal de volta ao Praefectus, evento perdido em falha
+    // transitoria nao volta nunca — dai as duas tentativas.
+    const enviar = () => fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -794,7 +868,17 @@ module.exports = { launchBrowser, getCertConfig };
         tipo,
         payload,
       }),
+      signal: AbortSignal.timeout(10000),
     });
+
+    let resp;
+    try {
+      resp = await enviar();
+    } catch (primeira) {
+      console.warn('Callback falhou, tentando de novo em 2s:', primeira.message);
+      await new Promise((r) => setTimeout(r, 2000));
+      resp = await enviar();
+    }
 
     if (!resp.ok) {
       console.error(\`Callback falhou (\${resp.status}):\`, await resp.text());
@@ -836,6 +920,11 @@ export async function generateAgentTemplate(): Promise<Blob> {
 
   // Infrastructure files
   for (const [path, content] of Object.entries(INFRA_FILES)) {
+    root.file(path, content);
+  }
+
+  // A decisão de preço — fonte única, testada em src/test/robo-estrategia.test.ts
+  for (const [path, content] of Object.entries(ESTRATEGIA_FILES)) {
     root.file(path, content);
   }
 

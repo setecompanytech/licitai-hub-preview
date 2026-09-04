@@ -272,8 +272,29 @@ serve(async (req) => {
       }
     }
 
+    // Solução definitiva do "Não foi possível concluir a preparação" com o
+    // edital JÁ ANEXADO: quando as fontes externas (portal/PNCP) falham, o
+    // anexo da pasta Edital É o edital — mesmo bucket, sem cópia. Preparação
+    // com edital dentro de casa não tem como "falhar".
+    if (!editalPdfPath) {
+      const { data: anexos } = await admin
+        .from("processo_anexos")
+        .select("storage_path, nome_arquivo, categoria, created_at")
+        .eq("licitacao_id", licitacaoId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const pdfs = (anexos || []).filter((x: any) => /\.pdf$/i.test(x.storage_path || ""));
+      const anexoEdital =
+        pdfs.find((x: any) => x.categoria === "edital") ||
+        pdfs.find((x: any) => /edital/i.test(x.nome_arquivo || ""));
+      if (anexoEdital?.storage_path) {
+        editalPdfPath = anexoEdital.storage_path;
+        console.log(`[auto-prepare] Edital do anexo do processo: ${editalPdfPath}`);
+      }
+    }
+
     const totalItens = ingestRes?.data?.total ?? 0;
-    // Sucesso real = PDF baixado OU itens extraídos com sucesso
+    // Sucesso real = PDF disponível (baixado OU anexado) OU itens extraídos
     const ingestSuccess = !!ingestRes?.ok && !!ingestRes?.data?.success && totalItens > 0;
     const success = !!editalPdfPath || ingestSuccess;
 

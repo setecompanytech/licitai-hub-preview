@@ -352,11 +352,24 @@ Deno.serve(async (req) => {
       'User-Agent': 'Praefectus/1.0 (licitacoes@praefectus.com.br)',
     };
 
+    // O PNCP responde 429 a rajadas no mesmo segundo. Num 429, espera e tenta
+    // UMA vez mais — insistir além disso é ir contra a regra do portal.
+    const fetchPncp = async (url: string, timeoutMs = 25_000): Promise<Response> => {
+      const r = await fetch(url, { headers: pncpHeaders, signal: AbortSignal.timeout(timeoutMs) });
+      if (r.status !== 429) return r;
+      console.warn('PNCP 429 — aguardando 1,2s para a única retentativa');
+      await new Promise((res) => setTimeout(res, 1200));
+      return fetch(url, { headers: pncpHeaders, signal: AbortSignal.timeout(timeoutMs) });
+    };
+
     // ── Busca sem modalidade: chama 6 modalidades em paralelo ──
     if (!modalidadeFiltro || modalidadeFiltro === 'all' || modalidadeFiltro === '0') {
       const MODALIDADES_COMUNS = [6, 4, 8, 9, 5, 7];
 
-      const fetchModalidade = async (modId: number) => {
+      const fetchModalidade = async (modId: number, ordem: number) => {
+        // Espaça o início de cada modalidade: 6 disparos no mesmo instante é
+        // exatamente a rajada que o portal pune com 429.
+        await new Promise((res) => setTimeout(res, ordem * 150));
         // PNCP permite até 500 por página. Buscamos página 1 com 500 itens;
         // se vier cheia, buscamos a página 2 em seguida para cobrir mais resultados.
         const buildParams = (pagina: number) => {
@@ -372,10 +385,7 @@ Deno.serve(async (req) => {
         };
 
         const baseUrl = `${PNCP_BASE}/contratacoes/publicacao`;
-        const resp1 = await fetch(`${baseUrl}?${buildParams(1)}`, {
-          headers: pncpHeaders,
-          signal: AbortSignal.timeout(25_000),
-        });
+        const resp1 = await fetchPncp(`${baseUrl}?${buildParams(1)}`);
         if (!resp1.ok) return { mapped: [], raw: [], ok: false };
         const json1 = await resp1.json();
         const rawItems: Record<string, unknown>[] = json1.data || [];
@@ -383,10 +393,7 @@ Deno.serve(async (req) => {
         // Se a página 1 veio cheia (50 = limite do PNCP), busca a página 2 também
         if (rawItems.length >= 50) {
           try {
-            const resp2 = await fetch(`${baseUrl}?${buildParams(2)}`, {
-              headers: pncpHeaders,
-              signal: AbortSignal.timeout(25_000),
-            });
+            const resp2 = await fetchPncp(`${baseUrl}?${buildParams(2)}`);
             if (resp2.ok) {
               const json2 = await resp2.json();
               rawItems.push(...(json2.data || []));
@@ -397,7 +404,7 @@ Deno.serve(async (req) => {
         return { mapped: rawItems.map(mapearItem), raw: rawItems, ok: true };
       };
 
-      const settled = await Promise.allSettled(MODALIDADES_COMUNS.map(fetchModalidade));
+      const settled = await Promise.allSettled(MODALIDADES_COMUNS.map((m, i) => fetchModalidade(m, i)));
       const allItems: ReturnType<typeof mapearItem>[] = [];
       const allRaw: Record<string, unknown>[] = [];
       let successCount = 0;
@@ -457,10 +464,7 @@ Deno.serve(async (req) => {
     params.set('dataInicial', dataInicialPncp.replace(/-/g, ''));
     params.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
 
-    const resp = await fetch(`${PNCP_BASE}/contratacoes/publicacao?${params}`, {
-      headers: pncpHeaders,
-      signal: AbortSignal.timeout(45_000),
-    });
+    const resp = await fetchPncp(`${PNCP_BASE}/contratacoes/publicacao?${params}`, 45_000);
 
     if (!resp.ok) {
       console.warn(`PNCP error HTTP ${resp.status}, tentando cache`);

@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Loader2, Search, Building2, Calendar, MapPin, ExternalLink, TrendingDown, BarChart3, FileCheck, Scale, AlertTriangle, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import HistoricoDoOrgao from '@/components/precificacao/HistoricoDoOrgao';
 import { cn } from '@/lib/utils';
 import { fetchMunicipiosUF, UFS_BRASIL, type IBGEMunicipio } from '@/lib/ibge-municipios';
 
@@ -28,6 +29,8 @@ type ResultadoGov = {
   numero_compra: string;
   tipo_registro?: string;
   situacao?: string;
+  fornecedor?: string;
+  marca?: string;
 };
 
 type ResumoGov = {
@@ -383,6 +386,14 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Building2 className="w-3 h-3" /> {r.orgao}
                     </span>
+                    {r.fornecedor && (
+                      <span className="text-xs text-muted-foreground">venceu: {r.fornecedor}</span>
+                    )}
+                    {isHomologado && (
+                      <span className="text-xs text-muted-foreground">
+                        marca: {r.marca || 'não informada pelo órgão'}
+                      </span>
+                    )}
                     {(r.municipio || r.uf) && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
@@ -437,6 +448,10 @@ export default function PainelPrecosGov({ ufInicial = TODOS, municipioInicial = 
           </p>
         </div>
       )}
+
+      {/* Fase 1 da recorrência: "este órgão já licitou objeto similar?" —
+          mesma function do card do processo; aqui o CNPJ é digitável. */}
+      <HistoricoDoOrgao permitirEditarCnpj objeto={termo} />
     </div>
   );
 }
