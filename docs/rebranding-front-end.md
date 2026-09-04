@@ -663,27 +663,27 @@ telas com dois arquivos. As demais avançam módulo a módulo.
 
 | # | Módulo | Rotas | Prot. | Tok | Tip | Comp | Lay | ☾ |
 | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | Autenticação & Onboarding | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
+| 2 | Painel & Navegação | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
+| 3 | Licitações & Kanban | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
+| 4 | Monitoramento & Busca | 6 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 5 | Precificação | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 6 | Proposta & Envio | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 7 | Robô de Lances | 1 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
+| 8 | Contratos | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 9 | Compras & Fornecedores | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
-| 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 10 | Financeiro | 5 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
+| 11 | Apoio Jurídico | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 12 | Apoio Contábil | 1 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 13 | Análise de Mercado & Concorrentes | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ◐ |
 | 14 | Metas | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 15 | IA & Assistentes | 6 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
 | 16 | Comunicação | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 17 | Documentos & Cadastro | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 18 | Agenda | 2 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 19 | Equipe & Configurações | 3 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 17 | Documentos & Cadastro | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 18 | Agenda | 2 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
+| 19 | Equipe & Configurações | 3 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 20 | Admin | 7 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 21 | Conteúdo & Suporte | 9 | ✅ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 21 | Conteúdo & Suporte | 9 | ✅ | ☐ | ☐ | ☐ | ◐ | ☐ |
 | 22 | Institucional & Legal | 17 | — | ☐ | ☐ | ☐ | ☐ | ☐ |
 
 **Onde está o trabalho sem desenho.** O módulo 22 (17 rotas: landing, sobre,
@@ -889,6 +889,51 @@ mesmo dourado.
 > entrega o primeiro clique de um usuário novo em uma tela sem rebrand: a
 > apresentação promete um sistema, o destino mostra outro. Quem cria o caminho
 > responde pelo destino.
+
+**04/09 — terceira leva: as telas de apoio**
+
+| | Entrega | Arquivos |
+| :---: | --- | --- |
+| ◐ | **Documentos** — a barra de conformidade vira segmentada: regular, vencido e ausente lado a lado | `Documentos.tsx` |
+| ◐ | **Meus Compromissos** — os cinco números viram cartões `kpi-meta` com nota de contexto | `MeusCompromissos.tsx` |
+| ◐ | **Calendário** — mesma anatomia nos cinco cartões + **correção do contador de "Ganhas"** | `CalendarioLicitacoes.tsx` |
+| ◐ | **Equipe** — busca por nome, e-mail ou setor; os oito cartões de equipe passam a filtrar | `EquipeColaboradores.tsx` |
+| ◐ | **Apoio Jurídico** — abas em faixa rolável, com o rótulo inteiro | `ApoioJuridico.tsx` |
+
+**Por que a barra de Documentos ficou segmentada.** A pergunta de quem abre a
+tela não é "quanto está pronto" — é **"consigo me habilitar hoje"**. E quem
+responde isso não é o número, é a composição do que falta: dez pendências
+*ausentes* se resolvem pedindo os documentos; **uma** *vencida* barra a empresa
+no mesmo dia. A barra única de progresso escondia essa diferença. O número
+grande também mudou de cor conforme a saúde: enquanto houver vencido ele fica
+vermelho mesmo com 90% de conformidade, porque 90% com certidão vencida é
+inabilitação.
+
+**Por que as abas do Jurídico mudaram de forma.** A grade de cinco colunas
+obrigava cada aba a caber numa fração fixa da largura, e a saída tinha sido
+abreviar: "Reequilíbrio" virava *Reequil.*, "Base Jurídica" virava *Base*,
+"Legislação" virava *Leis*. Abreviação em rótulo de navegação é a pior troca
+possível — economiza pixel e cobra do usuário adivinhar o destino, justamente
+onde ele ainda não sabe o que vai encontrar. Na faixa rolável a largura de cada
+aba é a do próprio texto, como no `barra-abas` do protótipo.
+
+> ⚠️ **Uma correção de dado saiu junto, e precisa ser conhecida.** O cartão
+> "Ganhas" do Calendário comparava `status` com dois literais escritos na
+> própria tela:
+>
+> ```ts
+> l.status === 'Vencida' || l.status === 'Homologada'
+> ```
+>
+> É exatamente o padrão que o `CLAUDE.md` proíbe no princípio 1, e pelo mesmo
+> motivo histórico (`Homologada` × `Homologado`). A conta perdia processo
+> gravado como `Homologado`, `adjudicada`, `vencedor`, `ata_registro` ou
+> `contrato assinado` — o número aparecia **menor que a realidade**, num cartão
+> que a pessoa usa para conferir resultado.
+>
+> Não foi para a seção 12 porque a seção 12 é para achado que ESPERA, e a regra
+> de lá é explícita: dado errado na tela não espera. Agora passa por
+> `normalizarStatus`, que é a autoridade.
 
 **Caio, três coisas que você precisa saber destas telas:**
 
