@@ -115,10 +115,15 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
   ];
 
   return (
-    <div className="rounded-xl border aurelia-border overflow-hidden" style={{ background: 'hsl(215, 50%, 7%)' }}>
-      <div className="px-4 py-3 border-b border-[hsl(215,20%,20%)] flex items-center gap-2" style={{ background: 'hsl(215, 40%, 10%)' }}>
+    /* REBRAND — o painel tinha cor escrita à mão: `hsl(215, 50%, 7%)` inline no
+       fundo, `text-[hsl(215,14%,92%)]` no texto e mais cinco. Eram valores do
+       tema escuro fixados no componente, então no tema claro o painel virava um
+       retângulo navy dentro de um cartão branco, com texto cinza quase ilegível.
+       Agora sai tudo de token e acompanha o tema. */
+    <div className="rounded-xl border aurelia-border aurelia-bg overflow-hidden">
+      <div className="px-4 py-3 border-b aurelia-border aurelia-surface flex items-center gap-2">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-xs font-bold text-accent-foreground">IA</span>
-        <span className="text-sm font-semibold text-[hsl(215,14%,92%)]">AURÉLIA — Análise Deste Edital</span>
+        <span className="text-sm font-semibold text-foreground">AURÉLIA — Análise Deste Edital</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
@@ -136,14 +141,14 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
       </div>
 
       {/* Contextual chat */}
-      <div className="border-t border-[hsl(215,20%,20%)] p-4">
+      <div className="border-t aurelia-border p-4">
         {chatMessages.length > 0 && (
           <div className="max-h-48 overflow-y-auto space-y-2 mb-3">
             {chatMessages.map((msg, i) => (
               <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
                   "max-w-[85%] rounded-lg px-3 py-2 text-xs",
-                  msg.role === 'user' ? 'aurelia-bubble-user text-[hsl(215,14%,92%)]' : 'aurelia-bubble-ai text-[hsl(215,14%,82%)]'
+                  msg.role === 'user' ? 'aurelia-bubble-user text-foreground' : 'aurelia-bubble-ai text-foreground'
                 )}>
                   {msg.role === 'assistant' ? (
                     <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -159,7 +164,7 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleChatSend()}
             placeholder="Pergunte sobre este edital específico"
-            className="bg-[hsl(215,25%,15%)] border-[hsl(215,20%,22%)] text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)]"
+            className="text-xs"
             disabled={chatLoading}
           />
           <Button onClick={handleChatSend} disabled={!chatInput.trim() || chatLoading} size="icon" className="h-9 w-9 bg-accent hover:bg-accent/90 text-accent-foreground shrink-0">

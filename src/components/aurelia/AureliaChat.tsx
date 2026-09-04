@@ -143,17 +143,19 @@ export default function AureliaChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-xl overflow-hidden shadow-2xl border border-[hsl(215,20%,20%)] flex flex-col"
+            className="aurelia-bg fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-xl overflow-hidden shadow-2xl border border-border flex flex-col"
             // Abre do mesmo lado em que o botão está encostado.
-            style={{
-              background: 'hsl(215, 50%, 7%)',
-              ...(fab.lado === 'esquerda'
+            // O fundo saiu do `style` e virou `aurelia-bg`: era
+            // `hsl(215, 50%, 7%)` escrito à mão, e cor inline não acompanha o
+            // tema nem aparece nos greps de conferência do documento.
+            style={
+              fab.lado === 'esquerda'
                 ? { left: 16, right: 'auto' }
-                : { right: 16, left: 'auto' }),
-            }}
+                : { right: 16, left: 'auto' }
+            }
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border aurelia-surface">
               <div className="flex items-center gap-2">
                 {/* O robô da marca no lugar do "AU".
                     Aqui ele vai nas cores ORIGINAIS — azul sobre círculo claro.
@@ -166,15 +168,15 @@ export default function AureliaChat() {
                   <img src={roboAvatar} alt="" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-[hsl(215,14%,92%)] tracking-wide">AURÉLIA</h3>
-                  <p className="text-xs text-[hsl(215,12%,55%)]">Consultora de Licitações</p>
+                  <h3 className="text-sm font-semibold text-foreground tracking-wide">AURÉLIA</h3>
+                  <p className="text-xs text-muted-foreground">Consultora de Licitações</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-accent" title="Nova consulta">
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-7 w-7 text-muted-foreground hover:text-accent" title="Nova consulta">
                   <Minimize2 className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-[hsl(215,12%,55%)] hover:text-destructive">
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-7 w-7 text-muted-foreground hover:text-destructive">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -187,8 +189,8 @@ export default function AureliaChat() {
                   <div className={cn(
                     "max-w-[85%] rounded-lg px-3 py-2 text-xs",
                     msg.role === 'user'
-                      ? 'aurelia-bubble-user text-[hsl(215,14%,92%)]'
-                      : 'aurelia-bubble-ai text-[hsl(215,14%,82%)]'
+                      ? 'aurelia-bubble-user text-foreground'
+                      : 'aurelia-bubble-ai text-foreground'
                   )}>
                     {msg.role === 'assistant' ? (
                       <div className="whitespace-pre-line">{sanitizeAureliaOutput(msg.content)}</div>
@@ -198,7 +200,7 @@ export default function AureliaChat() {
               ))}
               {activeTool && (
                 <div className="flex justify-start">
-                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,82%)] flex items-center gap-2 border border-accent/30">
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-foreground flex items-center gap-2 border border-accent/30">
                     <Loader2 className="w-3 h-3 animate-spin text-accent" />
                     <span>
                       {activeTool.name === 'buscar_edital' && '🔎 Buscando edital no cache PNCP…'}
@@ -211,7 +213,7 @@ export default function AureliaChat() {
               )}
               {isLoading && !activeTool && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
-                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-[hsl(215,12%,55%)] flex items-center gap-1.5">
+                  <div className="aurelia-bubble-ai rounded-lg px-3 py-2 text-xs text-muted-foreground flex items-center gap-1.5">
                     <Loader2 className="w-3 h-3 animate-spin text-accent" />
                     AURÉLIA está analisando…
                   </div>
@@ -221,7 +223,7 @@ export default function AureliaChat() {
             </div>
 
             {/* Input */}
-            <div className="p-3 border-t border-[hsl(215,20%,20%)]" style={{ background: 'hsl(215, 40%, 10%)' }}>
+            <div className="p-3 border-t border-border aurelia-surface">
               <div className="flex gap-2">
                 <input
                   ref={inputRef}
@@ -229,7 +231,7 @@ export default function AureliaChat() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   placeholder="Pergunte sobre editais, habilitação, propostas…"
-                  className="flex-1 bg-[hsl(215,25%,15%)] border border-[hsl(215,20%,22%)] rounded-lg px-3 py-2 text-xs text-[hsl(215,14%,92%)] placeholder:text-[hsl(215,12%,40%)] focus:outline-none focus:border-accent transition-colors"
+                  className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent transition-colors"
                   disabled={isLoading}
                 />
                 <Button

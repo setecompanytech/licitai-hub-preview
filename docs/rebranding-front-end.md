@@ -638,12 +638,29 @@ o amarelo do Banco do Brasil é do Banco do Brasil.
 ```sh
 grep -rlE '#[0-9a-fA-F]{6}' --include='*.tsx' src
 grep -rlE '\b(bg|text|border)-(slate|gray|zinc|red|orange|amber|yellow|green|emerald|teal|cyan|blue|indigo|violet|purple|pink)-[0-9]{2,3}' --include='*.tsx' src
+grep -rlE 'hsl\(\s*[0-9]' --include='*.tsx' src
 ```
 
-Depois da normalização, os dois comandos devem retornar **só os 9 da lista de
-cima**. Qualquer nome novo é cor escapando do sistema.
+Depois da normalização, os dois primeiros comandos devem retornar **só os 9 da
+lista de cima**. Qualquer nome novo é cor escapando do sistema.
 
 Conferido em 02/09/2026 — é exatamente o que eles retornam.
+
+> ⚠️ **O terceiro `grep` foi acrescentado em 04/09, e não é detalhe.** Os dois
+> primeiros procuram `#B91C1C` e `bg-blue-600`. Nenhum dos dois enxerga
+> `hsl(215, 50%, 7%)` — nem inline em `style`, nem em classe arbitrária
+> `text-[hsl(...)]`. **Cinco arquivos escapavam por esse buraco desde o começo
+> da frente**, e a afirmação "os dois comandos retornam só os 9 conhecidos"
+> continuava verdadeira o tempo todo: a rede é que tinha furo, não a lista.
+>
+> Como apareceu: o painel de análise do edital, dentro de Estratégicas, ficou
+> navy sobre cartão branco no tema claro, com o texto quase ilegível. A cor não
+> estava no `index.css` — estava fixada no componente, em valores do tema
+> escuro. Corrigir o CSS não resolvia, porque o CSS não era o problema.
+>
+> Situação em 04/09: `AureliaChat`, `AureliaQuickCard` e `AureliaEditalPanel`
+> normalizados. **Faltam `AdminMarketing.tsx` e `TutorialPage.tsx`** — o
+> primeiro é uma das 14 telas da seção 11 e se resolve quando ela for feita.
 
 ---
 
