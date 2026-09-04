@@ -10,11 +10,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
   Zap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, KeyRound, ArrowLeft,
-  Phone, Building2, Briefcase, MapPin, ChevronRight
+  Phone, Building2, Briefcase, MapPin, ChevronRight,
+  Eye, EyeOff, Search, Sparkles, Bot, Info, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import MfaVerification from '@/components/auth/MfaVerification';
+import heroLogin from '@/assets/brand/hero-login.jpg';
+import '@/styles/login.css';
 
 const CARGOS = [
   'Diretor(a)', 'Gerente', 'Coordenador(a)', 'Analista', 'Assistente',
@@ -67,6 +70,8 @@ export default function Auth() {
   const [aceitaTermos, setAceitaTermos] = useState(false);
   const [loading, setLoading] = useState(false);
   const [networkError, setNetworkError] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
@@ -312,8 +317,8 @@ export default function Auth() {
   };
 
   const backButton = (to: AuthStep = 'escolha') => (
-    <button onClick={() => setStep(to)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
-      <ArrowLeft className="w-4 h-4" />
+    <button type="button" onClick={() => setStep(to)} className="lg__voltar">
+      <ArrowLeft className="w-[15px] h-[15px]" />
       Voltar
     </button>
   );
@@ -584,99 +589,170 @@ export default function Auth() {
     );
   }
 
-  // Login and other steps
+  /* ===========================================================================
+     Login — vidro sobre foto, o desenho aprovado do protótipo.
+
+     Estrutura transcrita de `prototype-praefectus/index.html` (bloco `.lg`,
+     linhas 3344-3468); estilo em `src/styles/login.css`.
+
+     TRÊS DIFERENÇAS DELIBERADAS em relação ao protótipo, todas pela mesma
+     razão — isto é a produção, não uma demonstração:
+
+     1. O botão "Protótipo de avaliação — use caio-teste@… / 123456" NÃO existe.
+     2. A área de soltar certificado (.lg__solta) não foi trazida: o app não tem
+        login por certificado, ele orienta a vincular o certificado depois do
+        primeiro acesso. Caixa de arrastar arquivo que não recebe arquivo é
+        promessa falsa na porta de entrada.
+     3. O "Manter conectado" ficou de fora: o Supabase já persiste a sessão e
+        não há o que a caixinha ligasse ou desligasse. Marcada e inerte, ela
+        mentiria sobre uma escolha que o usuário não tem.
+
+     Nada da lógica mudou: handleLogin (com resolução de login→e-mail, retry de
+     rede e checagem de MFA), handleForgot, os passos e o botão de limpar cache
+     são exatamente os que já estavam aqui.
+     ========================================================================= */
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <PraefectusLogo size="xl" variant="light" />
+    <div className="lg">
+      <div className="lg__foto">
+        <img src={heroLogin} alt="" aria-hidden="true" />
+      </div>
+      <div className="lg__veu" />
+
+      <div className="lg__grade">
+        <div className="lg__marca">
+          <div className="lg__logo">PRAE<b>FECTUS</b></div>
+          <p className="lg__tagline">
+            Gestão de licitações públicas com inteligência artificial — do edital
+            publicado ao contrato assinado, num lugar só.
+          </p>
+          <div className="lg__provas">
+            <div className="lg__prova">
+              <span><Search className="w-4 h-4" /></span>
+              <div>Busca em <b>13 portais</b> ao mesmo tempo</div>
+            </div>
+            <div className="lg__prova">
+              <span><Sparkles className="w-4 h-4" /></span>
+              <div>Análise de edital e <b>score de aderência</b> por IA</div>
+            </div>
+            <div className="lg__prova">
+              <span><Bot className="w-4 h-4" /></span>
+              <div>Robô de lances e <b>acompanhamento da disputa</b></div>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border/50 shadow-2xl p-8">
-
+        <div className="lg__card">
           {/* ===== STEP: ESCOLHA ===== */}
           {step === 'escolha' && (
-            <>
-              <h2 className="text-xl font-bold text-center mb-1">Identifique-se</h2>
-              <p className="text-sm text-muted-foreground text-center mb-8">
-                Escolha como deseja acessar o sistema
+            <div className="lg__passo">
+              <h1 className="lg__t">Identifique-se</h1>
+              <p className="lg__s">Escolha como deseja acessar o sistema</p>
+
+              <div className="lg__opcoes">
+                <button type="button" onClick={() => setStep('manual')} className="lg__opcao">
+                  <span className="lg__opcao__ic"><KeyRound className="w-5 h-5" /></span>
+                  <span className="lg__opcao__txt">
+                    <span className="lg__opcao__t">Login e Senha</span>
+                    <span className="lg__opcao__d">Acesse com seu e-mail e senha cadastrados</span>
+                  </span>
+                  <ArrowRight className="lg__opcao__seta w-[18px] h-[18px]" />
+                </button>
+
+                <button type="button" onClick={() => setStep('certificado')} className="lg__opcao">
+                  <span className="lg__opcao__ic"><ShieldCheck className="w-5 h-5" /></span>
+                  <span className="lg__opcao__txt">
+                    <span className="lg__opcao__t">Certificado Digital</span>
+                    <span className="lg__opcao__d">Acesse com e-CNPJ ou e-CPF (A1/A3)</span>
+                    <span className="lg__req">requer conta já vinculada</span>
+                  </span>
+                  <ArrowRight className="lg__opcao__seta w-[18px] h-[18px]" />
+                </button>
+              </div>
+
+              <p className="lg__pe">
+                Para criar uma conta, fale com o administrador da sua empresa.
               </p>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() => setStep('manual')}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-secondary transition-colors">
-                    <KeyRound className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">Login e Senha</p>
-                    <p className="text-xs text-muted-foreground">Acesse com seu e-mail e senha cadastrados</p>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => setStep('certificado')}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-all group text-left"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-accent/10 ring-1 ring-accent/30 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-                    <ShieldCheck className="w-6 h-6 text-accent" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">Certificado Digital</p>
-                    <p className="text-xs text-muted-foreground">Acesse com e-CNPJ ou e-CPF (A1/A3)</p>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
-                </button>
-              </div>
-
-              <div className="mt-8 pt-5 border-t border-border/50 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Para criar uma conta, entre em contato com o administrador.
-                </p>
-              </div>
-            </>
+            </div>
           )}
 
           {/* ===== STEP: LOGIN MANUAL ===== */}
           {step === 'manual' && (
-            <>
+            <div className="lg__passo">
               {backButton()}
-              <div className="flex items-center gap-2 mb-5">
-                <KeyRound className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-lg font-bold">Acesso com Login e Senha</h2>
-              </div>
+              <h1 className="lg__t text-left">Entrar com e-mail</h1>
+              <p className="lg__s text-left mb-[22px]">
+                Use as credenciais cadastradas pelo administrador
+              </p>
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Usuário ou e-mail"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                    autoComplete="username"
-                  />
+              <form onSubmit={handleLogin} noValidate>
+                <div className="lg__campo">
+                  <label className="lg__rot" htmlFor="lgEmail">Login ou e-mail</label>
+                  <div className="lg__cx">
+                    <User className="w-4 h-4" />
+                    <input
+                      id="lgEmail"
+                      type="text"
+                      placeholder="voce@empresa.com.br"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      autoComplete="username"
+                      spellCheck={false}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="password" placeholder="Sua senha" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" required minLength={6} />
+
+                <div className="lg__campo">
+                  <label className="lg__rot" htmlFor="lgSenha">Senha</label>
+                  <div className="lg__cx">
+                    <Lock className="w-4 h-4" />
+                    <input
+                      id="lgSenha"
+                      type={mostrarSenha ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      onKeyUp={e => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
+                      required
+                      minLength={6}
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      className="lg__olho"
+                      onClick={() => setMostrarSenha(v => !v)}
+                      aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {mostrarSenha
+                        ? <EyeOff className="w-[17px] h-[17px]" />
+                        : <Eye className="w-[17px] h-[17px]" />}
+                    </button>
+                  </div>
+                  {capsLock && (
+                    <div className="lg__caps">
+                      <AlertTriangle className="w-[13px] h-[13px]" /> Caps Lock está ligado
+                    </div>
+                  )}
                 </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+
+                <div className="lg__linha justify-end">
+                  <button type="button" onClick={() => setStep('forgot')} className="lg__link">
+                    Esqueci minha senha
+                  </button>
+                </div>
+
+                <button type="submit" className="lg__btn" disabled={loading}>
+                  {loading
+                    ? <Loader2 className="lg__spin w-[17px] h-[17px]" />
+                    : <KeyRound className="w-[17px] h-[17px]" />}
                   Entrar
-                </Button>
+                </button>
               </form>
 
-              <div className="mt-4 text-center flex flex-col items-center gap-2">
-                <button onClick={() => setStep('forgot')} className="text-sm text-accent hover:underline">
-                  Esqueceu a senha?
-                </button>
+              {/* Escape para bundle preso em cache — some do desenho, mas é a
+                  saída de quem ficou travado numa versão velha depois de um
+                  deploy. Tirar seria trocar suporte por estética. */}
+              <div className="mt-4 text-center">
                 <button
                   type="button"
                   onClick={async () => {
@@ -693,70 +769,85 @@ export default function Auth() {
                       window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
                     }
                   }}
-                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mt-1"
+                  className="text-[11px] underline underline-offset-2 transition-colors"
+                  style={{ color: 'var(--lg-fraco)' }}
                 >
                   Limpar cache e recarregar
                 </button>
               </div>
-            </>
+            </div>
           )}
 
           {/* ===== STEP: CERTIFICADO DIGITAL ===== */}
           {step === 'certificado' && (
-            <>
+            <div className="lg__passo">
               {backButton()}
-              <div className="flex items-center gap-2 mb-5">
-                <ShieldCheck className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-lg font-bold">Acesso com Certificado Digital</h2>
+              <h1 className="lg__t text-left">Certificado Digital</h1>
+              <p className="lg__s text-left mb-5">e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
+
+              <div className="lg__nota">
+                <Info className="w-[15px] h-[15px]" />
+                <span>
+                  O certificado <b>identifica</b>, mas não cria conta. Ele precisa estar
+                  vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
+                  depois do primeiro acesso.
+                </span>
               </div>
 
-              <div className="rounded-lg bg-muted/50 border border-border/50 p-4 mb-5">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Para acessar via certificado digital, é necessário ter uma conta vinculada.
-                  Faça login com e-mail e senha e depois cadastre seus certificados na área de <strong>Empresas</strong>.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setStep('manual')}
+                className="lg__btn lg__btn--vidro mt-[18px]"
+              >
+                <KeyRound className="w-4 h-4" />
+                Entrar com e-mail e senha
+              </button>
 
-              <div className="space-y-3">
-                <Button onClick={() => setStep('manual')} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  Entrar com Login e Senha
-                </Button>
-              </div>
-
-              <div className="mt-5 p-3 rounded-lg bg-muted border border-border">
-                <p className="text-xs text-muted-foreground">
-                  <strong className="text-foreground">Certificados aceitos:</strong> e-CNPJ A1, e-CNPJ A3, e-CPF A1, e-CPF A3 nos formatos .pfx, .p12, .cer, .crt e .pem.
-                </p>
-              </div>
-            </>
+              <p className="lg__pe">
+                Aceitos: e-CNPJ A1/A3 e e-CPF A1/A3, nos formatos .pfx, .p12, .cer, .crt e .pem.
+              </p>
+            </div>
           )}
 
           {/* ===== STEP: ESQUECEU SENHA ===== */}
           {step === 'forgot' && (
-            <>
+            <div className="lg__passo">
               {backButton('manual')}
-              <h2 className="text-lg font-bold mb-1">Recuperar senha</h2>
-              <p className="text-sm text-muted-foreground mb-5">Informe seu e-mail para receber o link de recuperação</p>
+              <h1 className="lg__t text-left">Recuperar senha</h1>
+              <p className="lg__s text-left mb-[22px]">
+                Informe seu login ou e-mail para receber o link de recuperação
+              </p>
 
-              <form onSubmit={handleForgot} className="space-y-4">
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input type="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+              <form onSubmit={handleForgot} noValidate>
+                <div className="lg__campo">
+                  <label className="lg__rot" htmlFor="lgRecuperar">Login ou e-mail</label>
+                  <div className="lg__cx">
+                    <Mail className="w-4 h-4" />
+                    <input
+                      id="lgRecuperar"
+                      type="text"
+                      placeholder="voce@empresa.com.br"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      spellCheck={false}
+                    />
+                  </div>
                 </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+
+                <button type="submit" className="lg__btn mt-1" disabled={loading}>
+                  {loading
+                    ? <Loader2 className="lg__spin w-[17px] h-[17px]" />
+                    : <ArrowRight className="w-[17px] h-[17px]" />}
                   Enviar link
-                </Button>
+                </button>
               </form>
-            </>
+            </div>
           )}
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Sistema de Gestão de Licitações Públicas com IA
-        </p>
       </div>
+
+      <div className="lg__rodape">Sistema de Gestão de Licitações Públicas com IA</div>
     </div>
   );
 }

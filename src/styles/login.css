@@ -1,0 +1,527 @@
+/* Playfair Display é a fonte do "PRAEFECTUS" na tela de login do protótipo
+   (`.lg__logo`, index.html:3084). Cinzel, que a marca usa no header, não é a
+   mesma ali — o desenho aprovado troca de serifada entre os dois lugares. */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+
+/* ============================================================================
+   Tela de login — vidro sobre foto
+   ============================================================================
+
+   Transcrição fiel do bloco `.lg` do protótipo
+   (`prototype-praefectus/index.html`, linhas 3051–3195). Mora fora do
+   `index.css` de propósito: aquele arquivo é a frente do rebrand do Caio e
+   recebe as fatias de token; misturar estilo de uma tela só ali criaria
+   conflito de merge a cada leva dele.
+
+   Os valores rgba abaixo vêm literais do protótipo — são véu e vidro sobre
+   FOTO, não cor de tema. Não têm equivalente em token HSL porque não mudam
+   com claro/escuro: esta tela é escura nos dois. O que vem de token é só o
+   que é marca (`--logo-accent`, `--navy`) e estado (`--destructive`).
+
+   Uma diferença deliberada em relação ao protótipo, pedida por quem manda:
+   o botão de demonstração (`.lg__demo`, credencial de avaliação preenchida
+   com um clique) NÃO existe aqui. Isto é produção.
+   ========================================================================== */
+
+:root {
+  --lg-veu-1: rgba(9, 15, 26, 0.84);
+  --lg-veu-2: rgba(13, 21, 36, 0.6);
+  --lg-veu-3: rgba(16, 27, 45, 0.44);
+  --lg-card: rgba(11, 18, 31, 0.7);
+  --lg-borda: rgba(255, 255, 255, 0.16);
+  --lg-vidro: rgba(255, 255, 255, 0.07);
+  --lg-vidro-forte: rgba(255, 255, 255, 0.12);
+  --lg-texto: rgba(255, 255, 255, 0.82);
+  --lg-fraco: rgba(255, 255, 255, 0.66);
+}
+
+.lg {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow: auto;
+}
+
+.lg__foto {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* `object-position: center 62%` mantém o martelo no enquadramento quando a
+   tela é mais alta que larga. O blur é do desenho, não defeito da imagem. */
+.lg__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  filter: blur(2px) saturate(0.86);
+  transform: scale(1.06);
+}
+
+.lg__veu {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, var(--lg-veu-1) 0%, var(--lg-veu-2) 46%, var(--lg-veu-3) 74%, var(--lg-veu-2) 100%),
+    linear-gradient(180deg, rgba(9, 15, 26, 0.46) 0%, rgba(9, 15, 26, 0.08) 44%, rgba(9, 15, 26, 0.7) 100%);
+}
+
+.lg__grade {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 424px;
+  gap: 64px;
+  align-items: center;
+  width: 100%;
+  max-width: 1120px;
+}
+
+.lg__marca {
+  position: relative;
+  min-width: 0;
+  color: #fff;
+  text-shadow: 0 1px 18px rgba(9, 15, 26, 0.85), 0 1px 3px rgba(9, 15, 26, 0.7);
+}
+
+.lg__marca > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reforço local só atrás da coluna de texto: escurecer a tela toda para
+   legibilidade apagaria o martelo, que é o assunto da foto. */
+.lg__marca::after {
+  content: '';
+  position: absolute;
+  inset: -34px -80px -26px -90px;
+  z-index: 0;
+  border-radius: 50%;
+  background: rgba(9, 15, 26, 0.58);
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+.lg__logo {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(34px, 4.4vw, 52px);
+  font-weight: 700;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+
+.lg__logo b {
+  color: hsl(var(--logo-accent));
+  font-weight: 700;
+}
+
+.lg__tagline {
+  font-size: clamp(14px, 1.5vw, 17px);
+  color: var(--lg-texto);
+  line-height: 1.6;
+  margin-top: 18px;
+  max-width: 430px;
+}
+
+.lg__provas {
+  display: grid;
+  gap: 13px;
+  margin-top: 30px;
+}
+
+.lg__prova {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--lg-texto);
+}
+
+.lg__prova span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--lg-vidro);
+  border: 1px solid var(--lg-borda);
+  color: hsl(var(--logo-accent));
+  flex-shrink: 0;
+}
+
+.lg__prova b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.lg__card {
+  position: relative;
+  background: var(--lg-card);
+  border: 1px solid var(--lg-borda);
+  border-radius: 22px;
+  box-shadow: 0 28px 70px rgba(5, 9, 17, 0.55);
+  padding: 32px 30px;
+  color: #fff;
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+}
+
+.lg__passo {
+  animation: lg-entra 0.36s ease both;
+}
+
+@keyframes lg-entra {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.lg__t {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  text-align: center;
+}
+
+.lg__s {
+  font-size: 13.5px;
+  color: var(--lg-texto);
+  text-align: center;
+  margin-top: 7px;
+}
+
+.lg__opcoes {
+  display: grid;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.lg__opcao {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 15px 16px;
+  border-radius: 14px;
+  background: var(--lg-vidro);
+  border: 1px solid var(--lg-borda);
+  color: #fff;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.lg__opcao:hover {
+  background: var(--lg-vidro-forte);
+  border-color: hsl(var(--logo-accent));
+  transform: translateY(-1px);
+}
+
+.lg__opcao__ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--lg-vidro-forte);
+  color: hsl(var(--logo-accent));
+  flex-shrink: 0;
+}
+
+.lg__opcao__txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.lg__opcao__t {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lg__opcao__d {
+  display: block;
+  font-size: 12px;
+  color: var(--lg-fraco);
+  line-height: 1.45;
+  margin-top: 3px;
+}
+
+.lg__opcao__seta {
+  color: var(--lg-fraco);
+  flex-shrink: 0;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.lg__opcao:hover .lg__opcao__seta {
+  color: hsl(var(--logo-accent));
+  transform: translateX(3px);
+}
+
+.lg__req {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(240, 215, 123, 0.14);
+  color: hsl(var(--logo-accent));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.lg__voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lg-texto);
+  margin-bottom: 20px;
+  transition: color 0.15s ease;
+}
+
+.lg__voltar:hover {
+  color: #fff;
+}
+
+.lg__campo {
+  margin-bottom: 15px;
+}
+
+.lg__rot {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--lg-fraco);
+  margin-bottom: 7px;
+}
+
+.lg__cx {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(9, 15, 26, 0.34);
+  border: 1px solid var(--lg-borda);
+  border-radius: 12px;
+  padding: 0 12px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.lg__cx:focus-within {
+  border-color: hsl(var(--logo-accent));
+  box-shadow: 0 0 0 3px rgba(240, 215, 123, 0.16);
+}
+
+.lg__cx > svg {
+  color: var(--lg-fraco);
+  flex-shrink: 0;
+}
+
+.lg__cx input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 13px 0;
+}
+
+.lg__cx input::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+/* O autofill do Chrome pinta o campo de branco e some com o texto claro.
+   A sombra interna repinta o fundo sem sair do vidro. */
+.lg__cx input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  -webkit-box-shadow: 0 0 0 60px #16223a inset;
+}
+
+.lg__olho {
+  display: flex;
+  padding: 5px;
+  border-radius: 7px;
+  color: var(--lg-fraco);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lg__olho:hover {
+  color: #fff;
+  background: var(--lg-vidro);
+}
+
+.lg__caps {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: hsl(var(--logo-accent));
+  margin-top: 8px;
+}
+
+.lg__linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 4px 0 20px;
+}
+
+.lg__lembrar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--lg-texto);
+  cursor: pointer;
+}
+
+.lg__link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--logo-accent));
+  background: none;
+}
+
+.lg__link:hover {
+  text-decoration: underline;
+}
+
+.lg__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: hsl(var(--logo-accent));
+  color: hsl(var(--navy));
+  font-size: 14.5px;
+  font-weight: 700;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+
+.lg__btn:hover {
+  filter: brightness(1.06);
+}
+
+.lg__btn:active {
+  transform: translateY(1px);
+}
+
+.lg__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.lg__btn--vidro {
+  background: var(--lg-vidro-forte);
+  border: 1px solid var(--lg-borda);
+  color: #fff;
+}
+
+.lg__btn--vidro:hover {
+  background: rgba(255, 255, 255, 0.19);
+  filter: none;
+}
+
+.lg__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(9, 15, 26, 0.34);
+  border: 1px solid var(--lg-borda);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--lg-texto);
+}
+
+.lg__nota svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: hsl(var(--logo-accent));
+}
+
+.lg__nota b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.lg__pe {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--lg-fraco);
+  line-height: 1.6;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--lg-borda);
+}
+
+.lg__rodape {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20px;
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes lg-gira {
+  to { transform: rotate(360deg); }
+}
+
+.lg__spin {
+  animation: lg-gira 0.8s linear infinite;
+}
+
+/* Abaixo de 940px a coluna de marca sai e sobra o cartão: em tela estreita
+   ela roubaria a altura toda e empurraria o formulário para fora da dobra. */
+@media (max-width: 940px) {
+  .lg__grade {
+    grid-template-columns: minmax(0, 424px);
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .lg__marca {
+    display: none;
+  }
+
+  .lg__marca::after {
+    inset: -26px -34px;
+    filter: blur(46px);
+  }
+}
+
+@media (max-width: 520px) {
+  .lg {
+    padding: 20px 14px 56px;
+  }
+
+  .lg__card {
+    padding: 26px 20px;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg__passo {
+    animation: none;
+  }
+}
