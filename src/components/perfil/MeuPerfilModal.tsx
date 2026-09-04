@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useAvatarUrl } from '@/hooks/useAvatarPerfil';
 import { cn } from '@/lib/utils';
 import {
   ArrowRight, Bell, Building2, CreditCard, KeyRound, ShieldCheck, User, Users,
@@ -96,6 +97,7 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
   const { empresaAtiva } = useEmpresa();
   const navigate = useNavigate();
   const [ativa, setAtiva] = useState<Chave>('perfil');
+  const avatarUrl = useAvatarUrl();
 
   // Reabrir sempre no perfil: quem clica no avatar quer os próprios dados, não
   // a última aba onde parou há três dias.
@@ -117,8 +119,10 @@ export default function MeuPerfilModal({ open, onOpenChange }: Props) {
         {/* O cabeçalho é navy nos dois temas, como a barra do topo: é a moldura
             da marca, e é sobre ele que o dourado do nome da empresa lê. */}
         <div className="bg-navy px-6 py-5 flex items-center gap-4 flex-shrink-0">
-          <span className="w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center text-base font-bold shrink-0">
-            {iniciais}
+          <span className="w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center text-base font-bold shrink-0 overflow-hidden">
+            {avatarUrl
+              ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              : iniciais}
           </span>
           <div className="min-w-0">
             <DialogTitle className="text-white text-base font-bold truncate">{nome}</DialogTitle>
