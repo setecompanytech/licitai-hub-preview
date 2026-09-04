@@ -9,6 +9,7 @@ import {
   Scale, BookOpen, FileText, Sparkles, TrendingUp, Upload,
   Gavel, MessageSquare, Database, Shield
 } from 'lucide-react';
+import heroJuridico from '@/assets/brand/hero-apoio-juridico.jpg';
 import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
 import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
 import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
@@ -48,30 +49,79 @@ export default function ApoioJuridico() {
       <div className="space-y-6">
         {/* Contexto do processo: quem entra pelo prontuário mantém o fio de volta */}
         <ProcessoContextoBanner />
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground flex-shrink-0" />
-              Apoio Jurídico Especializado
-            </h1>
-            {/* Duas frases no lugar de uma de 30 palavras. A segunda diz o que
-                a pessoa precisa saber ANTES de gerar a peça — para onde o
-                documento vai —, e isso se perdia no fim de um parágrafo. */}
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl leading-relaxed">
-              Modelos, templates, geração assistida por IA e reequilíbrio contratual — Lei 14.133/2021.{' '}
-              <span className="block sm:inline">
-                Os documentos vinculam-se automaticamente ao processo ativo.
-              </span>
-            </p>
+        {/* ── Herói do módulo ──
+            REBRAND — o cabeçalho era texto sobre a superfície da página, igual
+            ao de outras 50 telas. Este módulo é o único que fala com um corpo
+            de lei, e o martelo é o símbolo que diz isso sem legenda.
+
+            O véu é um degradê HORIZONTAL, não uma cortina uniforme: navy sólido
+            à esquerda, onde mora o texto, abrindo até 40% à direita, onde a
+            foto aparece. É o que permite usar uma imagem clara sem apagá-la e
+            sem perder o contraste do título — cortina uniforme forte demais
+            mata a foto, fraca demais mata o texto, e não existe valor que
+            resolva os dois ao mesmo tempo.
+
+            A foto NÃO cobre a faixa inteira: ela sangra na direita, ocupando
+            560px. Esticada de ponta a ponta, o recorte de uma faixa larga vira
+            uma fatia de 9:1 de uma foto 16:9 — o martelo deixa de ser
+            reconhecível e vira um cilindro escuro, que é enfeite, não símbolo.
+            Contida à direita, e com a faixa em 232px de altura, a foto aparece
+            quase inteira e o assunto lê. Os 232px são a MESMA altura do herói
+            do Robô de Lances e do Apoio Contábil: módulo irmão com faixa de
+            outro tamanho lê como descuido.
+
+            Dois véus, cada um com um trabalho:
+              • o lateral derrete a borda esquerda da foto no navy, para ela não
+                parecer colada por cima da faixa;
+              • o de topo apaga o brilho branco da tela do notebook, que fica no
+                canto superior da imagem e é a única área clara dela.
+
+            Navy nos DOIS temas, pela mesma razão da barra do topo em
+            `AppLayout`: é moldura de marca, não superfície de tema. */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-hover to-navy">
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 hidden w-[560px] max-w-[45%] md:block"
+          >
+            <img
+              src={heroJuridico}
+              alt=""
+              className="w-full h-full object-cover object-[center_50%]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/0 via-55% to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-[70%] bg-gradient-to-b from-navy/55 to-transparent" />
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Badge variant="outline" className="text-xs gap-1">
-              <Shield className="w-3 h-3" /> Lei 14.133/2021
-            </Badge>
-            <Badge variant="outline" className="text-xs gap-1">
-              <Sparkles className="w-3 h-3" /> IA Jurídica
-            </Badge>
+
+          <div className="relative flex items-start gap-3 px-5 py-6 sm:px-7 sm:py-8 md:min-h-[232px] md:items-center">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 text-gold shrink-0">
+              <Scale className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 max-w-xl">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                Apoio Jurídico Especializado
+              </h1>
+              {/* Duas frases no lugar de uma de 30 palavras. A segunda diz o
+                  que a pessoa precisa saber ANTES de gerar a peça — para onde
+                  o documento vai —, e isso se perdia no fim de um parágrafo. */}
+              <p className="text-sm text-white/75 mt-1 leading-relaxed">
+                Modelos, templates, geração assistida por IA e reequilíbrio contratual — Lei 14.133/2021.{' '}
+                <span className="block sm:inline">
+                  Os documentos vinculam-se automaticamente ao processo ativo.
+                </span>
+              </p>
+              {/* Os dois selos desceram para baixo do texto. Encostados na
+                  direita eles cairiam em cima da foto — e empurrar a foto para
+                  fora para abrir espaço custaria justamente o que a faixa
+                  ganhou. */}
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Badge variant="outline" className="text-xs gap-1 border-white/25 bg-white/10 text-white">
+                  <Shield className="w-3 h-3" /> Lei 14.133/2021
+                </Badge>
+                <Badge variant="outline" className="text-xs gap-1 border-white/25 bg-white/10 text-white">
+                  <Sparkles className="w-3 h-3" /> IA Jurídica
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
 
