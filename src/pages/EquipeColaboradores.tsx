@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -205,6 +206,30 @@ export default function EquipeColaboradores() {
   };
 
   const [resendingFor, setResendingFor] = useState<string | null>(null);
+
+  /* REBRAND — busca e recorte por equipe, que o protótipo tem (`eqBusca` e
+     `eqChips`) e a tela não tinha. Com cinco pessoas a lista se lê de cima a
+     baixo; com trinta, procurar alguém é rolar a tela inteira lendo nome por
+     nome. Os oito cartões de equipe já estavam ali contando gente — agora
+     também FILTRAM, que é o que quem olha um número de contagem quer fazer em
+     seguida. */
+  const [busca, setBusca] = useState('');
+  const [equipeFiltro, setEquipeFiltro] = useState<string | null>(null);
+
+  // Sem acento e sem caixa, dos dois lados: quem digita "jose" acha "José".
+  const normalizar = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  const equipeDe = (m: Membro) => ((m as unknown as { equipe?: string }).equipe) || 'geral';
+
+  const membrosFiltrados = membros.filter((m) => {
+    if (equipeFiltro && equipeDe(m) !== equipeFiltro) return false;
+    if (!busca.trim()) return true;
+    const alvo = normalizar(
+      [nomeExibido(m as MembroExibivel), (m as unknown as { email?: string }).email ?? '', equipeDe(m)].join(' '),
+    );
+    return normalizar(busca).split(/\s+/).filter(Boolean).every((termo) => alvo.includes(termo));
+  });
   const handleResendInvite = async (email: string) => {
     if (!empresaAtiva || !email) return;
     setResendingFor(email);
@@ -405,16 +430,61 @@ export default function EquipeColaboradores() {
               {/* Equipe summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
                 {EQUIPES.map(eq => {
-                  const count = membros.filter(m => (m as any).equipe === eq.value || (!((m as any).equipe) && eq.value === 'geral')).length;
+                  const count = membros.filter(m => equipeDe(m) === eq.value).length;
+                  const ativo = equipeFiltro === eq.value;
                   return (
-                    <div key={eq.value} className="bg-card rounded-lg border border-border/50 p-3 text-center">
-                      <eq.icon className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+                    <button
+                      key={eq.value}
+                      type="button"
+                      onClick={() => setEquipeFiltro(ativo ? null : eq.value)}
+                      aria-pressed={ativo}
+                      // Equipe sem ninguém não vira filtro: clicar levaria a uma
+                      // lista vazia, e a pessoa acharia que quebrou.
+                      disabled={count === 0}
+                      className={cn(
+                        'eleva rounded-lg border p-3 text-center transition-colors disabled:opacity-50 disabled:cursor-default',
+                        ativo
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border/50 bg-card enabled:hover:border-muted-foreground',
+                      )}
+                    >
+                      <eq.icon className={cn('w-5 h-5 mx-auto mb-1', ativo ? 'text-accent' : 'text-muted-foreground')} />
                       <p className="text-xs font-semibold">{eq.label}</p>
-                      <p className="text-lg font-bold text-foreground">{count}</p>
-                    </div>
+                      <p className="text-lg font-bold tabular-nums">{count}</p>
+                    </button>
                   );
                 })}
               </div>
+
+              {/* Busca acima da lista, como no protótipo. */}
+              {membros.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="relative flex-1 min-w-[220px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+                    <Input
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Buscar por nome, e-mail ou setor..."
+                      className="pl-9"
+                      aria-label="Buscar colaborador"
+                    />
+                  </div>
+                  {(busca || equipeFiltro) && (
+                    <>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {membrosFiltrados.length} de {membros.length}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setBusca(''); setEquipeFiltro(null); }}
+                      >
+                        Limpar
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">Carregando...</div>
@@ -426,8 +496,13 @@ export default function EquipeColaboradores() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {membros.map((m) => {
-                    const eq = getEquipeInfo((m as any).equipe || 'geral');
+                  {membrosFiltrados.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhum colaborador encontrado para este filtro.
+                    </p>
+                  )}
+                  {membrosFiltrados.map((m) => {
+                    const eq = getEquipeInfo(equipeDe(m));
                     const isCurrentUser = m.user_id === user?.id;
                     return (
                       <div key={m.id} className="bg-card rounded-lg border border-border/50 p-4 flex items-center justify-between gap-3">
