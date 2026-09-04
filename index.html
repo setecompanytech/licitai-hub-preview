@@ -14,6 +14,56 @@
     <meta name="apple-mobile-web-app-title" content="Praefectus" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
 
+    <!-- Splash de abertura — o `.boot` do protótipo (index.html:245-248).
+
+         Mora aqui, e não num componente React, porque é exatamente o intervalo
+         em que o React ainda NÃO existe que ele cobre: entre o HTML chegar e o
+         bundle montar, a tela era branca. Estilo inline pelo mesmo motivo — se
+         dependesse do index.css, o branco apareceria enquanto a folha carrega.
+
+         Some em src/main.tsx, logo depois do render. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap"
+    />
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        background: #101b2d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+        transition: opacity 0.4s ease, visibility 0.4s;
+      }
+      #boot.boot--off {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #boot .boot__logo {
+        font-family: 'Cinzel', Georgia, serif;
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: 5px;
+        color: #d4af37;
+      }
+      #boot .boot__msg {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 12.5px;
+        color: rgba(255, 255, 255, 0.45);
+        letter-spacing: 0.3px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot { transition: none; }
+      }
+    </style>
+
     <!-- Anti-cache: força revalidação do HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -123,6 +173,10 @@
 </head>
 
   <body>
+    <div id="boot" role="status" aria-live="polite">
+      <span class="boot__logo">PRAEFECTUS</span>
+      <span class="boot__msg">Carregando seu painel...</span>
+    </div>
     <div id="root"></div>
     <script>
       // Auto-reload on stale chunk errors after deploy

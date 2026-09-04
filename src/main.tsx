@@ -96,3 +96,27 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </HelmetProvider>
 );
+
+/**
+ * Desliga o splash de abertura (`#boot` em index.html).
+ *
+ * O duplo requestAnimationFrame espera o primeiro quadro DEPOIS da montagem:
+ * sem ele, a transição começa antes de haver o que mostrar por baixo e o
+ * usuário vê o branco que o splash existia para cobrir.
+ *
+ * O nó sai do DOM ao fim da transição — deixá-lo invisível por cima manteria
+ * um elemento em `position: fixed` cobrindo a tela inteira, e qualquer erro
+ * futuro de `pointer-events` viraria um app que não recebe clique.
+ */
+const boot = document.getElementById("boot");
+if (boot) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      boot.classList.add("boot--off");
+      boot.addEventListener("transitionend", () => boot.remove(), { once: true });
+      // Rede de segurança: se a transição não disparar (aba em segundo plano,
+      // movimento reduzido), o splash sairia e ficaria para sempre.
+      setTimeout(() => boot.remove(), 1200);
+    });
+  });
+}
