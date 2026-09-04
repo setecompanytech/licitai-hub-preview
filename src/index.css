@@ -464,18 +464,26 @@
      fazendo. */
   @keyframes aurelia-pulse {
     0%, 100% {
-      outline-color: hsl(var(--gold) / 0.55);
+      outline-color: hsl(var(--pulso-aurelia) / 0.55);
       outline-offset: 2px;
     }
     50% {
-      outline-color: hsl(var(--gold) / 0);
+      outline-color: hsl(var(--pulso-aurelia) / 0);
       outline-offset: 7px;
     }
   }
   .aurelia-glow {
-    outline: 2px solid hsl(var(--gold) / 0.55);
+    /* A cor do pulso é variável porque o BOTÃO muda de cor com o tema: no
+       escuro o FAB é dourado, e um anel dourado em volta de um botão dourado
+       deixa de ler como pulso e vira contorno. No escuro o anel sobe para o
+       dourado claro da logo, que separa dos dois. */
+    --pulso-aurelia: var(--gold);
+    outline: 2px solid hsl(var(--pulso-aurelia) / 0.55);
     outline-offset: 2px;
     animation: aurelia-pulse 2.2s ease-out infinite;
+  }
+  .dark .aurelia-glow {
+    --pulso-aurelia: var(--logo-accent);
   }
   @media (prefers-reduced-motion: reduce) {
     .aurelia-glow { animation: none; }
@@ -622,6 +630,48 @@
   .aurelia-fab:hover .aurelia-fab__robo {
     transform: scale(1.08);
   }
+  /* ── O FAB no tema escuro: inverte para dourado com o robô preto ──
+
+     No claro o botão é navy porque ele precisa se destacar de uma página
+     branca. No escuro a página JÁ é navy, e um botão navy sobre fundo navy
+     some — restava a sombra segurando a silhueta sozinha, que é pouco para o
+     único atalho flutuante da tela.
+
+     Invertendo, o botão vira o ponto mais claro da interface escura, e o robô
+     passa a ser recortado em preto sobre ele. O relevo dos três níveis
+     continua o mesmo — só troca de qual lado vem a luz: sobre dourado o
+     brilho superior é quase branco e a sombra inferior é bronze, não preto,
+     porque sombra preta sobre amarelo suja em vez de aprofundar.
+
+     A sombra externa ganha um halo dourado difuso: numa página escura a
+     sombra preta não aparece, e sem ela o botão volta a ficar chapado. */
+  .dark .aurelia-fab {
+    background: linear-gradient(160deg, hsl(var(--logo-accent)) 0%, hsl(var(--gold)) 62%);
+    box-shadow:
+      inset 0 1px 0 hsl(45 90% 97% / 0.55),
+      inset 0 -2px 5px hsl(33 65% 20% / 0.38),
+      0 2px 4px hsl(220 60% 2% / 0.55),
+      0 10px 26px -6px hsl(46 70% 42% / 0.35);
+  }
+  .dark .aurelia-fab:hover {
+    box-shadow:
+      inset 0 1px 0 hsl(45 90% 97% / 0.65),
+      inset 0 -2px 5px hsl(33 65% 20% / 0.38),
+      0 4px 8px hsl(220 60% 2% / 0.50),
+      0 18px 38px -8px hsl(46 70% 42% / 0.45);
+  }
+  .dark .aurelia-fab:active,
+  .dark .aurelia-fab--arrastando {
+    box-shadow:
+      inset 0 2px 6px hsl(33 65% 18% / 0.45),
+      0 1px 3px hsl(220 60% 2% / 0.55);
+  }
+  /* `--navy` no escuro é 217 48% 9% — preto para o olho, mas ainda da família
+     da marca, então o recorte não destoa se o token for reajustado. */
+  .dark .aurelia-fab__robo {
+    background: hsl(var(--navy));
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .aurelia-fab,
     .aurelia-fab:hover,
