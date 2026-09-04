@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Home } from "lucide-react";
 import FinHomeHub, { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
+import FinHeroPainel from "@/components/financeiro/FinHeroPainel";
 import FinResumoVisor, { getResumoAutoOpen } from "@/components/financeiro/FinResumoVisor";
 import FinPanorama from "@/components/financeiro/FinPanorama";
 import FinCalendarioFinanceiro from "@/components/financeiro/FinCalendarioFinanceiro";
@@ -219,7 +220,15 @@ export default function Financeiro() {
         ) : activeView ? (
           renderActive()
         ) : (
-          <FinHomeHub onNavigate={navigateToView} />
+          <>
+            {/* REBRAND — o herói do protótipo (saldo, projeção, os números do
+                dia e a curva de 6 meses) entra ACIMA do hub, que continua
+                inteiro. Aditivo: o hub tem busca, favoritos e recentes que
+                funcionam, e reescrevê-lo para encaixar um cabeçalho seria
+                trocar risco por estética. */}
+            <FinHeroPainel onNavigate={navigateToView} />
+            <FinHomeHub onNavigate={navigateToView} />
+          </>
         )}
         <FinCommandPalette onNavigate={navigateToView} />
       </div>
