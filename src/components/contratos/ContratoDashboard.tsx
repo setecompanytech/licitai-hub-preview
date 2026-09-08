@@ -13,7 +13,8 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
 import SecaoDoDocumento from '@/components/documento/SecaoDoDocumento';
@@ -35,6 +36,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     custoRealizado: { custo_pago: number; custo_comprometido: number; custo_digitado: number } | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  // Os avisos do topo recolhem (08/09): cada um mantém a linha-título à vista.
+  const [perguntaAberta, setPerguntaAberta] = useState(true);
+  const [alertasAbertos, setAlertasAbertos] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
   const [editandoVigencia, setEditandoVigencia] = useState(false);
   const [vigForm, setVigForm] = useState({ assinatura: '', inicio: '', fim: '' });
@@ -309,7 +313,16 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
       {perguntarFormaFornecimento && (
         <div className="rounded-xl p-4 border bg-muted/40 border-border nao-imprime">
-          <p className="text-xs font-semibold">O saldo se esgotou — este contrato é de entrega única?</p>
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setPerguntaAberta((v) => !v)}
+            title={perguntaAberta ? 'Recolher' : 'Expandir'}>
+            <p className="text-xs font-semibold">O saldo se esgotou — este contrato é de entrega única?</p>
+            {perguntaAberta
+              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          </button>
+          {perguntaAberta && (
+          <>
           <p className="text-xs text-muted-foreground mt-1">
             Em entrega única (comum na dispensa), saldo zerado significa fornecimento concluído e
             o alerta deixa de fazer sentido. Em fornecimento contínuo/parcelado, o alerta protege
@@ -325,15 +338,25 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               É fornecimento contínuo
             </Button>
           </div>
+          </>
+          )}
         </div>
       )}
 
       {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
-          <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
-            <AlertTriangle className="w-4 h-4" /> Alertas
-          </h4>
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setAlertasAbertos((v) => !v)}
+            title={alertasAbertos ? 'Recolher os alertas' : 'Expandir os alertas'}>
+            <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
+              <AlertTriangle className="w-4 h-4" /> Alertas
+            </h4>
+            {alertasAbertos
+              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          </button>
+          {alertasAbertos && (<>
           {vigencia.vencido && (
             <p className="text-xs text-destructive/90">
               <strong>{vigencia.frase}</strong> (em {c.data_fim ? new Date(`${c.data_fim}T12:00:00`).toLocaleDateString('pt-BR') : '—'}).
@@ -385,6 +408,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           {alertasSaldoVisiveis.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
+          </>)}
         </div>
         </SecaoDoDocumento>
       )}

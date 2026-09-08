@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
   ShieldCheck, ShieldAlert, AlertTriangle, Plus, ExternalLink, Loader2, Trash2, Gavel, FileText,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { extratosExigidos, ROTULO_PUBLICACAO, type TipoDePublicacao } from '@/lib/contratos/eficacia';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -75,6 +76,9 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
   // declarados no meio do componente, quebravam a ordem de hooks quando o
   // guard deixava de disparar — tela branca em produção (02/09, versão .5).
   const { isCompanyAdmin: isEmpresaAdmin } = useAuthorization();
+  // Recolher/expandir (08/09) — hooks AQUI EM CIMA, antes dos guards.
+  const [situacaoAberta, setSituacaoAberta] = useState(true);
+  const [extratosAbertos, setExtratosAbertos] = useState(true);
   const [excluindo, setExcluindo] = useState<string | null>(null);
   const [motivoExclusao, setMotivoExclusao] = useState('');
   const [exclusoes, setExclusoes] = useState<Array<{
@@ -298,8 +302,17 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
       <Card className={`p-4 border ${fundo}`}>
         <div className="flex items-start gap-2.5">
           <Icone className={`w-5 h-5 shrink-0 mt-0.5 ${cor}`} />
-          <div className="min-w-0">
-            <p className={`text-sm font-semibold ${cor}`}>{s.titulo}</p>
+          <div className="min-w-0 flex-1">
+            <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+              onClick={() => setSituacaoAberta((v) => !v)}
+              title={situacaoAberta ? 'Recolher' : 'Expandir'}>
+              <p className={`text-sm font-semibold ${cor}`}>{s.titulo}</p>
+              {situacaoAberta
+                ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+                : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+            </button>
+            {situacaoAberta && (
+            <>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.detalhe}</p>
             {!s.podeExecutar && (
               <Badge variant="outline" className="mt-2 text-xs border-destructive/40 text-destructive">
@@ -330,22 +343,34 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
                 </Button>
               </div>
             )}
+            </>
+            )}
           </div>
         </div>
       </Card>
 
       <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-semibold flex items-center gap-1.5">
-            <Gavel className="w-4 h-4 text-muted-foreground" /> Extratos e publicações
-          </h4>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <button type="button" className="flex-1 flex items-center justify-between gap-2 text-left"
+            onClick={() => setExtratosAbertos((v) => !v)}
+            title={extratosAbertos ? 'Recolher' : 'Expandir'}>
+            <h4 className="text-xs font-semibold flex items-center gap-1.5">
+              <Gavel className="w-4 h-4 text-muted-foreground" /> Extratos e publicações
+            </h4>
+            {extratosAbertos
+              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          </button>
           {!criando && (
-            <Button size="sm" variant="outline" className="h-7 text-xs nao-imprime" onClick={() => setCriando(true)}>
+            <Button size="sm" variant="outline" className="h-7 text-xs nao-imprime"
+              onClick={() => { setCriando(true); setExtratosAbertos(true); }}>
               <Plus className="w-3 h-3 mr-1" /> Registrar
             </Button>
           )}
         </div>
 
+        {extratosAbertos && (
+        <>
         {/* O que a lei exige para ESTE registro, com o motivo de cada item.
             Cobrança sem porquê vira burocracia e ninguém cumpre. */}
         <div className="space-y-2">
@@ -499,6 +524,8 @@ export default function ContratoEficacia({ contratoId }: { contratoId: string })
               </Button>
             </div>
           </div>
+        )}
+        </>
         )}
       </Card>
           {isEmpresaAdmin && exclusoes.length > 0 && (
