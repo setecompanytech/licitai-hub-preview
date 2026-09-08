@@ -40,15 +40,14 @@ const formatCurrency = (v: number) => {
   return `R$ ${v.toFixed(0)}`;
 };
 
-const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
-
 export default function ContratosTransparencia() {
   const [tipo, setTipo] = useState<'contratos' | 'licitacoes'>('contratos');
   const [busca, setBusca] = useState('');
   const [cnpjBusca, setCnpjBusca] = useState('');
-  // 'todas' e não '': SelectItem com valor vazio DERRUBA o Radix na
-  // renderização — era o motivo de a aba Federal nem abrir (08/09).
-  const [ufFiltro, setUfFiltro] = useState('todas');
+  // A API federal filtra por CNPJ do contratado ou por código SIAFI do órgão
+  // — UF nunca foi filtro aceito por estes endpoints (spec conferida em
+  // 08/09); o seletor de UF que havia aqui não filtrava nada.
+  const [orgaoBusca, setOrgaoBusca] = useState('');
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<any[]>([]);
   const [erro, setErro] = useState('');
@@ -69,7 +68,7 @@ export default function ContratosTransparencia() {
         body: {
           tipo,
           cnpj: cnpjBusca || undefined,
-          uf: ufFiltro !== 'todas' ? ufFiltro : undefined,
+          orgao: orgaoBusca.trim() || undefined,
           dataInicio,
           dataFim,
         },
@@ -119,17 +118,11 @@ export default function ContratosTransparencia() {
             onChange={(e) => setCnpjBusca(e.target.value)}
           />
 
-          <Select value={ufFiltro} onValueChange={setUfFiltro}>
-            <SelectTrigger>
-              <SelectValue placeholder="UF (opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as UFs</SelectItem>
-              {UFS.map(uf => (
-                <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            placeholder="Código do órgão SIAFI (ex.: 26403)"
+            value={orgaoBusca}
+            onChange={(e) => setOrgaoBusca(e.target.value)}
+          />
 
           <Button onClick={handleBuscar} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
@@ -147,7 +140,7 @@ export default function ContratosTransparencia() {
           <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
             API Pública
           </Badge>
-          <span>Dados dos últimos 6 meses</span>
+          <span>Contratos: por CNPJ ou órgão · Licitações: exigem o código do órgão · janela de 6 meses</span>
           <a href="https://portaldatransparencia.gov.br" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-accent">
             <ExternalLink className="w-3 h-3" /> Portal da Transparência

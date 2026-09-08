@@ -80,27 +80,47 @@ Deno.serve(async (req) => {
         break;
       }
       case 'licitacoes': {
-        // Licitações do Poder Executivo Federal
+        // Licitações: a API EXIGE codigoOrgao (spec oficial, conferida em
+        // 08/09). Sem ele, devolver a exigência com instrução — o 400 cru da
+        // API não diz onde achar o código.
+        if (!orgao) {
+          return new Response(JSON.stringify({
+            error: 'Para licitações federais a API exige o código SIAFI do órgão. '
+              + 'Informe-o no campo "Código do órgão" (ex.: 26403 — IFPA; '
+              + 'a lista completa está no Portal da Transparência, em Órgãos).',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         url = `${BASE_URL}/licitacoes`;
+        params.set('codigoOrgao', orgao);
         if (dataInicio) params.set('dataInicial', dataInicio);
         if (dataFim) params.set('dataFinal', dataFim);
-        if (orgao) params.set('codigoOrgao', orgao);
-        if (uf) params.set('uf', uf);
         break;
       }
       case 'contratos': {
-        // Contratos do Poder Executivo Federal
-        url = `${BASE_URL}/contratos`;
-        if (cnpj) params.set('cpfCnpjContratado', cnpj.replace(/\D/g, ''));
-        if (dataInicio) params.set('dataInicial', dataInicio);
-        if (dataFim) params.set('dataFinal', dataFim);
-        if (orgao) params.set('codigoOrgao', orgao);
+        // Dois caminhos oficiais: por CNPJ do contratado (/contratos/cpf-cnpj,
+        // parâmetro cpfCnpj — o caminho antigo cpfCnpjContratado não existe e
+        // devolvia 403 mudo) ou por código SIAFI do órgão (/contratos).
+        const cnpjLimpo = cnpj?.replace(/\D/g, '') || '';
+        if (cnpjLimpo) {
+          url = `${BASE_URL}/contratos/cpf-cnpj`;
+          params.set('cpfCnpj', cnpjLimpo);
+        } else if (orgao) {
+          url = `${BASE_URL}/contratos`;
+          params.set('codigoOrgao', orgao);
+          if (dataInicio) params.set('dataInicial', dataInicio);
+          if (dataFim) params.set('dataFinal', dataFim);
+        } else {
+          return new Response(JSON.stringify({
+            error: 'Informe o CNPJ do contratado OU o código SIAFI do órgão — '
+              + 'a API federal não lista contratos sem um dos dois.',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         break;
       }
       case 'contratos-cnpj': {
-        // Contratos por CNPJ do contratado
-        url = `${BASE_URL}/contratos/cpfCnpjContratado`;
-        if (cnpj) params.set('cpfCnpjContratado', cnpj.replace(/\D/g, ''));
+        // Contratos por CNPJ do contratado — caminho e parâmetro da spec.
+        url = `${BASE_URL}/contratos/cpf-cnpj`;
+        if (cnpj) params.set('cpfCnpj', cnpj.replace(/\D/g, ''));
         break;
       }
       case 'despesas': {
