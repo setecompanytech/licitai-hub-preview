@@ -68,6 +68,9 @@ export interface NormalizedExtraction {
   assinatura_orgao?: string;
   assinatura_contratada?: string;
   assinatura_observacao?: string;
+  indice_reajuste?: string;
+  data_base_reajuste?: string;
+  reajuste_clausula?: string;
 }
 
 /** Dias de prazo plausíveis: 1..1825. Fora disso é data lida como prazo. */
@@ -227,6 +230,22 @@ export function validateExtractedContract(raw: any): ValidationReport {
   const assinObs = toCleanString(raw.assinatura_observacao, 400);
   if (assinObs) out.assinatura_observacao = assinObs;
 
+  // ── Cláusula de reajuste (art. 92, V e §3º) ──────────────────────────────
+  // Sigla curta e maiúscula; data-base só se for data de verdade. É o insumo
+  // do alerta de aniversário anual — dado errado dispara alerta no dia
+  // errado, então o que não passa fica de fora e a tela pede à mão.
+  const indiceRj = toCleanString(raw.indice_reajuste, 30)?.toUpperCase();
+  if (indiceRj && /^[A-ZÀ-Ü0-9ºª./\s-]{2,30}$/.test(indiceRj)) {
+    out.indice_reajuste = indiceRj;
+  } else if (raw.indice_reajuste) {
+    rejected.push('indice_reajuste');
+  }
+  const dataBaseRj = toIsoDate(raw.data_base_reajuste);
+  if (dataBaseRj) out.data_base_reajuste = dataBaseRj;
+  else if (raw.data_base_reajuste) rejected.push('data_base_reajuste');
+  const clRj = toCleanString(raw.reajuste_clausula, 900);
+  if (clRj) out.reajuste_clausula = clRj;
+
   return { normalized: out, rejected };
 }
 
@@ -322,6 +341,20 @@ export function buildParentUpdates(
     u.prazo_recebimento_dias = normalized.prazo_recebimento_dias;
     u.prazo_recebimento_unidade = normalized.prazo_recebimento_unidade ?? 'corridos';
     if (normalized.prazo_recebimento_clausula) u.prazo_recebimento_clausula = normalized.prazo_recebimento_clausula;
+  }
+
+  // ── Cláusula de reajuste ──────────────────────────────────────────────────
+  // Índice e data-base andam separados de propósito: a cláusula pode nomear o
+  // índice e não dar a data (marco "da proposta" sem data escrita). Cada um
+  // entra quando lido — e nunca por cima do que foi preenchido à mão.
+  if (normalized.indice_reajuste && !parent.indice_reajuste) {
+    u.indice_reajuste = normalized.indice_reajuste;
+  }
+  if (normalized.data_base_reajuste && !parent.data_base_reajuste) {
+    u.data_base_reajuste = normalized.data_base_reajuste;
+  }
+  if (normalized.reajuste_clausula && !parent.reajuste_clausula) {
+    u.reajuste_clausula = normalized.reajuste_clausula;
   }
 
   return u;

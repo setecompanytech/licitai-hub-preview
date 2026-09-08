@@ -25,6 +25,9 @@ import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
 import ContratoEntrega from './ContratoEntrega';
+import ContratoReajuste from './ContratoReajuste';
+import { situacaoDoReajuste } from '@/lib/contratos/reajuste';
+import { TIPOS_REAJUSTE } from '@/lib/contratos/instrumentos';
 import ContratoEficacia from './ContratoEficacia';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -231,6 +234,18 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const pedidosEntregues = pedidosAtivos.filter((p: any) => p.status === 'entregue').length;
     const pedidosAtivosTotal = pedidosAtivos.length;
     const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado;
+    // Reajuste em sentido estrito: cumprido 1 ano da data-base (ou do último
+    // reajuste registrado), o direito nasce — e o alerta junto (art. 92, §3º;
+    // interregno da Lei 10.192/2001). Sem data-base registrada, silêncio: o
+    // card "Reajuste por índice" abaixo pede a data em vez de chutar.
+    const reajuste = situacaoDoReajuste({
+      dataBase: (c as any)?.data_base_reajuste,
+      reajustesRegistrados: (data.aditivos as any[])
+        .filter((a) => TIPOS_REAJUSTE.includes(a.tipo))
+        .map((a) => a.data_base_reajuste ?? a.data_assinatura),
+      hoje: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
+    });
+    const reajusteDevido = !!reajuste?.devido;
     // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
     // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
     // andando com quilos parados = contratos derivados com quantidade zerada —
@@ -244,14 +259,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, reajuste, reajusteDevido } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -343,7 +358,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </div>
       )}
 
-      {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
+      {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado || reajusteDevido) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
           <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
@@ -404,6 +419,15 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               </p>
               <p className="text-xs text-muted-foreground mt-1">{excesso.providencia}</p>
             </div>
+          )}
+          {reajusteDevido && reajuste && (
+            <p className="text-xs text-warning/80">
+              <strong>Reajuste por índice devido</strong> desde{' '}
+              {new Date(reajuste.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')}
+              {(c as any)?.indice_reajuste ? ` (${(c as any).indice_reajuste})` : ''} — o interregno de 1 ano
+              se cumpriu. Aplicação por apostila (art. 136, I); registre o pedido formal antes de assinar
+              qualquer aditivo. Detalhes e estimativa no card “Reajuste por índice”, abaixo.
+            </p>
           )}
           {alertasSaldoVisiveis.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
@@ -699,6 +723,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
       <SecaoDoDocumento numero="6" titulo="Condições de entrega">
         <ContratoEntrega contratoId={contratoId} />
+        <div className="mt-3">
+          <ContratoReajuste contratoId={contratoId} />
+        </div>
       </SecaoDoDocumento>
 
       {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura

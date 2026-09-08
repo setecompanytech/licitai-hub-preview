@@ -12728,3 +12728,39 @@ BEGIN
   END IF;
 END $$;
 ```
+
+## 2026-09-08 — Reajuste por índice: cláusula no contrato + cron dos índices oficiais
+
+```sql
+-- Cláusula de reajuste (art. 25, §7º e art. 92, V da Lei 14.133/2021): a
+-- leitura inteligente extraía prazos e descartava o índice. As colunas
+-- alimentam o alerta de aniversário anual (interregno da Lei 10.192/2001).
+ALTER TABLE public.contratos
+  ADD COLUMN IF NOT EXISTS indice_reajuste text,
+  ADD COLUMN IF NOT EXISTS data_base_reajuste date,
+  ADD COLUMN IF NOT EXISTS reajuste_clausula text;
+
+COMMENT ON COLUMN public.contratos.indice_reajuste IS
+  'Sigla do índice da cláusula de reajuste (IPCA, IGP-M, INPC…) — extraída do documento ou preenchida à mão';
+COMMENT ON COLUMN public.contratos.data_base_reajuste IS
+  'Data-base da contagem do interregno anual (data do orçamento estimado/proposta, conforme a cláusula)';
+COMMENT ON COLUMN public.contratos.reajuste_clausula IS
+  'Frase literal da cláusula de reajuste, para conferência humana';
+
+-- Índices oficiais (SGS/Banco Central) todo dia 15 — o IPCA do mês anterior
+-- sai por volta do dia 10. Rotina permanente por natureza: índice novo todo mês.
+SELECT cron.unschedule('indices-oficiais-mensal')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'indices-oficiais-mensal');
+
+SELECT cron.schedule(
+  'indices-oficiais-mensal',
+  '0 9 15 * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/indices-economicos',
+    headers := public.cron_auth_header(),
+    body := '{"action": "atualizar_indices"}'::jsonb
+  );
+  $$
+);
+```

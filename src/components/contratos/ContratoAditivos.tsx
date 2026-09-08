@@ -12,7 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { NATUREZA_DO_VALOR, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
+import { NATUREZA_DO_VALOR, TIPOS_REAJUSTE, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
+import { situacaoDoReajuste } from '@/lib/contratos/reajuste';
 import {
   Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp,
   AlertTriangle, CheckCircle2, ShieldAlert, Users
@@ -117,6 +118,22 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const [editing, setEditing] = useState<Aditivo | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  // Cláusula de reajuste do contrato — consulta À PARTE e tolerante: as
+  // colunas vêm da 20260908000004, colada à mão, e não podem derrubar o load
+  // principal da aba enquanto a migration não roda.
+  const [clausulaReajuste, setClausulaReajuste] = useState<{ indice: string | null; dataBase: string | null }>({ indice: null, dataBase: null });
+  useEffect(() => {
+    let vivo = true;
+    supabase.from('contratos')
+      .select('indice_reajuste, data_base_reajuste' as never)
+      .eq('id', contratoId).maybeSingle()
+      .then(({ data, error }) => {
+        if (!vivo || error || !data) return;
+        const d = data as unknown as { indice_reajuste: string | null; data_base_reajuste: string | null };
+        setClausulaReajuste({ indice: d.indice_reajuste, dataBase: d.data_base_reajuste });
+      });
+    return () => { vivo = false; };
+  }, [contratoId]);
 
   // Só vale avisar quando o tipo escolhido ENTRA no cálculo do limite: dizer
   // isso num aditivo já classificado como reequilíbrio seria ruído.
@@ -283,6 +300,22 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
             data_assinatura: a.data_assinatura ?? null,
             com_ressalva: (a as { com_ressalva?: boolean }).com_ressalva ?? false,
           })),
+      })
+    : null;
+
+  // ── Preclusão PREVENTIVA (08/09): o aviso ANTES da assinatura ────────────
+  // O avisoDePreclusao acima é post-mortem — acusa a prorrogação já assinada.
+  // Este dispara na hora certa: ao preencher uma PRORROGAÇÃO num contrato com
+  // reajuste anual vencido e não registrado. Prorrogação aceita sem ressalva
+  // pode ser lida como renúncia (Parecer AGU 3/2023); a orientação do TCU ao
+  // contratado é pedir formalmente antes de assinar. Avisa, não impede.
+  const reajustePendente = form.tipo === 'prazo'
+    ? situacaoDoReajuste({
+        dataBase: clausulaReajuste.dataBase,
+        reajustesRegistrados: aditivos
+          .filter((a) => TIPOS_REAJUSTE.includes(a.tipo))
+          .map((a) => (a as { data_base_reajuste?: string | null }).data_base_reajuste ?? a.data_assinatura),
+        hoje: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
       })
     : null;
 
@@ -671,6 +704,16 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
                   {NATUREZA_DO_VALOR.revisao.exige.map((e) => <li key={e}>{e}</li>)}
                 </ul>
+                {reajustePendente?.devido && (
+                  <p className="text-xs text-warning border-t border-warning/30 pt-2">
+                    Este contrato tem <b>reajuste anual devido</b> desde{' '}
+                    {new Date(reajustePendente.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')}
+                    {clausulaReajuste.indice ? ` (${clausulaReajuste.indice})` : ''} e ainda não registrado.
+                    Assinar a prorrogação sem ressalvar os preços pode ser lido como renúncia ao reajuste
+                    (preclusão lógica). Peça o reajuste formalmente — a aplicação é por apostila
+                    (art. 136, I) — ou registre a ressalva no termo antes de assinar.
+                  </p>
+                )}
                 {avisoPreclusao && (
                   <p className="text-xs text-warning border-t border-warning/30 pt-2">{avisoPreclusao}</p>
                 )}

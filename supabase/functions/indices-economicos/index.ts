@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!openaiKey || !supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return new Response(JSON.stringify({ success: false, error: 'Chaves não configuradas' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -24,87 +24,115 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'atualizar_indices';
 
+    // Só o simulador usa IA; os índices agora vêm do SGS e não dependem dela.
+    if (action !== 'atualizar_indices' && !openaiKey) {
+      return new Response(JSON.stringify({ success: false, error: 'OPENAI_API_KEY não configurada' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (action === 'atualizar_indices') {
-      const prompt = `Você é um economista especializado em índices econômicos brasileiros para licitações públicas.
-Forneça os dados MAIS RECENTES disponíveis dos seguintes índices econômicos brasileiros.
-Para cada índice, forneça o período mais recente publicado oficialmente.
+      // ── Fonte OFICIAL: SGS do Banco Central (08/09/2026) ──────────────────
+      //
+      // Antes os números vinham de IA generativa "com acesso aos dados" — que
+      // não tem acesso a dado nenhum e estima. Para painel informativo já era
+      // frágil; como base de REQUERIMENTO DE REAJUSTE protocolado no órgão,
+      // inaceitável. O SGS é a série oficial, gratuita, sem chave, e cada
+      // linha gravada diz a fonte. O acumulado de 12 meses é CALCULADO da
+      // série mensal (produto dos fatores), não estimado.
+      const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const SERIES: Array<{
+        sigla: string; nome: string; fonte: string; serie: number;
+        categoria: string; tipo: 'variacao' | 'nivel';
+      }> = [
+        { sigla: 'IPCA', nome: 'Índice Nacional de Preços ao Consumidor Amplo', fonte: 'IBGE · BCB/SGS 433', serie: 433, categoria: 'inflacao', tipo: 'variacao' },
+        { sigla: 'INPC', nome: 'Índice Nacional de Preços ao Consumidor', fonte: 'IBGE · BCB/SGS 188', serie: 188, categoria: 'inflacao', tipo: 'variacao' },
+        { sigla: 'IGP-M', nome: 'Índice Geral de Preços — Mercado', fonte: 'FGV · BCB/SGS 189', serie: 189, categoria: 'inflacao', tipo: 'variacao' },
+        { sigla: 'IGP-DI', nome: 'Índice Geral de Preços — Disponibilidade Interna', fonte: 'FGV · BCB/SGS 190', serie: 190, categoria: 'inflacao', tipo: 'variacao' },
+        { sigla: 'INCC-DI', nome: 'Índice Nacional de Custo da Construção — DI', fonte: 'FGV · BCB/SGS 192', serie: 192, categoria: 'construcao', tipo: 'variacao' },
+        { sigla: 'IPCA-15', nome: 'IPCA-15 (prévia da inflação)', fonte: 'IBGE · BCB/SGS 7478', serie: 7478, categoria: 'inflacao', tipo: 'variacao' },
+        { sigla: 'SELIC', nome: 'Taxa Selic — meta definida pelo Copom (% a.a.)', fonte: 'BCB/SGS 432', serie: 432, categoria: 'juros', tipo: 'nivel' },
+        { sigla: 'SALARIO-MINIMO', nome: 'Salário mínimo nacional vigente (R$)', fonte: 'BCB/SGS 1619', serie: 1619, categoria: 'salario', tipo: 'nivel' },
+      ];
 
-Índices obrigatórios:
-1. IPCA (IBGE) - Índice Nacional de Preços ao Consumidor Amplo
-2. INPC (IBGE) - Índice Nacional de Preços ao Consumidor
-3. IGP-M (FGV) - Índice Geral de Preços do Mercado
-4. IGP-DI (FGV) - Índice Geral de Preços – Disponibilidade Interna
-5. SINAPI (IBGE/Caixa) - Sistema Nacional de Pesquisa de Custos e Índices da Construção Civil
-6. CUB/m² (SINDUSCON) - Custo Unitário Básico da Construção Civil (média nacional R8-N)
-7. Salário Mínimo Nacional vigente
-8. SICRO (DNIT) - variação acumulada últimos 12 meses
-9. Taxa SELIC meta atual
-10. IPCA-E (IBGE) - prévia da inflação
+      const numeroBr = (v: unknown): number | null => {
+        // O SGS em JSON usa PONTO decimal ("0.26"); com vírgula só se a fonte
+        // mudar o formato. Tratar os dois evita o clássico 0.26 → 26: ponto
+        // removido só quando a vírgula é o separador decimal de verdade.
+        const s = String(v ?? '').trim();
+        const n = s.includes(',')
+          ? parseFloat(s.replace(/\./g, '').replace(',', '.'))
+          : parseFloat(s);
+        return Number.isFinite(n) ? n : null;
+      };
+      const periodoDe = (dataBr: string): string => {
+        const [, m, a] = dataBr.split('/');
+        return `${MES[Number(m) - 1]}/${a}`;
+      };
 
-Retorne APENAS um JSON array com objetos contendo:
-- nome (nome completo do índice)
-- sigla (abreviação)
-- fonte (órgão que publica)
-- periodo (ex: "fev/2026", "mar/2026")
-- valor (valor numérico do índice ou salário em R$)
-- variacao_mensal (variação % no mês, null se não aplicável)
-- variacao_anual (variação % no ano, null se não aplicável)
-- acumulado_12m (acumulado 12 meses %, null se não aplicável)
-- categoria (inflacao, construcao, salario, juros)`;
-
-      const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'Você é um economista com acesso aos dados mais recentes do IBGE, FGV, Caixa e DNIT. Retorne apenas JSON válido.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.1,
-          max_tokens: 4000,
-        }),
-      });
-
-      if (!aiResp.ok) {
-        const status = aiResp.status;
-        if (status === 429) return new Response(JSON.stringify({ success: false, error: 'Limite de requisições excedido' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        if (status === 402) return new Response(JSON.stringify({ success: false, error: 'Créditos insuficientes' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        throw new Error(`AI error ${status}`);
-      }
-
-      const aiData = await aiResp.json();
-      let content = aiData.choices?.[0]?.message?.content || '';
-      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('JSON não encontrado na resposta da IA');
-
-      const indices = JSON.parse(jsonMatch[0]);
-
-      // Upsert indices
       let inserted = 0;
-      for (const idx of indices) {
-        // Delete existing for same sigla+periodo
-        await supabase.from('indices_economicos')
-          .delete().eq('sigla', idx.sigla).eq('periodo', idx.periodo);
+      const erros: string[] = [];
+      for (const s of SERIES) {
+        try {
+          const qtd = s.tipo === 'variacao' ? 14 : 1;
+          const r = await fetch(
+            `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${s.serie}/dados/ultimos/${qtd}?formato=json`,
+            { headers: { Accept: 'application/json' } },
+          );
+          if (!r.ok) { erros.push(`${s.sigla}: SGS ${r.status}`); continue; }
+          const linhas = (await r.json()) as Array<{ data: string; valor: string }>;
+          if (!Array.isArray(linhas) || linhas.length === 0) { erros.push(`${s.sigla}: série vazia`); continue; }
 
-        const { error } = await supabase.from('indices_economicos').insert({
-          nome: idx.nome,
-          sigla: idx.sigla,
-          fonte: idx.fonte,
-          periodo: idx.periodo,
-          valor: idx.valor,
-          variacao_mensal: idx.variacao_mensal,
-          variacao_anual: idx.variacao_anual,
-          acumulado_12m: idx.acumulado_12m,
-          categoria: idx.categoria || 'inflacao',
-        });
-        if (!error) inserted++;
+          const ultima = linhas[linhas.length - 1];
+          const periodo = periodoDe(ultima.data);
+          let valor: number | null;
+          let variacaoMensal: number | null = null;
+          let variacaoAnual: number | null = null;
+          let acumulado12m: number | null = null;
+
+          if (s.tipo === 'variacao') {
+            const vs = linhas.map((l) => ({ data: l.data, v: numeroBr(l.valor) }))
+              .filter((l): l is { data: string; v: number } => l.v != null);
+            const doze = vs.slice(-12);
+            variacaoMensal = doze[doze.length - 1]?.v ?? null;
+            if (doze.length === 12) {
+              acumulado12m = (doze.reduce((f, l) => f * (1 + l.v / 100), 1) - 1) * 100;
+              acumulado12m = Math.round(acumulado12m * 100) / 100;
+            }
+            const anoAtual = ultima.data.split('/')[2];
+            const noAno = vs.filter((l) => l.data.endsWith(`/${anoAtual}`));
+            if (noAno.length > 0) {
+              variacaoAnual = (noAno.reduce((f, l) => f * (1 + l.v / 100), 1) - 1) * 100;
+              variacaoAnual = Math.round(variacaoAnual * 100) / 100;
+            }
+            valor = variacaoMensal;
+          } else {
+            valor = numeroBr(ultima.valor);
+          }
+          if (valor == null) { erros.push(`${s.sigla}: valor ilegível`); continue; }
+
+          await supabase.from('indices_economicos')
+            .delete().eq('sigla', s.sigla).eq('periodo', periodo);
+          const { error } = await supabase.from('indices_economicos').insert({
+            nome: s.nome,
+            sigla: s.sigla,
+            fonte: s.fonte,
+            periodo,
+            valor,
+            variacao_mensal: variacaoMensal,
+            variacao_anual: variacaoAnual,
+            acumulado_12m: acumulado12m,
+            categoria: s.categoria,
+          });
+          if (error) erros.push(`${s.sigla}: ${error.message}`);
+          else inserted++;
+        } catch (e) {
+          erros.push(`${s.sigla}: ${e instanceof Error ? e.message : 'falha'}`);
+        }
       }
 
-      return new Response(JSON.stringify({ success: true, indices_atualizados: inserted }),
+      // Erros viajam na resposta: cron "succeeded" não prova entrega, e uma
+      // série fora do ar não pode sumir em silêncio.
+      return new Response(JSON.stringify({ success: inserted > 0, indices_atualizados: inserted, erros }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
