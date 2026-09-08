@@ -224,6 +224,14 @@ export default function TransparenciaPA({ portal }: Props) {
       if (!user) return;
       const { error } = await supabase.from('transparencia_empenhos').delete().eq('user_id', user.id);
       if (error) throw error;
+      // Limpar limpa a TELA inteira: a busca por credor tem estado próprio e
+      // ficava de pé depois do clique (08/09) — pesquisa remanescente parece
+      // dado que sobreviveu à limpeza.
+      setCredor('');
+      setAchados([]);
+      setTotaisCredor(null);
+      setBuscouCredor(false);
+      setPaginaCredor(1);
       toast.success('Dados removidos');
       loadDados();
     } catch (e: any) {
@@ -369,7 +377,7 @@ export default function TransparenciaPA({ portal }: Props) {
           </Button>
         </a>
 
-        {dados.length > 0 && (
+        {(dados.length > 0 || achados.length > 0) && (
           <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
             <Trash2 className="w-4 h-4 mr-1" /> Limpar
           </Button>
