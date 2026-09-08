@@ -274,6 +274,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'financeiro_documentos_fiscais', filter: `empresa_id=eq.${empresaAtiva.id}` },
         () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      // DELETE não atravessa filtro: o evento de exclusão carrega só a chave
+      // da linha, sem empresa_id para comparar. Sem esta assinatura à parte,
+      // apagar o documento pela lixeira não some da coluna até o F5.
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'financeiro_documentos_fiscais' },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
       .subscribe();
     return () => { supabase.removeChannel(canal); };
   }, [contratoId, empresaAtiva?.id, qc]);

@@ -12698,3 +12698,33 @@ FROM unnest(ARRAY[6, 8, 9, 4, 5, 7]) AS m,
      generate_series(DATE '2023-09-01', DATE '2026-09-01', interval '1 month') AS ini
 ON CONFLICT (uf, modalidade_id, data_inicial) DO NOTHING;
 ```
+
+## 2026-09-08 — NF-e sincroniza na Gestão sem F5 (tabela fora da publicação realtime)
+
+```sql
+-- A aba Pedidos assina mudanças em financeiro_documentos_fiscais para
+-- atualizar a coluna NF-e na hora — mas a tabela NUNCA entrou na publicação
+-- supabase_realtime: o canal assinava e nenhum evento chegava (falha
+-- silenciosa). financeiro_lancamentos entrou em 05/2026; esta ficou de fora.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'financeiro_documentos_fiscais'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.financeiro_documentos_fiscais';
+  END IF;
+
+  -- Cinto e suspensório contra drift de ambiente.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'financeiro_lancamentos'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.financeiro_lancamentos';
+  END IF;
+END $$;
+```
