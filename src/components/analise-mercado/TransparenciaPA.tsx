@@ -332,7 +332,10 @@ export default function TransparenciaPA({ portal }: Props) {
             <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — busca do portal do Pará
           </h4>
           <div className="flex flex-wrap items-center gap-2">
-            <Input placeholder="Nome, CNPJ ou nº do empenho (ex.: SANTA ROSA)" value={credor}
+            {/* Placeholder NEUTRO: exemplo com razão social de um assinante
+                aparecia no login de outro (08/09) — nome de empresa não é
+                texto de exemplo. */}
+            <Input placeholder="Nome do credor, CNPJ ou nº do empenho" value={credor}
               onChange={(e) => setCredor(e.target.value)} className="w-80 h-9"
               onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
             <Select value={anoCredor} onValueChange={setAnoCredor}>
