@@ -42,6 +42,11 @@ type Props = {
 type NotaEmpenhoPA = {
   numero: string; dt_despesa: string; orgao: string; credor: string;
   id_ne: string; valor_empenhado: number; valor_pago: number;
+  credor_cpf_cnpj?: string | null;
+};
+
+type TotaisCredorPA = {
+  qtd_notas: number; valor_empenhado: number; valor_pago: number; saldo_a_pagar: number;
 };
 
 export default function TransparenciaPA({ portal }: Props) {
@@ -57,8 +62,8 @@ export default function TransparenciaPA({ portal }: Props) {
   const [anoCredor, setAnoCredor] = useState(String(currentYear));
   const [buscandoCredor, setBuscandoCredor] = useState(false);
   const [achados, setAchados] = useState<NotaEmpenhoPA[]>([]);
-  const [varridos, setVarridos] = useState(0);
-  const [proximaPagina, setProximaPagina] = useState<number | null>(null);
+  const [totaisCredor, setTotaisCredor] = useState<TotaisCredorPA | null>(null);
+  const [paginaCredor, setPaginaCredor] = useState(1);
   const [buscouCredor, setBuscouCredor] = useState(false);
 
   const portalLabel = portal.tipo === 'estado'
@@ -132,24 +137,24 @@ export default function TransparenciaPA({ portal }: Props) {
     }
   };
 
-  /** Fase B: varredura de notas de empenho por CREDOR (ex.: a própria
-   *  empresa). A API não filtra por credor nem por órgão (parâmetro inerte,
-   *  testado) — filtramos nós, 2.000 por página, com continuação explícita. */
-  const buscarPorCredor = async (paginaInicial = 1) => {
+  /** Fase B: busca de empenhos por nome/CNPJ/nº — a MESMA busca textual do
+   *  portal (backend api-notas-empenho), com os totais que a tela dele
+   *  mostra: notas, empenhado, pago e o saldo a pagar. Instantânea. */
+  const buscarPorCredor = async (pagina = 1) => {
     setBuscandoCredor(true);
-    if (paginaInicial === 1) { setAchados([]); setVarridos(0); setProximaPagina(null); }
+    if (pagina === 1) { setAchados([]); setTotaisCredor(null); }
     try {
       const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
-        body: { modo: 'empenhos', ano: parseInt(anoCredor), credor: credor.trim(), paginaInicial, maxPaginas: 12 },
+        body: { modo: 'empenhos', ano: parseInt(anoCredor), credor: credor.trim(), pagina, qtdRegistros: 50 },
       });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
-      setAchados((prev) => paginaInicial === 1 ? (data.achados ?? []) : [...prev, ...(data.achados ?? [])]);
-      setVarridos((prev) => (paginaInicial === 1 ? 0 : prev) + (data.varridos ?? 0));
-      setProximaPagina(data.proximaPagina ?? null);
+      setAchados((prev) => pagina === 1 ? (data.achados ?? []) : [...prev, ...(data.achados ?? [])]);
+      if (data.totais) setTotaisCredor(data.totais as TotaisCredorPA);
+      setPaginaCredor(pagina);
       setBuscouCredor(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha na varredura');
+      toast.error(e instanceof Error ? e.message : 'Falha na busca');
     } finally {
       setBuscandoCredor(false);
     }
@@ -310,19 +315,21 @@ export default function TransparenciaPA({ portal }: Props) {
         )}
       </div>
 
-      {/* ── Fase B: empenhos por credor, direto da fonte oficial (só PA) ──
-          O caso de uso nº 1 é a empresa procurar A SI MESMA: acompanhar os
-          próprios empenhos estaduais (e o valor pago) sem depender do órgão
-          avisar. A API não filtra por credor — a varredura pagina 2.000 por
-          vez e devolve o ponto de continuação, dito na tela. */}
+      {/* ── Fase B: empenhos por credor, a MESMA busca do portal (só PA) ──
+          O caso de uso nº 1 é a empresa procurar A SI MESMA: os próprios
+          empenhos estaduais, com empenhado, pago e o SALDO A RECEBER, sem
+          depender do órgão avisar. Busca textual do backend do portal:
+          nome, CNPJ ou número do empenho — instantânea, com os totais que a
+          tela do portal exibe. */}
       {ehParaEstado && (
         <Card className="p-4 space-y-3">
           <h4 className="text-sm font-semibold flex items-center gap-1.5">
-            <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — API oficial do Pará
+            <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — busca do portal do Pará
           </h4>
           <div className="flex flex-wrap items-center gap-2">
-            <Input placeholder="Nome do credor (ex.: SANTA ROSA)" value={credor}
-              onChange={(e) => setCredor(e.target.value)} className="w-72 h-9" />
+            <Input placeholder="Nome, CNPJ ou nº do empenho (ex.: SANTA ROSA)" value={credor}
+              onChange={(e) => setCredor(e.target.value)} className="w-80 h-9"
+              onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
             <Select value={anoCredor} onValueChange={setAnoCredor}>
               <SelectTrigger className="w-28 h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -336,12 +343,32 @@ export default function TransparenciaPA({ portal }: Props) {
             </Button>
           </div>
 
-          {buscouCredor && !buscandoCredor && (
+          {totaisCredor && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Notas empenhadas</p>
+                <p className="text-lg font-bold tabular-nums">{totaisCredor.qtd_notas.toLocaleString('pt-BR')}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Valor empenhado</p>
+                <p className="text-lg font-bold tabular-nums">{formatCurrency(totaisCredor.valor_empenhado)}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Valor pago</p>
+                <p className="text-lg font-bold tabular-nums text-success">{formatCurrency(totaisCredor.valor_pago)}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Saldo a pagar</p>
+                <p className={`text-lg font-bold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+                  {formatCurrency(totaisCredor.saldo_a_pagar)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {buscouCredor && !buscandoCredor && achados.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              {achados.length} empenho(s) do credor em {varridos.toLocaleString('pt-BR')} notas varridas de {anoCredor}.
-              {proximaPagina === null
-                ? ' Varredura completa do ano.'
-                : ' A varredura tem continuação — o ano ainda não terminou de ser percorrido.'}
+              Nenhum empenho encontrado para “{credor.trim()}” em {anoCredor}.
             </p>
           )}
 
@@ -351,7 +378,9 @@ export default function TransparenciaPA({ portal }: Props) {
                 <div key={n.id_ne} className="flex items-center justify-between gap-3 p-2.5 text-xs">
                   <div className="min-w-0">
                     <p className="font-medium tabular-nums">{n.numero} · {n.orgao}</p>
-                    <p className="text-muted-foreground truncate">{n.credor} · {n.dt_despesa}</p>
+                    <p className="text-muted-foreground truncate">
+                      {n.credor}{n.credor_cpf_cnpj ? ` · ${n.credor_cpf_cnpj}` : ''} · {n.dt_despesa}
+                    </p>
                   </div>
                   <div className="text-right shrink-0 tabular-nums">
                     <p className="font-semibold">{formatCurrency(n.valor_empenhado)}</p>
@@ -364,9 +393,9 @@ export default function TransparenciaPA({ portal }: Props) {
             </div>
           )}
 
-          {proximaPagina !== null && !buscandoCredor && (
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => buscarPorCredor(proximaPagina)}>
-              Continuar varredura (a partir da página {proximaPagina})
+          {totaisCredor && achados.length > 0 && achados.length < totaisCredor.qtd_notas && !buscandoCredor && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => buscarPorCredor(paginaCredor + 1)}>
+              Carregar mais ({achados.length} de {totaisCredor.qtd_notas})
             </Button>
           )}
         </Card>

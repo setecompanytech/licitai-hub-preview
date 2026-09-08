@@ -61,43 +61,49 @@ Deno.serve(async (req) => {
     }
 
     if (modo === 'empenhos') {
-      const credor = String(body.credor || '').trim().toUpperCase();
-      if (credor.length < 4) {
-        return new Response(JSON.stringify({ error: 'Informe o nome do credor com pelo menos 4 letras.' }),
+      // A varredura paginada de 08/09 durou meio dia: o backend do PRÓPRIO
+      // portal expõe busca textual server-side (nome, CNPJ, nº de empenho) e
+      // os TOTAIS da busca — os mesmos números que a tela do portal mostra
+      // (conferido ao centavo: ETHOS 2026 = 8 notas, R$ 6.054.144,00).
+      // É serviço interno do portal, não a API documentada: se mudar sem
+      // aviso, o erro sai com o status na cara — nunca em silêncio.
+      const BUSCA = 'https://api-notas-empenho.sistemas.pa.gov.br/notas-empenho';
+      const texto = String(body.credor || '').trim();
+      if (texto.length < 4) {
+        return new Response(JSON.stringify({ error: 'Informe nome, CNPJ ou nº de empenho com pelo menos 4 caracteres.' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      const POR_PAGINA = 2000;
-      const MAX_PAGINAS = Math.min(Number(body.maxPaginas) || 12, 20);
-      let pagina = Math.max(Number(body.paginaInicial) || 1, 1);
-      const achados: NotaEmpenho[] = [];
-      let varridos = 0;
-      let acabou = false;
+      const pagina = Math.max(Number(body.pagina) || 1, 1);
+      const qtd = Math.min(Number(body.qtdRegistros) || 50, 200);
+      const q = `ano=${ano}&textoBusca=${encodeURIComponent(texto)}`;
 
-      for (let i = 0; i < MAX_PAGINAS; i++, pagina++) {
-        const r = await fetch(
-          `${BASE}/notas-empenho?ano=${ano}&pagina=${pagina}&qtdRegistros=${POR_PAGINA}`,
-          { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30_000) },
-        );
-        if (!r.ok) {
-          return new Response(JSON.stringify({
-            error: `API do Pará respondeu ${r.status} na página ${pagina}`,
-            achados, varridos, proximaPagina: pagina,
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-        const lote = await r.json() as NotaEmpenho[];
-        if (!Array.isArray(lote) || lote.length === 0) { acabou = true; break; }
-        varridos += lote.length;
-        for (const n of lote) {
-          if (n.credor && n.credor.toUpperCase().includes(credor)) achados.push(n);
-        }
-        if (lote.length < POR_PAGINA) { acabou = true; pagina++; break; }
+      const [rLista, rTotais] = await Promise.all([
+        fetch(`${BUSCA}?${q}&pagina=${pagina}&qtdRegistros=${qtd}`,
+          { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(25_000) }),
+        fetch(`${BUSCA}/totais-busca-avancada?${q}`,
+          { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(25_000) }),
+      ]);
+      if (!rLista.ok) {
+        return new Response(JSON.stringify({ error: `Busca do portal respondeu ${rLista.status}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+      const lista = await rLista.json() as { data?: Array<NotaEmpenho & { credor_cpf_cnpj?: string }> };
+      const totaisRaw = rTotais.ok ? await rTotais.json().catch(() => null) as
+        { data?: Array<{ valor_empenhado: number; valor_pago: number; qtd_notas: number; total_reg: number }> } | null : null;
+      const t = totaisRaw?.data?.[0] ?? null;
 
       return new Response(JSON.stringify({
-        success: true, achados, varridos, ano,
-        // null = varredura completa; número = de onde continuar.
-        proximaPagina: acabou ? null : pagina,
-        fonte: 'Portal da Transparência do Pará — API oficial de dados abertos',
+        success: true,
+        achados: lista.data ?? [],
+        totais: t ? {
+          qtd_notas: t.qtd_notas,
+          valor_empenhado: t.valor_empenhado,
+          valor_pago: t.valor_pago,
+          saldo_a_pagar: Math.max((t.valor_empenhado ?? 0) - (t.valor_pago ?? 0), 0),
+        } : null,
+        pagina,
+        ano,
+        fonte: 'Portal da Transparência do Pará — busca do próprio portal',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
