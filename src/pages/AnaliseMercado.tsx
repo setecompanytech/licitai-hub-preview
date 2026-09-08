@@ -404,12 +404,13 @@ export default function AnaliseMercado() {
                 </Select>
                 <Input placeholder="Município (opcional)" value={municipioPreco}
                   onChange={(e) => setMunicipioPreco(e.target.value)} className="w-44 h-8 text-xs" />
+                {/* Sem sobreposição (08/09): "últimos 12 meses" e "ano de
+                    2026" diziam quase o mesmo por dois nomes. Fica UM padrão
+                    (a janela cheia de 3 anos) e os anos exatos. */}
                 <Select value={periodoPreco} onValueChange={setPeriodoPreco}>
-                  <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="12m">Últimos 12 meses</SelectItem>
-                    <SelectItem value="24m">Últimos 24 meses</SelectItem>
-                    <SelectItem value="36m">Últimos 36 meses</SelectItem>
+                    <SelectItem value="36m">Últimos 3 anos (padrão)</SelectItem>
                     {[0, 1, 2, 3].map((i) => {
                       const a = new Date().getFullYear() - i;
                       return <SelectItem key={a} value={String(a)}>Ano de {a}</SelectItem>;
