@@ -109,36 +109,45 @@ export default function TransparenciaPA({ portal }: Props) {
 
   useEffect(() => { loadDados(); }, [loadDados]);
 
-  /** Fase A: execução por órgão, da API oficial — um clique popula a aba. */
+  /** Fase A: execução por órgão, da API oficial — um clique popula a aba.
+   *  "Todos os anos" varre os 5 anos do seletor, um a um: antes, caía em
+   *  silêncio no ano corrente e o filtro mentia (08/09). */
   const extrairDaApiOficial = async () => {
     setExtraindo(true);
     try {
-      const ano = anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear;
-      const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
-        body: { modo: 'despesas', ano },
-      });
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-      const linhas = (data?.data ?? []) as Array<{ orgao: string; valor: number; quantidade: number }>;
-      if (linhas.length === 0) { toast.info('A API oficial não devolveu órgãos para este ano.'); return; }
-
+      const anosAlvo = anoFiltro !== 'todos' ? [parseInt(anoFiltro)] : anos;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Troca o ano inteiro: extração repetida atualiza em vez de duplicar.
-      await supabase.from('transparencia_empenhos')
-        .delete().eq('user_id', user.id).eq('ano', ano);
-      const { error: insertError } = await supabase.from('transparencia_empenhos').insert(
-        linhas.map((l) => ({
-          user_id: user.id,
-          orgao: l.orgao,
-          ano,
-          valor_total: l.valor,
-          quantidade_empenhos: l.quantidade || 1,
-        })),
-      );
-      if (insertError) throw insertError;
-      toast.success(`${linhas.length} órgãos importados da API oficial do Pará (${ano}).`, {
-        description: 'Valor = total EMPENHADO por órgão no ano, direto do portal de dados abertos.',
+
+      let totalOrgaos = 0;
+      const anosComDado: number[] = [];
+      for (const ano of anosAlvo) {
+        const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
+          body: { modo: 'despesas', ano },
+        });
+        if (error) throw error;
+        if (data?.error) { toast.error(`${ano}: ${data.error}`); continue; }
+        const linhas = (data?.data ?? []) as Array<{ orgao: string; valor: number; quantidade: number }>;
+        if (linhas.length === 0) continue;
+        // Troca o ano inteiro: extração repetida atualiza em vez de duplicar.
+        await supabase.from('transparencia_empenhos')
+          .delete().eq('user_id', user.id).eq('ano', ano);
+        const { error: insertError } = await supabase.from('transparencia_empenhos').insert(
+          linhas.map((l) => ({
+            user_id: user.id,
+            orgao: l.orgao,
+            ano,
+            valor_total: l.valor,
+            quantidade_empenhos: l.quantidade || 1,
+          })),
+        );
+        if (insertError) throw insertError;
+        totalOrgaos += linhas.length;
+        anosComDado.push(ano);
+      }
+      if (totalOrgaos === 0) { toast.info('A API oficial não devolveu órgãos para o período.'); return; }
+      toast.success(`${totalOrgaos} registros importados da API oficial do Pará (${anosComDado.join(', ')}).`, {
+        description: 'Valor = total EMPENHADO por órgão em cada ano, direto do portal de dados abertos.',
       });
       loadDados();
     } catch (e) {
@@ -169,6 +178,88 @@ export default function TransparenciaPA({ portal }: Props) {
     } finally {
       setBuscandoCredor(false);
     }
+  };
+
+  // ── Exportar RESULTADO da busca por credor (08/09): PDF com timbrado,
+  // Excel, Word e JPG — o JPG existe para o recorte rápido que se manda numa
+  // conversa; os demais para processo, planilha e ofício.
+  const tituloResultado = () =>
+    `Empenhos do credor "${credor.trim()}" — Portal da Transparência do Pará (${anoCredor})`;
+  const cabecalhosResultado = ['Empenho', 'Órgão', 'Credor', 'CNPJ/CPF', 'Data', 'Empenhado (R$)', 'Pago (R$)'];
+  const linhasResultado = () => achados.map((n) => [
+    n.numero, n.orgao, n.credor, n.credor_cpf_cnpj ?? '', n.dt_despesa,
+    n.valor_empenhado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+    n.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+  ]);
+  const rodapeTotais = () => totaisCredor
+    ? `${totaisCredor.qtd_notas} nota(s) · empenhado ${brlExato(totaisCredor.valor_empenhado)} · pago ${brlExato(totaisCredor.valor_pago)} · saldo a pagar ${brlExato(totaisCredor.saldo_a_pagar)}`
+    : '';
+
+  const exportarResultadoPDF = async () => {
+    const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
+    const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    downloadPDF(`empenhos-credor-${anoCredor}`, `${tituloResultado()} — ${rodapeTotais()}`,
+      cabecalhosResultado, linhasResultado(), timbrado);
+  };
+
+  const exportarResultadoExcel = async () => {
+    await writeExcelFromJson(`empenhos-credor-${anoCredor}.xlsx`, 'Empenhos por credor',
+      achados.map((n) => ({
+        'Empenho': n.numero, 'Órgão': n.orgao, 'Credor': n.credor,
+        'CNPJ/CPF': n.credor_cpf_cnpj ?? '', 'Data': n.dt_despesa,
+        'Empenhado (R$)': n.valor_empenhado, 'Pago (R$)': n.valor_pago,
+      })));
+  };
+
+  const exportarResultadoWord = () => {
+    const linhas = linhasResultado()
+      .map((l) => `<tr>${l.map((c) => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:10pt}</style></head><body><h2>${tituloResultado()}</h2><p>${rodapeTotais()}</p><table><tr>${cabecalhosResultado.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `empenhos-credor-${anoCredor}.doc`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const exportarResultadoJPG = () => {
+    const linhas = linhasResultado();
+    const colX = [20, 190, 330, 700, 860, 960, 1150];
+    const W = 1340; const rowH = 30; const topo = 100;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = topo + (linhas.length + 1) * rowH + 30;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { toast.error('Não foi possível gerar a imagem neste navegador.'); return; }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#111111'; ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(tituloResultado(), 20, 34);
+    ctx.font = '14px sans-serif'; ctx.fillStyle = '#444444';
+    ctx.fillText(rodapeTotais(), 20, 60);
+    ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#111111';
+    cabecalhosResultado.forEach((h, i) => ctx.fillText(h, colX[i], topo - 10));
+    ctx.strokeStyle = '#cccccc'; ctx.beginPath();
+    ctx.moveTo(20, topo - 2); ctx.lineTo(W - 20, topo - 2); ctx.stroke();
+    ctx.font = '13px sans-serif';
+    linhas.forEach((l, r) => {
+      const y = topo + (r + 1) * rowH - 10;
+      l.forEach((c, i) => {
+        const max = (colX[i + 1] ?? W - 20) - colX[i] - 12;
+        let texto = String(c);
+        while (ctx.measureText(texto).width > max && texto.length > 3) texto = texto.slice(0, -2) + '…';
+        ctx.fillStyle = '#222222';
+        ctx.fillText(texto, colX[i], y);
+      });
+    });
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `empenhos-credor-${anoCredor}.jpg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/jpeg', 0.95);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -353,6 +444,24 @@ export default function TransparenciaPA({ portal }: Props) {
           </Button>
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
         </label>
+
+        {/* Exporta o RESULTADO da busca por credor — posição a pedido (08/09):
+            entre Importar Planilha e Abrir Portal. */}
+        {achados.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-1" /> Exportar Resultado
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={exportarResultadoPDF}>PDF (com timbrado)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoWord}>Word (.doc)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoExcel}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoJPG}>JPG (imagem)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Ordem a pedido (08/09): Exportar · Abrir Portal · Limpar. */}
         {dados.length > 0 && (
