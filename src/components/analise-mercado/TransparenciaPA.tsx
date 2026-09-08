@@ -12,6 +12,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { readExcelFile, writeExcelFromJson } from '@/lib/excel-utils';
+import { downloadCSV, downloadPDF } from '@/lib/download-utils';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TransparenciaPortal } from '@/data/transparencia-portais';
 
 type EmpenhoData = {
@@ -55,6 +60,7 @@ type TotaisCredorPA = {
 };
 
 export default function TransparenciaPA({ portal }: Props) {
+  const { empresaAtiva } = useEmpresa();
   const [dados, setDados] = useState<EmpenhoData[]>([]);
   const [anoFiltro, setAnoFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState('');
@@ -227,9 +233,20 @@ export default function TransparenciaPA({ portal }: Props) {
 
   const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
 
-  const handleExportCSV = async () => {
+  // ── Exportação em formatos (08/09): PDF veste o timbrado da empresa, como
+  // todo documento gerado; Excel e CSV para planilha; Word para quem monta
+  // ofício em cima. JPG fica de fora de propósito: tabela em imagem não se
+  // confere nem se soma — o PDF cobre a impressão.
+  const nomeBase = `transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}`;
+  const cabecalhos = ['Órgão', 'Ano', 'Valor empenhado (R$)'];
+  const linhasExport = () => dadosFiltrados.map(d => [
+    d.orgao, String(d.ano),
+    d.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+  ]);
+
+  const exportarExcel = async () => {
     if (dadosFiltrados.length === 0) return;
-    await writeExcelFromJson(`transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}.xlsx`, `Transparência ${portal.nome}`,
+    await writeExcelFromJson(`${nomeBase}.xlsx`, `Transparência ${portal.nome}`,
       dadosFiltrados.map(d => ({
         'Órgão': d.orgao,
         'Ano': d.ano,
@@ -238,6 +255,33 @@ export default function TransparenciaPA({ portal }: Props) {
         'Categoria': d.categoria || '',
       }))
     );
+  };
+
+  const exportarCSVArquivo = () => {
+    if (dadosFiltrados.length === 0) return;
+    downloadCSV(nomeBase, cabecalhos, linhasExport());
+  };
+
+  const exportarPDF = async () => {
+    if (dadosFiltrados.length === 0) return;
+    const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
+    const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    downloadPDF(nomeBase, `Transparência ${portal.nome} — despesas por órgão (${anoFiltro})`,
+      cabecalhos, linhasExport(), timbrado);
+  };
+
+  const exportarWord = () => {
+    if (dadosFiltrados.length === 0) return;
+    const linhas = linhasExport()
+      .map((l) => `<tr>${l.map((c) => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:11pt}</style></head><body><h2>Transparência ${portal.nome} — despesas por órgão (${anoFiltro})</h2><table><tr>${cabecalhos.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${nomeBase}.doc`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const top10 = [...dadosFiltrados]
@@ -289,7 +333,7 @@ export default function TransparenciaPA({ portal }: Props) {
         {ehParaEstado && (
           <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
             {extraindo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-            Extrair da API oficial
+            Extração oficial
           </Button>
         )}
 
@@ -310,9 +354,19 @@ export default function TransparenciaPA({ portal }: Props) {
 
         {dados.length > 0 && (
           <>
-            <Button variant="outline" size="sm" onClick={handleExportCSV}>
-              <Download className="w-4 h-4 mr-1" /> Exportar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-1" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
               <Trash2 className="w-4 h-4 mr-1" /> Limpar
             </Button>

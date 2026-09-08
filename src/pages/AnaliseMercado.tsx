@@ -190,7 +190,7 @@ export default function AnaliseMercado() {
               <TabsTrigger value="maiores"><Package className="w-4 h-4 mr-1" /> Maiores Contratações</TabsTrigger>
               <TabsTrigger value="transparencia"><Landmark className="w-4 h-4 mr-1" /> Transparência</TabsTrigger>
               <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
-              <TabsTrigger value="transparencia-federal"><Shield className="w-4 h-4 mr-1" /> Federal (API)</TabsTrigger>
+              <TabsTrigger value="transparencia-federal"><Shield className="w-4 h-4 mr-1" /> Federal</TabsTrigger>
             </TabsList>
 
             {/* O seletor de portais só governa a aba Transparência — mostrado
