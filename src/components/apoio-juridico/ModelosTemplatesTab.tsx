@@ -1279,10 +1279,13 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                   ) : (
                     <Button
                       variant="outline"
-                      className="w-full border-dashed border-accent/30 text-accent hover:bg-accent/5 gap-2"
+                      // O Button nasce whitespace-nowrap: este rótulo comprido
+                      // vazava da caixa tracejada na coluna estreita (08/09).
+                      // whitespace-normal + h-auto deixam o texto quebrar DENTRO.
+                      className="w-full border-dashed border-accent/30 text-accent hover:bg-accent/5 gap-2 h-auto min-h-10 py-2 whitespace-normal"
                       onClick={() => setShowPeticaoUploader(true)}
                     >
-                      <Upload className="w-4 h-4" />
+                      <Upload className="w-4 h-4 shrink-0" />
                       Anexar Peças Jurídicas para Extração de Fatos com IA
                     </Button>
                   )}
