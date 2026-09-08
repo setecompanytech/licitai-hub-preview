@@ -246,6 +246,12 @@ export default function TransparenciaPA({ portal }: Props) {
   const totalGeral = dados.reduce((s, d) => s + d.valor_total, 0);
   const totalEmpenhos = dados.reduce((s, d) => s + d.quantidade_empenhos, 0);
   const orgaosUnicos = new Set(dados.map(d => d.orgao)).size;
+  // A API oficial agrega por ÓRGÃO e não diz quantas notas há (o portal diz:
+  // 256.868 em 2026) — a importação grava quantidade=1 por linha. Somar isso
+  // e chamar de "Total Empenhos: 70" era mentira de rótulo (confronto de
+  // 08/09). Quando NENHUMA linha tem contagem real, os cards dizem a verdade:
+  // contagem não informada, e a média é POR ÓRGÃO, rotulada como tal.
+  const contagemConhecida = dados.some(d => (d.quantidade_empenhos ?? 1) > 1);
 
   return (
     <div className="space-y-4">
@@ -381,21 +387,32 @@ export default function TransparenciaPA({ portal }: Props) {
             <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Total Empenhos</span>
           </div>
-          <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
+          {contagemConhecida ? (
+            <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+              <span className="text-xs text-muted-foreground">a fonte agrega por órgão, sem contagem de notas</span>
+            </>
+          )}
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Volume Total</span>
+            <span className="text-xs text-muted-foreground">Volume Total (empenhado)</span>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Ticket Médio</span>
+            <span className="text-xs text-muted-foreground">{contagemConhecida ? 'Ticket Médio' : 'Média por órgão'}</span>
           </div>
-          <p className="text-2xl font-bold">{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
+          {contagemConhecida ? (
+            <p className="text-2xl font-bold">{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
+          ) : (
+            <p className="text-2xl font-bold">{orgaosUnicos > 0 ? formatCurrency(totalGeral / orgaosUnicos) : 'R$ 0'}</p>
+          )}
         </div>
       </div>
 
