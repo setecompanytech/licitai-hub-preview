@@ -56,6 +56,7 @@ const mesCurto = (yyyymm: string) => {
 
 export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
+  const [abaAtiva, setAbaAtiva] = useState('panorama');
   const [uf, setUf] = useState<string>('PA');
   // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
   // números puros = meses. O RPC recebe p_dias OU p_meses.
@@ -181,7 +182,7 @@ export default function AnaliseMercado() {
           </>
         )}
 
-        <Tabs defaultValue="panorama" className="space-y-4">
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <TabsList className="flex-wrap h-auto gap-1">
               <TabsTrigger value="panorama"><PieChart className="w-4 h-4 mr-1" /> Panorama</TabsTrigger>
@@ -192,6 +193,10 @@ export default function AnaliseMercado() {
               <TabsTrigger value="transparencia-federal"><Shield className="w-4 h-4 mr-1" /> Federal (API)</TabsTrigger>
             </TabsList>
 
+            {/* O seletor de portais só governa a aba Transparência — mostrado
+                nas demais, parecia um filtro global que não filtrava nada
+                (print de 08/09). */}
+            {abaAtiva === 'transparencia' && (
             <Select value={portalSelecionado} onValueChange={setPortalSelecionado}>
               <SelectTrigger className="w-64 h-9 text-sm">
                 <Landmark className="w-4 h-4 mr-1 text-muted-foreground shrink-0" />
@@ -216,6 +221,7 @@ export default function AnaliseMercado() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+            )}
           </div>
 
           <TabsContent value="panorama" className="space-y-4">

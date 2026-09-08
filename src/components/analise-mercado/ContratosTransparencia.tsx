@@ -11,7 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { downloadCSV } from '@/lib/download-utils';
-import { mascaraCNPJ } from '@/lib/financeiro/formatters';
+import { mascaraCNPJ, isValidCNPJ } from '@/lib/financeiro/formatters';
 
 type ContratoFederal = {
   id?: string;
@@ -54,6 +54,15 @@ export default function ContratosTransparencia() {
   const [erro, setErro] = useState('');
 
   const handleBuscar = async () => {
+    // Dígito verificador ANTES da viagem: um CNPJ com algarismos trocados
+    // (33.743… em vez de 33.734…, o caso de 08/09) voltava da API federal
+    // como erro genérico. Conferir aqui dá resposta imediata e clara.
+    const digitos = cnpjBusca.replace(/\D/g, '');
+    if (digitos.length > 0 && !isValidCNPJ(digitos)) {
+      setErro('CNPJ inválido — confira os dígitos (é comum inverter dois algarismos).');
+      setDados([]);
+      return;
+    }
     setLoading(true);
     setErro('');
     setDados([]);

@@ -187,11 +187,18 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const text = await response.text();
       console.error(`Portal da Transparência API error [${response.status}]:`, text.substring(0, 500));
-      return new Response(JSON.stringify({ 
-        error: `Erro na API do Portal da Transparência (${response.status})`,
-        detalhes: text.substring(0, 200),
+      // Status 200 com {error}: repassar o 4xx fazia o invoke() do front
+      // estourar com "non-2xx status code" — e a mensagem REAL da API
+      // ("Informe um CNPJ válido…") ficava invisível (08/09). A tela já
+      // renderiza data.error; o que a API disse chega ao usuário.
+      let detalhe = text.substring(0, 200);
+      try {
+        const j = JSON.parse(text);
+        detalhe = String(Object.values(j)[0] ?? detalhe);
+      } catch { /* corpo não-JSON: fica o texto cru */ }
+      return new Response(JSON.stringify({
+        error: `A API do Portal da Transparência recusou a consulta: ${detalhe}`,
       }), {
-        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
