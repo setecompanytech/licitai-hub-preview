@@ -198,6 +198,13 @@ export default function TransparenciaPA({ portal }: Props) {
   const exportarResultadoPDF = async () => {
     const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
     const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    // Sem timbrado o PDF sai cru — dizer POR QUÊ evita parecer defeito:
+    // cada empresa configura o seu (foi o caso da ETHOS em 08/09).
+    if (!timbrado) {
+      toast.info('Esta empresa ainda não tem timbrado configurado — o PDF sai sem identidade visual.', {
+        description: 'Configure em Configurações → Timbrado da empresa.',
+      });
+    }
     downloadPDF(`empenhos-credor-${anoCredor}`, `${tituloResultado()} — ${rodapeTotais()}`,
       cabecalhosResultado, linhasResultado(), timbrado);
   };
@@ -365,6 +372,11 @@ export default function TransparenciaPA({ portal }: Props) {
     if (dadosFiltrados.length === 0) return;
     const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
     const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    if (!timbrado) {
+      toast.info('Esta empresa ainda não tem timbrado configurado — o PDF sai sem identidade visual.', {
+        description: 'Configure em Configurações → Timbrado da empresa.',
+      });
+    }
     downloadPDF(nomeBase, `Transparência ${portal.nome} — despesas por órgão (${anoFiltro})`,
       cabecalhos, linhasExport(), timbrado);
   };
