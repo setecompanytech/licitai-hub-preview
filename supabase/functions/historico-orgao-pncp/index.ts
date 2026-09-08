@@ -59,9 +59,22 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // ── Filtros inteligentes (08/09): UF, município, ano exato e RIGOR ──
+    // O rigor é o antídoto do vizinho fraco: "papel A4" trazia fita crepe a
+    // 50% e a mediana saía poluída. A tela escolhe o piso; 0.35 é o mínimo.
+    const uf = String(body.uf || "").trim().toUpperCase() || null;
+    const municipio = String(body.municipio || "").trim() || null;
+    const anoExato = Number(body.anoExato) || null;
+    const similaridadeMin = Math.min(Math.max(Number(body.similaridadeMin) || 0.35, 0.35), 0.9);
+
     const desde = new Date();
     desde.setFullYear(desde.getFullYear() - anos);
-    const desdeStr = desde.toISOString().slice(0, 10);
+    let desdeStr = desde.toISOString().slice(0, 10);
+    let ateStr: string | null = null;
+    if (anoExato && anoExato >= 2021 && anoExato <= 2100) {
+      desdeStr = `${anoExato}-01-01`;
+      ateStr = `${anoExato}-12-31`;
+    }
 
     let resultados: Record<string, unknown>[] = [];
     let provedor = "textual";
@@ -75,9 +88,12 @@ Deno.serve(async (req) => {
           p_cnpj: cnpj,
           p_desde: desdeStr,
           p_limite: limite,
-          // 0.35: o teste de 03/09 mostrou o piso de 0.25 deixando entrar
-          // vizinhos fracos (frascos de tiossulfato a 55% de "água mineral").
-          p_similaridade_min: 0.35,
+          // Piso 0.35 (teste de 03/09: 0.25 deixava entrar vizinhos fracos);
+          // a tela pode EXIGIR mais via similaridadeMin.
+          p_similaridade_min: similaridadeMin,
+          p_uf: uf,
+          p_municipio: municipio,
+          p_ate: ateStr,
         });
         if (!error && Array.isArray(data)) {
           resultados = data;
@@ -103,6 +119,10 @@ Deno.serve(async (req) => {
           .limit(limite);
         for (const p of palavras) q = q.ilike("objeto", `%${p}%`);
         if (cnpj) q = q.eq("cnpj_orgao", cnpj);
+        // O fallback honra os MESMOS recortes do caminho semântico.
+        if (uf) q = q.eq("uf", uf);
+        if (municipio) q = q.ilike("municipio", `%${municipio}%`);
+        if (ateStr) q = q.lte("data_publicacao_pncp", `${ateStr}T23:59:59`);
         const { data } = await q;
         resultados = (data || []) as Record<string, unknown>[];
       }

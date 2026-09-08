@@ -12779,3 +12779,11 @@ SELECT cron.schedule(
 -- p_dias (semana/mês) vence p_meses; valor_mediano nos totais.
 -- (Conteúdo completo em supabase/migrations/20260908000006_analise_mercado_janelas_curtas.sql)
 ```
+
+## 2026-09-08 — Preços por objeto: filtros UF/município/ano no RPC semântico — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- historico_orgao_semantico ganha p_uf, p_municipio, p_ate (DROP + CREATE
+-- para não deixar overload ambíguo no PostgREST).
+-- (Conteúdo completo em supabase/migrations/20260908000007_precos_por_objeto_filtros.sql)
+```

@@ -67,6 +67,13 @@ export default function AnaliseMercado() {
   // Recorrência) devolve os editais mais similares ao objeto digitado, e a
   // estatística honesta sai deles: mediana, faixa, quartis, lastro auditável.
   const [termoPreco, setTermoPreco] = useState('');
+  // Filtros inteligentes (08/09): UF herda a da página; município parcial;
+  // período em janelas ou ano exato; rigor = piso de similaridade — o
+  // antídoto para "papel A4" trazer fita crepe a 50% para dentro da mediana.
+  const [ufPreco, setUfPreco] = useState<string>('herdar');
+  const [municipioPreco, setMunicipioPreco] = useState('');
+  const [periodoPreco, setPeriodoPreco] = useState('36m');
+  const [rigorPreco, setRigorPreco] = useState('0.45');
   const [buscandoPreco, setBuscandoPreco] = useState(false);
   const [buscouPreco, setBuscouPreco] = useState(false);
   const [erroPreco, setErroPreco] = useState('');
@@ -85,8 +92,19 @@ export default function AnaliseMercado() {
     setBuscandoPreco(true);
     setErroPreco('');
     try {
+      const ufEfetiva = ufPreco === 'herdar' ? (uf === 'todos' ? null : uf) : ufPreco === 'todas' ? null : ufPreco;
+      const anoExato = /^\d{4}$/.test(periodoPreco) ? Number(periodoPreco) : null;
+      const anos = anoExato ? 3 : Number(periodoPreco.replace('m', '')) / 12;
       const { data, error } = await supabase.functions.invoke('historico-orgao-pncp', {
-        body: { objeto: termoPreco.trim(), anos: 3, limite: 30 },
+        body: {
+          objeto: termoPreco.trim(),
+          anos: Math.max(anos, 1),
+          limite: 30,
+          uf: ufEfetiva ?? undefined,
+          municipio: municipioPreco.trim() || undefined,
+          anoExato: anoExato ?? undefined,
+          similaridadeMin: Number(rigorPreco),
+        },
       });
       if (error || data?.error) {
         setErroPreco(String(data?.error || 'Não foi possível consultar o acervo.'));
@@ -374,6 +392,40 @@ export default function AnaliseMercado() {
                     <Calculator className="w-4 h-4 mr-1" /> Cotar na Precificação
                   </Button>
                 </Link>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <Select value={ufPreco} onValueChange={setUfPreco}>
+                  <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="herdar">UF da página ({uf === 'todos' ? 'todas' : uf})</SelectItem>
+                    <SelectItem value="todas">Todas as UFs</SelectItem>
+                    {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input placeholder="Município (opcional)" value={municipioPreco}
+                  onChange={(e) => setMunicipioPreco(e.target.value)} className="w-44 h-8 text-xs" />
+                <Select value={periodoPreco} onValueChange={setPeriodoPreco}>
+                  <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12m">Últimos 12 meses</SelectItem>
+                    <SelectItem value="24m">Últimos 24 meses</SelectItem>
+                    <SelectItem value="36m">Últimos 36 meses</SelectItem>
+                    {[0, 1, 2, 3].map((i) => {
+                      const a = new Date().getFullYear() - i;
+                      return <SelectItem key={a} value={String(a)}>Ano de {a}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                {/* Rigor: quanto o edital precisa PARECER com o objeto para
+                    entrar na conta. Alto = amostra menor e mais fiel. */}
+                <Select value={rigorPreco} onValueChange={setRigorPreco}>
+                  <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.55">Rigor alto — só muito similares</SelectItem>
+                    <SelectItem value="0.45">Rigor médio (recomendado)</SelectItem>
+                    <SelectItem value="0.35">Rigor amplo — inclui vizinhos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {erroPreco && <p className="text-sm text-destructive mt-2">{erroPreco}</p>}
             </Card>
