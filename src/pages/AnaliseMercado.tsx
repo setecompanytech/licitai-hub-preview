@@ -30,7 +30,7 @@ import { transparenciaPortais, estadosPortais, capitaisPortais, type Transparenc
  */
 
 type Resumo = {
-  totais: { editais: number; orgaos: number; volume: number | null; valor_medio: number | null; com_valor: number };
+  totais: { editais: number; orgaos: number; volume: number | null; valor_medio: number | null; valor_mediano?: number | null; com_valor: number };
   por_mes: Array<{ mes: string; editais: number; volume: number | null; valor_medio: number | null }>;
   por_modalidade: Array<{ modalidade: string; editais: number; volume: number | null }>;
   top_orgaos: Array<{ orgao: string; editais: number; volume: number | null }>;
@@ -57,17 +57,21 @@ const mesCurto = (yyyymm: string) => {
 export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
   const [uf, setUf] = useState<string>('PA');
-  const [meses, setMeses] = useState<number>(12);
+  // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
+  // números puros = meses. O RPC recebe p_dias OU p_meses.
+  const [periodo, setPeriodo] = useState<string>('12');
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [indisponivel, setIndisponivel] = useState(false);
 
+  const emDias = periodo.endsWith('d');
   useEffect(() => {
     let vivo = true;
     setCarregando(true);
     (supabase.rpc as any)('analise_mercado_acervo', {
       p_uf: uf === 'todos' ? null : uf,
-      p_meses: meses,
+      p_meses: emDias ? 12 : Number(periodo),
+      p_dias: emDias ? parseInt(periodo) : null,
     }).then(({ data, error }: { data: unknown; error: unknown }) => {
       if (!vivo) return;
       setCarregando(false);
@@ -78,7 +82,7 @@ export default function AnaliseMercado() {
       setResumo(data as Resumo);
     });
     return () => { vivo = false; };
-  }, [uf, meses]);
+  }, [uf, periodo, emDias]);
 
   const portalAtual: TransparenciaPortal = transparenciaPortais.find(p => `${p.tipo}-${p.sigla}-${p.nome}` === portalSelecionado)
     || transparenciaPortais.find(p => p.tipo === 'estado' && p.sigla === 'PA')!;
@@ -107,9 +111,11 @@ export default function AnaliseMercado() {
                 {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={String(meses)} onValueChange={(v) => setMeses(Number(v))}>
-              <SelectTrigger className="w-36 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <Select value={periodo} onValueChange={setPeriodo}>
+              <SelectTrigger className="w-40 h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="7d">Última semana</SelectItem>
+                <SelectItem value="30d">Últimos 30 dias</SelectItem>
                 <SelectItem value="3">Últimos 3 meses</SelectItem>
                 <SelectItem value="6">Últimos 6 meses</SelectItem>
                 <SelectItem value="12">Últimos 12 meses</SelectItem>
@@ -135,7 +141,9 @@ export default function AnaliseMercado() {
                   <span className="text-xs text-muted-foreground">Editais no período</span>
                 </div>
                 <p className="text-2xl font-bold tabular-nums">{carregando ? '…' : t?.editais.toLocaleString('pt-BR') ?? '—'}</p>
-                <span className="text-xs text-muted-foreground">{mediaMes != null ? `${mediaMes.toLocaleString('pt-BR')}/mês em média` : ''}</span>
+                <span className="text-xs text-muted-foreground">
+                  {emDias ? 'na janela escolhida' : mediaMes != null ? `${mediaMes.toLocaleString('pt-BR')}/mês em média` : ''}
+                </span>
               </div>
               <div className="stat-card">
                 <div className="flex items-center gap-2 mb-2">
@@ -159,7 +167,11 @@ export default function AnaliseMercado() {
                   <span className="text-xs text-muted-foreground">Valor médio por edital</span>
                 </div>
                 <p className="text-2xl font-bold tabular-nums">{carregando ? '…' : brlCompacto(t?.valor_medio)}</p>
-                <span className="text-xs text-muted-foreground">{t ? `${t.com_valor.toLocaleString('pt-BR')} com valor informado` : ''}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t?.valor_mediano != null
+                    ? `mediana ${brlCompacto(t.valor_mediano)} · ${t.com_valor.toLocaleString('pt-BR')} com valor`
+                    : t ? `${t.com_valor.toLocaleString('pt-BR')} com valor informado` : ''}
+                </span>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground -mt-3">

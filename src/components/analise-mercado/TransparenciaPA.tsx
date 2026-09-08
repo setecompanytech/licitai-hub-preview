@@ -32,6 +32,11 @@ const formatCurrency = (v: number) => {
   return `R$ ${v.toFixed(0)}`;
 };
 
+/** Dentro de um processo o número é EXATO, com centavos — "R$ 97K" serve
+ *  para panorama, não para conferir um empenho (pedido de 08/09). */
+const brlExato = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const currentYear = new Date().getFullYear();
 const anos = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -351,16 +356,16 @@ export default function TransparenciaPA({ portal }: Props) {
               </div>
               <div className="rounded-md border border-border/50 p-2.5">
                 <p className="text-xs text-muted-foreground">Valor empenhado</p>
-                <p className="text-lg font-bold tabular-nums">{formatCurrency(totaisCredor.valor_empenhado)}</p>
+                <p className="text-lg font-bold tabular-nums">{brlExato(totaisCredor.valor_empenhado)}</p>
               </div>
               <div className="rounded-md border border-border/50 p-2.5">
                 <p className="text-xs text-muted-foreground">Valor pago</p>
-                <p className="text-lg font-bold tabular-nums text-success">{formatCurrency(totaisCredor.valor_pago)}</p>
+                <p className="text-lg font-bold tabular-nums text-success">{brlExato(totaisCredor.valor_pago)}</p>
               </div>
               <div className="rounded-md border border-border/50 p-2.5">
                 <p className="text-xs text-muted-foreground">Saldo a pagar</p>
                 <p className={`text-lg font-bold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-                  {formatCurrency(totaisCredor.saldo_a_pagar)}
+                  {brlExato(totaisCredor.saldo_a_pagar)}
                 </p>
               </div>
             </div>
@@ -383,9 +388,9 @@ export default function TransparenciaPA({ portal }: Props) {
                     </p>
                   </div>
                   <div className="text-right shrink-0 tabular-nums">
-                    <p className="font-semibold">{formatCurrency(n.valor_empenhado)}</p>
+                    <p className="font-semibold">{brlExato(n.valor_empenhado)}</p>
                     <p className={n.valor_pago > 0 ? 'text-success' : 'text-muted-foreground'}>
-                      pago: {formatCurrency(n.valor_pago)}
+                      pago: {brlExato(n.valor_pago)}
                     </p>
                   </div>
                 </div>
@@ -430,7 +435,8 @@ export default function TransparenciaPA({ portal }: Props) {
             <TrendingUp className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Volume Total (empenhado)</span>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p>
+          {/* Compacto no card, EXATO no tooltip — panorama e conferência. */}
+          <p className="text-2xl font-bold" title={brlExato(totalGeral)}>{formatCurrency(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
@@ -438,9 +444,9 @@ export default function TransparenciaPA({ portal }: Props) {
             <span className="text-xs text-muted-foreground">{contagemConhecida ? 'Ticket Médio' : 'Média por órgão'}</span>
           </div>
           {contagemConhecida ? (
-            <p className="text-2xl font-bold">{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
+            <p className="text-2xl font-bold" title={totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : ''}>{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
           ) : (
-            <p className="text-2xl font-bold">{orgaosUnicos > 0 ? formatCurrency(totalGeral / orgaosUnicos) : 'R$ 0'}</p>
+            <p className="text-2xl font-bold" title={orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : ''}>{orgaosUnicos > 0 ? formatCurrency(totalGeral / orgaosUnicos) : 'R$ 0'}</p>
           )}
         </div>
       </div>

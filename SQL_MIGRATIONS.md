@@ -12772,3 +12772,10 @@ SELECT cron.schedule(
 -- totais, série mensal, modalidades, top órgãos e maiores contratações.
 -- (Conteúdo completo em supabase/migrations/20260908000005_analise_mercado_do_acervo.sql)
 ```
+
+## 2026-09-08 — Análise de Mercado: janelas de dias + mediana — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- p_dias (semana/mês) vence p_meses; valor_mediano nos totais.
+-- (Conteúdo completo em supabase/migrations/20260908000006_analise_mercado_janelas_curtas.sql)
+```
