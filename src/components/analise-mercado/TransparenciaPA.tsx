@@ -346,6 +346,23 @@ export default function TransparenciaPA({ portal }: Props) {
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
         </label>
 
+        {/* Ordem a pedido (08/09): Exportar · Abrir Portal · Limpar. */}
+        {dados.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-1" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <a href={portal.url} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm">
             <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
@@ -353,24 +370,9 @@ export default function TransparenciaPA({ portal }: Props) {
         </a>
 
         {dados.length > 0 && (
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-1" /> Exportar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
-              <Trash2 className="w-4 h-4 mr-1" /> Limpar
-            </Button>
-          </>
+          <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
+            <Trash2 className="w-4 h-4 mr-1" /> Limpar
+          </Button>
         )}
       </div>
 
