@@ -44,11 +44,16 @@ const fmtCur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', cur
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
 /** O portal oficial de quem CALCULA o índice — conferência na origem, a um
- *  clique do número. Derivado da fonte gravada na linha (nunca chutado). */
-const portalOficial = (fonte: string): { nome: string; url: string } => {
+ *  clique do número. Derivado da fonte gravada na linha (nunca chutado).
+ *  URLs verificadas em 08/09 (a primeira do BCB dava 404 no site novo, que
+ *  responde 200 até para rota inexistente — SPA — e só mostra o erro na tela). */
+const portalOficial = (fonte: string, categoria: string): { nome: string; url: string } => {
   if (fonte.startsWith('IBGE')) return { nome: 'IBGE', url: 'https://www.ibge.gov.br/indicadores' };
   if (fonte.startsWith('FGV')) return { nome: 'FGV', url: 'https://portal.fgv.br/indices-economicos' };
-  return { nome: 'Banco Central', url: 'https://www.bcb.gov.br/estatisticas/indicadoresconsolidados' };
+  if (categoria === 'juros') return { nome: 'Banco Central', url: 'https://www.bcb.gov.br/controleinflacao/taxaselic' };
+  // Salário mínimo e demais séries do SGS: o portal público do próprio SGS —
+  // a origem literal de onde estes números foram lidos.
+  return { nome: 'Banco Central (SGS)', url: 'https://www3.bcb.gov.br/sgspub/' };
 };
 
 const categoriaIcons: Record<string, typeof TrendingUp> = {
@@ -261,7 +266,7 @@ export default function IndicesRepactuacao() {
                         {idx.acumulado_12m != null && <span>12m: {fmtPerc(idx.acumulado_12m)}</span>}
                       </div>
                       {(() => {
-                        const portal = portalOficial(idx.fonte);
+                        const portal = portalOficial(idx.fonte, idx.categoria);
                         return (
                           <a href={portal.url} target="_blank" rel="noreferrer"
                             className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
