@@ -41,7 +41,7 @@ import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2, Eye, TrendingUp, Ban,
+  ExternalLink, Link2, Eye, TrendingUp, Ban, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -287,6 +287,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [empenhosAbertos, setEmpenhosAbertos] = useState(true);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
@@ -2187,14 +2188,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           precisa estar à vista, com o que já autoriza e o que dele resta. */}
       {empenhosDoContrato.length > 0 && (
         <Card className="p-4 mb-3">
-          <div className="flex items-center justify-between mb-2">
+          {/* O cabeçalho inteiro recolhe/expande (08/09): contrato com vários
+              empenhos empurrava a tabela de pedidos para fora da primeira
+              dobra. Nasce aberto — o painel é o que se olha. */}
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setEmpenhosAbertos((v) => !v)}
+            title={empenhosAbertos ? 'Recolher os empenhos' : 'Expandir os empenhos'}>
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Empenhos registrados ({empenhosDoContrato.length})
             </h4>
-            <span className="text-xs text-muted-foreground">autorizam os pedidos abaixo</span>
-          </div>
-          <div className="space-y-2">
+            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              autorizam os pedidos abaixo
+              {empenhosAbertos
+                ? <ChevronUp className="w-4 h-4 shrink-0" />
+                : <ChevronDown className="w-4 h-4 shrink-0" />}
+            </span>
+          </button>
+          {empenhosAbertos && (
+          <div className="space-y-2 mt-2">
             {empenhosDoContrato.map(e => {
               const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
               return (
@@ -2299,6 +2311,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               );
             })}
           </div>
+          )}
         </Card>
       )}
 
@@ -2441,32 +2454,41 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <>
                               <FileText className="w-3 h-3 mr-1 inline" />
                               {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
-                              {p.nf_quitada && p.data_quitacao && (
-                                <span className="ml-1 text-success">
-                                  • Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                </span>
-                              )}
                             </>
+                          );
+                          // A quitação em linha própria (08/09): dentro do selo,
+                          // número e estado disputavam a mesma linha e a leitura
+                          // vinha espremida.
+                          const quitada = p.nf_quitada && p.data_quitacao && (
+                            <p className="text-xs text-success">
+                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </p>
                           );
                           if (!nd.storage_path) {
                             return (
-                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
-                                {rotulo}
-                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                              </Badge>
+                              <>
+                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                  title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
+                                  {rotulo}
+                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                </Badge>
+                                {quitada}
+                              </>
                             );
                           }
                           return (
-                            <button type="button" className="block w-fit"
-                              onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
-                              title={`Abrir ${nd.arquivo_nome} em nova aba`}>
-                              <Badge variant="outline"
-                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
-                                {rotulo}
-                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                              </Badge>
-                            </button>
+                            <>
+                              <button type="button" className="block w-fit"
+                                onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
+                                title={`Abrir ${nd.arquivo_nome} em nova aba`}>
+                                <Badge variant="outline"
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  {rotulo}
+                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                </Badge>
+                              </button>
+                              {quitada}
+                            </>
                           );
                         })()}
                         {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
@@ -2485,10 +2507,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   três grafias da mesma nota, que sem
                                   normalizar viram três linhas diferentes. */}
                               {formatarNumeroNfe(p.nota_fiscal) ?? p.nota_fiscal}
-                              {p.nf_quitada && p.data_quitacao && (
-                                <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                              )}
                             </>
+                          );
+                          const quitada = p.nf_quitada && p.data_quitacao && (
+                            <p className="text-xs text-success">
+                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </p>
                           );
                           if (!doc) {
                             // Número sem arquivo é indistinguível de link
@@ -2496,26 +2520,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             // qual dos dois é — e onde se resolve — evita a
                             // conclusão de que o sistema perdeu a nota.
                             return (
-                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
-                                {conteudo}
-                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                              </Badge>
+                              <>
+                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                  title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
+                                  {conteudo}
+                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                </Badge>
+                                {quitada}
+                              </>
                             );
                           }
                           return (
-                            <button
-                              type="button"
-                              onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
-                              title={`Abrir ${doc.arquivo_nome} em nova aba`}
-                              className="block w-fit"
-                            >
-                              <Badge variant="outline"
-                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
-                                {conteudo}
-                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                              </Badge>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
+                                title={`Abrir ${doc.arquivo_nome} em nova aba`}
+                                className="block w-fit"
+                              >
+                                <Badge variant="outline"
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  {conteudo}
+                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                </Badge>
+                              </button>
+                              {quitada}
+                            </>
                           );
                         })()}
                         {linkedNfs.map(nf => {
