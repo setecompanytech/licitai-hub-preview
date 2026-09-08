@@ -382,10 +382,22 @@ export default function TransparenciaPA({ portal }: Props) {
 
           {achados.length > 0 && (
             <div className="divide-y divide-border/40 max-h-[320px] overflow-y-auto rounded-md border border-border/40">
+              {/* Cada linha abre o DETALHE do empenho no portal oficial (a
+                  pedido, 08/09): itens, processo, datas — para confrontar e
+                  imprimir na fonte. O id_ne é a chave da rota do portal. */}
               {achados.map((n) => (
-                <div key={n.id_ne} className="flex items-center justify-between gap-3 p-2.5 text-xs">
+                <a
+                  key={n.id_ne}
+                  href={`https://sistemas.pa.gov.br/portaltransparencia/empenho/notas/detalhe/${n.id_ne}`}
+                  target="_blank" rel="noopener noreferrer"
+                  title="Abrir o detalhe deste empenho no portal oficial (confrontar e imprimir)"
+                  className="flex items-center justify-between gap-3 p-2.5 text-xs hover:bg-muted/40 transition-colors cursor-pointer"
+                >
                   <div className="min-w-0">
-                    <p className="font-medium tabular-nums">{n.numero} · {n.orgao}</p>
+                    <p className="font-medium tabular-nums flex items-center gap-1.5">
+                      {n.numero} · {n.orgao}
+                      <ExternalLink className="w-3 h-3 text-primary shrink-0" />
+                    </p>
                     <p className="text-muted-foreground truncate">
                       {n.credor}{n.credor_cpf_cnpj ? ` · ${n.credor_cpf_cnpj}` : ''} · {n.dt_despesa}
                     </p>
@@ -396,7 +408,7 @@ export default function TransparenciaPA({ portal }: Props) {
                       pago: {brlExato(n.valor_pago)}
                     </p>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}
