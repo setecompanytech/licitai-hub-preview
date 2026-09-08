@@ -507,7 +507,7 @@ export default function TransparenciaPA({ portal }: Props) {
             <span className="text-xs text-muted-foreground">Volume Total (empenhado)</span>
           </div>
           {/* Compacto no card, EXATO no tooltip — panorama e conferência. */}
-          <p className="text-2xl font-bold" title={brlExato(totalGeral)}>{formatCurrency(totalGeral)}</p>
+          <p className="text-xl font-bold tabular-nums">{brlExato(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
@@ -515,9 +515,9 @@ export default function TransparenciaPA({ portal }: Props) {
             <span className="text-xs text-muted-foreground">{contagemConhecida ? 'Ticket Médio' : 'Média por órgão'}</span>
           </div>
           {contagemConhecida ? (
-            <p className="text-2xl font-bold" title={totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : ''}>{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
+            <p className="text-xl font-bold tabular-nums">{totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00'}</p>
           ) : (
-            <p className="text-2xl font-bold" title={orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : ''}>{orgaosUnicos > 0 ? formatCurrency(totalGeral / orgaosUnicos) : 'R$ 0'}</p>
+            <p className="text-xl font-bold tabular-nums">{orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'}</p>
           )}
         </div>
       </div>
@@ -547,7 +547,7 @@ export default function TransparenciaPA({ portal }: Props) {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="orgao" tick={{ fontSize: 9 }} width={160} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => brlExato(v)} />
                   <Bar dataKey="valor_total" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -566,7 +566,7 @@ export default function TransparenciaPA({ portal }: Props) {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => brlExato(v)} />
                 </PieChart>
               </ResponsiveContainer>
             </Card>
@@ -579,7 +579,7 @@ export default function TransparenciaPA({ portal }: Props) {
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="ano" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    <Tooltip formatter={(v: number) => brlExato(v)} />
                     <Bar dataKey="valor" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} name="Volume (R$)" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -610,7 +610,7 @@ export default function TransparenciaPA({ portal }: Props) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">{formatCurrency(d.valor_total)}</p>
+                    <p className="text-sm font-semibold tabular-nums">{brlExato(d.valor_total)}</p>
                   </div>
                 </div>
               ))}
