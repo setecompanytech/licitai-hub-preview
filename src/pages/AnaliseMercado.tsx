@@ -229,17 +229,30 @@ export default function AnaliseMercado() {
                 </Card>
                 <Card className="p-5">
                   <h3 className="text-sm font-semibold mb-4">Distribuição por modalidade</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RPieChart>
-                      <Pie data={resumo.por_modalidade} cx="50%" cy="50%" outerRadius={100} dataKey="editais" nameKey="modalidade"
-                        label={({ name, percent }) => `${String(name).slice(0, 18)} ${(percent * 100).toFixed(0)}%`}>
-                        {resumo.por_modalidade.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => [v.toLocaleString('pt-BR'), 'editais']} />
-                    </RPieChart>
-                  </ResponsiveContainer>
+                  {/* Sem rótulo DENTRO do gráfico: fatia de 0–1% não comporta
+                      texto apontado e as linhas se empilhavam ilegíveis
+                      (print de 08/09). O percentual vive na legenda. */}
+                  {(() => {
+                    const total = resumo.por_modalidade.reduce((s, m) => s + m.editais, 0) || 1;
+                    const fatias = resumo.por_modalidade.map((m) => ({
+                      ...m,
+                      rotulo: `${m.modalidade.length > 26 ? m.modalidade.slice(0, 24) + '…' : m.modalidade} — ${((m.editais / total) * 100).toFixed(m.editais / total < 0.01 ? 1 : 0)}%`,
+                    }));
+                    return (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RPieChart>
+                          <Pie data={fatias} cx="40%" cy="50%" outerRadius={100} dataKey="editais" nameKey="rotulo">
+                            {fatias.map((_, i) => (
+                              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v: number) => [`${v.toLocaleString('pt-BR')} editais`, '']} />
+                          <Legend layout="vertical" align="right" verticalAlign="middle"
+                            wrapperStyle={{ fontSize: 12, maxWidth: 220 }} />
+                        </RPieChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
                 </Card>
                 <Card className="p-5 lg:col-span-2">
                   <h3 className="text-sm font-semibold mb-3">Órgãos que mais publicaram</h3>
