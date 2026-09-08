@@ -572,3 +572,23 @@
 .so-impresso {
   display: none;
 }
+
+/* ── Esteira de índices oficiais (Jurídico → Índices & Repactuação) ─────────
+   O padrão dos portais econômicos (FGV, agências): os números correm da
+   direita para a esquerda em loop contínuo. A faixa é DUPLICADA no markup e
+   anda -50% — quando a primeira cópia sai, a segunda está exatamente onde a
+   primeira começou, sem emenda visível. Pausa no hover (ler exige parar) e
+   desliga por completo para quem pediu menos movimento ao sistema. */
+@keyframes esteira-indices {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.esteira-indices-faixa {
+  animation: esteira-indices 45s linear infinite;
+}
+.esteira-indices:hover .esteira-indices-faixa {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .esteira-indices-faixa { animation: none; }
+}

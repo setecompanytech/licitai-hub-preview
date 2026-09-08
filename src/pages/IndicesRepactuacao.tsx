@@ -190,6 +190,42 @@ export default function IndicesRepactuacao() {
           </p>
         </div>
 
+        {/* ── A esteira: os índices correndo, como nos portais econômicos ──
+            Visível em todas as abas do menu; os números são os MESMOS da base
+            local (fonte SGS), só mudam de roupa. Duplicada para o loop ser
+            contínuo; a segunda cópia é decorativa para o leitor de tela. */}
+        {indices.length > 0 && (
+          <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted/30 overflow-hidden">
+            <span className="shrink-0 flex items-center px-3 py-2 text-xs font-semibold text-primary whitespace-nowrap border-r border-border bg-card">
+              ÍNDICES OFICIAIS
+            </span>
+            <div className="relative flex-1 overflow-hidden flex items-center">
+              <div className="esteira-indices-faixa flex w-max items-center gap-8 px-4">
+                {[0, 1].map((volta) => (
+                  <span key={volta} className="flex items-center gap-8" aria-hidden={volta === 1}>
+                    {indices.map((idx) => (
+                      <span key={`${volta}-${idx.id}`} className="text-xs whitespace-nowrap tabular-nums">
+                        <b>{idx.sigla}</b>
+                        <span className="text-muted-foreground"> · {idx.periodo} · </span>
+                        <span className={(idx.variacao_mensal ?? 0) < 0 ? 'text-success' : 'text-warning'}>
+                          {idx.categoria === 'salario'
+                            ? fmtCur(idx.valor)
+                            : idx.categoria === 'juros'
+                              ? `${idx.valor}% a.a.`
+                              : fmtPerc(idx.valor)}
+                        </span>
+                        {idx.acumulado_12m != null && (
+                          <span className="text-muted-foreground"> (12m: {fmtPerc(idx.acumulado_12m)})</span>
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="indices">📊 Painel de Índices</TabsTrigger>
