@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,6 +58,7 @@ const mesCurto = (yyyymm: string) => {
 export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
   const [abaAtiva, setAbaAtiva] = useState('panorama');
+  const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal'>('estadual');
   const [uf, setUf] = useState<string>('PA');
   // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
   // números puros = meses. O RPC recebe p_dias OU p_meses.
@@ -188,15 +190,13 @@ export default function AnaliseMercado() {
               <TabsTrigger value="panorama"><PieChart className="w-4 h-4 mr-1" /> Panorama</TabsTrigger>
               <TabsTrigger value="precos"><TrendingUp className="w-4 h-4 mr-1" /> Preços Praticados</TabsTrigger>
               <TabsTrigger value="maiores"><Package className="w-4 h-4 mr-1" /> Maiores Contratações</TabsTrigger>
-              <TabsTrigger value="transparencia"><Landmark className="w-4 h-4 mr-1" /> Transparência</TabsTrigger>
-              <TabsTrigger value="contratos-gov"><FileText className="w-4 h-4 mr-1" /> Contratos Gov</TabsTrigger>
-              <TabsTrigger value="transparencia-federal"><Shield className="w-4 h-4 mr-1" /> Federal</TabsTrigger>
+              <TabsTrigger value="consultas"><Landmark className="w-4 h-4 mr-1" /> Consultas Oficiais</TabsTrigger>
             </TabsList>
 
             {/* O seletor de portais só governa a aba Transparência — mostrado
                 nas demais, parecia um filtro global que não filtrava nada
                 (print de 08/09). */}
-            {abaAtiva === 'transparencia' && (
+            {abaAtiva === 'consultas' && fonteConsulta === 'estadual' && (
             <Select value={portalSelecionado} onValueChange={setPortalSelecionado}>
               <SelectTrigger className="w-64 h-9 text-sm">
                 <Landmark className="w-4 h-4 mr-1 text-muted-foreground shrink-0" />
@@ -351,16 +351,30 @@ export default function AnaliseMercado() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="transparencia">
-            <TransparenciaPA key={portalSelecionado} portal={portalAtual} />
-          </TabsContent>
-
-          <TabsContent value="contratos-gov">
-            <ContratosGov />
-          </TabsContent>
-
-          <TabsContent value="transparencia-federal">
-            <ContratosTransparencia />
+          {/* ── Consultas Oficiais: as três fontes federativas numa aba só
+              (pedido de 08/09). Nada foi perdido: os três painéis são os
+              mesmos; o que mudou é a porta — um seletor de fonte no lugar de
+              três abas que pareciam a mesma coisa. Cada ente, sua fonte:
+              estadual/municipal (portais de transparência), União-atas
+              (Compras.gov.br) e União-contratos (Portal da Transparência). */}
+          <TabsContent value="consultas" className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant={fonteConsulta === 'estadual' ? 'default' : 'outline'}
+                onClick={() => setFonteConsulta('estadual')}>
+                <Landmark className="w-4 h-4 mr-1" /> Transparência Estadual
+              </Button>
+              <Button size="sm" variant={fonteConsulta === 'arp' ? 'default' : 'outline'}
+                onClick={() => setFonteConsulta('arp')}>
+                <FileText className="w-4 h-4 mr-1" /> Atas de Registro — Federal
+              </Button>
+              <Button size="sm" variant={fonteConsulta === 'federal' ? 'default' : 'outline'}
+                onClick={() => setFonteConsulta('federal')}>
+                <Shield className="w-4 h-4 mr-1" /> Contratos & Licitações — Federal
+              </Button>
+            </div>
+            {fonteConsulta === 'estadual' && <TransparenciaPA key={portalSelecionado} portal={portalAtual} />}
+            {fonteConsulta === 'arp' && <ContratosGov />}
+            {fonteConsulta === 'federal' && <ContratosTransparencia />}
           </TabsContent>
         </Tabs>
       </div>
