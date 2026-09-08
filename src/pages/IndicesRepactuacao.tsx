@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,7 +70,10 @@ export default function IndicesRepactuacao() {
   const [catFiltro, setCatFiltro] = useState('todos');
 
   // Simulador
-  const [simValor, setSimValor] = useState('');
+  // Número, não texto: o campo era um Input cru que aceitava "100000,00" sem
+  // máscara e o parse manual espalhava-se por três pontos (08/09). MoneyInput
+  // é o padrão da casa para dinheiro.
+  const [simValor, setSimValor] = useState(0);
   const [simIndice, setSimIndice] = useState('IPCA');
   const [simPerc, setSimPerc] = useState('');
   const [simDataOrig, setSimDataOrig] = useState('');
@@ -126,7 +130,7 @@ export default function IndicesRepactuacao() {
       const { data, error } = await supabase.functions.invoke('indices-economicos', {
         body: {
           action: 'simular_repactuacao',
-          valor_original: parseFloat(simValor.replace(/\./g, '').replace(',', '.')),
+          valor_original: simValor,
           indice: simIndice,
           percentual: parseFloat(simPerc.replace(',', '.')),
           data_base_original: simDataOrig,
@@ -404,7 +408,7 @@ export default function IndicesRepactuacao() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs">Valor Original do Contrato (R$)</Label>
-                  <Input placeholder="100.000,00" value={simValor} onChange={e => setSimValor(e.target.value)} />
+                  <MoneyInput value={simValor} onValueChange={setSimValor} />
                 </div>
                 <div>
                   <Label className="text-xs">Índice de Reajuste</Label>
@@ -457,7 +461,7 @@ export default function IndicesRepactuacao() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Valor Original</p>
-                    <p className="text-lg font-bold">{fmtCur(parseFloat(simValor.replace(/\./g, '').replace(',', '.')) || 0)}</p>
+                    <p className="text-lg font-bold">{fmtCur(simValor || 0)}</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Valor Reajustado</p>
