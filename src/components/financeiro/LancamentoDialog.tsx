@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle, Link2 } from "lucide-react";
+import { Info, CheckCircle2, TrendingUp, TrendingDown, ArrowLeftRight, AlertCircle, Link2, Trash2 } from "lucide-react";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -261,9 +261,14 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
   const [docGuardado, setDocGuardado] = useState<{
     id: string; arquivo_nome: string; storage_path: string; arquivo_xml: string | null;
   } | null>(null);
+  /** TROCA de documento em curso: os guards "só preenche vazio" (certos no
+   *  1º anexo) impediam a leitura NOVA de entrar — número/chave ficavam do
+   *  arquivo antigo (08/09). Com a troca, a leitura nova manda. */
+  const substituindoDoc = useRef(false);
   const [abrindoDoc, setAbrindoDoc] = useState(false);
 
   useEffect(() => {
+    substituindoDoc.current = false;
     if (!open || !initial?.id) { setDocGuardado(null); return; }
     let vivo = true;
     supabase
@@ -333,11 +338,11 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
 
       // Primeiro o que tem DV: se fecha, é fato, e manda sobre o resto.
       const chave = chaveDeAcessoValida(d.chave_nfe);
-      if (chave && !chaveValida(chaveAcessoNfe)) {
+      if (chave && (substituindoDoc.current || !chaveValida(chaveAcessoNfe))) {
         setChaveAcessoNfe(chave);
         const dc = dadosDaChave(chave)!;
-        if (!numeroDocumento.trim()) setNumeroDocumento(dc.numero);
-        if (!serieDocumento.trim()) setSerieDocumento(dc.serie);
+        if (substituindoDoc.current || !numeroDocumento.trim()) setNumeroDocumento(dc.numero);
+        if (substituindoDoc.current || !serieDocumento.trim()) setSerieDocumento(dc.serie);
         conferidos.push("chave de acesso");
       }
       const boleto = d.codigo_barras ? lerLinhaDigitavel(d.codigo_barras, hojeISO()) : null;
@@ -353,8 +358,8 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       const txt = (k: string) => (typeof d[k] === "string" && d[k] ? String(d[k]) : null);
       if (!boleto && num("valor_total") && !valor) { setValor(num("valor_total")!); preencheu.push("valor"); }
       if (!boleto && txt("data_vencimento") && !dataVencimento) { setDataVencimento(txt("data_vencimento")!); preencheu.push("vencimento"); }
-      if (txt("data_emissao") && !dataEmissao) { setDataEmissao(txt("data_emissao")!); preencheu.push("emissão"); }
-      if (!chave && !boleto && txt("numero_documento") && !numeroDocumento.trim()) {
+      if (txt("data_emissao") && (substituindoDoc.current || !dataEmissao)) { setDataEmissao(txt("data_emissao")!); preencheu.push("emissão"); }
+      if (!chave && !boleto && txt("numero_documento") && (substituindoDoc.current || !numeroDocumento.trim())) {
         setNumeroDocumento(txt("numero_documento")!); preencheu.push("número");
       }
       if (txt("tipo_documento") && !tipoDocumento) {
@@ -467,13 +472,15 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
       if (!nfe) return false;
       setNfeLida(nfe);
 
-      const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, {
-        numero_documento: numeroDocumento,
-        serie_documento: serieDocumento,
-        chave_acesso_nfe: chaveAcessoNfe,
-        data_emissao: dataEmissao,
-        valor,
-      });
+      const { preencher, divergencias: achadas } = conferirContraOLancamento(nfe, substituindoDoc.current
+        ? { numero_documento: '', serie_documento: '', chave_acesso_nfe: '', data_emissao: '', valor }
+        : {
+            numero_documento: numeroDocumento,
+            serie_documento: serieDocumento,
+            chave_acesso_nfe: chaveAcessoNfe,
+            data_emissao: dataEmissao,
+            valor,
+          });
       if (preencher.numero_documento) setNumeroDocumento(preencher.numero_documento);
       if (preencher.serie_documento) setSerieDocumento(preencher.serie_documento);
       if (preencher.chave_acesso_nfe) setChaveAcessoNfe(preencher.chave_acesso_nfe);
@@ -528,6 +535,18 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     const principal = escolhidos.find((f) => !/\.xml$/i.test(f.name));
     if (principal) setArquivoPdf(principal);
     if (xml) setArquivoXml(xml);
+
+    // Substituição: os campos do documento anterior saem de cena para a
+    // leitura do novo entrar — sem isto, a troca mantinha número e chave
+    // do arquivo antigo, silenciosamente.
+    if (docGuardado) {
+      substituindoDoc.current = true;
+      setNumeroDocumento("");
+      setSerieDocumento("");
+      setChaveAcessoNfe("");
+      setDataEmissao("");
+      toast.info("Trocando o documento — a leitura anterior foi limpa; os campos virão do arquivo novo.");
+    }
 
     if (!xml) {
       if (!principal) { toast.error("Escolha um arquivo."); return; }
@@ -848,6 +867,25 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
    * se prender, e anexar antes de existir deixaria arquivo órfão para quem
    * desistisse no meio.
    */
+  /** Apaga o arquivo guardado (a pedido, 08/09): registro primeiro — é nele
+   *  que o RLS decide —, arquivo depois; contagem de linhas contra o falso
+   *  sucesso silencioso. Os campos digitados permanecem. */
+  const apagarDocGuardado = async () => {
+    if (!docGuardado) return;
+    const { data: removidas, error } = await supabase
+      .from("financeiro_documentos_fiscais" as never)
+      .delete()
+      .eq("id", docGuardado.id)
+      .select("id");
+    if (error || !(removidas as unknown as unknown[])?.length) {
+      toast.error("Não foi possível apagar o documento: " + (error?.message ?? "sem permissão"));
+      return;
+    }
+    await supabase.storage.from("financeiro-documentos").remove([docGuardado.storage_path]);
+    setDocGuardado(null);
+    toast.success("Documento apagado do lançamento. Os campos digitados foram mantidos.");
+  };
+
   const guardarDocumentos = async (lancamentoId: string | null) => {
     if (!lancamentoId || (!arquivoPdf && !arquivoXml)) return;
     const xmlTexto = arquivoXml ? await arquivoXml.text().catch(() => null) : null;
@@ -1307,6 +1345,12 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                       </p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
+                      <Button type="button" variant="outline" size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="Apagar o arquivo guardado (os campos digitados permanecem)"
+                        onClick={apagarDocGuardado}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                       {/* ── Ver a nota quando só existe o XML ─────────────────
                           XML aberto no navegador é marcação crua. O dado está
                           todo ali — `parseNFe` já o extrai por inteiro —, só

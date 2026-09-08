@@ -34,6 +34,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
@@ -259,6 +260,23 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const qc = useQueryClient();
+
+  // A NF-e anexada no Financeiro tem de aparecer AQUI sem F5 (08/09): o
+  // vínculo e o documento mudam lá, e esta aba só sabia via cache de 60s.
+  useEffect(() => {
+    if (!contratoId || !empresaAtiva?.id) return;
+    const canal = supabase
+      .channel(`nf-pedidos-${contratoId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'financeiro_lancamentos', filter: `contrato_id=eq.${contratoId}` },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'financeiro_documentos_fiscais', filter: `empresa_id=eq.${empresaAtiva.id}` },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [contratoId, empresaAtiva?.id, qc]);
   const navigate = useNavigate();
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;

@@ -40,7 +40,7 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
   return useQuery({
     queryKey: ['nf-por-pedido', empresaAtiva?.id, contratoId],
     enabled: !!empresaAtiva?.id && !!contratoId,
-    staleTime: 60_000,
+    staleTime: 15_000,
     queryFn: async (): Promise<Record<string, NotaDoPedido>> => {
       const { data, error } = await supabase
         .from('financeiro_lancamentos')
