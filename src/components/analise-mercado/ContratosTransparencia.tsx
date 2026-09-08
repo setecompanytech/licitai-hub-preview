@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { downloadCSV } from '@/lib/download-utils';
+import { mascaraCNPJ } from '@/lib/financeiro/formatters';
 
 type ContratoFederal = {
   id?: string;
@@ -115,7 +116,8 @@ export default function ContratosTransparencia() {
           <Input
             placeholder="CNPJ do contratado (opcional)"
             value={cnpjBusca}
-            onChange={(e) => setCnpjBusca(e.target.value)}
+            inputMode="numeric"
+            onChange={(e) => setCnpjBusca(mascaraCNPJ(e.target.value))}
           />
 
           <Input

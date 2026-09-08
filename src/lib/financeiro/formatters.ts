@@ -81,6 +81,22 @@ export const formatCNPJ = (cnpj: string): string => {
   return `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`;
 };
 
+/**
+ * Máscara PROGRESSIVA de CNPJ — para campo de digitação. O formatCNPJ acima
+ * só veste o número completo; enquanto a pessoa digita, ele devolve o texto
+ * cru e o campo parece sem máscara (foi o caso da consulta federal, 08/09).
+ * Aceita colar já formatado, corta no 14º dígito.
+ */
+export const mascaraCNPJ = (texto: string): string => {
+  const d = texto.replace(/\D/g, "").slice(0, 14);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += "." + d.slice(2, 5);
+  if (d.length > 5) out += "." + d.slice(5, 8);
+  if (d.length > 8) out += "/" + d.slice(8, 12);
+  if (d.length > 12) out += "-" + d.slice(12, 14);
+  return out;
+};
+
 export const formatDocumento = (doc: string): string => {
   const d = doc.replace(/\D/g, "");
   if (d.length === 11) return formatCPF(d);
