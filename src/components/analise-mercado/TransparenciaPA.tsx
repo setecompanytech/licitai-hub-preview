@@ -39,11 +39,27 @@ type Props = {
   portal: TransparenciaPortal;
 };
 
+type NotaEmpenhoPA = {
+  numero: string; dt_despesa: string; orgao: string; credor: string;
+  id_ne: string; valor_empenhado: number; valor_pago: number;
+};
+
 export default function TransparenciaPA({ portal }: Props) {
   const [dados, setDados] = useState<EmpenhoData[]>([]);
   const [anoFiltro, setAnoFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
+  // ── API oficial do Pará (08/09) — só o PA tem; os demais seguem com
+  // planilha + portal. Nada aqui é estimado: dados-abertos.sistemas.pa.gov.br
+  const ehParaEstado = portal.tipo === 'estado' && portal.sigla === 'PA';
+  const [extraindo, setExtraindo] = useState(false);
+  const [credor, setCredor] = useState('');
+  const [anoCredor, setAnoCredor] = useState(String(currentYear));
+  const [buscandoCredor, setBuscandoCredor] = useState(false);
+  const [achados, setAchados] = useState<NotaEmpenhoPA[]>([]);
+  const [varridos, setVarridos] = useState(0);
+  const [proximaPagina, setProximaPagina] = useState<number | null>(null);
+  const [buscouCredor, setBuscouCredor] = useState(false);
 
   const portalLabel = portal.tipo === 'estado'
     ? `Estado: ${portal.nome} (${portal.sigla})`
@@ -76,6 +92,68 @@ export default function TransparenciaPA({ portal }: Props) {
   }, [anoFiltro]);
 
   useEffect(() => { loadDados(); }, [loadDados]);
+
+  /** Fase A: execução por órgão, da API oficial — um clique popula a aba. */
+  const extrairDaApiOficial = async () => {
+    setExtraindo(true);
+    try {
+      const ano = anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear;
+      const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
+        body: { modo: 'despesas', ano },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      const linhas = (data?.data ?? []) as Array<{ orgao: string; valor: number; quantidade: number }>;
+      if (linhas.length === 0) { toast.info('A API oficial não devolveu órgãos para este ano.'); return; }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Troca o ano inteiro: extração repetida atualiza em vez de duplicar.
+      await supabase.from('transparencia_empenhos')
+        .delete().eq('user_id', user.id).eq('ano', ano);
+      const { error: insertError } = await supabase.from('transparencia_empenhos').insert(
+        linhas.map((l) => ({
+          user_id: user.id,
+          orgao: l.orgao,
+          ano,
+          valor_total: l.valor,
+          quantidade_empenhos: l.quantidade || 1,
+        })),
+      );
+      if (insertError) throw insertError;
+      toast.success(`${linhas.length} órgãos importados da API oficial do Pará (${ano}).`, {
+        description: 'Valor = total EMPENHADO por órgão no ano, direto do portal de dados abertos.',
+      });
+      loadDados();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao consultar a API do Pará');
+    } finally {
+      setExtraindo(false);
+    }
+  };
+
+  /** Fase B: varredura de notas de empenho por CREDOR (ex.: a própria
+   *  empresa). A API não filtra por credor nem por órgão (parâmetro inerte,
+   *  testado) — filtramos nós, 2.000 por página, com continuação explícita. */
+  const buscarPorCredor = async (paginaInicial = 1) => {
+    setBuscandoCredor(true);
+    if (paginaInicial === 1) { setAchados([]); setVarridos(0); setProximaPagina(null); }
+    try {
+      const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
+        body: { modo: 'empenhos', ano: parseInt(anoCredor), credor: credor.trim(), paginaInicial, maxPaginas: 12 },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      setAchados((prev) => paginaInicial === 1 ? (data.achados ?? []) : [...prev, ...(data.achados ?? [])]);
+      setVarridos((prev) => (paginaInicial === 1 ? 0 : prev) + (data.varridos ?? 0));
+      setProximaPagina(data.proximaPagina ?? null);
+      setBuscouCredor(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha na varredura');
+    } finally {
+      setBuscandoCredor(false);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,10 +266,17 @@ export default function TransparenciaPA({ portal }: Props) {
           </SelectContent>
         </Select>
 
-        {/* "Extrair do Portal" (aposentado em 08/09): pedia à IA generativa
-            que ESTIMASSE os empenhos — número inventado com cara de coleta.
-            Ficam os dois caminhos verdadeiros: a planilha baixada do portal
-            e o link para o próprio portal. */}
+        {/* O "Extrair do Portal" de IA foi aposentado (estimava números).
+            Para o PARÁ ele renasceu de verdade: a API oficial de dados
+            abertos do Estado. Para os demais portais, os caminhos honestos
+            continuam sendo a planilha e o link. */}
+        {ehParaEstado && (
+          <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
+            {extraindo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+            Extrair da API oficial
+          </Button>
+        )}
+
         <label className="cursor-pointer">
           <Button variant="outline" size="sm" asChild>
             <span>
@@ -218,6 +303,68 @@ export default function TransparenciaPA({ portal }: Props) {
           </>
         )}
       </div>
+
+      {/* ── Fase B: empenhos por credor, direto da fonte oficial (só PA) ──
+          O caso de uso nº 1 é a empresa procurar A SI MESMA: acompanhar os
+          próprios empenhos estaduais (e o valor pago) sem depender do órgão
+          avisar. A API não filtra por credor — a varredura pagina 2.000 por
+          vez e devolve o ponto de continuação, dito na tela. */}
+      {ehParaEstado && (
+        <Card className="p-4 space-y-3">
+          <h4 className="text-sm font-semibold flex items-center gap-1.5">
+            <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — API oficial do Pará
+          </h4>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input placeholder="Nome do credor (ex.: SANTA ROSA)" value={credor}
+              onChange={(e) => setCredor(e.target.value)} className="w-72 h-9" />
+            <Select value={anoCredor} onValueChange={setAnoCredor}>
+              <SelectTrigger className="w-28 h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button size="sm" className="h-9" disabled={buscandoCredor || credor.trim().length < 4}
+              onClick={() => buscarPorCredor(1)}>
+              {buscandoCredor ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+              Buscar
+            </Button>
+          </div>
+
+          {buscouCredor && !buscandoCredor && (
+            <p className="text-xs text-muted-foreground">
+              {achados.length} empenho(s) do credor em {varridos.toLocaleString('pt-BR')} notas varridas de {anoCredor}.
+              {proximaPagina === null
+                ? ' Varredura completa do ano.'
+                : ' A varredura tem continuação — o ano ainda não terminou de ser percorrido.'}
+            </p>
+          )}
+
+          {achados.length > 0 && (
+            <div className="divide-y divide-border/40 max-h-[320px] overflow-y-auto rounded-md border border-border/40">
+              {achados.map((n) => (
+                <div key={n.id_ne} className="flex items-center justify-between gap-3 p-2.5 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-medium tabular-nums">{n.numero} · {n.orgao}</p>
+                    <p className="text-muted-foreground truncate">{n.credor} · {n.dt_despesa}</p>
+                  </div>
+                  <div className="text-right shrink-0 tabular-nums">
+                    <p className="font-semibold">{formatCurrency(n.valor_empenhado)}</p>
+                    <p className={n.valor_pago > 0 ? 'text-success' : 'text-muted-foreground'}>
+                      pago: {formatCurrency(n.valor_pago)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {proximaPagina !== null && !buscandoCredor && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => buscarPorCredor(proximaPagina)}>
+              Continuar varredura (a partir da página {proximaPagina})
+            </Button>
+          )}
+        </Card>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
