@@ -12,6 +12,8 @@
  * definiu meta, entra; não tem meta nem é do comercial, some.
  */
 
+import { nomeExibido, type MembroExibivel } from '@/lib/equipe/nomeExibido';
+
 export const SETOR_COMERCIAL = 'comercial';
 
 export type MembroFiltravel = {
@@ -31,11 +33,14 @@ export function filtrarColaboradoresDoPainel<T extends MembroFiltravel>(
 }
 
 /**
- * Nome de exibição. Cai no e-mail e, na falta dele, num rótulo explícito —
- * "Sem nome" é melhor que uma linha em branco que ninguém sabe identificar.
+ * Nome de exibição — delega à autoridade única (`nomeExibido`, da Equipe).
+ *
+ * Este arquivo tinha uma cópia própria que só olhava `nome`/`email` — e conta
+ * criada por convite de setor grava o RÓTULO do setor em `nome` ("Setor
+ * Comercial", igual para todos que entram pelo link). O seletor de relatórios
+ * listava três "Setor Comercial" indistinguíveis (08/09); quem identifica a
+ * pessoa são `nome_individual`/`login_individual`, que só a autoridade lê.
  */
-export function nomeDoColaborador(
-  membro: { nome?: string | null; email?: string | null },
-): string {
-  return membro.nome?.trim() || membro.email?.trim() || 'Sem nome';
+export function nomeDoColaborador(membro: MembroExibivel): string {
+  return nomeExibido(membro);
 }

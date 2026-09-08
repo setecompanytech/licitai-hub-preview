@@ -8,6 +8,8 @@
 
 import jsPDF from 'jspdf';
 import { writeExcelFromJson } from '@/lib/excel-utils';
+import { aplicarTimbrado, aplicarTimbradoEmTodasAsPaginas, type Timbrado } from '@/lib/timbrado/timbrado';
+import { textoSeguroParaPdf } from './texto-pdf';
 import type { Relatorio } from './relatorio';
 
 const MARGEM = 15;
@@ -22,20 +24,31 @@ function nomeArquivo(rel: Relatorio, extensao: string): string {
   return `metas-${rel.tipo.toLowerCase()}-${colaborador}-${rel.periodo.fim}.${extensao}`;
 }
 
-export function exportarRelatorioPdf(rel: Relatorio): void {
+export function exportarRelatorioPdf(rel: Relatorio, timbrado?: Timbrado | null): void {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  let y = MARGEM;
+
+  // Com timbrado, o conteúdo vive entre o topo e o rodapé da identidade da
+  // empresa — mesmo molde do recibo e dos demais relatórios.
+  const molde = timbrado ? aplicarTimbrado(doc, timbrado) : null;
+  const topo = molde ? molde.topoY + 2 : MARGEM;
+  const limite = molde ? molde.rodapeY - 4 : 280;
+  let y = topo;
 
   /** Quebra de página antes de escrever, para nada sair cortado no rodapé. */
   const garantirEspaco = (altura: number) => {
-    if (y + altura > 280) { doc.addPage(); y = MARGEM; }
+    if (y + altura > limite) { doc.addPage(); y = topo; }
+  };
+
+  /** Times em todo o corpo — a mesma família do recibo padrão (ABNT). */
+  const escrever = (texto: string, x: number, opts?: { align: 'right' }) => {
+    doc.text(textoSeguroParaPdf(texto), x, y, opts);
   };
 
   const titulo = (texto: string) => {
     garantirEspaco(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('times', 'bold');
     doc.setFontSize(12);
-    doc.text(texto, MARGEM, y);
+    escrever(texto, MARGEM);
     y += 6;
     doc.setDrawColor(200);
     doc.line(MARGEM, y, MARGEM + LARGURA_UTIL, y);
@@ -44,18 +57,18 @@ export function exportarRelatorioPdf(rel: Relatorio): void {
 
   const linha = (rotulo: string, valor: string) => {
     garantirEspaco(6);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('times', 'normal');
     doc.setFontSize(10);
-    doc.text(rotulo, MARGEM, y);
-    doc.setFont('helvetica', 'bold');
-    doc.text(valor, MARGEM + LARGURA_UTIL, y, { align: 'right' });
+    escrever(rotulo, MARGEM);
+    doc.setFont('times', 'bold');
+    escrever(valor, MARGEM + LARGURA_UTIL, { align: 'right' });
     y += 6;
   };
 
   const paragrafo = (texto: string, tamanho = 9) => {
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('times', 'normal');
     doc.setFontSize(tamanho);
-    for (const l of doc.splitTextToSize(texto, LARGURA_UTIL) as string[]) {
+    for (const l of doc.splitTextToSize(textoSeguroParaPdf(texto), LARGURA_UTIL) as string[]) {
       garantirEspaco(5);
       doc.text(l, MARGEM, y);
       y += 4.5;
@@ -63,21 +76,21 @@ export function exportarRelatorioPdf(rel: Relatorio): void {
   };
 
   // Cabeçalho
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(16);
-  doc.text('Relatório de Metas — Comercial', MARGEM, y);
+  escrever('Relatório de Metas — Comercial', MARGEM);
   y += 7;
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setFontSize(10);
-  doc.text(`${rel.colaborador} — ${rel.periodo.rotulo}`, MARGEM, y);
+  escrever(`${rel.colaborador} — ${rel.periodo.rotulo}`, MARGEM);
   y += 5;
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text(
+  escrever(
     rel.parcial
       ? 'Período em curso — números parciais até a data de emissão.'
       : 'Período encerrado — números definitivos.',
-    MARGEM, y,
+    MARGEM,
   );
   doc.setTextColor(0);
   y += 8;
@@ -94,11 +107,11 @@ export function exportarRelatorioPdf(rel: Relatorio): void {
     titulo('Riscos identificados');
     for (const r of rel.riscos) {
       garantirEspaco(10);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('times', 'bold');
       doc.setFontSize(9);
-      doc.text(`[${r.severidade.toUpperCase()}] ${r.descricao}`, MARGEM, y);
+      escrever(`[${r.severidade.toUpperCase()}] ${r.descricao}`, MARGEM);
       y += 4.5;
-      if (r.acao) paragrafo(`→ ${r.acao}`, 9);
+      if (r.acao) paragrafo(`» ${r.acao}`, 9);
       y += 2;
     }
     y += 1;
@@ -117,6 +130,9 @@ export function exportarRelatorioPdf(rel: Relatorio): void {
   );
   y += 2;
   rel.premissas.forEach((p) => linha(p.rotulo, p.valor));
+
+  // As páginas criadas pelas quebras também recebem a identidade.
+  if (timbrado) aplicarTimbradoEmTodasAsPaginas(doc, timbrado);
 
   doc.save(nomeArquivo(rel, 'pdf'));
 }
