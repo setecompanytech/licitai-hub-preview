@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Building2, Download, Search, Loader2, RefreshCw,
+  Building2, Download, Search, Loader2,
   TrendingUp, ExternalLink, FileText, Trash2, FileSpreadsheet
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -49,7 +49,6 @@ export default function ContratosGov() {
   const [tipoFiltro, setTipoFiltro] = useState<string>('arp');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
-  const [extracting, setExtracting] = useState(false);
 
   const loadDados = useCallback(async () => {
     setLoading(true);
@@ -80,57 +79,10 @@ export default function ContratosGov() {
 
   useEffect(() => { loadDados(); }, [loadDados]);
 
-  const handleExtract = async () => {
-    setExtracting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('scrape-contratos-gov', {
-        body: {
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          tipo: tipoFiltro !== 'todos' ? tipoFiltro : 'arp',
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.success && data?.data?.length > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const selectedYear = anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear;
-        const selectedType = tipoFiltro !== 'todos' ? tipoFiltro : 'arp';
-
-        const rows = data.data.map((d: any) => ({
-          user_id: user.id,
-          orgao: d.orgao,
-          tipo: selectedType,
-          descricao: d.descricao || null,
-          valor_total: d.valor,
-          quantidade_itens: d.quantidade || 1,
-          modalidade: d.modalidade || null,
-          situacao: d.situacao || 'vigente',
-          ano: selectedYear,
-        }));
-
-        const { error: insertError } = await (supabase.from('contratos_gov') as any).insert(rows);
-        if (insertError) throw insertError;
-
-        toast.success(`${rows.length} órgãos importados via IA (estimativas baseadas em dados públicos)`);
-        loadDados();
-      } else {
-        toast.error('Nenhum dado extraído pela IA', {
-          description: data?.error || 'Não foram encontrados contratos para os filtros selecionados. Tente outro ano ou tipo.',
-          duration: 7000,
-        });
-      }
-    } catch (e: any) {
-      toast.error('Falha ao importar dados de contratos', {
-        description: e.message || 'Verifique sua conexão e tente novamente.',
-        duration: 6000,
-      });
-    } finally {
-      setExtracting(false);
-    }
-  };
+  // "Extrair via IA" (aposentado em 08/09): pedia à OpenAI que ESTIMASSE os
+  // contratos do Governo Federal — o próprio toast confessava "estimativas".
+  // Número inventado com cara de coleta não entra mais; o caminho real para
+  // dados federais é a aba Federal (API), com a API oficial da Transparência.
 
   const handleLimpar = async () => {
     if (!confirm('Tem certeza que deseja limpar todos os dados de Contratos Gov?')) return;
@@ -203,11 +155,6 @@ export default function ContratosGov() {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" size="sm" onClick={handleExtract} disabled={extracting}>
-          {extracting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
-          Extrair via IA
-        </Button>
-
         <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm">
             <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
@@ -264,7 +211,9 @@ export default function ContratosGov() {
           <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Clique em <strong>"Extrair via IA"</strong> para obter estimativas de contratos e atas de registro de preços do Governo Federal via inteligência artificial.
+            Para contratos e licitações do Governo Federal com dados oficiais, use a aba{' '}
+            <strong>Federal (API)</strong> — ela consulta a API do Portal da Transparência.
+            Este espaço guarda o que você importar manualmente do contratos.gov.br.
           </p>
           <p className="text-xs text-muted-foreground">
             Fonte: <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer" className="text-accent underline">contratos.sistema.gov.br</a>

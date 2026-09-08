@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Building2, Download, Upload, Search, Loader2, RefreshCw,
+  Building2, Download, Upload, Search, Loader2,
   TrendingUp, TrendingDown, ExternalLink, FileSpreadsheet, Trash2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -44,7 +44,6 @@ export default function TransparenciaPA({ portal }: Props) {
   const [anoFiltro, setAnoFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
-  const [scraping, setScraping] = useState(false);
 
   const portalLabel = portal.tipo === 'estado'
     ? `Estado: ${portal.nome} (${portal.sigla})`
@@ -77,51 +76,6 @@ export default function TransparenciaPA({ portal }: Props) {
   }, [anoFiltro]);
 
   useEffect(() => { loadDados(); }, [loadDados]);
-
-  const handleScrape = async () => {
-    setScraping(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('scrape-transparencia-pa', {
-        body: {
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          portal_nome: portal.nome,
-          portal_sigla: portal.sigla,
-          portal_url: portal.url,
-          portal_tipo: portal.tipo,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.fallback) {
-        toast.info(data?.error || 'Use a importação de planilha abaixo.', { duration: 6000 });
-      } else if (data?.success && data?.data?.length > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const rows = data.data.map((d: any) => ({
-          user_id: user.id,
-          orgao: d.orgao,
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          valor_total: d.valor,
-          quantidade_empenhos: d.quantidade || 1,
-        }));
-
-        const { error: insertError } = await supabase.from('transparencia_empenhos').insert(rows);
-        if (insertError) throw insertError;
-
-        const sourceLabel = data.source === 'ai-knowledge' ? 'IA (estimativas)' : 'portal';
-        toast.success(`${rows.length} órgãos importados via ${sourceLabel}!`);
-        loadDados();
-      } else {
-        toast.info('Nenhum dado extraído. Tente importar uma planilha do portal.', { duration: 5000 });
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao acessar portal');
-    } finally {
-      setScraping(false);
-    }
-  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -234,11 +188,10 @@ export default function TransparenciaPA({ portal }: Props) {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" size="sm" onClick={handleScrape} disabled={scraping}>
-          {scraping ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
-          Extrair do Portal
-        </Button>
-
+        {/* "Extrair do Portal" (aposentado em 08/09): pedia à IA generativa
+            que ESTIMASSE os empenhos — número inventado com cara de coleta.
+            Ficam os dois caminhos verdadeiros: a planilha baixada do portal
+            e o link para o próprio portal. */}
         <label className="cursor-pointer">
           <Button variant="outline" size="sm" asChild>
             <span>
@@ -304,8 +257,9 @@ export default function TransparenciaPA({ portal }: Props) {
           <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Clique em <strong>"Extrair do Portal"</strong> para tentar coletar automaticamente do portal de {portal.nome},
-            ou <strong>"Importar Planilha"</strong> para enviar uma planilha baixada do portal.
+            Abra o portal de {portal.nome} pelo botão <strong>"Abrir Portal"</strong>, baixe a planilha
+            de empenhos/despesas e envie por <strong>"Importar Planilha"</strong> — os números aqui
+            são sempre os do próprio portal, nunca estimativas.
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <span>Formatos aceitos: .xlsx, .xls, .csv</span>

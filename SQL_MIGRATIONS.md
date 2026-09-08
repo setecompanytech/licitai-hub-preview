@@ -12764,3 +12764,11 @@ SELECT cron.schedule(
   $$
 );
 ```
+
+## 2026-09-08 — Análise de Mercado lê o acervo real — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo (CREATE OR REPLACE)
+
+```sql
+-- RPC que agrega o pncp_editais_cache para a página Análise de Mercado:
+-- totais, série mensal, modalidades, top órgãos e maiores contratações.
+-- (Conteúdo completo em supabase/migrations/20260908000005_analise_mercado_do_acervo.sql)
+```

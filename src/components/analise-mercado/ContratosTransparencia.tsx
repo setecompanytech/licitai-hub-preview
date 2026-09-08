@@ -46,7 +46,9 @@ export default function ContratosTransparencia() {
   const [tipo, setTipo] = useState<'contratos' | 'licitacoes'>('contratos');
   const [busca, setBusca] = useState('');
   const [cnpjBusca, setCnpjBusca] = useState('');
-  const [ufFiltro, setUfFiltro] = useState('');
+  // 'todas' e não '': SelectItem com valor vazio DERRUBA o Radix na
+  // renderização — era o motivo de a aba Federal nem abrir (08/09).
+  const [ufFiltro, setUfFiltro] = useState('todas');
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<any[]>([]);
   const [erro, setErro] = useState('');
@@ -67,7 +69,7 @@ export default function ContratosTransparencia() {
         body: {
           tipo,
           cnpj: cnpjBusca || undefined,
-          uf: ufFiltro || undefined,
+          uf: ufFiltro !== 'todas' ? ufFiltro : undefined,
           dataInicio,
           dataFim,
         },
@@ -122,7 +124,7 @@ export default function ContratosTransparencia() {
               <SelectValue placeholder="UF (opcional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas as UFs</SelectItem>
+              <SelectItem value="todas">Todas as UFs</SelectItem>
               {UFS.map(uf => (
                 <SelectItem key={uf} value={uf}>{uf}</SelectItem>
               ))}

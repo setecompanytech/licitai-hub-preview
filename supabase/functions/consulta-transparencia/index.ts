@@ -38,12 +38,19 @@ Deno.serve(async (req) => {
     const { tipo, cnpj, pagina = 1, termo, dataInicio, dataFim, orgao, uf } = await req.json();
 
     const API_KEY = Deno.env.get('PORTAL_TRANSPARENCIA_API_KEY');
+    // Sem a chave a API devolve 401 — e a tela mostrava um erro genérico que
+    // não dizia o que fazer. Falha com instrução é falha que se resolve.
+    if (!API_KEY) {
+      return new Response(JSON.stringify({
+        error: 'A chave da API do Portal da Transparência ainda não foi configurada. '
+          + 'Cadastre um e-mail em portaldatransparencia.gov.br/api-de-dados/cadastrar-email '
+          + '(gratuito, resposta imediata) e informe a chave ao administrador do sistema.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const headers: Record<string, string> = {
       'Accept': 'application/json',
+      'chave-api-dados': API_KEY,
     };
-    if (API_KEY) {
-      headers['chave-api-dados'] = API_KEY;
-    }
 
     let url = '';
     const params = new URLSearchParams();
