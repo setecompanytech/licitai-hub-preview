@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import {
   BarChart3, TrendingUp, DollarSign, Package,
   Building2, PieChart, Activity, Landmark, FileText, Shield, ExternalLink, Loader2,
+  Search, Calculator,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import TransparenciaPA from '@/components/analise-mercado/TransparenciaPA';
@@ -59,6 +62,61 @@ export default function AnaliseMercado() {
   const [portalSelecionado, setPortalSelecionado] = useState<string>('estado-PA');
   const [abaAtiva, setAbaAtiva] = useState('panorama');
   const [fonteConsulta, setFonteConsulta] = useState<'estadual' | 'arp' | 'federal'>('estadual');
+  // ── Preços Praticados por OBJETO (08/09): a média solta de editais
+  // heterogêneos era decorativa. A busca semântica no acervo (o motor da
+  // Recorrência) devolve os editais mais similares ao objeto digitado, e a
+  // estatística honesta sai deles: mediana, faixa, quartis, lastro auditável.
+  const [termoPreco, setTermoPreco] = useState('');
+  const [buscandoPreco, setBuscandoPreco] = useState(false);
+  const [buscouPreco, setBuscouPreco] = useState(false);
+  const [erroPreco, setErroPreco] = useState('');
+  const [editaisPreco, setEditaisPreco] = useState<Array<{
+    id: string; orgao: string | null; objeto: string | null; uf: string | null;
+    municipio: string | null; valor_total_estimado: number | null;
+    data_publicacao_pncp: string | null; url_pncp: string | null; similaridade?: number;
+  }>>([]);
+
+  const buscarPrecos = async () => {
+    if (termoPreco.trim().length < 8) {
+      setErroPreco('Descreva o objeto com pelo menos 8 caracteres (ex.: "carne bovina congelada").');
+      setBuscouPreco(true);
+      return;
+    }
+    setBuscandoPreco(true);
+    setErroPreco('');
+    try {
+      const { data, error } = await supabase.functions.invoke('historico-orgao-pncp', {
+        body: { objeto: termoPreco.trim(), anos: 3, limite: 30 },
+      });
+      if (error || data?.error) {
+        setErroPreco(String(data?.error || 'Não foi possível consultar o acervo.'));
+        setEditaisPreco([]);
+      } else {
+        setEditaisPreco(data?.resultados ?? []);
+      }
+    } catch (e) {
+      setErroPreco(e instanceof Error ? e.message : 'Erro na consulta.');
+      setEditaisPreco([]);
+    } finally {
+      setBuscandoPreco(false);
+      setBuscouPreco(true);
+    }
+  };
+
+  // Estatística honesta da amostra: mediana e quartis resistem ao megaedital
+  // que arrasta a média; a faixa mostra a dispersão real.
+  const valoresPreco = editaisPreco
+    .map((e) => Number(e.valor_total_estimado))
+    .filter((v) => Number.isFinite(v) && v > 0 && v < 1e10)
+    .sort((a, b) => a - b);
+  const quantil = (p: number) => {
+    if (valoresPreco.length === 0) return null;
+    const i = (valoresPreco.length - 1) * p;
+    const lo = Math.floor(i); const hi = Math.ceil(i);
+    return valoresPreco[lo] + (valoresPreco[hi] - valoresPreco[lo]) * (i - lo);
+  };
+  const brlExato = (v: number | null | undefined) =>
+    v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const [uf, setUf] = useState<string>('PA');
   // '7d'/'30d' = dias corridos (o pedido de 08/09: janela menor que 3 meses);
   // números puros = meses. O RPC recebe p_dias OU p_meses.
@@ -289,29 +347,131 @@ export default function AnaliseMercado() {
             )}
           </TabsContent>
 
-          <TabsContent value="precos">
+          <TabsContent value="precos" className="space-y-4">
+            {/* ── O balcão de preço por OBJETO ──────────────────────────────
+                O comercial digita o que vende e sai com mediana, faixa e o
+                lastro auditável. Busca semântica no acervo (motor da
+                Recorrência); valores = total ESTIMADO declarado no edital.
+                Preço homologado item a item é papel da Precificação — a
+                ponte está no botão. */}
             <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Valor médio por edital, mês a mês</h3>
-              {carregando ? (
-                <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-              ) : !resumo || resumo.por_mes.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Sem dados para este recorte.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={350}>
-                  <LineChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="rotulo" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={{ fontSize: 11 }} width={80} />
-                    <Tooltip formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
-                    <Legend formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
-                    <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--accent))" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-              <p className="text-[11px] text-muted-foreground mt-2">
-                Régua: valor total ESTIMADO declarado pelo órgão em cada edital (outliers acima de R$ 10 bi ficam fora).
+              <h3 className="text-sm font-semibold mb-1">Preço praticado por objeto</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Digite o objeto que você fornece; a comparação usa a descrição dos editais do acervo
+                (últimos 3 anos, os 30 mais similares).
               </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input placeholder='Ex.: carne bovina congelada, notebook, material de expediente'
+                  value={termoPreco} onChange={(e) => setTermoPreco(e.target.value)}
+                  className="w-96 h-9"
+                  onKeyDown={(e) => { if (e.key === 'Enter') buscarPrecos(); }} />
+                <Button size="sm" className="h-9" onClick={buscarPrecos} disabled={buscandoPreco}>
+                  {buscandoPreco ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+                  Buscar
+                </Button>
+                <Link to="/precificacao">
+                  <Button size="sm" variant="outline" className="h-9">
+                    <Calculator className="w-4 h-4 mr-1" /> Cotar na Precificação
+                  </Button>
+                </Link>
+              </div>
+              {erroPreco && <p className="text-sm text-destructive mt-2">{erroPreco}</p>}
             </Card>
+
+            {buscouPreco && !buscandoPreco && !erroPreco && editaisPreco.length === 0 && (
+              <Card className="p-8 text-center text-sm text-muted-foreground">
+                Nenhum edital similar no acervo — o acervo cresce a cada busca e pela semeadura;
+                ausência aqui não prova inexistência no PNCP.
+              </Card>
+            )}
+
+            {valoresPreco.length > 0 && (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="stat-card">
+                    <span className="text-xs text-muted-foreground">Mediana do edital</span>
+                    <p className="text-xl font-bold tabular-nums">{brlExato(quantil(0.5))}</p>
+                    <span className="text-xs text-muted-foreground">o valor típico da amostra</span>
+                  </div>
+                  <div className="stat-card">
+                    <span className="text-xs text-muted-foreground">Miolo (Q1–Q3)</span>
+                    <p className="text-sm font-bold tabular-nums mt-1">{brlExato(quantil(0.25))}</p>
+                    <p className="text-sm font-bold tabular-nums">a {brlExato(quantil(0.75))}</p>
+                  </div>
+                  <div className="stat-card">
+                    <span className="text-xs text-muted-foreground">Faixa completa</span>
+                    <p className="text-sm font-bold tabular-nums mt-1">{brlExato(valoresPreco[0])}</p>
+                    <p className="text-sm font-bold tabular-nums">a {brlExato(valoresPreco[valoresPreco.length - 1])}</p>
+                  </div>
+                  <div className="stat-card">
+                    <span className="text-xs text-muted-foreground">Amostra</span>
+                    <p className="text-xl font-bold tabular-nums">{valoresPreco.length}</p>
+                    <span className="text-xs text-muted-foreground">editais com valor, de {editaisPreco.length} similares</span>
+                  </div>
+                </div>
+
+                <Card className="p-5">
+                  <h3 className="text-sm font-semibold mb-3">Editais que sustentam o número</h3>
+                  <div className="space-y-1.5 max-h-[380px] overflow-y-auto">
+                    {editaisPreco.map((e) => (
+                      <div key={e.id} className="flex items-start justify-between gap-3 p-2.5 bg-muted/30 rounded-lg text-xs">
+                        <div className="min-w-0">
+                          <p className="font-medium line-clamp-2">{e.objeto ?? '—'}</p>
+                          <p className="text-muted-foreground mt-0.5">
+                            {[e.orgao, e.municipio && e.uf ? `${e.municipio}/${e.uf}` : e.uf,
+                              e.data_publicacao_pncp ? new Date(e.data_publicacao_pncp.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : null,
+                            ].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 space-y-1">
+                          <p className="font-semibold tabular-nums">{brlExato(e.valor_total_estimado)}</p>
+                          {typeof e.similaridade === 'number' && (
+                            <Badge variant="outline" className="text-[10px]">{Math.round(e.similaridade * 100)}% similar</Badge>
+                          )}
+                          {e.url_pncp && (
+                            <a href={e.url_pncp} target="_blank" rel="noreferrer"
+                              className="text-primary flex items-center gap-1 justify-end hover:underline">
+                              PNCP <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Valores = total ESTIMADO declarado pelo órgão no edital. Para o preço homologado
+                    item a item (quem ganhou e por quanto), use "Cotar na Precificação".
+                  </p>
+                </Card>
+              </>
+            )}
+
+            {/* Sem objeto pesquisado: o panorama geral de antes, rotulado como tal. */}
+            {!buscouPreco && (
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold mb-4">Panorama geral — valor médio por edital, mês a mês (sem objeto pesquisado)</h3>
+                {carregando ? (
+                  <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                ) : !resumo || resumo.por_mes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Sem dados para este recorte.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={resumo.por_mes.map(m => ({ ...m, rotulo: mesCurto(m.mes) }))}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="rotulo" tick={{ fontSize: 11 }} />
+                      <YAxis tickFormatter={(v: number) => brlCompacto(v)} tick={{ fontSize: 11 }} width={80} />
+                      <Tooltip formatter={(v: number, nome: string) => [brlCompacto(v), nome === 'valor_medio' ? 'Valor médio' : 'Volume']} />
+                      <Legend formatter={(v) => v === 'valor_medio' ? 'Valor médio do edital' : v} />
+                      <Line type="monotone" dataKey="valor_medio" stroke="hsl(var(--accent))" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Média de editais heterogêneos — serve de contexto, não de preço. Pesquise um objeto
+                  acima para a estatística que importa.
+                </p>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="maiores">
