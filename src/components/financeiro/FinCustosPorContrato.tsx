@@ -12,6 +12,7 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
 import { Briefcase, Link2, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 import FinVincularDespesasLote from './FinVincularDespesasLote';
+import FinCustoContratoDetalhe from './FinCustoContratoDetalhe';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -58,6 +59,7 @@ export default function FinCustosPorContrato() {
   const [indiretas, setIndiretas] = useState(0);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
   const [vincularAberto, setVincularAberto] = useState(false);
+  const [detalhe, setDetalhe] = useState<Linha | null>(null);
 
   const load = useCallback(async () => {
     if (!empresaAtiva?.id) return;
@@ -108,6 +110,27 @@ export default function FinCustosPorContrato() {
   }, [empresaAtiva?.id, incluirEncerrados]);
 
   useEffect(() => { if (podeVer) load(); }, [load, podeVer]);
+
+  // Sincronização automática: vínculo feito em Contas a Pagar, custo digitado
+  // na aba do contrato ou pedido novo mudam este painel — o recálculo vem
+  // sozinho, sem F5. Debounce curto para rajadas (vínculo em lote).
+  useEffect(() => {
+    if (!podeVer || !empresaAtiva?.id) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const recarregar = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => load(), 800);
+    };
+    const canal = supabase
+      .channel(`custos-contratos-${empresaAtiva.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financeiro_lancamentos', filter: `empresa_id=eq.${empresaAtiva.id}` }, recarregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contrato_custos' }, recarregar)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(canal);
+    };
+  }, [podeVer, empresaAtiva?.id, load]);
 
   const alternarRateio = async (ligado: boolean) => {
     if (!empresaAtiva?.id) return;
@@ -250,10 +273,16 @@ export default function FinCustosPorContrato() {
                 const margem = calc.margemDe(l);
                 const pctMargem = l.faturamento > 0 ? (margem / l.faturamento) * 100 : null;
                 return (
-                  <TableRow key={l.contrato_id}>
+                  <TableRow
+                    key={l.contrato_id}
+                    className="cursor-pointer"
+                    onClick={() => setDetalhe(l)}
+                    title="Clique para ver o resultado detalhado (DRE do contrato)"
+                  >
                     <TableCell className="text-xs max-w-[240px]">
                       <Link
                         to={`/gestao-contratos?contrato=${l.contrato_id}`}
+                        onClick={e => e.stopPropagation()}
                         className="font-medium text-foreground hover:text-accent hover:underline"
                       >
                         {l.numero_contrato || '(sem número)'}
@@ -320,6 +349,15 @@ export default function FinCustosPorContrato() {
         onFechar={() => setVincularAberto(false)}
         onVinculado={load}
       />
+
+      {detalhe && (
+        <FinCustoContratoDetalhe
+          linha={detalhe}
+          rateio={calc.rateioDe(detalhe)}
+          aoFechar={() => setDetalhe(null)}
+          aoVincular={() => { setDetalhe(null); setVincularAberto(true); }}
+        />
+      )}
     </div>
   );
 }
