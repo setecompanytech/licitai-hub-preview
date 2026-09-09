@@ -1400,40 +1400,47 @@ class PortalComprasPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'portal-compras';
-    this.baseUrl = 'https://www.portaldecompraspublicas.com.br';
+    // O login NAO fica no dominio institucional. Ele mora no ambiente de
+    // OPERACAO, que redireciona para um Keycloak. VERIFICADO em 2026-09-08
+    // com login real: abriu o Painel de Operacoes e o cabecalho passou a
+    // exibir "Voce esta logado como: <nome> - <CNPJ>".
+    this.baseUrl = 'https://operacao.portaldecompraspublicas.com.br/18';
+    this.loginUrl = 'https://operacao.portaldecompraspublicas.com.br/18/loginext/';
   }
 
   async login() {
     console.log('🔐 Iniciando login no Portal de Compras Públicas...');
-    // Portal de Compras Públicas é um SPA Angular — VERIFICADO em 2026-03-31
-    // A rota /18/Login retorna 404 (SPA route), precisa navegar via JS
-    // URL: https://www.portaldecompraspublicas.com.br
-    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
-    
-    // Clicar no botão de login (Angular renderiza dinamicamente)
-    const loginClicked = await this.page.evaluate(() => {
-      const links = [...document.querySelectorAll('a, button, span[role="button"]')];
-      const loginLink = links.find(el => {
-        const text = (el.textContent || '').toLowerCase().trim();
-        return text === 'entrar' || text === 'login' || text.includes('acessar') ||
-               text.includes('fornecedor');
-      });
-      if (loginLink) { loginLink.click(); return true; }
-      return false;
+
+    // A versao anterior deste metodo (31/03) tratava o portal como SPA Angular
+    // e cacava o botao "Entrar" por texto. O portal trocou a autenticacao para
+    // Keycloak desde entao, e o caminho antigo caia em 404. Os seletores abaixo
+    // sao os REAIS, lidos do HTML da pagina de login em 08/09/2026.
+    await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+
+    await this.preencherCampo('#username', this.credenciais.login);
+    await this.preencherCampo('#password', this.credenciais.senha);
+
+    await Promise.all([
+      this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => null),
+      this.page.click('#kc-login'),
+    ]);
+
+    await this.screenshot('pos-login');
+
+    // Nunca cravar loggedIn sem conferir. O codigo antigo marcava sucesso logo
+    // apos esperar 5 segundos, entao credencial errada virava "login realizado"
+    // e o defeito so aparecia rodadas depois, longe da causa.
+    const falhou = await this.page.evaluate(() => {
+      const t = document.body.innerText;
+      return /senha inv|usu[aá]rio inv|credenciais inv|invalid|n[aã]o autorizado/i.test(t)
+          || !!document.querySelector('#username');
     });
-    
-    await new Promise((r) => setTimeout(r, 3000));
-    
-    // Preencher formulário Angular
-    await this.preencherCampo('input[name="login"], input[formcontrolname="login"], input[type="text"]:not([readonly]), #login', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], input[formcontrolname="senha"], input[type="password"], #senha', this.credenciais.senha);
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button[type="submit"], button')]
-        .find(b => (b.textContent || '').toLowerCase().includes('entrar') ||
-                    (b.textContent || '').toLowerCase().includes('login'));
-      if (btn) btn.click();
-    });
-    await new Promise((r) => setTimeout(r, 5000));
+
+    if (falhou) {
+      this.loggedIn = false;
+      throw new Error('Login recusado pelo Portal de Compras Públicas — confira usuário e senha');
+    }
+
     this.loggedIn = true;
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
