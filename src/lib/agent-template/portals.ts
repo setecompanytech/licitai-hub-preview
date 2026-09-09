@@ -1873,6 +1873,11 @@ class PortalComprasPortal extends BasePortal {
     await this.page.goto(lista, { waitUntil: 'networkidle2', timeout: 45000 });
     await new Promise((r) => setTimeout(r, 3000));
 
+    // A lista em si vale foto. Sem ela, "nao encontrado" e uma afirmacao sem
+    // prova: nao da para saber se a pagina veio vazia, veio errada, ou veio
+    // cheia e o numero e que estava errado.
+    await this.screenshot('seus-processos');
+
     const href = await this.page.evaluate((alvo) => {
       const limpa = (t) => (t || '').replace(/\\s+/g, ' ').trim().toLowerCase();
       const buscado = limpa(alvo);
@@ -1899,9 +1904,29 @@ class PortalComprasPortal extends BasePortal {
         err.semRetry = true; // conta vencida continua vencida na terceira tentativa
         throw err;
       }
+      // DIZER O QUE EXISTE, e nao so o que falta.
+      //
+      // "Confira o numero do edital" manda a pessoa procurar num lugar que ela
+      // ja nao sabe onde fica. A lista esta aberta na tela do robo neste exato
+      // momento — entao a resposta vai junto da pergunta.
+      const processosVisiveis = await this.page.evaluate(() => {
+        const nums = [];
+        for (const tr of document.querySelectorAll('table tr')) {
+          if (!tr.querySelector('a[href*="DadosPregao"]')) continue;
+          const cel = tr.querySelector('td');
+          const t = (cel ? cel.innerText : '').replace(/\\s+/g, ' ').trim();
+          if (t) nums.push(t.slice(0, 24));
+        }
+        return nums.slice(0, 12);
+      }).catch(() => []);
+
+      const lista = processosVisiveis.length
+        ? \` Os processos que aparecem na conta agora sao: \${processosVisiveis.join(', ')}.\`
+        : ' E a lista veio VAZIA — ou a conta nao tem processos, ou a pagina nao carregou.';
+
       throw new Error(
-        \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas. \` +
-        \`Confira o numero do edital, ou se a empresa esta inscrita nesse processo.\`
+        \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas.\` +
+        lista
       );
     }
 

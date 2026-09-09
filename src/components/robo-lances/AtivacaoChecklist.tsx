@@ -23,6 +23,8 @@ type CheckItem = {
   icon: typeof Server;
   acao?: () => void;
   acaoLabel?: string;
+  /** Nota abaixo da descrição, para quando o rótulo do botão pode enganar. */
+  rodape?: string;
 };
 
 export default function AtivacaoChecklist() {
@@ -208,6 +210,16 @@ export default function AtivacaoChecklist() {
 
       // Freio de emergência — etapa própria: o botão existir na tela não prova
       // que o agente para. Só o teste deliberado prova.
+      //
+      // ONDE ACIONAR, e por que não é aqui. Este painel é diagnóstico: diz se o
+      // freio RESPONDE. Acioná-lo mata todas as sessões de uma vez, e um botão
+      // desses no meio de uma lista de verificação é um estrago esperando
+      // acontecer — a mão erra a linha e derruba uma disputa real.
+      //
+      // O acionamento mora onde há o que parar: o botão vermelho na barra da
+      // disputa (aba Disputar) e o "Parar robô nesta disputa" em cada sessão
+      // viva do painel de Sessões. A descrição abaixo diz isso, porque ter só
+      // "Testar freio" sugeria que testar era tudo que dava para fazer.
       const ks = (agenteVivo as { kill_switch?: { ok?: boolean; detalhe?: string | null; testado_em?: string } | null } | undefined)?.kill_switch;
       newItems.push({
         id: 'kill_switch',
@@ -217,6 +229,10 @@ export default function AtivacaoChecklist() {
           : ks
           ? `O agente NÃO confirmou a parada${ks.detalhe ? ` (${ks.detalhe})` : ''} — níveis 2 e 3 permanecem bloqueados`
           : 'Nunca testado — obrigatório antes de ativar envio automático (níveis 2 e 3)',
+        // Separar "testar" de "acionar" em palavras, já que o botão só testa.
+        rodape: 'Este botão apenas TESTA se o agente responde ao freio. Para PARAR um robô em '
+          + 'operação, use o botão vermelho na barra da disputa, ou "Parar robô nesta disputa" '
+          + 'na lista de Sessões do Robô.',
         status: ks?.ok ? 'ok' : ks ? 'erro' : 'pendente',
         icon: Shield,
         acao: () => testarFreio(),
@@ -419,6 +435,11 @@ export default function AtivacaoChecklist() {
                     <p className="text-xs font-semibold">{item.label}</p>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{item.descricao}</p>
+                  {item.rodape && (
+                    <p className="text-xs text-muted-foreground/70 mt-1.5 leading-snug border-l-2 border-border pl-2">
+                      {item.rodape}
+                    </p>
+                  )}
                 </div>
                 {item.acao && (
                   <Button size="sm" variant="outline" className="text-xs h-6" onClick={item.acao}>

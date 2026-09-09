@@ -446,6 +446,65 @@ serve(async (req) => {
 
     // ─── KILL SWITCH ───
 
+    // Parar UMA sessão, sem derrubar as outras.
+    //
+    // O kill-switch existia, e mata tudo. Faltava o freio preciso: em
+    // 09/09/2026 uma sessão travada teve que ser encerrada por `curl` na VPS,
+    // porque nenhuma tela oferecia isso. Freio que só existe no terminal não é
+    // freio para quem opera.
+    if (action === "parar-sessao") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { sessao_id } = body;
+      if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+
+      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+
+      const tentativas: Array<Record<string, unknown>> = [];
+      let parou = false;
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/encerrar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": agente.api_key_hash || "",
+            },
+            body: JSON.stringify({ sessao_id }),
+            signal: AbortSignal.timeout(15000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) { parou = true; break; }
+          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
+        } catch (e) {
+          tentativas.push({ agente: agente.nome, motivo: e instanceof Error ? e.message : "sem resposta" });
+        }
+      }
+
+      // O banco reflete a parada mesmo que o agente já tivesse encerrado por
+      // conta própria: a lista de sessões é o que a pessoa lê depois, e ela não
+      // pode continuar dizendo "em operação" para algo que acabou.
+      await supabase
+        .from("sessoes_lance_real")
+        .update({
+          status: "encerrado",
+          erro: "Interrompida manualmente pelo operador",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessao_id);
+
+      return jsonResponse({ parou, sessao_id, tentativas });
+    }
+
     if (action === "kill-switch") {
       const authHeader = req.headers.get("authorization");
       if (!authHeader) {

@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
-  Activity, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, AlertTriangle,
+  Activity, CheckCircle2, XCircle, Loader2, RefreshCw, Clock, AlertTriangle, Square,
 } from 'lucide-react';
 
 /**
@@ -85,7 +86,9 @@ export default function SessoesDoRobo() {
   const { user } = useAuth();
   const [expandida, setExpandida] = useState<string | null>(null);
 
-  const { data: sessoes = [], isLoading, refetch, isFetching } = useQuery({
+  const [parando, setParando] = useState<string | null>(null);
+
+  const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['sessoes-do-robo', user?.id],
     enabled: !!user,
     // Enquanto houver sessão viva, a lista se atualiza sozinha — é o que
@@ -105,6 +108,86 @@ export default function SessoesDoRobo() {
       return (data || []) as Sessao[];
     },
   });
+
+  const sessoes = data ?? [];
+
+  /**
+   * Por que o robô parou — dito na hora, não só guardado na lista.
+   *
+   * A sessão terminava e a única pista era uma linha vermelha aqui embaixo, que
+   * só é lida por quem já desconfia. Quem estava olhando o VNC via a tela sumir
+   * e ficava sem saber se acabou bem ou mal.
+   *
+   * Só transições contam: a primeira carga registra o estado de tudo sem
+   * avisar, senão abrir a aba dispararia um toast para cada erro antigo dos
+   * quinze registros.
+   */
+  const estados = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    const lista = data ?? [];
+    if (!lista.length) return;
+
+    if (estados.current === null) {
+      estados.current = new Map(lista.map((s) => [s.id, s.status]));
+      return;
+    }
+
+    for (const s of lista) {
+      const antes = estados.current.get(s.id);
+      estados.current.set(s.id, s.status);
+      if (!antes || antes === s.status) continue;
+      if (s.status !== 'erro' && s.status !== 'encerrado') continue;
+
+      const viva = antes === 'ativo' || antes === 'enviando';
+      if (!viva) continue;
+
+      if (s.status === 'erro') {
+        toast.error(
+          `O robô parou em ${s.edital}: ${s.erro || 'sem motivo registrado'}`,
+          { duration: 20000 },
+        );
+      } else {
+        toast.success(`Sessão de ${s.edital} encerrada.`, { duration: 8000 });
+      }
+    }
+  }, [data]);
+
+  /**
+   * O freio de uma sessão só.
+   *
+   * Diferente do kill switch, que mata tudo. Em 09/09/2026 uma sessão travada
+   * teve que ser encerrada por `curl` na VPS porque nenhuma tela oferecia isso.
+   */
+  const pararSessao = async (id: string, edital: string) => {
+    setParando(id);
+    try {
+      const { data: r, error } = await supabase.functions.invoke('robo-lances-webhook', {
+        body: { action: 'parar-sessao', sessao_id: id },
+      });
+      if (error) {
+        let detalhe = error.message;
+        try {
+          const corpo = await (error as { context?: Response }).context?.json();
+          if (corpo?.error) detalhe = corpo.error;
+        } catch { /* fica a mensagem original */ }
+        toast.error(detalhe, { duration: 10000 });
+        return;
+      }
+      // `parou: false` não é erro: o agente pode já ter encerrado sozinho. A
+      // linha do banco foi atualizada de qualquer forma.
+      toast.success(
+        (r as { parou?: boolean })?.parou
+          ? `Robô interrompido em ${edital}.`
+          : `A sessão de ${edital} já não estava mais rodando.`,
+        { duration: 8000 },
+      );
+      refetch();
+    } catch (err) {
+      toast.error((err as Error).message, { duration: 10000 });
+    } finally {
+      setParando(null);
+    }
+  };
 
   return (
     <div className="border border-border rounded-xl bg-card">
@@ -194,6 +277,28 @@ export default function SessoesDoRobo() {
                     </span>
                   </div>
                 </button>
+
+                {/* O freio fica NA LINHA da sessão que ele para — e só existe
+                    enquanto ela está viva. Botão de parar em sessão encerrada
+                    seria ruído, e pior: sugeriria que ainda há o que parar. */}
+                {viva && (
+                  <div className="pl-7 pt-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 text-xs gap-1.5"
+                      disabled={parando === s.id}
+                      onClick={() => pararSessao(s.id, s.edital)}
+                    >
+                      {parando === s.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5" />
+                      )}
+                      Parar robô nesta disputa
+                    </Button>
+                  </div>
+                )}
 
                 {aberta && (
                   <div className="mt-2 pl-7 text-xs text-muted-foreground space-y-1">

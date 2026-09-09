@@ -423,85 +423,7 @@ export default function RoboLances() {
     setPedidoDeTelaRemota((n) => n + 1);
   };
 
-  /**
-   * O convite para assistir, no instante do clique.
-   *
-   * DOIS DEFEITOS QUE ISTO CORRIGE.
-   *
-   * O primeiro é de tempo: o aviso só aparecia DEPOIS que a edge function
-   * respondia, e até lá havia um spinner mudo. Mas o robô já abriu o navegador
-   * nesse intervalo — a chamada só retorna quando ele termina de entrar e
-   * navegar. Ou seja, o convite chegava justamente quando não servia mais.
-   *
-   * O segundo é de tamanho: um aviso padrão, no canto, com letra pequena, não
-   * compete com a atenção de quem acabou de apertar um botão e está olhando o
-   * meio da tela. Num momento com prazo, discrição é o mesmo que ausência.
-   *
-   * Fica maior e explícito, com a ação como botão de verdade. E não é
-   * bloqueante: quem não quiser assistir fecha e segue.
-   */
-  const convidarParaAssistir = () =>
-    toast.custom(
-      (id) => (
-        <div className="w-full rounded-xl border-2 border-accent/50 bg-card shadow-2xl p-4 flex gap-3.5">
-          <div className="w-12 h-12 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
-            <Monitor className="w-6 h-6 text-accent" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold leading-tight">
-              O robô está entrando no portal
-            </p>
-            <p className="text-sm text-muted-foreground mt-1 leading-snug">
-              Você pode assistir à tela dele em tempo real — e ele pode terminar
-              em poucos segundos.
-            </p>
-            <div className="flex items-center gap-2 mt-3">
-              <Button
-                size="sm"
-                className="text-sm gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
-                onClick={() => {
-                  toast.dismiss(id);
-                  irParaTelaRemota();
-                }}
-              >
-                <Monitor className="w-4 h-4" />
-                Visualizar em tempo real
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-sm text-muted-foreground"
-                onClick={() => toast.dismiss(id)}
-              >
-                Agora não
-              </Button>
-            </div>
-          </div>
-        </div>
-      ),
-      {
-        duration: 30000,
-        unstyled: true,
-        // Largura própria: o padrão do Toaster é estreito demais para caber a
-        // frase e o botão sem quebrar em pedaços ilegíveis.
-        //
-        // O `right: 0` não é enfeite — é o que impede o corte. A lista do sonner
-        // é `position: fixed` com largura fixa (356px) encostada na direita da
-        // janela, e cada toast dentro dela é `position: absolute` SEM âncora
-        // horizontal: nasce alinhado pela esquerda da lista. Pedir 460px fazia os
-        // ~104px excedentes crescerem para a direita, ou seja, para fora da tela.
-        // Ancorado à direita, o excedente cresce para dentro e o cartão aparece
-        // inteiro. A margem de 3rem cobre o afastamento da lista em telas
-        // estreitas, onde o `min()` é quem manda.
-        style: {
-          width: 'min(460px, calc(100vw - 3rem))',
-          right: 0,
-          left: 'auto',
-        },
-      },
-    );
-
-  const handleEnviarAoRobo = async () => {
+    const handleEnviarAoRobo = async () => {
     if (!selectedLance) return;
 
     const portalId = idDoPortal(selectedLance.portal);
@@ -524,7 +446,6 @@ export default function RoboLances() {
     // O id fica guardado para o convite ser retirado caso o envio seja recusado
     // antes de o robô abrir qualquer coisa — convidar para assistir a uma
     // sessão que não existe seria a mesma mentira, na direção contrária.
-    const idConvite = convidarParaAssistir();
 
     // Reconhecer o portal não é o mesmo que o agente NO AR saber operá-lo.
     //
@@ -542,7 +463,6 @@ export default function RoboLances() {
       } | null)?.agentes?.[0]?.portais_suportados;
 
       if (!agenteOpera(portalId, suportados)) {
-        toast.dismiss(idConvite);
         toast.error(
           `O agente no ar ainda não tem o módulo de ${nomeDoPortal(portalId)}. ` +
             `Hoje ele opera: ${(suportados || []).join(', ')}.`,
@@ -602,7 +522,6 @@ export default function RoboLances() {
         // Recusa da edge function: o agente nunca foi acionado, então não há
         // nada para assistir. Deixar o convite na tela seria convidar para uma
         // sessão que não existe.
-        toast.dismiss(idConvite);
         toast.error(motivo, { duration: 15000 });
         return;
       }
@@ -881,8 +800,16 @@ export default function RoboLances() {
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Kill Switch - visible for levels 2 and 3 */}
-                    {nivelAutomacao >= 2 && selectedLance.status !== 'encerrado' && (
+                    {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO.
+                        Ele ficava escondido atrás de `nivelAutomacao >= 2`, sob
+                        a premissa de que N1 é assistente e não age sozinho.
+                        Isso deixou de valer quando o botão "Enviar ao robô" foi
+                        construído: em N1 ele dispara uma sessão real, que loga
+                        na conta do cliente e abre um navegador no portal.
+                        Em 09/09/2026 uma sessão travada teve que ser encerrada
+                        por `curl` na VPS, porque a tela não oferecia parada.
+                        Quem consegue disparar tem que conseguir parar. */}
+                    {selectedLance.status !== 'encerrado' && (
                       <KillSwitchButton
                         sessaoId={undefined}
                         licitacaoId={selectedLance.licitacaoId}
