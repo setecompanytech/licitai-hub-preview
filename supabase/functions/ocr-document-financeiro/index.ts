@@ -27,6 +27,15 @@ function brParaNumero(s: unknown): number | null {
 
 /** Os literais impressos, quando vieram, mandam sobre a conversão do modelo. */
 function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
+  // Campos numéricos que o modelo devolve como STRING pt-BR ("52.961" =
+  // cinquenta e dois mil): Number() cru os divide por mil (pedido 728,
+  // 09/09). Converte antes; os literais impressos abaixo continuam mandando.
+  for (const campo of ["quantidade_total", "valor_total", "valor_unitario", "valor_total_produtos"]) {
+    if (typeof d[campo] === "string") {
+      const n = brParaNumero(d[campo]);
+      d[campo] = n ?? null;
+    }
+  }
   const pares: Array<[string, string]> = [
     ["quantidade_total", "quantidade_total_impressa"],
     ["valor_total", "valor_total_impresso"],
