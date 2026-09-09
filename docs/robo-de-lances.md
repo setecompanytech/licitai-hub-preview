@@ -7,6 +7,14 @@
 Este documento é o **mapa**: o estado do robô e o retrato de cada portal, com o
 muro específico de cada um e o que falta para derrubá-lo.
 
+Duas leituras diferentes moram aqui, e vale saber qual você procura:
+
+- **Seções 1 a 6 — os portais.** Onde o robô entra, onde para, e o que falta
+  para cada porta abrir.
+- **Seção 7 — a régua do produto.** O que um robô de lances maduro faz, medido
+  contra o nosso, e a esteira de três fases até lá. É sobre **estratégia de
+  disputa**, não sobre acesso.
+
 Ele não substitui o `docs/agente-cloud-pendencias.md`, que é o **diário** — lá
 está o passo a passo de cada investigação, com os comandos, os erros e as datas.
 Aqui está a conclusão. Quando este documento disser "ver seção 14", é lá.
@@ -425,7 +433,112 @@ a tela da disputa — sem depender de renovação nem de pregão agendado.
 
 ---
 
-## 7. Como conferir cada afirmação daqui
+## 7. A régua do produto — o que um robô maduro faz, e onde estamos
+
+A referência é uma palestra de um desenvolvedor da **Effecti** (2023) descrevendo
+o robô de lances deles em produção. Não é lista de desejos: é o que o mercado já
+entrega, e por isso serve de régua.
+
+O que segue foi **conferido no código**, não estimado. Onde diz ❌, o `grep`
+devolveu zero.
+
+### 7.1 Segurança
+
+| A régua | Nós | Onde |
+| --- | --- | --- |
+| Não queimar margem quando o lance não melhora a posição | ✅ **e mais rígido** | `decidirLance` para quando `souLider === true` — **e também quando o portal não sabe dizer quem lidera**, caso que a palestra não cobre e é justamente onde o robô fica cego |
+| Piso intransponível | ✅ | chegar no piso **encerra**, em vez de dar lance nele: igualar o mínimo entrega a margem inteira sem garantia de vitória |
+| Não errar o item ao enviar | ⚠️ | não erramos porque só operamos **um item por sessão**. É ausência de recurso, não proteção |
+| Monitor de latência do portal (verde/amarelo/vermelho) | ❌ | nenhuma medição de tempo de resposta existe |
+
+**A ressalva que importa:** a regra de margem está coberta por 16 testes, mas
+`souLider()` existe em **1 dos 23 módulos**, e `PORTAIS_COM_LANCE_LIBERADO` está
+vazio. A regra é boa e ainda não foi exercida contra uma tela real.
+
+### 7.2 Multitarefa
+
+| A régua | Nós |
+| --- | --- |
+| Vários pregões simultâneos | ⚠️ até **8 sessões** paralelas — isto temos |
+| Vários itens por pregão | ❌ a sessão leva **um conjunto só** de parâmetros (`valor_inicial`, `valor_minimo`, `decremento`) |
+| Regras de decremento por item | ❌ a tela tem lista de itens, mas ela **não chega ao agente** |
+| Painel colorido: quais pregões já abriram disputa | ❌ |
+
+### 7.3 Desempenho
+
+Aqui está a lacuna mais séria, e ela é de **arquitetura**, não de código faltando.
+
+A régua descreve reação em **menos de um segundo** ao lance do concorrente. O
+nosso robô funciona por **varredura a cada 30 segundos** (`intervalo_segundos`):
+acorda, lê, decide, dorme. Não reage a evento, e **não sabe que horas são na
+disputa**.
+
+### 7.4 Estratégia por fase — o bloco inteiro está em aberto
+
+| A régua | Nós |
+| --- | --- |
+| Passivo nos 8 minutos iniciais do modo aberto | ❌ |
+| Começar a operar só na prorrogação de 2 min | ❌ |
+| Timing de envio: agressivo no início **ou** nos últimos 30s | ❌ |
+| Modo aberto/fechado: 15 min de observação | ❌ |
+| Antecipar 30s antes da fase aleatória | ❌ |
+| Mirar a faixa de 10% do líder (a palestra recomenda 5–6%) em vez do 1º lugar | ❌ |
+| Agendar o lance final fechado | ❌ |
+
+`grep -cE "fase|aleatori|prorrog|segundos_restantes|itens"` em
+`src/lib/agent-template/estrategia.ts` devolve **0**. O robô não tem noção de
+relógio de pregão.
+
+### 7.5 O que destrava quase tudo é UMA coisa
+
+As sete linhas da tabela acima parecem sete trabalhos. Não são. Todas dependem
+de ler a tela da sala de disputa — e é a mesma leitura que falta para o
+`souLider()`:
+
+```
+ler a tela da disputa ─┬─ quem lidera        → souLider()
+                       ├─ cronômetro e fase  → estratégia por fase
+                       ├─ tempo de resposta  → monitor de latência
+                       └─ tabela de itens    → multi-item e regra por item
+```
+
+Por isso a ordem da esteira abaixo não é negociável: **inspecionar a sala de
+disputa vem antes de escrever qualquer estratégia.** Escrever a máquina de
+estados antes de ver a tela seria repetir o erro que gerou os seletores por
+dedução — e que custou os dois dias de correção registrados nas seções 4 e 16.
+
+### 7.6 A esteira
+
+**Fase 1 — matar o acesso.** Concluir o login do Compras.gov (o clique do
+captcha e o código de verificação, via `POST /sessao/responder`) e do Portal de
+Compras Públicas. Sem entrar, nada do resto é observável.
+
+**Fase 2 — inspecionar a sala de disputa.** Numa sessão real assistida pelo VNC,
+ler os seletores de: cronômetro e fase, tabela de itens, marcação de liderança,
+e o tempo de resposta do portal. **É trabalho de observação, não de código.**
+
+**Fase 3 — a máquina de estados.** Só então: laço orientado a evento no lugar da
+varredura de 30s, noção de fase, timing configurável de envio, e regra por item.
+É esta seção que baliza o que entra aí.
+
+### 7.7 O que a régua não mede, e nós temos
+
+Duas coisas nossas não aparecem na palestra, e valem ficar registradas:
+
+- **`PORTAIS_COM_LANCE_LIBERADO`** — um portal só envia lance depois que alguém
+  conferiu o `souLider()` dele contra a tela real. É recusa deliberada de operar
+  no escuro.
+- **Parar quando o portal não informa quem lidera.** A palestra trata "não
+  melhora a posição" como o caso a evitar; nós tratamos também o caso em que
+  *não dá para saber* — que foi exatamente o defeito da auditoria de 02/09, com
+  o robô cobrindo o próprio lance até o piso.
+
+Ambas são conservadoras de propósito, e ambas custam funcionalidade hoje em
+troca de não perder dinheiro do cliente amanhã.
+
+---
+
+## 8. Como conferir cada afirmação daqui
 
 ```sh
 # O que o agente no ar realmente tem
@@ -462,7 +575,7 @@ pm2 logs agente-lances --lines 100
 
 ---
 
-## 8. Ligações
+## 9. Ligações
 
 - `docs/agente-cloud-pendencias.md` — o diário: cada investigação com comandos e
   datas. Seções 11 a 17 cobrem tudo que está resumido aqui.
