@@ -111,12 +111,36 @@ serve(async (req) => {
       }
 
       // Get agent config
-      const { data: agente } = await supabase
+      //
+      // NAO usar `.single()` aqui. O `configurar-agente` faz upsert com
+      // `onConflict: "user_id,nome"`, e o nome carrega o plano ("Agente Cloud —
+      // Enterprise", "— Profissional"). Trocar de plano cria uma linha NOVA em
+      // vez de atualizar a existente, entao o mesmo usuario pode ter duas
+      // configuracoes ativas — e `.single()` falha com mais de uma linha,
+      // devolvendo `data: null`.
+      //
+      // O efeito era cruel: o Checklist de Ativacao usa `.find()`, achava a
+      // primeira e mostrava "Agente Externo Configurado" em VERDE, enquanto o
+      // envio da sessao respondia "Nenhum agente ativo configurado". A tela
+      // dizia uma coisa e o botao fazia outra.
+      //
+      // Pega o mais recentemente atualizado, que e o criterio que a pessoa
+      // espera: o agente que ela configurou por ultimo.
+      const { data: agentesAtivos, error: erroAgente } = await supabase
         .from("agente_externo_config")
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "ativo")
-        .single();
+        .order("updated_at", { ascending: false });
+
+      if (erroAgente) {
+        return jsonResponse(
+          { error: `Não foi possível ler a configuração do agente: ${erroAgente.message}` },
+          500
+        );
+      }
+
+      const agente = agentesAtivos?.[0];
 
       if (!agente) {
         return jsonResponse(
