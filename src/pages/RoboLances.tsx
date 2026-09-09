@@ -436,7 +436,24 @@ export default function RoboLances() {
       // A mensagem real do servidor, nunca um "erro ao enviar" genérico: a
       // causa costuma ser credencial ausente ou agente fora do ar, e as duas
       // têm conserto diferente.
-      const motivo = (data as { error?: string } | null)?.error || error?.message;
+      //
+      // Ler `error.message` NÃO basta. Quando a função responde não-2xx, o
+      // cliente do Supabase devolve `data: null` e a mensagem literal
+      // "Edge Function returned a non-2xx status code" — o corpo da resposta,
+      // onde está a causa, fica guardado em `error.context`. Sem abrir isso, o
+      // usuário recebe uma frase que não diz nada e o defeito vira caça ao
+      // tesouro. Foi exatamente o que aconteceu no primeiro teste real.
+      let motivo = (data as { error?: string } | null)?.error;
+
+      if (!motivo && error) {
+        const contexto = (error as { context?: Response }).context;
+        if (contexto && typeof contexto.json === 'function') {
+          const corpo = await contexto.json().catch(() => null);
+          motivo = (corpo as { error?: string } | null)?.error;
+        }
+        motivo = motivo || error.message;
+      }
+
       if (motivo) {
         toast.error(motivo, { duration: 15000 });
         return;
