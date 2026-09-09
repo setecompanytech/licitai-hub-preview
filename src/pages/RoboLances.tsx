@@ -45,6 +45,7 @@ import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
+import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -1074,6 +1075,9 @@ export default function RoboLances() {
           {!isAdmin ? <SemPermissao /> : (<>
           <AtivacaoChecklist />
           <AgenteExternoConfig />
+          {/* Antes do VNC de propósito: a pergunta "o robô funcionou?" tem
+              resposta aqui mesmo quando a tela remota já fechou. */}
+          <SessoesDoRobo />
           <VncWebViewer />
           <PortalHealthcheck />
           </>)}
