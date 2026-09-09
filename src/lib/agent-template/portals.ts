@@ -1892,18 +1892,6 @@ class PortalComprasPortal extends BasePortal {
     if (!href) {
       // Erro explicito em vez de navegar para lugar nenhum: sem isto o robo
       // seguiria para o loop de lances olhando uma pagina que nao e a disputa.
-      // Conta impedida e a explicacao mais provavel de uma lista vazia, e
-      // dizer "confira o numero do edital" nesse caso manda procurar defeito
-      // onde nao ha. A causa comercial vem primeiro, quando existe.
-      if (conta && conta.impedida) {
-        const err = new Error(
-          \`A conta do Portal de Compras Publicas esta impedida de operar: \${conta.resumo}. \` +
-          \`Nenhum processo aparece em "Seus Processos" enquanto o acesso estiver assim — \` +
-          \`renove o plano no portal e tente de novo.\`
-        );
-        err.semRetry = true; // conta vencida continua vencida na terceira tentativa
-        throw err;
-      }
       // DIZER O QUE EXISTE, e nao so o que falta.
       //
       // "Confira o numero do edital" manda a pessoa procurar num lugar que ela
@@ -1922,12 +1910,38 @@ class PortalComprasPortal extends BasePortal {
 
       const lista = processosVisiveis.length
         ? \` Os processos que aparecem na conta agora sao: \${processosVisiveis.join(', ')}.\`
-        : ' E a lista veio VAZIA — ou a conta nao tem processos, ou a pagina nao carregou.';
+        : ' E a lista veio VAZIA — ou a conta nao tem processos inscritos, ou a pagina nao carregou.';
 
-      throw new Error(
+      // A situacao da conta vai junto como CONTEXTO, nunca como causa.
+      //
+      // A versao anterior afirmava que conta vencida impede a listagem, e
+      // parava por ali. Isso e falso, e foi verificado: em 08/09/2026 o robo
+      // achou e abriu o processo 002/2026 com a conta exatamente neste estado,
+      // e em 09/09 a tela de Seus Processos apareceu cheia. O plano vencido
+      // bloqueia DISPUTAR, nao LISTAR.
+      //
+      // Dizer o contrario mandaria renovar um plano para resolver um problema
+      // que a renovacao nao resolve — e o numero do edital continuaria errado.
+      // Duas causas diferentes, ditas separadamente, porque tem consertos
+      // diferentes: o numero do edital e com quem cadastrou a disputa; a
+      // assinatura e com quem paga a mensalidade do portal.
+      // Uma mensagem so, com a causa na frente e o aviso como nota.
+      //
+      // Dois toasts para o mesmo evento competiriam entre si, e o da assinatura
+      // apontaria uma causa que nao e a causa — mandaria pagar mensalidade para
+      // resolver um numero de edital errado.
+      const contexto = conta && conta.impedida && conta.resumo
+        ? \` — Obs.: \${conta.resumo}. Isso e outro assunto: nao impede entrar nem \` +
+          \`listar processos, mas vai impedir dar lance quando a disputa comecar.\`
+        : '';
+
+      const err = new Error(
         \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas.\` +
-        lista
+        lista + contexto
       );
+      // Repetir nao faz o numero existir.
+      err.semRetry = true;
+      throw err;
     }
 
     const url = href.startsWith('http') ? href : \`https://operacao.portaldecompraspublicas.com.br\${href}\`;
@@ -1959,20 +1973,60 @@ class PortalComprasPortal extends BasePortal {
    * "Creditos 0".
    */
   async estadoDaConta() {
-    return await this.page.evaluate(() => {
+    const bruto = await this.page.evaluate(() => {
       const t = (document.body.innerText || '').replace(/\\s+/g, ' ');
-      const bloco = (t.match(/Situa[cç][aã]o Cadastral.{0,240}/i) || [''])[0].trim();
-      const inativo = /Situa[cç][aã]o Cadastral.{0,120}?\\bInativo\\b/i.test(t);
-      const vencido = /acesso est[aá] vencido/i.test(t);
-      const semPlano = /n[aã]o tem um plano ativo/i.test(t);
+      // Os VALORES, nao o bloco inteiro. Despejar 240 caracteres da tabela
+      // trazia junto os cabecalhos ("Situacao Validade Validade em Dias
+      // Creditos Acao") e o resultado era ilegivel na tela de quem opera.
+      // A data SO se estiver colada ao contexto de validade. A versao anterior
+      // pegava a primeira data da pagina, que e facilmente o "Homologado em
+      // 23/05/2024" da documentacao — e uma data errada dita com confianca e
+      // pior que nenhuma data. Sem esse casamento, a frase sai generica.
+      const dataM = t.match(/Situa[cç][aã]o Cadastral.{0,80}?\\bInativo\\b.{0,20}?(\\d{2}\\/\\d{2}\\/\\d{4})/i);
+      // Idem para os creditos: so o numero que vem logo depois do aviso.
+      const credM = t.match(/acesso est[aá] vencido\\.?\\s*(\\d+)\\b/i);
       return {
-        inativo,
-        vencido,
-        semPlano,
-        impedida: inativo || vencido || semPlano,
-        resumo: bloco || (vencido ? 'acesso vencido' : 'plano inativo'),
+        inativo: /Situa[cç][aã]o Cadastral.{0,120}?\\bInativo\\b/i.test(t),
+        vencido: /acesso est[aá] vencido/i.test(t),
+        semPlano: /n[aã]o tem um plano ativo/i.test(t),
+        validade: dataM ? dataM[1] : null,
+        creditos: credM ? credM[1] : null,
       };
     });
+
+    // A frase e montada aqui, e nao no chamador, para que todo lugar que
+    // mostrar o estado da conta diga a MESMA coisa.
+    // CADA FRASE E TRANSCRICAO, NUNCA INTERPRETACAO.
+    //
+    // A versao anterior tratava "Inativo" e "vencido" como a mesma coisa, e
+    // dizia "assinatura vencida" quando a pagina so tinha dito "Inativo" —
+    // que pode ser inativo por outro motivo. Afirmar causa que a tela nao
+    // afirmou e inventar dado, ainda que soe plausivel.
+    const partes = [];
+    if (bruto.vencido) {
+      // A pagina disse, com estas palavras, que o acesso esta vencido.
+      partes.push(
+        bruto.validade
+          ? \`o portal informa que o acesso esta vencido desde \${bruto.validade}\`
+          : 'o portal informa que o acesso esta vencido'
+      );
+    } else if (bruto.inativo) {
+      // So sabemos o rotulo. Repetimos o rotulo, sem dizer por que.
+      partes.push('a situacao cadastral da conta aparece como "Inativo"');
+    } else if (bruto.semPlano) {
+      partes.push('o portal informa que a conta nao tem plano ativo');
+    }
+    // Zero creditos so entra se o numero foi lido de fato — \`null\` e diferente
+    // de zero, e um nao-lido nunca vira uma afirmacao.
+    if (bruto.creditos === '0') partes.push('com 0 creditos');
+
+    return {
+      ...bruto,
+      impedida: bruto.inativo || bruto.vencido || bruto.semPlano,
+      // Sem nada lido, nao ha aviso. Preferir silencio a um resumo generico
+      // que soa como diagnostico sem ser um.
+      resumo: partes.length ? partes.join(', ') : null,
+    };
   }
 
   async lerMelhorLance() {

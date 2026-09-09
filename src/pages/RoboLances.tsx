@@ -406,6 +406,31 @@ export default function RoboLances() {
   const [enviandoAoRobo, setEnviandoAoRobo] = useState(false);
 
   /**
+   * O convite deixou de ser um pop-up e virou um FAROL.
+   *
+   * A primeira versao abria um cartao no meio da tela ao enviar. Resolvia o
+   * "usuario perdido", mas com dois avisos para o mesmo trabalho em quinze
+   * segundos — o cartao do PedidoDoRobo dispara logo depois, e com instrucao
+   * de verdade.
+   *
+   * O que nao podia se perder junto: o estimulo a assistir DESDE O COMECO. A
+   * parte mais convincente do robo e ve-lo entrando no portal e digitando o
+   * login, e isso acontece nos primeiros segundos — quem chega depois so ve
+   * tela preta.
+   *
+   * Entao, em vez de bloquear a tela, o botao que ja existe acende e pulsa.
+   * Aponta em vez de interromper.
+   */
+  const [destacarAssistir, setDestacarAssistir] = useState(false);
+  useEffect(() => {
+    if (!destacarAssistir) return;
+    // Uma sessao que falha dura ~13s, medidos. Vinte segundos cobrem o inicio
+    // sem virar enfeite permanente — farol que fica aceso deixa de ser aviso.
+    const t = setTimeout(() => setDestacarAssistir(false), 20000);
+    return () => clearTimeout(t);
+  }, [destacarAssistir]);
+
+  /**
    * Um caminho só até a tela do robô, e ele termina COM a tela aberta.
    *
    * Antes eram quatro passos: trocar de aba, rolar até quase o fim da página,
@@ -452,6 +477,7 @@ export default function RoboLances() {
     }
 
     setEnviandoAoRobo(true);
+    setDestacarAssistir(true);
 
     // O CONVITE SAI NO PRIMEIRO CLIQUE, antes de qualquer ida ao servidor.
     //
@@ -888,13 +914,20 @@ export default function RoboLances() {
                             que termina em nada, sem dizer para onde ir. */}
                         <Button
                           size="sm"
-                          variant="ghost"
-                          onClick={irParaTelaRemota}
-                          className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                          variant={destacarAssistir ? 'default' : 'ghost'}
+                          onClick={() => {
+                            setDestacarAssistir(false);
+                            irParaTelaRemota();
+                          }}
+                          className={
+                            destacarAssistir
+                              ? 'text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse-glow ring-2 ring-accent/40'
+                              : 'text-xs gap-1.5 text-muted-foreground hover:text-foreground'
+                          }
                           title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
                         >
                           <Monitor className="w-3.5 h-3.5" />
-                          Assistir ao vivo
+                          {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
                         </Button>
                       </div>
                     )}

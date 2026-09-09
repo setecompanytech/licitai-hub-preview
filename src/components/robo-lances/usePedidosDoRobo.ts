@@ -72,3 +72,41 @@ export function usePedidosDoRobo() {
     },
   });
 }
+
+
+/**
+ * Interrompe UMA sessão do robô.
+ *
+ * Mora aqui, e não dentro de um componente, porque dois lugares precisam dela:
+ * a lista de sessões e o painel do VNC — quem está vendo o robô agir é
+ * justamente quem vai querer pará-lo.
+ *
+ * Diferente do freio de emergência, que encerra todas as sessões de uma vez.
+ *
+ * @returns `parou` false não é erro: o agente pode já ter encerrado sozinho. A
+ *          linha do banco é atualizada de qualquer forma, para a lista não
+ *          continuar dizendo "em operação" para algo que acabou.
+ */
+export async function pararSessaoDoRobo(sessaoId: string): Promise<{
+  parou: boolean;
+  erro?: string;
+}> {
+  const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
+    body: { action: 'parar-sessao', sessao_id: sessaoId },
+  });
+
+  if (error) {
+    // O corpo do erro vem em `context`, não em `message` — sem isto a pessoa
+    // recebe "non-2xx status code" no lugar da causa.
+    let detalhe = error.message;
+    try {
+      const corpo = await (error as { context?: Response }).context?.json();
+      if (corpo?.error) detalhe = corpo.error;
+    } catch {
+      /* fica a mensagem original */
+    }
+    return { parou: false, erro: detalhe };
+  }
+
+  return { parou: (data as { parou?: boolean })?.parou === true };
+}

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { usePedidosDoRobo } from './usePedidosDoRobo';
+import { usePedidosDoRobo, pararSessaoDoRobo } from './usePedidosDoRobo';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Monitor, ExternalLink, Maximize2, Minimize2, RefreshCw,
-  ShieldCheck, AlertTriangle, X, Loader2,
+  ShieldCheck, AlertTriangle, X, Loader2, Square,
 } from 'lucide-react';
 
 const NOVNC_BASE_URL = 'https://agente.praefectus.com.br/vnc';
@@ -86,8 +87,42 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
    * Compartilha a consulta com o cartão de pedidos — mesma chave no react-query,
    * uma requisição só.
    */
-  const { data: pedidosData } = usePedidosDoRobo();
+  const { data: pedidosData, refetch: recarregarEstado } = usePedidosDoRobo();
   const pedidoDeClique = (pedidosData?.pedidos || []).find((p) => p.tipo === 'captcha') || null;
+
+  /**
+   * O freio, ao lado da tela.
+   *
+   * Quem está vendo o robô agir é justamente quem vai querer pará-lo — e até
+   * agora precisava trocar de aba para achar o botão. Freio longe de quem
+   * observa é freio que chega tarde.
+   *
+   * Só aparece com sessão de pé: botão vermelho sem nada para parar treina a
+   * pessoa a ignorá-lo.
+   */
+  const sessaoViva = (pedidosData?.sessoesVivas || [])[0] || null;
+  const [parando, setParando] = useState(false);
+
+  const pararAgora = async () => {
+    if (!sessaoViva) return;
+    setParando(true);
+    try {
+      const r = await pararSessaoDoRobo(sessaoViva.sessao_id);
+      if (r.erro) {
+        toast.error(r.erro, { duration: 10000 });
+        return;
+      }
+      toast.success(
+        r.parou
+          ? `Robô interrompido em ${sessaoViva.edital}.`
+          : `A sessão de ${sessaoViva.edital} já não estava mais rodando.`,
+        { duration: 8000 },
+      );
+      recarregarEstado();
+    } finally {
+      setParando(false);
+    }
+  };
 
   const handleOpenViewer = () => {
     setLoading(true);
@@ -120,6 +155,24 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           <Badge variant="outline" className="text-xs ml-1">noVNC</Badge>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Antes dos ícones e com rótulo escrito: numa barra de botõezinhos
+              iguais, o freio viraria mais um quadradinho. */}
+          {sessaoViva && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-xs gap-1.5 mr-1"
+              disabled={parando}
+              onClick={pararAgora}
+            >
+              {parando ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Square className="w-3.5 h-3.5" />
+              )}
+              Parar robô
+            </Button>
+          )}
           {showViewer && (
             <>
               <Button
