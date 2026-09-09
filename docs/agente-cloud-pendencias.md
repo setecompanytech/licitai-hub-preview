@@ -1179,3 +1179,86 @@ conteúdo renderizado.
 O certificado do cliente. Com ele, o `login()` deve seguir em vez de parar — e
 aí a área autenticada (`/private/fornecedor`) pode ser mapeada de verdade, que
 é a parte que nenhuma sonda alcança sem entrar.
+
+---
+
+## 17. BLL e BNC são a mesma plataforma — 09/09/2026
+
+Duas perguntas — "o teclado embaralhado da BLL tem solução?" e "dá para testar
+o BNC?" — tiveram a mesma resposta, porque os dois portais rodam **o mesmo
+sistema**.
+
+### O domínio estava errado nos dois, pelo mesmo motivo
+
+| Portal | Apontava para | É, na verdade | Operacional |
+| --- | --- | --- | --- |
+| BLL | `bll.org.br/wp-login.php` | login do **WordPress institucional** | `bllcompras.com/Home/Login` |
+| BNC | `bnc.org.br/login` | site institucional (WordPress) | `bnccompras.com/Home/Login` |
+
+Os campos que o `bnc.org.br` tem são de **newsletter** — "Nome", "Telefone",
+"Nome da instituição". Nunca houve login ali.
+
+O endereço certo não foi adivinhado: saiu do próprio site institucional,
+seguindo o link "Início". Foi assim que se descobriu a coincidência — as duas
+telas têm `#Email`, `#Contador`, o mesmo teclado e a mesma mensagem de erro.
+**Uma implementação atende as duas**, e é por isso que a lógica mora em
+`src/portals/teclado-embaralhado.js` em vez de duplicada.
+
+### O teclado embaralhado: sim, tem solução, e é simples
+
+A senha não é digitada. Há **cinco teclas, cada uma com um par de dígitos**, e o
+par vai no atributo `name`:
+
+```html
+<input type="button" name="0 ou 4">
+<input type="button" name="6 ou 9">
+<input type="button" name="2 ou 1">
+```
+
+Cada dígito aparece em exatamente um par, então para cada dígito da senha
+clica-se na tecla que o contém. **Não é imagem** — é texto no HTML. Nenhum OCR,
+nenhuma visão computacional: ler atributo e clicar.
+
+**Os pares mudam a cada carregamento.** Verificado: duas visitas à mesma tela
+deram `["0 ou 4","6 ou 9","2 ou 1","3 ou 5","8 ou 7"]` e
+`["6 ou 9","2 ou 1","0 ou 5","8 ou 3","7 ou 4"]`. Gravar o mapa funcionaria uma
+vez e falharia depois, em silêncio — daí a leitura em tempo de execução.
+
+**Consequência:** a senha destes portais é obrigatoriamente **numérica**. Não
+existe tecla para letra. Senha com letra não é um caso a tratar, é um dado
+errado — e o módulo diz isso em 0 segundo, antes de abrir o portal.
+
+### O que foi verificado, e como
+
+Cada passo foi medido antes de virar código:
+
+| Verificação | Resultado |
+| --- | --- |
+| Cliques chegam ao portal? | `#Contador` registrou 4 dígitos para 4 cliques, nos dois |
+| Qual o botão de envio? | `button.btn.btn-primary`, sem id nem name — o rótulo "Entrar" é a identificação estável |
+| Como o portal recusa? | fica em `/Home/Login` e mostra **"Usuário ou senha incorretos."** |
+
+Sem a última linha o módulo seguiria para a disputa a partir da tela de login —
+o mesmo defeito de falha silenciosa já corrigido em três portais.
+
+### Prova de ponta a ponta, sem a senha verdadeira
+
+`login()` real, com credencial inexistente:
+
+```
+bll  → O portal recusou o acesso: "Usuario ou senha incorretos."   36s
+bnc  → O portal recusou o acesso: "Usuario ou senha incorretos."   35s
+bll com senha "abc123"
+     → A senha deste portal e digitada num teclado que so tem
+       digitos...                                                   0s
+```
+
+A recusa **é** a prova: domínio certo, e-mail preenchido, teclado lido, dígitos
+clicados, contador conferido, botão acionado e resposta interpretada. Se
+qualquer elo estivesse errado, a mensagem seria outra — cada falha possível tem
+uma frase própria.
+
+### O que falta
+
+A senha numérica real de cada conta. Com ela, o teste é imediato e não depende
+de pregão agendado: ou entra, ou o portal diz por que não.

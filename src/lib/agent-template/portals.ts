@@ -753,38 +753,171 @@ class ComprasGovPortal extends BasePortal {
 module.exports = { ComprasGovPortal };
 `,
 
+  'src/portals/teclado-embaralhado.js': `/**
+ * Login das plataformas com teclado embaralhado — BLL e BNC.
+ *
+ * POR QUE UM ARQUIVO SO PARA AS DUAS: em 09/09/2026 descobriu-se, seguindo o
+ * link "Inicio" do site institucional da BNC, que bllcompras.com e
+ * bnccompras.com rodam o MESMO sistema. Mesmos campos (#Email, #Contador),
+ * mesmo teclado, mesmo botao, mesma mensagem de erro. Duas copias divergiriam.
+ *
+ * COMO O TECLADO FUNCIONA (verificado ao vivo, nao deduzido):
+ *
+ * A senha nao e digitada. Ha cinco teclas, cada uma com um PAR de digitos, e o
+ * par vai no atributo \`name\`:
+ *
+ *     name="0 ou 4"   name="6 ou 9"   name="2 ou 1"   name="3 ou 5"   name="8 ou 7"
+ *
+ * Cada digito aparece em exatamente um par, entao para cada digito da senha
+ * clica-se na tecla que o contem. O servidor recebe a sequencia de pares e
+ * confere que cada digito da senha pertence ao par clicado na posicao.
+ *
+ * OS PARES MUDAM A CADA CARREGAMENTO — por isso a leitura e em tempo de
+ * execucao. Gravar o mapa funcionaria uma vez e falharia depois, em silencio.
+ *
+ * CONSEQUENCIA: a senha destes portais e obrigatoriamente NUMERICA. Nao existe
+ * tecla para letra. Uma senha com letras nao e um caso a tratar, e um dado
+ * errado — e dizer isso e melhor que clicar em nada e culpar o portal.
+ */
+
+function esperar(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Os pares oferecidos AGORA. Reler a cada login e o ponto. */
+async function lerPares(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('input[type=button], button')]
+      .map((b) => b.getAttribute('name') || '')
+      .filter((n) => /^\\d\\s*ou\\s*\\d$/i.test(n))
+  );
+}
+
+/**
+ * Entra no portal e confirma que entrou.
+ *
+ * \`portal\` e a instancia de BasePortal (usa page, credenciais, preencherCampo e
+ * screenshot). Lanca com a razao real em vez de marcar \`loggedIn\` no escuro —
+ * era assim antes, e uma tela de erro passava por sucesso.
+ */
+async function loginComTecladoEmbaralhado(portal, loginUrl) {
+  const page = portal.page;
+  const login = String(portal.credenciais.login || '').trim();
+  const senha = String(portal.credenciais.senha || '').trim();
+
+  if (!login || !senha) {
+    throw new Error('Login e senha do portal nao foram informados ao agente.');
+  }
+  if (!/^\\d+$/.test(senha)) {
+    throw new Error(
+      'A senha deste portal e digitada num teclado que so tem digitos, entao ela ' +
+      'precisa ser somente numeros. A senha cadastrada tem outros caracteres.'
+    );
+  }
+
+  await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+  await esperar(1200);
+
+  await portal.preencherCampo('#Email', login);
+  await esperar(300);
+
+  const pares = await lerPares(page);
+  if (pares.length === 0) {
+    await portal.screenshot('teclado-nao-encontrado');
+    throw new Error(
+      'O teclado virtual nao foi encontrado na tela de login — o portal mudou de layout.'
+    );
+  }
+
+  for (const digito of senha) {
+    const par = pares.find((p) => p.split(/\\s*ou\\s*/i).indexOf(digito) !== -1);
+    if (!par) {
+      throw new Error(
+        'O digito ' + digito + ' nao aparece em nenhuma tecla (' + pares.join(', ') + ').'
+      );
+    }
+    await page.click('input[name="' + par + '"], button[name="' + par + '"]');
+    // Ritmo humano: cliques instantaneos e um sinal de automacao barato de ver.
+    await esperar(120 + Math.floor(Math.random() * 200));
+  }
+
+  // O campo mostra um caractere por clique. Conferir aqui separa "o teclado nao
+  // respondeu" de "a senha esta errada" — duas causas com consertos opostos.
+  const digitados = await page
+    .$eval('#Contador', (el) => (el.value || '').length)
+    .catch(() => -1);
+  if (digitados !== senha.length) {
+    await portal.screenshot('teclado-nao-registrou');
+    throw new Error(
+      'O teclado registrou ' + digitados + ' digito(s) para uma senha de ' +
+      senha.length + '. Os cliques nao chegaram ao portal.'
+    );
+  }
+
+  // O botao nao tem id nem name; o rotulo exato e a identificacao estavel.
+  const enviou = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button, input[type=submit], input[type=button]')]
+      .find((e) => /^\\s*entrar\\s*$/i.test(e.value || e.textContent || ''));
+    if (b) { b.click(); return true; }
+    return false;
+  });
+  if (!enviou) throw new Error('Botao "Entrar" nao encontrado na tela de login.');
+
+  await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
+  await esperar(2500);
+  await portal.screenshot('pos-login');
+
+  const estado = await page.evaluate(() => ({
+    url: location.href,
+    texto: document.body ? document.body.innerText : '',
+  }));
+
+  // Verificado: com credencial invalida o portal FICA em /Home/Login e mostra
+  // "Usuário ou senha incorretos." num aviso. Sem esta checagem, o modulo
+  // seguiria para a disputa a partir da tela de login.
+  if (/usu[áa]rio ou senha incorretos/i.test(estado.texto)) {
+    throw new Error('O portal recusou o acesso: "Usuario ou senha incorretos."');
+  }
+  if (/\\/Home\\/Login/i.test(estado.url)) {
+    throw new Error(
+      'O portal manteve a tela de login apos o envio — acesso nao concluido.'
+    );
+  }
+
+  portal.loggedIn = true;
+}
+
+module.exports = { loginComTecladoEmbaralhado, lerPares };
+`,
+
   'src/portals/bll.js': `const { BasePortal } = require('./base-portal');
+
+const { loginComTecladoEmbaralhado } = require('./teclado-embaralhado');
 
 /**
  * Módulo de automação para o portal BLL (Bolsa de Licitações e Leilões)
  *
- * URL: https://bll.org.br
- * Autenticação: Login + senha (opcionalmente certificado)
+ * URL operacional: https://bllcompras.com  — VERIFICADA em 09/09/2026
+ * Autenticação: e-mail + senha NUMERICA em teclado embaralhado
+ *
+ * O DOMINIO ESTAVA ERRADO. Este modulo apontava para bll.org.br/wp-login.php —
+ * o login do WordPress do site INSTITUCIONAL. Nunca houve chance de funcionar:
+ * a plataforma de pregao e bllcompras.com, e o site institucional so publica
+ * conteudo. \`bllcompras.com\` redireciona sozinho para /Home/Login.
  */
 class BLLPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'bll';
-    this.baseUrl = 'https://bll.org.br';
+    this.baseUrl = 'https://bllcompras.com';
+    this.loginUrl = 'https://bllcompras.com/Home/Login';
   }
 
   async login() {
-    console.log('🔐 Iniciando login no BLL...');
-    // BLL usa WordPress wp-login.php
-    // Seletores VERIFICADOS em 2026-03-31:
-    //   - Login: #user_login (input[name="log"])
-    //   - Senha: #user_pass (input[name="pwd"])
-    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
-    //   - Form: #loginform
-    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
-
-    await this.preencherCampo('#user_login', this.credenciais.login);
-    await this.preencherCampo('#user_pass', this.credenciais.senha);
-    await this.page.click('#wp-submit');
-
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    await this.screenshot('pos-login');
-    this.loggedIn = true;
+    console.log('🔐 Iniciando login no BLL (bllcompras.com)...');
+    // O teclado embaralhado e identico ao da BNC — mesma plataforma. A logica
+    // mora em teclado-embaralhado.js para as duas nao divergirem.
+    await loginComTecladoEmbaralhado(this, this.loginUrl);
     console.log('✅ Login no BLL realizado');
   }
 
@@ -1626,32 +1759,34 @@ module.exports = { PortalComprasPortal };
 
   'src/portals/bnc.js': `const { BasePortal } = require('./base-portal');
 
+const { loginComTecladoEmbaralhado } = require('./teclado-embaralhado');
+
 /**
- * Módulo para BNC (Brasil Negócios Compras)
+ * Módulo para BNC (Bolsa Nacional de Compras)
  *
- * URL: https://bnc.org.br
- * Autenticação: Login + senha
+ * URL operacional: https://bnccompras.com  — VERIFICADA em 09/09/2026
+ * Autenticação: e-mail + senha NUMERICA em teclado embaralhado
+ *
+ * O DOMINIO ESTAVA ERRADO, pelo mesmo motivo do BLL: bnc.org.br e o site
+ * institucional em WordPress, e os unicos campos de formulario que ele tem sao
+ * de newsletter ("Nome", "Telefone", "Nome da instituicao"). Nao ha login ali.
+ *
+ * O endereco certo saiu do proprio site, seguindo o link "Inicio" — e foi assim
+ * que se descobriu que BNC e BLL rodam a MESMA plataforma: mesmos #Email e
+ * #Contador, mesmo teclado de pares, mesma mensagem de erro. Uma implementacao
+ * atende as duas.
  */
 class BNCPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'bnc';
-    this.baseUrl = 'https://bnc.org.br';
+    this.baseUrl = 'https://bnccompras.com';
+    this.loginUrl = 'https://bnccompras.com/Home/Login';
   }
 
   async login() {
-    console.log('🔐 Iniciando login no BNC...');
-    // BNC usa WordPress wp-login.php (idêntico ao BLL)
-    // Seletores VERIFICADOS em 2026-03-31:
-    //   - Login: #user_login (input[name="log"])
-    //   - Senha: #user_pass (input[name="pwd"])
-    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
-    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('#user_login', this.credenciais.login);
-    await this.preencherCampo('#user_pass', this.credenciais.senha);
-    await this.page.click('#wp-submit');
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    this.loggedIn = true;
+    console.log('🔐 Iniciando login no BNC (bnccompras.com)...');
+    await loginComTecladoEmbaralhado(this, this.loginUrl);
     console.log('✅ Login no BNC realizado');
   }
 
