@@ -128,6 +128,81 @@ describe('template do agente de lances', () => {
     expect(noEspelho).toEqual(noApp);
   });
 
+  describe('certificado: só é "carregado" o que o Chrome consegue apresentar', () => {
+    /**
+     * Carrega `src/certificado.js` do ZIP com o mundo trocado, para medir a
+     * decisão sem tocar em NSS de verdade.
+     *
+     * `certutil -L` lista certificados; `certutil -K` lista chaves privadas. O
+     * módulo precisa cruzar os dois: `certutil -D` apaga o certificado e DEIXA
+     * a chave órfã, e um estado que olhasse só as chaves diria "instalado"
+     * sobre um certificado que já não existe — foi o que aconteceu ao limpar o
+     * certificado de teste em 09/09/2026.
+     */
+    function carregar(opts: { certs: string[]; chaves: string[]; policy: boolean }) {
+      const saidaL =
+        'Certificate Nickname                    Trust Attributes\n' +
+        '                                        SSL,S/MIME,JAR/XPI\n\n' +
+        opts.certs.map((n) => `${n}                    u,u,u`).join('\n') + '\n';
+      const saidaK =
+        'certutil: Checking token "NSS Certificate DB"\n' +
+        opts.chaves.map((n, i) => `< ${i}> rsa      abc${i}   ${n}`).join('\n') + '\n';
+
+      const falso = {
+        child_process: {
+          execFileSync: (_bin: string, args: string[]) =>
+            args.includes('-K') ? saidaK : saidaL,
+        },
+        fs: {
+          existsSync: () => true,
+          mkdirSync: () => undefined,
+          writeFileSync: () => undefined,
+          readFileSync: () =>
+            opts.policy
+              ? JSON.stringify({ AutoSelectCertificateForUrls: ['{"pattern":"x","filter":{}}'] })
+              : (() => { throw new Error('sem policy'); })(),
+        },
+        path: { join: (...p: string[]) => p.join('/'), dirname: () => '/tmp', isAbsolute: () => true, resolve: (...p: string[]) => p.join('/') },
+      } as Record<string, unknown>;
+
+      const mod = { exports: {} as Record<string, unknown> };
+      const ctx = vm.createContext({
+        require: (n: string) => falso[n],
+        module: mod,
+        exports: mod.exports,
+        process: { env: {} },
+        console,
+        JSON,
+        Buffer,
+      });
+      new vm.Script(ler('src/certificado.js')).runInContext(ctx);
+      return mod.exports as { estado: () => Record<string, unknown> };
+    }
+
+    it('chave órfã, sem certificado, não conta como instalado', () => {
+      const est = carregar({ certs: [], chaves: ['ACME - Teste'], policy: true }).estado();
+      expect(est.instalado_no_navegador).toBe(false);
+      expect(est.carregado).toBe(false);
+    });
+
+    it('certificado sem chave privada não conta — não dá para assinar', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: [], policy: true }).estado();
+      expect(est.carregado).toBe(false);
+    });
+
+    it('com certificado, chave e policy, aí sim', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: ['ACME - Teste'], policy: true }).estado();
+      expect(est.carregado).toBe(true);
+      expect(est.titulares).toEqual(['ACME - Teste']);
+    });
+
+    it('sem policy o Chrome abriria o diálogo de escolha — não é utilizável', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: ['ACME - Teste'], policy: false }).estado();
+      expect(est.carregado).toBe(false);
+      expect(String(est.motivo)).toContain('policy');
+    });
+  });
+
   it('não declara enviarProposta na classe base — o 501 depende disso', () => {
     // Um stub em BasePortal faria todos os 23 portais parecerem prontos, e a
     // falta do formulário só apareceria como 500 no meio de um pregão.

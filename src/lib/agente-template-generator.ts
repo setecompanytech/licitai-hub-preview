@@ -62,7 +62,7 @@ CALLBACK_URL=https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-w
 
 RUN apt-get update && apt-get install -y \\
     chromium \\
-    libnss3 libatk-bridge2.0-0 libx11-xcb1 \\
+    libnss3 libnss3-tools libatk-bridge2.0-0 libx11-xcb1 \\
     libxcomposite1 libxdamage1 libxrandr2 \\
     libgbm1 libasound2 libpangocairo-1.0-0 \\
     libgtk-3-0 fonts-liberation curl \\
@@ -70,6 +70,11 @@ RUN apt-get update && apt-get install -y \\
     rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Dentro do container o loopback tornaria o agente inalcancavel de fora.
+ENV BIND_HOST=0.0.0.0
+# Aqui o navegador e o chromium do sistema, cuja pasta de policy nao e a mesma
+# do "Chrome for Testing" que o Puppeteer baixa fora do container.
+ENV CHROME_POLICY_DIR=/etc/chromium/policies/managed
 
 WORKDIR /app
 COPY package*.json ./
@@ -185,6 +190,7 @@ const { SessionManager } = require('./session-manager');
 const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
 const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
+const certificado = require('./certificado');
 const fs = require('fs');
 const path = require('path');
 
@@ -211,18 +217,24 @@ const ROTAS = [
   'GET /sessoes',
   'GET /portais',
   'POST /api/proposta/enviar',
+  'POST /certificado',
 ];
 
-// Conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se o arquivo
-// existia — a pasta certs/ da VPS estava vazia e o checklist ficava verde.
+// A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
+// o arquivo existia — a pasta certs/ da VPS estava vazia e o checklist ficava
+// verde. A segunda passou a conferir o arquivo, e ainda ficava verde com o
+// certificado que o Chrome nao tinha como apresentar.
+//
+// Agora quem responde e o modulo que faz a instalacao, olhando as tres coisas
+// que precisam ser verdade: arquivo, chave na base NSS e policy de auto-selecao.
 function certificadoInstalado() {
-  const configurado = process.env.CERT_PATH || null;
-  if (!configurado) return { carregado: false, path: null, motivo: 'CERT_PATH nao configurado' };
-  const caminho = path.isAbsolute(configurado)
-    ? configurado
-    : path.resolve(__dirname, '..', configurado);
-  const existe = fs.existsSync(caminho);
-  return { carregado: existe, path: configurado, motivo: existe ? null : 'arquivo nao encontrado em ' + caminho };
+  try {
+    return certificado.estado();
+  } catch (e) {
+    // Estado indisponivel nao pode virar "carregado: true" nem derrubar o
+    // /health, que e o que o painel usa para saber se o agente esta vivo.
+    return { carregado: false, path: process.env.CERT_PATH || null, motivo: 'nao foi possivel ler o estado do certificado: ' + e.message };
+  }
 }
 
 function authMiddleware(req, res, next) {
@@ -451,8 +463,52 @@ app.get('/portais', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(\`🤖 Agente de Lances v2.2.0 rodando na porta \${PORT}\`);
+// ─── POST /certificado ───
+// Recebe o .pfx e o INSTALA de fato: arquivo, base NSS do Chrome e policy de
+// auto-selecao. Antes desta rota o certificado subia para o Storage do Supabase
+// e parava ali — nada o trazia para ca, e o agente nao tinha por onde receber.
+//
+// O corpo vem em base64 porque o restante do protocolo com o Praefectus e JSON;
+// um multipart so para este caso exigiria outra dependencia no agente.
+app.post('/certificado', authMiddleware, async (req, res) => {
+  try {
+    const { arquivo_base64, senha } = req.body || {};
+
+    if (!arquivo_base64 || !senha) {
+      return res.status(400).json({ error: 'arquivo_base64 e senha sao obrigatorios' });
+    }
+
+    const buffer = Buffer.from(arquivo_base64, 'base64');
+    if (buffer.length === 0) {
+      return res.status(400).json({ error: 'arquivo vazio ou base64 invalido' });
+    }
+
+    // A senha nao entra em log nenhum — nem aqui, nem no modulo de instalacao.
+    console.log('📜 Recebido certificado A1 (' + buffer.length + ' bytes) — instalando');
+    const estado = certificado.instalar(buffer, senha);
+
+    console.log(estado.carregado
+      ? '✅ Certificado instalado e apresentavel: ' + estado.titulares.join(', ')
+      : '⚠️  Certificado gravado mas ainda nao apresentavel: ' + estado.motivo);
+
+    res.json({ sucesso: estado.carregado, certificado: estado });
+  } catch (e) {
+    console.error('Falha ao instalar certificado:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Escuta so no loopback por padrao. Escutando em "*", a VPS respondia
+// http://<ip>:3500/health direto da internet, contornando o nginx e entregando
+// versao, RAM, sessoes e portais a quem perguntasse — foi corrigido na maquina
+// em 02/09/2026, mas o template continuava gerando a versao aberta.
+//
+// Em container o loopback deixaria o agente inalcancavel de fora: por isso
+// BIND_HOST existe, e o Dockerfile ja o define como 0.0.0.0.
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+
+app.listen(PORT, BIND_HOST, () => {
+  console.log(\`🤖 Agente de Lances v2.2.0 rodando em \${BIND_HOST}:\${PORT}\`);
   console.log(\`   Rotas: \${ROTAS.length} (\${ROTAS.join(' · ')})\`);
   console.log(\`   Portais: \${Object.keys(PORTALS).join(', ')}\`);
   console.log(\`   Max sessões: \${process.env.MAX_SESSOES_PARALELAS || 3}\`);
@@ -844,6 +900,229 @@ async function launchBrowser(cnpj) {
 }
 
 module.exports = { launchBrowser, getCertConfig };
+`,
+
+  'src/certificado.js': `const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Instalacao do certificado A1 (.pfx) para o Chrome APRESENTAR aos portais.
+ *
+ * Por que este arquivo existe: ate 09/09/2026 o agente sabia dizer se o arquivo
+ * estava no disco e mais nada. O /health respondia "carregado: true", o
+ * Checklist ficava verde, e o certificado nunca chegava a portal nenhum — nao
+ * havia base NSS nem policy. A pessoa pedia um certificado ao contador, pagava
+ * por ele, enviava pela tela, e o resultado era exatamente igual a nao ter
+ * enviado.
+ *
+ * TRES COISAS PRECISAM SER VERDADE, e este modulo cuida das tres:
+ *
+ *   1. o .pfx no disco;
+ *   2. o par certificado+chave dentro da base NSS que o Chrome le;
+ *   3. uma policy de auto-selecao, senao o Chrome abre o dialogo "escolha um
+ *      certificado" — que numa automacao e um travamento sem mensagem.
+ *
+ * DETALHES QUE CUSTARAM TEMPO:
+ *
+ * - O caminho da policy NAO e /etc/opt/chrome/. O binario do Puppeteer e o
+ *   "Chrome for Testing" e le /etc/opt/chrome_for_testing/policies/managed.
+ *   Descoberto com \`strings\` no executavel; chutar o caminho padrao teria
+ *   deixado a policy num diretorio que este Chrome ignora.
+ *
+ * - Toda chamada a certutil/pk12util fecha o stdin. Sem isso eles pedem senha
+ *   num terminal que nao existe e entram em laco infinito de "Invalid password.
+ *   Try again." — o processo nunca retorna.
+ *
+ * - A base NSS e a que o proprio Chrome ja criou (~/.pki/nssdb). Criar outra e
+ *   apontar por variavel nao funciona: o Chrome no Linux le esse caminho fixo.
+ */
+
+const HOME = process.env.HOME || '/root';
+const NSSDB = 'sql:' + HOME + '/.pki/nssdb';
+const ARQUIVO_SENHA_DB = path.join(HOME, '.pki', '.nssdb-pw');
+const POLICY_DIR =
+  process.env.CHROME_POLICY_DIR || '/etc/opt/chrome_for_testing/policies/managed';
+const POLICY_FILE = path.join(POLICY_DIR, 'praefectus-mtls.json');
+
+/**
+ * Onde o certificado do cliente pode ser apresentado.
+ *
+ * Escopo estreito DE PROPOSITO. Com um padrao aberto ("*"), o Chrome ofereceria
+ * o certificado da empresa a qualquer site que pedisse — inclusive um que
+ * pedisse so para coletar. Cada dominio aqui e um portal que exige mTLS.
+ */
+const URLS_MTLS = [
+  'https://[*.]gov.br',
+  'https://[*.]banparanet.com.br',
+  'https://[*.]bbmnetlicitacoes.com.br',
+];
+
+function caminhoDoPfx() {
+  const configurado = process.env.CERT_PATH || './certs/certificado.pfx';
+  return path.isAbsolute(configurado)
+    ? configurado
+    : path.resolve(__dirname, '..', configurado);
+}
+
+/** A base tem senha vazia (foi o Chrome que a criou). O arquivo vazio a informa. */
+function arquivoDeSenhaDaBase() {
+  fs.mkdirSync(path.dirname(ARQUIVO_SENHA_DB), { recursive: true });
+  if (!fs.existsSync(ARQUIVO_SENHA_DB)) fs.writeFileSync(ARQUIVO_SENHA_DB, '', { mode: 0o600 });
+  return ARQUIVO_SENHA_DB;
+}
+
+/** stdin fechado e timeout: ver a nota sobre o laco infinito no topo. */
+function rodar(bin, args) {
+  return execFileSync(bin, args, {
+    encoding: 'utf8',
+    timeout: 30000,
+    input: '',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/** Os apelidos que tem CHAVE PRIVADA na base. */
+function apelidosComChave() {
+  try {
+    const saida = rodar('certutil', ['-K', '-d', NSSDB, '-f', arquivoDeSenhaDaBase()]);
+    return saida
+      .split('\\n')
+      .map(function (l) { return l.match(/^<\\s*\\d+>\\s+\\S+\\s+\\S+\\s+(.+)$/); })
+      .filter(Boolean)
+      .map(function (m) { return m[1].trim(); });
+  } catch (e) {
+    return [];
+  }
+}
+
+/** Os apelidos que tem CERTIFICADO na base. */
+function apelidosComCertificado() {
+  try {
+    const saida = rodar('certutil', ['-L', '-d', NSSDB]);
+    return saida
+      .split('\\n')
+      .map(function (l) { return l.match(/^(.*\\S)\\s{2,}\\S+\\s*$/); })
+      .filter(Boolean)
+      .map(function (m) { return m[1].trim(); })
+      .filter(function (n) {
+        // Descarta o cabecalho da tabela, que casa com o mesmo formato.
+        return n !== 'Certificate Nickname' && n.indexOf('SSL,S/MIME') === -1;
+      });
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Os apresentaveis: precisam ter certificado E chave.
+ *
+ * A intersecao nao e preciosismo. \`certutil -D\` apaga o certificado e DEIXA a
+ * chave privada orfa — descoberto ao remover o certificado de teste e ver o
+ * estado continuar dizendo "instalado". Olhar so as chaves faz a base parecer
+ * povoada quando o Chrome nao tem o que apresentar.
+ */
+function certificadosComChave() {
+  const comCert = apelidosComCertificado();
+  return apelidosComChave().filter(function (n) { return comCert.indexOf(n) !== -1; });
+}
+
+function policyValendo() {
+  try {
+    const bruto = JSON.parse(fs.readFileSync(POLICY_FILE, 'utf8'));
+    const regras = bruto.AutoSelectCertificateForUrls || [];
+    return regras.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * O estado REAL, para o /health. Cada campo e uma verificacao, nao uma suposicao.
+ *
+ * \`carregado\` so e true quando o Chrome conseguiria apresentar o certificado —
+ * arquivo, chave na base E policy. Foi o contrario disso que manteve o Checklist
+ * verde por meses.
+ */
+function estado() {
+  const pfx = caminhoDoPfx();
+  const arquivo = fs.existsSync(pfx);
+  const nicks = certificadosComChave();
+  const policy = policyValendo();
+  // O que decide e a capacidade de APRESENTAR: certificado com chave na base do
+  // Chrome, mais a policy. O .pfx no disco e apenas a origem — quem instalou o
+  // certificado por outro caminho consegue usar, e exigir o arquivo diria que
+  // nao da, o que seria falso na direcao oposta.
+  const pronto = nicks.length > 0 && policy;
+
+  const faltando = [];
+  if (nicks.length === 0) faltando.push('nenhum certificado com chave privada na base NSS do Chrome');
+  if (!policy) faltando.push('policy de auto-selecao ausente em ' + POLICY_FILE);
+
+  return {
+    carregado: pronto,
+    path: process.env.CERT_PATH || './certs/certificado.pfx',
+    arquivo_no_disco: arquivo,
+    instalado_no_navegador: nicks.length > 0,
+    titulares: nicks,
+    policy_ativa: policy,
+    urls_habilitadas: policy ? URLS_MTLS : [],
+    motivo: pronto ? null : faltando.join('; '),
+    observacao: pronto && !arquivo
+      ? 'o .pfx nao esta em ' + pfx + ' — o certificado veio para o navegador por outro caminho'
+      : null,
+  };
+}
+
+function escreverPolicy() {
+  fs.mkdirSync(POLICY_DIR, { recursive: true });
+  const regras = URLS_MTLS.map(function (u) {
+    return JSON.stringify({ pattern: u, filter: {} });
+  });
+  fs.writeFileSync(
+    POLICY_FILE,
+    JSON.stringify({ AutoSelectCertificateForUrls: regras }, null, 2),
+  );
+}
+
+/**
+ * Grava o .pfx, importa na base NSS e garante a policy.
+ *
+ * A senha NUNCA e registrada em log nem devolvida — ela entra pelo argumento do
+ * pk12util e morre aqui. O retorno diz o que passou a ser verdade.
+ */
+function instalar(bufferPfx, senha) {
+  const pfx = caminhoDoPfx();
+  fs.mkdirSync(path.dirname(pfx), { recursive: true });
+  fs.writeFileSync(pfx, bufferPfx, { mode: 0o600 });
+
+  // Substituir e o caso comum (renovacao anual). Sem remover o anterior, a base
+  // acumula certificados vencidos e o Chrome pode apresentar o errado.
+  //
+  // \`-F\` e nao \`-D\`: o -D apaga so o certificado e deixa a chave privada orfa
+  // na base, acumulando material criptografico que ninguem mais usa.
+  apelidosComChave().forEach(function (nick) {
+    try {
+      rodar('certutil', ['-F', '-d', NSSDB, '-n', nick, '-f', arquivoDeSenhaDaBase()]);
+    } catch (e) {
+      console.warn('nao removeu certificado anterior "' + nick + '": ' + e.message);
+    }
+  });
+
+  try {
+    rodar('pk12util', ['-d', NSSDB, '-i', pfx, '-W', senha, '-k', arquivoDeSenhaDaBase()]);
+  } catch (e) {
+    // A mensagem do pk12util distingue senha errada de arquivo corrompido, e
+    // essa diferenca e o que a pessoa precisa para saber o que fazer.
+    const detalhe = ((e.stderr || '') + (e.stdout || '')).trim() || e.message;
+    throw new Error('Falha ao importar o certificado: ' + detalhe);
+  }
+
+  escreverPolicy();
+  return estado();
+}
+
+module.exports = { instalar, estado, escreverPolicy, POLICY_FILE, URLS_MTLS };
 `,
 
   'src/callback.js': `async function sendCallback(session, tipo, payload) {
