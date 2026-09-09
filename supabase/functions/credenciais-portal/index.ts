@@ -7,82 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Prefixo gravado junto do valor cifrado. Existe para que a PRÓXIMA troca de chave
-// saiba, olhando a linha, com qual chave ela foi escrita — que é exatamente o que
-// faltava no desenho anterior e obrigou esta mudança.
-const VERSAO_CIFRA = "v2";
-
-// A cifra tem chave própria, separada da credencial de infraestrutura. Antes ela era
-// derivada da SUPABASE_SERVICE_ROLE_KEY, e isso custava duas coisas: rotacionar a
-// service role key — prática normal — tornava toda senha de portal indecifrável, e
-// quem obtivesse essa chave decifrava a senha de portal de todos os assinantes.
-function segredoDeCifra(): string {
-  const secret = Deno.env.get("CREDENCIAIS_ENCRYPTION_KEY");
-  if (!secret) {
-    // Falha alta de propósito: cair de volta para a service role key reintroduziria
-    // o acoplamento em silêncio, e ninguém perceberia até a próxima rotação.
-    throw new Error(
-      "CREDENCIAIS_ENCRYPTION_KEY não configurada — cadastre o segredo nas Edge Functions antes de usar credenciais de portal"
-    );
-  }
-  return secret;
-}
-
-async function deriveKey(): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(segredoDeCifra()),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: enc.encode("praefectus-credenciais-v2"),
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-async function encrypt(plaintext: string, key: CryptoKey): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const enc = new TextEncoder();
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    enc.encode(plaintext)
-  );
-  // versao:iv:ciphertext em base64 — o alfabeto base64 não usa ":", então o split é seguro
-  const ivB64 = btoa(String.fromCharCode(...iv));
-  const ctB64 = btoa(
-    String.fromCharCode(...new Uint8Array(ciphertext))
-  );
-  return `${VERSAO_CIFRA}:${ivB64}:${ctB64}`;
-}
-
-async function decrypt(encrypted: string, key: CryptoKey): Promise<string> {
-  const [versao, ivB64, ctB64] = encrypted.split(":");
-  // Recusa o que não reconhece em vez de tentar adivinhar: senha devolvida errada é
-  // pior que erro, porque vira tentativa de login falha no portal sem explicação.
-  if (versao !== VERSAO_CIFRA || !ivB64 || !ctB64) {
-    throw new Error("Formato de senha cifrada não reconhecido");
-  }
-  const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0));
-  const ciphertext = Uint8Array.from(atob(ctB64), (c) => c.charCodeAt(0));
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    ciphertext
-  );
-  return new TextDecoder().decode(plaintext);
-}
+// A cifra mora em _shared: o robo-lances-webhook tambem precisa decifrar a senha
+// para entregar ao agente, e duas copias de codigo de cripto divergem em
+// silencio — basta alguem mudar o salt ou as iteracoes de um lado.
+import { encrypt, decrypt, deriveKey } from "../_shared/credenciais-cifra.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
