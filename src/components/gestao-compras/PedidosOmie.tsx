@@ -162,12 +162,16 @@ type ItemForm = {
 };
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const KANBAN_STATUS: { key: Pedido['status']; label: string }[] = [
-  { key: 'pedido',          label: 'Pedidos'         },
-  { key: 'separar_estoque', label: 'Separar Estoque' },
-  { key: 'faturar',         label: 'Faturar'         },
-  { key: 'faturado',        label: 'Faturado'        },
-  { key: 'entrega',         label: 'Entrega'         },
+// Cada etapa tem cor própria (09/09): o quadro era cinza-sobre-cinza e as
+// colunas de largura fixa deixavam um vão morto à direita — parecia
+// transparente. A cor da etapa pinta a barra do topo, o cabeçalho e a
+// lateral dos cartões, contando o fluxo de relance.
+const KANBAN_STATUS: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
+  { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-info',    chip: 'bg-info/15 text-info',       borda: 'border-l-info' },
+  { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning', chip: 'bg-warning/15 text-warning', borda: 'border-l-warning' },
+  { key: 'faturar',         label: 'Faturar',         barra: 'bg-accent',  texto: 'text-accent',  chip: 'bg-accent/15 text-accent',   borda: 'border-l-accent' },
+  { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success', chip: 'bg-success/15 text-success', borda: 'border-l-success' },
+  { key: 'entrega',         label: 'Entrega',         barra: 'bg-primary', texto: 'text-primary', chip: 'bg-primary/15 text-primary', borda: 'border-l-primary' },
 ];
 
 const STATUS_MSG: Record<string, string> = {
@@ -1610,12 +1614,13 @@ export default function PedidosOmie() {
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-muted/20 border-muted/40'}`}
+                className={`flex flex-col flex-1 min-w-[220px] rounded-lg border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-card border-border shadow-sm'}`}
               >
-                {/* Column header */}
-                <div className="flex items-center justify-between px-3 py-2.5 border-b border-muted/40">
-                  <span className="font-semibold text-sm">{col.label}</span>
-                  <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                {/* Barra de cor da etapa + cabeçalho */}
+                <div className={`h-1.5 ${col.barra}`} />
+                <div className="flex items-center justify-between px-3 py-2.5 border-b bg-muted/30">
+                  <span className={`font-bold text-sm ${col.texto}`}>{col.label}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums ${col.chip}`}>
                     {col.items.length}
                   </span>
                 </div>
@@ -1623,7 +1628,9 @@ export default function PedidosOmie() {
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {col.items.length === 0 ? (
-                    <p className="text-center text-xs text-muted-foreground py-8">Nenhum registro</p>
+                    <div className="border border-dashed border-border rounded-md py-8 text-center text-xs text-muted-foreground/70 mx-1 mt-1">
+                      Nenhum pedido nesta etapa
+                    </div>
                   ) : col.items.map(p => {
                     const pessoaNome = getPessoaNome(p.pessoa_id);
                     const isHoje = p.previsao_faturamento === todayISO();
@@ -1634,33 +1641,33 @@ export default function PedidosOmie() {
                       <div key={p.id}
                         onPointerDown={e => { if (!(e.target as HTMLElement).closest('button')) startDrag(e, p.id); }}
                         onDoubleClick={() => { if (!draggingId) openEdit(p); }}
-                        className={`bg-background border rounded-lg p-2.5 hover:shadow-sm transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
+                        className={`bg-background border border-l-4 ${col.borda} rounded-lg p-3 shadow-sm hover:shadow-md transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-semibold text-muted-foreground">
+                              <span className="text-sm font-bold text-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className="text-xs px-1 py-0 border-border text-muted-foreground">
+                              <Badge variant="outline" className={`text-xs px-1.5 py-0 font-medium ${p.tipo === 'venda' ? 'bg-success/10 text-success border-success/30' : 'bg-info/10 text-info border-info/30'}`}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="secondary" className="text-xs px-1 py-0">
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                   Contrato
                                 </Badge>
                               )}
                             </div>
                             {pessoaNome && (
-                              <p className="text-xs font-medium mt-0.5 leading-tight truncate">{pessoaNome}</p>
+                              <p className="text-sm font-medium mt-1 leading-tight truncate">{pessoaNome}</p>
                             )}
-                            <p className="text-xs text-muted-foreground mt-0.5">{statusMsg}</p>
-                            <p className="text-xs font-semibold mt-1 text-foreground">
-                              $ {fmtM(p.valor_total)}
+                            <p className={`text-xs mt-0.5 ${isHoje ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
+                            <p className="text-base font-bold mt-1.5 text-foreground tabular-nums">
+                              R$ {fmtM(p.valor_total)}
                               {/* Condição como está escrita — "em 30 Diasx" era o
                                   sufixo cego de quando o campo só guardava número. */}
                               {p.numero_parcelas && p.numero_parcelas !== 'A Vista' && (
-                                <span className="text-muted-foreground font-normal"> · {p.numero_parcelas}</span>
+                                <span className="text-xs text-muted-foreground font-normal"> · {p.numero_parcelas}</span>
                               )}
                             </p>
                           </div>
