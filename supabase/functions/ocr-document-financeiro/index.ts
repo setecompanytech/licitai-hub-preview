@@ -41,6 +41,49 @@ function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
 }
 
 /**
+ * Teste de coerência do valor (09/09): a NF-e 713 saiu como R$ 2.029,60
+ * quando o total era R$ 2.029.600,00 — o milhar engolido pelo PRÓPRIO
+ * literal lido, que a defesa acima não alcança. Quantidade × unitário é uma
+ * segunda fonte INDEPENDENTE do mesmo documento: quando o produto bate com o
+ * total deslocado por um fator redondo (1.000×, 100×, 10×), o deslocamento é
+ * de leitura, não de negócio — corrige e declara. Quando diverge sem fator
+ * redondo, não adivinha: avisa e manda revisar.
+ */
+function conferirValorTotal(d: Record<string, unknown>): void {
+  const qtd = Number(d.quantidade_total);
+  const unit = Number(d.valor_unitario);
+  const total = Number(d.valor_total);
+  if (!Number.isFinite(qtd) || qtd <= 0) return;
+  if (!Number.isFinite(unit) || unit <= 0) return;
+  if (!Number.isFinite(total) || total <= 0) return;
+
+  const produto = qtd * unit;
+  const razao = produto / total;
+  const avisos = Array.isArray(d.avisos) ? (d.avisos as string[]) : [];
+
+  for (const fator of [1000, 100, 10]) {
+    if (Math.abs(razao - fator) / fator < 0.01) {
+      d.valor_total = Math.round(produto * 100) / 100;
+      avisos.push(
+        `Valor total lido (${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) ` +
+        `estava ${fator}× menor que quantidade × unitário — corrigido para ` +
+        `${(d.valor_total as number).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Confira antes de lançar.`,
+      );
+      d.avisos = avisos;
+      return;
+    }
+  }
+  // Divergência real (>5%) sem fator redondo: ninguém corrige no palpite.
+  if (razao > 1.05 || razao < 0.95) {
+    avisos.push(
+      `Quantidade × unitário dá ${produto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}, ` +
+      `mas o valor total lido é ${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — revise antes de lançar.`,
+    );
+    d.avisos = avisos;
+  }
+}
+
+/**
  * Datas do modelo sem defesa nenhuma eram gravadas como competência e
  * vencimento (A1 da auditoria): "03/04" lido como 2026-03-04 punha a receita
  * no mês errado — sintaticamente válido, indetectável. Regra determinística:
@@ -218,6 +261,7 @@ Deno.serve(async (req) => {
         const resultado = await tentativa.fn();
         if (resultado && resultado.tipo_documento) {
           sanearNumerosBrasileiros(resultado);
+          conferirValorTotal(resultado);
           sanearDatas(resultado);
           return new Response(JSON.stringify({ ok: true, motor: tentativa.motor, dados: resultado }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

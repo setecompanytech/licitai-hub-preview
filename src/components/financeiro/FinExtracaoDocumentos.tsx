@@ -641,6 +641,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 O campo será gravado vazio; cole a chave completa se precisar dela.
                               </p>
                             )}
+                            {/* Avisos do saneamento do servidor (ex.: milhar
+                                engolido no valor, corrigido por qtd×unitário).
+                                Correção silenciosa é tão proibida quanto erro
+                                silencioso. */}
+                            {d.status === "ok" && Array.isArray((d.dados as any)?.avisos) &&
+                              ((d.dados as any).avisos as string[]).map((a, i) => (
+                                <p key={i} className="text-xs text-warning mt-1">{a}</p>
+                              ))}
                             {d.erro && <p className="text-xs text-destructive mt-1">{d.erro}</p>}
                             {/* Onde o arquivo foi parar.
                                 Antes, o documento processado ficava num limbo: o
