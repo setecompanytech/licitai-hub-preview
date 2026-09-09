@@ -12795,3 +12795,28 @@ SELECT cron.schedule(
 -- Compras, sem empresa_id) + RLS por empresa + publicação realtime.
 -- (Conteúdo completo em supabase/migrations/20260908000008_nfe_entradas.sql)
 ```
+
+## 2026-09-09 — Certificado A1: guardar a senha cifrada e marcar a instalação real — PENDENTE de aplicação
+
+A `upload-certificado` exigia a senha do `.pfx` no formulário, validava que veio
+e **descartava**. O arquivo subia para o Storage, a tela dizia "Certificado
+enviado com sucesso", e a senha — que é o que abre o `.pfx` — não existia mais
+em lugar nenhum. Sem ela o `pk12util` não instala o certificado na base NSS do
+Chrome, então o robô nunca teria como apresentá-lo a portal nenhum.
+
+`instalado_no_agente_em` separa dois fatos que a tela tratava como um só: o
+arquivo ter chegado ao Storage e o robô conseguir usá-lo.
+
+```sql
+ALTER TABLE public.cert_upload_tokens
+  ADD COLUMN IF NOT EXISTS senha_cifrada text;
+
+COMMENT ON COLUMN public.cert_upload_tokens.senha_cifrada IS
+  'Senha do .pfx cifrada em AES-GCM (formato v2:iv:ciphertext) por _shared/credenciais-cifra.ts. Necessária para o agente instalar o certificado na base NSS do Chrome.';
+
+ALTER TABLE public.cert_upload_tokens
+  ADD COLUMN IF NOT EXISTS instalado_no_agente_em timestamptz;
+
+COMMENT ON COLUMN public.cert_upload_tokens.instalado_no_agente_em IS
+  'Momento em que o agente confirmou a instalação (base NSS + policy). NULL = o arquivo subiu mas o robô ainda não consegue apresentá-lo.';
+```
