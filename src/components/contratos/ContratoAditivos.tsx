@@ -28,6 +28,10 @@ const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; co
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-info/10 text-info' },
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
+  // Prorrogação de fornecimento CONTÍNUO (arts. 106/107): renova o período e
+  // o quantitativo — não amplia o objeto, portanto FORA do teto do art. 125.
+  // Nasceu do 2º T.A. do 068/2025 (09/09): +100% legítimo disparava alarme.
+  prorrogacao_continua: { label: 'Prorrogação — fornecimento contínuo (arts. 106/107)', icon: Calendar, color: 'bg-warning/10 text-warning', semLimite: true },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-muted text-muted-foreground' },
   reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
@@ -102,9 +106,9 @@ const INSTITUTOS_SEM_LIMITE: Array<[RegExp, string]> = [
   [/reajust/i, 'reajuste'],
   [/revis[ãa]o\s+(contratual|de\s+pre)/i, 'revisão contratual'],
 ];
-const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA];
-const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
-const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', ...TIPOS_DE_ATA].includes(tipo);
+const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA, 'prorrogacao_continua'];
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', 'prorrogacao_continua', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
+const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', 'prorrogacao_continua', ...TIPOS_DE_ATA].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
@@ -254,7 +258,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         data_fato_gerador: naturezaDoTipo(form.tipo) === 'revisao' ? (form.data_fato_gerador || null) : null,
         indice_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.indice_reajuste || null) : null,
         data_base_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.data_base_reajuste || null) : null,
-        com_ressalva: form.tipo === 'prazo' ? form.com_ressalva : null,
+        com_ressalva: ['prazo', 'prorrogacao_continua'].includes(form.tipo) ? form.com_ressalva : null,
       };
 
       payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
@@ -295,7 +299,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     ? avisoDePreclusao({
         dataFatoGerador: form.data_fato_gerador,
         prorrogacoes: aditivos
-          .filter((a) => a.tipo === 'prazo')
+          .filter((a) => a.tipo === 'prazo' || a.tipo === 'prorrogacao_continua')
           .map((a) => ({
             data_assinatura: a.data_assinatura ?? null,
             com_ressalva: (a as { com_ressalva?: boolean }).com_ressalva ?? false,
@@ -309,7 +313,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   // reajuste anual vencido e não registrado. Prorrogação aceita sem ressalva
   // pode ser lida como renúncia (Parecer AGU 3/2023); a orientação do TCU ao
   // contratado é pedir formalmente antes de assinar. Avisa, não impede.
-  const reajustePendente = form.tipo === 'prazo'
+  const reajustePendente = ['prazo', 'prorrogacao_continua'].includes(form.tipo)
     ? situacaoDoReajuste({
         dataBase: clausulaReajuste.dataBase,
         reajustesRegistrados: aditivos
@@ -597,6 +601,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   <SelectItem value="quantidade">Quantidade</SelectItem>
                   <SelectItem value="valor_quantidade">Valor e Qtde</SelectItem>
                   <SelectItem value="prazo">Prazo</SelectItem>
+                  <SelectItem value="prorrogacao_continua">Prorrogação — fornecimento contínuo (arts. 106/107)</SelectItem>
                   <SelectItem value="escopo">Escopo</SelectItem>
                   <SelectItem value="reequilibrio">Reequilíbrio Econômico-Financeiro (art. 124, II, “d”)</SelectItem>
                   <SelectItem value="revisao">Revisão Contratual</SelectItem>

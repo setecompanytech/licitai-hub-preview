@@ -12820,3 +12820,11 @@ ALTER TABLE public.cert_upload_tokens
 COMMENT ON COLUMN public.cert_upload_tokens.instalado_no_agente_em IS
   'Momento em que o agente confirmou a instalação (base NSS + policy). NULL = o arquivo subiu mas o robô ainda não consegue apresentá-lo.';
 ```
+
+## 2026-09-09 — Prorrogação contínua (arts. 106/107) fora do teto do art. 125 — JÁ APLICADA em 09/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- alerta_limite_aditivo_25pct: tipo 'prorrogacao_continua' entra nos isentos
+-- (renova o período, não amplia o objeto).
+-- (Conteúdo completo em supabase/migrations/20260909000001_prorrogacao_continua_fora_do_125.sql)
+```
