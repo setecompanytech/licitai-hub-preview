@@ -1946,11 +1946,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
                                 }}>
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
-                                  <SelectContent>
+                                  {/* Descrição de item de merenda tem 400+
+                                      caracteres: sem teto de largura, a opção
+                                      virava UMA linha atravessando a tela
+                                      inteira (09/09). Largura limitada e
+                                      texto em até 2 linhas. */}
+                                  <SelectContent className="max-w-[min(560px,90vw)]">
                                     {itens.map(i => (
                                       <SelectItem key={i.id} value={i.id} className="text-xs">
-                                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                        {i.descricao}
+                                        <span className="block whitespace-normal line-clamp-2">
+                                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                          {i.descricao}
+                                        </span>
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
