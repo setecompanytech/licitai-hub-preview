@@ -229,7 +229,17 @@ serve(async (req) => {
             // login e senha em claro — e o que o modulo do portal consome
             credenciais_portal: credenciais,
           }),
-          signal: AbortSignal.timeout(10000),
+          // 10s era MENOS que o trabalho pedido. O agente so responde depois
+          // de abrir o Chrome, fazer login e navegar ate a disputa — nos logs
+          // de 08/09 isso levou 12s so para FALHAR o login. A edge function
+          // abortava antes, devolvia "Agente inacessivel" e o usuario via erro
+          // enquanto o robo entrava no portal com sucesso: o pior tipo de
+          // mentira, a que desmente algo que deu certo.
+          //
+          // 60s cobre o caminho inteiro com folga. O conserto de fundo e o
+          // agente responder na hora e seguir a sessao em segundo plano —
+          // anotado em docs/agente-cloud-pendencias.md.
+          signal: AbortSignal.timeout(60000),
         });
 
         const agentData = await agentResp.json().catch(() => ({}));

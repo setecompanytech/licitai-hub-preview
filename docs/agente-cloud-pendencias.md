@@ -40,6 +40,7 @@ para quem for reimplementar.
 | 19 | Portas 5900 e 6080 abertas na internet, x11vnc sem senha | agente | ✅ **resolvido em 08/09** — ver seção 11 |
 | 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ❌ **aberto** — ver seção 11 |
 | 21 | `browser.js` e `start-vnc.sh` não existem no template do repo | template | ❌ **aberto** — ver seção 11 |
+| 22 | `/sessao/iniciar` só responde no fim da sessão — a chamada estoura antes | agente | ❌ **aberto** — ver seção 13 |
 
 ## O que falta agora
 
@@ -760,3 +761,86 @@ Os passos 3 e 4 dependem de haver disputa acontecendo. Os demais portais
 precisam do mesmo tratamento, e a LicitaNet precisa antes de uma resposta ao
 403 — que pode exigir mudar user-agent, usar IP residencial, ou falar com o
 portal.
+
+---
+
+## 13. O primeiro envio pela interface — 08/09/2026, noite
+
+O botão "Enviar ao robô" foi ao ar e o primeiro clique respondeu **"Edge Function
+returned a non-2xx status code"**. Foram três defeitos empilhados, e cada um
+escondia o seguinte.
+
+### O aviso não dizia a causa
+
+Prometido: "a mensagem real do servidor". Entregue: uma frase que não diz nada.
+
+O cliente do Supabase, quando a função responde não-2xx, devolve `data: null` e
+um `error.message` genérico — o **corpo** da resposta, onde está a causa, fica em
+`error.context`, que é o `Response` cru. Ler só `error.message` joga fora
+exatamente a informação que interessa.
+
+Custo medido: sem a frase na tela, achar o defeito virou comparar consultas de
+duas telas diferentes até topar com um `.single()`.
+
+### `.single()` onde cabem várias linhas
+
+O Checklist mostrava **"Agente Externo Configurado ✓"** e o envio respondia
+**"Nenhum agente ativo configurado"**. Mesma tabela, leituras diferentes:
+
+```
+checklist       .eq(user_id).find(a => a.status === 'ativo')
+enviar-sessao   .eq(user_id).eq(status,'ativo').single()
+```
+
+`.single()` falha com mais de uma linha e devolve `data: null`, que o código lia
+como "não existe". E ter várias linhas é o normal: o `configurar-agente` faz
+upsert com `onConflict: "user_id,nome"`, e o nome carrega o plano — trocar de
+plano cria linha nova em vez de atualizar.
+
+### O agente rodava o arquivo velho
+
+Este é o mais instrutivo, e o erro foi de método.
+
+O `portal-compras.js` foi corrigido às 21:39; o agente tinha sido reiniciado às
+21:27. **O Node guarda o módulo em cache**, então o processo seguiu usando o
+seletor antigo (`#login`) enquanto o disco já tinha o certo (`#username`). Os
+testes diretos passavam porque rodavam como processo separado, lendo o arquivo
+fresco — a discrepância mais confusa possível.
+
+```
+❌ Erro ao iniciar sessão: TimeoutError:
+   Waiting for selector `input[name="login"], #login` failed
+```
+
+> **Regra:** mexeu em qualquer arquivo de `/opt/agente-lances/src/`,
+> `pm2 restart agente-lances`. Teste em processo separado NÃO prova o que o
+> agente está executando.
+
+### E a chamada estourava antes do robô terminar — pendência 22
+
+`/sessao/iniciar` faz `await sessionManager.createSession(...)` antes de
+responder: abre o Chrome, faz login, navega. Nos logs isso levou **12s só para
+falhar** o login. A edge function abortava em **10s** e devolvia "Agente
+inacessível".
+
+Efeito: o robô entraria com sucesso e a tela mostraria erro — o pior tipo de
+mentira, a que desmente algo que deu certo.
+
+Paliativo aplicado: o tempo subiu para 60s. **O conserto de fundo continua
+aberto:** o agente deveria confirmar o recebimento na hora e seguir a sessão em
+segundo plano, avisando o resultado pelo callback que já existe. Enquanto for
+síncrono, qualquer portal mais lento reintroduz o problema.
+
+### O que os logs provaram
+
+Antes de qualquer um desses consertos, a corrente já funcionava:
+
+```
+22:49:06  🚀 Abrindo sessão 361fadb4... (browser #1)
+22:49:06  🔐 Login no portal: portal-compras
+23:00:04  🚀 Abrindo sessão 9ed4b09a... (browser #1)
+```
+
+Duas sessões chegaram pela interface. O botão disparou, a edge function achou o
+agente, **a credencial chegou decifrada** e o agente abriu o navegador. Tudo o
+que foi construído em 08/09 funcionou; só o último passo usava código velho.
