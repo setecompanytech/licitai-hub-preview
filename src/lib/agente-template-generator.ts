@@ -297,6 +297,9 @@ app.get('/health', (req, res) => {
     // configurado por portal, que envelheceria no dia em que o cliente
     // desligasse a verificacao em duas etapas.
     aguardando_humano: interacaoHumana.todos(),
+    // Como os pedidos recentes terminaram. A interface usa para dizer
+    // "recebido, o robo seguiu" em vez de deixar o cartao sumir em silencio.
+    desfechos_humano: interacaoHumana.desfechosRecentes(),
     // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
     // mas nao submete nada. O painel precisa poder mostrar isso.
     portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
@@ -1069,6 +1072,10 @@ function pedir(sessaoId, pedido) {
     mensagem: pedido.mensagem,
     tela: pedido.tela || null,
     criado_em: new Date().toISOString(),
+    // Ate quando o robo espera. A interface conta daqui para tras: sem isto a
+    // pessoa nao sabe se tem cinco segundos ou cinco minutos, e age com pressa
+    // desnecessaria — ou desiste achando que ja passou.
+    expira_em: pedido.expira_em || null,
   };
   pendentes.set(sessaoId, registro);
   // Uma resposta antiga nao pode satisfazer um pedido novo: quem respondeu
@@ -1101,6 +1108,9 @@ function pendente(sessaoId) {
 
 /** Fecha o pedido — atendido, expirado ou sessao encerrada. */
 function encerrar(sessaoId) {
+  // Sessao morreu com pedido em aberto: ninguem respondeu a tempo. Dizer isso
+  // e melhor que o cartao sumir sem explicacao.
+  if (pendentes.has(sessaoId)) resolver(sessaoId, 'expirado');
   pendentes.delete(sessaoId);
   respostas.delete(sessaoId);
 }
@@ -1135,7 +1145,57 @@ function classificarTela(texto) {
   return null;
 }
 
-module.exports = { pedir, responder, colher, pendente, encerrar, todos, classificarTela };
+/** O relogio da espera foi renovado — a tela avancou, e ha mais tempo. */
+function renovar(sessaoId, expiraEm) {
+  const p = pendentes.get(sessaoId);
+  if (p) p.expira_em = expiraEm;
+}
+
+/**
+ * Como o pedido terminou.
+ *
+ * Existe porque sumir e ambiguo. Quando o cartao simplesmente desaparece da
+ * tela, quem estava olhando nao sabe se funcionou ou se expirou — e a duvida
+ * faz clicar de novo, que foi como tres codigos do gov.br queimaram em
+ * 09/09/2026 ate a conta ser bloqueada.
+ *
+ * Guardado por pouco tempo de proposito: e um aviso, nao um historico. O que
+ * merece historico esta em sessoes_lance_real.
+ */
+const resolvidos = new Map();
+const JANELA_AVISO_MS = 120000;
+
+function resolver(sessaoId, desfecho) {
+  const p = pendentes.get(sessaoId);
+  if (p) {
+    resolvidos.set(sessaoId, {
+      tipo: p.tipo,
+      desfecho,
+      em: Date.now(),
+    });
+  }
+  pendentes.delete(sessaoId);
+  respostas.delete(sessaoId);
+}
+
+/** Desfechos recentes, para a interface avisar e depois esquecer. */
+function desfechosRecentes() {
+  const agora = Date.now();
+  const saida = [];
+  for (const [sessao_id, r] of resolvidos.entries()) {
+    if (agora - r.em > JANELA_AVISO_MS) {
+      resolvidos.delete(sessao_id);
+      continue;
+    }
+    saida.push({ sessao_id, tipo: r.tipo, desfecho: r.desfecho, em: new Date(r.em).toISOString() });
+  }
+  return saida;
+}
+
+module.exports = {
+  pedir, responder, colher, pendente, encerrar, todos, classificarTela,
+  renovar, resolver, desfechosRecentes,
+};
 `,
 
   'src/certificado.js': `const { execFileSync } = require('child_process');

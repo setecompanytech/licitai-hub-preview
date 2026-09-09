@@ -465,6 +465,7 @@ class ComprasGovPortal extends BasePortal {
         // verificacao em duas etapas, este ramo simplesmente nao acontece e
         // nenhuma interface mostra campo nenhum.
         interacao.pedir(this.sessaoId, {
+          expira_em: new Date(Date.now() + this.segundosEsperaHumano * 1000).toISOString(),
           tipo: 'captcha',
           mensagem: 'Abra a tela remota (VNC) e clique em "Seu certificado digital". '
             + 'A pagina do gov.br exige esse gesto por causa do hCaptcha — o certificado ja esta '
@@ -483,7 +484,7 @@ class ComprasGovPortal extends BasePortal {
           if (!agora.includes('acesso.gov.br')) {
             console.log('🧑 ✅ Autenticado — o login saiu do gov.br');
             desfecho = 'autenticado';
-            interacao.encerrar(this.sessaoId);
+            interacao.resolver(this.sessaoId, 'atendido');
             break;
           }
 
@@ -509,12 +510,17 @@ class ComprasGovPortal extends BasePortal {
             if (pedido) {
               const atual = interacao.pendente(this.sessaoId);
               if (!atual || atual.tipo !== pedido.tipo) {
-                interacao.pedir(this.sessaoId, { ...pedido, tela: String(tela).slice(0, 220) });
+                interacao.pedir(this.sessaoId, {
+                  ...pedido,
+                  tela: String(tela).slice(0, 220),
+                  expira_em: new Date(Date.now() + this.segundosEsperaHumano * 1000).toISOString(),
+                });
                 console.log('🧑 📋 Agora preciso de: ' + pedido.tipo);
               }
             }
 
             limite = Date.now() + this.segundosEsperaHumano * 1000;
+            interacao.renovar(this.sessaoId, new Date(limite).toISOString());
             avisou = 0;
           }
 
@@ -528,6 +534,7 @@ class ComprasGovPortal extends BasePortal {
               ? '🧑 ⌨️  Resposta digitada e enviada — ' + onde
               : '🧑 ⚠️  Recebi a resposta mas nao achei onde digitar nesta tela');
             limite = Date.now() + this.segundosEsperaHumano * 1000;
+            interacao.renovar(this.sessaoId, new Date(limite).toISOString());
           }
 
           const faltam = Math.round((limite - Date.now()) / 1000);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { usePedidosDoRobo } from './usePedidosDoRobo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -74,6 +75,19 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
       return agentes.reduce((t, a) => t + (a.sessoes_ativas ?? 0), 0);
     },
   });
+
+  /**
+   * O robô está parado esperando alguém CLICAR nesta tela?
+   *
+   * O salto conceitual que trava quem vê o VNC pela primeira vez é não saber
+   * que aquilo é uma máquina real e que o clique dela vale. O painel explicava
+   * QUANDO usar, nunca que era clicável.
+   *
+   * Compartilha a consulta com o cartão de pedidos — mesma chave no react-query,
+   * uma requisição só.
+   */
+  const { data: pedidosData } = usePedidosDoRobo();
+  const pedidoDeClique = (pedidosData?.pedidos || []).find((p) => p.tipo === 'captcha') || null;
 
   const handleOpenViewer = () => {
     setLoading(true);
@@ -225,6 +239,16 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
                 <Loader2 className="w-6 h-6 animate-spin text-white/90 mx-auto" />
                 <p className="text-xs text-white/70">Conectando ao servidor VPS...</p>
               </div>
+            </div>
+          )}
+          {/* Só quando há pedido de clique. Fora disso o VNC não ganha faixa
+              nenhuma — aviso permanente vira paisagem e ninguém lê. */}
+          {pedidoDeClique && !loading && (
+            <div className="absolute top-0 left-0 right-0 z-20 bg-accent text-accent-foreground px-4 py-3 shadow-lg animate-pulse-glow">
+              <p className="text-sm font-semibold">
+                👆 Esta é a tela do robô — e o seu clique aqui funciona
+              </p>
+              <p className="text-xs opacity-90 mt-0.5 leading-snug">{pedidoDeClique.mensagem}</p>
             </div>
           )}
           <iframe

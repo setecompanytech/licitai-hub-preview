@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { usePedidosDoRobo } from './usePedidosDoRobo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -34,14 +34,6 @@ import { KeyRound, Monitor, Loader2, Send } from 'lucide-react';
  * nada**. Ele aparece sozinho quando é preciso, e some sozinho quando não é.
  */
 
-type Pedido = {
-  sessao_id: string;
-  tipo: string;
-  mensagem: string;
-  tela: string | null;
-  criado_em: string;
-};
-
 type Props = {
   /** Chamado quando o pedido é de captcha — leva a pessoa até a tela remota. */
   onAbrirTelaRemota?: () => void;
@@ -51,21 +43,8 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
   const [valor, setValor] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  const { data: pedidos = [], refetch } = useQuery({
-    queryKey: ['pedidos-do-robo'],
-    // Curto de propósito: um código de verificação tem validade de segundos, e
-    // saber dele com 20s de atraso é o mesmo que não saber.
-    refetchInterval: 3000,
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', {
-        body: {},
-      });
-      const agentes = (data as {
-        agentes?: Array<{ aguardando_humano?: Pedido[] | null }>;
-      } | null)?.agentes;
-      return (agentes || []).flatMap((a) => a.aguardando_humano || []);
-    },
-  });
+  const { data, refetch } = usePedidosDoRobo();
+  const pedidos = data?.pedidos ?? [];
 
   const pedido = pedidos[0] || null;
   const chave = pedido ? `${pedido.sessao_id}:${pedido.tipo}` : null;
@@ -75,6 +54,58 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
   useEffect(() => {
     setValor('');
   }, [chave]);
+
+  /**
+   * Quanto tempo o robô ainda espera.
+   *
+   * Sem isto a pessoa não sabe se tem cinco segundos ou cinco minutos. Quem não
+   * sabe age com pressa desnecessária — ou desiste achando que já passou. O
+   * relógio reinicia sozinho a cada tela nova, e o número aqui reflete isso.
+   */
+  const [restam, setRestam] = useState<number | null>(null);
+  useEffect(() => {
+    if (!pedido?.expira_em) {
+      setRestam(null);
+      return;
+    }
+    const calcular = () => {
+      const s = Math.round((new Date(pedido.expira_em as string).getTime() - Date.now()) / 1000);
+      setRestam(s > 0 ? s : 0);
+    };
+    calcular();
+    const t = setInterval(calcular, 1000);
+    return () => clearInterval(t);
+  }, [pedido?.expira_em]);
+
+  /**
+   * "Deu certo?" — a pergunta que ficava sem resposta.
+   *
+   * O cartão simplesmente sumia quando o pedido era atendido. Sumir é ambíguo:
+   * pode ter funcionado, pode ter expirado. E a dúvida faz clicar de novo —
+   * que foi como três códigos do gov.br queimaram em 09/09/2026, até a conta do
+   * cliente ser bloqueada por excesso de tentativa.
+   *
+   * Agora o agente registra COMO terminou, e isso vira aviso.
+   */
+  const desfechosVistos = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    // A lista é lida DENTRO do efeito: `data?.desfechos ?? []` fora dele cria
+    // um array novo a cada render enquanto a consulta não respondeu, e o efeito
+    // passaria a rodar sempre.
+    for (const d of data?.desfechos ?? []) {
+      const id = `${d.sessao_id}:${d.em}`;
+      if (desfechosVistos.current.has(id)) continue;
+      desfechosVistos.current.add(id);
+      if (d.desfecho === 'atendido') {
+        toast.success('Recebido — o robô seguiu adiante.', { duration: 8000 });
+      } else {
+        toast.error(
+          'O robô parou de esperar: ninguém respondeu a tempo. A sessão foi encerrada.',
+          { duration: 12000 },
+        );
+      }
+    }
+  }, [data?.desfechos]);
 
   /**
    * O aviso que atravessa a aba.
@@ -111,10 +142,19 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
             <p className="text-base font-semibold leading-tight">
               {ehCod ? 'O robô está pedindo um código' : 'O robô precisa de um clique seu'}
             </p>
+            {/* No caso do captcha, a mensagem do AGENTE — ele sabe em que tela
+                parou e nomeia o botão exato ("Seu certificado digital"), que é
+                a única informação que resolve o problema de quem está olhando.
+                Um texto fixo aqui diria "clique no botão que ele indicar", e
+                jogaria fora justamente isso.
+
+                No caso do código, não: a mensagem do agente diz "cole aqui", e
+                aqui não há campo nenhum — este cartão flutua sobre qualquer
+                aba. Então o texto aponta para onde o campo está. */}
             <p className="text-sm text-muted-foreground mt-1 leading-snug">
               {ehCod
-                ? 'Ele parou numa verificação em duas etapas. Cole o código na aba Agente Cloud — o robô digita por você.'
-                : 'A página exige um gesto humano. Abra a tela remota e clique no botão que ele indicar.'}
+                ? 'Ele parou numa verificação em duas etapas. O campo para colar o código está na aba Agente Cloud — o robô digita e confirma por você.'
+                : pedido.mensagem}
             </p>
             <div className="flex items-center gap-2 mt-3">
               <Button
@@ -163,7 +203,7 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
     if (!limpo) return;
     setEnviando(true);
     try {
-      const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
+      const { data: resposta, error } = await supabase.functions.invoke('robo-lances-webhook', {
         body: { action: 'responder-humano', sessao_id: pedido.sessao_id, valor: limpo },
       });
       if (error) {
@@ -179,13 +219,13 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
         toast.error(detalhe, { duration: 10000 });
         return;
       }
-      if ((data as { aceito?: boolean })?.aceito) {
+      if ((resposta as { aceito?: boolean })?.aceito) {
         toast.success('Entregue ao robô — ele está digitando agora.', { duration: 6000 });
         setValor('');
         refetch();
       } else {
         toast.error(
-          (data as { error?: string })?.error || 'O robô não tinha mais nada pendente.',
+          (resposta as { error?: string })?.error || 'O robô não tinha mais nada pendente.',
           { duration: 10000 },
         );
       }
@@ -216,9 +256,25 @@ export default function PedidoDoRobo({ onAbrirTelaRemota }: Props) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-semibold leading-tight">
-            {ehCodigo ? 'O robô precisa de um código' : 'O robô precisa de um clique seu'}
-          </p>
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <p className="text-lg font-semibold leading-tight">
+              {ehCodigo ? 'O robô precisa de um código' : 'O robô precisa de um clique seu'}
+            </p>
+            {/* O relógio reinicia a cada tela nova, então o número sobe sozinho
+                quando o robô avança. Abaixo de um minuto fica vermelho — é
+                quando a pressa passa a ser real. */}
+            {restam !== null && (
+              <span
+                className={`text-sm font-mono tabular-nums shrink-0 ${
+                  restam <= 60 ? 'text-destructive font-semibold' : 'text-muted-foreground'
+                }`}
+              >
+                {restam > 0
+                  ? `ele espera por ${Math.floor(restam / 60)}min ${String(restam % 60).padStart(2, '0')}s`
+                  : 'tempo esgotado'}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{pedido.mensagem}</p>
           {pedido.tela && (
             <p className="text-xs text-muted-foreground/70 mt-2 truncate">
