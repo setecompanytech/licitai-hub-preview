@@ -41,6 +41,9 @@ para quem for reimplementar.
 | 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ❌ **aberto** — ver seção 11 |
 | 21 | `browser.js` e `start-vnc.sh` não existem no template do repo | template | ❌ **aberto** — ver seção 11 |
 | 22 | `/sessao/iniciar` só responde no fim da sessão — a chamada estoura antes | agente | ❌ **aberto** — ver seção 13 |
+| 23 | **Licitações-e exige o Módulo de Segurança do BB** — o login por Chave J não é automatizável como está | agente | ❌ **aberto** — ver seção 14 |
+| 24 | **A VPS tem 8 dos 23 módulos de portal** do template | agente | ❌ **aberto** — ver seção 14 |
+| 25 | `compras-gov` (tela) × `comprasgov` (agente) — vocabulários diferentes | app | ✅ **resolvido em 09/09** — ver seção 14 |
 
 ## O que falta agora
 
@@ -844,3 +847,128 @@ Antes de qualquer um desses consertos, a corrente já funcionava:
 Duas sessões chegaram pela interface. O botão disparou, a edge function achou o
 agente, **a credencial chegou decifrada** e o agente abriu o navegador. Tudo o
 que foi construído em 08/09 funcionou; só o último passo usava código velho.
+
+---
+
+## 14. O muro do Banco do Brasil e as três listas de portais — 09/09/2026
+
+Dois achados independentes, no mesmo dia, ambos de "o código estava certo sobre
+uma coisa que não era verdade".
+
+### 14.1 O Licitações-e não é automatizável pelo caminho que tentávamos
+
+O Rafael mandou o endereço do portal novo:
+`https://licitacoes-e2.bb.com.br/aop-inter-estatico/`. O módulo da VPS apontava
+para o legado (`www.licitacoes-e.com.br`) e o do repo apontava para
+`licitacoes-e2.bb.com.br/aop/login`.
+
+O `curl` devolve **403 para qualquer caminho** do BB — inclusive os válidos.
+Isso é importante porque significa que **não dá para validar URL do BB sem um
+navegador de verdade**; uma sonda com Chrome respondeu o que o curl não podia:
+
+| URL | Resultado |
+| --- | --- |
+| `/aop-inter-estatico/` | 200 — página real "Novo Licitações-e" |
+| `/aop/login` (o que o template usava) | redireciona para **"página não encontrada!"** |
+| `/aop-inter-estatico/login`, `/aop-inter/`, `/aop/` | 404 |
+| `www.licitacoes-e.com.br/aop/index.jsp` (legado) | 200, com o campo de login exposto |
+
+O portal novo **não tem página de login pública** — os únicos links são
+`para-fornecedores`, "Solicitar adesão digital" e "Quero vender", os dois
+últimos sem `href`.
+
+No legado o campo existe e é `#acessoChaveJ` (placeholder "Chave de acesso") —
+nenhum dos três chutes do template (`input[name="inCodigo"]`,
+`input[id="codigo"]`, `#txtChave`) existe na página. Há um pop-up cobrindo tudo,
+que fecha em `#nlCloseBtn`.
+
+**Mas corrigir o seletor não resolveria.** Com uma chave falsa preenchida, o
+clique em OK leva a:
+
+```
+https://www.licitacoes-e.com.br/aop/gcs/statics/gas/validacao.bb
+"Problemas na verificação da solução de segurança."
+```
+
+`gas` é o **Módulo de Segurança do BB** (Warsaw, da Topaz/Stefanini) — o mesmo
+que `seg.bb.com.br/home.html` manda instalar. É um binário que roda no sistema
+operacional e faz detecção de automação. Sem ele o login para antes de pedir a
+senha.
+
+**Consequência:** o Licitações-e não entra pela mesma porta dos outros portais.
+As saídas possíveis, nenhuma barata:
+
+1. Instalar o Warsaw na VPS (existe `.deb`) e descobrir se ele aceita rodar sob
+   Xvfb — o software é feito justamente para recusar esse cenário.
+2. Operar o Licitações-e de uma máquina real com o módulo instalado.
+3. Tratar o portal como manual e dizer isso ao cliente.
+
+**Não escrevemos o login v1.** Ter o seletor certo levaria o robô exatamente uma
+tela adiante, e a tela seguinte é o muro. Está aqui registrado para ninguém
+gastar o dia refazendo a descoberta.
+
+### 14.2 Três listas de portais, três vocabulários
+
+Comparar a interface com o registro do agente mostrou que existiam **três**
+listas, e que elas discordavam:
+
+| Onde | Quantos | Observação |
+| --- | --- | --- |
+| `CredenciaisPortalForm.tsx` (cópia própria) | 23 | nunca foi migrada |
+| `src/lib/robo/portais.ts` | 10 | a "autoridade única" de 08/09 |
+| `src/portals/index.js` do **template** | 23 | 8 em `portals.ts` + 15 em `portals-estaduais.ts` |
+| `/opt/agente-lances/src/portals/` na **VPS** | 8 | o que realmente está no ar |
+
+Dois defeitos saíram daí:
+
+**O hífen.** A tela chama o portal de `compras-gov`; o agente chama de
+`comprasgov`. Ninguém traduzia. Uma disputa em Compras.gov passava por toda a
+validação, **gravava a linha em `sessoes_lance_real` com status "enviando"**, o
+POST era feito — e só o agente reclamava, com `Portal "compras-gov" não
+suportado`. Sobrava registro no banco de um trabalho que nunca começou.
+
+**A VPS 15 módulos atrás.** O template tem os 23 portais; a VPS tem 8. Isso não
+aparece em lugar nenhum: o `/health` lista o que ela tem, e nada compara com o
+que deveria ter.
+
+**O que foi feito:**
+
+- `src/lib/robo/portais.ts` virou autoridade dos 23, e cada portal declara
+  explicitamente **como o agente o chama** (`agente:`). O `id` continua imutável
+  porque é o que está em `credenciais_portais.portal_id`.
+- `CredenciaisPortalForm` passou a consumir essa lista — a terceira cópia
+  morreu.
+- Espelho Deno em `_shared/robo-portais.ts`, no arranjo de
+  `_shared/licitacao-status.ts`. A tradução é decisão do **servidor**: se
+  viesse do payload, uma aba aberta desde ontem despacharia sessão para um
+  módulo inexistente.
+- `robo-lances-webhook` traduz e **recusa antes de gravar**.
+- O envio consulta o `portais_suportados` do `/health` e, quando o agente no ar
+  não tem o módulo, diz **o que ele tem** em vez de só negar.
+
+**A lista estática não diz se a VPS tem o módulo, de propósito.** Escrever isso
+em código seria uma verdade com prazo de validade, que envelhece em silêncio a
+cada deploy. Quem sabe é o agente, e é a ele que se pergunta.
+
+Dois testes em `src/test/agente-template.test.ts` trancam a volta do defeito:
+todo `agente:` tem que existir no registro do template, e o espelho Deno tem que
+ser idêntico ao mapa do app.
+
+### 14.3 O módulo do Licitações-e foi sincronizado mesmo assim
+
+`licitacoes-e.js` da VPS foi de 73 para 445 linhas (md5 idêntico ao extraído do
+template; backup em `licitacoes-e.js.bak-20260908`), e o pm2 reiniciado — sem
+`pm2 restart`, o cache de `require` do Node continua servindo o módulo antigo,
+que foi a armadilha de 08/09.
+
+Ganhou anti-detecção, renovação de JSESSIONID a cada 15 min, verificação de fase
+randômica a 1,5s, detecção de CAPTCHA — e, principalmente, **login que confere
+se entrou**. O antigo fazia:
+
+```js
+await this.page.waitForNavigation({ ... });
+this.loggedIn = true;          // sem verificar nada
+```
+
+Com o domínio errado, isso escreveria "✅ Login realizado" numa página de erro.
+O novo falha alto. Não entra — o muro do 14.1 continua lá —, mas para de mentir.
