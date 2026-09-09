@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { toast } from 'sonner';
-import { Briefcase, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Briefcase, Link2, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
+import FinVincularDespesasLote from './FinVincularDespesasLote';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -56,6 +57,7 @@ export default function FinCustosPorContrato() {
   const [config, setConfig] = useState<ConfigCustos>({ ratear_indiretas: false, rateio_meses: 12 });
   const [indiretas, setIndiretas] = useState(0);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
+  const [vincularAberto, setVincularAberto] = useState(false);
 
   const load = useCallback(async () => {
     if (!empresaAtiva?.id) return;
@@ -180,6 +182,9 @@ export default function FinCustosPorContrato() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" className="text-xs" onClick={() => setVincularAberto(true)}>
+            <Link2 className="w-3.5 h-3.5 mr-1" /> Vincular despesas em lote
+          </Button>
           <Button size="sm" variant={incluirEncerrados ? 'secondary' : 'outline'} className="text-xs"
             onClick={() => setIncluirEncerrados(v => !v)}>
             {incluirEncerrados ? 'Ocultar encerrados' : 'Incluir encerrados'}
@@ -309,6 +314,12 @@ export default function FinCustosPorContrato() {
         lançamento — mão de obra própria, estimativas — é digitado na aba Custos do contrato, e a
         dupla contagem é impedida no banco.
       </p>
+
+      <FinVincularDespesasLote
+        aberto={vincularAberto}
+        onFechar={() => setVincularAberto(false)}
+        onVinculado={load}
+      />
     </div>
   );
 }
