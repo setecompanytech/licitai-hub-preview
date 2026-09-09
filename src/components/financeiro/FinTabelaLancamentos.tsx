@@ -329,9 +329,9 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                     {tipo === "a_pagar" ? "Fornecedor" : "Cliente"} <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </TableHead>
-                <TableHead>Documento</TableHead>
+                <TableHead className="whitespace-nowrap">Documento</TableHead>
                 <TableHead>Parcela</TableHead>
-                <TableHead>Responsável</TableHead>
+                <TableHead className="whitespace-nowrap">Responsável</TableHead>
                 <TableHead>
                   <button onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 hover:text-foreground">
                     Status <ArrowUpDown className="w-3 h-3" />
@@ -430,7 +430,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           <Icone className="w-3 h-3" />{meta.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold">
+                      <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">
                         {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </TableCell>
                       <TableCell className="text-right">
