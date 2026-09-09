@@ -39,7 +39,10 @@ type ContratoItem = {
   numero_lote?: string | null; descricao_lote?: string | null;
 };
 
-type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
+type Aditivo = {
+  id: string; numero_aditivo: string; tipo: string;
+  quantidade_acrescimo?: number | null; quantidade_supressao?: number | null;
+};
 
 type ContratoMeta = {
   tipo_documento: 'contrato' | 'ata_srp' | string;
@@ -76,6 +79,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [consolidado, setConsolidado] = useState(true);
+  // Filtro da coluna Situação: 'todas' (pote único), 'original' ou o id de um
+  // termo aditivo — cada camada mostra a própria capacidade/consumo/saldo.
+  const [situacao, setSituacao] = useState<string>('todas');
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [prodSearch, setProdSearch] = useState('');
   const [prodPopover, setProdPopover] = useState(false);
@@ -159,10 +165,52 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     return result;
   }, [itens, aditivos]);
 
-  // Na visão consolidada, totais calculados apenas sobre o estado efetivo (sem duplicar versões)
+  // Na visão consolidada, totais calculados apenas sobre o estado efetivo (sem duplicar versões).
+  // Sempre sobre o estado VIGENTE (consumido + saldo × preço atual): item.valor_total
+  // guarda só a contratação original e saldo_financeiro do banco acumula acréscimo de
+  // aditivo por cima do preço já reequilibrado (dupla contagem) — os dois descolavam do
+  // Valor Global e acusavam divergência falsa de milhões (09/09).
   const itensExibidos = consolidado ? itensMesclados : itens;
-  const totalContratadoEfetivo = itensMesclados.reduce((s, i) => s + i.valor_total, 0);
-  const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + i.saldo_financeiro, 0);
+  const qtdVigenteDe = (i: ContratoItem) => (Number(i.quantidade_consumida) || 0) + (Number(i.saldo_quantitativo) || 0);
+  const saldoFinanceiroDe = (i: ContratoItem) => (Number(i.saldo_quantitativo) || 0) * (Number(i.valor_unitario) || 0);
+  const totalContratadoEfetivo = itensMesclados.reduce((s, i) => s + qtdVigenteDe(i) * (Number(i.valor_unitario) || 0), 0);
+  const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + saldoFinanceiroDe(i), 0);
+
+  // ——— Camadas por Situação (Contrato Original × cada termo aditivo) ———
+  // O saldo do contrato é um pote único: pedidos NÃO são carimbados por termo.
+  // Para conferir "quanto resta de cada camada", a atribuição é FIFO — o consumo
+  // abate primeiro o Contrato Original e depois cada termo, na ordem de registro.
+  // Acréscimo de quantidade por camada: a diferença (vigente − contratada) do item
+  // é repartida entre os termos na proporção dos acréscimos registrados em cada um.
+  // Régua de conferência gerencial, não segregação jurídica de saldos.
+  type Camada = { capacidade: number; consumido: number; saldo: number };
+  const camadasPorItem = useMemo(() => {
+    const acrescDe = (a: Aditivo) =>
+      Math.max((Number(a.quantidade_acrescimo) || 0) - (Number(a.quantidade_supressao) || 0), 0);
+    const somaAcresc = aditivos.reduce((s, a) => s + acrescDe(a), 0);
+    const mapa = new Map<string, Map<string, Camada>>();
+    for (const item of itensMesclados) {
+      const vigente = qtdVigenteDe(item);
+      const acrescimoItem = Math.max(vigente - (Number(item.quantidade_contratada) || 0), 0);
+      const caps: Array<[string, number]> = [['original', vigente - acrescimoItem]];
+      for (const a of aditivos) {
+        caps.push([a.id, somaAcresc > 0 ? acrescimoItem * (acrescDe(a) / somaAcresc) : 0]);
+      }
+      let restante = Number(item.quantidade_consumida) || 0;
+      const porCamada = new Map<string, Camada>();
+      for (const [key, cap] of caps) {
+        const consumido = Math.min(restante, cap);
+        restante -= consumido;
+        porCamada.set(key, { capacidade: cap, consumido, saldo: cap - consumido });
+      }
+      mapa.set(item.id, porCamada);
+    }
+    return mapa;
+  }, [itensMesclados, aditivos]);
+
+  const labelSituacao = situacao === 'original'
+    ? (meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original')
+    : (aditivos.find(a => a.id === situacao)?.numero_aditivo ?? '');
 
   const loadData = async () => {
     setLoading(true);
@@ -174,7 +222,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
     const [itensRes, aditivosRes, produtosRes] = await Promise.all([
       supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo, quantidade_acrescimo, quantidade_supressao').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       empresaId
         ? supabase.from('produtos').select('id, codigo, descricao, unidade, preco_venda').eq('empresa_id', empresaId).order('descricao')
         : Promise.resolve({ data: [] }),
@@ -495,7 +543,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             <Button
               size="sm"
               variant={consolidado ? 'secondary' : 'outline'}
-              onClick={() => setConsolidado(v => !v)}
+              onClick={() => { setConsolidado(v => !v); setSituacao('todas'); }}
               className="text-xs gap-1.5"
             >
               {consolidado ? <Layers className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
@@ -658,11 +706,40 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         </Card>
       ) : (
         <TooltipProvider>
+        <div className="space-y-1">
+        {consolidado && situacao !== 'todas' && (
+          <p className="text-[11px] text-muted-foreground">
+            Conferindo a camada <span className="font-medium text-foreground">{labelSituacao}</span> —
+            atribuição FIFO: o consumo abate primeiro o Contrato Original e depois cada termo,
+            na ordem de registro. Os pedidos não são carimbados por termo aditivo; esta visão
+            é uma régua de conferência.
+          </p>
+        )}
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">
+                  {/* Filtro por camada: qual saldo conferir — o pote todo, só o
+                      contrato original, ou um termo aditivo específico. */}
+                  {consolidado && aditivos.length > 0 ? (
+                    <Select value={situacao} onValueChange={setSituacao}>
+                      <SelectTrigger
+                        className="h-7 w-auto min-w-[110px] gap-1 text-xs border-dashed px-2"
+                        title="Filtrar o saldo por camada: contrato original ou cada termo aditivo"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Situação: todas</SelectItem>
+                        <SelectItem value="original">{meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original'}</SelectItem>
+                        {aditivos.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.numero_aditivo}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : 'Situação'}
+                </TableHead>
                 {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {/* Pares que são um assunto só viram UMA coluna com duas
                     linhas (unitário em cima, total embaixo): treze colunas
@@ -690,6 +767,15 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const pct = baseQtd > 0 ? (item.quantidade_consumida / baseQtd) * 100 : 0;
                 const lowStock = pct >= 80;
 
+                // Camada escolhida no filtro de Situação (visão consolidada):
+                // as colunas Qtd/Consumido/Saldo passam a medir só essa camada.
+                const camadaSel = (consolidado && situacao !== 'todas'
+                  ? camadasPorItem.get(item.id)?.get(situacao)
+                  : null) ?? null;
+                const pctCamada = camadaSel && camadaSel.capacidade > 0
+                  ? (camadaSel.consumido / camadaSel.capacidade) * 100 : 0;
+                const nf = (n: number) => Number(n.toFixed(2)).toLocaleString('pt-BR');
+
                 // Lógica de badge de situação para visão consolidada
                 const foiModificado = !!(item as ItemConsolidado)._foiModificado;
                 const foiAdicionado = !!(item as ItemConsolidado)._foiAdicionado;
@@ -697,7 +783,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const original = (item as ItemConsolidado)._original ?? null;
 
                 // Para visão plana (todos os registros), usa a lógica original
-                const origemLabel = !consolidado
+                const origemLabel = camadaSel ? labelSituacao : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
                   : foiModificado && aditivoModificador
                     ? `✏ Atualizado: ${aditivoModificador.numero_aditivo}`
@@ -793,12 +879,26 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
+                      {camadaSel ? (
+                        <>
+                          {nf(camadaSel.capacidade)}
+                          <span className="text-muted-foreground"> {uni(item.unidade)}</span>
+                          {camadaSel.capacidade > 0 ? (
+                            <div className="text-[11px] text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
+                          ) : (
+                            <div className="text-[11px] text-muted-foreground">termo sem acréscimo de quantidade</div>
+                          )}
+                        </>
+                      ) : (
+                        <>
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
                       <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                       {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
                         <div className="text-[11px] text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
                           vigente: {qtdVigente.toLocaleString('pt-BR')}
                         </div>
+                      )}
+                        </>
                       )}
                       {/* Quantidade zerada é a fratura físico×financeiro: o
                           scan não rendeu o número e o total fica em R$ 0,00.
@@ -834,15 +934,40 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </div>
                         );
                       })()}
-                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(item.valor_total)}</span></div>
+                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
                     </TableCell>
                     <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
-                      {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground ml-1" title="Sobre a quantidade vigente (contratada + aditivos)">({pct.toFixed(0)}%)</span>
+                      {camadaSel ? (
+                        camadaSel.capacidade > 0 ? (
+                          <>
+                            {nf(camadaSel.consumido)}
+                            <span className="text-muted-foreground ml-1" title={`Consumo atribuído à camada ${labelSituacao} (FIFO)`}>({pctCamada.toFixed(0)}%)</span>
+                          </>
+                        ) : <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <>
+                          {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
+                          <span className="text-muted-foreground ml-1" title="Sobre a quantidade vigente (contratada + aditivos)">({pct.toFixed(0)}%)</span>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className={`text-xs text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning' : 'text-success'}`}>
-                      <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
-                      <div className="text-[11px]">{fmt(item.saldo_financeiro)}</div>
+                      {camadaSel ? (
+                        camadaSel.capacidade > 0 ? (
+                          <>
+                            <div>{nf(camadaSel.saldo)} {uni(item.unidade)}</div>
+                            <div className="text-[11px]">{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
+                          </>
+                        ) : <span className="text-muted-foreground font-normal">—</span>
+                      ) : (
+                        <>
+                          {/* Saldo em R$ sempre CALCULADO (saldo × preço vigente): a coluna
+                              saldo_financeiro do banco acumula acréscimo de aditivo por cima
+                              do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
+                          <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
+                          <div className="text-[11px]">{fmt(saldoFinanceiroDe(item))}</div>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-card border-l border-border">
                       <div className="flex items-center gap-0.5">
@@ -862,6 +987,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               })}
             </TableBody>
           </Table>
+        </div>
         </div>
         </TooltipProvider>
       )}
@@ -965,7 +1091,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Saldo</div>
-                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(itemVisualizado.saldo_financeiro || 0)}</div>
+                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(saldoFinanceiroDe(itemVisualizado))}</div>
                 </div>
               </div>
 
