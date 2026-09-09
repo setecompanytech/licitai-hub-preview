@@ -8,6 +8,85 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+// ── Listas-padrão dos emissores (09/09) ─────────────────────────────────────
+// Campos como "Número de Parcelas" e "Cenário Fiscal" eram INPUT LIVRE com
+// lupa decorativa e placeholder prometendo uma lista que não existia. O
+// padrão de mercado (emissores fiscais) é escolher da lista; digitar é a
+// exceção — e o SelectPadrao abaixo dá as duas coisas sem perder valor
+// herdado que esteja fora da lista.
+const CONDICOES_PAGAMENTO = [
+  'A Vista', '7 Dias', '10 Dias', '14 Dias', '15 Dias', '20 Dias', '21 Dias',
+  '28 Dias', '30 Dias', '45 Dias', '60 Dias', '90 Dias',
+  '2x (30/60)', '3x (30/60/90)', '4x (30/60/90/120)', '6x (mensais)',
+  '10x (mensais)', '12x (mensais)',
+] as const;
+
+const CENARIOS_FISCAIS = [
+  'Venda de mercadoria — dentro do estado (CFOP 5.102)',
+  'Venda de mercadoria — fora do estado (CFOP 6.102)',
+  'Venda a órgão público — dentro do estado (CFOP 5.102)',
+  'Venda com ICMS ST — dentro do estado (CFOP 5.405)',
+  'Venda de produção própria — dentro do estado (CFOP 5.101)',
+  'Venda de produção própria — fora do estado (CFOP 6.101)',
+  'Bonificação / brinde (CFOP 5.910)',
+  'Remessa para demonstração (CFOP 5.912)',
+  'Remessa para conserto (CFOP 5.915)',
+  'Devolução de compra (CFOP 5.202)',
+  'Simples remessa (CFOP 5.949)',
+] as const;
+
+const CATEGORIAS_VENDA = [
+  'Clientes - Revenda de Mercadoria',
+  'Clientes - Venda de Produção Própria',
+  'Clientes - Prestação de Serviço',
+  'Órgão Público - Fornecimento (licitação)',
+  'Outras Receitas',
+] as const;
+
+const CATEGORIAS_COMPRA = [
+  'Fornecedores - Mercadoria para Revenda',
+  'Fornecedores - Insumos de Produção',
+  'Fornecedores - Serviços',
+  'Despesas Operacionais',
+  'Outras Compras',
+] as const;
+
+const LOCAIS_ESTOQUE = ['PADRAO - Local de Estoque Padrão'] as const;
+
+/** Lista padrão + escape para valor livre. Valor herdado fora da lista abre
+ *  em modo digitação (nunca é apagado); "voltar à lista" limpa e reabre o
+ *  seletor. */
+function SelectPadrao({ valor, onChange, opcoes, placeholder }: {
+  valor: string;
+  onChange: (v: string) => void;
+  opcoes: readonly string[];
+  placeholder?: string;
+}) {
+  const foraDaLista = !!valor && !opcoes.includes(valor);
+  const [livre, setLivre] = useState(foraDaLista);
+  useEffect(() => { if (foraDaLista) setLivre(true); }, [foraDaLista]);
+  if (livre) {
+    return (
+      <div className="flex gap-1 mt-1">
+        <Input value={valor} onChange={e => onChange(e.target.value)} className="text-sm" placeholder={placeholder} />
+        <Button type="button" size="sm" variant="ghost" className="px-2 text-xs shrink-0" title="Voltar à lista padrão"
+          onClick={() => { onChange(''); setLivre(false); }}>
+          lista
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <Select value={valor || undefined} onValueChange={v => { if (v === '__outro__') setLivre(true); else onChange(v); }}>
+      <SelectTrigger className="mt-1 text-sm"><SelectValue placeholder={placeholder ?? 'Selecionar…'} /></SelectTrigger>
+      <SelectContent className="max-h-72">
+        {opcoes.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        <SelectItem value="__outro__">Outro (digitar)…</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -336,7 +415,12 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Local de Estoque</Label>
-              <Input value={item.local_estoque} onChange={e => setItem(i => ({ ...i, local_estoque: e.target.value }))} className="text-sm mt-1" />
+              <SelectPadrao
+                valor={item.local_estoque}
+                onChange={v => setItem(i => ({ ...i, local_estoque: v }))}
+                opcoes={LOCAIS_ESTOQUE}
+                placeholder="Local de estoque…"
+              />
             </div>
           </div>
         </div>
@@ -361,6 +445,7 @@ export default function PedidosOmie() {
   const [pedidos, setPedidos]   = useState<Pedido[]>([]);
   const [produtos, setProdutos] = useState<ProdutoCat[]>([]);
   const [contratos, setContratos] = useState<ContratoOpt[]>([]);
+  const [vendedores, setVendedores] = useState<string[]>([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
 
@@ -426,6 +511,13 @@ export default function PedidosOmie() {
     loadPedidos();
     loadProdutos();
     loadContratos();
+    // Vendedor/comprador escolhe-se da EQUIPE, não se datilografa.
+    supabase.from('empresa_membros').select('nome_individual, nome').eq('empresa_id', empresaAtiva.id)
+      .then(({ data }) => {
+        const nomes = [...new Set(((data as Array<{ nome_individual: string | null; nome: string | null }>) || [])
+          .map(m => m.nome_individual || m.nome).filter(Boolean))] as string[];
+        setVendedores(nomes.sort((a, b) => a.localeCompare(b)));
+      });
   }, [empresaAtiva]);
 
   // Abre pedido direto quando vem de outra página via ?pedido=<id>
@@ -1549,8 +1641,10 @@ export default function PedidosOmie() {
                             <p className="text-xs text-muted-foreground mt-0.5">{statusMsg}</p>
                             <p className="text-xs font-semibold mt-1 text-foreground">
                               $ {fmtM(p.valor_total)}
+                              {/* Condição como está escrita — "em 30 Diasx" era o
+                                  sufixo cego de quando o campo só guardava número. */}
                               {p.numero_parcelas && p.numero_parcelas !== 'A Vista' && (
-                                <span className="text-muted-foreground font-normal"> em {p.numero_parcelas}x</span>
+                                <span className="text-muted-foreground font-normal"> · {p.numero_parcelas}</span>
                               )}
                             </p>
                           </div>
@@ -1816,25 +1910,30 @@ export default function PedidosOmie() {
             {/* Vendedor / Parcelas / Cenário */}
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">{isVenda ? 'Vendedor' : 'Comprador'} +</Label>
-                <div className="relative mt-1">
-                  <Input value={form.vendedor} onChange={e => setForm(f => ({ ...f, vendedor: e.target.value }))} className="text-sm pr-8" />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                </div>
+                <Label className="text-xs text-muted-foreground">{isVenda ? 'Vendedor' : 'Comprador'}</Label>
+                <SelectPadrao
+                  valor={form.vendedor}
+                  onChange={v => setForm(f => ({ ...f, vendedor: v }))}
+                  opcoes={vendedores}
+                  placeholder="Escolher da equipe…"
+                />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Número de Parcelas ✏ +</Label>
-                <div className="relative mt-1">
-                  <Input value={form.numero_parcelas} onChange={e => setForm(f => ({ ...f, numero_parcelas: e.target.value }))} className="text-sm pr-8" />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                </div>
+                <Label className="text-xs text-muted-foreground">Condição de Pagamento</Label>
+                <SelectPadrao
+                  valor={form.numero_parcelas}
+                  onChange={v => setForm(f => ({ ...f, numero_parcelas: v }))}
+                  opcoes={CONDICOES_PAGAMENTO}
+                  placeholder="A Vista, 30 Dias…"
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Cenário Fiscal</Label>
-                <Input
-                  value={form.cenario_fiscal}
-                  onChange={e => setForm(f => ({ ...f, cenario_fiscal: e.target.value }))}
-                  className="text-sm mt-1" placeholder="Selecione o cenário na lista..."
+                <SelectPadrao
+                  valor={form.cenario_fiscal}
+                  onChange={v => setForm(f => ({ ...f, cenario_fiscal: v }))}
+                  opcoes={CENARIOS_FISCAIS}
+                  placeholder="Escolher o cenário (CFOP)…"
                 />
               </div>
             </div>
@@ -1935,7 +2034,12 @@ export default function PedidosOmie() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Categoria</Label>
-                  <Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="text-sm mt-1" />
+                  <SelectPadrao
+                    valor={form.categoria}
+                    onChange={v => setForm(f => ({ ...f, categoria: v }))}
+                    opcoes={isVenda ? CATEGORIAS_VENDA : CATEGORIAS_COMPRA}
+                    placeholder="Escolher categoria…"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Conta Corrente</Label>
