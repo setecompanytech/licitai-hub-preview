@@ -173,8 +173,23 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   // aditivo por cima do preço já reequilibrado (dupla contagem) — os dois descolavam do
   // Valor Global e acusavam divergência falsa de milhões (09/09).
   const itensExibidos = consolidado ? itensMesclados : itens;
-  const qtdVigenteDe = (i: ContratoItem) => (Number(i.quantidade_consumida) || 0) + (Number(i.saldo_quantitativo) || 0);
-  const saldoFinanceiroDe = (i: ContratoItem) => (Number(i.saldo_quantitativo) || 0) * (Number(i.valor_unitario) || 0);
+  // ——— ATA × contrato: quem consome o quê ————————————————————————————
+  // No CONTRATO, o consumo vem dos pedidos (quantidade_consumida) e o saldo
+  // vive em saldo_quantitativo. Na ATA SRP, quem consome são os CONTRATOS
+  // DERIVADOS, registrados em quantidade_ata_consumida — o saldo_quantitativo
+  // da ata nunca é debitado. Exibir as colunas do contrato numa ata mostrava
+  // consumido 0 com a ata 100% contratada, e o total efetivo dobrava (09/09).
+  const ehAta = meta?.tipo_documento === 'ata_srp';
+  const consumidaDe = (i: ContratoItem) => ehAta
+    ? (Number(i.quantidade_ata_consumida) || 0)
+    : (Number(i.quantidade_consumida) || 0);
+  const saldoQtdDe = (i: ContratoItem) => ehAta
+    ? Math.max((Number(i.quantidade_contratada) || 0) - (Number(i.quantidade_ata_consumida) || 0), 0)
+    : (Number(i.saldo_quantitativo) || 0);
+  const qtdVigenteDe = (i: ContratoItem) => ehAta
+    ? (Number(i.quantidade_contratada) || 0)
+    : (Number(i.quantidade_consumida) || 0) + (Number(i.saldo_quantitativo) || 0);
+  const saldoFinanceiroDe = (i: ContratoItem) => saldoQtdDe(i) * (Number(i.valor_unitario) || 0);
   const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + saldoFinanceiroDe(i), 0);
   // Total efetivo = consumido REAL (R$ dos pedidos, ao preço de cada época) +
   // saldo × preço vigente. Medir vigente × preço atual superfatura o
@@ -730,7 +745,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 <TableHead className="text-xs whitespace-nowrap">
                   {/* Filtro por camada: qual saldo conferir — o pote todo, só o
                       contrato original, ou um termo aditivo específico. */}
-                  {consolidado && aditivos.length > 0 ? (
+                  {consolidado && aditivos.length > 0 && !ehAta ? (
                     <Select value={situacao} onValueChange={setSituacao}>
                       <SelectTrigger
                         className="h-7 w-auto min-w-[110px] gap-1 text-xs border-dashed px-2"
@@ -770,9 +785,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 // com aditivo de quantidade, medir sobre a original dizia 79%
                 // enquanto saldo e consumo somavam outra base — as contas não
                 // fechavam à vista (09/09).
-                const qtdVigente = (Number(item.quantidade_consumida) || 0) + (Number(item.saldo_quantitativo) || 0);
+                const qtdVigente = qtdVigenteDe(item);
                 const baseQtd = qtdVigente > (item.quantidade_contratada || 0) ? qtdVigente : (item.quantidade_contratada || 0);
-                const pct = baseQtd > 0 ? (item.quantidade_consumida / baseQtd) * 100 : 0;
+                const pct = baseQtd > 0 ? (consumidaDe(item) / baseQtd) * 100 : 0;
                 const lowStock = pct >= 80;
 
                 // Camada escolhida no filtro de Situação (visão consolidada):
@@ -954,8 +969,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         ) : <span className="text-muted-foreground">—</span>
                       ) : (
                         <>
-                          {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
-                          <span className="text-muted-foreground ml-1" title="Sobre a quantidade vigente (contratada + aditivos)">({pct.toFixed(0)}%)</span>
+                          {consumidaDe(item).toLocaleString('pt-BR')}
+                          <span
+                            className="text-muted-foreground ml-1"
+                            title={ehAta ? 'Consumido pelos contratos derivados da ata' : 'Sobre a quantidade vigente (contratada + aditivos)'}
+                          >({pct.toFixed(0)}%)</span>
+                          {ehAta && consumidaDe(item) > 0 && (
+                            <div className="text-[11px] text-muted-foreground">pelos contratos derivados</div>
+                          )}
                         </>
                       )}
                     </TableCell>
@@ -972,7 +993,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           {/* Saldo em R$ sempre CALCULADO (saldo × preço vigente): a coluna
                               saldo_financeiro do banco acumula acréscimo de aditivo por cima
                               do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
-                          <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
+                          <div>{saldoQtdDe(item).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
                           <div className="text-[11px]">{fmt(saldoFinanceiroDe(item))}</div>
                         </>
                       )}
@@ -1094,12 +1115,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   <div className="font-medium">{fmt(itemVisualizado.valor_total || 0)}</div>
                 </div>
                 <div className="border rounded-md p-2">
-                  <div className="text-muted-foreground">Consumido</div>
-                  <div className="font-medium">{Number(itemVisualizado.quantidade_consumida || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
+                  <div className="text-muted-foreground">Consumido{ehAta ? ' (contratos derivados)' : ''}</div>
+                  <div className="font-medium">{consumidaDe(itemVisualizado).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Saldo</div>
-                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(saldoFinanceiroDe(itemVisualizado))}</div>
+                  <div className="font-medium">{saldoQtdDe(itemVisualizado).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(saldoFinanceiroDe(itemVisualizado))}</div>
                 </div>
               </div>
 
