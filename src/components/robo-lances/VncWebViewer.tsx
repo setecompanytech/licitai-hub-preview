@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,41 @@ import {
 
 const NOVNC_BASE_URL = 'https://agente.praefectus.com.br/vnc';
 
-export default function VncWebViewer() {
+/**
+ * `abrirEm` é um contador: cada incremento é um pedido para abrir a tela.
+ *
+ * Contador e não booleano porque o pedido se repete — enviar duas sessões
+ * seguidas precisa abrir duas vezes, e um booleano que já está `true` não
+ * dispara efeito nenhum na segunda.
+ */
+type Props = { abrirEm?: number };
+
+export default function VncWebViewer({ abrirEm = 0 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
   const [loading, setLoading] = useState(false);
+  const caixaRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * O caminho até aqui era longo demais para o tempo que existe.
+   *
+   * Quem enviava ao robô precisava: trocar de aba, rolar até quase o fim da
+   * página, achar o painel e clicar em "Abrir VNC Integrado". Quatro passos —
+   * e a sessão pode terminar em segundos. Na prática ninguém chegava a tempo, e
+   * a conclusão era que a tela remota não funcionava.
+   *
+   * Um pedido de fora abre o visualizador E traz o painel para a vista. O
+   * `requestAnimationFrame` espera a aba terminar de renderizar: rolar antes
+   * disso mira um elemento que ainda não existe na tela.
+   */
+  useEffect(() => {
+    if (!abrirEm) return;
+    setLoading(true);
+    setShowViewer(true);
+    requestAnimationFrame(() => {
+      caixaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [abrirEm]);
 
   const vncUrl = `${NOVNC_BASE_URL}/vnc.html?path=/vnc/&autoconnect=true&resize=scale&reconnect=true&reconnect_delay=3000`;
 
@@ -66,7 +97,7 @@ export default function VncWebViewer() {
   };
 
   return (
-    <div className="border border-border/50 rounded-lg overflow-hidden">
+    <div ref={caixaRef} className="border border-border/50 rounded-lg overflow-hidden scroll-mt-4">
       {/* Header */}
       <div className="flex items-center justify-between bg-muted/30 px-4 py-3">
         <div className="flex items-center gap-2">

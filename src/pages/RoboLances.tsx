@@ -402,6 +402,25 @@ export default function RoboLances() {
    */
   const [enviandoAoRobo, setEnviandoAoRobo] = useState(false);
 
+  /**
+   * Um caminho só até a tela do robô, e ele termina COM a tela aberta.
+   *
+   * Antes eram quatro passos: trocar de aba, rolar até quase o fim da página,
+   * achar o painel e clicar em "Abrir VNC Integrado". A sessão pode terminar em
+   * segundos — ninguém chegava a tempo, e a conclusão era que a tela remota não
+   * funcionava.
+   *
+   * O contador existe porque o pedido se repete: enviar duas sessões seguidas
+   * precisa abrir duas vezes, e um booleano já em `true` não dispara efeito
+   * nenhum na segunda.
+   */
+  const [pedidoDeTelaRemota, setPedidoDeTelaRemota] = useState(0);
+
+  const irParaTelaRemota = () => {
+    setActiveMainTab('agente');
+    setPedidoDeTelaRemota((n) => n + 1);
+  };
+
   const handleEnviarAoRobo = async () => {
     if (!selectedLance) return;
 
@@ -504,12 +523,12 @@ export default function RoboLances() {
       // pessoa ficava sem saber para onde ir — enquanto a sessão, que dura
       // poucos segundos, já estava acabando. Instrução que exige procurar não
       // chega a tempo.
-      toast.success('Sessão enviada ao robô.', {
-        description: 'A tela remota mostra o robô enquanto ele trabalha — e ele pode terminar em segundos.',
-        duration: 20000,
+      toast.success('Robô acionado — a janela dele já está abrindo.', {
+        description: 'Clique para assistir em tempo real. A sessão pode durar poucos segundos.',
+        duration: 25000,
         action: {
-          label: 'Ver agora',
-          onClick: () => setActiveMainTab('agente'),
+          label: 'Visualizar em tempo real',
+          onClick: irParaTelaRemota,
         },
       });
     } catch (e) {
@@ -831,9 +850,9 @@ export default function RoboLances() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setActiveMainTab('agente')}
+                          onClick={irParaTelaRemota}
                           className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-                          title="A sessão pode durar poucos segundos. Deixe a tela remota aberta antes de enviar para acompanhar desde o início."
+                          title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
                         >
                           <Monitor className="w-3.5 h-3.5" />
                           Assistir ao vivo
@@ -1108,12 +1127,16 @@ export default function RoboLances() {
         {/* ── AGENTE CLOUD TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
+          {/* A ordem segue o uso, não a configuração.
+              O checklist responde "estou pronto?" e abre a aba. Logo abaixo vêm
+              as duas coisas que se usam a CADA disputa: assistir agora e ver o
+              que aconteceu antes. Config do agente e healthcheck são ajuste —
+              feitos uma vez — e por isso desceram: com o VNC no fim da página,
+              quem enviava ao robô não chegava nele a tempo. */}
           <AtivacaoChecklist />
-          <AgenteExternoConfig />
-          {/* Antes do VNC de propósito: a pergunta "o robô funcionou?" tem
-              resposta aqui mesmo quando a tela remota já fechou. */}
+          <VncWebViewer abrirEm={pedidoDeTelaRemota} />
           <SessoesDoRobo />
-          <VncWebViewer />
+          <AgenteExternoConfig />
           <PortalHealthcheck />
           </>)}
         </TabsContent>
