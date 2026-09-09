@@ -1946,15 +1946,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
                                 }}>
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
-                                  {/* Descrição de item de merenda tem 400+
-                                      caracteres: sem teto de largura, a opção
-                                      virava UMA linha atravessando a tela
-                                      inteira (09/09). Largura limitada e
-                                      texto em até 2 linhas. */}
+                                  {/* Descrição de item de merenda tem 400+ caracteres, e o
+                                      Radix COPIA o conteúdo da opção para dentro do gatilho:
+                                      o line-clamp-2 (caixa -webkit aninhada) furava o recorte
+                                      do trigger e o texto atravessava o formulário (09/09).
+                                      Uma linha truncada se comporta igual nos dois lugares;
+                                      a descrição completa fica no title e na ficha do item. */}
                                   <SelectContent className="max-w-[min(560px,90vw)]">
                                     {itens.map(i => (
                                       <SelectItem key={i.id} value={i.id} className="text-xs">
-                                        <span className="block whitespace-normal line-clamp-2">
+                                        <span className="block max-w-[500px] truncate" title={i.descricao}>
                                           <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
                                           {i.descricao}
                                         </span>
@@ -2085,10 +2086,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       {fonteItens === 'ata' ? (
                         <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
                           <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-w-[min(560px,90vw)]">
                             {itensAta.map(i => (
                               <SelectItem key={i.id} value={i.id}>
-                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -2096,11 +2099,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       ) : (
                         <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
                           <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-w-[min(560px,90vw)]">
                             {itensFiltrados.map(i => (
                               <SelectItem key={i.id} value={i.id}>
-                                <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                  <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                </span>
                               </SelectItem>
                             ))}
                             {itensFiltrados.length === 0 && (
@@ -2920,11 +2925,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-w-[min(560px,90vw)]">
                     {itens.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                        {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                        <span className="block max-w-[500px] truncate" title={i.descricao}>
+                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                          {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
