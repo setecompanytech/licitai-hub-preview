@@ -170,6 +170,77 @@ class ComprasGovPortal extends BasePortal {
   }
 
   /**
+   * O agente tem certificado apresentavel neste momento?
+   *
+   * Carregado sob demanda e com rede de protecao: instalacoes antigas do agente
+   * nao tem o modulo de certificado, e a falta dele nao pode derrubar o login —
+   * so torna a mensagem menos precisa.
+   */
+  temCertificadoInstalado() {
+    try {
+      return require('../certificado').estado().carregado === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * O que aconteceu depois do clique em "Seu certificado digital".
+   *
+   * Tres desfechos sao possiveis e so um e sucesso:
+   *
+   *   autenticado     — saiu do dominio acesso.gov.br: o gov.br aceitou
+   *   sem-certificado — parou em /info/x509, "Certificado digital nao encontrado"
+   *   recusado        — voltou para a propria tela de login do SSO
+   *
+   * Ler o desfecho em vez de esperar "uma navegacao qualquer" e o que permite
+   * dizer a causa. Verificado em 09/09/2026: com a base NSS vazia, o clique faz
+   * sso.acesso.gov.br -> servicos.acesso.gov.br -> sso.acesso.gov.br/login.
+   *
+   * A carencia existe por causa desse vai-e-volta: concluir "recusado" na
+   * primeira leitura pegaria o meio do caminho e chamaria de falha um login que
+   * ainda estava acontecendo.
+   */
+  async esperarDesfechoDoCertificado(timeout = 30000) {
+    const inicio = Date.now();
+    const CARENCIA_MS = 8000;
+    let leiturasNoLogin = 0;
+
+    while (Date.now() - inicio < timeout) {
+      const url = this.page.url();
+
+      if (url.indexOf('/info/x509') !== -1) return 'sem-certificado';
+
+      const semCertificado = await this.page
+        .evaluate(() =>
+          /certificado digital n[ãa]o encontrado/i.test(
+            document.body ? document.body.innerText : ''
+          )
+        )
+        .catch(() => false);
+      if (semCertificado) return 'sem-certificado';
+
+      let host = '';
+      try { host = new URL(url).hostname; } catch (e) { host = ''; }
+
+      // Sair do dominio do login e o unico sinal positivo: o gov.br devolve o
+      // navegador ao sistema que pediu a autenticacao.
+      if (host && !/acesso\\.gov\\.br$/.test(host)) return 'autenticado';
+
+      if (url.indexOf('/login') !== -1 && Date.now() - inicio > CARENCIA_MS) {
+        // Duas leituras seguidas na tela de login: nao e mais o vai-e-volta.
+        if (++leiturasNoLogin >= 2) return 'recusado';
+      } else {
+        leiturasNoLogin = 0;
+      }
+
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    return 'recusado';
+  }
+
+  /**
    * Retry wrapper para operações instáveis
    */
   async comRetry(fn, descricao, tentativas = this.maxRetries) {
@@ -177,6 +248,10 @@ class ComprasGovPortal extends BasePortal {
       try {
         return await fn();
       } catch (err) {
+        // Falha deterministica nao se resolve repetindo. Certificado ausente
+        // continua ausente na terceira tentativa — e o unico efeito de insistir
+        // e transformar 10 segundos de diagnostico em tres minutos de espera.
+        if (err.semRetry) throw err;
         console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
         if (i === tentativas) throw err;
         await new Promise((r) => setTimeout(r, this.retryDelay * i));
@@ -284,9 +359,41 @@ class ComprasGovPortal extends BasePortal {
       }
 
       console.log('📜 Aguardando autenticação mTLS com certificado...');
-      // O navegador vai redirecionar para certificado.sso.acesso.gov.br
-      // que inicia o handshake TLS client-certificate
-      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 });
+      // O navegador redireciona para certificado.sso.acesso.gov.br, que inicia
+      // o handshake TLS de certificado de cliente.
+      //
+      // AQUI HAVIA UM waitForNavigation SOLTO, e ele nao distinguia nada. Sem
+      // certificado o gov.br faz um vai-e-volta e devolve a propria tela de
+      // login: nenhuma navegacao "final" acontece, o wait estoura e a mensagem
+      // que chega a pessoa e "Navigation timeout of 60000 ms exceeded".
+      //
+      // Pior: dentro do comRetry isso repetia tres vezes. Medido em 09/09/2026
+      // com a base vazia: 204 segundos para concluir o que se sabia aos 10.
+      const desfecho = await this.esperarDesfechoDoCertificado(30000);
+
+      if (desfecho !== 'autenticado') {
+        // QUEM SABE SE HA CERTIFICADO E ESTA MAQUINA, NAO O PORTAL.
+        //
+        // Medido em 09/09/2026: com a base NSS vazia, o gov.br NAO mostra
+        // "certificado nao encontrado" neste fluxo — ele volta para a tela de
+        // login, exatamente como faria com um certificado recusado. Os dois
+        // estados sao indistinguiveis pelo lado de fora.
+        //
+        // Adivinhar qual foi produziria uma mensagem confiante e errada, que e
+        // pior que uma vaga: mandaria conferir a validade de um certificado que
+        // nem existe. A resposta esta aqui dentro.
+        const erro = new Error(
+          desfecho === 'sem-certificado' || !this.temCertificadoInstalado()
+            ? 'Nao ha certificado digital instalado no navegador do agente. ' +
+              'Envie o certificado A1 (.pfx) pela tela do Robo de Lances — o A3, de token ou cartao, nao serve.'
+            : 'O gov.br recusou o certificado instalado e voltou para a tela de login. ' +
+              'Confira validade, titularidade e se e de uma AC da ICP-Brasil.'
+        );
+        // Repetir nao muda certificado ausente nem certificado recusado.
+        erro.semRetry = true;
+        throw erro;
+      }
+
       await this.delayHumano(1000, 2000);
 
       // Verificar hCaptcha pós-certificado

@@ -1072,3 +1072,110 @@ etapas próprias, e elas só se verificam com o certificado do cliente em mãos.
 
 O que mudou é a natureza do que falta: era "não existe", passou a ser "não foi
 testado com o certificado do cliente".
+
+---
+
+## 16. O caminho do certificado no gov.br, mapeado sem ter o certificado — 09/09/2026
+
+A pergunta era "dá para testar o Compras.gov sem o `.pfx`?". Dá — quase tudo.
+
+### O que o `openssl` respondeu sem certificado nenhum
+
+`openssl s_client` diz se o servidor **pede** certificado de cliente, e isso não
+exige ter um:
+
+| Host | Pede certificado? |
+| --- | --- |
+| **`certificado.sso.acesso.gov.br`** | ✅ `Acceptable client certificate CA names` |
+| `sso.acesso.gov.br` | ❌ `No client certificate CA names sent` |
+| `cnetmobile.estaleiro.serpro.gov.br` | ❌ |
+| `pncp.gov.br` | ❌ |
+
+As ACs aceitas são todas ICP-Brasil — Certisign, Serasa, Soluti, Prodesp, RFB,
+Digiforte. Um e-CNPJ A1 comum serve.
+
+### O teste mais forte possível sem o arquivo
+
+Chrome do agente em `certificado.sso.acesso.gov.br`, base NSS vazia:
+
+```
+200 → https://acesso.gov.br/info/x509/
+"Certificado digital não encontrado! Verifique se o seu
+ certificado digital está corretamente instalado."
+```
+
+Prova três coisas de uma vez: a VPS **alcança** o endpoint, o Chrome fez o
+handshake **sem abrir o diálogo** de escolha (a policy da seção 15 funcionou —
+sem ela a automação teria travado numa janela invisível), e a mensagem de erro
+do portal é identificável.
+
+### O botão, e o que se descobriu ao clicá-lo
+
+```html
+<button id="login-certificate">Seu certificado digital</button>
+```
+
+O id confere com o que o template já documentava desde 31/03. O que **não**
+estava documentado é o que acontece ao clicar sem certificado:
+
+```
+sso.acesso.gov.br/login → servicos.acesso.gov.br → sso.acesso.gov.br/login
+```
+
+Um vai-e-volta que **devolve a tela de login**. Não passa por `/info/x509`.
+
+### O defeito que isso revelou
+
+O módulo esperava com um `waitForNavigation` solto de 60s. Como nenhuma
+navegação "final" acontece, ele estourava — e a mensagem que chegava à pessoa
+era `Navigation timeout of 60000 ms exceeded`. Dentro do `comRetry`, três vezes.
+
+**Medido: 204 segundos para concluir o que se sabia aos 10.**
+
+Agora o módulo lê o **desfecho** em vez de esperar uma navegação qualquer:
+
+| Desfecho | Como se reconhece |
+| --- | --- |
+| `autenticado` | saiu do domínio `acesso.gov.br` |
+| `sem-certificado` | parou em `/info/x509` ou na frase do portal |
+| `recusado` | duas leituras seguidas na tela de login, após 8s de carência |
+
+A carência existe por causa do vai-e-volta: concluir na primeira leitura
+chamaria de falha um login que ainda estava acontecendo.
+
+E `comRetry` passou a honrar `err.semRetry` — certificado ausente continua
+ausente na terceira tentativa.
+
+**Resultado: 204s → 17s.**
+
+### A parte que quase virou uma mentira confiante
+
+A primeira versão classificou a base vazia como **"recusado"**, e a mensagem
+mandava conferir a validade de um certificado que não existe.
+
+O erro de fundo: **sem certificado e certificado recusado são indistinguíveis
+pelo lado do portal** — os dois voltam ao login. Adivinhar produz uma frase
+segura e errada, que é pior que uma vaga.
+
+Quem sabe a diferença é a própria máquina. O módulo passou a consultar
+`require('../certificado').estado().carregado`, e a mensagem virou:
+
+> Não há certificado digital instalado no navegador do agente. Envie o
+> certificado A1 (.pfx) pela tela do Robô de Lances — o A3, de token ou cartão,
+> não serve.
+
+### De quebra: a VPS estava com o módulo de março
+
+`comprasgov.js` foi de 151 para 645 linhas (md5 igual ao extraído do template).
+O da VPS apontava a navegação para `/pregao/fornecedor` **sem** o prefixo
+`/comprasnet-web` — 404 puro. O do template usa a base certa.
+
+Nota para quem for verificar URL nesse portal: é um SPA Angular, e **qualquer**
+caminho sob `/comprasnet-web` devolve 200. Status HTTP não prova rota; só o
+conteúdo renderizado.
+
+### O que continua faltando
+
+O certificado do cliente. Com ele, o `login()` deve seguir em vez de parar — e
+aí a área autenticada (`/private/fornecedor`) pode ser mapeada de verdade, que
+é a parte que nenhuma sonda alcança sem entrar.
