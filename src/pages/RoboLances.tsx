@@ -48,6 +48,7 @@ import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
+import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -1227,6 +1228,10 @@ export default function RoboLances() {
               segundos. Quando ele não pede nada, este bloco não desenha nada. */}
           <PedidoDoRobo onAbrirTelaRemota={irParaTelaRemota} />
           <VncWebViewer abrirEm={pedidoDeTelaRemota} />
+          {/* Logo abaixo da tela remota porque é a alternativa a ela: quem não
+              quer usar o VNC vai querer entrar no portal pelo próprio navegador,
+              e é justamente aí que a tentação de instalar o .pfx aparece. */}
+          <AcessoManualPortal />
           <SessoesDoRobo />
           <AtivacaoChecklist />
           <AgenteExternoConfig />
