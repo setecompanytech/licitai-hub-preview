@@ -681,8 +681,13 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             </TableHeader>
             <TableBody>
               {(itensExibidos as (ContratoItem & Partial<ItemConsolidado>)[]).map(item => {
-                const pct = item.quantidade_contratada > 0
-                  ? (item.quantidade_consumida / item.quantidade_contratada) * 100 : 0;
+                // A régua do % é a quantidade VIGENTE (consumido + saldo):
+                // com aditivo de quantidade, medir sobre a original dizia 79%
+                // enquanto saldo e consumo somavam outra base — as contas não
+                // fechavam à vista (09/09).
+                const qtdVigente = (Number(item.quantidade_consumida) || 0) + (Number(item.saldo_quantitativo) || 0);
+                const baseQtd = qtdVigente > (item.quantidade_contratada || 0) ? qtdVigente : (item.quantidade_contratada || 0);
+                const pct = baseQtd > 0 ? (item.quantidade_consumida / baseQtd) * 100 : 0;
                 const lowStock = pct >= 80;
 
                 // Lógica de badge de situação para visão consolidada
@@ -767,11 +772,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       >
                         {item.descricao}
                       </button>
-                      <span className="text-[11px] text-muted-foreground">
+                      {/* Sublinha em LINHA ÚNICA: a descrição do vínculo com a
+                          ATA dobrava a célula em duas linhas (09/09). O texto
+                          inteiro fica no title e no olho da descrição. */}
+                      <span
+                        className="block truncate text-[11px] text-muted-foreground"
+                        title={item.ata_item_id ? `Vinculado ao item da ATA: ${ataItemLabel(item.ata_item_id) ?? ''}` : undefined}
+                      >
                         {item.codigo_item && <span className="font-mono">cód. {item.codigo_item}</span>}
                         {isContratoComATA && (
                           item.ata_item_id
-                            ? <span>{item.codigo_item ? ' · ' : ''}⛓ {ataItemLabel(item.ata_item_id)}</span>
+                            ? <span>{item.codigo_item ? ' · ' : ''}ATA: {ataItemLabel(item.ata_item_id)}</span>
                             : <span className="text-warning">{item.codigo_item ? ' · ' : ''}sem vínculo à ata</span>
                         )}
                       </span>
@@ -781,9 +792,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">
+                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
                       <span className="text-muted-foreground"> {uni(item.unidade)}</span>
+                      {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
+                        <div className="text-[11px] text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
+                          vigente: {qtdVigente.toLocaleString('pt-BR')}
+                        </div>
+                      )}
                       {/* Quantidade zerada é a fratura físico×financeiro: o
                           scan não rendeu o número e o total fica em R$ 0,00.
                           O aviso mora ao lado do defeito, não noutra aba. */}
@@ -820,11 +836,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       })()}
                       <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(item.valor_total)}</span></div>
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">
+                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
                       {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
+                      <span className="text-muted-foreground ml-1" title="Sobre a quantidade vigente (contratada + aditivos)">({pct.toFixed(0)}%)</span>
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
+                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning' : 'text-success'}`}>
                       <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
                       <div className="text-[11px]">{fmt(item.saldo_financeiro)}</div>
                     </TableCell>
