@@ -191,6 +191,7 @@ const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
 const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
 const certificado = require('./certificado');
+const interacaoHumana = require('./interacao-humana');
 const fs = require('fs');
 const path = require('path');
 
@@ -218,6 +219,7 @@ const ROTAS = [
   'GET /portais',
   'POST /api/proposta/enviar',
   'POST /certificado',
+  'POST /sessao/responder',
 ];
 
 // A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
@@ -245,6 +247,39 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+
+// ─── POST /sessao/responder ───
+//
+// A pessoa entrega o que a tela pediu; quem digita e o robo.
+//
+// Existe por uma medicao: em 09/09/2026 o codigo do gov.br levava ~50s para ir
+// do celular ate o campo, passando por WhatsApp, leitura e teclado remoto. O
+// codigo vale ~60s. Tres tentativas queimaram e a conta do cliente foi
+// bloqueada por excesso de erro — os codigos nao estavam errados, estavam
+// velhos. Por aqui o mesmo numero chega em ~2s.
+app.post('/sessao/responder', authMiddleware, (req, res) => {
+  const { sessao_id, valor } = req.body || {};
+  if (!sessao_id || valor === undefined || valor === null || valor === '') {
+    return res.status(400).json({ error: 'sessao_id e valor sao obrigatorios' });
+  }
+
+  const pedido = interacaoHumana.pendente(sessao_id);
+  if (!pedido) {
+    // Diferente de erro: pode ser resposta que chegou depois de a tela seguir
+    // sozinha. Dizer isso evita que a interface acuse falha onde nao houve.
+    return res.status(409).json({
+      error: 'Nao ha nada pendente nesta sessao',
+      sessao_id,
+      aceito: false,
+    });
+  }
+
+  interacaoHumana.responder(sessao_id, valor);
+  // O valor NAO entra em log: e codigo de acesso de conta de terceiro.
+  console.log('🧑 Resposta recebida para ' + sessao_id + ' (' + pedido.tipo + ')');
+  res.json({ aceito: true, sessao_id, tipo: pedido.tipo });
+});
+
 // ─── GET /health ───
 app.get('/health', (req, res) => {
   const capacity = sessionManager.getCapacity();
@@ -257,6 +292,11 @@ app.get('/health', (req, res) => {
     sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
     rotas: ROTAS,
+    // O que esta parado esperando uma pessoa. A interface le daqui para decidir
+    // se mostra campo de codigo, aviso de captcha, ou nada — em vez de ter isso
+    // configurado por portal, que envelheceria no dia em que o cliente
+    // desligasse a verificacao em duas etapas.
+    aguardando_humano: interacaoHumana.todos(),
     // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
     // mas nao submete nada. O painel precisa poder mostrar isso.
     portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
@@ -601,6 +641,11 @@ class SessionManager {
       // Instanciar o módulo do portal correto
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
 
+      // O portal precisa saber QUAL sessao ele e para pedir algo a uma pessoa —
+      // um codigo de verificacao, por exemplo — e para a resposta voltar ao
+      // lugar certo quando ha varias sessoes abertas ao mesmo tempo.
+      session.portal.sessaoId = config.sessao_id;
+
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
@@ -620,6 +665,8 @@ class SessionManager {
       // Sem isto, cada sessao que falha deixa um timer de 30s batendo no
       // callback para sempre — e hoje TODA sessao falha antes de comecar.
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+      // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
+      try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
 
       // A JANELA FICA ABERTA UM POUCO DEPOIS DE FALHAR.
       //
@@ -803,6 +850,8 @@ class SessionManager {
       session.status = 'encerrado';
       if (session.interval) clearInterval(session.interval);
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+      // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
+      try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
       if (session.browser) session.browser.close().catch(() => {});
       
       sendCallback(session, 'sessao-encerrada', {
@@ -990,6 +1039,103 @@ async function launchBrowser(cnpj) {
 }
 
 module.exports = { launchBrowser, getCertConfig };
+`,
+
+  'src/interacao-humana.js': `/**
+ * O que o robo precisa de uma pessoa, e a resposta dela.
+ *
+ * Vive em memoria de proposito: um pedido de codigo de verificacao so vale
+ * enquanto a sessao esta de pe. Persistir isso criaria pedidos zumbis, que
+ * pedem codigo para uma tela que ja fechou.
+ *
+ * O vocabulario e generico — 'codigo', 'captcha', 'confirmacao' — porque o
+ * problema nao e do gov.br. BLL, BNC e qualquer portal com SMS caem no mesmo
+ * padrao, e escrever um caso por portal e como as tres listas de portais que
+ * ja divergiram aqui.
+ */
+
+const pendentes = new Map();
+const respostas = new Map();
+
+/**
+ * Registra o que falta para seguir.
+ * @param {string} sessaoId
+ * @param {{tipo: string, mensagem: string, tela?: string}} pedido
+ */
+function pedir(sessaoId, pedido) {
+  if (!sessaoId) return null;
+  const registro = {
+    tipo: pedido.tipo,
+    mensagem: pedido.mensagem,
+    tela: pedido.tela || null,
+    criado_em: new Date().toISOString(),
+  };
+  pendentes.set(sessaoId, registro);
+  // Uma resposta antiga nao pode satisfazer um pedido novo: quem respondeu
+  // "123456" ao pedido anterior nao respondeu a este.
+  respostas.delete(sessaoId);
+  return registro;
+}
+
+/** Entrega a resposta. Devolve false quando nao havia pedido — o chamador
+ *  precisa saber a diferenca entre "aceitei" e "nao ha o que responder". */
+function responder(sessaoId, valor) {
+  if (!pendentes.has(sessaoId)) return false;
+  respostas.set(sessaoId, String(valor));
+  return true;
+}
+
+/** Consome a resposta, se houver. Consumir e proposital: cada resposta serve
+ *  uma vez, e um codigo reenviado por engano nao deve ser digitado duas vezes. */
+function colher(sessaoId) {
+  if (!respostas.has(sessaoId)) return null;
+  const v = respostas.get(sessaoId);
+  respostas.delete(sessaoId);
+  return v;
+}
+
+/** O pedido em aberto desta sessao, ou null. */
+function pendente(sessaoId) {
+  return pendentes.get(sessaoId) || null;
+}
+
+/** Fecha o pedido — atendido, expirado ou sessao encerrada. */
+function encerrar(sessaoId) {
+  pendentes.delete(sessaoId);
+  respostas.delete(sessaoId);
+}
+
+/** Tudo que esta esperando alguem, para o /health. */
+function todos() {
+  return [...pendentes.entries()].map(([sessao_id, p]) => ({ sessao_id, ...p }));
+}
+
+/**
+ * O que ESTA tela esta pedindo — lido do texto, nunca de configuracao.
+ *
+ * Devolve null quando nao ha nada a pedir, e e esse null que faz o campo NAO
+ * aparecer na interface quando o portal nao exige nada.
+ */
+function classificarTela(texto) {
+  const t = String(texto || '');
+  if (/Verifica[çc][ãa]o em duas etapas|c[óo]digo de acesso|c[óo]digo de verifica[çc][ãa]o|token/i.test(t)) {
+    return {
+      tipo: 'codigo',
+      mensagem: 'O portal pediu um codigo de verificacao. Cole aqui o codigo assim que ele chegar — '
+        + 'o robo digita e confirma na hora.',
+    };
+  }
+  if (/captcha|nao sou um rob[oô]|hcaptcha|recaptcha/i.test(t)) {
+    return {
+      tipo: 'captcha',
+      mensagem: 'A pagina exige um gesto humano (captcha). Abra a tela remota (VNC) e clique — '
+        + 'o robo segue sozinho depois disso.',
+    };
+  }
+  return null;
+}
+
+module.exports = { pedir, responder, colher, pendente, encerrar, todos, classificarTela };
 `,
 
   'src/certificado.js': `const { execFileSync } = require('child_process');

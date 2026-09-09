@@ -76,6 +76,65 @@ class BasePortal {
    * O login já foi feito pela rota antes da chamada.
    */
 
+  /**
+   * Digita no campo que a tela esta pedindo, e confirma.
+   *
+   * Existe porque em 09/09/2026 um codigo de verificacao do gov.br levava ~50s
+   * para ir do celular ate o campo — WhatsApp, leitura, troca de aba, teclado
+   * remoto — e o codigo vale ~60s. Tres tentativas queimaram e a conta do
+   * cliente foi bloqueada por excesso de erro. Digitado daqui, o mesmo numero
+   * chega em ~2 segundos.
+   *
+   * Fica no BasePortal, e nao no modulo do gov.br, porque o problema nao e do
+   * gov.br: qualquer portal com SMS ou token cai nele.
+   *
+   * @returns {Promise<string|null>} o que foi feito, ou null se nao achou campo
+   */
+  async responderNaTela(valor) {
+    const ondeDigitou = await this.page.evaluate((v) => {
+      const visivel = (el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+      };
+      const campos = [...document.querySelectorAll('input')].filter(
+        (el) => visivel(el) && !el.disabled && !el.readOnly
+          && ['text', 'tel', 'number', 'password', ''].indexOf((el.type || '').toLowerCase()) !== -1
+      );
+      if (!campos.length) return null;
+
+      // O campo certo primeiro; o primeiro visivel so como ultimo recurso.
+      const pista = (el) => (el.name || '') + ' ' + (el.id || '') + ' '
+        + (el.placeholder || '') + ' ' + (el.getAttribute('aria-label') || '');
+      const alvo = campos.find((el) => /c[oó]digo|token|otp|mfa|verifica/i.test(pista(el))) || campos[0];
+
+      alvo.focus();
+      // Campo com resto da tentativa anterior faz o codigo virar 12 digitos.
+      alvo.value = '';
+      // Angular e React so enxergam valor que chega por evento; atribuir direto
+      // preenche a tela e deixa o estado interno vazio.
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(alvo, v);
+      alvo.dispatchEvent(new Event('input', { bubbles: true }));
+      alvo.dispatchEvent(new Event('change', { bubbles: true }));
+      return (alvo.id || alvo.name || alvo.placeholder || 'campo sem nome');
+    }, String(valor));
+
+    if (!ondeDigitou) return null;
+
+    // Confirmar: botao com rotulo de confirmacao, e Enter como reserva.
+    const clicou = await this.page.evaluate(() => {
+      const botoes = [...document.querySelectorAll('button, input[type=submit]')];
+      const b = botoes.find((el) => /continuar|confirmar|enviar|validar|entrar|avan[cç]ar/i
+        .test((el.textContent || el.value || '')));
+      if (b) { b.click(); return (b.textContent || b.value || '').trim().slice(0, 30); }
+      return null;
+    });
+
+    if (!clicou) await this.page.keyboard.press('Enter');
+    return 'campo "' + ondeDigitou + '"' + (clicou ? ' + botao "' + clicou + '"' : ' + Enter');
+  }
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
     await this.page.screenshot({ path, fullPage: false });
@@ -108,6 +167,7 @@ module.exports = { BasePortal };
 `,
 
   'src/portals/comprasgov.js': `const { BasePortal } = require('./base-portal');
+const interacao = require('../interacao-humana');
 
 /**
  * Módulo de automação para o portal Compras.gov.br (CNET Mobile / ComprasNet-Web)
@@ -126,7 +186,7 @@ module.exports = { BasePortal };
  *   - QR Code:          .modal-qrcode (login sem senha)
  *
  * URL real da área pública: /comprasnet-web/public/compras
- * URL do fornecedor (pós-login): /comprasnet-web/private/fornecedor (a confirmar via VNC)
+ * URL do fornecedor (pós-login): /comprasnet-web/seguro/fornecedor (a confirmar via VNC)
  *
  * ATENÇÃO: A sala de disputa pós-login usa Angular e os seletores internos
  * só podem ser verificados com credenciais reais via VNC no VPS.
@@ -137,9 +197,23 @@ class ComprasGovPortal extends BasePortal {
     super(page, credenciais);
     this.nome = 'comprasgov';
     this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web';
-    this.loginUrl = 'https://sso.acesso.gov.br';
+    // A porta de entrada NAO e o SSO direto. VERIFICADO em 09/09/2026: o botao
+    // "Efetuar Login" do proprio portal leva para esta pagina ASP, e e ela que
+    // monta a chamada ao SSO com os parametros certos.
+    this.portaLogin = 'https://www.comprasnet.gov.br/seguro/loginPortalUASG.asp';
+    // Endpoint /authorize (nao /login) e client_id "comprasnet.gov.br" (nao
+    // "compras.gov.br"). Com a forma antiga o gov.br acusa "cookies
+    // desabilitados" — sintoma de sessao invalida, nao de cookie — e o
+    // formulario nunca submete.
+    this.loginUrl = 'https://sso.acesso.gov.br/authorize'
+      + '?response_type=code&client_id=comprasnet.gov.br'
+      + '&scope=openid+profile+email+phone+govbr_confiabilidades&state=G'
+      + '&redirect_uri=https://www.comprasnet.gov.br/seguro/landing_sso.asp';
     this.certLoginUrl = 'https://certificado.sso.acesso.gov.br';
     this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
+    // Quantos segundos esperar por um clique humano no VNC quando o captcha
+    // barrar o caminho. Zero desliga a espera e faz falhar na hora.
+    this.segundosEsperaHumano = Number(process.env.SEGUNDOS_ESPERA_HUMANO || 180);
     this.maxRetries = 3;
     this.retryDelay = 2000;
   }
@@ -288,108 +362,192 @@ class ComprasGovPortal extends BasePortal {
     await this.aplicarAntiDeteccao();
 
     await this.comRetry(async () => {
-      // 1. Acessar SSO gov.br (a URL exata depende do redirect do portal)
-      //    O portal Compras.gov redireciona para sso.acesso.gov.br com client_id
-      await this.page.goto(this.publicUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-      await this.delayHumano(500, 1200);
+      // 1. Ir direto ao SSO com os parametros que o proprio portal usa.
+      //
+      // A versao anterior abria a pagina publica e cacava um link "Acessar" que
+      // nao existe — o portal e um SPA Angular cuja home publica so tem busca.
+      // Depois caia num fallback para sso.acesso.gov.br sem parametro nenhum, e
+      // ali o gov.br responde "cookies desabilitados" e nao submete nada.
+      await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+      await this.delayHumano(600, 1400);
 
-      // Clicar em "Acessar" ou "Login" se existir na página pública
-      const loginClicked = await this.page.evaluate(() => {
-        const links = [...document.querySelectorAll('a, button')];
-        const loginLink = links.find(el => {
-          const text = (el.textContent || '').toLowerCase();
-          return text.includes('acessar') || text.includes('login') ||
-                 text.includes('entrar') || text.includes('área do fornecedor');
+      if (!this.page.url().includes('acesso.gov.br')) {
+        // Caminho longo, para o caso de o /authorize mudar: entrar pela pagina
+        // do portal e deixar que ELA monte a chamada.
+        console.log('↩️  SSO nao respondeu direto — entrando pela pagina do portal');
+        await this.page.goto(this.portaLogin, { waitUntil: 'networkidle2', timeout: 45000 });
+        await this.delayHumano(600, 1200);
+        await this.page.evaluate(() => {
+          const el = [...document.querySelectorAll('a, button, input')]
+            .find((e) => /Entrar com Gov\\.br/i.test(e.textContent || e.value || ''));
+          if (el) el.click();
         });
-        if (loginLink) { loginLink.click(); return true; }
-        return false;
-      });
-
-      if (loginClicked) {
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
-      }
-
-      // Se não redirecionou para SSO, ir diretamente
-      const currentUrl = this.page.url();
-      if (!currentUrl.includes('sso.acesso.gov.br') && !currentUrl.includes('acesso.gov.br')) {
-        await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
       }
 
       await this.delayHumano(500, 1200);
       await this.screenshot('sso-gov-br');
 
-      // 2. Preencher CPF — Seletor VERIFICADO: #accountId (input[name="accountId"])
+      // O aviso de cookie e o sinal de que a URL do SSO esta malformada. Dizer
+      // isso aqui evita procurar defeito no navegador.
+      const avisoCookie = await this.page.evaluate(() =>
+        /cookies do seu browser/i.test(document.body.innerText || ''));
+      if (avisoCookie) {
+        const e = new Error(
+          'O gov.br respondeu "cookies desabilitados", o que indica sessao SSO invalida — '
+          + 'confira client_id e authorization_id da URL de login.'
+        );
+        e.semRetry = true;
+        throw e;
+      }
+
+      // 2. CPF, quando houver. E um caminho alternativo ao certificado, nao um
+      //    pre-requisito dele.
       const cpfField = await this.aguardarElemento('#accountId', 8000);
       if (cpfField && this.credenciais.cpf) {
         await this.preencherCampo('#accountId', this.credenciais.cpf);
         await this.delayHumano(300, 600);
-
-        // Verificar hCaptcha antes de submeter
         await this.verificarHCaptcha();
-
-        // Botão Continuar — Seletor VERIFICADO: #enter-account-id (button.button-continuar)
         await this.page.click('#enter-account-id');
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {
-          // Pode não navegar se for AJAX
-        });
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
         await this.delayHumano(500, 1000);
       }
 
-      // 3. Selecionar certificado digital
-      // Seletor VERIFICADO: #login-certificate (button[value="login-certificate"])
-      // Está dentro de div#cert-digital .item-login-signup-ways
-      // formaction aponta para https://certificado.sso.acesso.gov.br/login?...
-      const certButton = await this.aguardarElemento('#login-certificate', 5000);
-      if (certButton) {
-        console.log('📜 Clicando em "Seu certificado digital"...');
-        await this.page.click('#login-certificate');
-      } else {
-        // Fallback: buscar por texto nos botões
-        const clicked = await this.page.evaluate(() => {
-          const items = [...document.querySelectorAll('.item-login-signup-ways button, .item-login-signup-ways a, button, a')];
-          const certLink = items.find(el => {
-            const text = (el.textContent || '').toLowerCase();
-            return (text.includes('certificado digital') || text.includes('seu certificado')) &&
-                   !text.includes('nuvem');
-          });
-          if (certLink) { certLink.click(); return true; }
-          return false;
-        });
-        if (!clicked) throw new Error('Botão de certificado digital não encontrado no SSO gov.br');
+      // 3. Selecionar certificado digital.
+      // Seletor VERIFICADO: #login-certificate — e um <button name="operation"
+      // value="login-certificate"> com formaction para certificado.sso.acesso.gov.br.
+      const certButton = await this.aguardarElemento('#login-certificate', 8000);
+      if (!certButton) {
+        const e = new Error('Botao de certificado digital nao encontrado na tela do gov.br');
+        e.semRetry = true;
+        throw e;
       }
 
-      console.log('📜 Aguardando autenticação mTLS com certificado...');
-      // O navegador redireciona para certificado.sso.acesso.gov.br, que inicia
-      // o handshake TLS de certificado de cliente.
-      //
-      // AQUI HAVIA UM waitForNavigation SOLTO, e ele nao distinguia nada. Sem
-      // certificado o gov.br faz um vai-e-volta e devolve a propria tela de
-      // login: nenhuma navegacao "final" acontece, o wait estoura e a mensagem
-      // que chega a pessoa e "Navigation timeout of 60000 ms exceeded".
-      //
-      // Pior: dentro do comRetry isso repetia tres vezes. Medido em 09/09/2026
-      // com a base vazia: 204 segundos para concluir o que se sabia aos 10.
-      const desfecho = await this.esperarDesfechoDoCertificado(30000);
+      // Antes de tentar, saber se ha o que apresentar. Sem isto, "nao entrou"
+      // vira uma frase generica que manda conferir a validade de um
+      // certificado que pode nem existir.
+      if (!this.temCertificadoInstalado()) {
+        const e = new Error(
+          'Nao ha certificado digital instalado no navegador do agente. ' +
+          'Envie o certificado A1 (.pfx) pela tela do Robo de Lances — o A3, de token ou cartao, nao serve.'
+        );
+        e.semRetry = true;
+        throw e;
+      }
+
+      console.log('📜 Clicando em "Seu certificado digital"...');
+      await this.page.evaluate(() =>
+        document.querySelector('#login-certificate').scrollIntoView({ block: 'center' }));
+      await this.delayHumano(400, 900);
+      await this.page.click('#login-certificate').catch(() => {});
+
+      let desfecho = await this.esperarDesfechoDoCertificado(20000);
+
+      // ─── O clique humano, quando o captcha barra o automatico ───────────
+      if (desfecho !== 'autenticado' && this.segundosEsperaHumano > 0) {
+        await this.screenshot('aguardando-clique-humano');
+        console.log('');
+        console.log('🧑 ═══════════════════════════════════════════════════════════');
+        console.log('🧑  PRECISO DE UM CLIQUE HUMANO');
+        console.log('🧑');
+        console.log('🧑  A pagina do gov.br roda hCaptcha, e o botao do certificado');
+        console.log('🧑  so submete com um gesto de pessoa. O certificado JA esta');
+        console.log('🧑  instalado e sera apresentado sozinho depois do clique.');
+        console.log('🧑');
+        console.log('🧑  Abra a aba Agente Cloud > tela remota (VNC) e clique em');
+        console.log('🧑  "Seu certificado digital".');
+        console.log('🧑');
+        console.log('🧑  Esperando ate ' + this.segundosEsperaHumano + 's...');
+        console.log('🧑 ═══════════════════════════════════════════════════════════');
+        console.log('');
+
+        // O pedido nasce da TELA, nao de configuracao. Se o cliente desligar a
+        // verificacao em duas etapas, este ramo simplesmente nao acontece e
+        // nenhuma interface mostra campo nenhum.
+        interacao.pedir(this.sessaoId, {
+          tipo: 'captcha',
+          mensagem: 'Abra a tela remota (VNC) e clique em "Seu certificado digital". '
+            + 'A pagina do gov.br exige esse gesto por causa do hCaptcha — o certificado ja esta '
+            + 'instalado e sera apresentado sozinho depois do clique.',
+          tela: 'gov.br — escolha de identificacao',
+        });
+
+        let limite = Date.now() + this.segundosEsperaHumano * 1000;
+        let avisou = 0;
+        let ultimaUrl = this.page.url();
+
+        while (Date.now() < limite) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const agora = this.page.url();
+
+          if (!agora.includes('acesso.gov.br')) {
+            console.log('🧑 ✅ Autenticado — o login saiu do gov.br');
+            desfecho = 'autenticado';
+            interacao.encerrar(this.sessaoId);
+            break;
+          }
+
+          // AVANCO DENTRO DO PROPRIO GOV.BR.
+          //
+          // Medido em 09/09/2026: depois do clique humano o gov.br pede
+          // confirmacao de identidade, e essa tela continua em acesso.gov.br. A
+          // versao anterior so perguntava "ja saiu do dominio?", entao seguia
+          // dizendo "esperando o clique" com a tela ja adiantada — e matava o
+          // navegador no meio do fluxo quando o relogio acabava.
+          if (agora !== ultimaUrl) {
+            ultimaUrl = agora;
+            await this.screenshot('govbr-avancou');
+            const tela = await this.page
+              .evaluate(() => (document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 220))
+              .catch(() => '');
+            console.log('🧑 ➡️  A tela avancou: ' + agora.slice(0, 130));
+            if (tela) console.log('🧑     ' + tela);
+            // Cada avanco renova o relogio: quem esta digitando um codigo de
+            // verificacao precisa de mais tempo, nao de menos.
+            // O que ESTA tela pede agora — pode ter mudado de captcha para codigo.
+            const pedido = interacao.classificarTela(tela);
+            if (pedido) {
+              const atual = interacao.pendente(this.sessaoId);
+              if (!atual || atual.tipo !== pedido.tipo) {
+                interacao.pedir(this.sessaoId, { ...pedido, tela: String(tela).slice(0, 220) });
+                console.log('🧑 📋 Agora preciso de: ' + pedido.tipo);
+              }
+            }
+
+            limite = Date.now() + this.segundosEsperaHumano * 1000;
+            avisou = 0;
+          }
+
+          // A resposta de uma pessoa, quando chega pela rota /sessao/responder.
+          // Digitada daqui, e nao pelo teclado remoto, ela chega ao campo antes
+          // de o codigo expirar.
+          const resposta = interacao.colher(this.sessaoId);
+          if (resposta) {
+            const onde = await this.responderNaTela(resposta).catch(() => null);
+            console.log(onde
+              ? '🧑 ⌨️  Resposta digitada e enviada — ' + onde
+              : '🧑 ⚠️  Recebi a resposta mas nao achei onde digitar nesta tela');
+            limite = Date.now() + this.segundosEsperaHumano * 1000;
+          }
+
+          const faltam = Math.round((limite - Date.now()) / 1000);
+          if (faltam > 0 && faltam % 30 === 0 && faltam !== avisou) {
+            avisou = faltam;
+            console.log('🧑 ainda esperando no VNC — ' + faltam + 's restantes');
+          }
+        }
+      }
 
       if (desfecho !== 'autenticado') {
-        // QUEM SABE SE HA CERTIFICADO E ESTA MAQUINA, NAO O PORTAL.
-        //
-        // Medido em 09/09/2026: com a base NSS vazia, o gov.br NAO mostra
-        // "certificado nao encontrado" neste fluxo — ele volta para a tela de
-        // login, exatamente como faria com um certificado recusado. Os dois
-        // estados sao indistinguiveis pelo lado de fora.
-        //
-        // Adivinhar qual foi produziria uma mensagem confiante e errada, que e
-        // pior que uma vaga: mandaria conferir a validade de um certificado que
-        // nem existe. A resposta esta aqui dentro.
+        // A causa nao e o certificado, e dizer que e manda a pessoa procurar
+        // defeito onde nao ha. Em 09/09/2026 ficou provado que o gov.br ACEITA
+        // este certificado: o handshake mTLS fecha com "Verify return code: 0".
         const erro = new Error(
-          desfecho === 'sem-certificado' || !this.temCertificadoInstalado()
-            ? 'Nao ha certificado digital instalado no navegador do agente. ' +
-              'Envie o certificado A1 (.pfx) pela tela do Robo de Lances — o A3, de token ou cartao, nao serve.'
-            : 'O gov.br recusou o certificado instalado e voltou para a tela de login. ' +
-              'Confira validade, titularidade e se e de uma AC da ICP-Brasil.'
+          'O login do gov.br nao foi concluido. O certificado esta instalado e valido — ' +
+          'o que falta e o clique em "Seu certificado digital", que a pagina so aceita ' +
+          'de uma pessoa por causa do hCaptcha. Abra a tela remota (VNC) na aba Agente ' +
+          'Cloud ANTES de enviar ao robo e clique nesse botao quando ele aparecer.'
         );
-        // Repetir nao muda certificado ausente nem certificado recusado.
         erro.semRetry = true;
         throw erro;
       }
@@ -422,9 +580,9 @@ class ComprasGovPortal extends BasePortal {
     await this.comRetry(async () => {
       // Tentar URLs conhecidas da área do fornecedor
       const possibleUrls = [
-        \`\${this.baseUrl}/private/fornecedor\`,
+        \`\${this.baseUrl}/seguro/fornecedor\`,
         \`\${this.baseUrl}/pregao/fornecedor\`,
-        \`\${this.baseUrl}/private/home\`,
+        \`\${this.baseUrl}/seguro/home\`,
         this.baseUrl,
       ];
 

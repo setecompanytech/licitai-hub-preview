@@ -47,6 +47,7 @@ import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
+import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -1221,6 +1222,10 @@ export default function RoboLances() {
               funcionou?") respondida depois que a janela fechou.
               Checklist, config e healthcheck são ajuste: consultados quando
               algo está errado, não a cada disputa. */}
+          {/* Acima do VNC de propósito: quando o robô pede um código, isso é a
+              coisa mais urgente da tela — e um código de verificação vale
+              segundos. Quando ele não pede nada, este bloco não desenha nada. */}
+          <PedidoDoRobo onAbrirTelaRemota={irParaTelaRemota} />
           <VncWebViewer abrirEm={pedidoDeTelaRemota} />
           <SessoesDoRobo />
           <AtivacaoChecklist />

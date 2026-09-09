@@ -563,6 +563,67 @@ serve(async (req) => {
     // a tela dizia "Agente Online" lendo uma linha de meses atrás. Aqui
     // perguntamos ao agente e atualizamos o registro. Também substitui o
     // heartbeat que o agente nunca empurrou: puxamos o sinal de vida.
+    // A pessoa responde o que a tela pediu, e QUEM DIGITA é o robô.
+    //
+    // Medido em 09/09/2026: um código do gov.br levava ~50s para ir do celular
+    // até o campo — WhatsApp, leitura, troca de aba, teclado do VNC — e o código
+    // vale ~60s. Três tentativas queimaram e a conta do cliente foi bloqueada
+    // por excesso de erro (ERL0018900). Por aqui o mesmo número chega em ~2s.
+    if (action === "responder-humano") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { sessao_id, valor } = body;
+      if (!sessao_id || valor === undefined || valor === null || String(valor).trim() === "") {
+        return jsonResponse({ error: "sessao_id e valor são obrigatórios" }, 400);
+      }
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+
+      if (!agentes?.length) {
+        return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+      }
+
+      // Sem adivinhar em qual agente a sessão vive: pergunta a cada um, e o
+      // que não a tiver responde 409, que não é erro.
+      const tentativas: Array<Record<string, unknown>> = [];
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/responder`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": agente.api_key_hash || "",
+            },
+            body: JSON.stringify({ sessao_id, valor: String(valor).trim() }),
+            signal: AbortSignal.timeout(10000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok && corpo?.aceito) {
+            // O valor NUNCA volta na resposta nem entra em log: é código de
+            // acesso de conta de terceiro.
+            return jsonResponse({ aceito: true, agente: agente.nome, tipo: corpo.tipo ?? null });
+          }
+          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
+        } catch (e) {
+          tentativas.push({ agente: agente.nome, motivo: e instanceof Error ? e.message : "sem resposta" });
+        }
+      }
+
+      return jsonResponse({
+        aceito: false,
+        error: "Nenhum agente tinha pedido em aberto para esta sessão — " +
+          "a tela pode ter seguido sozinha, ou a sessão já terminou.",
+        tentativas,
+      }, 409);
+    }
+
     if (action === "healthcheck") {
       const authHeader = req.headers.get("authorization");
       if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
@@ -630,6 +691,11 @@ serve(async (req) => {
           sessoes_ativas: saude?.sessoes_ativas ?? null,
           certificado: saude?.certificado ?? null,
           portais_suportados: saude?.portais_suportados ?? null,
+          // O que o robô está esperando de uma pessoa AGORA. Vem da tela real
+          // em que ele parou, não de configuração por portal: se o cliente
+          // desligar a verificação em duas etapas, esta lista vem vazia e
+          // nenhum campo aparece na interface.
+          aguardando_humano: saude?.aguardando_humano ?? null,
           // Freio de emergência: só o teste explícito prova que existe
           kill_switch: (capacidadesAtuais as { kill_switch?: unknown })?.kill_switch ?? null,
         });
