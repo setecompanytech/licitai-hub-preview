@@ -620,8 +620,32 @@ class SessionManager {
       // Sem isto, cada sessao que falha deixa um timer de 30s batendo no
       // callback para sempre — e hoje TODA sessao falha antes de comecar.
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
-      // Liberar browser para não travar slots
-      if (session.browser) session.browser.close().catch(() => {});
+
+      // A JANELA FICA ABERTA UM POUCO DEPOIS DE FALHAR.
+      //
+      // Fechar na hora tornava o erro invisivel. Medido em 09/09/2026: com um
+      // edital que nao existe, o navegador aparece no VNC em 3s e some em 13 —
+      // quem clica para abrir a tela remota chega depois do fim e ve o servidor
+      // vazio, sem nada que explique o que houve. A pessoa conclui que o VNC
+      // esta quebrado, quando o robo apenas ja terminou.
+      //
+      // Manter a janela NAO esconde a falha: o status continua 'erro', o
+      // callback ja saiu e o motivo esta no log. So a tela demora a sumir, e e
+      // nela que esta a explicacao — a pagina onde o robo parou.
+      //
+      // O slot nao fica preso: getCapacity() so conta sessao 'ativo' ou
+      // 'pausado', e esta e 'erro'.
+      const segundos = Number(process.env.SEGUNDOS_JANELA_APOS_ERRO || 60);
+
+      if (session.browser && segundos > 0) {
+        console.log(\`🔎 Janela mantida aberta por \${segundos}s para observacao no VNC — sessao \${config.sessao_id}\`);
+        setTimeout(() => {
+          if (session.browser) session.browser.close().catch(() => {});
+          console.log(\`🔒 Janela de observacao encerrada — sessao \${config.sessao_id}\`);
+        }, segundos * 1000);
+      } else if (session.browser) {
+        session.browser.close().catch(() => {});
+      }
     }
 
     return session;

@@ -405,6 +405,28 @@ serve(async (req) => {
           break;
         }
 
+        // O robo avisa CADA rodada em que decidiu nao dar lance, com o motivo.
+        // O Praefectus respondia 400 "tipo desconhecido" e o agente registrava
+        // "Callback falhou" — 12 avisos descartados em 6 minutos, na sessao de
+        // 08/09 as 23:13. Nada quebrava, e era justamente a informacao que
+        // provaria que o robo estava vivo e trabalhando.
+        //
+        // O corpo ja estava sendo gravado em `webhook_log` (o insert acontece
+        // antes deste switch), entao o historico nao se perdeu — o que faltava
+        // era a sessao refletir a rodada, que e o que a tela le.
+        case "rodada-sem-lance": {
+          const { rodada } = payload;
+          await supabase
+            .from("sessoes_lance_real")
+            .update({
+              rodada_atual: rodada ?? null,
+              // Toca o updated_at: e ele que diz "esta sessao deu sinal agora".
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", sessao_id);
+          break;
+        }
+
         case "heartbeat": {
           if (sessao.agente_id) {
             await supabase
