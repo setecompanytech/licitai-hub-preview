@@ -106,7 +106,10 @@ const INSTITUTOS_SEM_LIMITE: Array<[RegExp, string]> = [
   [/reajust/i, 'reajuste'],
   [/revis[ãa]o\s+(contratual|de\s+pre)/i, 'revisão contratual'],
 ];
-const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA, 'prorrogacao_continua'];
+// 'prorrogacao' é valor legado gravado antes do tipo dedicado existir — o
+// trigger do banco já o isenta (regex 'prorrogac'); o front tem de espelhar,
+// senão o mesmo termo é isento no banco e acusado de exceder 25% na tela.
+const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA, 'prorrogacao_continua', 'prorrogacao'];
 const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', 'prorrogacao_continua', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
 const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', 'prorrogacao_continua', ...TIPOS_DE_ATA].includes(tipo);
 
