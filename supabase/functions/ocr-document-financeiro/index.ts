@@ -30,6 +30,7 @@ function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
   const pares: Array<[string, string]> = [
     ["quantidade_total", "quantidade_total_impressa"],
     ["valor_total", "valor_total_impresso"],
+    ["valor_total_produtos", "valor_total_produtos_impresso"],
     ["valor_unitario", "valor_unitario_impresso"],
   ];
   for (const [campo, impresso] of pares) {
@@ -50,36 +51,51 @@ function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
  * redondo, não adivinha: avisa e manda revisar.
  */
 function conferirValorTotal(d: Record<string, unknown>): void {
-  const qtd = Number(d.quantidade_total);
-  const unit = Number(d.valor_unitario);
   const total = Number(d.valor_total);
-  if (!Number.isFinite(qtd) || qtd <= 0) return;
-  if (!Number.isFinite(unit) || unit <= 0) return;
   if (!Number.isFinite(total) || total <= 0) return;
-
-  const produto = qtd * unit;
-  const razao = produto / total;
+  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const avisos = Array.isArray(d.avisos) ? (d.avisos as string[]) : [];
 
-  for (const fator of [1000, 100, 10]) {
-    if (Math.abs(razao - fator) / fator < 0.01) {
-      d.valor_total = Math.round(produto * 100) / 100;
-      avisos.push(
-        `Valor total lido (${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) ` +
-        `estava ${fator}× menor que quantidade × unitário — corrigido para ` +
-        `${(d.valor_total as number).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Confira antes de lançar.`,
-      );
-      d.avisos = avisos;
-      return;
+  // Duas âncoras independentes do mesmo documento, em ordem de força:
+  // qtd × unitário (duas leituras que teriam de errar JUNTAS) e o vProd
+  // (VALOR TOTAL DOS PRODUTOS — em nota simples, igual ao total).
+  const qtd = Number(d.quantidade_total);
+  const unit = Number(d.valor_unitario);
+  const ancoras: Array<[number, string]> = [];
+  if (Number.isFinite(qtd) && qtd > 0 && Number.isFinite(unit) && unit > 0) {
+    ancoras.push([qtd * unit, "quantidade × unitário"]);
+  }
+  const vProd = Number(d.valor_total_produtos);
+  if (Number.isFinite(vProd) && vProd > 0) {
+    ancoras.push([vProd, "o VALOR TOTAL DOS PRODUTOS"]);
+  }
+
+  for (const [ancora, nome] of ancoras) {
+    const razao = ancora / total;
+    for (const fator of [1000, 100, 10]) {
+      if (Math.abs(razao - fator) / fator < 0.01) {
+        d.valor_total = Math.round(ancora * 100) / 100;
+        avisos.push(
+          `Valor total lido (${brl(total)}) estava ${fator}× menor que ${nome} — corrigido para ` +
+          `${brl(d.valor_total as number)}. Confira antes de lançar.`,
+        );
+        d.avisos = avisos;
+        return;
+      }
     }
   }
-  // Divergência real (>5%) sem fator redondo: ninguém corrige no palpite.
-  if (razao > 1.05 || razao < 0.95) {
-    avisos.push(
-      `Quantidade × unitário dá ${produto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}, ` +
-      `mas o valor total lido é ${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — revise antes de lançar.`,
-    );
-    d.avisos = avisos;
+  // Nenhum fator redondo: divergência >5% com a âncora mais forte vira
+  // pedido de revisão — ninguém corrige no palpite.
+  if (ancoras.length > 0) {
+    const [ancora, nome] = ancoras[0];
+    const razao = ancora / total;
+    if (razao > 1.05 || razao < 0.95) {
+      avisos.push(
+        `${nome[0].toUpperCase()}${nome.slice(1)} dá ${brl(ancora)}, mas o valor total lido é ` +
+        `${brl(total)} — revise antes de lançar.`,
+      );
+      d.avisos = avisos;
+    }
   }
 }
 
@@ -135,7 +151,8 @@ CAMPOS A EXTRAIR (quando visíveis):
 - data_vencimento: AAAA-MM-DD (boletos)
 - valor_total: número decimal (R$)
 - quantidade_total_impressa: o TEXTO EXATO da coluna QTDE./QTD. do produto principal, copiado como impresso (ex.: "1.300,00"). Se houver várias linhas, o da linha de maior valor. NÃO é o número de linhas/itens da nota — é a QUANTIDADE impressa daquele item. NÃO converta, NÃO some, NÃO interprete — copie os caracteres.
-- valor_total_impresso: o TEXTO EXATO do VALOR TOTAL da nota, como impresso (ex.: "29.315,00").
+- valor_total_impresso: o TEXTO EXATO do VALOR TOTAL DA NOTA, como impresso (ex.: "29.315,00"). ATENÇÃO: na caixa estreita do DANFE o número GRANDE quebra em DUAS linhas ("1.343.6" / "20,57") — junte TODOS os fragmentos da mesma caixa antes de copiar; um total em reais SEMPRE termina em vírgula e dois decimais. Copiar só a primeira linha transformou R$ 1.343.620,57 em R$ 1.343,62 (erro real de 09/09) — releia a caixa inteira.
+- valor_total_produtos_impresso: o TEXTO EXATO de "VALOR TOTAL DOS PRODUTOS" (vProd), como impresso — mesma regra de juntar fragmentos. É a âncora de conferência do total da nota.
 - valor_unitario_impresso: o TEXTO EXATO do VALOR UNITÁRIO do item principal, como impresso (ex.: "22,5500").
 - quantidade_total: idem quantidade_total_impressa, convertido para número (1.300,00 → 1300). Ponto é milhar; vírgula é decimal.
 - valor_unitario: o VALOR UNITÁRIO convertido para número ("22,5500" → 22.55).
@@ -167,6 +184,7 @@ const TOOL_SCHEMA = {
         valor_unitario: { type: "number" },
         quantidade_total_impressa: { type: "string" },
         valor_total_impresso: { type: "string" },
+        valor_total_produtos_impresso: { type: "string" },
         valor_unitario_impresso: { type: "string" },
         codigo_barras: { type: "string" },
         descricao: { type: "string" },
