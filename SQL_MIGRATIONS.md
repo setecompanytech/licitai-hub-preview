@@ -12787,3 +12787,11 @@ SELECT cron.schedule(
 -- para não deixar overload ambíguo no PostgREST).
 -- (Conteúdo completo em supabase/migrations/20260908000007_precos_por_objeto_filtros.sql)
 ```
+
+## 2026-09-08 — nfe_entradas: acervo de NF-e de entrada por empresa — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- Tabela nfe_entradas (nome novo: nfe_recebidas já existia como legado do
+-- Compras, sem empresa_id) + RLS por empresa + publicação realtime.
+-- (Conteúdo completo em supabase/migrations/20260908000008_nfe_entradas.sql)
+```
