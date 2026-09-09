@@ -229,7 +229,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       mapa.set(item.id, porCamada);
     }
     return mapa;
-  }, [itensMesclados, aditivos]);
+    // qtdVigenteDe é recriada a cada render mas só varia com ehAta (meta);
+    // listar meta?.tipo_documento cobre a dependência real sem recomputar à toa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itensMesclados, aditivos, meta?.tipo_documento]);
 
   const labelSituacao = situacao === 'original'
     ? (meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original')
@@ -935,25 +938,48 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-[10px]">/un</span></div>
                         {/* O "/un" rotula a primeira linha; sem rótulo na segunda,
                             item de quantidade zero mostrava R$ 0,00 sobre R$ 0,00
-                            e parecia valor repetido, não unitário × total. */}
-                        <div className="text-[11px]"><span className="text-[10px]">total </span>{item.custo_total != null ? fmt(item.custo_total) : '—'}</div>
+                            e parecia valor repetido, não unitário × total.
+                            Na visão por camada, o total de custo mede A CAMADA —
+                            camada de quantidade zero mostrava o custo do item
+                            inteiro ao lado de um Valor de R$ 0,00 (09/09). */}
+                        <div className="text-[11px]">
+                          <span className="text-[10px]">total </span>
+                          {camadaSel
+                            ? (camadaSel.capacidade > 0 ? fmt(camadaSel.capacidade * (Number(item.custo_unitario) || 0)) : '—')
+                            : (item.custo_total != null ? fmt(item.custo_total) : '—')}
+                        </div>
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
                       {fmt(item.valor_unitario)}<span className="text-[10px] text-muted-foreground">/un</span>
                       {(() => {
-                        // O contrato guarda o preço da CONTRATAÇÃO; a ATA evolui por
-                        // reequilíbrio/reajuste. Divergência aqui não é erro — é
-                        // história, e precisa aparecer: era X, a ata hoje registra Y.
+                        // Divergência contrato × ATA tem DUAS histórias, e a nota
+                        // precisa contar a certa (09/09): preço do contrato acima do
+                        // registrado E com reequilíbrio/revisão/reajuste nos aditivos
+                        // é evolução AUTORIZADA — nota neutra, na direção real
+                        // ("contratado a X, reequilibrado +Y%"), não "ATA hoje −37%"
+                        // em tom de alerta. Sem aditivo que autorize, aí sim é aviso.
                         if (!item.ata_item_id) return null;
                         const ataItem = ataItens.find(a => a.id === item.ata_item_id);
                         if (!ataItem || ataItem.valor_unitario == null) return null;
-                        const dif = (ataItem.valor_unitario || 0) - (item.valor_unitario || 0);
-                        if (Math.abs(dif) < 0.005) return null;
-                        const pct = item.valor_unitario ? ((dif / item.valor_unitario) * 100).toFixed(2) : null;
+                        const vAta = Number(ataItem.valor_unitario) || 0;
+                        const vContrato = Number(item.valor_unitario) || 0;
+                        if (Math.abs(vAta - vContrato) < 0.005) return null;
+                        if (temAditivoForaDoObjeto && vContrato > vAta && vAta > 0) {
+                          const pctAumento = ((vContrato - vAta) / vAta) * 100;
+                          return (
+                            <div
+                              className="text-[11px] text-muted-foreground font-normal"
+                              title="Preço da contratação registrado na ATA, atualizado pelo reequilíbrio/revisão/reajuste registrado em Arquivos e Aditivos"
+                            >
+                              contratado na ATA a {fmt(vAta)} · reequilibrado +{pctAumento.toFixed(1).replace('.', ',')}%
+                            </div>
+                          );
+                        }
+                        const pct = vContrato ? (((vAta - vContrato) / vContrato) * 100).toFixed(2).replace('.', ',') : null;
                         return (
-                          <div className="text-[11px] text-warning font-normal">
-                            ATA hoje: {fmt(ataItem.valor_unitario)}{pct ? ` (${dif > 0 ? '+' : ''}${pct}%)` : ''}
+                          <div className="text-[11px] text-warning font-normal" title="Preço do item diverge do registrado na ATA sem aditivo que autorize — confira">
+                            ATA registra {fmt(vAta)}{pct ? ` (${vAta > vContrato ? '+' : ''}${pct}%)` : ''}
                           </div>
                         );
                       })()}
