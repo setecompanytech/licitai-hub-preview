@@ -1127,15 +1127,18 @@ export default function RoboLances() {
         {/* ── AGENTE CLOUD TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
-          {/* A ordem segue o uso, não a configuração.
-              O checklist responde "estou pronto?" e abre a aba. Logo abaixo vêm
-              as duas coisas que se usam a CADA disputa: assistir agora e ver o
-              que aconteceu antes. Config do agente e healthcheck são ajuste —
-              feitos uma vez — e por isso desceram: com o VNC no fim da página,
-              quem enviava ao robô não chegava nele a tempo. */}
-          <AtivacaoChecklist />
+          {/* A ordem segue o USO e a URGÊNCIA, não a configuração.
+              O painel com prazo não pode exigir rolagem: a tela remota mostra o
+              robô enquanto ele trabalha, e ele pode terminar em segundos. Tudo
+              que ficasse acima dela — checklist inclusive — vira distância a
+              percorrer com o relógio correndo.
+              Sessões vem logo abaixo porque é a mesma pergunta ("o robô
+              funcionou?") respondida depois que a janela fechou.
+              Checklist, config e healthcheck são ajuste: consultados quando
+              algo está errado, não a cada disputa. */}
           <VncWebViewer abrirEm={pedidoDeTelaRemota} />
           <SessoesDoRobo />
+          <AtivacaoChecklist />
           <AgenteExternoConfig />
           <PortalHealthcheck />
           </>)}
