@@ -5,6 +5,10 @@ Começou como diagnóstico em 16/08/2026, sondando
 pendências foram fechadas — e as especificações continuam valendo como contrato
 para quem for reimplementar.
 
+> 📍 **Procurando o retrato, e não o histórico?** `docs/robo-de-lances.md` traz o
+> estado do robô e o muro de cada portal em uma página, com o que falta para
+> derrubá-lo. Este arquivo é o diário: o passo a passo, com comandos e datas.
+
 > ## ✅ Resolvido em produção em 02/09/2026
 >
 > As três pendências do agente foram implementadas **direto no código que roda
