@@ -12840,3 +12840,15 @@ anti-dupla-contagem de `contrato_custo_realizado`) e
 `despesas_indiretas_da_empresa(empresa, meses)` (base do rateio: a pagar sem
 vínculo de contrato, por competência). Acesso das duas funções restrito a admin
 da empresa e equipe financeiro — negado é exceção declarada, não vazio.
+
+## 2026-09-09 — Prorrogação de contrato derivado não consome a ATA — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000003_prorrogacao_nao_consome_ata.sql`
+
+`recalc_consumo_ata_pai` descontava só aditivos de preço; a prorrogação
+(arts. 106/107) ficava de fora e o 2º T.A. do 068/2025 entrou como saque novo
+da ATA-022/2024 (saldo −R$ 10.229.184 na tela). A exclusão agora usa o radical
+normalizado do alerta do art. 125 (`reequilibr|revisao|repactua|reajust|prorrogac`),
+alcançando o tipo novo e o legado. UPDATE no-op reaplicou o cálculo em todas as
+atas: ATA-022/2024 voltou a consumido = global = R$ 8.494.080 (saldo zero) e
+nenhuma ata ficou com consumo acima do global.
