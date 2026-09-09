@@ -31,6 +31,11 @@ type Row = {
   contrato_numero: string | null;
   orgao: string | null;
   empresa_id: string | null;
+  contrato_item_id: string | null;
+  quantidade: number | null;
+  valor_unitario: number | null;
+  uf: string | null;
+  municipio: string | null;
 };
 
 const KANBAN_CFG: Record<string, { label: string; color: string }> = {
@@ -63,7 +68,8 @@ export default function FinPedidosAFaturar() {
         .from('contrato_pedidos')
         .select(`
           id, numero_pedido, descricao, valor_total, data_pedido, status, pedido_id, contrato_id,
-          contratos!inner(numero_contrato, orgao_contratante, empresa_id)
+          contrato_item_id, quantidade, valor_unitario,
+          contratos!inner(numero_contrato, orgao_contratante, empresa_id, uf, municipio)
         `)
         .eq('contratos.empresa_id', empresaAtiva.id)
         .eq('nf_quitada', false)
@@ -85,6 +91,11 @@ export default function FinPedidosAFaturar() {
         contrato_numero: r.contratos?.numero_contrato ?? null,
         orgao: r.contratos?.orgao_contratante ?? null,
         empresa_id: r.contratos?.empresa_id ?? null,
+        contrato_item_id: r.contrato_item_id ?? null,
+        quantidade: r.quantidade ?? null,
+        valor_unitario: r.valor_unitario ?? null,
+        uf: r.contratos?.uf ?? null,
+        municipio: r.contratos?.municipio ?? null,
       }));
 
       // 2. Fetch kanban status for linked pedidos
@@ -125,7 +136,61 @@ export default function FinPedidosAFaturar() {
 
   useEffect(() => { load(); }, [empresaAtiva?.id]);
 
-  const handleFaturar = async () => {
+  // ——— Fase D: do faturamento à NF-e de saída ———————————————————————————
+  // O pedido revisado vira Conta a Receber AQUI e, se pedido, segue direto ao
+  // Emissor com os dados carregados (item, quantidade, preço e os fiscais do
+  // produto do contrato). A entrega é por sessionStorage: o Emissor lê a
+  // chave uma vez e a apaga — recarregar a página não re-preenche fantasma.
+  const encaminharParaEmissor = async (r: Row) => {
+    let fiscal: Record<string, unknown> = {};
+    let descricaoItem = r.descricao || `Pedido ${r.numero_pedido}`;
+    try {
+      if (r.contrato_item_id) {
+        const { data: ci } = await (supabase.from('contrato_itens') as any)
+          .select('descricao, unidade, produto_id')
+          .eq('id', r.contrato_item_id).maybeSingle();
+        if (ci?.descricao) descricaoItem = ci.descricao;
+        if (ci?.produto_id) {
+          const { data: p } = await supabase.from('produtos')
+            .select('codigo, descricao, unidade, ncm, cfop, cst_icms, csosn, p_icms, p_pis, p_cofins, origem_mercadoria')
+            .eq('id', ci.produto_id).maybeSingle();
+          if (p) {
+            fiscal = {
+              codigo: (p as any).codigo || '',
+              ncm: (p as any).ncm || '',
+              cfop: (p as any).cfop || '',
+              unidade: (p as any).unidade || ci.unidade || 'UN',
+              cst_csosn: (p as any).csosn || (p as any).cst_icms || '',
+              aliq_icms: Number((p as any).p_icms) || 0,
+              aliq_pis: Number((p as any).p_pis) || 0,
+              aliq_cofins: Number((p as any).p_cofins) || 0,
+              origem: (p as any).origem_mercadoria || '0',
+            };
+            if ((p as any).descricao) descricaoItem = (p as any).descricao;
+          }
+        }
+      }
+    } catch { /* fiscais são conveniência — o emissor deixa editar tudo */ }
+
+    sessionStorage.setItem('praefectus_emissor_prefill', JSON.stringify({
+      origem: 'contrato_pedido',
+      contrato_pedido_id: r.id,
+      numero_pedido: r.numero_pedido,
+      contrato_numero: r.contrato_numero,
+      orgao: r.orgao,
+      uf: r.uf,
+      municipio: r.municipio,
+      itens: [{
+        descricao: descricaoItem,
+        quantidade: Number(r.quantidade) || 1,
+        valor_unitario: Number(r.valor_unitario) || r.valor_total,
+        ...fiscal,
+      }],
+    }));
+    navigate('/financeiro/emissor_nfe');
+  };
+
+  const handleFaturar = async (emitirNfe = false) => {
     if (!faturando || !contaId) return;
     setSaving(true);
     try {
@@ -182,10 +247,12 @@ export default function FinPedidosAFaturar() {
       }
 
       toast.success(`${nParcelas} conta(s) a receber criada(s) no Financeiro.`);
+      const pedidoFaturado = faturando;
       setFaturando(null);
       setContaId('');
       setParcelas('1');
       load();
+      if (emitirNfe) await encaminharParaEmissor(pedidoFaturado);
     } catch {
       toast.error('Erro inesperado ao faturar.');
     } finally {
@@ -361,13 +428,25 @@ export default function FinPedidosAFaturar() {
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
                   disabled={!contaId || saving}
-                  onClick={handleFaturar}
+                  onClick={() => handleFaturar(false)}
                 >
                   {saving
                     ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                     : <Check className="w-3.5 h-3.5 mr-1" />}
                   Gerar {parseInt(parcelas) > 1 ? `${parcelas} parcelas` : 'conta'}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!contaId || saving}
+                  onClick={() => handleFaturar(true)}
+                  title="Cria a conta a receber e abre o Emissor com os dados do pedido carregados"
+                >
+                  {saving
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    : <ExternalLink className="w-3.5 h-3.5 mr-1" />}
+                  Faturar e emitir NF-e
                 </Button>
               </div>
             </div>
