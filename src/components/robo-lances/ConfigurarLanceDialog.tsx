@@ -24,19 +24,16 @@ import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
+import { PORTAIS_ROBO } from '@/lib/robo/portais';
 
-const portaisDisponiveis = [
-  { id: 'pncp', nome: 'PNCP' },
-  { id: 'compras-gov', nome: 'Compras Governamentais' },
-  { id: 'bll', nome: 'BLL Compras' },
-  { id: 'licitanet', nome: 'Licitanet' },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
-  { id: 'bnc', nome: 'Bolsa Nacional de Compras' },
-  { id: 'banparanet', nome: 'Banparanet (PA)' },
-  { id: 'bec-sp', nome: 'BEC/SP' },
-  { id: 'compras-rj', nome: 'Compras Públicas RJ' },
-];
+// A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
+// o despacho da sessao. Ela existia aqui e, diferente, no CredenciaisPortalForm.
+//
+// ATENCAO: o `value` do SelectItem abaixo continua sendo o NOME, nao o id, para
+// nao quebrar a exibicao das disputas ja gravadas. Quem consome traduz com
+// `idDoPortal()`. Corrigir na origem exige normalizar tambem o carregamento do
+// formulario — fica registrado como pendencia.
+const portaisDisponiveis = PORTAIS_ROBO;
 
 export type DisputeItem = {
   id: string;
