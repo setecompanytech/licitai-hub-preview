@@ -48,6 +48,8 @@ type ContratoMeta = {
   tipo_documento: 'contrato' | 'ata_srp' | string;
   ata_srp_id: string | null;
   tipo_estrutura?: 'itens' | 'lotes' | string | null;
+  valor_global?: number | null;
+  valor_consumido?: number | null;
 };
 
 /** Chave de agrupamento para identificar o mesmo item físico entre versões */
@@ -173,8 +175,14 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const itensExibidos = consolidado ? itensMesclados : itens;
   const qtdVigenteDe = (i: ContratoItem) => (Number(i.quantidade_consumida) || 0) + (Number(i.saldo_quantitativo) || 0);
   const saldoFinanceiroDe = (i: ContratoItem) => (Number(i.saldo_quantitativo) || 0) * (Number(i.valor_unitario) || 0);
-  const totalContratadoEfetivo = itensMesclados.reduce((s, i) => s + qtdVigenteDe(i) * (Number(i.valor_unitario) || 0), 0);
   const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + saldoFinanceiroDe(i), 0);
+  // Total efetivo = consumido REAL (R$ dos pedidos, ao preço de cada época) +
+  // saldo × preço vigente. Medir vigente × preço atual superfatura o
+  // reequilíbrio concedido no MEIO do consumo: a parte já consumida foi paga
+  // ao preço antigo e não pode ser reavaliada ao novo — acusaria divergência
+  // falsa contra o Valor Global (09/09).
+  const totalContratadoEfetivo =
+    (Number(meta?.valor_consumido) || 0) + totalSaldoEfetivo;
 
   // ——— Camadas por Situação (Contrato Original × cada termo aditivo) ———
   // O saldo do contrato é um pote único: pedidos NÃO são carimbados por termo.
@@ -214,7 +222,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global, valor_consumido').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
