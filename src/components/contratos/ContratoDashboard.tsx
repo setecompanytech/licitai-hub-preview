@@ -561,10 +561,17 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Desvio</p>
+              {/* O sinal matemático lia-se como prejuízo ("por que menos 25%?",
+                  09/09). O número diz o afastamento; a palavra diz o LADO —
+                  economia ou estouro — e ninguém precisa decifrar convenção. */}
               <p className={`font-semibold tabular-nums ${
                 desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive' : 'text-success'
               }`}>
-                {desvioDeCusto === null ? '—' : `${desvioDeCusto > 0 ? '+' : ''}${desvioDeCusto.toFixed(1)}%`}
+                {desvioDeCusto === null
+                  ? '—'
+                  : Math.abs(desvioDeCusto) < 0.05
+                    ? 'no previsto'
+                    : `${Math.abs(desvioDeCusto).toFixed(1)}% ${desvioDeCusto > 0 ? 'acima do previsto (estouro)' : 'abaixo do previsto (economia)'}`}
               </p>
             </div>
           </div>
