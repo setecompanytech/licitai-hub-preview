@@ -1404,7 +1404,7 @@ class PortalComprasPortal extends BasePortal {
     // OPERACAO, que redireciona para um Keycloak. VERIFICADO em 2026-09-08
     // com login real: abriu o Painel de Operacoes e o cabecalho passou a
     // exibir "Voce esta logado como: <nome> - <CNPJ>".
-    this.baseUrl = 'https://operacao.portaldecompraspublicas.com.br/18';
+    this.baseUrl = 'https://operacao.portaldecompraspublicas.com.br/4';
     this.loginUrl = 'https://operacao.portaldecompraspublicas.com.br/18/loginext/';
   }
 
@@ -1446,8 +1446,51 @@ class PortalComprasPortal extends BasePortal {
   }
 
   async navegarParaDisputa(edital) {
-    await this.page.goto(\`\${this.baseUrl}/disputa?edital=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+    // O portal NAO enderecа processo pelo numero do edital. Cada um tem uma
+    // chave interna (\`ttCD_CHAVE\`), e a URL montada a mao —
+    // \`/disputa?edital=X\` — devolvia 404 em qualquer caso. Verificado em
+    // 08/09/2026 pelo VNC: o robo logava e ficava parado num 404.
+    //
+    // O caminho real: abrir "Seus Processos", achar a linha cujo NUMERO bate
+    // com o edital e seguir o link dela.
+    const lista = \`\${this.baseUrl}/SeusPregoes/\`;
+    console.log(\`📋 Procurando "\${edital}" em \${lista}\`);
+    await this.page.goto(lista, { waitUntil: 'networkidle2', timeout: 45000 });
     await new Promise((r) => setTimeout(r, 3000));
+
+    const href = await this.page.evaluate((alvo) => {
+      const limpa = (t) => (t || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const buscado = limpa(alvo);
+      for (const tr of document.querySelectorAll('table tr')) {
+        const link = tr.querySelector('a[href*="DadosPregao"]');
+        if (!link) continue;
+        if (limpa(tr.innerText).includes(buscado)) return link.getAttribute('href');
+      }
+      return null;
+    }, edital);
+
+    if (!href) {
+      // Erro explicito em vez de navegar para lugar nenhum: sem isto o robo
+      // seguiria para o loop de lances olhando uma pagina que nao e a disputa.
+      throw new Error(
+        \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas. \` +
+        \`Confira o numero do edital, ou se a empresa esta inscrita nesse processo.\`
+      );
+    }
+
+    const url = href.startsWith('http') ? href : \`https://operacao.portaldecompraspublicas.com.br\${href}\`;
+    console.log(\`📋 Processo encontrado: \${url}\`);
+    await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    await new Promise((r) => setTimeout(r, 3000));
+    await this.screenshot('processo');
+
+    // O plano inativo bloqueia a disputa mesmo com o processo aberto. Dizer
+    // isso aqui evita depurar seletor de lance quando o problema e comercial.
+    const semPlano = await this.page.evaluate(() =>
+      /nao tem um plano ativo|não tem um plano ativo/i.test(document.body.innerText));
+    if (semPlano) {
+      console.log('⚠️  Conta SEM PLANO ATIVO no portal — participacao em disputa bloqueada pelo proprio portal');
+    }
   }
 
   async lerMelhorLance() {
