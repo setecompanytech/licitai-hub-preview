@@ -48,6 +48,7 @@ import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
+import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
 import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -418,6 +419,21 @@ export default function RoboLances() {
    */
   const [pedidoDeTelaRemota, setPedidoDeTelaRemota] = useState(0);
 
+  /**
+   * Existe robô DE PÉ nesta disputa agora?
+   *
+   * O freio ficava visível o tempo todo, e isso e um defeito proprio: botao
+   * vermelho sem nada para parar treina a pessoa a ignora-lo — exatamente o
+   * contrario do que ele existe para fazer. E, aparecendo sempre, ele competia
+   * em destaque com a acao principal da tela.
+   *
+   * Quem sabe se ha sessao viva e o agente, e e a ele que se pergunta.
+   */
+  const { data: estadoDoRobo } = usePedidosDoRobo();
+  const sessaoVivaDesta = (estadoDoRobo?.sessoesVivas || []).find(
+    (sv) => sv.edital === selectedLance?.edital,
+  );
+
   const irParaTelaRemota = () => {
     setActiveMainTab('agente');
     setPedidoDeTelaRemota((n) => n + 1);
@@ -775,8 +791,16 @@ export default function RoboLances() {
             ) : (
               <>
                 {/* ── Dispute Header Bar ── */}
-                <div className="border-b border-border bg-card px-4 py-2.5 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-3">
+                {/* `justify-between` SEM gap deixava os dois grupos se
+                    encostarem quando o conteudo crescia — foi o que aconteceu
+                    ao trazer o freio de volta: o botao vermelho colou no selo
+                    "N1 — Assistente".
+
+                    `flex-wrap` faz a barra quebrar em duas linhas em vez de
+                    espremer o titulo, e `shrink-0` no grupo de acoes garante
+                    que quem cede espaco e o texto, nao o botao. */}
+                <div className="border-b border-border bg-card px-4 py-2.5 flex items-center justify-between gap-x-3 gap-y-2 flex-wrap shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div>
                       <h2 className="text-sm font-bold flex items-center gap-2">
                         {selectedLance.edital}
@@ -799,8 +823,9 @@ export default function RoboLances() {
                       N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO.
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO — mas
+                        depende de haver o que frear.
                         Ele ficava escondido atrás de `nivelAutomacao >= 2`, sob
                         a premissa de que N1 é assistente e não age sozinho.
                         Isso deixou de valer quando o botão "Enviar ao robô" foi
@@ -809,9 +834,9 @@ export default function RoboLances() {
                         Em 09/09/2026 uma sessão travada teve que ser encerrada
                         por `curl` na VPS, porque a tela não oferecia parada.
                         Quem consegue disparar tem que conseguir parar. */}
-                    {selectedLance.status !== 'encerrado' && (
+                    {sessaoVivaDesta && (
                       <KillSwitchButton
-                        sessaoId={undefined}
+                        sessaoId={sessaoVivaDesta.sessao_id}
                         licitacaoId={selectedLance.licitacaoId}
                         onParada={handleParadaEmergencial}
                         disabled={paradaEmergencial}

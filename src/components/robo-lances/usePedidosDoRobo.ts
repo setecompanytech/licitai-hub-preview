@@ -31,10 +31,19 @@ export type DesfechoDoRobo = {
   em: string;
 };
 
+/** Uma sessão que o agente diz estar de pé AGORA. */
+export type SessaoViva = {
+  sessao_id: string;
+  status: string;
+  portal_id: string;
+  edital: string;
+};
+
 type Saude = {
   agentes?: Array<{
     aguardando_humano?: PedidoDoRobo[] | null;
     desfechos_humano?: DesfechoDoRobo[] | null;
+    sessoes?: SessaoViva[] | null;
   }>;
 };
 
@@ -52,6 +61,13 @@ export function usePedidosDoRobo() {
       return {
         pedidos: agentes.flatMap((a) => a.aguardando_humano || []),
         desfechos: agentes.flatMap((a) => a.desfechos_humano || []),
+        // Só o que está DE PÉ. O /health devolve o histórico recente da
+        // memória do agente junto, e contar as encerradas ofereceria freio
+        // para o que já parou — que treina a pessoa a ignorar o botão
+        // vermelho, o oposto do que ele existe para fazer.
+        sessoesVivas: agentes
+          .flatMap((a) => a.sessoes || [])
+          .filter((s) => s.status === 'ativo' || s.status === 'enviando'),
       };
     },
   });
