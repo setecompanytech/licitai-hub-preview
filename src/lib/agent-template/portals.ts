@@ -1693,6 +1693,16 @@ class PortalComprasPortal extends BasePortal {
     //
     // O caminho real: abrir "Seus Processos", achar a linha cujo NUMERO bate
     // com o edital e seguir o link dela.
+    // O estado da conta so existe no DashBoard, e daqui a pouco saimos dele.
+    // Lido agora, serve para explicar a falha la embaixo em vez de mandar o
+    // operador conferir o numero do edital quando o problema e outro.
+    const conta = await this.estadoDaConta().catch(() => null);
+    if (conta && conta.impedida) {
+      console.log(\`⚠️  CONTA INATIVA no portal: \${conta.resumo}\`);
+    }
+
+    // VERIFICADO em 09/09/2026: este e o destino do link "Seus Processos" no
+    // menu real do portal. Nao deduzir de novo.
     const lista = \`\${this.baseUrl}/SeusPregoes/\`;
     console.log(\`📋 Procurando "\${edital}" em \${lista}\`);
     await this.page.goto(lista, { waitUntil: 'networkidle2', timeout: 45000 });
@@ -1712,6 +1722,18 @@ class PortalComprasPortal extends BasePortal {
     if (!href) {
       // Erro explicito em vez de navegar para lugar nenhum: sem isto o robo
       // seguiria para o loop de lances olhando uma pagina que nao e a disputa.
+      // Conta impedida e a explicacao mais provavel de uma lista vazia, e
+      // dizer "confira o numero do edital" nesse caso manda procurar defeito
+      // onde nao ha. A causa comercial vem primeiro, quando existe.
+      if (conta && conta.impedida) {
+        const err = new Error(
+          \`A conta do Portal de Compras Publicas esta impedida de operar: \${conta.resumo}. \` +
+          \`Nenhum processo aparece em "Seus Processos" enquanto o acesso estiver assim — \` +
+          \`renove o plano no portal e tente de novo.\`
+        );
+        err.semRetry = true; // conta vencida continua vencida na terceira tentativa
+        throw err;
+      }
       throw new Error(
         \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas. \` +
         \`Confira o numero do edital, ou se a empresa esta inscrita nesse processo.\`
@@ -1726,11 +1748,41 @@ class PortalComprasPortal extends BasePortal {
 
     // O plano inativo bloqueia a disputa mesmo com o processo aberto. Dizer
     // isso aqui evita depurar seletor de lance quando o problema e comercial.
-    const semPlano = await this.page.evaluate(() =>
-      /nao tem um plano ativo|não tem um plano ativo/i.test(document.body.innerText));
-    if (semPlano) {
-      console.log('⚠️  Conta SEM PLANO ATIVO no portal — participacao em disputa bloqueada pelo proprio portal');
+    const contaNoProcesso = await this.estadoDaConta().catch(() => null);
+    if (contaNoProcesso && contaNoProcesso.impedida) {
+      console.log(\`⚠️  Conta impedida no portal (\${contaNoProcesso.resumo}) — participacao em disputa bloqueada pelo proprio portal\`);
     }
+  }
+
+  /**
+   * O que o portal diz sobre a propria conta, lido no DashBoard.
+   *
+   * Havia uma verificacao parecida, mas ela rodava DEPOIS de abrir o processo,
+   * e lia o banner amarelo do portal ("nao tem um plano ativo") — que existe
+   * mesmo, fotografado em 08/09/2026 sobre os Dados do Processo 002/2026. O
+   * buraco: quando o processo NAO e encontrado, ela nunca chega a rodar, e a
+   * unica frase que sobra manda conferir o numero do edital.
+   *
+   * Esta le no DashBoard, antes de sair dele, e cobre as duas redacoes — a do
+   * banner e a da tabela "Situacao Cadastral", que em 09/09/2026 mostrava
+   * "Inativo", validade 17/04/2026, "Atencao: seu acesso esta vencido." e
+   * "Creditos 0".
+   */
+  async estadoDaConta() {
+    return await this.page.evaluate(() => {
+      const t = (document.body.innerText || '').replace(/\\s+/g, ' ');
+      const bloco = (t.match(/Situa[cç][aã]o Cadastral.{0,240}/i) || [''])[0].trim();
+      const inativo = /Situa[cç][aã]o Cadastral.{0,120}?\\bInativo\\b/i.test(t);
+      const vencido = /acesso est[aá] vencido/i.test(t);
+      const semPlano = /n[aã]o tem um plano ativo/i.test(t);
+      return {
+        inativo,
+        vencido,
+        semPlano,
+        impedida: inativo || vencido || semPlano,
+        resumo: bloco || (vencido ? 'acesso vencido' : 'plano inativo'),
+      };
+    });
   }
 
   async lerMelhorLance() {

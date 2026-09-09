@@ -35,7 +35,7 @@ com uma exceção — o último elo, o lance, que está travado de propósito (�
 | Agente aceita e abre o Chrome | ✅ | `/health` mostra as sessões; 8 registradas hoje |
 | Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite |
 | VNC mostra a tela ao vivo | ✅ | janela ocupa 100% de 1920×1080 desde 09/09 |
-| Navegar até a disputa | ⬜ | `navegarParaDisputa` ainda usa URL suposta |
+| Navegar até a disputa | ✅ | processo **002/2026** achado em "Seus Processos" e aberto, 08/09 — falta só repetir com um edital em sessão |
 | Ler a tela de lances | ⬜ | depende de pregão ao vivo |
 | Dar lance | 🔒 | travado — ver §2 |
 
@@ -95,7 +95,7 @@ Os 23 portais da interface, agrupados pelo que realmente impede cada um.
 
 | Grupo | Portais | O que falta |
 | --- | --- | --- |
-| **Entra hoje** | Portal de Compras Públicas | edital real + permissão expressa |
+| **Entra e navega hoje** | Portal de Compras Públicas | edital em sessão; plano renovado para disputar |
 | **Falta um dado do cliente** | Compras.gov, BLL, BNC | `.pfx` / senha numérica |
 | **Muro técnico do portal** | Licitações-e, LicitaNet | decisão de arquitetura |
 | **Não tem o que operar** | PNCP | é mural, não pregão — ver §4.6 |
@@ -121,13 +121,37 @@ E a distinção que mais importa na hora de estimar prazo:
 `#username`, `#password`, `#kc-login`, em
 `operacao.portaldecompraspublicas.com.br/18/loginext/`.
 
-Três peculiaridades, e nenhuma é técnica:
+E navega: em 08/09 achou e abriu um processo real. As peculiaridades que sobram
+são de conta e de regulamento, não de código:
 
-**A URL final diz `NaoAssinante`.** Depois de entrar, o robô parou em
-`.../18/4/NaoAssinante/DashBoard/`. Isso sugere conta com acesso limitado —
-possivelmente só consulta, sem participar de disputa. Combina com o aviso que o
-Rafael recebeu do próprio portal ("você ainda não tem um plano ativo"). **Ainda
-não confirmado.**
+**A conta está com o acesso VENCIDO — confirmado em 09/09/2026.** Uma sonda
+levou o robô até o DashBoard e fotografou a tabela "Situação Cadastral":
+
+```
+Situação   Validade     Validade em Dias                Créditos   Ação
+Inativo    17/04/2026   Atenção: seu acesso está vencido.   0      [Administre seu Plano]
+```
+
+Logo abaixo, um bloco **"Processo de Liberação — Verifique as Pendências"**.
+
+Isso encerra a dúvida do `NaoAssinante` que aparecia na URL: **não é limitação
+de perfil, é assinatura vencida desde 17/04/2026, com zero créditos.** A
+documentação da empresa, por sua vez, está **homologada desde 23/05/2024** — o
+que falhou foi só a mensalidade.
+
+**Mas conta vencida NÃO impede navegar.** Isto precisa ficar registrado porque a
+conclusão contrária é tentadora e está errada: em 08/09/2026 o robô achou o
+processo **002/2026** em "Seus Processos" e abriu os Dados do Processo (Conselho
+Regional de Fisioterapia, Belém/PA), com a conta já nesse estado. Sobre aquela
+tela havia o banner amarelo *"Notamos que você ainda não tem um plano ativo aqui
+no Portal!"* e a situação *"Encerrado para Operação"*.
+
+Ou seja, o plano vencido bloqueia **operar**, não **listar**. Um edital real
+seria encontrado hoje mesmo.
+
+Fotos: `capturas-robo/20260909-120301-portal-compras-sonda-dashboard.png` (a
+tabela da conta) e `capturas-robo/20260908-232234-portal-compras-processo.png`
+(o processo aberto).
 
 **O regulamento nomeia robôs, e proíbe sem permissão.** Não é interpretação
 nossa; está escrito:
@@ -147,10 +171,27 @@ depois.
 parceiro é "Consulta pública de processos". Consulta não dá lance. Se existe uma
 API de **lance**, ela não está publicada — e essa é a pergunta aberta de §5.
 
-**O que falta:** um edital real onde a empresa esteja cadastrada. Sem ele,
-`navegarParaDisputa` continua com URL suposta e `souLider()` não pode ser
-escrito. Os testes com `TESTE-001` chegam ao portal e param ali — as 8 sessões de
-hoje no `/health` estão todas em `erro` por esse motivo, e é o resultado correto.
+**A navegação está certa — isso foi verificado, não deduzido.** A mesma sonda
+listou os 102 links do menu e achou `"Seus Processos" -> /4/SeusPregoes/`, que é
+exatamente o caminho que o módulo já usava. A suspeita de que faltasse um
+prefixo (`/18/…`) estava errada: a URL pós-login é `/4/NaoAssinante/DashBoard/`,
+e o `baseUrl` de `/4` já cobre. **Não há nada a corrigir aqui.**
+
+**O que falta, e o que NÃO falta:**
+
+| | |
+| --- | --- |
+| Achar e abrir um processo | ✅ já funciona, mesmo com a conta vencida |
+| Um edital real em sessão | ⬜ **o próximo passo** — o `TESTE-001` falhou só por ser um número inventado |
+| Renovar o plano | ⬜ necessário para **disputar**, não para navegar |
+| `souLider()` | ⬜ exige pregão acontecendo E plano ativo |
+
+Uma correção saiu da sonda. O módulo detectava plano inativo lendo o banner
+amarelo — **depois** de abrir o processo. Quando o processo não é encontrado,
+essa verificação nunca chega a rodar, e a única frase que sobra manda "conferir
+o número do edital", apontando para o lugar errado. Agora `estadoDaConta()` lê a
+tabela "Situação Cadastral" no DashBoard, antes de sair dele, e cobre as duas
+redações — o banner e a tabela.
 
 ### 4.2 Compras.gov.br — falta o arquivo, e só
 
@@ -368,18 +409,19 @@ publicada do Portal de Compras Públicas é de **consulta**, somente leitura.
 
 | # | O que | De quem depende | Destrava |
 | --- | --- | --- | --- |
-| 1 | **`.pfx` A1 + senha** | cliente | Compras.gov — cadeia pronta, zero engenharia |
-| 2 | **Senha numérica** BLL e BNC | cliente | 2 portais — teste imediato, sem pregão |
-| 3 | **Edital real** onde a empresa esteja cadastrada | cliente | `navegarParaDisputa` e `souLider()` no Portal de Compras |
-| 4 | **Permissão expressa** nos privados | cliente | uso legítimo; protege a conta dele |
-| 5 | Resposta sobre a conta `NaoAssinante` | cliente | saber se aquela conta disputa ou só consulta |
+| 1 | **Edital real** onde a empresa esteja inscrita | cliente | o teste de navegação de ponta a ponta — funciona já, sem depender do plano |
+| 2 | **`.pfx` A1 + senha** | cliente | Compras.gov — cadeia pronta, zero engenharia |
+| 3 | **Senha numérica** BLL e BNC | cliente | 2 portais — teste imediato, sem pregão |
+| 4 | **Renovar o plano** do Portal de Compras Públicas (vencido em 17/04/2026) | cliente | disputar de verdade — e, com isso, o `souLider()` |
+| 5 | **Permissão expressa** nos privados | cliente | uso legítimo; protege a conta dele |
 | 6 | **Deploy dos 15 módulos** na VPS | nós | portais estaduais, incluindo o Pará |
 | 7 | Tirar o PNCP do seletor de disputa | nós | remove um portal que não pode funcionar |
 | 8 | **Decisão sobre o Licitações-e** | nós + cliente | o portal nº 1 — e o único com custo de infra |
 | 9 | `/sessao/iniciar` assíncrono (pendência 22) | nós | a chamada estoura antes de o robô terminar |
 
-Os itens 1 a 3 não têm engenharia nenhuma pela frente. É o cliente mandar, e
-testar no mesmo dia.
+Os itens 1 a 4 não têm engenharia nenhuma pela frente. O item 1 é o que rende
+mais rápido: a navegação já está provada, e um número real fecha a corrente até
+a tela da disputa — sem depender de renovação nem de pregão agendado.
 
 ---
 
