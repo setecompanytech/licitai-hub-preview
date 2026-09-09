@@ -886,15 +886,41 @@ function getCertConfig(cnpj) {
   return { mode: 'none' };
 }
 
+/**
+ * A tela virtual e a janela do Chrome precisam ter o MESMO tamanho.
+ *
+ * Estavam diferentes: o Xvfb em 1920x1080 e o Chrome em 1366x768. O navegador
+ * ocupava 71% de cada lado — metade da area — e o resto ficava preto. Como o
+ * noVNC encolhe o quadro INTEIRO para caber no painel, o que se via era uma
+ * janelinha no meio de uma moldura preta, e a conclusao natural era que o VNC
+ * estava com defeito.
+ *
+ * Uma variavel so define os dois, para nao voltarem a divergir. Quem mudar a
+ * resolucao do Xvfb no start-vnc.sh precisa mudar TELA_AGENTE junto.
+ */
+function dimensoesDaTela() {
+  const bruto = process.env.TELA_AGENTE || '1920x1080';
+  const partes = String(bruto).toLowerCase().split('x');
+  const largura = parseInt(partes[0], 10);
+  const altura = parseInt(partes[1], 10);
+  return {
+    largura: largura > 0 ? largura : 1920,
+    altura: altura > 0 ? altura : 1080,
+  };
+}
+
 async function launchBrowser(cnpj) {
   const cert = getCertConfig(cnpj);
+  const { largura, altura } = dimensoesDaTela();
 
   const args = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
     '--disable-gpu',
-    '--window-size=1366,768',
+    '--window-size=' + largura + ',' + altura,
+    // Sem posicao fixa a janela nasce deslocada e sobra faixa preta de um lado.
+    '--window-position=0,0',
   ];
 
   // Para certificado A3 via PKCS#11
@@ -905,11 +931,48 @@ async function launchBrowser(cnpj) {
   // Criar diretório de screenshots
   fs.mkdirSync('./logs/screenshots', { recursive: true });
 
+  /**
+   * MODO VISIVEL (HEADLESS=false): o navegador desenha na tela virtual :99, que
+   * o x11vnc publica e o nginx serve em /vnc/. E o que permite ASSISTIR o robo
+   * trabalhando pelo painel. Sem apontar o DISPLAY, um Chrome nao-headless nao
+   * acha tela nenhuma e morre no start.
+   *
+   * O padrao continua sendo headless: quem nao configurar nada mantem o
+   * comportamento antigo. Ligar a janela e um ato de configuracao.
+   */
+  const visivel = process.env.HEADLESS === 'false';
+  const display = process.env.DISPLAY || ':99';
+
   const browser = await puppeteer.launch({
-    headless: 'new',
+    headless: visivel ? false : 'new',
     args,
+    // Com janela de verdade, o viewport tem que SEGUIR a janela. Fixa-lo faria
+    // a pagina renderizar num retangulo menor dentro dela — exatamente o
+    // defeito que esta mudanca corrige.
+    defaultViewport: visivel ? null : { width: largura, height: altura },
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    env: visivel ? { ...process.env, DISPLAY: display } : process.env,
   });
+
+  console.log(visivel
+    ? '🖥️  Chrome VISIVEL em ' + display + ' a ' + largura + 'x' + altura + ' — acompanhe em /vnc/'
+    : '🕶️  Chrome headless a ' + largura + 'x' + altura);
+
+  // O certificado: dizer a verdade sobre ele, dos dois lados.
+  //
+  // Antes desta linha o log afirmava que o certificado NAO era apresentado —
+  // verdade ate 09/09/2026, e mentira depois que a base NSS e a policy passaram
+  // a existir. Mensagem fixa envelhece; perguntar ao modulo, nao.
+  try {
+    const estadoCert = require('./certificado').estado();
+    if (estadoCert.carregado) {
+      console.log('📜 Certificado pronto para ser apresentado: ' + estadoCert.titulares.join(', '));
+    } else if (cert.mode === 'a1') {
+      console.log('📜 Certificado no disco, mas ainda nao apresentavel: ' + estadoCert.motivo);
+    }
+  } catch (e) {
+    // Instalacao antiga do agente, sem o modulo. Nao e motivo para nao subir.
+  }
 
   const page = await browser.newPage();
 
@@ -918,7 +981,10 @@ async function launchBrowser(cnpj) {
     '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   );
 
-  await page.setViewport({ width: 1366, height: 768 });
+  // No modo visivel o viewport ja segue a janela (defaultViewport: null).
+  if (!visivel) {
+    await page.setViewport({ width: largura, height: altura });
+  }
 
   return { browser, page, cert };
 }
