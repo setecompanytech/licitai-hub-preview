@@ -12874,3 +12874,11 @@ compra (`fornecedor_id`, `pedido_id`, `itens` jsonb); o front do Compras
 migrou para a canônica: NF-e do webhook aparece no Compras pronta para
 "Lançar estoque", e a importação manual upserta pela chave (não duplica a
 que o webhook já trouxe). A legada fica órfã (nenhum código a referencia).
+
+## 2026-09-09 — Margem alvo por empresa (Fase B) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000006_margem_alvo_config.sql`
+
+Coluna `margem_alvo` (percentual transcrito 0–100, padrão 10, CHECK 0–90) em
+`financeiro_config_custos` — a margem líquida alvo usada pela precificação
+assistida na entrada de NF-e (preço = custo ÷ (1 − (trib + desp + alvo))).

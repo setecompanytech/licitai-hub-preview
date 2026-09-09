@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
+import { analisarParaMargem, precificarEntrada, situacaoDoPrecoContratado, type AnaliseMargemEmpresa } from '@/lib/financeiro/margem-sugerida';
 import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
@@ -134,6 +135,12 @@ export default function GestaoCompras() {
   // NF-e que JÁ está no acervo (chegou pelo webhook/importação do Financeiro)
   // e vai só lançar estoque: o salvar pula o insert e usa este id.
   const [nfeExistenteId, setNfeExistenteId] = useState<string | null>(null);
+  // Fase B: régua de precificação na entrada — carga tributária e despesas
+  // da DRE real + margem alvo da empresa; preço de contrato vigente por
+  // produto para o confronto sugerido × contratado.
+  const [margemInfo, setMargemInfo] = useState<{ analise: AnaliseMargemEmpresa; alvo: number } | null>(null);
+  const [precosContrato, setPrecosContrato] = useState<Map<string, { preco: number; numero: string }>>(new Map());
+
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState(false);
 
@@ -193,6 +200,47 @@ export default function GestaoCompras() {
   const [nfeDragging,    setNfeDragging]    = useState(false);
   const [nfePdfLoading,  setNfePdfLoading]  = useState(false);
   const [nfeStep,        setNfeStep]        = useState<1|2|3>(1);
+  useEffect(() => {
+    if (!nfeOpen || nfeStep !== 3 || !empresaAtiva?.id || margemInfo) return;
+    (async () => {
+      try {
+        const inicio = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+        const [lancRes, empRes, cfgTribRes, cfgCustosRes, ciRes] = await Promise.all([
+          (supabase as any).from('financeiro_lancamentos')
+            .select('natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre, natureza)')
+            .eq('empresa_id', empresaAtiva.id)
+            .in('tipo', ['a_receber', 'a_pagar'])
+            .in('status', ['realizado', 'conciliado'])
+            .gte('data_competencia', inicio),
+          supabase.from('empresas').select('regime_tributario').eq('id', empresaAtiva.id).maybeSingle(),
+          supabase.from('financeiro_config_tributaria').select('*').eq('empresa_id', empresaAtiva.id).maybeSingle(),
+          (supabase.from('financeiro_config_custos' as never) as any).select('margem_alvo').eq('empresa_id', empresaAtiva.id).maybeSingle(),
+          (supabase.from('contrato_itens') as any)
+            .select('produto_id, valor_unitario, contratos!inner(numero_contrato, data_fim, tipo_documento, excluido_em, empresa_id)')
+            .not('produto_id', 'is', null),
+        ]);
+        const analise = analisarParaMargem(
+          (lancRes.data as any[]) || [],
+          (empRes.data as { regime_tributario?: string | null } | null)?.regime_tributario,
+          (cfgTribRes.data as any) ?? null,
+        );
+        const alvoCfg = Number((cfgCustosRes.data as { margem_alvo?: number } | null)?.margem_alvo);
+        const hoje = today();
+        const mapa = new Map<string, { preco: number; numero: string }>();
+        for (const ci of (ciRes.data as any[]) || []) {
+          const c = ci.contratos;
+          if (!c || c.empresa_id !== empresaAtiva.id || c.excluido_em || c.tipo_documento !== 'contrato') continue;
+          if (c.data_fim && c.data_fim < hoje) continue;
+          if (ci.produto_id && Number(ci.valor_unitario) > 0) {
+            mapa.set(ci.produto_id, { preco: Number(ci.valor_unitario), numero: c.numero_contrato || '' });
+          }
+        }
+        setPrecosContrato(mapa);
+        setMargemInfo({ analise, alvo: Number.isFinite(alvoCfg) ? alvoCfg : 10 });
+      } catch { /* régua é apoio: sem ela o lançamento segue */ }
+    })();
+  }, [nfeOpen, nfeStep, empresaAtiva?.id, margemInfo]);
+
   const [nfeFornMatch,   setNfeFornMatch]   = useState<Fornecedor | null>(null);
   const [nfeCriarForn,   setNfeCriarForn]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1473,10 +1521,13 @@ export default function GestaoCompras() {
                     </div>
                     {m.incluir && (
                       <>
-                        <Select value={m.produtoId} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
+                        {/* value="" derruba o Radix (pitfall conhecido) — o
+                            "não registrar" vive num sentinel e volta a '' no
+                            estado, que é o que o salvar entende. */}
+                        <Select value={m.produtoId || '__skip__'} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v === '__skip__' ? '' : v } : x))}>
                           <SelectTrigger className="text-xs h-8"><SelectValue placeholder="— Não registrar no estoque —" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">— Não registrar no estoque —</SelectItem>
+                            <SelectItem value="__skip__">— Não registrar no estoque —</SelectItem>
                             {produtosAtivosParaSelect.map(pr => (
                               <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>
                             ))}
@@ -1488,6 +1539,41 @@ export default function GestaoCompras() {
                             value={m.novaNome}
                             onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
                         )}
+                        {margemInfo && m.item.v_un_com > 0 && (() => {
+                          // A régua da Fase B, item a item: do custo da NF ao
+                          // preço que sustenta a operação — e o confronto com
+                          // o que o contrato vigente paga por este produto.
+                          const s = precificarEntrada(m.item.v_un_com, {
+                            cargaTributariaPerc: margemInfo.analise.cargaTributariaPerc,
+                            despesaOperacionalPerc: margemInfo.analise.despesaOperacionalPerc,
+                            margemAlvoPerc: margemInfo.alvo,
+                          });
+                          if (s.precoMinimo == null && !s.inviavel) return null;
+                          const ref = m.produtoId && m.produtoId !== '__new__' ? precosContrato.get(m.produtoId) : undefined;
+                          const sit = ref ? situacaoDoPrecoContratado(ref.preco, s) : 'sem_referencia';
+                          return (
+                            <div className="text-xs rounded-md bg-muted/40 px-2 py-1.5 space-y-0.5">
+                              <p>
+                                Venda sugerida: <b>{s.precoSugerido != null ? fmtCurrency(s.precoSugerido) : '—'}</b>
+                                <span className="text-muted-foreground">
+                                  {s.precoMinimo != null ? ` (mínimo ${fmtCurrency(s.precoMinimo)})` : ''} · tributos {margemInfo.analise.cargaTributariaPerc.toFixed(1).replace('.', ',')}% + despesas {margemInfo.analise.despesaOperacionalPerc.toFixed(1).replace('.', ',')}% + alvo {margemInfo.alvo}% — {margemInfo.analise.regimeRotulo}
+                                </span>
+                              </p>
+                              {s.inviavel && (
+                                <p className="text-destructive">Tributos + despesas + margem alvo somam 100% ou mais — nenhum preço fecha; revise a margem alvo em Custos por Contrato.</p>
+                              )}
+                              {ref && sit === 'abaixo_minimo' && (
+                                <p className="text-destructive">⚠ O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — ABAIXO do mínimo: entregar é prejuízo. Caminho jurídico: reequilíbrio (art. 124, II, “d”).</p>
+                              )}
+                              {ref && sit === 'entre_minimo_e_sugerido' && (
+                                <p className="text-warning">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — cobre custos e tributos, mas fica abaixo da margem alvo.</p>
+                              )}
+                              {ref && sit === 'acima_sugerido' && (
+                                <p className="text-success">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} ✓ acima da venda sugerida.</p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </>
                     )}
                   </div>

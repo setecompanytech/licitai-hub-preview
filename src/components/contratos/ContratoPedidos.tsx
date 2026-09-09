@@ -1069,6 +1069,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
+  // ——— Trava do preço contratado (Fase B, 09/09) ————————————————————————
+  // Pedido é EXECUÇÃO do contrato: unitário divergente do item vinculado não
+  // finaliza — pede revisão. Se o preço mudou por reequilíbrio/reajuste, o
+  // caminho é atualizar o ITEM (Itens/Lotes) antes, e o pedido nasce certo.
+  // Tolerância de 0,5% para arredondamento de centavos. Empenho fica fora:
+  // ele AUTORIZA com o valor literal do documento, não consome item.
+  const precoForaDoContratado = (linhas: Array<{ descricao?: string | null; valor_unitario: string | number; contrato_item_id?: string | null }>): string | null => {
+    for (const l of linhas) {
+      if (!l.contrato_item_id) continue;
+      const item = itens.find(i => i.id === l.contrato_item_id);
+      const contratado = Number(item?.valor_unitario) || 0;
+      const vu = typeof l.valor_unitario === 'number' ? l.valor_unitario : parseFloat(String(l.valor_unitario)) || 0;
+      if (contratado > 0 && vu > 0 && Math.abs(vu - contratado) / contratado > 0.005) {
+        return `"${(l.descricao || 'item').slice(0, 60)}": unitário ${fmt(vu)} difere do contratado ${fmt(contratado)}. Revise o valor — e se o preço mudou por reequilíbrio/reajuste, atualize o item do contrato em Itens/Lotes antes de registrar o pedido.`;
+      }
+    }
+    return null;
+  };
+
   const handleSaveSingle = async () => {
     // A mesma bifurcação do upload, no lançamento à mão: quem escolhe "Empenho
     // Ordinário" no tipo do documento está registrando uma AUTORIZAÇÃO, e ela
@@ -1086,6 +1105,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
+
+    const travaPreco = precoForaDoContratado([{ descricao: form.descricao, valor_unitario: unit, contrato_item_id: form.contrato_item_id }]);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
 
     // Avisa e deixa seguir: há entrega legítima que estoura o saldo previsto —
     // reforço de empenho em andamento, aditivo em tramitação. Barrar seria
@@ -1295,6 +1317,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
 
     const itensSalvar = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
+
+    const travaPreco = precoForaDoContratado(itensSalvar);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
 
     // A mesma checagem tripla do lançamento avulso: contrato, item e cota do
     // empenho limitam a mesma entrega, e nenhum implica o outro.
@@ -1515,6 +1540,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (editingPedido.nf_quitada) { toast.error('Pedido com NF quitada não pode ser editado.'); return; }
     const qty = parseFloat(editForm.quantidade) || 0;
     const unit = parseFloat(editForm.valor_unitario) || 0;
+    const travaPreco = precoForaDoContratado([{ descricao: editForm.descricao, valor_unitario: unit, contrato_item_id: editForm.contrato_item_id }]);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
     setSavingEdit(true);
     const { error } = await supabase.from('contrato_pedidos').update({
       numero_pedido: editForm.numero_pedido,
