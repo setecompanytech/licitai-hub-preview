@@ -45,6 +45,7 @@ import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
+import { idDoPortal, nomeDoPortal } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -385,6 +386,81 @@ export default function RoboLances() {
     }
   };
 
+  /**
+   * Manda a disputa selecionada para o robô, de verdade.
+   *
+   * Até 08/09/2026 NADA na interface fazia isto. A edge function
+   * `enviar-sessao` existia, o agente tinha a rota `/sessao/iniciar`, e as duas
+   * pontas nunca se encontraram — "Iniciar disputa" apenas mudava a coluna
+   * `status` no banco. Testar o robô exigia SSH no servidor.
+   *
+   * Enviar NÃO significa dar lance: a lista `PORTAIS_COM_LANCE_LIBERADO` do
+   * agente está vazia, então a estratégia devolve "aguardar" em toda rodada. O
+   * robô entra, navega e lê — que é exatamente o que se quer observar agora.
+   */
+  const [enviandoAoRobo, setEnviandoAoRobo] = useState(false);
+
+  const handleEnviarAoRobo = async () => {
+    if (!selectedLance) return;
+
+    const portalId = idDoPortal(selectedLance.portal);
+    if (!portalId) {
+      toast.error(
+        `Portal "${selectedLance.portal}" não é um dos que o robô sabe operar.`,
+        { duration: 10000 },
+      );
+      return;
+    }
+
+    setEnviandoAoRobo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'robo-lances-webhook/enviar-sessao',
+        {
+          body: {
+            lance_config_id: selectedLance.id,
+            portal_id: portalId,
+            portal_nome: nomeDoPortal(selectedLance.portal),
+            edital: selectedLance.edital,
+            valor_referencia: selectedLance.valorReferencia,
+            valor_inicial: selectedLance.valorInicial,
+            valor_minimo: selectedLance.valorMinimo,
+            decremento_min: selectedLance.decrementoMin,
+            decremento_percentual: selectedLance.decrementoPercentual,
+            intervalo_segundos: selectedLance.intervaloSegundos,
+            max_lances: selectedLance.maxLances,
+          },
+        },
+      );
+
+      // A mensagem real do servidor, nunca um "erro ao enviar" genérico: a
+      // causa costuma ser credencial ausente ou agente fora do ar, e as duas
+      // têm conserto diferente.
+      const motivo = (data as { error?: string } | null)?.error || error?.message;
+      if (motivo) {
+        toast.error(motivo, { duration: 15000 });
+        return;
+      }
+
+      registrar(
+        'sessao_criada',
+        { portal: portalId, edital: selectedLance.edital, origem: 'botao_enviar_ao_robo' },
+        { licitacaoId: selectedLance.licitacaoId, nivelAutomacao: nivelAutomacao },
+      );
+
+      toast.success(
+        'Sessão enviada ao robô. Acompanhe pela aba Agente Cloud → tela remota.',
+        { duration: 12000 },
+      );
+    } catch (e) {
+      toast.error(`Não foi possível falar com o robô: ${(e as Error).message}`, {
+        duration: 15000,
+      });
+    } finally {
+      setEnviandoAoRobo(false);
+    }
+  };
+
   const handleEndDispute = async (resultado: 'venceu' | 'perdeu') => {
     if (!selectedLance) return;
 
@@ -659,6 +735,27 @@ export default function RoboLances() {
                       <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
                         ✓ Estratégia Autorizada
                       </Badge>
+                    )}
+
+                    {/* O botão que faltava. Fica FORA do menu "Ações" porque é
+                        a única coisa nesta tela que move o robô de verdade —
+                        escondê-lo atrás de um menu era parte do motivo de
+                        ninguém notar que ele não existia.
+
+                        Só o operador vê: quem tem papel de visualizador
+                        acompanha a disputa, não dispara sessão. */}
+                    {podeOperar && (
+                      <Button
+                        size="sm"
+                        onClick={handleEnviarAoRobo}
+                        disabled={enviandoAoRobo}
+                        className="text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
+                        title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
+                      >
+                        {enviandoAoRobo
+                          ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando…</>
+                          : <><Send className="w-3.5 h-3.5" /> Enviar ao robô</>}
+                      </Button>
                     )}
 
                     <DropdownMenu>
