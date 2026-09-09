@@ -62,6 +62,50 @@ export default function AtivacaoChecklist() {
     }
   };
 
+  /**
+   * Repete a entrega do certificado ao agente.
+   *
+   * O upload já tenta instalar sozinho. Este botão existe para o caso em que o
+   * agente estava fora do ar naquele momento — sem ele, a única saída seria
+   * gerar um novo link e pedir o arquivo de novo a quem já o mandou.
+   */
+  const [instalandoCert, setInstalandoCert] = useState(false);
+
+  const instalarNoAgente = async () => {
+    setInstalandoCert(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'robo-lances-webhook/instalar-certificado',
+        { body: {} },
+      );
+
+      // A causa real vem no corpo da resposta; `error.message` traz só
+      // "non-2xx status code", que não diz à pessoa o que fazer a seguir.
+      let motivo = (data as { motivo?: string } | null)?.motivo;
+      if (!motivo && error) {
+        const contexto = (error as { context?: Response }).context;
+        if (contexto && typeof contexto.json === 'function') {
+          const corpo = await contexto.json().catch(() => null);
+          motivo = (corpo as { motivo?: string } | null)?.motivo;
+        }
+        motivo = motivo || error.message;
+      }
+
+      if ((data as { instalado?: boolean } | null)?.instalado) {
+        toast.success('Certificado instalado no robô.');
+      } else {
+        toast.error(motivo || 'Não foi possível instalar o certificado no robô.', {
+          duration: 15000,
+        });
+      }
+      await verificarStatus();
+    } catch (err) {
+      toast.error((err as Error).message || 'Erro ao instalar o certificado');
+    } finally {
+      setInstalandoCert(false);
+    }
+  };
+
   const gerarNovoLink = async () => {
     if (!user || !empresaAtiva) return;
     setReenviando(true);
@@ -135,7 +179,13 @@ export default function AtivacaoChecklist() {
       online?: boolean;
       agentes?: Array<{ online?: boolean; erro?: string | null; versao?: string | null;
         capacidade?: { ram_total_mb?: number; max_sessoes?: number; slots_disponiveis?: number };
-        certificado?: { carregado?: boolean; path?: string; motivo?: string | null } | null }>;
+        // `titulares` são os certificados que o Chrome do agente consegue de
+        // fato apresentar — a única prova de que o .pfx saiu do Storage e virou
+        // capacidade real. Sem esse campo a tela só sabia que um arquivo subiu.
+        certificado?: {
+          carregado?: boolean; path?: string; motivo?: string | null;
+          titulares?: string[]; policy_ativa?: boolean; arquivo_no_disco?: boolean;
+        } | null }>;
     } | null = null;
     try {
       const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', { body: {} });
@@ -208,35 +258,49 @@ export default function AtivacaoChecklist() {
         setCertTokenId(null);
       }
 
-      // Duas fontes falavam do mesmo fato e discordavam: o registro de upload
-      // no banco dizia "faltando" enquanto o agente reportava o .pfx carregado
-      // na VPS. O que vale é o certificado estar onde ele é usado — no agente.
+      // ENVIAR O .PFX NÃO É INSTALAR O CERTIFICADO.
       //
-      // O agente respondia `carregado: true` olhando só se a variável CERT_PATH
-      // estava preenchida, nunca se o arquivo existia — a pasta certs/ estava
-      // vazia e esta linha ficava verde. Agora ele confere o arquivo e, quando
-      // não acha, diz onde procurou; esse `motivo` aparece aqui.
+      // Esta linha ficou verde por meses em cima de `certEnviado`, que só diz
+      // que o arquivo chegou ao Storage do Supabase. Nada o levava dali até a
+      // VPS, e o agente não tinha rota para recebê-lo: o certificado nunca era
+      // apresentado a portal nenhum. Pior que um verde inútil — este consumia
+      // uma ação cara da pessoa (pedir o certificado ao contador, pagar por
+      // ele) para não entregar nada.
+      //
+      // Quem manda agora é o agente, que responde `carregado: true` apenas
+      // quando as três condições valem: o arquivo, a chave na base NSS do
+      // Chrome e a policy de auto-seleção. O upload vira etapa intermediária,
+      // nunca conclusão.
       const certNoAgente = agenteVivo?.certificado?.carregado === true;
       const motivoCert = agenteVivo?.certificado?.motivo;
+      const titulares: string[] = agenteVivo?.certificado?.titulares || [];
 
       newItems.push({
         id: 'certificado',
         label: 'Certificado Digital',
-        descricao: certEnviado
-          ? 'Certificado recebido e vinculado à empresa'
-          : certNoAgente
-          ? `Instalado no agente${agenteVivo?.certificado?.path ? ` (${agenteVivo.certificado.path})` : ''} — envie por aqui para o sistema também versionar e alertar o vencimento`
-          : motivoCert
-          ? `Ausente no agente: ${motivoCert}. Sem ele o login por certificado falha antes de qualquer portal`
+        descricao: certNoAgente
+          ? `Instalado no robô e pronto para ser apresentado aos portais${titulares.length ? ` — ${titulares.join(', ')}` : ''}`
+          : certEnviado
+          ? `Arquivo recebido, mas o robô ainda não consegue apresentá-lo${motivoCert ? `: ${motivoCert}` : ''}. Use "Instalar no robô".`
           : tokenPendente
-          ? 'Link de upload enviado — aguardando envio do certificado'
-          : 'Envie o certificado digital (.pfx) para autenticação nos portais',
-        status: certEnviado || certNoAgente ? 'ok' : tokenPendente ? 'erro' : 'pendente',
+          ? 'Link de upload enviado — aguardando o envio do certificado'
+          : 'Envie o certificado digital A1 (.pfx). O A3, de token ou cartão, não serve: a chave não sai do hardware.',
+        // Só o agente decide o verde. `certEnviado` sozinho vira atenção, não
+        // conclusão — é exatamente o estado "o arquivo subiu e não serve".
+        status: certNoAgente ? 'ok' : certEnviado || tokenPendente ? 'erro' : 'pendente',
         icon: Award,
-        acao: certEnviado
+        acao: certEnviado && !certNoAgente
+          ? () => instalarNoAgente()
+          : certNoAgente
           ? () => setShowInvalidar(true)
           : () => setShowReenvio(true),
-        acaoLabel: certEnviado ? 'Substituir' : tokenPendente ? 'Reenviar link' : 'Enviar certificado',
+        acaoLabel: certEnviado && !certNoAgente
+          ? 'Instalar no robô'
+          : certNoAgente
+          ? 'Substituir'
+          : tokenPendente
+          ? 'Reenviar link'
+          : 'Enviar certificado',
       });
     }
 

@@ -38,7 +38,7 @@ para quem for reimplementar.
 | 17 | **VNC servia tela vazia** — x11vnc morto e pm2 dizendo "online" | agente | ✅ **resolvido em 08/09** — ver seção 11 |
 | 18 | **Chrome era headless** — nada para o VNC mostrar | agente | ✅ **resolvido em 08/09** — ver seção 11 |
 | 19 | Portas 5900 e 6080 abertas na internet, x11vnc sem senha | agente | ✅ **resolvido em 08/09** — ver seção 11 |
-| 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ❌ **aberto** — ver seção 11 |
+| 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ✅ **resolvido em 09/09** — ver seção 15 |
 | 21 | `browser.js` e `start-vnc.sh` não existem no template do repo | template | ❌ **aberto** — ver seção 11 |
 | 22 | `/sessao/iniciar` só responde no fim da sessão — a chamada estoura antes | agente | ❌ **aberto** — ver seção 13 |
 | 23 | **Licitações-e exige o Módulo de Segurança do BB** — o login por Chave J não é automatizável como está | agente | ❌ **aberto** — ver seção 14 |
@@ -972,3 +972,103 @@ this.loggedIn = true;          // sem verificar nada
 
 Com o domínio errado, isso escreveria "✅ Login realizado" numa página de erro.
 O novo falha alto. Não entra — o muro do 14.1 continua lá —, mas para de mentir.
+
+---
+
+## 15. O certificado que finalmente chega ao portal — 09/09/2026
+
+A pendência 20 estava aberta desde 08/09 com o diagnóstico certo e a extensão
+errada. O certificado não era apresentado — mas a causa não era uma, eram
+**quatro**, empilhadas, e cada uma sozinha bastaria para o resultado ser zero.
+
+### O que estava quebrado
+
+| # | Elo | Estado |
+| --- | --- | --- |
+| 1 | A senha do `.pfx` | **descartada** — o formulário exigia, validava e jogava fora |
+| 2 | O arquivo → VPS | **não existia** — subia para o Storage e parava lá |
+| 3 | O agente receber | **não existia** — nenhuma rota `/certificado` |
+| 4 | O Chrome apresentar | **não existia** — sem base NSS, sem policy |
+
+E, coroando: a tela ficava **verde** ao fim do passo que funcionava (o upload),
+declarando pronto um caminho que não tinha os outros três. Este é o pior tipo de
+verde já encontrado neste projeto, porque consumia uma ação cara e real da
+pessoa — pedir o certificado ao contador, pagar por ele, enviá-lo — para não
+entregar nada.
+
+### O que foi provado antes de escrever código
+
+Nenhuma linha foi escrita antes de o mecanismo funcionar à mão, com um
+certificado autoassinado de teste:
+
+```
+pk12util -d sql:/root/.pki/nssdb -i teste.pfx -W ...
+  → PKCS12 IMPORT SUCCESSFUL, com chave privada
+servidor HTTPS local com requestCert:true
+  → CLIENTE=teste-mtls ORG=Praefectus Teste
+```
+
+**O Chrome apresentou o certificado sozinho, sem diálogo.** Só então o código foi
+escrito.
+
+**A descoberta que teria custado um dia:** o caminho da policy **não** é
+`/etc/opt/chrome/`. O binário que o Puppeteer baixa é o *Chrome for Testing*, e
+`strings` no executável mostra um único caminho:
+
+```
+/etc/opt/chrome_for_testing/policies
+```
+
+Configurar na pasta padrão teria deixado a policy num diretório que este Chrome
+nunca lê — e o sintoma seria "não funciona", sem pista.
+
+### O defeito que só apareceu ao rodar
+
+A primeira versão de `estado()` lia apenas `certutil -K` (chaves privadas). Ao
+remover o certificado de teste com `certutil -D`, o estado continuou dizendo
+**instalado** — porque `-D` apaga o certificado e **deixa a chave órfã**.
+
+Duas correções: `estado()` passou a cruzar `-L` (certificados) com `-K`
+(chaves), e a substituição usa `-F`, que remove os dois. Quatro testes em
+`src/test/agente-template.test.ts` trancam isso, carregando o módulo com o
+`child_process` trocado.
+
+### O que existe agora
+
+- **`src/certificado.js`** no agente: grava o `.pfx`, importa na base NSS que o
+  Chrome já usa (`~/.pki/nssdb`) e escreve a policy de auto-seleção. Toda
+  chamada a `certutil`/`pk12util` fecha o stdin — sem isso eles pedem senha num
+  terminal inexistente e entram em laço infinito de "Invalid password".
+- **`POST /certificado`** no agente, autenticado. Senha errada devolve a razão
+  real (`SEC_ERROR_BAD_PASSWORD`), não um erro genérico.
+- **`_shared/certificado-agente.ts`**: Storage → decifra a senha → entrega ao
+  agente. O upload chama sozinho; o Checklist tem "Instalar no robô" para
+  repetir quando o agente estiver fora do ar.
+- **`senha_cifrada`** em `cert_upload_tokens`, com a mesma cifra das senhas de
+  portal (chave própria, não a service role).
+- **`/health` honesto**: `carregado` só é `true` com arquivo, chave na base NSS
+  **e** policy. Antes bastava a variável estar preenchida; depois, o arquivo
+  existir. Nenhum dos dois provava nada.
+
+### Escopo do mTLS, de propósito estreito
+
+```js
+const URLS_MTLS = [
+  'https://[*.]gov.br',
+  'https://[*.]banparanet.com.br',
+  'https://[*.]bbmnetlicitacoes.com.br',
+];
+```
+
+Um padrão aberto (`"*"`) faria o Chrome oferecer o certificado da empresa a
+qualquer site que pedisse — inclusive um que pedisse só para coletar.
+
+### O que isto NÃO prova
+
+Que o Compras.gov aceita. O que está provado é que o Chrome do agente
+**apresenta** o certificado quando o portal pede, e que a cadeia inteira
+funciona ponta a ponta com um certificado real de teste. O login gov.br tem
+etapas próprias, e elas só se verificam com o certificado do cliente em mãos.
+
+O que mudou é a natureza do que falta: era "não existe", passou a ser "não foi
+testado com o certificado do cliente".

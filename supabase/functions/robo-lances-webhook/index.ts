@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente } from "../_shared/robo-portais.ts";
+import { instalarCertificadoNoAgente } from "../_shared/certificado-agente.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -513,6 +514,27 @@ serve(async (req) => {
     }
 
     // ─── STATUS ───
+
+    // ─── instalar-certificado ───
+    // Repete a entrega do certificado ao agente. O upload ja tenta sozinho; esta
+    // acao existe para quando o agente estava fora do ar naquele momento — sem
+    // ela, a unica saida seria gerar um novo link e reenviar o arquivo inteiro.
+    if (action === "instalar-certificado") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const resultado = await instalarCertificadoNoAgente(supabase, user.id);
+      return jsonResponse(
+        {
+          instalado: resultado.instalado,
+          motivo: resultado.motivo,
+          certificado: resultado.certificado ?? null,
+        },
+        resultado.instalado ? 200 : 400
+      );
+    }
 
     // Healthcheck AO VIVO. Antes, o único ping acontecia ao configurar o
     // agente: versão, RAM e "ativo" ficavam congelados no banco desde então —
