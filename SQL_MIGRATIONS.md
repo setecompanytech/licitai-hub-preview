@@ -12910,3 +12910,12 @@ na rejeição, e trigger `exigir_aprovacao_pagamento`: com o workflow ativo,
 baixa manual (status→realizado) sem aprovação FALHA em qualquer tela;
 conciliado passa (extrato é fato consumado); valor alterado após aprovação
 volta a pendente.
+
+## 2026-09-09 — Relatório de Consumo da ATA corrigido — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000009_relatorio_consumo_ata_corrigido.sql`
+
+`relatorio_consumo_ata` caía com "aggregate function calls cannot contain
+set-returning function calls" (`array_agg` sobre `regexp_matches`) — trocado
+por `substring()`, escalar. E o acesso exigia ser o DONO da ata, barrando
+colegas — agora vale `is_empresa_member` (princípio 2: processo é da empresa).
