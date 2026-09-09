@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import JSZip from 'jszip';
 import { generateAgentTemplate } from '@/lib/agente-template-generator';
+import { PORTAIS_ROBO } from '@/lib/robo/portais';
 
 /**
  * O agente da VPS é gerado como texto dentro de template literals TypeScript.
@@ -88,6 +91,41 @@ describe('template do agente de lances', () => {
     expect(ler('.env.example')).toContain(
       `CALLBACK_URL=${url}/functions/v1/robo-lances-webhook/callback`,
     );
+  });
+
+  it('o registro de portais do agente fala o mesmo vocabulário da tela', () => {
+    // O defeito que este teste tranca: a tela chamava o portal de `compras-gov`
+    // e o agente de `comprasgov`. Nada no caminho comparava os dois, então a
+    // sessão era criada, gravada como "enviando", despachada — e só o agente
+    // reclamava, com a linha já no banco. Um hífen.
+    const registro = ler('src/portals/index.js');
+    const doAgente = new Set(
+      [...registro.matchAll(/^\s*'([^']+)':\s*\w+Portal,$/gm)].map((m) => m[1]),
+    );
+
+    expect(doAgente.size).toBeGreaterThan(20);
+
+    const semModulo = PORTAIS_ROBO
+      .filter((p) => !doAgente.has(p.agente))
+      .map((p) => `${p.id} -> ${p.agente}`);
+
+    expect(semModulo).toEqual([]);
+  });
+
+  it('o espelho Deno traduz exatamente o que a lista do app traduz', () => {
+    // Duas cópias de um mapa só se mantêm iguais se algo quebrar quando não
+    // estiverem. É o mesmo arranjo de `_shared/licitacao-status.ts`.
+    const espelho = readFileSync(
+      path.resolve(__dirname, '../../supabase/functions/_shared/robo-portais.ts'),
+      'utf8',
+    );
+
+    const noEspelho = Object.fromEntries(
+      [...espelho.matchAll(/^\s*"([^"]+)":\s*"([^"]+)",$/gm)].map((m) => [m[1], m[2]]),
+    );
+    const noApp = Object.fromEntries(PORTAIS_ROBO.map((p) => [p.id, p.agente]));
+
+    expect(noEspelho).toEqual(noApp);
   });
 
   it('não declara enviarProposta na classe base — o 501 depende disso', () => {

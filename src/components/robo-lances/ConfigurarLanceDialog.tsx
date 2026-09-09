@@ -33,6 +33,10 @@ import { PORTAIS_ROBO } from '@/lib/robo/portais';
 // nao quebrar a exibicao das disputas ja gravadas. Quem consome traduz com
 // `idDoPortal()`. Corrigir na origem exige normalizar tambem o carregamento do
 // formulario — fica registrado como pendencia.
+// Os 23 da autoridade única — a mesma lista do cadastro de credenciais, que até
+// 09/09/2026 tinha 23 enquanto esta tinha 10. Registrar a disputa é legítimo em
+// qualquer portal; quem checa se o robô consegue operá-la é o botão "Enviar ao
+// robô", contra o `portais_suportados` que o agente publica no momento do envio.
 const portaisDisponiveis = PORTAIS_ROBO;
 
 export type DisputeItem = {

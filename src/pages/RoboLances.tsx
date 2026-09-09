@@ -45,7 +45,7 @@ import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
-import { idDoPortal, nomeDoPortal } from '@/lib/robo/portais';
+import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -412,7 +412,37 @@ export default function RoboLances() {
       return;
     }
 
+    // Reconhecer o portal não é o mesmo que o agente NO AR saber operá-lo.
+    //
+    // A VPS pode estar num build atrás do template — em 09/09/2026 estava, com 8
+    // dos 23 módulos. Perguntar ao `/health` é a única forma de responder isso
+    // sem escrever no código uma verdade que envelhece. E a resposta vem com a
+    // lista, então a mensagem diz o que ELE tem, não o que falta.
     setEnviandoAoRobo(true);
+    try {
+      const { data: saude } = await supabase.functions.invoke(
+        'robo-lances-webhook/healthcheck',
+        { body: {} },
+      );
+      const suportados = (saude as {
+        agentes?: Array<{ portais_suportados?: string[] | null }>;
+      } | null)?.agentes?.[0]?.portais_suportados;
+
+      if (!agenteOpera(portalId, suportados)) {
+        toast.error(
+          `O agente no ar ainda não tem o módulo de ${nomeDoPortal(portalId)}. ` +
+            `Hoje ele opera: ${(suportados || []).join(', ')}.`,
+          { duration: 15000 },
+        );
+        setEnviandoAoRobo(false);
+        return;
+      }
+    } catch {
+      // Healthcheck indisponível não impede o envio: a edge function repete a
+      // validação, e o agente é a autoridade final. Barrar aqui trocaria um
+      // erro informativo por um bloqueio sem causa visível.
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke(
         'robo-lances-webhook/enviar-sessao',

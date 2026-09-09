@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
+import { portalDoAgente } from "../_shared/robo-portais.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -149,6 +150,27 @@ serve(async (req) => {
         );
       }
 
+      // O PORTAL DA TELA NAO E O PORTAL DO AGENTE.
+      //
+      // O id que a interface usa (`compras-gov`) e o nome do modulo no agente
+      // (`comprasgov`) sao vocabularios diferentes, e ninguem traduzia. O envio
+      // seguia inteiro — validava, gravava a sessao com status "enviando", fazia
+      // o POST — e so o agente reclamava, com `Portal "compras-gov" nao
+      // suportado`. Sobrava linha no banco para um trabalho que nunca comecou.
+      //
+      // Recusar aqui, antes de qualquer escrita, custa uma consulta a um objeto
+      // em memoria.
+      const portalAgente = portalDoAgente(body.portal_id);
+      if (!portalAgente) {
+        return jsonResponse(
+          {
+            error: `"${body.portal_nome || body.portal_id}" não é um portal que o robô ` +
+                   `conhece. Escolha a disputa novamente pelo seletor de portais.`,
+          },
+          400
+        );
+      }
+
       // A CREDENCIAL VEM ANTES DA SESSAO.
       //
       // O codigo anterior mandava `credenciais_portal: body.credenciais_portal_id`
@@ -226,6 +248,13 @@ serve(async (req) => {
           body: JSON.stringify({
             sessao_id: sessao.id,
             ...sessaoData,
+            // DEPOIS do spread de proposito: `sessaoData.portal_id` guarda o id
+            // da tela, que e o que fica no banco e casa com a credencial. O
+            // agente precisa do nome do modulo dele. Sao campos com o mesmo nome
+            // e significados diferentes — inverter as duas linhas quebra o envio
+            // em Compras.gov e em nenhum outro portal, que e o tipo de defeito
+            // que so aparece em producao.
+            portal_id: portalAgente,
             // login e senha em claro — e o que o modulo do portal consome
             credenciais_portal: credenciais,
           }),
