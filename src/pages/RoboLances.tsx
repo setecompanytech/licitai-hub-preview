@@ -25,6 +25,7 @@ import {
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
   Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
+  Monitor,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -496,10 +497,21 @@ export default function RoboLances() {
         { licitacaoId: selectedLance.licitacaoId, nivelAutomacao: nivelAutomacao },
       );
 
-      toast.success(
-        'Sessão enviada ao robô. Acompanhe pela aba Agente Cloud → tela remota.',
-        { duration: 12000 },
-      );
+      // MANDAR PARA A TELA, EM VEZ DE FALAR DELA.
+      //
+      // A mensagem anterior dizia "acompanhe pela aba Agente Cloud" e parava
+      // aí. Na prática o spinner terminava, o aviso sumia em segundos e a
+      // pessoa ficava sem saber para onde ir — enquanto a sessão, que dura
+      // poucos segundos, já estava acabando. Instrução que exige procurar não
+      // chega a tempo.
+      toast.success('Sessão enviada ao robô.', {
+        description: 'A tela remota mostra o robô enquanto ele trabalha — e ele pode terminar em segundos.',
+        duration: 20000,
+        action: {
+          label: 'Ver agora',
+          onClick: () => setActiveMainTab('agente'),
+        },
+      });
     } catch (e) {
       toast.error(`Não foi possível falar com o robô: ${(e as Error).message}`, {
         duration: 15000,
@@ -600,11 +612,16 @@ export default function RoboLances() {
                 Operador e visualizador ficam com a aba de trabalho. */}
             {isAdmin && (
               <>
-                <TabsTrigger value="portais" className="text-xs">
-                  <Globe className="w-3.5 h-3.5 mr-1" /> Portais
-                </TabsTrigger>
+                {/* Agente Cloud vem logo depois de Disputar porque é o
+                    movimento seguinte de quem acabou de enviar: a sessão pode
+                    durar segundos, e ter "Portais" no caminho obriga a
+                    atravessar uma aba que não interessa naquele instante.
+                    Portais é cadastro — se faz uma vez, não a cada disputa. */}
                 <TabsTrigger value="agente" className="text-xs">
                   <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
+                </TabsTrigger>
+                <TabsTrigger value="portais" className="text-xs">
+                  <Globe className="w-3.5 h-3.5 mr-1" /> Portais
                 </TabsTrigger>
                 <TabsTrigger value="configuracoes" className="text-xs">
                   <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
@@ -793,17 +810,35 @@ export default function RoboLances() {
                         Só o operador vê: quem tem papel de visualizador
                         acompanha a disputa, não dispara sessão. */}
                     {podeOperar && (
-                      <Button
-                        size="sm"
-                        onClick={handleEnviarAoRobo}
-                        disabled={enviandoAoRobo}
-                        className="text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
-                        title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
-                      >
-                        {enviandoAoRobo
-                          ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando…</>
-                          : <><Send className="w-3.5 h-3.5" /> Enviar ao robô</>}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleEnviarAoRobo}
+                          disabled={enviandoAoRobo}
+                          className="text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
+                        >
+                          {enviandoAoRobo
+                            ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando…</>
+                            : <><Send className="w-3.5 h-3.5" /> Enviar ao robô</>}
+                        </Button>
+
+                        {/* O ATALHO PRECISA VIR ANTES DO ENVIO.
+                            Uma sessão que falha dura ~13 segundos, medidos. Quem
+                            clica em enviar e só depois procura onde assistir
+                            chega quando já acabou — e o que sobra é um spinner
+                            que termina em nada, sem dizer para onde ir. */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setActiveMainTab('agente')}
+                          className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                          title="A sessão pode durar poucos segundos. Deixe a tela remota aberta antes de enviar para acompanhar desde o início."
+                        >
+                          <Monitor className="w-3.5 h-3.5" />
+                          Assistir ao vivo
+                        </Button>
+                      </div>
                     )}
 
                     <DropdownMenu>
