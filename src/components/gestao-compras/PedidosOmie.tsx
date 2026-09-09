@@ -97,6 +97,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
+import CondicoesPagamento from './CondicoesPagamento';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
@@ -446,6 +447,20 @@ export default function PedidosOmie() {
   const [produtos, setProdutos] = useState<ProdutoCat[]>([]);
   const [contratos, setContratos] = useState<ContratoOpt[]>([]);
   const [vendedores, setVendedores] = useState<string[]>([]);
+  // Condições de pagamento vêm do CADASTRO da empresa (modelo dos ERPs);
+  // a lista fixa vira só o fallback de quem ainda não cadastrou nada.
+  const [condicoesCadastro, setCondicoesCadastro] = useState<string[]>([]);
+  const [cadastroCondicoesAberto, setCadastroCondicoesAberto] = useState(false);
+  const carregarCondicoes = () => {
+    if (!empresaAtiva) return;
+    (supabase.from('financeiro_condicoes_pagamento' as never) as any)
+      .select('descricao')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('ativo', true)
+      .order('codigo')
+      .then(({ data }: { data: Array<{ descricao: string }> | null }) =>
+        setCondicoesCadastro([...new Set((data || []).map(d => d.descricao))]));
+  };
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
 
@@ -511,6 +526,7 @@ export default function PedidosOmie() {
     loadPedidos();
     loadProdutos();
     loadContratos();
+    carregarCondicoes();
     // Vendedor/comprador escolhe-se da EQUIPE, não se datilografa.
     supabase.from('empresa_membros').select('nome_individual, nome').eq('empresa_id', empresaAtiva.id)
       .then(({ data }) => {
@@ -1749,6 +1765,11 @@ export default function PedidosOmie() {
       {AnexosDialog}
       {HistoricoDialog}
       {DeleteConfirmDialog}
+      <CondicoesPagamento
+        aberto={cadastroCondicoesAberto}
+        aoFechar={() => setCadastroCondicoesAberto(false)}
+        aoMudar={carregarCondicoes}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -1919,12 +1940,17 @@ export default function PedidosOmie() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Condição de Pagamento</Label>
+                <Label className="text-xs text-muted-foreground">
+                  Condição de Pagamento{' '}
+                  <button type="button" className="text-accent hover:underline" onClick={() => setCadastroCondicoesAberto(true)}>
+                    (cadastro)
+                  </button>
+                </Label>
                 <SelectPadrao
                   valor={form.numero_parcelas}
                   onChange={v => setForm(f => ({ ...f, numero_parcelas: v }))}
-                  opcoes={CONDICOES_PAGAMENTO}
-                  placeholder="A Vista, 30 Dias…"
+                  opcoes={condicoesCadastro.length ? condicoesCadastro : CONDICOES_PAGAMENTO}
+                  placeholder="A VISTA, BOLETO 30 DIAS…"
                 />
               </div>
               <div>

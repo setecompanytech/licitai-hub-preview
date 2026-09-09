@@ -12919,3 +12919,15 @@ Arquivo: `supabase/migrations/20260909000009_relatorio_consumo_ata_corrigido.sql
 set-returning function calls" (`array_agg` sobre `regexp_matches`) — trocado
 por `substring()`, escalar. E o acesso exigia ser o DONO da ata, barrando
 colegas — agora vale `is_empresa_member` (princípio 2: processo é da empresa).
+
+## 2026-09-09 — Cadastro de Condições de Pagamento — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000010_condicoes_pagamento.sql`
+
+Tabela `financeiro_condicoes_pagamento` por empresa no modelo dos ERPs:
+código sequencial, descrição, tipo (à vista/a prazo/parcelado), forma de
+pagamento, regra de vencimento em sábado/domingo (prorroga/antecipa/mantém),
+parcelas jsonb {dias, percentual} com CONSTRAINT somando 100% (via função
+IMMUTABLE soma_percentuais_parcelas — CHECK não aceita subquery), dia fixo
+de vencimento, juro diário e % de acréscimo. RLS: membros leem/escrevem,
+admin apaga.
