@@ -12852,3 +12852,14 @@ normalizado do alerta do art. 125 (`reequilibr|revisao|repactua|reajust|prorroga
 alcançando o tipo novo e o legado. UPDATE no-op reaplicou o cálculo em todas as
 atas: ATA-022/2024 voltou a consumido = global = R$ 8.494.080 (saldo zero) e
 nenhuma ata ficou com consumo acima do global.
+
+## 2026-09-09 — Base do rateio exclui movimentação — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000004_rateio_exclui_movimentacao.sql`
+
+`despesas_indiretas_da_empresa` somava todo a_pagar sem vínculo; na ETHOS,
+R$ 9,86 mi dos R$ 16,8 mi eram movimentação (transferências entre contas
+próprias, aplicações, distribuição de lucro, empréstimos) e a margem do
+068/2025 despencava a -108%. A base agora ignora categorias de natureza
+'movimentacao'; lançamento sem categoria continua entrando (despesa não
+classificada é despesa até prova em contrário).
