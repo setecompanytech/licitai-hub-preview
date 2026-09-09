@@ -421,6 +421,71 @@ export default function RoboLances() {
     setPedidoDeTelaRemota((n) => n + 1);
   };
 
+  /**
+   * O convite para assistir, no instante do clique.
+   *
+   * DOIS DEFEITOS QUE ISTO CORRIGE.
+   *
+   * O primeiro é de tempo: o aviso só aparecia DEPOIS que a edge function
+   * respondia, e até lá havia um spinner mudo. Mas o robô já abriu o navegador
+   * nesse intervalo — a chamada só retorna quando ele termina de entrar e
+   * navegar. Ou seja, o convite chegava justamente quando não servia mais.
+   *
+   * O segundo é de tamanho: um aviso padrão, no canto, com letra pequena, não
+   * compete com a atenção de quem acabou de apertar um botão e está olhando o
+   * meio da tela. Num momento com prazo, discrição é o mesmo que ausência.
+   *
+   * Fica maior e explícito, com a ação como botão de verdade. E não é
+   * bloqueante: quem não quiser assistir fecha e segue.
+   */
+  const convidarParaAssistir = () =>
+    toast.custom(
+      (id) => (
+        <div className="w-full rounded-xl border-2 border-accent/50 bg-card shadow-2xl p-4 flex gap-3.5">
+          <div className="w-12 h-12 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+            <Monitor className="w-6 h-6 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-semibold leading-tight">
+              O robô está entrando no portal
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 leading-snug">
+              Você pode assistir à tela dele em tempo real — e ele pode terminar
+              em poucos segundos.
+            </p>
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                size="sm"
+                className="text-sm gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
+                onClick={() => {
+                  toast.dismiss(id);
+                  irParaTelaRemota();
+                }}
+              >
+                <Monitor className="w-4 h-4" />
+                Visualizar em tempo real
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-sm text-muted-foreground"
+                onClick={() => toast.dismiss(id)}
+              >
+                Agora não
+              </Button>
+            </div>
+          </div>
+        </div>
+      ),
+      {
+        duration: 30000,
+        unstyled: true,
+        // Largura própria: o padrão do Toaster é estreito demais para caber a
+        // frase e o botão sem quebrar em pedaços ilegíveis.
+        style: { width: 'min(460px, calc(100vw - 2rem))' },
+      },
+    );
+
   const handleEnviarAoRobo = async () => {
     if (!selectedLance) return;
 
@@ -433,13 +498,25 @@ export default function RoboLances() {
       return;
     }
 
+    setEnviandoAoRobo(true);
+
+    // O CONVITE SAI NO PRIMEIRO CLIQUE, antes de qualquer ida ao servidor.
+    //
+    // Só assim dá para ver o começo: o robô abre o Chrome e carrega a tela de
+    // login em poucos segundos, e a chamada de envio só retorna DEPOIS que ele
+    // terminou de entrar e navegar. Avisar no fim é avisar quando não serve.
+    //
+    // O id fica guardado para o convite ser retirado caso o envio seja recusado
+    // antes de o robô abrir qualquer coisa — convidar para assistir a uma
+    // sessão que não existe seria a mesma mentira, na direção contrária.
+    const idConvite = convidarParaAssistir();
+
     // Reconhecer o portal não é o mesmo que o agente NO AR saber operá-lo.
     //
     // A VPS pode estar num build atrás do template — em 09/09/2026 estava, com 8
     // dos 23 módulos. Perguntar ao `/health` é a única forma de responder isso
     // sem escrever no código uma verdade que envelhece. E a resposta vem com a
     // lista, então a mensagem diz o que ELE tem, não o que falta.
-    setEnviandoAoRobo(true);
     try {
       const { data: saude } = await supabase.functions.invoke(
         'robo-lances-webhook/healthcheck',
@@ -450,6 +527,7 @@ export default function RoboLances() {
       } | null)?.agentes?.[0]?.portais_suportados;
 
       if (!agenteOpera(portalId, suportados)) {
+        toast.dismiss(idConvite);
         toast.error(
           `O agente no ar ainda não tem o módulo de ${nomeDoPortal(portalId)}. ` +
             `Hoje ele opera: ${(suportados || []).join(', ')}.`,
@@ -506,6 +584,10 @@ export default function RoboLances() {
       }
 
       if (motivo) {
+        // Recusa da edge function: o agente nunca foi acionado, então não há
+        // nada para assistir. Deixar o convite na tela seria convidar para uma
+        // sessão que não existe.
+        toast.dismiss(idConvite);
         toast.error(motivo, { duration: 15000 });
         return;
       }
@@ -516,21 +598,11 @@ export default function RoboLances() {
         { licitacaoId: selectedLance.licitacaoId, nivelAutomacao: nivelAutomacao },
       );
 
-      // MANDAR PARA A TELA, EM VEZ DE FALAR DELA.
-      //
-      // A mensagem anterior dizia "acompanhe pela aba Agente Cloud" e parava
-      // aí. Na prática o spinner terminava, o aviso sumia em segundos e a
-      // pessoa ficava sem saber para onde ir — enquanto a sessão, que dura
-      // poucos segundos, já estava acabando. Instrução que exige procurar não
-      // chega a tempo.
-      toast.success('Robô acionado — a janela dele já está abrindo.', {
-        description: 'Clique para assistir em tempo real. A sessão pode durar poucos segundos.',
-        duration: 25000,
-        action: {
-          label: 'Visualizar em tempo real',
-          onClick: irParaTelaRemota,
-        },
-      });
+      // Discreto de propósito: o convite grande já está na tela desde o clique,
+      // e ele é que carrega o caminho para assistir. Repetir a mesma oferta
+      // aqui empilharia dois avisos dizendo a mesma coisa. Este só confirma o
+      // que aconteceu, para quem dispensou o convite.
+      toast.success('Sessão aceita pelo robô.', { duration: 6000 });
     } catch (e) {
       toast.error(`Não foi possível falar com o robô: ${(e as Error).message}`, {
         duration: 15000,
