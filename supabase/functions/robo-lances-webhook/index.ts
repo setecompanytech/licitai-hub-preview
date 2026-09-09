@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,6 +125,36 @@ serve(async (req) => {
         );
       }
 
+      // A CREDENCIAL VEM ANTES DA SESSAO.
+      //
+      // O codigo anterior mandava `credenciais_portal: body.credenciais_portal_id`
+      // — o IDENTIFICADOR da credencial — para um agente que espera um objeto
+      // com login e senha (`this.credenciais.login` nos modulos de portal).
+      // Ninguem buscava nem decifrava no meio do caminho, entao o robo recebia
+      // `undefined` nos dois campos e tentaria entrar no portal sem senha.
+      //
+      // A busca acontece aqui em cima, e nao depois do insert, para nao deixar
+      // linha orfa com status "enviando" quando a credencial nao existe.
+      let credenciais;
+      try {
+        credenciais = await credencialEmClaro(supabase, user.id, body.portal_id);
+      } catch (e: any) {
+        return jsonResponse(
+          { error: `Não foi possível ler a credencial do portal: ${e.message}` },
+          500
+        );
+      }
+
+      if (!credenciais) {
+        return jsonResponse(
+          {
+            error: `Nenhuma credencial ativa cadastrada para "${body.portal_nome || body.portal_id}". ` +
+                   `Cadastre em Robô de Lances → Portais antes de enviar a sessão.`,
+          },
+          400
+        );
+      }
+
       // Create session record
       const sessaoData = {
         user_id: user.id,
@@ -171,7 +202,8 @@ serve(async (req) => {
           body: JSON.stringify({
             sessao_id: sessao.id,
             ...sessaoData,
-            credenciais_portal: body.credenciais_portal_id,
+            // login e senha em claro — e o que o modulo do portal consome
+            credenciais_portal: credenciais,
           }),
           signal: AbortSignal.timeout(10000),
         });
