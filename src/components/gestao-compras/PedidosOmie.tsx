@@ -22,18 +22,42 @@ const CONDICOES_PAGAMENTO = [
   '10x (mensais)', '12x (mensais)',
 ] as const;
 
-const CENARIOS_FISCAIS = [
-  'Venda de mercadoria — dentro do estado (CFOP 5.102)',
-  'Venda de mercadoria — fora do estado (CFOP 6.102)',
-  'Venda a órgão público — dentro do estado (CFOP 5.102)',
-  'Venda com ICMS ST — dentro do estado (CFOP 5.405)',
-  'Venda de produção própria — dentro do estado (CFOP 5.101)',
-  'Venda de produção própria — fora do estado (CFOP 6.101)',
-  'Bonificação / brinde (CFOP 5.910)',
-  'Remessa para demonstração (CFOP 5.912)',
-  'Remessa para conserto (CFOP 5.915)',
-  'Devolução de compra (CFOP 5.202)',
-  'Simples remessa (CFOP 5.949)',
+// Destilado da Tabela CFOP oficial (09/09): só o essencial da operação —
+// revenda de mercadorias a órgãos públicos, dentro/fora do estado, ST,
+// entrega futura (o par 5.922 simples faturamento + 5.117 entrega é o
+// desenho fiscal do EMPENHO), bonificação, remessas e devoluções. Venda
+// mostra CFOPs de SAÍDA (5/6); compra, os de ENTRADA (1/2). O escape
+// "Outro (digitar)…" do seletor cobre qualquer código fora da lista.
+const CENARIOS_FISCAIS_VENDA = [
+  '5.102 — Venda de mercadoria adquirida de terceiros (dentro do estado)',
+  '6.102 — Venda de mercadoria adquirida de terceiros (fora do estado)',
+  '6.108 — Venda a não contribuinte de outro estado (órgão público)',
+  '5.117 — Venda p/ entrega futura — encomenda (dentro do estado)',
+  '5.922 — Simples faturamento de venda p/ entrega futura',
+  '5.405 — Venda com ICMS ST, contribuinte substituído (dentro do estado)',
+  '6.404 — Venda com ICMS ST já retido (fora do estado)',
+  '5.101 — Venda de produção própria (dentro do estado)',
+  '6.101 — Venda de produção própria (fora do estado)',
+  '5.910 — Remessa em bonificação, doação ou brinde',
+  '5.912 — Remessa de mercadoria p/ demonstração',
+  '5.915 — Remessa p/ conserto ou reparo',
+  '5.202 — Devolução de compra p/ comercialização (dentro do estado)',
+  '6.202 — Devolução de compra p/ comercialização (fora do estado)',
+  '5.949 — Outra saída não especificada',
+] as const;
+
+const CENARIOS_FISCAIS_COMPRA = [
+  '1.102 — Compra p/ comercialização (dentro do estado)',
+  '2.102 — Compra p/ comercialização (outro estado)',
+  '1.403 — Compra p/ comercialização com ICMS ST (dentro do estado)',
+  '2.403 — Compra p/ comercialização com ICMS ST (outro estado)',
+  '1.556 — Compra de material de uso ou consumo (dentro do estado)',
+  '2.556 — Compra de material de uso ou consumo (outro estado)',
+  '1.551 — Compra de bem p/ ativo imobilizado (dentro do estado)',
+  '1.910 — Entrada de bonificação, doação ou brinde',
+  '1.202 — Devolução de venda de mercadoria (dentro do estado)',
+  '2.202 — Devolução de venda de mercadoria (outro estado)',
+  '1.949 — Outra entrada não especificada',
 ] as const;
 
 const CATEGORIAS_VENDA = [
@@ -1965,7 +1989,7 @@ export default function PedidosOmie() {
                 <SelectPadrao
                   valor={form.cenario_fiscal}
                   onChange={v => setForm(f => ({ ...f, cenario_fiscal: v }))}
-                  opcoes={CENARIOS_FISCAIS}
+                  opcoes={isVenda ? CENARIOS_FISCAIS_VENDA : CENARIOS_FISCAIS_COMPRA}
                   placeholder="Escolher o cenário (CFOP)…"
                 />
               </div>
