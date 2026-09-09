@@ -482,7 +482,20 @@ export default function RoboLances() {
         unstyled: true,
         // Largura própria: o padrão do Toaster é estreito demais para caber a
         // frase e o botão sem quebrar em pedaços ilegíveis.
-        style: { width: 'min(460px, calc(100vw - 2rem))' },
+        //
+        // O `right: 0` não é enfeite — é o que impede o corte. A lista do sonner
+        // é `position: fixed` com largura fixa (356px) encostada na direita da
+        // janela, e cada toast dentro dela é `position: absolute` SEM âncora
+        // horizontal: nasce alinhado pela esquerda da lista. Pedir 460px fazia os
+        // ~104px excedentes crescerem para a direita, ou seja, para fora da tela.
+        // Ancorado à direita, o excedente cresce para dentro e o cartão aparece
+        // inteiro. A margem de 3rem cobre o afastamento da lista em telas
+        // estreitas, onde o `min()` é quem manda.
+        style: {
+          width: 'min(460px, calc(100vw - 3rem))',
+          right: 0,
+          left: 'auto',
+        },
       },
     );
 
