@@ -12894,3 +12894,19 @@ pedido ENTREGUE de item com produto do catálogo mantém UMA saída no estoque
 SEM backfill de pedidos antigos, de propósito — criaria saídas retroativas
 sem entradas e afundaria o saldo em negativo fictício; a regra vale do
 registro/edição em diante.
+
+## 2026-09-09 — Aprovação de Pagamentos de verdade — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000008_aprovacao_pagamentos_de_verdade.sql`
+
+A tela anterior era fachada (aprovar escrevia na observação e não tirava da
+fila; rejeitar CANCELAVA o título; a baixa nunca consultou nada). Agora:
+colunas de aprovação no lançamento (status/por/em/valor congelado/motivo),
+config por empresa `financeiro_config_aprovacao` (opt-in desligado; até
+limite_admin a equipe financeiro aprova, acima só admin; janela_dias),
+trilha `financeiro_aprovacoes_log` (escrita só pela RPC), RPC
+`aprovar_pagamento` com alçada conferida no servidor e motivo obrigatório
+na rejeição, e trigger `exigir_aprovacao_pagamento`: com o workflow ativo,
+baixa manual (status→realizado) sem aprovação FALHA em qualquer tela;
+conciliado passa (extrato é fato consumado); valor alterado após aprovação
+volta a pendente.
