@@ -35,6 +35,11 @@ para quem for reimplementar.
 | 14 | Checklist consultava `credenciais_portal` (singular) | Praefectus | ✅ **resolvido em 31/08** — ver seção 9 |
 | 15 | "Certificado instalado" era verde sem arquivo existir | agente | ✅ **resolvido em 02/09** — ver seção 10 |
 | 16 | "Healthcheck de Seletores" não testava seletor nenhum | Praefectus | ✅ **resolvido em 02/09** — ver seção 10 |
+| 17 | **VNC servia tela vazia** — x11vnc morto e pm2 dizendo "online" | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 18 | **Chrome era headless** — nada para o VNC mostrar | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 19 | Portas 5900 e 6080 abertas na internet, x11vnc sem senha | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ❌ **aberto** — ver seção 11 |
+| 21 | `browser.js` e `start-vnc.sh` não existem no template do repo | template | ❌ **aberto** — ver seção 11 |
 
 ## O que falta agora
 
@@ -510,3 +515,248 @@ dublê, só para exercitar o roteamento):
 | `POST /api/proposta/enviar` `itens: []` | 400 · diz o que faltou |
 | `POST /api/proposta/enviar` portal inexistente | 400 · lista os 23 disponíveis |
 | `POST /api/proposta/enviar` sem chave | 403 |
+
+---
+
+## 11. O VNC, o Chrome com janela e o que se descobriu sobre o certificado — 08/09/2026
+
+Contexto: o Rafael cobrou status do Robô de Lances e o Giovanny pediu para
+entregar algo demonstrável no mesmo dia. Ao preparar a demonstração, três
+defeitos apareceram — dois deles com a mesma assinatura de falha silenciosa.
+
+### O VNC mostrava uma área de trabalho vazia
+
+A tela "Agente Cloud → VNC" existe no app e promete acompanhar o robô
+trabalhando. Ela nunca mostrou nada, por **dois** motivos independentes.
+
+**Primeiro: o `x11vnc` estava morto, e o pm2 dizia `online`.** O
+`/root/start-vnc.sh` subia os três processos assim:
+
+```sh
+Xvfb :99 ... &          # segundo plano
+x11vnc -display :99 &   # segundo plano
+websockify ... 6080     # PRIMEIRO plano  ← o único que o pm2 vigia
+```
+
+Como só o `websockify` ficava em primeiro plano, era só ele que o pm2
+observava. O `x11vnc` morreu em algum momento entre março e setembro e **nada
+acusou**: o painel seguia verde, a porta 6080 seguia respondendo, e quem
+abrisse o VNC via um retângulo cinza. É o princípio 3 do `CLAUDE.md` violado
+dentro da própria infraestrutura.
+
+Agora os três vão para segundo plano e o script termina em `wait -n`, que
+retorna assim que **qualquer um** deles morre. O script sai com erro, o pm2 vê
+o processo cair e reergue a pilha inteira. Um `pkill` no início mata restos que
+impediriam o Xvfb de tomar o `:99`.
+
+**Segundo: o Chrome subia sem janela.** O `browser.js` usava
+`headless: 'new'`, e ninguém apontava o `DISPLAY` para o `:99`. Mesmo com o
+x11vnc vivo não haveria nada para transmitir — o navegador do robô desenhava
+num buffer invisível.
+
+Passou a ler de configuração, **mantendo `headless` como padrão**:
+
+```js
+const visivel = process.env.HEADLESS === 'false';
+headless: visivel ? false : 'new',
+env: visivel ? { ...process.env, DISPLAY: display } : process.env,
+```
+
+Quem não configurar nada mantém o comportamento antigo. Ligar a janela é ato de
+configuração (`HEADLESS=false` no `.env`), reversível sem tocar em código — que
+era a exigência para mexer em produção no meio do dia.
+
+**Verificação.** Um script isolado subiu o navegador, abriu uma página neutra,
+leu o título e fotografou:
+
+```
+🖥️  Chrome VISIVEL no display :99 — acompanhe em /vnc/
+titulo lido: Example Domain
+logs/screenshots/teste-visivel.png   19.658 bytes
+```
+
+Esse arquivo tem significado próprio: **a pasta `logs/screenshots/` estava
+vazia desde 15/03**. Como o código fotografa a tela a cada login, a pasta vazia
+era a prova de que nenhum portal jamais tinha sido acessado. Aquele PNG é o
+primeiro pixel que o robô desenhou.
+
+### As portas do VNC estavam abertas na internet
+
+Ao reerguer a pilha, o `ss` mostrou `0.0.0.0:5900` e `0.0.0.0:6080` — e o
+x11vnc sobe com `-nopw`, sem senha. Qualquer um na internet podia assistir e
+controlar a área de trabalho de uma máquina que vai guardar certificado digital
+e credenciais de portal.
+
+É a mesma classe do problema da porta 3500, corrigido em 02/09, reaparecendo em
+outro lugar. O nginx faz `proxy_pass` para `127.0.0.1` nos dois casos, então
+fechar não quebra nada: `x11vnc -localhost` e `websockify 127.0.0.1:6080`.
+
+Confirmado depois: `/vnc/vnc.html` continua 200 pelo domínio, e a conexão
+direta em `129.121.48.145:6080` passou a ser recusada.
+
+### O certificado nunca foi apresentado a portal nenhum — pendência 20
+
+Este é o achado que mais muda o planejamento, e contradiz o que se supunha.
+
+`CERT_PATH` aparece em três lugares no código: duas linhas de log e a checagem
+de "o arquivo existe" que alimenta o `/health`. No `browser.js`, onde ele
+deveria entrar de fato, havia isto:
+
+```js
+if (certPath && fs.existsSync(certPath)) {
+  console.log(`📜 Certificado A1 encontrado: ${certPath}`);
+  // Para mTLS, configure via proxy ou flags do Chrome 120+
+}
+```
+
+Um comentário de "fazer depois", não código. **Instalar o `.pfx` não faria o
+Compras.gov nem o PNCP autenticarem** — o Chrome nunca apresentaria o
+certificado. A mensagem de log foi corrigida para dizer a verdade, senão
+alguém depuraria seletor de botão achando que o mTLS estava de pé.
+
+O que falta para fechar, e o que a máquina ainda não tem:
+
+| Item | Estado em 08/09 |
+| --- | --- |
+| `pk12util` / `certutil` (`libnss3-tools`) | ausentes — só há `openssl` |
+| Base NSS do Chrome (`~/.pki/nssdb`) | não existe |
+| Diretório de policy do Chrome | nenhum dos três caminhos existe |
+| Chrome usado | o do Puppeteer (Chrome for Testing 127) |
+
+O caminho é: instalar `libnss3-tools` → criar a base NSS → importar o `.pfx` →
+criar a policy `AutoSelectCertificateForUrls` (sem ela o Chrome abre uma caixa
+de diálogo pedindo o certificado, e diálogo modal trava robô) → usar
+`userDataDir` persistente.
+
+**Duas incertezas que só o teste resolve:** o Chrome for Testing pode não
+obedecer policy gerenciada como o Chrome de marca; e o login do gov.br pode não
+ser mTLS puro, e sim um fluxo com JavaScript onde o certificado é uma etapa
+entre outras.
+
+De qualquer forma isto está **bloqueado até o `.pfx` chegar**. E não é o
+caminho curto: **6 dos 8 portais entram com usuário e senha** e não dependem
+disso.
+
+### `browser.js` e `start-vnc.sh` não estão no template — pendência 21
+
+As correções acima vivem só na VPS. O `src/lib/agent-template/` do repo declara
+`ecosystem.config.js`, `setup-nginx.sh`, `setup.sh`, `src/index.js`, a
+estratégia e os portais — **os dois arquivos corrigidos hoje não estão lá**.
+
+Se a VPS for reconstruída a partir do template, o VNC volta a servir tela vazia
+e o Chrome volta a ser headless, sem nada indicando por quê. É a mesma deriva
+que fez a VPS e o repo se declararem ambos v2.1.0 sendo código diferente.
+
+Decisão pendente do time: trazer os dois para o template, ou registrar
+explicitamente que a infraestrutura da VPS não é reproduzível pelo gerador.
+
+### Backups desta sessão
+
+```
+/opt/agente-lances/src/browser.js.bak-2026-09-08-2122
+/opt/agente-lances/.env.bak-2026-09-08-2122
+/root/start-vnc.sh.bak-2026-09-08-2122
+```
+
+---
+
+## 12. Os primeiros logins reais — 08/09/2026, noite
+
+Com o Chrome visível funcionando, testamos login nos portais de usuário e senha,
+usando credenciais reais do Grupo Santa Rosa. **Nenhum dos quatro entrou na
+primeira tentativa** — e cada um falhou por um motivo diferente. É o que os
+seletores escritos às cegas prometiam.
+
+| Portal | O que aconteceu | Natureza |
+| --- | --- | --- |
+| BLL | `bll.org.br/login` → caiu no `wp-login.php` | endereço errado |
+| Portal de Compras | `/login` → **404** | endereço errado |
+| LicitaNet | **403 Forbidden** até na home | bloqueio anti-robô |
+| Licitações-e | timeout; foi para a consulta pública | endereço errado |
+
+### Os endereços verdadeiros
+
+Descobertos abrindo a home de cada portal e listando os links que levam ao
+acesso — o método que substitui o chute:
+
+```
+BLL              https://bllcompras.com/Home/Login        ← OUTRO DOMINIO
+Portal Compras   https://operacao.portaldecompraspublicas.com.br/18/loginext/
+Licitacoes-e     "Acesso Identificado" e um link javascript:, nao uma URL
+LicitaNet        403 antes de qualquer coisa
+```
+
+O da BLL é o mais instrutivo: o código apontava para `bll.org.br`, que é o
+**site institucional**, enquanto a plataforma de pregão vive em `bllcompras.com`.
+
+### BLL usa teclado virtual embaralhado
+
+Lendo o HTML da página de login verdadeira, apareceram cinco botões assim:
+
+```html
+<input type="button" name="2 ou 0" value="2 ou 0">
+<input type="button" name="7 ou 3" value="7 ou 3">
+<input type="button" name="5 ou 8" value="5 ou 8">
+<input type="button" name="1 ou 4" value="1 ou 4">
+<input type="button" name="6 ou 9" value="6 ou 9">
+<input type="password" id="Contador" name="Contador">
+```
+
+É o teclado estilo banco: a senha **não é digitada, é clicada** em pares de
+dígitos, e o embaralhamento muda a cada carregamento. Automatizável — ler os
+rótulos e clicar o par que contém cada dígito —, mas é trabalho próprio, e
+implica **senha numérica**. A credencial que temos para a BLL tem letras e
+símbolos, então ou ela é de outro acesso, ou existe caminho alternativo.
+
+### Portal de Compras Públicas — ENTROU ✅
+
+Este redireciona para um **Keycloak** (`realms/Portal`), com formulário padrão:
+
+```
+#username · #password · #kc-login
+```
+
+Corrigidos endereço e seletores, o login passou:
+
+```
+✅ Login no Portal de Compras Públicas realizado
+URL final : .../18/4/NaoAssinante/DashBoard/
+Titulo    : Portal de Compras Públicas | Painel de Operações
+```
+
+E a foto mostra o cabeçalho: **"Você está logado como: RAFAEL WILLIAM CASTRO DA
+SILVA - 24.687.187/0001-01"**. É o primeiro login que este robô fez em toda a
+sua existência.
+
+> ⚠️ **Reparar no `NaoAssinante` da URL.** A conta pode ter acesso limitado —
+> vale confirmar com o Rafael se ela participa de disputa ou só consulta.
+
+### Duas correções de método que saíram junto
+
+**`loggedIn = true` era cravado sem conferir.** Tanto na VPS quanto no template,
+o `login()` marcava sucesso logo após esperar a navegação. Credencial errada
+virava "login realizado", e o defeito só apareceria rodadas depois, longe da
+causa. Agora verifica o texto da página e a permanência do formulário, e
+**lança erro** se não entrou.
+
+**A VPS e o template tinham implementações DIFERENTES do mesmo portal.** O
+template trazia uma versão de 31/03 que tratava o portal como SPA Angular e
+caçava o botão "Entrar" por texto; a VPS tinha a versão ingênua com `/login`.
+Nenhuma das duas funcionava hoje, porque o portal migrou para Keycloak nesse
+intervalo. O template foi alinhado com o que foi **verificado em produção**.
+
+### O que isso muda no plano
+
+O caminho até o primeiro lance real ficou concreto, e mais curto do lado certo:
+
+1. ✅ Chrome visível e VNC funcionando
+2. ✅ Login comprovado no Portal de Compras Públicas
+3. ⬜ Navegar até uma disputa (`navegarParaDisputa` ainda tem URL suposta)
+4. ⬜ Ler a tela de lances com um pregão ao vivo
+5. ⬜ Escrever o `souLider()` do portal
+6. ⬜ Liberar o portal em `PORTAIS_COM_LANCE_LIBERADO`
+
+Os passos 3 e 4 dependem de haver disputa acontecendo. Os demais portais
+precisam do mesmo tratamento, e a LicitaNet precisa antes de uma resposta ao
+403 — que pode exigir mudar user-agent, usar IP residencial, ou falar com o
+portal.
