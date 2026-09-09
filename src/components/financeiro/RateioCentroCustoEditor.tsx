@@ -75,6 +75,10 @@ export default function RateioCentroCustoEditor({ lancamentoId, valorBase }: Pro
 
   const semCentros = centros.length === 0;
   const podeAdicionar = itens.length < centros.length;
+  // A linha recém-adicionada nasce em 0% — e 0% não é rateio: o banco a
+  // rejeita (CHECK percentual > 0) com mensagem crua. O aviso mora aqui,
+  // antes do clique, e o Salvar espera o preenchimento.
+  const temLinhaZerada = itens.some((i) => (Number(i.percentual) || 0) <= 0);
 
   if (!lancamentoId) {
     return (
@@ -188,8 +192,22 @@ export default function RateioCentroCustoEditor({ lancamentoId, valorBase }: Pro
         </Alert>
       )}
 
+      {temLinhaZerada && itens.length > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Informe um percentual maior que zero em cada linha — ou use{" "}
+            <strong>Dividir igualmente</strong> para preencher de uma vez.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex justify-end">
-        <Button type="button" onClick={handleSalvar} disabled={salvar.isPending || totalPerc > 100.001}>
+        <Button
+          type="button"
+          onClick={handleSalvar}
+          disabled={salvar.isPending || totalPerc > 100.001 || temLinhaZerada}
+        >
           {salvar.isPending ? "Salvando..." : "Salvar rateio"}
         </Button>
       </div>

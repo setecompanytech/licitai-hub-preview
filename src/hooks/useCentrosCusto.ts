@@ -65,7 +65,19 @@ export function useSalvarRateios() {
       valorBase: number;
       itens: RateioItem[];
     }) => {
-      // Substitui completamente: remove tudo e reinsere
+      // Validação ANTES do delete: o salvar substitui tudo (remove e
+      // reinsere), e validar depois de apagar destruía o rateio antigo
+      // quando o novo era rejeitado — o erro voltava e a tela ficava vazia.
+      const total = itens.reduce((s, r) => s + (Number(r.percentual) || 0), 0);
+      if (total > 100.001) {
+        throw new Error(`Soma dos percentuais (${total.toFixed(2)}%) excede 100%.`);
+      }
+      if (itens.some((r) => (Number(r.percentual) || 0) <= 0)) {
+        // A mesma regra do CHECK do banco, dita em português antes de virar
+        // "violates check constraint" na tela (09/09).
+        throw new Error("Cada centro precisa de um percentual maior que zero — preencha ou remova a linha em 0%.");
+      }
+
       const { error: delErr } = await (supabase as any)
         .from("fin_lancamento_rateios")
         .delete()
@@ -74,18 +86,16 @@ export function useSalvarRateios() {
 
       if (itens.length === 0) return;
 
-      const total = itens.reduce((s, r) => s + (Number(r.percentual) || 0), 0);
-      if (total > 100.001) {
-        throw new Error(`Soma dos percentuais (${total.toFixed(2)}%) excede 100%.`);
-      }
-
       // Cada fatia arredondada isolada não fecha a soma (0,05 em 3× dava
-      // 0,02+0,02+0,02 = 0,06). A última fatia carrega a sobra — o mesmo
-      // padrão das parcelas de faturamento e da extração de documentos.
+      // 0,02+0,02+0,02 = 0,06). A última fatia carrega a sobra — MAS só
+      // quando o rateio fecha 100%: em rateio parcial (soma < 100%), a
+      // "sobra" é a parte não rateada, e empurrá-la para a última linha
+      // gravava 100% do valor com rótulo de 50% (09/09).
+      const fecha100 = Math.abs(total - 100) < 0.001;
       let acumulado = 0;
       const payload = itens.map((r, i) => {
         const ultimo = i === itens.length - 1;
-        const fatia = ultimo
+        const fatia = ultimo && fecha100
           ? +(valorBase - acumulado).toFixed(2)
           : Math.round(((r.percentual / 100) * valorBase) * 100) / 100;
         acumulado += fatia;
