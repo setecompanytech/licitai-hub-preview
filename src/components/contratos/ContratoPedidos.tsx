@@ -62,7 +62,7 @@ function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onS
   );
 }
 
-type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
+type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null; produto_id?: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 
 const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
@@ -654,7 +654,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id, produto_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
@@ -1088,6 +1088,68 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     return null;
   };
 
+  // ——— Fase C: estoque físico × virtual —————————————————————————————————
+  // Disponível = saldo físico do produto − reservas (pedidos pendentes ou
+  // parciais de QUALQUER contrato apontando itens do mesmo produto). A régua
+  // aparece na criação do pedido; quantidade que não cabe vira confirmação
+  // explícita — a entrada da compra pode legitimamente vir depois.
+  const [estoqueInfo, setEstoqueInfo] = useState<Map<string, { fisico: number; reservado: number }>>(new Map());
+  useEffect(() => {
+    const produtoIds = [...new Set(itens.map(i => i.produto_id).filter(Boolean))] as string[];
+    if (!produtoIds.length) { setEstoqueInfo(new Map()); return; }
+    let vivo = true;
+    (async () => {
+      const [prodRes, ciRes] = await Promise.all([
+        supabase.from('produtos').select('id, saldo_atual').in('id', produtoIds),
+        // types.ts ainda não conhece produto_id em contrato_itens (migration adm.)
+        (supabase.from('contrato_itens') as any).select('id, produto_id').in('produto_id', produtoIds),
+      ]);
+      const linhasCi = (ciRes.data as unknown as Array<{ id: string; produto_id: string }> | null) || [];
+      const prodDoItem = new Map(linhasCi.map(x => [x.id, x.produto_id]));
+      let reservas: Array<{ contrato_item_id: string | null; quantidade: number }> = [];
+      if (linhasCi.length) {
+        const { data } = await supabase.from('contrato_pedidos')
+          .select('contrato_item_id, quantidade')
+          .in('contrato_item_id', linhasCi.map(x => x.id))
+          .in('status', ['pendente', 'parcial']);
+        reservas = (data as typeof reservas) || [];
+      }
+      if (!vivo) return;
+      const mapa = new Map<string, { fisico: number; reservado: number }>();
+      for (const p of (prodRes.data as Array<{ id: string; saldo_atual: number }> | null) || []) {
+        mapa.set(p.id, { fisico: Number(p.saldo_atual) || 0, reservado: 0 });
+      }
+      for (const r of reservas) {
+        const pid = r.contrato_item_id ? prodDoItem.get(r.contrato_item_id) : undefined;
+        const e = pid ? mapa.get(pid) : undefined;
+        if (e) e.reservado += Number(r.quantidade) || 0;
+      }
+      setEstoqueInfo(mapa);
+    })();
+    return () => { vivo = false; };
+  }, [itens, pedidos]);
+
+  const estoqueDoItem = (contratoItemId?: string | null) => {
+    if (!contratoItemId) return null;
+    const item = itens.find(i => i.id === contratoItemId);
+    if (!item?.produto_id) return null;
+    const e = estoqueInfo.get(item.produto_id);
+    if (!e) return null;
+    return { ...e, disponivel: e.fisico - e.reservado };
+  };
+
+  const avisoEstoqueInsuficiente = (linhas: Array<{ descricao?: string | null; quantidade: string | number; contrato_item_id?: string | null }>): string | null => {
+    for (const l of linhas) {
+      const e = estoqueDoItem(l.contrato_item_id);
+      if (!e) continue;
+      const qtd = typeof l.quantidade === 'number' ? l.quantidade : parseFloat(String(l.quantidade)) || 0;
+      if (qtd > e.disponivel) {
+        return `"${(l.descricao || 'item').slice(0, 60)}": pedido de ${qtd.toLocaleString('pt-BR')} com ${e.disponivel.toLocaleString('pt-BR')} disponível (${e.fisico.toLocaleString('pt-BR')} físico − ${e.reservado.toLocaleString('pt-BR')} já reservado em pedidos).`;
+      }
+    }
+    return null;
+  };
+
   const handleSaveSingle = async () => {
     // A mesma bifurcação do upload, no lançamento à mão: quem escolhe "Empenho
     // Ordinário" no tipo do documento está registrando uma AUTORIZAÇÃO, e ela
@@ -1108,6 +1170,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     const travaPreco = precoForaDoContratado([{ descricao: form.descricao, valor_unitario: unit, contrato_item_id: form.contrato_item_id }]);
     if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+
+    const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: form.descricao, quantidade: qty, contrato_item_id: form.contrato_item_id }]);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nRegistrar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
 
     // Avisa e deixa seguir: há entrega legítima que estoura o saldo previsto —
     // reforço de empenho em andamento, aditivo em tramitação. Barrar seria
@@ -1320,6 +1385,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
     const travaPreco = precoForaDoContratado(itensSalvar);
     if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+
+    const alertaEstoque = avisoEstoqueInsuficiente(itensSalvar);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nRegistrar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
 
     // A mesma checagem tripla do lançamento avulso: contrato, item e cota do
     // empenho limitam a mesma entrega, e nenhum implica o outro.
@@ -1542,6 +1610,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     const unit = parseFloat(editForm.valor_unitario) || 0;
     const travaPreco = precoForaDoContratado([{ descricao: editForm.descricao, valor_unitario: unit, contrato_item_id: editForm.contrato_item_id }]);
     if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+    const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: editForm.descricao, quantidade: qty, contrato_item_id: editForm.contrato_item_id }]);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nSalvar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
     setSavingEdit(true);
     const { error } = await supabase.from('contrato_pedidos').update({
       numero_pedido: editForm.numero_pedido,
@@ -2141,6 +2211,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           </SelectContent>
                         </Select>
                       )}
+                      {(() => {
+                        // Fase C: a régua do estoque mora ao lado do item.
+                        const e = estoqueDoItem(form.contrato_item_id);
+                        if (!e) return null;
+                        const qtd = parseFloat(form.quantidade) || 0;
+                        const falta = qtd > 0 && qtd > e.disponivel;
+                        return (
+                          <p className={`text-[11px] mt-1 ${falta ? 'text-warning' : 'text-muted-foreground'}`}>
+                            Estoque: {e.fisico.toLocaleString('pt-BR')} físico · {e.reservado.toLocaleString('pt-BR')} reservado ·{' '}
+                            <b>{e.disponivel.toLocaleString('pt-BR')} disponível</b>
+                            {falta ? ' — quantidade acima do disponível' : ''}
+                          </p>
+                        );
+                      })()}
                     </div>
                     <div className="col-span-2">
                       <Label className="text-xs">Descrição</Label>

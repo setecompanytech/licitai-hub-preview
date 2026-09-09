@@ -12882,3 +12882,15 @@ Arquivo: `supabase/migrations/20260909000006_margem_alvo_config.sql`
 Coluna `margem_alvo` (percentual transcrito 0–100, padrão 10, CHECK 0–90) em
 `financeiro_config_custos` — a margem líquida alvo usada pela precificação
 assistida na entrada de NF-e (preço = custo ÷ (1 − (trib + desp + alvo))).
+
+## 2026-09-09 — Baixa de estoque na entrega do pedido do contrato (Fase C) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000007_baixa_estoque_pedido_contrato.sql`
+
+Coluna `contrato_pedido_id` em `estoque_movimentos` (FK cascade, única por
+pedido) + trigger `sincronizar_estoque_do_pedido` em contrato_pedidos:
+pedido ENTREGUE de item com produto do catálogo mantém UMA saída no estoque
+(recriada a cada mudança; desfazer a entrega desfaz a baixa; exclusão idem).
+SEM backfill de pedidos antigos, de propósito — criaria saídas retroativas
+sem entradas e afundaria o saldo em negativo fictício; a regra vale do
+registro/edição em diante.
