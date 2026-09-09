@@ -12863,3 +12863,14 @@ próprias, aplicações, distribuição de lucro, empréstimos) e a margem do
 068/2025 despencava a -108%. A base agora ignora categorias de natureza
 'movimentacao'; lançamento sem categoria continua entrando (despesa não
 classificada é despesa até prova em contrário).
+
+## 2026-09-09 — nfe_entradas absorve o fluxo do Compras — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000005_nfe_entradas_absorve_compras.sql`
+
+O Compras usava a legada `nfe_recebidas` (sem empresa_id — select/insert
+quebrados em produção). Adiciona a `nfe_entradas` as colunas do fluxo de
+compra (`fornecedor_id`, `pedido_id`, `itens` jsonb); o front do Compras
+migrou para a canônica: NF-e do webhook aparece no Compras pronta para
+"Lançar estoque", e a importação manual upserta pela chave (não duplica a
+que o webhook já trouxe). A legada fica órfã (nenhum código a referencia).

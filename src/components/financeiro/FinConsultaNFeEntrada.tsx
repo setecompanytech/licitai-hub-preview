@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { parseNFeXML } from "@/lib/parseNFe";
 
 /**
  * NF-e de ENTRADA — o acervo automático (Fase 1, 08/09/2026).
@@ -182,7 +183,51 @@ export default function FinConsultaNFeEntrada() {
     setGerandoId(n.id);
     try {
       const hoje = new Date().toISOString().slice(0, 10);
+
+      // ——— Auto-vínculo ao contrato em execução (Fase A) ———————————————
+      // Produto da NF que é produto de item de contrato VIGENTE aponta o
+      // dono da compra. Só vincula quando a resposta é ÚNICA — resposta
+      // ambígua fica para o lápis; chute não entra no custo de ninguém.
+      // Falha aqui não impede a conta: é conveniência, não pré-requisito.
+      let contratoAuto: { id: string; numero: string } | null = null;
+      try {
+        if (n.xml) {
+          const parsed = parseNFeXML(n.xml);
+          const codigos = [...new Set((parsed.itens || []).map(i => i.c_prod).filter(Boolean))];
+          const eans = [...new Set((parsed.itens || []).map(i => i.c_ean).filter(v => v && v !== 'SEM GTIN'))];
+          const prodIds = new Set<string>();
+          if (codigos.length) {
+            const { data } = await supabase.from('produtos').select('id')
+              .eq('empresa_id', empresaAtiva.id).in('codigo', codigos);
+            (data || []).forEach(p => prodIds.add((p as { id: string }).id));
+          }
+          if (eans.length) {
+            const { data } = await supabase.from('produtos').select('id')
+              .eq('empresa_id', empresaAtiva.id).in('codigo_ean', eans);
+            (data || []).forEach(p => prodIds.add((p as { id: string }).id));
+          }
+          if (prodIds.size > 0) {
+            const { data: cis } = await (supabase.from('contrato_itens') as any)
+              .select('contrato_id, contratos!inner(id, numero_contrato, data_fim, tipo_documento, excluido_em, empresa_id)')
+              .in('produto_id', Array.from(prodIds));
+            const vigentes = new Map<string, string>();
+            for (const ci of (cis as unknown as Array<{ contratos: { id: string; numero_contrato: string | null; data_fim: string | null; tipo_documento: string; excluido_em: string | null; empresa_id: string } | null }>) || []) {
+              const c = ci.contratos;
+              if (!c || c.empresa_id !== empresaAtiva.id || c.tipo_documento !== 'contrato') continue;
+              if (c.excluido_em) continue;
+              if (c.data_fim && c.data_fim < hoje) continue;
+              vigentes.set(c.id, c.numero_contrato || '');
+            }
+            if (vigentes.size === 1) {
+              const [id, numero] = Array.from(vigentes.entries())[0];
+              contratoAuto = { id, numero };
+            }
+          }
+        }
+      } catch { /* segue sem vínculo automático */ }
+
       const { data: lanc, error } = await supabase.from("financeiro_lancamentos").insert({
+        contrato_id: contratoAuto?.id ?? null,
         empresa_id: empresaAtiva.id,
         tipo: "a_pagar",
         natureza: "despesa" as const,
@@ -223,9 +268,16 @@ export default function FinConsultaNFeEntrada() {
         .update({ lancamento_id: (lanc as { id: string }).id })
         .eq("id", n.id);
 
-      toast.success("Conta a Pagar criada com o XML anexado.", {
-        description: "Ajuste o vencimento no lançamento conforme o prazo do fornecedor.",
-      });
+      toast.success(
+        contratoAuto
+          ? `Conta a Pagar criada e vinculada ao contrato ${contratoAuto.numero} (produto do contrato).`
+          : "Conta a Pagar criada com o XML anexado.",
+        {
+          description: contratoAuto
+            ? "O vínculo é reversível no lápis do lançamento. Ajuste o vencimento conforme o prazo do fornecedor."
+            : "Ajuste o vencimento no lançamento conforme o prazo do fornecedor.",
+        },
+      );
       void carregarNotas();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao gerar o lançamento");

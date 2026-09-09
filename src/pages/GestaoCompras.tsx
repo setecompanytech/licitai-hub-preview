@@ -25,7 +25,7 @@ import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
   Clock, Package, Truck, Users, X, Pencil, FileText,
-  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck,
+  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck, PackagePlus,
 } from 'lucide-react';
 
 // ── Formatters ────────────────────────────────────────────────
@@ -73,6 +73,7 @@ type Produto = {
   ncm: string | null; cfop: string | null; cst_icms: string | null;
   csosn: string | null; cst_pis: string | null; cst_cofins: string | null;
   p_icms: number | null; p_pis: number | null; p_cofins: number | null;
+  codigo_ean?: string | null;
 };
 
 type EstoqueMovimento = {
@@ -82,12 +83,16 @@ type EstoqueMovimento = {
   created_by: string | null; created_at: string;
 };
 
+// Espelho da tabela CANÔNICA nfe_entradas — a legada nfe_recebidas não tinha
+// empresa_id e todo o fluxo de NF-e do Compras falhava em produção (09/09).
+// Unificada, a NF-e que chega pelo webhook do Financeiro também aparece aqui,
+// pronta para a entrada no estoque.
 type NfeRecebida = {
   id: string; empresa_id: string; pedido_id: string | null; fornecedor_id: string | null;
-  numero: string; serie: string; chave_acesso: string | null; data_emissao: string | null;
-  cnpj_emitente: string | null; nome_emitente: string | null;
-  valor_total: number; xml_content: string | null; itens: NFeItemData[] | null;
-  created_at: string;
+  numero: string; serie: string; chave: string | null; data_emissao: string | null;
+  emitente_cnpj: string | null; emitente_nome: string | null;
+  valor_total: number; xml: string | null; itens: NFeItemData[] | null;
+  recebida_em: string; origem?: string | null;
 };
 
 // ── Config ────────────────────────────────────────────────────
@@ -125,6 +130,10 @@ export default function GestaoCompras() {
   const [contratos,    setContratos]    = useState<Contrato[]>([]);
   const [produtos,     setProdutos]     = useState<Produto[]>([]);
   const [nfes,         setNfes]         = useState<NfeRecebida[]>([]);
+  const [nfesComEstoque, setNfesComEstoque] = useState<Set<string>>(new Set());
+  // NF-e que JÁ está no acervo (chegou pelo webhook/importação do Financeiro)
+  // e vai só lançar estoque: o salvar pula o insert e usa este id.
+  const [nfeExistenteId, setNfeExistenteId] = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState(false);
 
@@ -213,12 +222,15 @@ export default function GestaoCompras() {
     if (!empresaAtiva) return;
     setLoading(true);
     try {
-      const [{ data: p }, { data: f }, { data: pr }, { data: n }] = await Promise.all([
+      const [{ data: p }, { data: f }, { data: pr }, { data: n }, { data: mov }] = await Promise.all([
         supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
         supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
         supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
-        supabase.from('nfe_recebidas').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
+        (supabase.from('nfe_entradas' as never) as any).select('*').eq('empresa_id', empresaAtiva.id).order('recebida_em', { ascending: false }),
+        // Quais NF-e já viraram estoque: decide o botão "Lançar estoque" e o selo.
+        supabase.from('estoque_movimentos').select('nfe_id').eq('empresa_id', empresaAtiva.id).not('nfe_id', 'is', null),
       ]);
+      setNfesComEstoque(new Set(((mov as Array<{ nfe_id: string }> | null) || []).map(m => m.nfe_id)));
       setPedidos((p as PedidoCompra[]) || []);
       setFornecedores((f as Fornecedor[]) || []);
       setProdutos((pr as Produto[]) || []);
@@ -596,22 +608,43 @@ export default function GestaoCompras() {
       if (!fe && fd) fornecedorId = (fd as any).id;
     }
 
-    const payload: any = {
-      empresa_id: empresaAtiva.id,
-      pedido_id: nfeForm.pedido_id || null,
-      fornecedor_id: fornecedorId,
-      numero: num,
-      serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
-      chave_acesso: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
-      data_emissao: (nfeParsed ? nfeParsed.data_emissao?.split('T')[0] : nfeForm.data_emissao) || null,
-      cnpj_emitente: (nfeParsed?.cnpj_emitente || nfeForm.cnpj_emitente) || null,
-      nome_emitente: (nfeParsed?.nome_emitente || nfeForm.nome_emitente) || null,
-      valor_total: nfeParsed ? nfeParsed.v_nf : parseNum(nfeForm.valor_total),
-      xml_content: nfeMode === 'xml' ? nfeXmlStr : null,
-      itens: nfeParsed ? nfeParsed.itens : null,
-    };
-    const { data: nfeRow, error } = await supabase.from('nfe_recebidas').insert(payload).select('id').single();
-    if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
+    let nfeRow: { id: string } | null = null;
+    if (nfeExistenteId) {
+      // A NF já mora no acervo (webhook/importação) — só complementa o que o
+      // fluxo de compra conhece: fornecedor, pedido e o cache de itens.
+      const { error } = await (supabase.from('nfe_entradas' as never) as any).update({
+        pedido_id: nfeForm.pedido_id || null,
+        fornecedor_id: fornecedorId,
+        itens: nfeParsed ? nfeParsed.itens : null,
+      }).eq('id', nfeExistenteId);
+      if (error) { toast.error('Erro ao atualizar NF-e', { description: error.message }); setSaving(false); return; }
+      nfeRow = { id: nfeExistenteId };
+    } else {
+      const payload: any = {
+        empresa_id: empresaAtiva.id,
+        pedido_id: nfeForm.pedido_id || null,
+        fornecedor_id: fornecedorId,
+        numero: num,
+        serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
+        chave: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
+        data_emissao: (nfeParsed ? nfeParsed.data_emissao?.split('T')[0] : nfeForm.data_emissao) || null,
+        emitente_cnpj: (nfeParsed?.cnpj_emitente || nfeForm.cnpj_emitente) || null,
+        emitente_nome: (nfeParsed?.nome_emitente || nfeForm.nome_emitente) || null,
+        destinatario_cnpj: (empresaAtiva as { cnpj?: string | null }).cnpj ?? null,
+        valor_total: nfeParsed ? nfeParsed.v_nf : parseNum(nfeForm.valor_total),
+        xml: nfeMode === 'xml' ? nfeXmlStr : null,
+        itens: nfeParsed ? nfeParsed.itens : null,
+        origem: 'importacao_compras',
+        situacao: 'recebida',
+      };
+      // Upsert pela chave: a mesma NF pode já ter chegado pelo webhook — não
+      // vira linha duplicada, os dados do compras complementam a existente.
+      const { data, error } = await (supabase.from('nfe_entradas' as never) as any)
+        .upsert(payload, { onConflict: 'empresa_id,chave' })
+        .select('id').single();
+      if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
+      nfeRow = data as { id: string };
+    }
 
     const fornCriado = !!fornecedorId && !nfeFornMatch;
     if (nfeParsed && nfeRow) {
@@ -637,8 +670,25 @@ export default function GestaoCompras() {
         const { error: me } = await supabase.from('estoque_movimentos').insert(rows as any);
         if (me) toast.error('NF-e salva, erro no estoque', { description: me.message });
         else {
-          const parts = [fornCriado ? 'Fornecedor cadastrado' : null, `${rows.length} entrada(s) no estoque`].filter(Boolean).join(' · ');
-          toast.success(`NF-e importada! · ${parts}`);
+          // Custo médio ponderado: (saldo antigo × custo antigo + entrada ×
+          // custo da NF) ÷ novo saldo. O saldo_atual do estado é o de ANTES
+          // da entrada (o trigger recalcula no banco depois do insert).
+          for (const r of rows) {
+            const custoNf = Number(r.preco_unitario) || 0;
+            const qtd = Number(r.quantidade) || 0;
+            if (custoNf <= 0 || qtd <= 0) continue;
+            const p = produtos.find(x => x.id === r.produto_id);
+            const saldoAntes = Math.max(Number(p?.saldo_atual) || 0, 0);
+            const custoAntes = Number(p?.preco_custo_medio) || 0;
+            const novoCusto = saldoAntes > 0 && custoAntes > 0
+              ? (saldoAntes * custoAntes + qtd * custoNf) / (saldoAntes + qtd)
+              : custoNf;
+            await supabase.from('produtos')
+              .update({ preco_custo_medio: Math.round(novoCusto * 100) / 100 } as never)
+              .eq('id', r.produto_id);
+          }
+          const parts = [fornCriado ? 'Fornecedor cadastrado' : null, `${rows.length} entrada(s) no estoque`, 'custo médio atualizado'].filter(Boolean).join(' · ');
+          toast.success(`NF-e ${nfeExistenteId ? 'lançada no estoque' : 'importada'}! · ${parts}`);
         }
       } else {
         toast.success(`NF-e importada!${fornCriado ? ' · Fornecedor cadastrado' : ''}`);
@@ -652,12 +702,42 @@ export default function GestaoCompras() {
 
   const handleDeleteNfe = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const { error } = await supabase.from('nfe_recebidas').delete().eq('id', id);
+    const { error } = await (supabase.from('nfe_entradas' as never) as any).delete().eq('id', id);
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
     toast.success('NF-e excluída. Movimentações de estoque vinculadas foram mantidas.'); loadAll();
   };
 
-  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); };
+  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeExistenteId(null); };
+
+  // NF-e que chegou pronta ao acervo (webhook do Financeiro, importação) e
+  // ainda não virou estoque: reabre o MESMO diálogo de importação direto no
+  // passo de casar itens com o catálogo, pulando o insert no salvar.
+  const abrirLancamentoEstoque = (n: NfeRecebida) => {
+    if (!n.xml) { toast.error('Esta NF-e não tem XML armazenado — importe o arquivo XML para lançar o estoque.'); return; }
+    try {
+      const parsed = parseNFeXML(n.xml);
+      if (!parsed.itens?.length) { toast.error('Nenhum item encontrado no XML desta NF-e.'); return; }
+      resetNfeDialog();
+      setNfeParsed(parsed);
+      setNfeXmlStr(n.xml);
+      const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
+      setNfeForm(f => ({ ...f, numero: String(parsed.numero_nf), serie: String(parsed.serie), chave_acesso: parsed.chave_acesso, data_emissao: dataEmissao, cnpj_emitente: parsed.cnpj_emitente, nome_emitente: parsed.nome_emitente, valor_total: String(parsed.v_nf) }));
+      const cnpjNorm = normCnpj(parsed.cnpj_emitente || '');
+      const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
+      setNfeFornMatch(fornFound);
+      setNfeCriarForn(!fornFound && !!cnpjNorm);
+      setNfeItemMaps(parsed.itens.map(item => {
+        const matched = (item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined)
+          ?? (item.c_ean ? produtos.find(p => p.ativo && p.codigo_ean && p.codigo_ean === item.c_ean) : undefined);
+        return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
+      }));
+      setNfeExistenteId(n.id);
+      setNfeStep(2);
+      setNfeOpen(true);
+    } catch {
+      toast.error('Não foi possível ler o XML desta NF-e.');
+    }
+  };
   const resetPedidoForm = () => { setPedidoForm(defaultPedidoForm()); setFormItens([blankItem()]); };
 
   // ── Computed ──────────────────────────────────────────────────
@@ -1078,8 +1158,8 @@ export default function GestaoCompras() {
                             <p className="text-xs text-muted-foreground">Série {n.serie}</p>
                           </td>
                           <td className="py-3 px-2">
-                            <p className="font-medium truncate max-w-[180px]">{n.nome_emitente || '—'}</p>
-                            {n.cnpj_emitente && <p className="text-xs text-muted-foreground">{n.cnpj_emitente}</p>}
+                            <p className="font-medium truncate max-w-[180px]">{n.emitente_nome || '—'}</p>
+                            {n.emitente_cnpj && <p className="text-xs text-muted-foreground">{n.emitente_cnpj}</p>}
                           </td>
                           <td className="py-3 px-2 text-right font-medium">{fmtCurrency(n.valor_total)}</td>
                           <td className="py-3 px-2 hidden sm:table-cell">
@@ -1087,7 +1167,17 @@ export default function GestaoCompras() {
                           </td>
                           <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
                           <td className="py-3 pl-2">
-                            <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <div className="flex items-center justify-end gap-1">
+                              {nfesComEstoque.has(n.id) ? (
+                                <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 whitespace-nowrap">Estoque lançado</Badge>
+                              ) : n.xml ? (
+                                <Button size="sm" variant="outline" className="text-xs whitespace-nowrap"
+                                  onClick={e => { e.stopPropagation(); abrirLancamentoEstoque(n); }}>
+                                  <PackagePlus className="w-3.5 h-3.5 mr-1" /> Lançar estoque
+                                </Button>
+                              ) : null}
+                              <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </div>
                           </td>
                         </tr>
                       );
