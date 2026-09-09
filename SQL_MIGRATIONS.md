@@ -12828,3 +12828,15 @@ COMMENT ON COLUMN public.cert_upload_tokens.instalado_no_agente_em IS
 -- (renova o período, não amplia o objeto).
 -- (Conteúdo completo em supabase/migrations/20260909000001_prorrogacao_continua_fora_do_125.sql)
 ```
+
+## 2026-09-09 — Financeiro › Custos por Contrato (carteira) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000002_custos_por_contrato_carteira.sql`
+
+Cria `financeiro_config_custos` (rateio de indiretas POR EMPRESA, desligado por
+padrão — princípio 7), a função `contratos_custos_carteira(empresa, incluir_encerrados)`
+(uma linha por contrato com pago/comprometido/digitado, mesma lógica
+anti-dupla-contagem de `contrato_custo_realizado`) e
+`despesas_indiretas_da_empresa(empresa, meses)` (base do rateio: a pagar sem
+vínculo de contrato, por competência). Acesso das duas funções restrito a admin
+da empresa e equipe financeiro — negado é exceção declarada, não vazio.
