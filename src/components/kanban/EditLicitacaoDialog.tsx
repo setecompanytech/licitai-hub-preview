@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -249,12 +249,25 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
       onConfirmar={confirmarPerda}
     />
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      {/* Largo, em duas colunas com rolagem independente. Era `max-w-lg`
+          (512px) com a análise da Aurélia empilhada embaixo do formulário, em
+          duas colunas de ~200px — parágrafos inteiros viravam uma tira
+          estreita, e o Ian pediu "expansivo, largo". Agora o formulário fica
+          à esquerda e a Aurélia ocupa a altura toda à direita, com largura
+          de leitura. O `grid-rows-[minmax(0,1fr)]` é o que deixa cada coluna
+          rolar sozinha: sem ele a linha do grid cresce com o conteúdo e a
+          rolagem volta a ser do modal inteiro. */}
+      <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/50 shrink-0">
           <DialogTitle className="text-lg">Editar Processo</DialogTitle>
+          <DialogDescription className="text-sm truncate">
+            {[form.numero, form.orgao].filter(Boolean).join(' · ') || 'Dados do processo e análise da Aurélia'}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[26rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+          {/* Coluna 1 — o formulário */}
+          <div className="px-6 py-5 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:border-r border-border/50">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Número</Label>
@@ -293,11 +306,11 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             <Textarea
               value={form.objeto}
               onChange={e => setForm(f => ({ ...f, objeto: e.target.value }))}
-              className="text-sm min-h-[70px]"
+              className="text-sm min-h-[110px]"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,1fr)] gap-3">
             <div className="space-y-1.5">
               <Label className="text-sm">Valor Estimado (R$)</Label>
               <Input
@@ -354,25 +367,30 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
             <Textarea
               value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-              className="text-sm min-h-[60px]"
+              className="text-sm min-h-[90px]"
               placeholder="Anotações sobre o processo..."
             />
           </div>
+          </div>
 
-          {/* AURÉLIA — Análise automática */}
-          <AureliaEditalPanel
-            edital={{
-              titulo: form.numero,
-              objeto: form.objeto,
-              orgao: form.orgao,
-              valor: form.valor_estimado ? `R$ ${form.valor_estimado}` : 'Não informado',
-              modalidade: form.status,
-              uf: form.uf || undefined,
-            }}
-          />
+          {/* Coluna 2 — AURÉLIA, com a altura toda e largura de leitura */}
+          <div className="px-6 py-5 min-w-0 lg:min-h-0 lg:overflow-y-auto bg-muted/20">
+            <AureliaEditalPanel
+              colunas={1}
+              edital={{
+                titulo: form.numero,
+                objeto: form.objeto,
+                orgao: form.orgao,
+                valor: form.valor_estimado ? `R$ ${form.valor_estimado}` : 'Não informado',
+                modalidade: form.status,
+                uf: form.uf || undefined,
+              }}
+            />
+          </div>
+        </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <div className="flex items-center gap-1">
+        <div className="px-6 py-4 border-t border-border/50 bg-muted/30 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -415,21 +433,20 @@ export default function EditLicitacaoDialog({ licitacao, open, onOpenChange, onS
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            </div>
+          </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground gap-1.5"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="gap-1.5 min-w-24"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+            </Button>
           </div>
         </div>
       </DialogContent>

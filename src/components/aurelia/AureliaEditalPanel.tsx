@@ -27,6 +27,13 @@ interface EmpresaContext {
 interface AureliaEditalPanelProps {
   edital: EditalData;
   empresa?: EmpresaContext;
+  /**
+   * Quantas colunas os quatro cartões de análise ocupam. O padrão (2) serve
+   * ao painel largo do Mural; dentro de uma coluna lateral — o modal do
+   * Kanban — dois cartões lado a lado viram tiras de 200px, e o resumo
+   * executivo tem parágrafos inteiros para ler. Ali é 1.
+   */
+  colunas?: 1 | 2;
 }
 
 type AnalysisType = 'resumo' | 'habilitacao' | 'riscos' | 'recomendacao';
@@ -36,7 +43,7 @@ interface ChatMsg {
   content: string;
 }
 
-export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPanelProps) {
+export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: AureliaEditalPanelProps) {
   const [analyses, setAnalyses] = useState<Record<AnalysisType, { content: string | null; loading: boolean; error: boolean }>>({
     resumo: { content: null, loading: true, error: false },
     habilitacao: { content: null, loading: true, error: false },
@@ -126,7 +133,7 @@ export default function AureliaEditalPanel({ edital, empresa }: AureliaEditalPan
         <span className="text-sm font-semibold text-foreground">AURÉLIA — Análise Deste Edital</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
+      <div className={cn("grid grid-cols-1 gap-3 p-4", colunas === 2 && "md:grid-cols-2")}>
         {cards.map(c => (
           <AureliaQuickCard
             key={c.type}

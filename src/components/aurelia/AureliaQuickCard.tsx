@@ -13,7 +13,9 @@ interface AureliaQuickCardProps {
 
 export default function AureliaQuickCard({ title, icon, content, isLoading, error, onRetry }: AureliaQuickCardProps) {
   return (
-    <div className="rounded-lg border aurelia-border aurelia-surface p-4 transition-all hover:scale-[1.02] duration-200">
+    /* Sem `hover:scale`: o cartão carrega parágrafos inteiros e mora em coluna
+       rolável — escalar no hover fazia o texto tremer sob o mouse. */
+    <div className="rounded-lg border aurelia-border aurelia-surface p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-accent">{icon}</span>
         <h4 className="text-sm font-semibold text-foreground">{title}</h4>
@@ -43,7 +45,7 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
       )}
 
       {!isLoading && !error && content && (
-        <p className="text-xs leading-relaxed text-foreground whitespace-pre-wrap">{content}</p>
+        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{content}</p>
       )}
     </div>
   );
