@@ -51,7 +51,7 @@ export function GridFuncionalidades() {
               <h3 className="lp-h4">{f.titulo}</h3>
               <p className="lp-body lp-feature__desc">{f.texto}</p>
               <Link
-                to="/cadastro"
+                to="/auth"
                 className="lp-feature__link"
                 aria-label={`Saiba mais sobre ${f.titulo} — criar conta gratuita`}
               >
@@ -83,7 +83,7 @@ export function FaixaIA() {
               <li key={ponto}>{ponto}</li>
             ))}
           </ul>
-          <Link to="/cadastro" className="lp-btn lp-btn--solid">
+          <Link to="/auth" className="lp-btn lp-btn--solid">
             Analisar meu primeiro edital <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
