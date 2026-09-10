@@ -62,7 +62,8 @@ registrou o cabeçalho:
 ```
 versão                     2.2.0
 slots                      8 (0 em uso)
-rotas                      7  — /health, /sessao/{iniciar,pausar,encerrar},
+rotas                      12 — /health, /sessoes, /portais,
+                                /sessao/{iniciar,pausar,encerrar,retomar,responder,focar},
                                 /kill-switch, /api/proposta/enviar, /certificado
 portais_suportados         8  — comprasgov, bll, licitacoes-e, pncp,
                                 bec-sp, licitanet, portal-compras, bnc
@@ -393,6 +394,77 @@ prova que faltou nas duas sessões. Instalado na VPS (`session-manager.js`
 **Aberto:** confirmar com o log de abas que a troca é isso mesmo, e então a
 busca da compra a partir da área de trabalho — o menu "Compras" é o ponto de
 partida a mapear.
+
+#### 15:43 — a aba não fugiu: ela morreu de pé, com o login feito
+
+O log de abas respondeu, e a hipótese acima estava **errada na metade**. Sessão
+`a0a42536`, clique automático às 15:43:29, e a sequência:
+
+| Hora | O que o log disse | O que significa |
+| --- | --- | --- |
+| 15:43:32 | `🆕 aba aberta: comprasnet.gov.br/popup/popup.asp?ambiente=3` | é o **aviso do Sicaf** que o Comprasnet abre numa janelinha depois do login — só existe com o login feito |
+| 15:43:35 | `Tentativa 1/3: Protocol error (Runtime.callFunctionOn): Target closed` | o primeiro `evaluate` pós-login (`verificarHCaptcha`) achou o alvo do CDP fechado |
+| 15:43:37, :41 | `Attempted to use detached Frame` | o frame principal morreu — mas a aba **não fechou**: nenhum `🧯` no log |
+
+Ou seja: o certificado, a senha, o `state=F` — tudo certo; o login **entrou**.
+O robô morreu 3s depois porque `adotarAbaViva()` só perguntava
+`page.isClosed()`, e a aba continuava aberta. O que fechou foi o alvo do
+protocolo (o Chrome 153 trocou o processo da aba, e o Puppeteer 22.15 — feito
+para o Chrome 127, 26 versões atrás — não reatou o frame).
+
+Testado em separado na VPS, com o mesmo `launchBrowser` do agente:
+navegação simples gov.br → comprasnet → gov.br → comprasnet **não** mata o
+frame, nem com nem sem isolamento de origem. Logo o gatilho é algo do fluxo
+real — o POST com certificado mTLS (`certificado.sso.acesso.gov.br`) e/ou o
+`window.open` do aviso — e **não se sabe ainda qual**. O que se sabe é como
+sobreviver a ele.
+
+Feito, instalado na VPS e espelhado no template (md5 iguais nos dois lados:
+`browser.js` `2b844c62…`, `base-portal.js` `5aa9e2fd…`, `comprasgov.js`
+`7ff0bd5a…`):
+
+- **`abaMorta(p)`** — aba morta é a fechada **ou** a que tem `mainFrame().detached`.
+  `adotarAbaViva()` passa a usar isso.
+- **Diagnóstico no instante da morte** — o log lista os alvos do navegador
+  (`🧯 A aba em uso morreu (apos autenticar) — alvos no navegador agora: page
+  https://… | page https://…`). É a prova que faltou hoje: a próxima falha
+  diz o que existia no Chrome naquele segundo.
+- **Aba nova quando nenhuma serve** — a candidata é a última aba viva que não
+  seja `about:blank` nem o aviso (`/popup/`); sem candidata, `browser.newPage()`.
+  Os cookies são do navegador, não da aba: a sessão do portal continua válida.
+- **`urlDeRetorno`** — uma aba vazia ou de aviso é levada até
+  `loginPortalFornecedor.asp`, que, logado, deve cair na área do fornecedor.
+  *Deve*: sem sessão, no teste ela mostrou "Faça o Login" — a confirmação com
+  sessão é a próxima rodada.
+- O reate acontece **antes** do primeiro `evaluate` pós-login (`'apos
+  autenticar'`), não só no `'depois do login'`.
+- Chrome nasce com `--disable-site-isolation-trials
+  --disable-features=IsolateOrigins,site-per-process`. Não provou resolver
+  (o teste isolado não reproduz a morte), mas não atrapalha em nada e tira
+  uma variável.
+
+**O crash das 15:51 — e fui eu.** A sessão seguinte (`d0088ed9`) nem abriu o
+Chrome: *"Failed to launch the browser process"* com uma asserção do D-Bus
+(`dbus_pending_call_set_notify… pending != NULL`). Causa: o `pm2 restart
+--update-env` das 15:50 **injetou o ambiente da sessão SSH no agente** —
+`DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/0/bus`, `SSH_TTY`,
+`XDG_RUNTIME_DIR`. Esse socket só existe enquanto há login SSH; a sessão
+fechou, o socket sumiu, o Chrome seguinte abortou tentando falar com ele. Única
+ocorrência em todo o `error.log`. Corrigido relançando do
+`ecosystem.config.js` com `env -i` (19 variáveis, zero `DBUS`/`SSH_`/`XDG`) e
+`pm2 save`. **Regra que fica: nunca `--update-env` a partir de uma sessão
+SSH.** O `vnc-stack` ainda carrega o `DBUS` velho no dump; Xvfb e x11vnc não
+usam, ficou quieto.
+
+Duas lições de método, pagas hoje: `pkill -f`/`pgrep -f` com um padrão que
+aparece na própria linha de comando remota **mata a sessão SSH** (exit 255) —
+proteger com `[p]adrao`; e um teste que abre o Chrome e não o fecha não
+"trava", só nunca termina — o relógio de 40s no script foi o que separou os
+dois.
+
+**Aberto:** a rodada seguinte com a `TESTE-COMPRASGOV` — o log vai dizer
+`🧯 … alvos no navegador agora:` (o mecanismo) e se a aba nova cai na área do
+fornecedor (a recuperação). Depois, o menu "Compras".
 
 #### A tela remota que "não conectava" — 45 arquivos em cascata
 

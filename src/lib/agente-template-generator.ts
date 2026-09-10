@@ -1222,6 +1222,13 @@ async function launchBrowser(cnpj) {
     '--window-size=' + largura + ',' + altura,
     // Sem posicao fixa a janela nasce deslocada e sobra faixa preta de um lado.
     '--window-position=0,0',
+    // 10/09/2026: na volta do gov.br para o comprasnet o Chrome 153 trocava o
+    // processo da aba (site isolation) e o Puppeteer 22 perdia o frame —
+    // "Target closed" / "detached Frame" com o login ja feito. Sem isolamento
+    // por origem a aba fica no mesmo processo e o frame sobrevive. Navegador
+    // de automacao numa VPS dedicada: o custo de seguranca nao se aplica.
+    '--disable-site-isolation-trials',
+    '--disable-features=IsolateOrigins,site-per-process',
   ];
 
   // Para certificado A3 via PKCS#11

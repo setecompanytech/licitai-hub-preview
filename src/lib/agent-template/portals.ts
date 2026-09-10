@@ -199,35 +199,73 @@ class BasePortal {
     return 'campo "' + ondeDigitou + '"' + (clicou ? ' + botao "' + clicou + '"' : ' + Enter');
   }
 
+  /** A aba ainda responde? Fechada, ou com o frame principal morto, nao. */
+  abaMorta(p) {
+    try {
+      if (!p || p.isClosed()) return true;
+      const f = p.mainFrame();
+      return !f || f.detached === true;
+    } catch (e) { return true; }
+  }
+
   /**
-   * A aba que este modulo segura ainda existe? Se nao, segue na aba viva.
-   *
-   * VERIFICADO em 10/09/2026 no Compras.gov (sessoes 729e3b82 e e5e76e12):
-   * 11s depois do clique automatico em "Seu certificado digital", o Chrome
-   * descartou a aba em que o login comecou e continuou em OUTRA — troca de
-   * contexto de navegacao na volta do gov.br para o comprasnet. O Puppeteer
-   * ficou segurando a aba morta: "Session closed. Most likely the page has
-   * been closed", e depois "detached Frame" em tudo. O login tinha DADO CERTO
-   * na aba nova; o robo morreu olhando para a antiga.
-   *
-   * Aqui: se a aba fechou, adota a ultima aba aberta do mesmo navegador (a
-   * mais nova, sem contar about:blank). Devolve true quando trocou, para quem
-   * chamou registrar. Se nao houver aba nenhuma, ai sim e erro — e com frase
-   * de gente, nao de biblioteca.
+   * Segunda versao (10/09/2026, 15:43). A primeira so olhava \`isClosed()\`, e
+   * a sessao a0a42536 morreu com a aba ABERTA: o Chrome 153 trocou o processo
+   * da aba na volta do gov.br para o comprasnet, o alvo do CDP fechou
+   * ("Target closed") e o frame que o Puppeteer 22 segurava ficou morto
+   * ("detached Frame") — e a guarda nem disparou. Agora:
+   *   - aba morta = fechada OU frame principal descolado;
+   *   - ao morrer, o log lista os alvos do navegador naquele instante (o
+   *     diagnostico que faltou hoje);
+   *   - candidata e a ultima aba viva que nao seja about:blank nem o aviso do
+   *     Sicaf (/popup/), que o comprasnet abre depois do login;
+   *   - sem candidata, abre uma aba NOVA: os cookies sao do navegador, nao da
+   *     aba, entao a sessao do portal continua valida nela;
+   *   - com \`urlDeRetorno\`, uma aba vazia ou de aviso e levada ate la.
    */
-  async adotarAbaViva(motivo) {
-    if (!this.page.isClosed()) return false;
-    const browser = this.page.browser();
-    const abas = (await browser.pages()).filter((p) => !p.isClosed());
-    const uteis = abas.filter((p) => p.url() && p.url() !== 'about:blank');
-    const nova = uteis[uteis.length - 1] || abas[abas.length - 1];
-    if (!nova) {
-      throw new Error('A aba do navegador fechou' + (motivo ? ' (' + motivo + ')' : '')
-        + ' e nao ha outra aberta para continuar.');
+  async adotarAbaViva(motivo, opcoes) {
+    const destino = opcoes && opcoes.urlDeRetorno;
+    const rotulo = motivo ? ' (' + motivo + ')' : '';
+    const ehAvisoOuVazia = (p) => {
+      let u = ''; try { u = p.url() || ''; } catch (e) { u = ''; }
+      return !u || u === 'about:blank' || /\\/popup\\//i.test(u);
+    };
+    const morta = this.abaMorta(this.page);
+
+    if (!morta) {
+      if (destino && ehAvisoOuVazia(this.page)) {
+        console.log('🔀 Estou numa aba de aviso/vazia' + rotulo + ' (' + this.page.url() + ') — indo para ' + destino);
+        await this.page.goto(destino, { waitUntil: 'networkidle2', timeout: 45000 })
+          .catch((e) => console.warn('⚠️ Nao consegui abrir ' + destino + ': ' + e.message));
+        return true;
+      }
+      return false;
     }
-    console.log('🔀 A aba anterior fechou' + (motivo ? ' (' + motivo + ')' : '')
-      + '; seguindo na aba viva: ' + nova.url());
+
+    const browser = this.page.browser();
+    let alvos = [];
+    try { alvos = browser.targets().map((t) => t.type() + ' ' + (t.url() || '-')); } catch (e) { /* diagnostico */ }
+    console.log('🧯 A aba em uso morreu' + rotulo + ' — alvos no navegador agora: '
+      + (alvos.length ? alvos.join(' | ') : 'nenhum'));
+
+    const vivas = (await browser.pages()).filter((p) => p !== this.page && !this.abaMorta(p));
+    let nova = vivas.filter((p) => !ehAvisoOuVazia(p)).pop() || vivas.pop() || null;
+    let como;
+    if (nova) {
+      como = 'seguindo na aba viva: ' + nova.url();
+    } else {
+      nova = await browser.newPage();
+      como = 'nenhuma aba viva servia; abri uma nova';
+    }
     this.page = nova;
+    if (destino && ehAvisoOuVazia(nova)) {
+      console.log('🔀 ' + como + ' — indo para ' + destino);
+      await nova.goto(destino, { waitUntil: 'networkidle2', timeout: 45000 })
+        .catch((e) => console.warn('⚠️ Nao consegui abrir ' + destino + ': ' + e.message));
+    } else {
+      console.log('🔀 ' + como);
+    }
+    try { await nova.bringToFront(); } catch (e) { /* so conforto visual no VNC */ }
     return true;
   }
 
@@ -683,6 +721,11 @@ class ComprasGovPortal extends BasePortal {
 
       await this.delayHumano(1000, 2000);
 
+      // A volta do gov.br e onde a aba morre (15:43 de 10/09/2026): reatar
+      // AQUI, antes do primeiro evaluate pos-login. Se a aba viva for o aviso
+      // do Sicaf, vai ate a porta do fornecedor — logado, ela leva a area.
+      await this.adotarAbaViva('apos autenticar', { urlDeRetorno: this.portaLogin });
+
       // Verificar hCaptcha pós-certificado
       await this.verificarHCaptcha();
 
@@ -691,7 +734,7 @@ class ComprasGovPortal extends BasePortal {
 
     // Daqui em diante tudo e na aba em que o portal ficou — que pode nao ser
     // a que abriu o login.
-    await this.adotarAbaViva('depois do login');
+    await this.adotarAbaViva('depois do login', { urlDeRetorno: this.portaLogin });
 
     // 4. Verificar se precisa autorizar acesso ao Compras.gov
     const needsAuth = await this.page.evaluate(() => {
