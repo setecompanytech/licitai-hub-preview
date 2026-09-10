@@ -38,6 +38,57 @@ class BasePortal {
     throw new Error(\`lerMelhorLance() não implementado para portal \${this.nome}\`);
   }
 
+  /**
+   * As mensagens do pregoeiro, quando o portal tiver uma sala com chat.
+   *
+   * ─── POR QUE ISTO DEVOLVE VAZIO EM VEZ DE LANÇAR ERRO ──────────────────────
+   *
+   * Diferente de \`lerMelhorLance()\`, ler o chat é OPCIONAL: um portal sem chat
+   * não é um portal quebrado. Lançar erro aqui faria a rodada inteira falhar
+   * por causa de algo que nem sempre existe.
+   *
+   * Cada portal declara \`this.seletoresChat\` quando souber onde fica a
+   * conversa. Sem isso, devolve vazio — e vazio significa "não sei ler", que é
+   * diferente de "não há mensagem". Quem chama não deve concluir nada de uma
+   * lista vazia.
+   *
+   * ─── O QUE FOI VERIFICADO, PARA NINGUÉM REFAZER ────────────────────────────
+   *
+   * Portal de Compras Públicas, 10/09/2026: a página do processo NÃO tem chat.
+   * Uma sonda listou o menu inteiro e o único item de mensagem é "Impugnações"
+   * (peça formal, não conversa); os iframes da página são de suporte e
+   * analytics. O chat do pregoeiro vive na SALA DE DISPUTA, que só existe com
+   * pregão acontecendo — mesma dependência externa do \`souLider()\`.
+   *
+   * Por isso o transporte está pronto e os seletores deste portal, não.
+   * Preenchê-los sem ver a tela seria inventar, e seletor inventado falha em
+   * silêncio: devolve vazio e parece "nenhuma mensagem".
+   *
+   * @returns {Promise<Array<{id: string, autor: string, texto: string}>>}
+   */
+  async lerMensagensChat() {
+    const S = this.seletoresChat;
+    if (!S || !S.lista) return [];
+
+    try {
+      return await this.page.evaluate((sel) => {
+        const container = document.querySelector(sel.lista);
+        if (!container) return [];
+        const itens = container.querySelectorAll(sel.item);
+        // As últimas primeiro, e um teto: a sala acumula a sessão inteira, e
+        // reenviar cem mensagens a cada rodada entupiria o callback.
+        return Array.from(itens).slice(-10).map((el, i) => ({
+          id: el.getAttribute('id') || el.getAttribute('data-id') || \`pos-\${i}\`,
+          autor: (el.querySelector(sel.autor)?.textContent || '').replace(/\\s+/g, ' ').trim(),
+          texto: (el.querySelector(sel.texto)?.textContent || '').replace(/\\s+/g, ' ').trim(),
+        })).filter((m) => m.texto);
+      }, S);
+    } catch {
+      // Ler chat nunca derruba a sessão: é informação adicional, não a tarefa.
+      return [];
+    }
+  }
+
   async enviarLance(valor) {
     throw new Error(\`enviarLance() não implementado para portal \${this.nome}\`);
   }
@@ -1999,6 +2050,114 @@ class PortalComprasPortal extends BasePortal {
     if (contaNoProcesso && contaNoProcesso.impedida) {
       console.log(\`⚠️  Conta impedida no portal (\${contaNoProcesso.resumo}) — participacao em disputa bloqueada pelo proprio portal\`);
     }
+  }
+
+  /**
+   * Os itens do edital, lidos da pagina do processo.
+   *
+   * ─── O QUE FOI MAPEADO NA TELA REAL, 10/09/2026 ────────────────────────────
+   *
+   * A pagina do processo traz uma tabela com estas colunas:
+   *
+   *     | (sel) | Item | Descricao | Valor Ref | Excl. | Quantidade | Julgamento |
+   *
+   * No 002/2026 sao 12 linhas por pagina e CINCO paginas, navegadas por
+   * \`?...&ttPagina=N&slA=Edit&ttCD_CHAVE=...\`. Cada descricao tem id proprio
+   * (\`#produtoTexto155\`, \`156\`…), que nao usamos: id de produto e do catalogo
+   * do portal, nao do item do edital.
+   *
+   * ─── POR QUE MAPEAR PELO CABECALHO E NAO POR POSICAO ───────────────────────
+   *
+   * \`celulas[1]\` seria mais curto e quebraria calado no dia em que o portal
+   * inserir uma coluna. Ler o cabecalho custa uma linha e transforma "valores
+   * errados em silencio" em "nao achei a coluna".
+   *
+   * Vale sem pregao acontecendo — foi por isso que virou a primeira estrutura
+   * de itens real que conseguimos ler deste portal.
+   */
+  async lerItensDoProcesso() {
+    const paginas = [];
+    // Teto de 20 paginas: edital grande existe, laco infinito por paginacao
+    // quebrada tambem. O teto e a condicao de parada.
+    for (let p = 1; p <= 20; p++) {
+      const pagina = await this.page.evaluate(() => {
+        // Defensivo de proposito: nem toda linha tem todas as celulas. Cabecalho,
+        // linha de "nenhum resultado" e linhas com colspan chegam curtas, e
+        // a celula no indice vira undefined. Custou uma sessao real descobrir — o teste de
+        // 10/09/2026 morreu exatamente aqui, com "Cannot read properties of
+        // undefined (reading 'innerText')".
+        const limpa = (el) => ((el && el.innerText) || '').replace(/\\s+/g, ' ').trim();
+        const numero = (t) => {
+          // "R$ 1.234,56" -> 1234.56. Milhar com ponto, decimal com virgula.
+          const m = String(t).replace(/[^\\d.,]/g, '').replace(/\\./g, '').replace(',', '.');
+          const n = parseFloat(m);
+          return Number.isFinite(n) ? n : null;
+        };
+
+        // A tabela dos itens e a que tem coluna "Item" E coluna "Quantidade".
+        // Sem os dois, e outra tabela da pagina (datas, documentos).
+        let alvo = null;
+        let cabecalhos = [];
+        for (const tb of document.querySelectorAll('table')) {
+          const ths = [...tb.querySelectorAll('th')].map((th) => limpa(th).toLowerCase());
+          if (ths.some((h) => /^item$/.test(h)) && ths.some((h) => /quantidade/.test(h))) {
+            alvo = tb;
+            cabecalhos = ths;
+            break;
+          }
+        }
+        if (!alvo) return { itens: [], achouTabela: false, temProxima: false };
+
+        const col = (regex) => cabecalhos.findIndex((h) => regex.test(h));
+        const iItem = col(/^item$/);
+        const iDesc = col(/descri/);
+        const iRef = col(/valor\\s*ref/);
+        const iQtd = col(/quantidade/);
+
+        const itens = [];
+        for (const tr of alvo.querySelectorAll('tr')) {
+          const tds = [...tr.querySelectorAll('td')];
+          if (!tds.length) continue;
+          const bruto = iItem >= 0 ? limpa(tds[iItem]) : '';
+          const num = parseInt(bruto.replace(/\\D/g, ''), 10);
+          if (!Number.isFinite(num)) continue;
+          itens.push({
+            numero: num,
+            descricao: iDesc >= 0 && tds[iDesc] ? limpa(tds[iDesc]).slice(0, 180) : '',
+            valor_referencia: iRef >= 0 && tds[iRef] ? numero(limpa(tds[iRef])) : null,
+            quantidade: iQtd >= 0 && tds[iQtd] ? numero(limpa(tds[iQtd])) : null,
+          });
+        }
+
+        // Existe pagina seguinte? A paginacao e por links com o numero.
+        const paginaAtual = new URL(location.href).searchParams.get('ttPagina');
+        const atual = parseInt(paginaAtual || '1', 10) || 1;
+        const temProxima = [...document.querySelectorAll('a[href*="ttPagina="]')].some((a) => {
+          const n = parseInt(new URL(a.href, location.origin).searchParams.get('ttPagina') || '0', 10);
+          return n === atual + 1;
+        });
+
+        return { itens, achouTabela: true, temProxima };
+      });
+
+      if (!pagina.achouTabela) break;
+      paginas.push(...pagina.itens);
+      if (!pagina.temProxima) break;
+
+      const proxima = new URL(this.page.url());
+      proxima.searchParams.set('ttPagina', String(p + 1));
+      await this.page.goto(proxima.toString(), { waitUntil: 'networkidle2', timeout: 45000 });
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    // Deduplica por numero: paginacao quebrada pode repetir a mesma pagina, e
+    // item repetido viraria "divergencia" inventada na conferencia.
+    const vistos = new Set();
+    return paginas.filter((i) => {
+      if (vistos.has(i.numero)) return false;
+      vistos.add(i.numero);
+      return true;
+    });
   }
 
   /**

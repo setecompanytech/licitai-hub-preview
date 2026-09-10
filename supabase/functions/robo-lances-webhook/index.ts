@@ -486,6 +486,122 @@ serve(async (req) => {
               valor_atual: payload.valor_final,
             })
             .eq("id", sessao_id);
+
+          // ── O PROCESSO FICA SABENDO, SEM NINGUÉM CLICAR ──────────────────
+          //
+          // Até aqui a sessão terminava e o processo no Kanban não registrava
+          // nada. O único caminho era alguém abrir o Robô de Lances e apertar
+          // um botão (`registrarResultadoDisputa`, RoboLances.tsx) — e quem
+          // acabou de acompanhar um pregão raramente volta para fazer isso.
+          //
+          // O QUE ESTE BLOCO NÃO FAZ, E POR QUÊ: não marca "Vencida" nem
+          // "Perdida". O agente manda `resultado: 'finalizado'` ou
+          // 'parada_emergencial' — ele não tem como saber quem venceu, e
+          // `valor_final` é o valor configurado, não um desfecho (com a trava
+          // ligada nenhum lance chega a ser enviado). Escrever um resultado a
+          // partir disso seria inventar dado.
+          //
+          // Além disso, derrota exige motivo registrado em `comercial_perdas`:
+          // um trigger recusa a mudança de status sem ele. Tentar aqui daria
+          // erro de banco num callback que ninguém está olhando.
+          //
+          // Então o que se grava é o que se sabe: a sessão acabou, com quantas
+          // rodadas e de que jeito. Quem decide o resultado é gente.
+          if (sessao.licitacao_id) {
+            const emergencia = payload.resultado === "parada_emergencial";
+            const rodadas = payload.total_rodadas ?? 0;
+
+            await supabase.from("licitacao_mensagens").insert({
+              licitacao_id: sessao.licitacao_id,
+              user_id: userId,
+              tipo: "sistema",
+              conteudo: emergencia
+                ? `🛑 **Sessão do robô interrompida** em ${sessao.edital} ` +
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
+                  `A parada foi acionada por uma pessoa. O resultado da disputa ainda precisa ser registrado.`
+                : `🏁 **Sessão do robô encerrada** em ${sessao.edital} ` +
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
+                  `O robô acompanha e não envia lance — o resultado da disputa ainda precisa ser registrado.`,
+            });
+
+            // O aviso vai para quem disparou. `notificacoes` é a mesma tabela
+            // que o resto do produto usa (quatro escritores), então o sino do
+            // cabeçalho já a mostra sem tela nova.
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: emergencia ? "alerta" : "info",
+              titulo: emergencia
+                ? `🛑 Robô interrompido — ${sessao.edital}`
+                : `🏁 Robô encerrou — ${sessao.edital}`,
+              mensagem:
+                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s). ` +
+                `Abra o processo para registrar como a disputa terminou.`,
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
+          break;
+        }
+
+        // ─── O PREGOEIRO FALOU ───────────────────────────────────────────
+        //
+        // A maior falta apontada pelo cliente: "após a fase de lances vem o
+        // acompanhamento, ele dispara um alerta toda vez que a empresa é
+        // convocada".
+        //
+        // POR QUE `licitacao_mensagens` E NAO `agent_chat_monitor`:
+        // a segunda tem chave estrangeira para `agent_licitacoes`, que e a
+        // tabela do modulo de prospeccao — outro universo. A sessao do robo
+        // carrega `licitacao_id` de `licitacoes`, entao o banco recusaria a
+        // linha. E `licitacao_mensagens` ja e lida pelo `LicitacaoChat`, que
+        // ja tem realtime e ja toca som quando o tipo e "alerta".
+        //
+        // Ou seja: o alerta que faltava nao precisava de tela nova nem de
+        // cron. Precisava de alguem escrevendo na tabela certa.
+        case "mensagem-pregoeiro": {
+          const mensagens = Array.isArray(payload.mensagens) ? payload.mensagens : [];
+          if (!sessao.licitacao_id || mensagens.length === 0) break;
+
+          // O que faz o som tocar. "Convocada", "diligencia", "documento" e
+          // "prazo" sao chamados que exigem acao de gente; o resto e conversa
+          // da sala e entra sem alarme — alerta em tudo deixa de ser alerta.
+          const PEDE_ACAO = /convocad|convoca[çc][ãa]o|dilig[êe]ncia|habilita[çc][ãa]o|documento|prazo|apresent|envie|anexe|recurso|negocia/i;
+
+          for (const m of mensagens) {
+            const texto = String(m.texto || "").slice(0, 2000);
+            if (!texto) continue;
+            const urgente = PEDE_ACAO.test(texto);
+            const autor = String(m.autor || "Pregoeiro").slice(0, 80);
+
+            await supabase.from("licitacao_mensagens").insert({
+              licitacao_id: sessao.licitacao_id,
+              user_id: userId,
+              // "alerta" e o tipo que o LicitacaoChat sonoriza. Usado so
+              // quando o texto pede acao — ver PEDE_ACAO acima.
+              tipo: urgente ? "alerta" : "sistema",
+              conteudo: `💬 **${autor}** (${sessao.portal_nome}): ${texto}`,
+              // O dado cru fica aqui: o conteudo e para ler, o metadata e para
+              // consultar depois sem reprocessar texto.
+              metadata: {
+                origem: "portal",
+                portal: sessao.portal_id,
+                edital: sessao.edital,
+                sessao_id,
+                mensagem_id: m.id ?? null,
+                remetente: autor,
+                requer_acao: urgente,
+              },
+            });
+
+            if (urgente) {
+              await supabase.from("notificacoes").insert({
+                user_id: userId,
+                tipo: "urgente",
+                titulo: `⚠️ O pregoeiro chamou — ${sessao.edital}`,
+                mensagem: texto.slice(0, 200),
+                link: `/processo/${sessao.licitacao_id}`,
+              });
+            }
+          }
           break;
         }
 
@@ -509,6 +625,83 @@ serve(async (req) => {
         // O corpo ja estava sendo gravado em `webhook_log` (o insert acontece
         // antes deste switch), entao o historico nao se perdeu — o que faltava
         // era a sessao refletir a rodada, que e o que a tela le.
+        // ─── A CONFERENCIA DOS ITENS CONTRA O PORTAL ─────────────────────
+        //
+        // A tela monta os itens do NOSSO lado (Precificacao, Proposta,
+        // extracao do edital) e nada disso conversa com o portal. Um numero
+        // errado so apareceria durante o pregao, quando nao ha mais o que
+        // fazer.
+        //
+        // So grava quando ha o que dizer: conferencia que bate nao vira
+        // mensagem. Mural cheio de "esta tudo certo" e mural que ninguem le,
+        // e ai o aviso que importa passa junto.
+        case "itens-conferidos": {
+          if (!sessao.licitacao_id) break;
+          const { leu, ok, resumo, faltando, divergencias, total_no_portal, com_valor_referencia } = payload;
+          if (leu && ok) break;
+
+          const linhas: string[] = [];
+          if (!leu) {
+            linhas.push(
+              `Não foi possível ler a lista de itens do portal para conferir o que enviamos. ` +
+              `Isso não impede a sessão — apenas não houve conferência.`
+            );
+          } else {
+            if (Array.isArray(faltando) && faltando.length) {
+              linhas.push(
+                `**${faltando.length} item(ns) que enviamos não existem neste processo** ` +
+                `(nº ${faltando.slice(0, 10).join(', ')}). O robô não teria o que acompanhar neles.`
+              );
+            }
+            if (Array.isArray(divergencias) && divergencias.length) {
+              linhas.push(
+                `**${divergencias.length} item(ns) com valor de referência diferente** do publicado: ` +
+                divergencias.slice(0, 5).map((d: { numero: number; nosso: number; portal: number }) =>
+                  `nº ${d.numero} (nosso R$ ${d.nosso} × portal R$ ${d.portal})`).join('; ')
+              );
+            }
+            // O contexto que evita a leitura errada de "nenhuma divergencia":
+            // edital sem estimado publicado nao foi conferido, foi ignorado.
+            if (total_no_portal && com_valor_referencia === 0) {
+              linhas.push(
+                `Observação: o portal listou ${total_no_portal} item(ns) e nenhum com valor de ` +
+                `referência publicado — a conferência de valores não teve o que comparar.`
+              );
+            }
+          }
+
+          if (!linhas.length) break;
+
+          await supabase.from("licitacao_mensagens").insert({
+            licitacao_id: sessao.licitacao_id,
+            user_id: userId,
+            // "alerta" para item inexistente, que e defeito de cadastro e
+            // custa a disputa; "sistema" para o resto, que e contexto.
+            tipo: Array.isArray(faltando) && faltando.length ? "alerta" : "sistema",
+            conteudo:
+              `🔎 **Conferência dos itens em ${sessao.edital}** (${sessao.portal_nome})\n\n` +
+              linhas.map((l) => `• ${l}`).join('\n'),
+            metadata: {
+              origem: "conferencia-itens",
+              sessao_id,
+              edital: sessao.edital,
+              resumo: resumo ?? null,
+              total_no_portal: total_no_portal ?? null,
+            },
+          });
+
+          if (Array.isArray(faltando) && faltando.length) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "urgente",
+              titulo: `🔎 Itens não conferem — ${sessao.edital}`,
+              mensagem: `${faltando.length} item(ns) enviados ao robô não existem neste processo do portal.`,
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
+          break;
+        }
+
         case "rodada-sem-lance": {
           const { rodada } = payload;
           await supabase
@@ -598,6 +791,67 @@ serve(async (req) => {
         .eq("id", sessao_id);
 
       return jsonResponse({ parou, sessao_id, tentativas });
+    }
+
+    // ─── focar-sessao ───
+    //
+    // Traz para a frente, na tela virtual do servidor, a janela DAQUELE pregao.
+    //
+    // O agente aguenta 8 sessoes simultaneas e todas desenham na MESMA tela
+    // (:99). Sem isto, com dois pregoes no mesmo horario — que o cliente
+    // descreveu como rotina — o VNC mostra as janelas empilhadas e nao existe
+    // acao possivel para "quero ver o outro".
+    //
+    // Diferente de parar-sessao, aqui NAO se escreve no banco: focar e uma
+    // acao de visualizacao, nao muda o estado de nada. Se falhar, a sessao
+    // continua rodando exatamente como estava.
+    if (action === "focar-sessao") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { sessao_id } = body;
+      if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+
+      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+
+      let ultimoMotivo: string | null = null;
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/focar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": agente.api_key_hash || "",
+            },
+            body: JSON.stringify({ sessao_id }),
+            signal: AbortSignal.timeout(15000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) return jsonResponse({ focou: true, sessao_id, edital: corpo?.edital ?? null });
+          ultimoMotivo = corpo?.error ?? `o agente respondeu ${resp.status}`;
+        } catch (e) {
+          // 404 aqui costuma ser agente ANTIGO, sem a rota. Dizer isso poupa
+          // procurar defeito onde só falta atualizar o agente da VPS.
+          ultimoMotivo = e instanceof Error ? e.message : "sem resposta";
+        }
+      }
+
+      return jsonResponse(
+        {
+          focou: false,
+          sessao_id,
+          error: ultimoMotivo || "Nenhum agente conseguiu trazer a janela para frente",
+        },
+        502
+      );
     }
 
     if (action === "kill-switch") {

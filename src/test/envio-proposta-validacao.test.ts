@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest';
+// Importa de PRODUCAO. Ate 10/09/2026 este arquivo declarava as duas funcoes
+// no proprio topo e testava copias de si mesmo — 176 linhas sem cobrir uma
+// linha do app. O contrato existia e nunca tinha saido do teste.
+import { formatarItens, validarProposta } from '@/lib/robo/proposta';
 
 const PORTAIS_SUPORTADOS = [
   { id: 'comprasgov', nome: 'Compras.gov.br', tipo: 'federal' },
@@ -10,37 +14,6 @@ const PORTAIS_SUPORTADOS = [
   { id: 'bec-sp', nome: 'BEC/SP', tipo: 'estadual' },
   { id: 'bbmnet', nome: 'BBMNet', tipo: 'privado' },
 ];
-
-function formatarItens(pendingItems: any[]) {
-  return pendingItems.map((item, idx) => ({
-    numero: idx + 1,
-    descricao: item.descricao || '',
-    quantidade: parseFloat(item.quantidade) || 1,
-    unidade: item.unidade || 'UN',
-    valor_unitario: parseFloat(item.valorUnitario) || 0,
-    marca: item.marca || '',
-    modelo: item.modelo || '',
-    fabricante: item.fabricante || '',
-  }));
-}
-
-function validarProposta(params: {
-  numeroPregao: string;
-  empresaId: string | null;
-  itens: any[];
-  temCredencial: boolean;
-  agenteOnline: boolean;
-}) {
-  const erros: string[] = [];
-  if (!params.numeroPregao.trim()) erros.push('Número do pregão obrigatório');
-  if (!params.empresaId) erros.push('Empresa não selecionada');
-  if (params.itens.length === 0) erros.push('Sem itens na proposta');
-  const invalidos = params.itens.filter(i => !i.descricao || i.valor_unitario <= 0);
-  if (invalidos.length > 0) erros.push(`${invalidos.length} item(ns) inválido(s)`);
-  if (!params.temCredencial) erros.push('Credencial do portal não cadastrada');
-  if (!params.agenteOnline) erros.push('Agente Cloud offline');
-  return { valido: erros.length === 0, erros };
-}
 
 describe('Validação de Proposta para Envio', () => {
   it('aceita proposta válida completa', () => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Bell, CheckCircle2, Clock,
   Search, RefreshCw, Volume2, VolumeX, Play, Pause,
-  Megaphone, FileWarning, HelpCircle, FileEdit, Info
+  Megaphone, FileWarning, HelpCircle, FileEdit, Info, AlertTriangle
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
@@ -64,12 +64,26 @@ function useSoundAlert() {
   return playAlert;
 }
 
-type ChatMessage = {
+/**
+ * Uma fala do pregoeiro, lida pelo robô na sala e gravada no processo.
+ *
+ * ─── POR QUE ESTE TIPO MUDOU ───────────────────────────────────────────────
+ *
+ * Esta tela dizia "Chat do Pregoeiro" e mostrava `chat_messages` — que tem
+ * `role`/`content`, o formato de conversa com assistente de IA. Pior: nada no
+ * repositório inteiro escrevia nessa tabela. Era uma aba prometendo mensagens
+ * do pregão e lendo uma tabela vazia desde fevereiro de 2026.
+ *
+ * Agora lê `licitacao_mensagens`, que é onde o robô grava de verdade, filtrada
+ * por `metadata->>origem = 'portal'`.
+ */
+type MensagemDoPortal = {
   id: string;
-  content: string;
-  role: string;
+  conteudo: string;
+  tipo: string;
   created_at: string;
-  metadata: any;
+  licitacao_id: string;
+  metadata: { edital?: string; remetente?: string; requer_acao?: boolean } | null;
 };
 
 export default function MonitoramentoChat() {
@@ -81,33 +95,54 @@ export default function MonitoramentoChat() {
   const [mainTab, setMainTab] = useState(licitacaoId ? 'processo' : 'chat');
   const playAlert = useSoundAlert();
 
-  // Real chat messages from DB
-  const [mensagens, setMensagens] = useState<ChatMessage[]>([]);
+  // O que o pregoeiro falou, em todos os processos da empresa.
+  const [mensagens, setMensagens] = useState<MensagemDoPortal[]>([]);
   const [loadingMensagens, setLoadingMensagens] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const loadMessages = async () => {
       setLoadingMensagens(true);
+      // Sem `.eq('user_id')`: mensagem de pregão é do PROCESSO, e processo é da
+      // empresa (princípio 2). Quem decide o alcance é a RLS — filtrar por
+      // usuário aqui esconderia do colega o chamado do pregoeiro num processo
+      // que os dois acompanham.
       const { data } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('user_id', user.id)
+        .from('licitacao_mensagens')
+        .select('id, conteudo, tipo, created_at, licitacao_id, metadata')
+        .eq('metadata->>origem', 'portal')
         .order('created_at', { ascending: false })
         .limit(50);
-      setMensagens(data || []);
+      setMensagens((data as unknown as MensagemDoPortal[]) || []);
       setLoadingMensagens(false);
     };
     loadMessages();
 
     const channel = supabase
-      .channel('monitoramento-chat-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${user.id}` }, () => loadMessages())
+      .channel('monitoramento-portal-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'licitacao_mensagens' },
+        (payload) => {
+          const nova = payload.new as MensagemDoPortal;
+          // O realtime não filtra por conteúdo de jsonb, então a peneira é
+          // aqui: sem ela, cada mensagem interna da equipe tocaria o alarme
+          // de convocação.
+          if (nova?.metadata?.requer_acao === undefined && nova?.tipo !== 'alerta') return;
+          loadMessages();
+          // O som que existia e nunca tinha quem o disparasse. Só para o que
+          // pede ação — alarme em toda fala vira ruído e para de ser ouvido.
+          if (alertaSonoro && nova?.metadata?.requer_acao) playAlert('convocacao');
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
+    // `alertaSonoro` e `playAlert` de fora: reassinar o canal a cada toggle de
+    // som derrubaria e recriaria a conexão sem necessidade.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleToggleSom = (checked: boolean) => {
@@ -181,34 +216,79 @@ export default function MonitoramentoChat() {
                 <div>
                   <p className="text-sm font-medium text-info">Chat do pregoeiro — em tempo real</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O chat ao vivo será ativado automaticamente quando você estiver participando de um pregão eletrônico.
-                    Para monitorar um pregão, acesse o <strong>Kanban</strong> ou a <strong>Busca Inteligente</strong> e inicie o acompanhamento de uma licitação.
+                    Quando o robô estiver numa <strong>sala de disputa ao vivo</strong>, as falas do
+                    pregoeiro caem aqui e no próprio processo. As que pedem ação —{' '}
+                    <em>convocação, diligência, prazo, documento</em> — vêm destacadas e tocam
+                    alerta sonoro.
+                  </p>
+                  {/* O estado real, dito sem rodeio. A versão anterior prometia
+                      "será ativado automaticamente" para uma tela que lia uma
+                      tabela sem escritor — é o tipo de frase que faz procurar
+                      defeito onde falta implementação. */}
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    <strong className="text-foreground">Onde estamos:</strong> os portais só expõem
+                    o chat durante a sessão pública. O transporte está pronto; a leitura da sala
+                    depende de acompanhar um pregão acontecendo.
                   </p>
                 </div>
               </div>
 
-              {/* Recent messages from DB */}
+              {/* O que o pregoeiro falou, do processo mais recente para o mais
+                  antigo. Quem pede ação vem destacado — é o caso que o cliente
+                  descreveu: "dispara um alerta toda vez que a empresa é
+                  convocada". */}
               {mensagens.length > 0 ? (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground">Últimas mensagens do assistente</h3>
-                  {mensagens.slice(0, 10).map(msg => (
-                    <Card key={msg.id} className="p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-xs">{msg.role === 'user' ? 'Você' : 'Assistente'}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(msg.created_at).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{msg.content}</p>
-                    </Card>
-                  ))}
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Últimas mensagens dos pregoeiros
+                  </h3>
+                  {mensagens.slice(0, 10).map((msg) => {
+                    const pedeAcao = msg.metadata?.requer_acao === true;
+                    return (
+                      <Card
+                        key={msg.id}
+                        className={`p-3 ${pedeAcao ? 'border-warning/40 bg-warning/5' : ''}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {pedeAcao && (
+                              <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+                            )}
+                            <Badge variant="outline" className="text-xs font-mono shrink-0">
+                              {msg.metadata?.edital || 'processo'}
+                            </Badge>
+                            {pedeAcao && (
+                              <span className="text-xs text-warning font-medium truncate">
+                                pede ação
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {new Date(msg.created_at).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{msg.conteudo}</p>
+                        <Link
+                          to={`/processo/${msg.licitacao_id}`}
+                          className="text-xs text-accent hover:underline mt-1.5 inline-block"
+                        >
+                          Abrir o processo →
+                        </Link>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Nenhum pregão monitorado no momento</p>
-                  <p className="text-xs mt-1">
-                    Os pregões aparecerão aqui quando você iniciar o monitoramento em tempo real via Kanban ou Busca Inteligente.
+                  <p className="text-sm">Nenhuma mensagem de pregoeiro registrada</p>
+                  {/* A frase honesta: hoje a lista fica vazia porque nenhum
+                      portal implementado sabe ler a sala. Prometer "aparecerão
+                      quando você monitorar" seria repetir o defeito que esta
+                      tela tinha. */}
+                  <p className="text-xs mt-1 max-w-md mx-auto">
+                    As falas do pregoeiro aparecem aqui quando o robô estiver numa sala de disputa
+                    ao vivo. Fora da sessão pública, os portais não expõem o chat.
                   </p>
                 </div>
               )}

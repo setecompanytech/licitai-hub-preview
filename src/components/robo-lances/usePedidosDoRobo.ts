@@ -31,12 +31,34 @@ export type DesfechoDoRobo = {
   em: string;
 };
 
+/**
+ * O que o robô achou ao comparar os itens que recebeu com os que o portal
+ * publicou no processo.
+ *
+ * `leu: false` é estado próprio e importa: significa "não consegui ler a lista
+ * do portal", que é diferente de "os itens não existem". Sem essa distinção a
+ * tela acusaria o cadastro do usuário por uma falha nossa de leitura.
+ */
+export type ConferenciaDeItens = {
+  leu: boolean;
+  /** `null` quando não houve leitura — nada a afirmar. */
+  ok: boolean | null;
+  resumo: string;
+  /** Números dos itens que enviamos e o portal não lista. */
+  faltando: number[];
+  /** Quantos itens do edital ficaram de fora. Não é erro — é escolha. */
+  sobrando_qtd: number;
+  divergencias: Array<{ numero: number; nosso: number; portal: number }>;
+};
+
 /** Uma sessão que o agente diz estar de pé AGORA. */
 export type SessaoViva = {
   sessao_id: string;
   status: string;
   portal_id: string;
   edital: string;
+  /** Null enquanto o robô ainda não conferiu, ou em portal que não sabe ler. */
+  conferencia?: ConferenciaDeItens | null;
 };
 
 type Saude = {
@@ -109,4 +131,44 @@ export async function pararSessaoDoRobo(sessaoId: string): Promise<{
   }
 
   return { parou: (data as { parou?: boolean })?.parou === true };
+}
+
+
+/**
+ * Traz para a frente, na tela do servidor, a janela DAQUELE pregão.
+ *
+ * O agente aguenta 8 sessões simultâneas e todas desenham na mesma tela
+ * virtual. Sem isto, com dois pregões no mesmo horário o VNC mostra as janelas
+ * empilhadas e não há como pedir para ver o outro.
+ *
+ * Mora aqui junto de `pararSessaoDoRobo` porque é a mesma família: as duas
+ * agem sobre UMA sessão escolhida, e quem observa é quem usa as duas.
+ *
+ * @returns `focou` false não derruba nada — a sessão segue rodando, só não foi
+ *          para a frente. `erro` costuma ser agente sem a rota (VPS
+ *          desatualizada) ou janela já fechada.
+ */
+export async function focarSessaoDoRobo(sessaoId: string): Promise<{
+  focou: boolean;
+  erro?: string;
+}> {
+  const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
+    body: { action: 'focar-sessao', sessao_id: sessaoId },
+  });
+
+  if (error) {
+    // O corpo do erro vem em `context`, não em `message` — mesmo cuidado do
+    // freio, senão a pessoa recebe "non-2xx status code" no lugar da causa.
+    let detalhe = error.message;
+    try {
+      const corpo = await (error as { context?: Response }).context?.json();
+      if (corpo?.error) detalhe = corpo.error;
+    } catch {
+      /* fica a mensagem original */
+    }
+    return { focou: false, erro: detalhe };
+  }
+
+  const corpo = data as { focou?: boolean; error?: string } | null;
+  return { focou: corpo?.focou === true, erro: corpo?.error };
 }

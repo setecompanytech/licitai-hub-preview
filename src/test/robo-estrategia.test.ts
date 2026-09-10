@@ -16,6 +16,15 @@ type Decisao = { acao: 'lance' | 'aguardar' | 'encerrar'; valor: number | null; 
 let decidirLance: (estado: Record<string, unknown>) => Decisao;
 let podeEnviarLance: (portalId: string) => boolean;
 let liberados: string[];
+type Conferencia = {
+  leu: boolean;
+  ok: boolean | null;
+  faltando: number[];
+  sobrando: number[];
+  divergencias: Array<{ numero: number; nosso: number; portal: number }>;
+  resumo: string;
+};
+let conferirItens: (nossos: unknown[], doPortal: unknown[]) => Conferencia;
 
 beforeAll(() => {
   const codigo = ESTRATEGIA_FILES['src/estrategia.js'];
@@ -23,6 +32,7 @@ beforeAll(() => {
     exports: {} as {
       decidirLance: typeof decidirLance;
       podeEnviarLance: typeof podeEnviarLance;
+      conferirItens: typeof conferirItens;
       PORTAIS_COM_LANCE_LIBERADO: string[];
     },
   };
@@ -30,6 +40,7 @@ beforeAll(() => {
   decidirLance = module.exports.decidirLance;
   podeEnviarLance = module.exports.podeEnviarLance;
   liberados = module.exports.PORTAIS_COM_LANCE_LIBERADO;
+  conferirItens = module.exports.conferirItens;
 });
 
 /**
@@ -203,5 +214,75 @@ describe('trava de liberação por portal', () => {
   it('podeEnviarLance responde pela lista, não por adivinhação', () => {
     expect(podeEnviarLance('bll')).toBe(false);
     expect(podeEnviarLance('__teste__')).toBe(true); // liberado pelo bloco acima
+  });
+});
+
+/**
+ * A conferência dos itens contra o que o portal publicou.
+ *
+ * A tela monta os itens do NOSSO lado — Precificação, Proposta, extração do
+ * edital — e nada disso conversa com o portal. Sem esta comparação, um número
+ * errado só aparece durante o pregão, quando não há mais o que fazer.
+ */
+describe('conferirItens', () => {
+  const doPortal = [
+    { numero: 1, descricao: 'Caneta', valor_referencia: 2.5, quantidade: 100 },
+    { numero: 2, descricao: 'Papel A4', valor_referencia: 25, quantidade: 50 },
+    { numero: 3, descricao: 'Clipe', valor_referencia: 4, quantidade: 30 },
+  ];
+
+  it('não afirma nada quando não conseguiu ler o portal', () => {
+    // O caso mais importante: lista vazia do portal é "não li", não "nada
+    // existe". Acusar 3 itens de faltarem seria culpar o usuário por uma
+    // falha nossa de leitura.
+    const r = conferirItens([{ numero: 1 }], []);
+    expect(r.leu).toBe(false);
+    expect(r.ok).toBeNull();
+    expect(r.faltando).toHaveLength(0);
+  });
+
+  it('aprova quando os itens que enviamos existem no portal', () => {
+    const r = conferirItens([{ numero: 1 }, { numero: 2 }], doPortal);
+    expect(r.leu).toBe(true);
+    expect(r.ok).toBe(true);
+    expect(r.faltando).toHaveLength(0);
+  });
+
+  it('acusa item que enviamos e não existe no portal', () => {
+    const r = conferirItens([{ numero: 1 }, { numero: 99 }], doPortal);
+    expect(r.ok).toBe(false);
+    expect(r.faltando).toEqual([99]);
+    expect(r.resumo).toContain('99');
+  });
+
+  it('disputar parte do edital NÃO é erro', () => {
+    // Escolher 1 item de um edital com 3 é decisão comercial rotineira. Se
+    // isso reprovasse, o aviso seria ignorado no primeiro pregão grande.
+    const r = conferirItens([{ numero: 1 }], doPortal);
+    expect(r.ok).toBe(true);
+    expect(r.sobrando).toEqual([2, 3]);
+  });
+
+  it('aponta valor de referência diferente do publicado', () => {
+    const r = conferirItens(
+      [{ numero: 2, valor_estimado_orgao: 30 }],
+      doPortal,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.divergencias).toEqual([{ numero: 2, nosso: 30, portal: 25 }]);
+  });
+
+  it('tolera diferença de centavo — arredondamento não é divergência', () => {
+    const r = conferirItens(
+      [{ numero: 2, valor_estimado_orgao: 25.1 }],
+      doPortal,
+    );
+    expect(r.divergencias).toHaveLength(0);
+    expect(r.ok).toBe(true);
+  });
+
+  it('não inventa divergência quando um dos lados não tem valor', () => {
+    const r = conferirItens([{ numero: 1 }], doPortal);
+    expect(r.divergencias).toHaveLength(0);
   });
 });

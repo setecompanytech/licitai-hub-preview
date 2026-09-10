@@ -140,6 +140,91 @@ function decidirLance(estado) {
   return LANCE(novoValor, \`Cobrindo R$ \${melhorLance.toFixed(2)} com decremento de R$ \${decremento.toFixed(2)}\`);
 }
 
-module.exports = { decidirLance, podeEnviarLance, PORTAIS_COM_LANCE_LIBERADO };
+/**
+ * O que mandamos bate com o que o portal publicou?
+ *
+ * ─── POR QUE ISTO EXISTE ───────────────────────────────────────────────────
+ *
+ * A tela monta os itens da disputa a partir do nosso lado — Precificação,
+ * Proposta Comercial, extração do edital. Nada disso conversa com o portal. Um
+ * item numerado errado, um lote que mudou, uma republicação do edital, e o robô
+ * entra na disputa mirando um item que não existe — sem que nada acuse.
+ *
+ * Esta função é PURA de propósito, como a \`decidirLance\`: comparar é regra de
+ * negócio, e regra de negócio se testa sem abrir navegador.
+ *
+ * ─── O QUE ELA NÃO FAZ ─────────────────────────────────────────────────────
+ *
+ * Não corrige nada e não impede nada. Divergência não é necessariamente erro:
+ * disputar 3 itens de um edital com 60 é rotina. Quem decide é gente — a função
+ * só garante que a pessoa saiba antes, e não depois do pregão.
+ *
+ * @param {Array<{numero:number, descricao?:string, valor_estimado_orgao?:number}>} nossos
+ * @param {Array<{numero:number, descricao?:string, valor_referencia?:number}>} doPortal
+ */
+function conferirItens(nossos, doPortal) {
+  const meus = Array.isArray(nossos) ? nossos : [];
+  const deles = Array.isArray(doPortal) ? doPortal : [];
+
+  // Lista vazia do portal e "nao consegui ler" sao coisas diferentes, e o
+  // chamador nao tem como distinguir olhando so o resultado. Sem leitura, nao
+  // se afirma nada: dizer "todos os itens faltam" seria acusar o portal de um
+  // defeito nosso.
+  if (deles.length === 0) {
+    return {
+      leu: false,
+      ok: null,
+      faltando: [],
+      sobrando: [],
+      divergencias: [],
+      resumo: 'Nao foi possivel ler a lista de itens do portal',
+    };
+  }
+
+  const porNumero = new Map(deles.map((i) => [Number(i.numero), i]));
+
+  const faltando = meus
+    .filter((i) => !porNumero.has(Number(i.numero)))
+    .map((i) => Number(i.numero));
+
+  const nossosNumeros = new Set(meus.map((i) => Number(i.numero)));
+  const sobrando = deles
+    .filter((i) => !nossosNumeros.has(Number(i.numero)))
+    .map((i) => Number(i.numero));
+
+  // Divergencia de valor so quando OS DOIS lados tem numero: comparar contra
+  // ausencia produziria alarme em todo item que ninguem estimou.
+  const divergencias = [];
+  for (const meu of meus) {
+    const dele = porNumero.get(Number(meu.numero));
+    if (!dele) continue;
+    const nosso = Number(meu.valor_estimado_orgao);
+    const portal = Number(dele.valor_referencia);
+    if (!Number.isFinite(nosso) || !Number.isFinite(portal) || portal <= 0) continue;
+    // 1% de tolerancia: arredondamento de centavo em item de milhares nao e
+    // divergencia, e alarme por centavo treina a pessoa a ignorar o aviso.
+    if (Math.abs(nosso - portal) / portal > 0.01) {
+      divergencias.push({ numero: Number(meu.numero), nosso, portal });
+    }
+  }
+
+  const partes = [];
+  if (faltando.length) partes.push(\`\${faltando.length} item(ns) que enviamos NAO existem no portal (\${faltando.slice(0, 6).join(', ')})\`);
+  if (divergencias.length) partes.push(\`\${divergencias.length} item(ns) com valor de referencia diferente\`);
+  if (sobrando.length) partes.push(\`\${sobrando.length} item(ns) do edital ficaram de fora\`);
+
+  return {
+    leu: true,
+    // O campo ok fala so do que e defeito NOSSO: item inexistente e valor
+    // divergente. Item sobrando nao entra — escolher 3 de 60 e decisao, nao erro.
+    ok: faltando.length === 0 && divergencias.length === 0,
+    faltando,
+    sobrando,
+    divergencias,
+    resumo: partes.length ? partes.join('; ') : \`\${meus.length} item(ns) conferem com o portal\`,
+  };
+}
+
+module.exports = { decidirLance, podeEnviarLance, conferirItens, PORTAIS_COM_LANCE_LIBERADO };
 `,
 };

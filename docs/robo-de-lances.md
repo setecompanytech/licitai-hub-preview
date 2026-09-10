@@ -234,8 +234,9 @@ Oito segundos do login ao processo aberto. Três coisas ficam provadas:
 Operação"* — pregão já acabado. A página é "Dados do Processo", não a sala de
 disputa. Então os seletores de `lerMelhorLance()` continuam sendo os três
 palpites de sempre (`.valor-lance, .melhor, td.valor`) e o `souLider()` continua
-sem existir para este portal. Isso só se escreve **vendo** a sala com pregão
-acontecendo — é o único item que ainda depende do Rafael.
+**sem implementação própria** neste portal — ele herda o da `BasePortal`, que
+devolve `null`, ou seja "não sei dizer quem lidera". Isso só se escreve **vendo**
+a sala com pregão acontecendo — é o único item que ainda depende do Rafael.
 
 Foto: `capturas-robo/20260910-001419-portal-compras-processo-002-2026.png`.
 
@@ -506,17 +507,291 @@ devolveu zero.
 | Monitor de latência do portal (verde/amarelo/vermelho) | ❌ | nenhuma medição de tempo de resposta existe |
 
 **A ressalva que importa:** a regra de margem está coberta por 16 testes, mas
-`souLider()` existe em **1 dos 23 módulos**, e `PORTAIS_COM_LANCE_LIBERADO` está
-vazio. A regra é boa e ainda não foi exercida contra uma tela real.
+`souLider()` tem implementação própria em **1 dos 23 módulos** — nos outros 22 é
+herdado da `BasePortal`, que devolve `null` —, e `PORTAIS_COM_LANCE_LIBERADO`
+está vazio. A regra é boa e ainda não foi exercida contra uma tela real.
+
+#### As duas travas, conferidas na VPS em 10/09/2026
+
+Rodando a `decidirLance` real do agente no ar, com `portalId: 'portal-compras'`:
+
+| Cenário | Decisão |
+| --- | --- |
+| Como está hoje | `aguardar` — *"Portal não está liberado para enviar lance"* |
+| **Se alguém liberasse o portal na lista** | `aguardar` — *"O portal não informou quem está liderando"* |
+| Liberado + `souLider: true` | `aguardar` — *"Já estamos liderando"* |
+| Liberado + `souLider: false` + melhor lance lido | `lance` de R$ 840 |
+| Liberado + `souLider: false` + sem ler melhor lance | `aguardar` |
+
+A leitura que importa: **são duas travas independentes.** Liberar o portal na
+lista, sozinho, não destrava nada — `souLider` herdado devolve `null`, e a
+função trata "não sei" como "não dá lance". Só a quarta linha produz um lance, e
+ela exige três condições que não coexistem hoje.
+
+Uma terceira trava cobre o outro caminho de escrita: `enviarProposta` é
+`undefined` em `PortalComprasPortal`, e a rota devolve 501 antes de abrir o
+navegador.
 
 ### 7.2 Multitarefa
 
 | A régua | Nós |
 | --- | --- |
-| Vários pregões simultâneos | ⚠️ até **8 sessões** paralelas — isto temos |
-| Vários itens por pregão | ❌ a sessão leva **um conjunto só** de parâmetros (`valor_inicial`, `valor_minimo`, `decremento`) |
-| Regras de decremento por item | ❌ a tela tem lista de itens, mas ela **não chega ao agente** |
-| Painel colorido: quais pregões já abriram disputa | ❌ |
+| Vários pregões simultâneos | ✅ até **8 sessões** paralelas, **e agora dá para operá-las** |
+| Vários itens por pregão | ⚠️ os itens chegam ao agente desde 10/09; falta a decisão POR item |
+| Regras de decremento por item | ⚠️ cada item já leva o **piso próprio**; o decremento ainda é um só |
+| Painel colorido: quais pregões já abriram disputa | ⚠️ o painel lista as sessões vivas e marca quais pedem alguém |
+
+#### O que mudou em 10/09/2026 — de capacidade para operação
+
+Aguentar 8 sessões nunca foi o problema; **operá-las** era. Dois defeitos
+tornavam o paralelismo inútil na prática:
+
+**O painel só enxergava a primeira.** `VncWebViewer` fazia `sessoesVivas[0]`.
+Com dois pregões no mesmo horário — que o cliente descreve como rotina — o
+botão de parar interrompia uma sessão **arbitrária**, e nada na tela dizia qual.
+Apertar o freio achando que se para um pregão e parar outro é pior que não ter
+freio.
+
+**Todas as janelas desenhavam na mesma tela.** `browser.js` usa
+`DISPLAY || ':99'` para toda sessão. Oito pregões = oito janelas empilhadas num
+monitor virtual, e o VNC mostrando só a de cima. "Quero ver o outro" não era uma
+ação possível.
+
+O conserto: o painel passou a listar todas as sessões vivas, marcando quais
+estão **esperando uma pessoa** (código de verificação, captcha) e qual está em
+exibição; e a rota nova **`POST /sessao/focar`** traz a janela daquele pregão
+para a frente.
+
+A alternativa era uma tela virtual por sessão (Xvfb `:99`, `:100`, `:101`…, com
+x11vnc e websockify próprios). Resolve mais — duas abas lado a lado — e custa
+muito mais: portas, RAM e CPU por sessão. Ficou uma tela só, alternando.
+
+**Duas armadilhas encontradas ao testar, que valem registro:**
+
+`xdotool windowactivate` **não funciona aqui**. A VPS roda Xvfb pelado, sem
+gerenciador de janelas, e o comando falha com *"Your windowmanager claims not to
+support `_NET_ACTIVE_WINDOW`"*. Quem funciona é `windowraise`, que chama
+`XRaiseWindow` direto no servidor X e não depende de WM. O `windowfocus` vai
+junto, mas com o erro engolido de propósito.
+
+E a janela é achada por **PID**, nunca por título: `xdotool search --pid`, com o
+PID guardado no momento em que o navegador abre. Dois pregões no mesmo portal
+têm título idêntico — procurar por título e ativar "a primeira que casar" é
+exatamente o defeito que a rota existe para corrigir.
+
+**Provado em 10/09/2026, 01:10:** duas sessões vivas ao mesmo tempo, cada uma
+com sua janela (`12582915` e `20971523`), alternando entre elas com sucesso. E
+os dois pregões abriram processos **diferentes** no portal — `002/2026` em
+`ttCD_CHAVE=453864`, `039/2025` em `447069`.
+
+#### O processo fica sabendo que a sessão acabou
+
+Antes, a sessão terminava e o processo no Kanban não registrava nada: o único
+caminho era alguém abrir o Robô de Lances e apertar um botão. Agora o callback
+`sessao-encerrada` grava uma mensagem de sistema no processo e dispara
+notificação.
+
+**O que ele deliberadamente NÃO faz:** marcar "Vencida" ou "Perdida". O agente
+manda `resultado: 'finalizado'` ou `'parada_emergencial'` — ele não tem como
+saber quem venceu, e `valor_final` é o valor configurado, não um desfecho (com a
+trava ligada nenhum lance chega a ser enviado). Escrever resultado a partir
+disso seria inventar dado.
+
+Some-se que **derrota exige motivo** registrado em `comercial_perdas`: um
+trigger recusa a mudança de status sem ele. Tentar no callback daria erro de
+banco num lugar que ninguém está olhando.
+
+Então grava-se o que se sabe — a sessão acabou, com quantas rodadas e de que
+jeito — e quem decide o resultado continua sendo gente.
+
+#### O acompanhamento: alerta de convocação — 10/09/2026
+
+O pedido do cliente: *"após a fase de lances vem o acompanhamento, ele dispara
+um alerta toda vez que a empresa é convocada"*.
+
+A auditoria achou **uma corrente de três elos com dois mortos**:
+
+| Elo | Estado antes |
+| --- | --- |
+| Alguém lê o chat do portal | ❌ `lerMensagensChat()` existia só no Licitações-e, com seletores de palpite, e **nunca era chamado** |
+| Alguém grava a mensagem | ❌ `agent_chat_monitor` **não tinha nenhum escritor** no repositório inteiro |
+| Alguém alerta | ✅ `notificacoes` funciona, com quatro escritores |
+
+E a tela `MonitoramentoChat` prometia *"você receberá notificações sonoras ao ser
+convocado"* lendo `chat_messages` — tabela de conversa com **assistente de IA**
+(`role`/`content`), sem escritor desde fevereiro de 2026. Uma aba dizendo "Chat
+do Pregoeiro" e mostrando outra coisa, vazia.
+
+**A correção mudou a tabela de destino, e o motivo importa.**
+`agent_chat_monitor.licitacao_id` tem chave estrangeira para `agent_licitacoes`
+— a tabela do módulo de prospecção, outro universo. A sessão do robô carrega
+`licitacao_id` de `licitacoes`; o banco recusaria a linha.
+
+O destino certo é **`licitacao_mensagens`**, que já é onde o robô grava e que o
+`LicitacaoChat` já lê — com realtime e **com som quando o tipo é `alerta`**. O
+alerta que faltava não precisava de tela nova nem de cron: precisava de alguém
+escrevendo na tabela certa. Por isso o cron do `agent-monitor` saiu do plano.
+
+O que classifica como urgente é o texto da mensagem —
+`convocad|diligência|habilitação|documento|prazo|apresent|envie|anexe|recurso|negocia`.
+Só esses tocam alarme e viram notificação; o resto entra como conversa. Alerta em
+tudo deixa de ser alerta.
+
+E o laço **deduplica por id de mensagem**: ele relê a mesma tela a cada rodada, e
+sem isso uma fala do pregoeiro viraria alarme a cada 30 segundos até a sessão
+acabar.
+
+**O que está bloqueado, e a prova de que é bloqueio e não preguiça.** Uma sonda
+rodou em 10/09/2026 contra a página do processo `002/2026`, listou o menu
+inteiro e todos os iframes. Resultado: **não existe chat na página do processo**.
+O único item de mensagem é "Impugnações" (peça formal, não conversa); os iframes
+são de suporte e analytics.
+
+O chat do pregoeiro vive na **sala de disputa**, que só existe com pregão
+acontecendo — a mesma dependência externa do `souLider()`. Por isso
+`PortalComprasPortal` **não declara `seletoresChat`**, e `lerMensagensChat()`
+devolve vazio nele.
+
+Isso é deliberado: seletor inventado falha em silêncio — devolve lista vazia e
+parece "nenhuma mensagem". Preferimos o vazio honesto ao vazio que mente.
+
+| | |
+| --- | --- |
+| Contrato `lerMensagensChat()` na classe base | ✅ |
+| Laço chama, deduplica e avisa (`mensagem-pregoeiro`) | ✅ |
+| Webhook grava em `licitacao_mensagens` + notifica | ✅ |
+| Tela lê o que existe, com destaque e som | ✅ |
+| Seletores da sala do Portal de Compras Públicas | ⬜ **precisa de pregão ao vivo** |
+
+#### Cadastro da proposta no portal — 10/09/2026
+
+**O que foi feito.** `validarProposta` e `formatarItens` saíram de dentro de
+`src/test/envio-proposta-validacao.test.ts` e viraram `src/lib/robo/proposta.ts`.
+
+Isto merece registro porque era pior do que parecia: o teste **declarava as duas
+funções no próprio topo** e testava cópias de si mesmo. Cento e setenta e seis
+linhas, doze casos, zero linha de produção coberta. O contrato estava escrito e
+acordado — marca, modelo e fabricante já estavam lá desde sempre — e nunca tinha
+saído do arquivo de teste. Agora os doze casos cobrem código de verdade.
+
+**O que está bloqueado, e por um motivo diferente do esperado.** O plano supunha
+que o envio de proposta não dependeria de pregão ao vivo, porque a janela de
+proposta fica aberta por dias. Verdade em geral; falso nesta conta.
+
+Uma sonda listou os processos com as datas de sessão: o mais recente é
+`-R./2026` em **20/03/2026**, e `002/2026` em **19/02/2026**. Hoje é 10/09/2026 —
+**todos já passaram.** Não há janela de proposta aberta para ler.
+
+E a página do processo **não tem botão de cadastrar proposta**: a sonda listou
+todos os links, botões e submits sem filtro algum, e os únicos rótulos ligados a
+proposta são itens de menu ("Suas Propostas", "Enviar Documentação", "Dados
+Cadastrais"). "Suas Propostas" é uma tela de **busca** — filtros de UF, objeto,
+órgão, modalidade —, não de cadastro.
+
+Duas causas possíveis e indistinguíveis daqui: a janela encerrada, ou o plano
+vencido escondendo as ações de participação. Em ambos os casos, `enviarProposta`
+continua sem selecionadores reais, e escrevê-los de palpite repetiria o erro que
+esta documentação registra em três lugares diferentes.
+
+**O achado lateral que vale mais que o item bloqueado.** A página do processo
+traz a **tabela de itens do edital**, e ela existe sem pregão acontecendo:
+
+```
+| (sel) | Item | Descrição | Valor Ref | Excl. | Quantidade | Julgamento |
+```
+
+Doze linhas por página, cinco páginas no `002/2026`, e cada descrição tem id
+próprio (`#produtoTexto155`, `156`, `157`…). É a primeira estrutura de itens
+REAL que conseguimos ler deste portal — e ela abre um caminho que não depende de
+sessão pública: conferir os itens que a nossa tela enviou contra os que o portal
+lista, e avisar quando não baterem.
+
+| | |
+| --- | --- |
+| Validação em código de produção, com teste de verdade | ✅ |
+| `PortalComprasPortal.enviarProposta()` | ⬜ **sem formulário para ler** |
+| Tela que dispara o envio | ⬜ botão que sempre falha é pior que botão nenhum |
+
+#### Conferência dos itens contra o portal — 10/09/2026
+
+Nasceu do achado lateral acima: a tabela de itens existe na página do processo,
+**sem depender de pregão acontecendo**.
+
+O problema que ela resolve: a tela monta os itens do NOSSO lado — Precificação,
+Proposta Comercial, extração do edital — e nada disso conversa com o portal. Um
+número errado, um lote que mudou, uma republicação do edital, e o robô entra
+mirando um item que não existe. Antes, isso só apareceria durante o pregão.
+
+`conferirItens()` é **pura**, como a `decidirLance`, e tem 7 testes próprios.
+Compara o que enviamos com o que o portal publicou e devolve três coisas:
+itens nossos que não existem lá, divergência de valor de referência (com 1% de
+tolerância, porque centavo de arredondamento não é divergência) e itens do
+edital que ficaram de fora.
+
+**Três decisões que valem registro:**
+
+*Item sobrando não reprova.* Disputar 3 itens de um edital com 60 é rotina. Se
+isso acusasse, o aviso seria ignorado no primeiro pregão grande.
+
+*Lista vazia do portal é "não li", não "nada existe".* Sem leitura, a função
+devolve `leu: false` e não afirma nada — acusar 49 itens de faltarem seria
+culpar o usuário por uma falha nossa.
+
+*Colunas mapeadas pelo cabeçalho, não por posição.* `celulas[1]` seria mais
+curto e quebraria calado no dia em que o portal inserir uma coluna.
+
+**Provado com dado real, `002/2026`:**
+
+```
+⚠️ CONFERENCIA: 1 item(ns) que enviamos NAO existem no portal (4321);
+                48 item(ns) do edital ficaram de fora
+```
+
+Leu **49 itens** através das cinco páginas, achou o `4321` inventado e não
+acusou o item 1, que existe.
+
+**E uma ambiguidade que só apareceu por causa do teste.** Mandei o item 1 com
+valor absurdo (999999) e nenhuma divergência foi acusada. Duas leituras opostas
+cabiam: os valores batem, ou não há valor para comparar. O log passou a dizer
+qual é:
+
+```
+ℹ️ O portal listou 49 item(ns) e NENHUM com valor de referencia —
+   a conferencia de valores nao teve o que comparar
+```
+
+Este edital não publica o estimado. A ausência de divergência estava **certa**.
+Sem essa linha, teríamos dado por conferido o que nunca foi olhado.
+
+**Duas armadilhas na implementação, ambas custaram uma sessão real:**
+
+`limpa(tds[i])` com `i` além do número de células — cabeçalho, linha de "nenhum
+resultado" e linhas com colspan chegam curtas, e a célula vira `undefined`. O
+erro (`Cannot read properties of undefined`) ia para o **stderr**, que o pm2
+grava em `error.log`, não em `output.log`. Procurar no arquivo errado fez a
+falha parecer ausência de execução.
+
+E backtick dentro de comentário do template literal — quebrou o arquivo quatro
+vezes num só dia. O teste `agente-template.test.ts` pega, mas só depois de
+rodado; o `tsc` acusa como erro de sintaxe em cascata, que não aponta a causa.
+
+**A conferência na tela.** Ela já virava mensagem no processo e notificação, mas
+as duas chegam **depois** — e quem está olhando o painel enquanto o robô entra é
+justamente quem ainda pode corrigir o cadastro. O `/health` passou a expor
+`conferencia` por sessão, e o painel mostra o resultado logo acima da tabela de
+itens que ela julga.
+
+São **quatro estados, e nenhum pode ser colapsado**:
+
+| Estado | O que a tela diz |
+| --- | --- |
+| Ainda não conferiu | "Conferindo os itens…" — não é "está tudo certo" |
+| Não conseguiu ler o portal | "Não deu para conferir" — também não é "tudo certo", e muito menos "os itens não existem" |
+| Confere | linha verde discreta; verde grande a cada sessão vira paisagem |
+| Não confere | os **números dos itens**, que é o que se procura no cadastro para corrigir |
+
+Colapsar os dois primeiros em "ok" seria repetir, na tela, o defeito que a
+função pura evita no código: afirmar conferência onde não houve leitura.
 
 ### 7.3 Desempenho
 

@@ -178,6 +178,7 @@ O agente envia POST para o \\\`CALLBACK_URL\\\` com:
 
 - \\\`lance-enviado\\\` — Lance enviado com sucesso
 - \\\`lance-concorrente\\\` — Lance de concorrente detectado
+- \\\`mensagem-pregoeiro\\\` — O pregoeiro escreveu na sala (só nos portais que sabem ler o chat)
 - \\\`sessao-encerrada\\\` — Sessão finalizada
 - \\\`erro\\\` — Erro durante execução
 - \\\`heartbeat\\\` — Sinal de vida + capacidade (30s)
@@ -194,6 +195,10 @@ const certificado = require('./certificado');
 const interacaoHumana = require('./interacao-humana');
 const fs = require('fs');
 const path = require('path');
+// Usado só pela rota /sessao/focar, para falar com o xdotool. Nada de entrada
+// do usuário entra nesses comandos: o único valor interpolado é um PID que o
+// próprio agente guardou ao abrir o navegador.
+const { execSync } = require('child_process');
 
 const app = express();
 app.use(cors());
@@ -220,6 +225,7 @@ const ROTAS = [
   'POST /api/proposta/enviar',
   'POST /certificado',
   'POST /sessao/responder',
+  'POST /sessao/focar',
 ];
 
 // A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
@@ -372,6 +378,82 @@ app.post('/sessao/encerrar', authMiddleware, (req, res) => {
   const result = sessionManager.endSession(sessao_id);
   if (!result) return res.status(404).json({ error: 'Sessão não encontrada' });
   res.json({ success: true, status: 'encerrado' });
+});
+
+// ─── POST /sessao/focar ───
+//
+// Traz para a frente a janela do Chrome DAQUELA sessão.
+//
+// Por que isto existe: todas as sessões desenham na MESMA tela virtual (:99).
+// O agente aguenta 8 simultâneas e o Rafael descreveu vários pregoes no mesmo
+// horario como rotina — na pratica, oito janelas empilhadas e o VNC mostrando
+// so a de cima. Sem isto, "assistir ao pregao X" nao e uma acao possivel.
+//
+// A alternativa era uma tela virtual por sessao (Xvfb :99, :100, :101…), com
+// x11vnc e websockify proprios. Resolve mais (duas abas lado a lado), custa
+// muito mais: portas, RAM e CPU por sessao. Escolhido alternar numa tela so.
+app.post('/sessao/focar', authMiddleware, (req, res) => {
+  const { sessao_id } = req.body;
+  if (!sessao_id) return res.status(400).json({ error: 'sessao_id e obrigatorio' });
+
+  const sessao = sessionManager.sessions.get(sessao_id);
+  if (!sessao) return res.status(404).json({ error: 'Sessão não encontrada' });
+
+  // O PID do Chrome daquela sessao, guardado quando o navegador abriu.
+  //
+  // Procurar a janela por TITULO seria o caminho obvio e o errado: dois pregoes
+  // no mesmo portal tem titulo identico, e ativar "a primeira que casar" e
+  // exatamente o defeito que esta rota existe para corrigir.
+  if (!sessao.chromePid) {
+    return res.status(409).json({
+      error: 'A sessão não registrou o processo do navegador — não dá para saber qual janela é dela',
+    });
+  }
+
+  try {
+    // O search por --pid usa a propriedade _NET_WM_PID que o Chrome publica na
+    // janela. Sem a opcao sync de proposito: se a janela ainda nao existe, e
+    // melhor falhar rapido do que pendurar a requisicao esperando.
+    const achadas = execSync(\`xdotool search --pid \${sessao.chromePid} --onlyvisible 2>/dev/null || true\`)
+      .toString().trim().split('\\n').filter(Boolean);
+
+    if (!achadas.length) {
+      return res.status(404).json({
+        error: 'Nenhuma janela visível encontrada para esta sessão (o navegador pode ter fechado)',
+      });
+    }
+
+    // A ULTIMA e a janela principal: o Chrome cria janelas auxiliares antes.
+    const janela = achadas[achadas.length - 1];
+    const ambiente = { env: { ...process.env, DISPLAY: process.env.DISPLAY || ':99' } };
+
+    // windowraise, e NAO windowactivate.
+    //
+    // Verificado em 10/09/2026 contra a VPS: activate falha com "Your
+    // windowmanager claims not to support _NET_ACTIVE_WINDOW". E verdade — o
+    // Xvfb roda pelado, sem gerenciador de janelas nenhum, entao nao ha quem
+    // responda por esse protocolo. raise chama XRaiseWindow direto no servidor
+    // X e nao depende de WM, que e exatamente o caso aqui.
+    execSync(\`xdotool windowraise \${janela}\`, ambiente);
+
+    // O foco de teclado e um extra: quem digita o codigo de verificacao e o
+    // robo, e quem clica no captcha e a pessoa pelo VNC, que envia o evento
+    // para onde o ponteiro esta. Se falhar, a janela ja esta na frente — que
+    // era o pedido. Por isso o erro e engolido de proposito.
+    try {
+      execSync(\`xdotool windowfocus \${janela}\`, ambiente);
+    } catch {
+      /* sem WM o foco pode ser recusado; a janela subiu, que e o que importa */
+    }
+
+    console.log(\`🖥️  Janela da sessão \${sessao_id} trazida para frente (\${sessao.edital})\`);
+    res.json({ success: true, sessao_id, edital: sessao.edital, janela });
+  } catch (err) {
+    // Falha aqui nao derruba nada — a sessao segue rodando, so nao foi para a
+    // frente. Dizer o motivo evita que vire "o VNC esta quebrado".
+    console.error(\`❌ Nao foi possivel focar a sessao \${sessao_id}:\`, err.message);
+    res.status(500).json({ error: 'Nao foi possivel trazer a janela para frente: ' + err.message });
+  }
 });
 
 // ─── POST /sessao/retomar ───
@@ -575,7 +657,7 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance } = require('./estrategia');
+const { decidirLance, conferirItens } = require('./estrategia');
 const os = require('os');
 
 /**
@@ -653,6 +735,18 @@ class SessionManager {
       session.browser = browser;
       session.page = page;
 
+      // O PID do Chrome DESTA sessão, guardado agora e não procurado depois.
+      //
+      // É o que permite trazer a janela certa para a frente (/sessao/focar).
+      // Todas as sessões desenham na mesma tela virtual, e procurar a janela
+      // por título casaria com a de qualquer pregão do mesmo portal — que é
+      // justamente o erro que se quer evitar.
+      //
+      // O encadeamento opcional existe porque browser.process() devolve null
+      // quando o Puppeteer se conecta a um Chrome que ele não abriu. Nesse caso
+      // a rota responde que não sabe qual janela é, em vez de ativar uma ao acaso.
+      session.chromePid = browser.process()?.pid || null;
+
       // Instanciar o módulo do portal correto
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
 
@@ -685,6 +779,61 @@ class SessionManager {
         tipo: session.tipo_disputa,
         itens: session.itens,
       });
+
+      // ── O QUE MANDAMOS BATE COM O QUE O PORTAL PUBLICOU? ──────────────────
+      //
+      // A tela monta os itens do NOSSO lado — Precificacao, Proposta, extracao
+      // do edital — e nada disso conversa com o portal. Um numero errado, um
+      // lote que mudou, uma republicacao do edital, e o robo entra mirando um
+      // item que nao existe, sem que nada acuse.
+      //
+      // Roda so quando o portal sabe ler a lista. O metodo e opcional, como
+      // o do chat: portal que nao implementa segue funcionando igual.
+      if (typeof session.portal.lerItensDoProcesso === 'function' && session.itens.length) {
+        try {
+          const doPortal = await session.portal.lerItensDoProcesso();
+          const conf = conferirItens(session.itens, doPortal);
+          session.conferencia = conf;
+
+          // Quantos itens do portal trazem valor de referencia legivel.
+          //
+          // Existe porque sem este numero "nenhuma divergencia de valor" tem
+          // DUAS leituras opostas e indistinguiveis: os valores batem, ou nao
+          // ha valor nenhum para comparar. Muito edital nao publica o
+          // estimado, e confundir isso com "conferido" seria dar por checado o
+          // que nunca foi olhado.
+          const comValor = doPortal.filter((i) => Number.isFinite(Number(i.valor_referencia)) && Number(i.valor_referencia) > 0).length;
+          if (doPortal.length && comValor === 0) {
+            console.log(
+              \`ℹ️  [\${config.sessao_id}] O portal listou \${doPortal.length} item(ns) e NENHUM com valor de \` +
+              'referencia — a conferencia de valores nao teve o que comparar'
+            );
+          }
+
+          if (!conf.leu) {
+            console.log(\`⚠️  [\${config.sessao_id}] \${conf.resumo}\`);
+          } else if (conf.ok) {
+            console.log(\`✅ [\${config.sessao_id}] \${conf.resumo}\`);
+          } else {
+            console.log(\`⚠️  [\${config.sessao_id}] CONFERENCIA: \${conf.resumo}\`);
+          }
+
+          await sendCallback(session, 'itens-conferidos', {
+            leu: conf.leu,
+            ok: conf.ok,
+            resumo: conf.resumo,
+            faltando: conf.faltando,
+            sobrando: conf.sobrando,
+            divergencias: conf.divergencias,
+            total_no_portal: doPortal.length,
+            com_valor_referencia: comValor,
+          });
+        } catch (e) {
+          // Conferir e informacao adicional. Falhar aqui nao pode impedir a
+          // sessao de acontecer — seria trocar um aviso por uma interrupcao.
+          console.error(\`[\${config.sessao_id}] Falha ao conferir itens: \${e.message}\`);
+        }
+      }
 
       // Iniciar loop de lances
       this._startBiddingLoop(session);
@@ -742,6 +891,35 @@ class SessionManager {
 
       try {
         session.rodada++;
+
+        // 0. O pregoeiro falou?
+        //
+        // Vem ANTES da decisao de lance de proposito: uma convocacao ou um
+        // pedido de documento e mais urgente do que a proxima rodada, e quem
+        // opera precisa saber no momento em que acontece — nao depois que o
+        // laco terminar.
+        //
+        // Nao derruba a rodada se falhar: ler chat e informacao adicional, e
+        // o metodo ja devolve vazio quando o portal nao sabe ler.
+        try {
+          const mensagens = await session.portal.lerMensagensChat();
+          // Deduplicar e obrigatorio: o laco rele a MESMA tela a cada rodada.
+          // Sem isto, uma mensagem do pregoeiro viraria um alerta a cada 30
+          // segundos ate a sessao acabar — e alerta repetido deixa de ser lido.
+          session.chatVistas = session.chatVistas || new Set();
+          const novas = mensagens.filter((m) => !session.chatVistas.has(m.id));
+          for (const m of novas) session.chatVistas.add(m.id);
+
+          if (novas.length) {
+            console.log(\`💬 [\${session.sessao_id}] \${novas.length} mensagem(ns) do pregoeiro\`);
+            await sendCallback(session, 'mensagem-pregoeiro', {
+              rodada: session.rodada,
+              mensagens: novas,
+            });
+          }
+        } catch (e) {
+          console.error(\`[\${session.sessao_id}] Falha ao ler o chat: \${e.message}\`);
+        }
 
         // 1. Ler o estado da disputa no portal
         const melhorLance = await session.portal.lerMelhorLance();
@@ -930,6 +1108,21 @@ class SessionManager {
         ? s.itens.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined).length
         : 0,
       tipo_disputa: s.tipo_disputa || null,
+      // A conferencia dos itens contra o portal, para a TELA poder mostrar.
+      //
+      // Ela ja vira mensagem no processo e notificacao, mas as duas chegam
+      // DEPOIS — e quem esta olhando o painel no momento do envio e justamente
+      // quem ainda pode corrigir o cadastro. Aqui ela chega em segundos.
+      conferencia: s.conferencia
+        ? {
+            leu: s.conferencia.leu,
+            ok: s.conferencia.ok,
+            resumo: s.conferencia.resumo,
+            faltando: s.conferencia.faltando,
+            sobrando_qtd: (s.conferencia.sobrando || []).length,
+            divergencias: s.conferencia.divergencias,
+          }
+        : null,
       created_at: s.created_at,
     }));
   }
