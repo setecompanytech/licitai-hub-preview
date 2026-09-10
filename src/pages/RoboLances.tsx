@@ -47,6 +47,7 @@ import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
+import ConferenciaDosItens from '@/components/robo-lances/ConferenciaDosItens';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
 import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
@@ -1019,6 +1020,23 @@ export default function RoboLances() {
                     </div>
                   </div>
                 </div>
+
+                {/* ── A conferência dos itens contra o edital do portal ──────
+                    Fica IMEDIATAMENTE acima da tabela que ela julga: o veredito
+                    e a lista que ele avalia se leem juntos, e o número do item
+                    acusado está logo abaixo, na linha correspondente.
+
+                    Só com sessão viva, porque é o robô quem confere — sem
+                    sessão não há o que mostrar, e um cartão permanente dizendo
+                    "aguardando" viraria paisagem. */}
+                {sessaoVivaDesta && (
+                  <div className="px-4 pt-3">
+                    <ConferenciaDosItens
+                      conferencia={sessaoVivaDesta.conferencia}
+                      edital={selectedLance.edital}
+                    />
+                  </div>
+                )}
 
                 {/* ── Items Table ── */}
                 <div className="flex-1 overflow-auto">

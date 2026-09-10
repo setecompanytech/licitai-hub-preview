@@ -1108,6 +1108,21 @@ class SessionManager {
         ? s.itens.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined).length
         : 0,
       tipo_disputa: s.tipo_disputa || null,
+      // A conferencia dos itens contra o portal, para a TELA poder mostrar.
+      //
+      // Ela ja vira mensagem no processo e notificacao, mas as duas chegam
+      // DEPOIS — e quem esta olhando o painel no momento do envio e justamente
+      // quem ainda pode corrigir o cadastro. Aqui ela chega em segundos.
+      conferencia: s.conferencia
+        ? {
+            leu: s.conferencia.leu,
+            ok: s.conferencia.ok,
+            resumo: s.conferencia.resumo,
+            faltando: s.conferencia.faltando,
+            sobrando_qtd: (s.conferencia.sobrando || []).length,
+            divergencias: s.conferencia.divergencias,
+          }
+        : null,
       created_at: s.created_at,
     }));
   }

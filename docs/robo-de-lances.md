@@ -775,6 +775,24 @@ E backtick dentro de comentário do template literal — quebrou o arquivo quatr
 vezes num só dia. O teste `agente-template.test.ts` pega, mas só depois de
 rodado; o `tsc` acusa como erro de sintaxe em cascata, que não aponta a causa.
 
+**A conferência na tela.** Ela já virava mensagem no processo e notificação, mas
+as duas chegam **depois** — e quem está olhando o painel enquanto o robô entra é
+justamente quem ainda pode corrigir o cadastro. O `/health` passou a expor
+`conferencia` por sessão, e o painel mostra o resultado logo acima da tabela de
+itens que ela julga.
+
+São **quatro estados, e nenhum pode ser colapsado**:
+
+| Estado | O que a tela diz |
+| --- | --- |
+| Ainda não conferiu | "Conferindo os itens…" — não é "está tudo certo" |
+| Não conseguiu ler o portal | "Não deu para conferir" — também não é "tudo certo", e muito menos "os itens não existem" |
+| Confere | linha verde discreta; verde grande a cada sessão vira paisagem |
+| Não confere | os **números dos itens**, que é o que se procura no cadastro para corrigir |
+
+Colapsar os dois primeiros em "ok" seria repetir, na tela, o defeito que a
+função pura evita no código: afirmar conferência onde não houve leitura.
+
 ### 7.3 Desempenho
 
 Aqui está a lacuna mais séria, e ela é de **arquitetura**, não de código faltando.

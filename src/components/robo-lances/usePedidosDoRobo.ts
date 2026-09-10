@@ -31,12 +31,34 @@ export type DesfechoDoRobo = {
   em: string;
 };
 
+/**
+ * O que o robô achou ao comparar os itens que recebeu com os que o portal
+ * publicou no processo.
+ *
+ * `leu: false` é estado próprio e importa: significa "não consegui ler a lista
+ * do portal", que é diferente de "os itens não existem". Sem essa distinção a
+ * tela acusaria o cadastro do usuário por uma falha nossa de leitura.
+ */
+export type ConferenciaDeItens = {
+  leu: boolean;
+  /** `null` quando não houve leitura — nada a afirmar. */
+  ok: boolean | null;
+  resumo: string;
+  /** Números dos itens que enviamos e o portal não lista. */
+  faltando: number[];
+  /** Quantos itens do edital ficaram de fora. Não é erro — é escolha. */
+  sobrando_qtd: number;
+  divergencias: Array<{ numero: number; nosso: number; portal: number }>;
+};
+
 /** Uma sessão que o agente diz estar de pé AGORA. */
 export type SessaoViva = {
   sessao_id: string;
   status: string;
   portal_id: string;
   edital: string;
+  /** Null enquanto o robô ainda não conferiu, ou em portal que não sabe ler. */
+  conferencia?: ConferenciaDeItens | null;
 };
 
 type Saude = {
