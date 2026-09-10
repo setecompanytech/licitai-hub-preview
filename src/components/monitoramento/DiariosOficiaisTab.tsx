@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import MonitoramentoDiariosCard from './MonitoramentoDiariosCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -629,6 +630,10 @@ Retorne APENAS um JSON array com os IDs relevantes, sem explicações: ["id1", "
 
   return (
     <div className="space-y-4">
+      {/* O radar automático (varredura 4h por CNPJ/razão/fantasia) mora acima
+          da busca manual: a vigília é o produto; a busca, a lupa. */}
+      <MonitoramentoDiariosCard />
+
       {/* Header da busca */}
       <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">

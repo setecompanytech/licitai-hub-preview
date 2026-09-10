@@ -13079,3 +13079,19 @@ chamando a edge `alertas-documentos` (--no-verify-jwt; valida CRON_SECRET).
 Vencido dispara todo dia; antes disso, nos marcos (antecedência/15/7/3/2/1/0).
 Cessação estrutural: upload renova documentos.validade e o doc sai do digest.
 Testado ponta a ponta pelo caminho do cron (200, empresas:0 — opt-in).
+
+## 2026-09-10 — Monitoramento dos Diários Oficiais sai da dormência — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260910000002_cron_monitorar_dou.sql`
+
+A monitorar-dou existia sem cron, buscando só o Querido Diário. Agora: DOU
+real via busca do in.gov.br (parse do JSON embutido jsonArray, janela de 7
+dias com dedupe), termos extraídos DO SISTEMA (CNPJ formatado, razão social
+e fantasia de todas as empresas do usuário + preferência declarada),
+classificação com as categorias de fornecedor (aviso_licitacao,
+extrato_contrato, ata_registro, aditivo — sempre entregues) além das
+genéricas gateadas por receber_*, auth por CRON_SECRET (--no-verify-jwt) e
+resposta 202 com trabalho em background (EdgeRuntime.waitUntil — pg_net não
+espera minutos). Cron monitorar-dou-4h (30 */4 * * *). Card "Monitoramento
+automático" na aba Diários Oficiais liga/desliga (preferencias_alertas.ativo),
+mostra os termos vigiados e os últimos alertas DOU/DOE.
