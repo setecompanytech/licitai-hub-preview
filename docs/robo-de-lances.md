@@ -41,7 +41,7 @@ com uma exceção — o último elo, o lance, que está travado de propósito (�
 | Interface dispara sessão | ✅ | botão "Enviar ao robô", carimbo `2026-09-09.10` no ar |
 | Edge function traduz e grava | ✅ | linha em `sessoes_lance_real`, com recusa antes de gravar quando o portal não existe |
 | Agente aceita e abre o Chrome | ✅ | `/health` mostra as sessões; 8 registradas hoje |
-| Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite |
+| Login real em portal | ✅ | Portal de Compras Públicas, 08/09 à noite; **Compras.gov (gov.br + certificado A1), 10/09 às 16:31** |
 | VNC mostra a tela ao vivo | ✅ | janela ocupa 100% de 1920×1080 desde 09/09 |
 | Navegar até a disputa | ✅ | processo **002/2026** achado em "Seus Processos" e aberto, 08/09 — falta só repetir com um edital em sessão |
 | Ler a tela de lances | ⬜ | depende de pregão ao vivo |
@@ -105,7 +105,8 @@ Os 23 portais da interface, agrupados pelo que realmente impede cada um.
 | Grupo | Portais | O que falta |
 | --- | --- | --- |
 | **Entra e navega hoje** | Portal de Compras Públicas | edital em sessão; plano renovado para disputar |
-| **Falta um dado do cliente** | Compras.gov, BLL, BNC | `.pfx` / senha numérica |
+| **Entra; a busca está mapeada, a sala não** | Compras.gov | número real de compra (número/ano) e um pregão em sessão para ver a sala — §4.2 |
+| **Falta um dado do cliente** | BLL, BNC | senha numérica |
 | **Muro técnico do portal** | Licitações-e, LicitaNet | decisão de arquitetura |
 | **Não tem o que operar** | PNCP | é mural, não pregão — ver §4.6 |
 | **Nunca testado** | BEC/SP | credencial |
@@ -465,6 +466,71 @@ dois.
 **Aberto:** a rodada seguinte com a `TESTE-COMPRASGOV` — o log vai dizer
 `🧯 … alvos no navegador agora:` (o mecanismo) e se a aba nova cai na área do
 fornecedor (a recuperação). Depois, o menu "Compras".
+
+#### 16:26 e 16:31 — entrou, ficou de pé; a busca é o muro seguinte
+
+Com o Chrome sem *site isolation*, duas sessões seguidas **sobreviveram à
+volta do gov.br** — nenhum `🧯`, nenhum `Target closed`:
+
+- `8abf4f67` (16:26) — clique automático, sem hCaptcha, 7s do envio à área
+  logada. Recusada pelo diagnóstico com a Área de Trabalho na tela: a área
+  logada é `comprasnet.gov.br/intro.htm`, um **frameset** de três frames
+  (`t_top.asp`, `main2.asp`, `main.asp`), e `document.body.innerText` do
+  documento de cima é vazio. Feito: `BasePortal.textoDaTela()` soma o texto
+  de todos os frames; o diagnóstico e a checagem de "autorizar" leem por ele.
+- `6c118f0f` (16:29) — hCaptcha barrou o clique automático; o Ian clicou pelo
+  VNC às 16:30; **`✅ Login no Compras.gov realizado com sucesso` às 16:31:34**,
+  a primeira vez que essa linha existe no log. Tela remota mostrando a Área
+  de Trabalho: CNPJ da Santa Rosa, usuário Rafael, SIASG Ambiente Produção.
+
+O que veio depois, e é o muro de agora: `navegarParaDisputa` foi para a
+página pública **"Compras eletrônicas"**
+(`cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras`), tentou
+12 seletores chutados, não achou nenhum, e terminou com **"✅ Na sala de
+disputa" sem ter saído do formulário** — falso positivo, removido.
+
+**O formulário foi mapeado da página real** (PrimeNG), com um Chrome
+separado, sem login:
+
+| Campo | Seletor |
+| --- | --- |
+| Situação: Em andamento / Finalizadas | `#emAndamento` / `#finalizadas` |
+| Etapa: Abertas / Em disputa / Em seleção | `#abertasParticipacao` / `#emDisputa` / `#emSelecaoDeFornecedores` |
+| Unidade compradora (código UASG) | `#unidadeCompradora` |
+| Número da compra | `input[placeholder="Ex: 102021"]` — sem id; formato **número+ano colados** (`90012/2024` → `900122024`) |
+| Pesquisar | `button.br-button.is-primary` |
+
+E a lista de resultados, vista pela tela remota: um card por compra, começando
+por `MODALIDADE N° número/ano`, depois `UASG - ÓRGÃO`, à direita `Etapa:` /
+`Até:` ou o estado (`COMPRA REVOGADA`, `COMPRA SUSPENSA`), e dois ícones de
+ação (lista e seta). **O que o ícone abre ninguém viu** — o Ian clicou e a
+tela não mudou.
+
+Feito, instalado e espelhado (`comprasgov.js` `054ec1c1…`, `browser.js`
+`d5bfc938…`):
+
+- `navegarParaDisputa` real: exige número/ano no edital (o
+  `TESTE-COMPRASGOV` é recusado **antes** de abrir página, com a frase que
+  diz o que cadastrar); marca Abertas + Em disputa; preenche UASG se vier em
+  `alvo.uasg`; pesquisa; espera resultados, "nenhum" ou captcha por 30s.
+- **hCaptcha na pesquisa**: a busca feita em headless caiu num captcha
+  visível e não devolveu nada; na janela logada passou limpa. Quando cair,
+  pede o clique humano como no login (`interacao.pedir`, tipo `captcha`).
+- Acha o card pelo texto `N° número/ano`, registra `🎯 Compra localizada`,
+  clica no primeiro ícone de ação, tira foto e diz onde caiu — e termina
+  com `📍 A sala de disputa ainda nao foi mapeada`. **Não afirma estar
+  nela.**
+- User-agent passa a ser o do próprio Chrome (sem "Headless"). Era um
+  `Chrome/120` fixo, e o portal abriu com o banner "seu navegador está
+  desatualizado" — Chrome 153 fingindo ter três anos.
+
+**Aberto, por ordem:** (1) um número de compra **real** do Compras.gov numa
+disputa — sem ele a busca é recusada de propósito; (2) ver o que o ícone do
+card abre, e a sala de disputa com um pregão em sessão — `lerMelhorLance` e
+`souLider` continuam palpite; (3) a UASG ainda não viaja da tela ao agente
+(`alvo.uasg` não existe no payload); (4) o painel do VNC mostra "Nenhuma
+sessão ativa" por cima de uma tela viva quando a sessão terminou em erro e
+o Chrome ficou 60s em observação.
 
 #### A tela remota que "não conectava" — 45 arquivos em cascata
 
