@@ -296,6 +296,92 @@ token ou cartão físico, e não existe leitor num servidor.
 art. 19). O robô entra num portal que já oferece a função — o que muda é de onde
 vem a decisão de preço.
 
+#### 10/09/2026, à tarde — a bateria antes do teste do Rafael
+
+Produção passou a ser a branch `feature/rebrand-ui-ux` (ver
+`docs/rebranding-front-end.md`). Antes de o Rafael clicar, o que foi conferido:
+
+| | Resultado |
+| --- | --- |
+| Código do robô na branch × `main` (`agent-template/`, gerador, `lib/robo/`, edge function, `_shared/`) | **byte a byte iguais** — só a UI diverge, pelo rebrand |
+| `RoboLances.tsx` | as três chamadas ao webhook são as mesmas; o diff é o cabeçalho com a foto |
+| Suíte na branch | 1160 / 78 |
+| Agente | 2.2.0, trava `[]`, `comprasgov` entre os 8 portais, certificado carregado |
+| **"Enviar ao robô" pela tela da branch** (Ian, 13:46, localhost) | chegou ao agente, entrou no PCP, falhou em "TESTE-001 não encontrado" — a falha esperada do edital fictício. O caminho tela → edge function → agente está íntegro na branch |
+
+O "Token inválido" que apareceu no localhost logo depois foi sessão do navegador
+morta (login/logout na produção revoga os refresh tokens de todas as abas), não
+defeito do envio — o envio já tinha passado.
+
+#### 10/09/2026, à tarde — o certificado passou; o portal procurou no diretório errado
+
+O Rafael desligou a verificação em duas etapas da conta gov.br da Santa Rosa
+("pra teste do robô") e pediu o teste neste portal. Duas sessões reais, disparadas
+de dentro da VPS, só leitura, trava `[]`:
+
+| Sessão | O que aconteceu |
+| --- | --- |
+| `cccccccc…`, 13:53 | gov.br **aceitou o certificado sozinho** — sem clique humano e sem código de 6 dígitos. É o 2FA desligado funcionando. Mas a volta caiu na tela "Acesse sua Conta" com aviso vermelho: **"Não foi possível recuperar o usuário no senha-rede (422)"**. O módulo declarou "login realizado com sucesso" mesmo assim e seguiu para a busca de edital, que morreu em `detached Frame`. |
+| `dddddddd…`, 14:02 | com o conserto abaixo instalado. Desta vez o **hCaptcha barrou o clique automático** (não é determinístico — na sessão anterior passou) e o robô ficou esperando o clique humano na tela remota. |
+
+**A causa cabe numa letra.** A tela "Acesse sua Conta" tem três perfis, e o
+`loginPortal.js` do portal manda cada um para uma ASP: `mudaPerfilBotao(1)` →
+`loginPortalFornecedor.asp`, `(2)` → `loginPortalUASG.asp` (Governo). A URL do
+SSO que cada página monta difere em **um parâmetro**:
+
+```
+Fornecedor:  …&scope=…&state=F&redirect_uri=…/landing_sso.asp
+Módulo:      …&scope=…&state=G&redirect_uri=…/landing_sso.asp
+```
+
+`state=G` é Governo. O gov.br autentica igual, mas na volta o `landing_sso.asp`
+lê o `state` e vai procurar o CPF no **senha-rede — o diretório de servidores
+públicos**. A Santa Rosa é fornecedora; não está lá; 422. O `portaLogin` do
+módulo também apontava para a página do governo (`loginPortalUASG.asp`). O módulo
+foi escrito com a URL do lado errado do balcão.
+
+Conserto, no template e instalado na VPS (md5 `9d7559a8…`, `pm2 restart`):
+
+- `state=F` e `portaLogin` → `loginPortalFornecedor.asp`;
+- a checagem de sucesso deixou de procurar a palavra "Compras" — está no logo de
+  **toda** página do portal, inclusive a de login, e foi o falso positivo. Agora
+  reconhece o aviso do senha-rede e a tela de escolha de perfil como **falha**, com
+  a mensagem do portal, e só aceita sinais de área logada.
+
+**O que fica em aberto:** provar o login inteiro como Fornecedor — a sessão `dddddddd`
+ficou no clique humano, que é operação normal (o painel do pedido na tela mostrou
+o cartão certo). E a busca do edital (`navegarParaDisputa`) continua sendo uma
+lista de seletores-palpite, nunca lida da tela logada — é o próximo mapeamento,
+igual ao que foi feito no PCP em 4.1.
+
+**Limpeza anotada, não bloqueio:** o módulo lê `credenciais.cpf`, a edge function
+manda `{ login, senha }`. O CPF nunca é digitado; o caminho é o do certificado,
+que não precisa dele. Se um dia o CPF for necessário, o campo é `login`.
+
+#### A tela remota que "não conectava" — 45 arquivos em cascata
+
+No mesmo teste, o painel do VNC em produção ficou em "Conectando ao servidor
+VPS…" por mais de um minuto. Não era bloqueio: o x11vnc registrou o cliente do
+navegador às 14:06:50. Era **lentidão**, e ela tinha três camadas:
+
+1. o noVNC instalado é o **1.0.0 (Debian, 2018)**, em módulos ES — `ui.js`
+   importa 10, `rfb.js` importa 13, e assim por diante: **45 arquivos, 571KB,
+   carregados em cascata**, cada nível esperando o anterior;
+2. quem os serve é o **websockify** (HTTP em Python: sem gzip, sem cache), atrás
+   do nginx, atrás do Cloudflare com `cf-cache-status: MISS` — 0,3 a 0,7s por
+   arquivo, daqui; mais, da casa de quem usa;
+3. o véu "Conectando…" da nossa tela só saía no `onLoad` do iframe — que numa
+   página de módulos ES **só dispara depois que o último módulo executou**. O
+   noVNC já estava por baixo mostrando o próprio progresso, coberto por um véu
+   preto que dizia o contrário.
+
+Feito: `esbuild` empacotou `app/ui.js` num arquivo só (`app/ui.bundle.js`,
+144KB, 46KB comprimido) e o `vnc.html` aponta para ele (`vnc.html.bak-20260910`
+guarda o original; um `apt upgrade` do novnc desfaz isto — anotado). De 45
+requisições para **5**. E o véu ganhou prazo de 6s, independente do `onLoad`.
+O empacotamento vale em produção na hora — é a VPS que serve o noVNC, não o
+Lovable; o véu vai no Publish.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir

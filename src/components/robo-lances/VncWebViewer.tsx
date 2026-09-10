@@ -49,6 +49,24 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
     });
   }, [abrirEm]);
 
+  /**
+   * O véu "Conectando ao servidor VPS…" tem prazo, não só o onLoad.
+   *
+   * O onLoad de um iframe cuja página carrega módulos ES só dispara depois
+   * que o ÚLTIMO módulo executou. Em 10/09/2026, com o noVNC servido em 45
+   * arquivos em cascata pelo websockify, isso passava de um minuto — e o véu
+   * preto com "Conectando…" cobria o noVNC enquanto ele já estava, por baixo,
+   * mostrando o próprio progresso. Quem olhava concluía que a tela remota
+   * não funcionava. O servidor foi empacotado num arquivo só (ver
+   * docs/robo-de-lances.md), mas o véu não pode voltar a depender disso:
+   * depois de 6s ele sai do caminho e o estado passa a ser o do noVNC.
+   */
+  useEffect(() => {
+    if (!loading) return;
+    const t = window.setTimeout(() => setLoading(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [loading]);
+
   const vncUrl = `${NOVNC_BASE_URL}/vnc.html?path=/vnc/&autoconnect=true&resize=scale&reconnect=true&reconnect_delay=3000`;
 
   /**
