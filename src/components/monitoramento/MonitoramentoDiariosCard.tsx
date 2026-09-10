@@ -32,7 +32,8 @@ const fmtCnpj = (d: string) =>
  *
  * Os termos NÃO se digitam: saem do cadastro (CNPJ formatado como as
  * publicações imprimem, razão social e fantasia de cada empresa do usuário).
- * A varredura roda a cada 4 horas contra o DOU (in.gov.br) e os diários
+ * A varredura roda a cada 4 horas contra o DOU (in.gov.br), o DOE-PA
+ * (IOEPA — o PDF diário inteiro é extraído e pesquisado) e os diários
  * municipais (Querido Diário), classifica aviso/extrato/ata/aditivo e
  * entrega em alertas — o mesmo feed do módulo de Editais.
  */
@@ -55,7 +56,7 @@ export default function MonitoramentoDiariosCard() {
       (supabase.from('alertas_gerados' as never) as any)
         .select('id, tipo, titulo, orgao, fonte, url_publicacao, created_at, urgente')
         .eq('user_id', user.id)
-        .in('fonte', ['DOU', 'DOE'])
+        .in('fonte', ['DOU', 'DOE', 'DOE-PA'])
         .order('created_at', { ascending: false })
         .limit(6),
     ]);
@@ -94,7 +95,7 @@ export default function MonitoramentoDiariosCard() {
     setAtivo(novo);
     setTemPref(true);
     toast.success(novo
-      ? 'Radar ligado — varredura a cada 4h no DOU e nos diários municipais.'
+      ? 'Radar ligado — varredura a cada 4h no DOU, no DOE-PA (IOEPA) e nos diários municipais.'
       : 'Radar dos diários desligado.');
   };
 
@@ -106,9 +107,10 @@ export default function MonitoramentoDiariosCard() {
           <div>
             <h3 className="font-semibold text-sm">Monitoramento automático — publicações sobre a empresa</h3>
             <p className="text-xs text-muted-foreground max-w-2xl">
-              Varredura a cada 4 horas, todos os dias, no <b>DOU</b> (in.gov.br) e nos <b>diários
-              municipais</b> (Querido Diário), atrás de avisos de licitação, extratos de contrato,
-              atas e aditivos que citem a empresa. Os termos saem do cadastro — nada a digitar.
+              Varredura a cada 4 horas, todos os dias, no <b>DOU</b> (in.gov.br), no <b>DOE-PA</b>{' '}
+              (IOEPA — a edição diária inteira é lida) e nos <b>diários municipais</b> (Querido
+              Diário), atrás de avisos de licitação, extratos de contrato, atas e aditivos que
+              citem a empresa. Os termos saem do cadastro — nada a digitar.
             </p>
           </div>
         </div>
