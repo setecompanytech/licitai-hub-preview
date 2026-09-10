@@ -6,7 +6,7 @@ import AppTopNav from './AppTopNav';
 import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download, Menu } from 'lucide-react';
+import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AlertaBadge from '@/components/alertas/AlertaBadge';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
@@ -44,9 +44,11 @@ const profileMenuItems = [
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: boolean }>(function AppLayout({ children, amplo = false }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  /* A escolha de recolher a coluna fica gravada no navegador: quem trabalha
-     com ela fechada não quer reabrir a cada tela. `try` porque navegador em
-     janela privada pode recusar o armazenamento. */
+  /* A escolha entre trilho e coluna fica gravada no navegador: quem trabalha
+     com o trilho não quer reabrir a coluna a cada tela. `try` porque navegador
+     em janela privada pode recusar o armazenamento.
+     A chave é a mesma de quando "oculto" era largura zero — quem tinha o menu
+     escondido acorda com o trilho, que é o mínimo que a barra tem agora. */
   const [menuAberto, setMenuAberto] = useState(() => {
     try { return localStorage.getItem('praefectus:menu-lateral') !== 'oculto'; }
     catch { return true; }
@@ -136,18 +138,9 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           Antes seguia a superfície do tema (branca no claro), e aí o dourado
           ficaria invisível. */}
       <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-navy border-b border-navy-hover flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
-        {/* Recolhe e mostra a coluna lateral. Fica à ESQUERDA da marca, como no
-            protótipo, e só existe onde a coluna existe — abaixo de 768px quem
-            navega é a gaveta, e um botão que não recolhe nada confundiria. */}
-        <button
-          onClick={() => setMenuAberto((o) => !o)}
-          aria-expanded={menuAberto}
-          aria-label={menuAberto ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
-          title={menuAberto ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
-          className="hidden md:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
-        >
-          <Menu className="w-[18px] h-[18px]" />
-        </button>
+        {/* O hambúrguer que ficava aqui saiu em 10/09/2026: quem alterna a
+            barra lateral é o botão no topo da própria barra (ver AppSidebar).
+            Abaixo de 768px a gaveta do AppTopNav continua com o seu botão. */}
 
         {/* Logo */}
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
@@ -282,7 +275,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
 
       {/* Corpo: barra lateral fixa + conteúdo, como no protótipo */}
       <div className="flex items-start">
-        <AppSidebar aberta={menuAberto} />
+        <AppSidebar aberta={menuAberto} onAlternar={() => setMenuAberto((o) => !o)} />
 
         {/* Main content */}
         <main className={`flex-1 min-w-0 ${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
