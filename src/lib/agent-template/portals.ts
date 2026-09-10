@@ -262,16 +262,29 @@ class ComprasGovPortal extends BasePortal {
     this.nome = 'comprasgov';
     this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web';
     // A porta de entrada NAO e o SSO direto. VERIFICADO em 09/09/2026: o botao
-    // "Efetuar Login" do proprio portal leva para esta pagina ASP, e e ela que
+    // "Efetuar Login" do proprio portal leva para uma pagina ASP, e e ela que
     // monta a chamada ao SSO com os parametros certos.
-    this.portaLogin = 'https://www.comprasnet.gov.br/seguro/loginPortalUASG.asp';
+    //
+    // QUAL pagina importa, e foi o defeito de 10/09/2026: a tela "Acesse sua
+    // Conta" tem tres perfis, e loginPortal.js manda cada um para uma ASP —
+    // mudaPerfilBotao(1) -> loginPortalFornecedor.asp, (2) -> loginPortalUASG.asp
+    // (Governo). O modulo apontava para a do GOVERNO. O gov.br autenticava o
+    // certificado normalmente, mas na volta o Compras.gov procurava o CPF no
+    // senha-rede (diretorio de SERVIDORES) e respondia 422 "Nao foi possivel
+    // recuperar o usuario no senha-rede". A empresa e fornecedora.
+    this.portaLogin = 'https://www.comprasnet.gov.br/seguro/loginPortalFornecedor.asp';
     // Endpoint /authorize (nao /login) e client_id "comprasnet.gov.br" (nao
     // "compras.gov.br"). Com a forma antiga o gov.br acusa "cookies
     // desabilitados" — sintoma de sessao invalida, nao de cookie — e o
     // formulario nunca submete.
+    //
+    // state=F, nao G. E o unico parametro que muda entre os perfis, e e por ele
+    // que o landing_sso.asp decide em qual diretorio procurar quem voltou do
+    // gov.br: F = Fornecedor (SICAF), G = Governo (senha-rede). Copiado do
+    // onclick de "Entrar com Gov.br" da loginPortalFornecedor.asp em 10/09/2026.
     this.loginUrl = 'https://sso.acesso.gov.br/authorize'
       + '?response_type=code&client_id=comprasnet.gov.br'
-      + '&scope=openid+profile+email+phone+govbr_confiabilidades&state=G'
+      + '&scope=openid+profile+email+phone+govbr_confiabilidades&state=F'
       + '&redirect_uri=https://www.comprasnet.gov.br/seguro/landing_sso.asp';
     this.certLoginUrl = 'https://certificado.sso.acesso.gov.br';
     this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
@@ -677,19 +690,31 @@ class ComprasGovPortal extends BasePortal {
       }
     }, 'navegar-area-fornecedor');
 
-    // 6. Verificar login bem-sucedido
-    const loggedIn = await this.page.evaluate(() => {
-      const body = document.body.innerText;
-      return body.includes('Fornecedor') || body.includes('Bem-vindo') ||
-             body.includes('Painel') || body.includes('UASG') ||
-             body.includes('Pregão') || body.includes('Meus Pregões') ||
-             body.includes('Em disputa') || body.includes('Compras') ||
-             body.includes('Abertas para participação');
+    // 6. Verificar login bem-sucedido.
+    //
+    // Primeiro o que e FALHA com cara de pagina normal. Em 10/09/2026 o
+    // Compras.gov devolveu a tela "Acesse sua Conta" com um aviso vermelho
+    // (422 do senha-rede) e a checagem antiga declarou sucesso, porque
+    // procurava a palavra "Compras" — que esta no logo de toda pagina do
+    // portal, inclusive a de login. Falso positivo custa mais que falha: o
+    // robo seguiu para buscar edital numa tela onde nao estava logado.
+    const diagnostico = await this.page.evaluate(() => {
+      const body = document.body.innerText || '';
+      const aviso = body.match(/N[aã]o foi poss[ií]vel recuperar o usu[aá]rio[^\\n]*/i);
+      if (aviso) return { ok: false, motivo: aviso[0].trim() };
+      if (/Acesse sua Conta/i.test(body) && /Selecione o perfil/i.test(body)) {
+        return { ok: false, motivo: 'o Compras.gov voltou para a escolha de perfil sem entrar' };
+      }
+      // Palavras que so existem DENTRO — "Compras" sozinha nao vale, esta no logo.
+      const dentro = /Bem-vindo|Painel|Meus Preg[oõ]es|Em disputa|Abertas para participa[cç][aã]o|Sair|Minha Conta/i.test(body);
+      return dentro ? { ok: true } : { ok: false, motivo: 'a pagina nao tem nenhum sinal de area logada' };
     });
 
-    if (!loggedIn) {
+    if (!diagnostico.ok) {
       await this.screenshot('login-falha');
-      throw new Error('Login no Compras.gov falhou — verifique o certificado digital e credenciais SSO');
+      throw new Error('Login no Compras.gov falhou: ' + diagnostico.motivo
+        + '. Se o aviso citar senha-rede, o portal tentou resolver o CPF como servidor publico — '
+        + 'confira que o SSO esta sendo chamado com state=F (fornecedor).');
     }
 
     this.loggedIn = true;
