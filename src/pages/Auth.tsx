@@ -16,7 +16,6 @@ import {
 import { toast } from 'sonner';
 import PraefectusLogo from '@/components/shared/PraefectusLogo';
 import MfaVerification from '@/components/auth/MfaVerification';
-import heroLogin from '@/assets/brand/hero-login.jpg';
 import '@/styles/login.css';
 
 const CARGOS = [
@@ -613,259 +612,264 @@ export default function Auth() {
      ========================================================================= */
   return (
     <div className="lg">
-      <div className="lg__foto">
-        <img src={heroLogin} alt="" aria-hidden="true" />
-      </div>
-      <div className="lg__veu" />
-
-      <div className="lg__grade">
-        <div className="lg__marca">
-          <p className="lg__eyebrow">Plataforma de Licitações com IA</p>
-          <div className="lg__logo">PRAE<b>FECTUS</b></div>
-          <span className="lg__linha-acento" aria-hidden="true" />
-          <p className="lg__tagline">
-            Do edital publicado ao contrato assinado —<br />
-            sem perder nenhuma oportunidade pelo caminho.
+      {/* ── Painel esquerdo: marca ── */}
+      <div className="lg__marca">
+        <div className="lg__orb-a" aria-hidden="true" />
+        <div className="lg__orb-b" aria-hidden="true" />
+        <div className="lg__marca-inner">
+          <p className="lg__eyebrow">
+            <Zap style={{ width: 12, height: 12, display: 'inline', verticalAlign: '-1px', marginRight: 6 }} />
+            Plataforma de Licitações com IA
           </p>
+
+          <div className="lg__logo">
+            <span className="lg__logo-mark" aria-hidden="true" />
+            PRAEFECTUS
+          </div>
+          <span className="lg__logo-rule" aria-hidden="true" />
+
+          <p className="lg__tagline">
+            Do edital publicado ao contrato assinado — sem perder nenhuma oportunidade pelo caminho.
+          </p>
+
           <div className="lg__provas">
             <div className="lg__prova">
-              <span><Search className="w-4 h-4" /></span>
+              <span><Search style={{ width: 16, height: 16 }} /></span>
               <div>Monitora <b>13 portais</b> em tempo real, você não precisa fazer nada</div>
             </div>
             <div className="lg__prova">
-              <span><Sparkles className="w-4 h-4" /></span>
+              <span><Sparkles style={{ width: 16, height: 16 }} /></span>
               <div><b>Score de aderência por IA</b> — saiba se vale licitar antes de começar</div>
             </div>
             <div className="lg__prova">
-              <span><Bot className="w-4 h-4" /></span>
+              <span><Bot style={{ width: 16, height: 16 }} /></span>
               <div><b>Robô de lances automatizado</b> — dispute enquanto faz outra coisa</div>
             </div>
           </div>
+
           <div className="lg__stats">
             <div className="lg__stat">
               <span className="lg__stat__n">R$ 2,3 Bi</span>
-              <span className="lg__stat__l">em contratos monitorados</span>
+              <span className="lg__stat__l">em contratos<br />monitorados</span>
             </div>
             <div className="lg__stat__div" />
             <div className="lg__stat">
               <span className="lg__stat__n">4.200+</span>
-              <span className="lg__stat__l">licitações/mês analisadas</span>
+              <span className="lg__stat__l">licitações/mês<br />analisadas</span>
             </div>
             <div className="lg__stat__div" />
             <div className="lg__stat">
               <span className="lg__stat__n">18 UFs</span>
-              <span className="lg__stat__l">empresas atendidas</span>
+              <span className="lg__stat__l">empresas<br />atendidas</span>
             </div>
           </div>
         </div>
-
-        <div className="lg__card">
-          {/* ===== STEP: ESCOLHA ===== */}
-          {step === 'escolha' && (
-            <div className="lg__passo">
-              <h1 className="lg__t">Identifique-se</h1>
-              <p className="lg__s">Escolha como deseja acessar o sistema</p>
-
-              <div className="lg__opcoes">
-                <button type="button" onClick={() => setStep('manual')} className="lg__opcao">
-                  <span className="lg__opcao__ic"><KeyRound className="w-5 h-5" /></span>
-                  <span className="lg__opcao__txt">
-                    <span className="lg__opcao__t">Login e Senha</span>
-                    <span className="lg__opcao__d">Acesse com seu e-mail e senha cadastrados</span>
-                  </span>
-                  <ArrowRight className="lg__opcao__seta w-[18px] h-[18px]" />
-                </button>
-
-                <button type="button" onClick={() => setStep('certificado')} className="lg__opcao">
-                  <span className="lg__opcao__ic"><ShieldCheck className="w-5 h-5" /></span>
-                  <span className="lg__opcao__txt">
-                    <span className="lg__opcao__t">Certificado Digital</span>
-                    <span className="lg__opcao__d">Acesse com e-CNPJ ou e-CPF (A1/A3)</span>
-                    <span className="lg__req">requer conta já vinculada</span>
-                  </span>
-                  <ArrowRight className="lg__opcao__seta w-[18px] h-[18px]" />
-                </button>
-              </div>
-
-              <p className="lg__pe">
-                Para criar uma conta, fale com o administrador da sua empresa.
-              </p>
-            </div>
-          )}
-
-          {/* ===== STEP: LOGIN MANUAL ===== */}
-          {step === 'manual' && (
-            <div className="lg__passo">
-              {backButton()}
-              <h1 className="lg__t text-left">Entrar com e-mail</h1>
-              <p className="lg__s text-left mb-[22px]">
-                Use as credenciais cadastradas pelo administrador
-              </p>
-
-              <form onSubmit={handleLogin} noValidate>
-                <div className="lg__campo">
-                  <label className="lg__rot" htmlFor="lgEmail">Login ou e-mail</label>
-                  <div className="lg__cx">
-                    <User className="w-4 h-4" />
-                    <input
-                      id="lgEmail"
-                      type="text"
-                      placeholder="voce@empresa.com.br"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      autoComplete="username"
-                      spellCheck={false}
-                    />
-                  </div>
-                </div>
-
-                <div className="lg__campo">
-                  <label className="lg__rot" htmlFor="lgSenha">Senha</label>
-                  <div className="lg__cx">
-                    <Lock className="w-4 h-4" />
-                    <input
-                      id="lgSenha"
-                      type={mostrarSenha ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      onKeyUp={e => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
-                      required
-                      minLength={6}
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      className="lg__olho"
-                      onClick={() => setMostrarSenha(v => !v)}
-                      aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                    >
-                      {mostrarSenha
-                        ? <EyeOff className="w-[17px] h-[17px]" />
-                        : <Eye className="w-[17px] h-[17px]" />}
-                    </button>
-                  </div>
-                  {capsLock && (
-                    <div className="lg__caps">
-                      <AlertTriangle className="w-[13px] h-[13px]" /> Caps Lock está ligado
-                    </div>
-                  )}
-                </div>
-
-                <div className="lg__linha justify-end">
-                  <button type="button" onClick={() => setStep('forgot')} className="lg__link">
-                    Esqueci minha senha
-                  </button>
-                </div>
-
-                <button type="submit" className="lg__btn" disabled={loading}>
-                  {loading
-                    ? <Loader2 className="lg__spin w-[17px] h-[17px]" />
-                    : <KeyRound className="w-[17px] h-[17px]" />}
-                  Entrar
-                </button>
-              </form>
-
-              {/* Escape para bundle preso em cache — some do desenho, mas é a
-                  saída de quem ficou travado numa versão velha depois de um
-                  deploy. Tirar seria trocar suporte por estética. */}
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      if ('serviceWorker' in navigator) {
-                        const registrations = await navigator.serviceWorker.getRegistrations();
-                        await Promise.all(registrations.map((r) => r.unregister()));
-                      }
-                      if ('caches' in window) {
-                        const keys = await caches.keys();
-                        await Promise.all(keys.map((k) => caches.delete(k)));
-                      }
-                    } finally {
-                      window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
-                    }
-                  }}
-                  className="text-[11px] underline underline-offset-2 transition-colors"
-                  style={{ color: 'var(--lg-fraco)' }}
-                >
-                  Limpar cache e recarregar
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ===== STEP: CERTIFICADO DIGITAL ===== */}
-          {step === 'certificado' && (
-            <div className="lg__passo">
-              {backButton()}
-              <h1 className="lg__t text-left">Certificado Digital</h1>
-              <p className="lg__s text-left mb-5">e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
-
-              <div className="lg__nota">
-                <Info className="w-[15px] h-[15px]" />
-                <span>
-                  O certificado <b>identifica</b>, mas não cria conta. Ele precisa estar
-                  vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
-                  depois do primeiro acesso.
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setStep('manual')}
-                className="lg__btn lg__btn--vidro mt-[18px]"
-              >
-                <KeyRound className="w-4 h-4" />
-                Entrar com e-mail e senha
-              </button>
-
-              <p className="lg__pe">
-                Aceitos: e-CNPJ A1/A3 e e-CPF A1/A3, nos formatos .pfx, .p12, .cer, .crt e .pem.
-              </p>
-            </div>
-          )}
-
-          {/* ===== STEP: ESQUECEU SENHA ===== */}
-          {step === 'forgot' && (
-            <div className="lg__passo">
-              {backButton('manual')}
-              <h1 className="lg__t text-left">Recuperar senha</h1>
-              <p className="lg__s text-left mb-[22px]">
-                Informe seu login ou e-mail para receber o link de recuperação
-              </p>
-
-              <form onSubmit={handleForgot} noValidate>
-                <div className="lg__campo">
-                  <label className="lg__rot" htmlFor="lgRecuperar">Login ou e-mail</label>
-                  <div className="lg__cx">
-                    <Mail className="w-4 h-4" />
-                    <input
-                      id="lgRecuperar"
-                      type="text"
-                      placeholder="voce@empresa.com.br"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      spellCheck={false}
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="lg__btn mt-1" disabled={loading}>
-                  {loading
-                    ? <Loader2 className="lg__spin w-[17px] h-[17px]" />
-                    : <ArrowRight className="w-[17px] h-[17px]" />}
-                  Enviar link
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
       </div>
 
-      <div className="lg__rodape">Sistema de Gestão de Licitações Públicas com IA</div>
+      {/* ── Painel direito: formulário ── */}
+      <div className="lg__card">
+        {/* ===== STEP: ESCOLHA ===== */}
+        {step === 'escolha' && (
+          <div className="lg__passo">
+            <h1 className="lg__t">Acesse sua conta</h1>
+            <p className="lg__s">Escolha como deseja entrar na plataforma</p>
+
+            <div className="lg__opcoes">
+              <button type="button" onClick={() => setStep('manual')} className="lg__opcao">
+                <span className="lg__opcao__ic"><KeyRound style={{ width: 20, height: 20 }} /></span>
+                <span className="lg__opcao__txt">
+                  <span className="lg__opcao__t">Login e Senha</span>
+                  <span className="lg__opcao__d">Acesse com seu e-mail e senha cadastrados</span>
+                </span>
+                <ArrowRight className="lg__opcao__seta" style={{ width: 18, height: 18 }} />
+              </button>
+
+              <button type="button" onClick={() => setStep('certificado')} className="lg__opcao">
+                <span className="lg__opcao__ic"><ShieldCheck style={{ width: 20, height: 20 }} /></span>
+                <span className="lg__opcao__txt">
+                  <span className="lg__opcao__t">Certificado Digital</span>
+                  <span className="lg__opcao__d">Acesse com e-CNPJ ou e-CPF (A1/A3)</span>
+                  <span className="lg__req">requer conta já vinculada</span>
+                </span>
+                <ArrowRight className="lg__opcao__seta" style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+
+            <p className="lg__pe">
+              Para criar uma conta, entre em contato com o administrador.
+            </p>
+          </div>
+        )}
+
+        {/* ===== STEP: LOGIN MANUAL ===== */}
+        {step === 'manual' && (
+          <div className="lg__passo">
+            {backButton()}
+            <h1 className="lg__t" style={{ textAlign: 'left' }}>Entrar com e-mail</h1>
+            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 22 }}>
+              Use as credenciais cadastradas pelo administrador
+            </p>
+
+            <form onSubmit={handleLogin} noValidate>
+              <div className="lg__campo">
+                <label className="lg__rot" htmlFor="lgEmail">Login ou e-mail</label>
+                <div className="lg__cx">
+                  <User style={{ width: 16, height: 16 }} />
+                  <input
+                    id="lgEmail"
+                    type="text"
+                    placeholder="voce@empresa.com.br"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    autoComplete="username"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+
+              <div className="lg__campo">
+                <label className="lg__rot" htmlFor="lgSenha">Senha</label>
+                <div className="lg__cx">
+                  <Lock style={{ width: 16, height: 16 }} />
+                  <input
+                    id="lgSenha"
+                    type={mostrarSenha ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onKeyUp={e => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
+                    required
+                    minLength={6}
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="lg__olho"
+                    onClick={() => setMostrarSenha(v => !v)}
+                    aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {mostrarSenha
+                      ? <EyeOff style={{ width: 17, height: 17 }} />
+                      : <Eye style={{ width: 17, height: 17 }} />}
+                  </button>
+                </div>
+                {capsLock && (
+                  <div className="lg__caps">
+                    <AlertTriangle style={{ width: 13, height: 13 }} /> Caps Lock está ligado
+                  </div>
+                )}
+              </div>
+
+              <div className="lg__linha" style={{ justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setStep('forgot')} className="lg__link">
+                  Esqueci minha senha
+                </button>
+              </div>
+
+              <button type="submit" className="lg__btn" disabled={loading}>
+                {loading
+                  ? <Loader2 className="lg__spin" style={{ width: 17, height: 17 }} />
+                  : <KeyRound style={{ width: 17, height: 17 }} />}
+                Entrar na plataforma
+              </button>
+            </form>
+
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if ('serviceWorker' in navigator) {
+                      const registrations = await navigator.serviceWorker.getRegistrations();
+                      await Promise.all(registrations.map((r) => r.unregister()));
+                    }
+                    if ('caches' in window) {
+                      const keys = await caches.keys();
+                      await Promise.all(keys.map((k) => caches.delete(k)));
+                    }
+                  } finally {
+                    window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+                  }
+                }}
+                style={{ fontSize: 11, color: 'var(--lg-form-soft)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                Limpar cache e recarregar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== STEP: CERTIFICADO DIGITAL ===== */}
+        {step === 'certificado' && (
+          <div className="lg__passo">
+            {backButton()}
+            <h1 className="lg__t" style={{ textAlign: 'left' }}>Certificado Digital</h1>
+            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 20 }}>e-CNPJ ou e-CPF, nos padrões A1 e A3</p>
+
+            <div className="lg__nota">
+              <Info style={{ width: 15, height: 15 }} />
+              <span>
+                O certificado <b>identifica</b>, mas não cria conta. Ele precisa estar
+                vinculado a um usuário — o vínculo é feito em <b>Configuração › Empresas</b>{' '}
+                depois do primeiro acesso.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStep('manual')}
+              className="lg__btn lg__btn--vidro"
+              style={{ marginTop: 18 }}
+            >
+              <KeyRound style={{ width: 16, height: 16 }} />
+              Entrar com e-mail e senha
+            </button>
+
+            <p className="lg__pe">
+              Aceitos: e-CNPJ A1/A3 e e-CPF A1/A3, nos formatos .pfx, .p12, .cer, .crt e .pem.
+            </p>
+          </div>
+        )}
+
+        {/* ===== STEP: ESQUECEU SENHA ===== */}
+        {step === 'forgot' && (
+          <div className="lg__passo">
+            {backButton('manual')}
+            <h1 className="lg__t" style={{ textAlign: 'left' }}>Recuperar senha</h1>
+            <p className="lg__s" style={{ textAlign: 'left', marginBottom: 22 }}>
+              Informe seu login ou e-mail para receber o link de recuperação
+            </p>
+
+            <form onSubmit={handleForgot} noValidate>
+              <div className="lg__campo">
+                <label className="lg__rot" htmlFor="lgRecuperar">Login ou e-mail</label>
+                <div className="lg__cx">
+                  <Mail style={{ width: 16, height: 16 }} />
+                  <input
+                    id="lgRecuperar"
+                    type="text"
+                    placeholder="voce@empresa.com.br"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="lg__btn" style={{ marginTop: 4 }} disabled={loading}>
+                {loading
+                  ? <Loader2 className="lg__spin" style={{ width: 17, height: 17 }} />
+                  : <ArrowRight style={{ width: 17, height: 17 }} />}
+                Enviar link de recuperação
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      <div className="lg__rodape">© {new Date().getFullYear()} Praefectus — Gestão de Licitações com IA</div>
     </div>
   );
 }

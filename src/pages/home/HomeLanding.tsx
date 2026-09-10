@@ -4,7 +4,7 @@ import './landing.css';
 
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, ChevronDown, Menu, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronDown, Menu, X, ShieldCheck, Zap, Lock, Award } from 'lucide-react';
 import FloatingChat from '@/components/chat/FloatingChat';
 import { storeUtmParams } from '@/lib/tracking';
 import { BULLETS_HERO, GRUPOS_FUNCIONALIDADES, FOOTER_COLUNAS } from './dados';
@@ -184,48 +184,147 @@ function MockupKanban() {
   );
 }
 
-function Hero() {
+function BandaPortais() {
+  const portais = [
+    'PNCP', 'ComprasNet', 'BLL', 'Licitações-e', 'BEMLICITA',
+    'Portal de Minas', 'TCE-PR', 'e-Licitações RS', 'BNC', 'ISS.net'
+  ];
   return (
-    <section className="lp-hero" aria-labelledby="hero-titulo">
-      <div className="lp-orb lp-orb--hero-a" aria-hidden="true" />
-      <div className="lp-orb lp-orb--hero-b" aria-hidden="true" />
-      <div className="lp-container lp-hero__grid">
-        <div className="lp-hero__col">
-          <div className="lp-trust-badge">
-            <span className="lp-trust-badge__ic"><span className="lp-trust-badge__dot" /></span>
-            Sistema online · Lei 14.133/2021
-          </div>
-          <h1 id="hero-titulo" className="lp-h1">
-            Vença mais licitações com <span className="lp-destaque">inteligência artificial</span>
-          </h1>
-          <p className="lp-lead">
-            Do edital publicado ao contrato faturado — numa plataforma só.
-            Monitoramento automático, análise por IA, robô de lances e gestão completa
-            para quem precisa ganhar.
-          </p>
-          <div className="lp-hero__acoes">
-            <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
-              Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-            <a href="#funcionalidades" className="lp-btn lp-btn--ghost lp-btn--lg">
-              Ver funcionalidades
-            </a>
-          </div>
-          <div className="lp-prova">
-            <div className="lp-prova__avs">
-              <div className="lp-prova__av lp-prova__av--a">MF</div>
-              <div className="lp-prova__av lp-prova__av--b">AS</div>
-              <div className="lp-prova__av lp-prova__av--c">RC</div>
-              <div className="lp-prova__av lp-prova__av--d">LP</div>
-            </div>
-            <span>Mais de <strong>200 empresas</strong> em todo o Brasil</span>
+    <div className="lp-banda" aria-label="Portais monitorados pelo Praefectus">
+      <div className="lp-container">
+        <div className="lp-banda__inner">
+          <span className="lp-banda__label">13 portais monitorados</span>
+          <div className="lp-banda__portais">
+            {portais.map(p => (
+              <span key={p} className="lp-portal-chip">
+                <span aria-hidden="true" />
+                {p}
+              </span>
+            ))}
           </div>
         </div>
-        <div className="lp-browser-wrap">
-          <MockupKanban />
+      </div>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <>
+      <section className="lp-hero" aria-labelledby="hero-titulo">
+        <div className="lp-orb lp-orb--hero-a" aria-hidden="true" />
+        <div className="lp-orb lp-orb--hero-b" aria-hidden="true" />
+        <div className="lp-container lp-hero__grid">
+          <div className="lp-hero__col">
+            <div className="lp-trust-badge">
+              <span className="lp-trust-badge__ic"><span className="lp-trust-badge__dot" /></span>
+              Sistema online · Lei 14.133/2021
+            </div>
+            <h1 id="hero-titulo" className="lp-h1">
+              Vença mais licitações<br />
+              com <span className="lp-destaque">inteligência artificial</span>
+            </h1>
+            <p className="lp-lead" style={{ maxWidth: '48ch' }}>
+              Do edital publicado ao contrato faturado — numa plataforma só.
+              Monitoramento automático, análise por IA, robô de lances e gestão
+              completa para quem precisa ganhar.
+            </p>
+            <div className="lp-hero__acoes">
+              <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
+                Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <a href="#funcionalidades" className="lp-btn lp-btn--ghost lp-btn--lg">
+                Ver funcionalidades
+              </a>
+            </div>
+            <div className="lp-prova">
+              <div className="lp-prova__avs">
+                <div className="lp-prova__av lp-prova__av--a">MF</div>
+                <div className="lp-prova__av lp-prova__av--b">AS</div>
+                <div className="lp-prova__av lp-prova__av--c">RC</div>
+                <div className="lp-prova__av lp-prova__av--d">LP</div>
+              </div>
+              <span>Mais de <strong>200 empresas</strong> em todo o Brasil</span>
+            </div>
+          </div>
+          <div className="lp-browser-wrap">
+            <MockupKanban />
+          </div>
+        </div>
+      </section>
+      <BandaPortais />
+    </>
+  );
+}
+
+function Comparativo() {
+  const antes = [
+    'Verificar 13 portais manualmente todo dia',
+    'Planilhas soltas e processos sem rastreamento',
+    'Perder prazos por falta de alerta',
+    'Propostas calculadas no instinto',
+    'Lance manual — usuário precisa ficar na tela',
+  ];
+  const depois = [
+    'Monitoramento automático de 13 portais',
+    'Kanban completo do edital ao faturamento',
+    'Alertas instantâneos por e-mail e app',
+    'Score de aderência por IA antes de entrar',
+    'Robô de lances opera 24h sem intervenção',
+  ];
+  return (
+    <section className="lp-section" aria-labelledby="comp-titulo">
+      <div className="lp-container">
+        <div className="lp-sec-head lp-sec-head--center">
+          <span className="lp-tag">Por que mudar</span>
+          <h2 id="comp-titulo" className="lp-h2">Antes x Depois do Praefectus</h2>
+          <p className="lp-lead">
+            A diferença entre quem perde oportunidades e quem fecha contratos é, quase sempre, processo.
+          </p>
+        </div>
+        <div className="lp-comparativo">
+          <div className="lp-comp-card lp-comp-card--antes">
+            <p className="lp-comp-card__titulo">❌ Sem o Praefectus</p>
+            {antes.map(item => (
+              <div key={item} className="lp-comp-item">
+                <span className="lp-comp-item__ic" aria-hidden="true">✕</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <div className="lp-comp-card lp-comp-card--depois">
+            <p className="lp-comp-card__titulo">✓ Com o Praefectus</p>
+            {depois.map(item => (
+              <div key={item} className="lp-comp-item">
+                <span className="lp-comp-item__ic" aria-hidden="true">✓</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function FaixaGarantia() {
+  return (
+    <div className="lp-section" style={{ paddingBlock: '44px', background: 'linear-gradient(180deg, hsl(220 30% 97%) 0%, hsl(220 20% 99%) 100%)', borderBlock: '1px solid var(--lp-border-1)' }}>
+      <div className="lp-container">
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <p className="lp-small" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, color: 'var(--lp-text-3)' }}>
+            Confiança e segurança em cada etapa
+          </p>
+        </div>
+        <div className="lp-selos">
+          <span className="lp-selo"><ShieldCheck size={18} aria-hidden="true" /> LGPD compliance</span>
+          <span className="lp-selo"><Lock size={18} aria-hidden="true" /> Dados criptografados</span>
+          <span className="lp-selo"><Zap size={18} aria-hidden="true" /> Uptime 99,9%</span>
+          <span className="lp-selo"><CheckCircle2 size={18} aria-hidden="true" /> Lei 14.133/2021</span>
+          <span className="lp-selo"><Award size={18} aria-hidden="true" /> Suporte dedicado</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -308,9 +407,11 @@ export default function HomeLanding() {
       <main id="conteudo">
         <Hero />
         <TrioValor />
+        <Comparativo />
         <GridFuncionalidades />
         <FaixaIA />
         <Numeros />
+        <FaixaGarantia />
         <Processo />
         <Depoimentos />
         <Faq />

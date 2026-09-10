@@ -5,13 +5,14 @@ import { TRIO_VALOR, FUNCIONALIDADES, PONTOS_IA, ETAPAS } from './dados';
 /** Trio de proposta de valor logo abaixo do hero. */
 export function TrioValor() {
   return (
-    <section className="lp-section" aria-labelledby="trio-titulo">
+    <section className="lp-section lp-section--alt" aria-labelledby="trio-titulo">
       <div className="lp-container">
-        <div className="lp-sec-head">
+        <div className="lp-sec-head lp-sec-head--center">
           <span className="lp-tag">Por que Praefectus</span>
           <h2 id="trio-titulo" className="lp-h2">
             Menos abas abertas, mais licitações <span className="lp-destaque">ganhas</span>
           </h2>
+          <p className="lp-lead">Tudo que o licitante precisa em uma plataforma integrada — do monitoramento à entrega do contrato.</p>
         </div>
         <div className="lp-trio">
           {TRIO_VALOR.map((item) => (
@@ -32,11 +33,11 @@ export function TrioValor() {
 /** Grid de funcionalidades — cards uniformes, 3 colunas no desktop. */
 export function GridFuncionalidades() {
   return (
-    <section id="funcionalidades" className="lp-section lp-section--alt" aria-labelledby="func-titulo">
+    <section id="funcionalidades" className="lp-section" aria-labelledby="func-titulo">
       <div className="lp-container">
-        <div className="lp-sec-head">
+        <div className="lp-sec-head lp-sec-head--center">
           <span className="lp-tag">Funcionalidades</span>
-          <h2 id="func-titulo" className="lp-h2">Tudo que o licitante usa, em um só lugar</h2>
+          <h2 id="func-titulo" className="lp-h2">Uma plataforma, o processo inteiro</h2>
           <p className="lp-lead">
             Cada módulo conversa com o seguinte: o edital monitorado vira disputa, a vitória
             vira contrato, o contrato vira faturamento — e a meta mede o caminho inteiro.
@@ -125,9 +126,10 @@ export function Processo() {
   return (
     <section id="processo" className="lp-section lp-section--alt" aria-labelledby="processo-titulo">
       <div className="lp-container">
-        <div className="lp-sec-head">
+        <div className="lp-sec-head lp-sec-head--center">
           <span className="lp-tag">Como funciona</span>
-          <h2 id="processo-titulo" className="lp-h2">A jornada completa, em seis etapas</h2>
+          <h2 id="processo-titulo" className="lp-h2">Da descoberta ao contrato — sem pular etapa</h2>
+          <p className="lp-lead">Seis passos que se conectam automaticamente: cada dado gerado em um módulo alimenta o próximo.</p>
         </div>
         <ol className="lp-processo" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {ETAPAS.map((etapa, i) => (
