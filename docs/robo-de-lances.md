@@ -190,9 +190,63 @@ e o `baseUrl` de `/4` já cobre. **Não há nada a corrigir aqui.**
 | | |
 | --- | --- |
 | Achar e abrir um processo | ✅ já funciona, mesmo com a conta vencida |
-| Um edital real em sessão | ⬜ **o próximo passo** — o `TESTE-001` falhou só por ser um número inventado |
+| Um edital real | ✅ **feito em 10/09/2026** — ver abaixo |
+| Os itens/lotes chegarem ao robô | ✅ **feito em 10/09/2026** — ver abaixo |
+| Um pregão **em sessão** | ⬜ o que falta; sem ele não há sala de disputa para ler |
 | Renovar o plano | ⬜ necessário para **disputar**, não para navegar |
 | `souLider()` | ⬜ exige pregão acontecendo E plano ativo |
+
+#### O teste com edital real — 10/09/2026, 00:14
+
+A dúvida que ficou aberta por dois dias era: **o robô parava por causa do plano
+vencido ou porque o edital era inventado?** Está respondida, e é a segunda.
+
+Sessão disparada direto ao agente com o edital **`002/2026`** — um processo de
+verdade da conta, tirado da lista que a própria mensagem de erro passou a
+mostrar. O log inteiro, sem cortes:
+
+```
+🔐 Iniciando login no Portal de Compras Públicas...
+✅ Login no Portal de Compras Públicas realizado
+📋 Navegando para edital: 002/2026 (2 item(ns), disputa por item)
+🎯 Disputa por item — 2 item(ns) recebido(s): #1, #2
+⚠️  1 de 2 item(ns) vieram SEM piso definido — para esses o robo nao deve dar lance
+⚠️  CONTA INATIVA no portal: o acesso esta vencido desde 17/04/2026, com 0 creditos
+📋 Procurando "002/2026" em .../4/SeusPregoes/
+📋 Processo encontrado: .../DadosPregao/?slA=Edit&ttCD_CHAVE=453864
+⚠️  Conta impedida no portal (o portal informa que a conta nao tem plano ativo)
+✅ Sessão ativa
+```
+
+Oito segundos do login ao processo aberto. Três coisas ficam provadas:
+
+1. **O bloqueio era o número inventado.** Com edital real, a conta **vencida**
+   acha o processo em "Seus Processos" e abre os Dados do Processo. O plano
+   bloqueia disputar; não bloqueia entrar, listar nem abrir.
+2. **Os itens atravessam.** Até 09/09 o agente recebia só a string do edital —
+   num pregão de 40 itens ele abria a página certa sem saber o que acompanhar.
+   Agora recebe a lista, e o log nomeia o que recebeu.
+3. **Piso ausente é estado próprio.** O aviso de "SEM piso definido" existe
+   porque nulo não é zero: um item que ninguém avaliou não pode ser confundido
+   com um item autorizado a descer até R$ 0,00.
+
+**O que o teste NÃO entregou, e por quê.** O `002/2026` está *"Encerrado para
+Operação"* — pregão já acabado. A página é "Dados do Processo", não a sala de
+disputa. Então os seletores de `lerMelhorLance()` continuam sendo os três
+palpites de sempre (`.valor-lance, .melhor, td.valor`) e o `souLider()` continua
+sem existir para este portal. Isso só se escreve **vendo** a sala com pregão
+acontecendo — é o único item que ainda depende do Rafael.
+
+Foto: `capturas-robo/20260910-001419-portal-compras-processo-002-2026.png`.
+
+**Um defeito foi encontrado por esse teste, e teria passado batido.** A rota
+`POST /sessao/iniciar` desestrutura uma **lista fixa** de campos do `req.body` e
+repassa um a um ao `createSession`. Campo que não está nomeado ali é descartado
+em silêncio — sem erro, sem log. A edge function mandava os itens, o
+session-manager sabia usá-los, o módulo do portal sabia registrá-los, e essa
+linha no meio jogava tudo fora. O `tsc` não vê (o agente é string dentro de
+template literal), o lint não vê, o build passa. Corrigido, e agora há teste em
+`src/test/agente-template.test.ts` que lê o texto gerado e falha se voltar.
 
 Uma correção saiu da sonda. O módulo detectava plano inativo lendo o banner
 amarelo — **depois** de abrir o processo. Quando o processo não é encontrado,

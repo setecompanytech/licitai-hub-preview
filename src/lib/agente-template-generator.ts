@@ -315,6 +315,14 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       valor_referencia, valor_inicial, valor_minimo,
       decremento_min, decremento_percentual,
       intervalo_segundos, max_lances, credenciais_portal,
+      // O ALVO dentro do processo.
+      //
+      // Esta rota desestrutura uma lista FIXA e repassa campo a campo — o que
+      // nao estiver nomeado aqui e descartado silenciosamente, por mais que
+      // quem chamou tenha enviado. Foi assim que os itens quase chegaram ao
+      // agente sem chegar: a edge function mandava, o session-manager sabia
+      // usar, e esta linha no meio jogava fora.
+      itens, tipo_disputa,
     } = req.body;
 
     const callbackUrl = req.headers['x-callback-url'] || process.env.CALLBACK_URL;
@@ -336,6 +344,10 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       decremento_min, decremento_percentual,
       intervalo_segundos: intervalo_segundos || 30,
       max_lances: max_lances || 20,
+      // Normalizado aqui, na entrada: o session-manager e o modulo do portal
+      // tratam ausencia como "abrir o processo e parar", e nao como erro.
+      itens: Array.isArray(itens) ? itens : [],
+      tipo_disputa: tipo_disputa || null,
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 

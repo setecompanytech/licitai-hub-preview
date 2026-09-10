@@ -64,6 +64,27 @@ Os arquivos chegam com epoch em milissegundos no nome
   O plano bloqueia disputar, não navegar — conclusão oposta à que a tela do
   DashBoard sugere sozinha.
 
+- **`20260910-001419-portal-compras-processo-002-2026.png`** — a mesma tela do
+  processo, agora com o robô sabendo **o que** disputar dentro dele. O log da
+  mesma sessão:
+
+  ```
+  🎯 Disputa por item — 2 item(ns) recebido(s): #1, #2
+  ⚠️  1 de 2 item(ns) vieram SEM piso definido — para esses o robo nao deve dar lance
+  📋 Processo encontrado: .../DadosPregao/?slA=Edit&ttCD_CHAVE=453864
+  ```
+
+  Vale por duas coisas. A primeira: até 09/09 o agente recebia só o número do
+  edital, então num pregão de 40 itens ele abria a página certa sem saber o que
+  acompanhar. A segunda: piso **ausente** é estado próprio, diferente de zero —
+  a linha de aviso existe para que um item que ninguém avaliou não seja
+  confundido com um item autorizado a descer até R$ 0,00.
+
+  A situação continua **"Encerrado para Operação"**: serve para provar a
+  navegação e o transporte dos itens, não para ler a sala de disputa. Os
+  seletores de `lerMelhorLance()` e o `souLider()` seguem pendentes, e dependem
+  de um pregão em sessão.
+
 ## Fora do git, de propósito
 
 A pasta está no `.gitignore`. Duas razões:

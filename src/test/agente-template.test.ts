@@ -208,4 +208,38 @@ describe('template do agente de lances', () => {
     // falta do formulário só apareceria como 500 no meio de um pregão.
     expect(ler('src/portals/base-portal.js')).not.toMatch(/^\s*async enviarProposta\s*\(/m);
   });
+
+  it('a rota /sessao/iniciar repassa os itens — campo não nomeado é descartado', () => {
+    // ISTO ACONTECEU, em 10/09/2026, e passou por todas as outras verificações.
+    //
+    // A rota desestrutura uma lista FIXA do `req.body` e repassa campo a campo
+    // ao createSession. O que não estiver nomeado ali some em silêncio: sem
+    // erro, sem log, sem teste vermelho. A edge function mandava os itens, o
+    // session-manager sabia usá-los, o módulo do portal sabia registrá-los —
+    // e esta linha no meio jogava tudo fora.
+    //
+    // O `tsc` não vê (é string), o lint não vê, o build passa. Só um teste que
+    // lê o texto gerado pega. Por isso ele existe.
+    const index = ler('src/index.js');
+
+    const destructuring = index.match(/const \{([\s\S]*?)\} = req\.body;/);
+    expect(destructuring, 'não achei a desestruturação do req.body').toBeTruthy();
+    expect(destructuring![1]).toMatch(/\bitens\b/);
+    expect(destructuring![1]).toMatch(/\btipo_disputa\b/);
+
+    // Nomear na desestruturação não basta — tem que CHEGAR ao createSession.
+    const chamada = index.match(/createSession\(\{([\s\S]*?)\}\);/);
+    expect(chamada, 'não achei a chamada do createSession').toBeTruthy();
+    expect(chamada![1]).toMatch(/itens:/);
+    expect(chamada![1]).toMatch(/tipo_disputa:/);
+  });
+
+  it('o alvo da disputa chega ao módulo do portal e ao /health', () => {
+    // As duas pontas do caminho que os itens percorrem depois da rota. Piso
+    // ausente é estado próprio: nulo não é zero, e o robô não deve dar lance
+    // num item que ninguém avaliou.
+    expect(ler('src/portals/portal-compras.js')).toMatch(/async navegarParaDisputa\(edital, alvo\)/);
+    expect(ler('src/session-manager.js')).toMatch(/itens_recebidos/);
+    expect(ler('src/session-manager.js')).toMatch(/itens_sem_piso/);
+  });
 });
