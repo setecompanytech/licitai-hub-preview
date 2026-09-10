@@ -735,6 +735,16 @@ class SessionManager {
       session.browser = browser;
       session.page = page;
 
+      // Toda aba que nasce ou morre vai para o log, com URL. Foi a falta disto
+      // que deixou "Session closed" sem explicacao em 10/09/2026: o Chrome
+      // trocou de aba na volta do gov.br e ninguem viu.
+      browser.on('targetcreated', (t) => {
+        if (t.type() === 'page') console.log(\`🆕 [\${config.sessao_id}] aba aberta: \${t.url() || '(vazia)'}\`);
+      });
+      browser.on('targetdestroyed', (t) => {
+        if (t.type() === 'page') console.log(\`🧯 [\${config.sessao_id}] aba fechada: \${t.url() || '(vazia)'}\`);
+      });
+
       // O PID do Chrome DESTA sessão, guardado agora e não procurado depois.
       //
       // É o que permite trazer a janela certa para a frente (/sessao/focar).
@@ -758,6 +768,12 @@ class SessionManager {
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
+      // O portal pode ter trocado de aba durante o login (adotarAbaViva). A
+      // sessao segue a aba do portal, senao screenshot, chat e foco olhariam
+      // para uma aba que ja nao existe.
+      if (session.portal.page && session.portal.page !== session.page) {
+        session.page = session.portal.page;
+      }
 
       // Navegar para a disputa
       //

@@ -199,9 +199,49 @@ class BasePortal {
     return 'campo "' + ondeDigitou + '"' + (clicou ? ' + botao "' + clicou + '"' : ' + Enter');
   }
 
+  /**
+   * A aba que este modulo segura ainda existe? Se nao, segue na aba viva.
+   *
+   * VERIFICADO em 10/09/2026 no Compras.gov (sessoes 729e3b82 e e5e76e12):
+   * 11s depois do clique automatico em "Seu certificado digital", o Chrome
+   * descartou a aba em que o login comecou e continuou em OUTRA — troca de
+   * contexto de navegacao na volta do gov.br para o comprasnet. O Puppeteer
+   * ficou segurando a aba morta: "Session closed. Most likely the page has
+   * been closed", e depois "detached Frame" em tudo. O login tinha DADO CERTO
+   * na aba nova; o robo morreu olhando para a antiga.
+   *
+   * Aqui: se a aba fechou, adota a ultima aba aberta do mesmo navegador (a
+   * mais nova, sem contar about:blank). Devolve true quando trocou, para quem
+   * chamou registrar. Se nao houver aba nenhuma, ai sim e erro — e com frase
+   * de gente, nao de biblioteca.
+   */
+  async adotarAbaViva(motivo) {
+    if (!this.page.isClosed()) return false;
+    const browser = this.page.browser();
+    const abas = (await browser.pages()).filter((p) => !p.isClosed());
+    const uteis = abas.filter((p) => p.url() && p.url() !== 'about:blank');
+    const nova = uteis[uteis.length - 1] || abas[abas.length - 1];
+    if (!nova) {
+      throw new Error('A aba do navegador fechou' + (motivo ? ' (' + motivo + ')' : '')
+        + ' e nao ha outra aberta para continuar.');
+    }
+    console.log('🔀 A aba anterior fechou' + (motivo ? ' (' + motivo + ')' : '')
+      + '; seguindo na aba viva: ' + nova.url());
+    this.page = nova;
+    return true;
+  }
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
-    await this.page.screenshot({ path, fullPage: false });
+    // Screenshot e diagnostico, nunca causa de morte: se a aba trocou, tira
+    // da viva; se nem isso der, registra e segue.
+    try {
+      await this.adotarAbaViva('antes do screenshot ' + nome);
+      await this.page.screenshot({ path, fullPage: false });
+    } catch (e) {
+      console.warn('⚠️ Screenshot ' + nome + ' nao saiu: ' + e.message);
+      return null;
+    }
     console.log(\`📸 Screenshot salvo: \${path}\`);
     return path;
   }
@@ -358,6 +398,9 @@ class ComprasGovPortal extends BasePortal {
     let leiturasNoLogin = 0;
 
     while (Date.now() - inicio < timeout) {
+      // A volta do gov.br pode trocar de aba (ver adotarAbaViva). Sem isto o
+      // laco leria para sempre a URL congelada de uma aba que nao existe mais.
+      await this.adotarAbaViva('na volta do certificado');
       const url = this.page.url();
 
       if (url.indexOf('/info/x509') !== -1) return 'sem-certificado';
@@ -556,6 +599,8 @@ class ComprasGovPortal extends BasePortal {
 
         while (Date.now() < limite) {
           await new Promise((r) => setTimeout(r, 2000));
+          // Mesma razao do laco automatico: a volta do gov.br pode trocar de aba.
+          await this.adotarAbaViva('na volta do certificado (clique humano)');
           const agora = this.page.url();
 
           if (!agora.includes('acesso.gov.br')) {
@@ -644,6 +689,10 @@ class ComprasGovPortal extends BasePortal {
       await this.screenshot('pos-login-sso');
     }, 'login-sso');
 
+    // Daqui em diante tudo e na aba em que o portal ficou — que pode nao ser
+    // a que abriu o login.
+    await this.adotarAbaViva('depois do login');
+
     // 4. Verificar se precisa autorizar acesso ao Compras.gov
     const needsAuth = await this.page.evaluate(() => {
       const body = document.body.innerText.toLowerCase();
@@ -660,35 +709,21 @@ class ComprasGovPortal extends BasePortal {
       await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
     }
 
-    // 5. Navegar para área do fornecedor (ComprasNet-Web)
-    await this.comRetry(async () => {
-      // Tentar URLs conhecidas da área do fornecedor
-      const possibleUrls = [
-        \`\${this.baseUrl}/seguro/fornecedor\`,
-        \`\${this.baseUrl}/pregao/fornecedor\`,
-        \`\${this.baseUrl}/seguro/home\`,
-        this.baseUrl,
-      ];
-
-      let found = false;
-      for (const url of possibleUrls) {
-        await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
-        const isLogged = await this.page.evaluate(() => {
-          const body = document.body.innerText;
-          return body.includes('Fornecedor') || body.includes('Bem-vindo') ||
-                 body.includes('Painel') || body.includes('UASG') ||
-                 body.includes('Pregão') || body.includes('Meus Pregões') ||
-                 body.includes('Em disputa') || body.includes('Abertas');
-        });
-        if (isLogged) { found = true; break; }
-      }
-
-      if (!found) {
-        // Se nenhuma URL funcionou, verificar a página atual
-        const pageText = await this.page.evaluate(() => document.body.innerText.substring(0, 500));
-        console.log('📄 Conteúdo atual da página:', pageText);
-      }
-    }, 'navegar-area-fornecedor');
+    // 5. Ficar onde o SSO deixou.
+    //
+    // VERIFICADO em 10/09/2026, sessao 8c761be3 (disparada pela tela, com o
+    // clique humano no VNC): depois do gov.br o landing_sso.asp entrega a
+    // "Area de Trabalho do Fornecedor Brasileiro" em www.comprasnet.gov.br —
+    // cabecalho Compras.gov.br / SICAF / Contratos.gov.br, CNPJ e nome da
+    // empresa, usuario, menu Dados Cadastrais | Compras | SICAF | Contratos |
+    // Sair, "Placar de Licitacoes". ESSA e a area logada.
+    //
+    // A versao anterior saia dela para testar quatro URLs chutadas no host do
+    // SPA (/comprasnet-web/seguro/fornecedor e afins). Todas respondem 404
+    // hoje, e o robo terminava parado numa "Pagina nao encontrada" com o
+    // login ja feito. Nao ha para onde ir aqui: a navegacao ate a compra e
+    // assunto de navegarParaDisputa.
+    console.log('🏠 Area logada em: ' + this.page.url());
 
     // 6. Verificar login bem-sucedido.
     //
@@ -706,7 +741,9 @@ class ComprasGovPortal extends BasePortal {
         return { ok: false, motivo: 'o Compras.gov voltou para a escolha de perfil sem entrar' };
       }
       // Palavras que so existem DENTRO — "Compras" sozinha nao vale, esta no logo.
-      const dentro = /Bem-vindo|Painel|Meus Preg[oõ]es|Em disputa|Abertas para participa[cç][aã]o|Sair|Minha Conta/i.test(body);
+      // As tres primeiras sao da "Area de Trabalho do Fornecedor Brasileiro",
+      // lidas da tela real em 10/09/2026.
+      const dentro = /[AÁ]rea de Trabalho do Fornecedor|Placar de Licita[cç][oõ]es|Dados Cadastrais|Bem-vindo|Painel|Meus Preg[oõ]es|Em disputa|Abertas para participa[cç][aã]o|Sair|Minha Conta/i.test(body);
       return dentro ? { ok: true } : { ok: false, motivo: 'a pagina nao tem nenhum sinal de area logada' };
     });
 

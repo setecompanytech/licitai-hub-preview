@@ -358,6 +358,42 @@ igual ao que foi feito no PCP em 4.1.
 manda `{ login, senha }`. O CPF nunca é digitado; o caminho é o do certificado,
 que não precisa dele. Se um dia o CPF for necessário, o campo é `login`.
 
+#### 14:44 — entrou como Fornecedor. 15:02 e 15:07 — a aba fugiu
+
+Com o `state=F` instalado, o Ian reenviou **pela tela** (sessão `8c761be3`):
+hCaptcha barrou, o cartão do clique apareceu, ele clicou na tela remota, e às
+14:44:49 o log disse *"Autenticado — o login saiu do gov.br"*. O screenshot
+seguinte é a **Área de Trabalho do Fornecedor Brasileiro**: Compras.gov.br /
+SICAF / Contratos.gov.br, CNPJ e razão social da Santa Rosa, usuário Rafael,
+menu Dados Cadastrais | Compras | SICAF | Contratos | Sair. **O login no
+Compras.gov está provado.**
+
+Quatro segundos depois o módulo saiu dessa página para testar quatro URLs
+chutadas no host do SPA (`/comprasnet-web/seguro/fornecedor`…), todas 404, e a
+checagem nova — corretamente — recusou o 404 como área logada. Removido: a área
+de trabalho onde o SSO deixa o robô **é** a área logada; a navegação até a
+compra é assunto do `navegarParaDisputa`.
+
+Nas duas sessões seguintes (`729e3b82`, `e5e76e12`) o hCaptcha **não** barrou, o
+robô clicou sozinho — e 11s depois: *"Session closed. Most likely the page has
+been closed"*, seguido de `detached Frame`. A primeira hipótese (clique do
+operador na tela remota) caiu na segunda sessão: **ninguém estava no VNC**. O
+que resta, e bate com os 11s: na volta do gov.br para o comprasnet o Chrome
+**trocou de aba** — descartou a que abriu o login e seguiu em outra — e o
+Puppeteer ficou segurando a morta. O login tinha dado certo na aba nova.
+
+Feito: `BasePortal.adotarAbaViva()` — se a aba que o módulo segura fechou,
+adota a última aba viva do navegador; chamado a cada volta dos laços do
+certificado (automático e humano) e antes dos passos pós-login. Screenshot
+deixou de ser causa de morte. O session-manager segue a aba do portal depois
+do login, e passa a registrar **toda aba que nasce ou morre, com URL** — a
+prova que faltou nas duas sessões. Instalado na VPS (`session-manager.js`
+`8beec21d…`, `base-portal.js` `f4a006fd…`, `comprasgov.js` `ae57d0e4…`).
+
+**Aberto:** confirmar com o log de abas que a troca é isso mesmo, e então a
+busca da compra a partir da área de trabalho — o menu "Compras" é o ponto de
+partida a mapear.
+
 #### A tela remota que "não conectava" — 45 arquivos em cascata
 
 No mesmo teste, o painel do VNC em produção ficou em "Conectando ao servidor
