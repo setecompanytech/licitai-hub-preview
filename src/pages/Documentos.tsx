@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
+import AlertasVencimentoEmail from '@/components/documentos/AlertasVencimentoEmail';
 import { useColaboradores } from '@/hooks/useMetasComercial';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
@@ -706,6 +707,7 @@ export default function Documentos() {
 
           <TabsContent value="documentos" className="space-y-4">
             <AlertaVencimentoDocumentos documentos={documentos} />
+            <AlertasVencimentoEmail />
 
             {/* Progress */}
             <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
