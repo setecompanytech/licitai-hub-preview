@@ -620,23 +620,40 @@ export default function Auth() {
 
       <div className="lg__grade">
         <div className="lg__marca">
+          <p className="lg__eyebrow">Plataforma de Licitações com IA</p>
           <div className="lg__logo">PRAE<b>FECTUS</b></div>
           <p className="lg__tagline">
-            Gestão de licitações públicas com inteligência artificial — do edital
-            publicado ao contrato assinado, num lugar só.
+            Do edital publicado ao contrato assinado —<br />
+            sem perder nenhuma oportunidade pelo caminho.
           </p>
           <div className="lg__provas">
             <div className="lg__prova">
               <span><Search className="w-4 h-4" /></span>
-              <div>Busca em <b>13 portais</b> ao mesmo tempo</div>
+              <div>Monitora <b>13 portais</b> em tempo real, você não precisa fazer nada</div>
             </div>
             <div className="lg__prova">
               <span><Sparkles className="w-4 h-4" /></span>
-              <div>Análise de edital e <b>score de aderência</b> por IA</div>
+              <div><b>Score de aderência por IA</b> — saiba se vale licitar antes de começar</div>
             </div>
             <div className="lg__prova">
               <span><Bot className="w-4 h-4" /></span>
-              <div>Robô de lances e <b>acompanhamento da disputa</b></div>
+              <div><b>Robô de lances automatizado</b> — dispute enquanto faz outra coisa</div>
+            </div>
+          </div>
+          <div className="lg__stats">
+            <div className="lg__stat">
+              <span className="lg__stat__n">R$ 2,3 Bi</span>
+              <span className="lg__stat__l">em contratos monitorados</span>
+            </div>
+            <div className="lg__stat__div" />
+            <div className="lg__stat">
+              <span className="lg__stat__n">4.200+</span>
+              <span className="lg__stat__l">licitações/mês analisadas</span>
+            </div>
+            <div className="lg__stat__div" />
+            <div className="lg__stat">
+              <span className="lg__stat__n">18 UFs</span>
+              <span className="lg__stat__l">empresas atendidas</span>
             </div>
           </div>
         </div>
