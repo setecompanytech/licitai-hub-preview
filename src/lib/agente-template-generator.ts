@@ -1284,10 +1284,12 @@ async function launchBrowser(cnpj) {
 
   const page = await browser.newPage();
 
-  await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-    '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-  );
+  // O user-agent e o do proprio Chrome, so sem a marca "Headless". Era um
+  // "Chrome/120" fixo, e em 10/09/2026 o Compras.gov abriu a pagina de
+  // compras com o banner "Seu navegador (Chrome 120) esta desatualizado" —
+  // um Chrome 153 fingindo ser tres anos mais velho. Mentira que envelhece
+  // sozinha nao serve de disfarce.
+  await page.setUserAgent((await browser.userAgent()).replace('HeadlessChrome', 'Chrome'));
 
   // No modo visivel o viewport ja segue a janela (defaultViewport: null).
   if (!visivel) {

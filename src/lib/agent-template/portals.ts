@@ -819,103 +819,181 @@ class ComprasGovPortal extends BasePortal {
     console.log('✅ Login no Compras.gov realizado com sucesso');
   }
 
-  async navegarParaDisputa(edital) {
-    console.log(\`📋 Navegando para disputa: \${edital}\`);
+  /**
+   * O numero da compra no formato do formulario publico: numero e ano colados,
+   * sem barra nem zeros a esquerda — o campo diz "Ex: 102021" e o title,
+   * "Digite o numero e ano da compra". "90012/2024" vira "900122024". Um
+   * edital sem numero/ano (o TESTE-COMPRASGOV de 10/09/2026) nao tem como
+   * ser buscado, e o erro diz isso antes de abrir pagina nenhuma.
+   */
+  numeroDaCompra(edital) {
+    const m = String(edital || '').match(/(\\d{1,6})\\s*\\/\\s*(\\d{4})/);
+    if (m) return { campo: String(parseInt(m[1], 10)) + m[2], rotulo: parseInt(m[1], 10) + '/' + m[2] };
+    return null;
+  }
+
+  /**
+   * O que a pesquisa devolveu: 'resultados', 'nenhum', 'captcha' ou 'nada'
+   * (ainda carregando). Lido do texto e do DOM — os cards nao tem classe
+   * estavel, mas todo card comeca com a modalidade e "N° numero/ano".
+   */
+  async lerDesfechoDaBusca() {
+    return this.page.evaluate(() => {
+      const texto = document.body.innerText || '';
+      const captcha = [...document.querySelectorAll('iframe[src*="hcaptcha"]')]
+        .some((f) => { const r = f.getBoundingClientRect(); return r.width > 50 && r.height > 50; });
+      if (captcha) return 'captcha';
+      if (/(PREG[AÃ]O|DISPENSA|CONCORR[EÊ]NCIA|LEIL[AÃ]O)[^\\n]*N[°º]\\s*\\d+\\/\\d{4}/i.test(texto)) return 'resultados';
+      if (/nenhum (registro|resultado)|n[aã]o (foram|foi) encontrad/i.test(texto)) return 'nenhum';
+      return 'nada';
+    }).catch(() => 'nada');
+  }
+
+  /**
+   * Segunda versao (10/09/2026, 16:40). A primeira tentava 12 seletores
+   * chutados, nao achava nenhum, e terminava com "Na sala de disputa" sem
+   * ter saido do formulario — um falso positivo que a sessao 6c118f0f
+   * mostrou na tela. Os seletores abaixo foram lidos da pagina real
+   * (PrimeNG) com um Chrome separado:
+   *   #emAndamento / #finalizadas          — Situacao
+   *   #abertasParticipacao / #emDisputa /
+   *   #emSelecaoDeFornecedores             — Etapa
+   *   #unidadeCompradora                   — codigo da UASG
+   *   input[placeholder="Ex: 102021"]      — numero da compra (sem id)
+   *   button.br-button.is-primary          — Pesquisar
+   * A pesquisa pode cair num hCaptcha VISIVEL (aconteceu em headless no
+   * mapeamento; na janela logada, nao) — nesse caso pede o clique humano,
+   * como no login. O que este metodo NAO faz: entrar na sala de disputa.
+   * Ninguem viu essa tela ainda; ela e o proximo muro, e o log diz isso em
+   * vez de fingir.
+   */
+  async navegarParaDisputa(edital, alvo) {
+    console.log('📋 Navegando para disputa: ' + edital);
     await this.aplicarAntiDeteccao();
 
+    const numero = this.numeroDaCompra(edital);
+    if (!numero) {
+      const e = new Error('O edital "' + edital + '" nao tem numero e ano de compra (ex.: 90012/2024), '
+        + 'e a busca do Compras.gov so aceita isso. Cadastre a disputa com o numero da compra que '
+        + 'aparece no portal.');
+      e.semRetry = true;
+      throw e;
+    }
+
     await this.comRetry(async () => {
-      // Ir para a lista de compras públicas com filtro "Em disputa"
-      await this.page.goto(\`\${this.publicUrl}\`, {
-        waitUntil: 'networkidle2', timeout: 25000,
+      await this.page.goto(this.publicUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+      // O SPA mostra "Aguarde..." e so depois pinta o formulario.
+      await this.page.waitForFunction(
+        () => /N[uú]mero da compra/i.test(document.body.innerText || '')
+          && !!document.querySelector('input[placeholder="Ex: 102021"]'),
+        { timeout: 45000 });
+      await this.delayHumano(400, 900);
+
+      // Etapa: "Em disputa" E "Abertas para participacao" — antes da sessao
+      // abrir a compra ainda esta na segunda.
+      await this.page.evaluate(() => {
+        for (const id of ['abertasParticipacao', 'emDisputa']) {
+          const cb = document.getElementById(id);
+          if (cb && !cb.checked) cb.click();
+        }
       });
-      await this.delayHumano(1000, 2000);
+      if (alvo && alvo.uasg) {
+        await this.page.click('#unidadeCompradora', { clickCount: 3 });
+        await this.page.type('#unidadeCompradora', String(alvo.uasg), { delay: 60 });
+      }
+      await this.page.click('input[placeholder="Ex: 102021"]', { clickCount: 3 });
+      await this.page.type('input[placeholder="Ex: 102021"]', numero.campo, { delay: 70 });
+      await this.delayHumano(300, 700);
+      console.log('🔎 Pesquisando a compra ' + numero.rotulo + ' (campo: ' + numero.campo + ')');
+      await this.page.click('button.br-button.is-primary');
 
-      // A página pública tem filtros: Situação, Etapa, Modalidade, etc.
-      // Seletores observados do HTML real:
-      //   - Filtro "Em disputa": provavelmente um select ou checkbox
-      //   - Campo "Número da compra": input
-      //   - Botão "Pesquisar"
+      // Espera o desfecho: resultados, "nenhum", ou captcha.
+      let desfecho = 'nada';
+      const fim = Date.now() + 30000;
+      while (Date.now() < fim) {
+        await new Promise((r) => setTimeout(r, 1500));
+        desfecho = await this.lerDesfechoDaBusca();
+        if (desfecho !== 'nada') break;
+      }
 
-      // Tentar preencher "Número da compra"
-      const buscaSelectors = [
-        'input[name="numCompra"]', 'input[name="numeroCompra"]',
-        'input[placeholder*="compra"]', 'input[placeholder*="Número"]',
-        'input[formcontrolname="numCompra"]',
-        'input[type="search"]', '#numCompra',
-        // Fallback genéricos
-        'input[name="uasg"]', 'input[name="numPregao"]',
-        'input[placeholder*="UASG"]', 'input[placeholder*="pregão"]',
-        '#busca-pregao',
-      ];
-
-      let buscaFound = false;
-      for (const sel of buscaSelectors) {
-        const found = await this.aguardarElemento(sel, 2000);
-        if (found) {
-          await this.preencherCampo(sel, edital);
-          buscaFound = true;
-          break;
+      if (desfecho === 'captcha' && this.segundosEsperaHumano > 0) {
+        await this.screenshot('busca-captcha');
+        console.log('🧑 A pesquisa caiu num hCaptcha — preciso de um clique humano na tela remota.');
+        interacao.pedir(this.sessaoId, {
+          expira_em: new Date(Date.now() + this.segundosEsperaHumano * 1000).toISOString(),
+          tipo: 'captcha',
+          mensagem: 'A pesquisa de compras do Compras.gov mostrou um hCaptcha. Abra a tela remota (VNC), '
+            + 'resolva o captcha e clique em "Pesquisar" de novo se precisar.',
+          tela: 'Compras.gov — Compras eletronicas (pesquisa)',
+        });
+        const limite = Date.now() + this.segundosEsperaHumano * 1000;
+        let avisou = 0;
+        while (Date.now() < limite) {
+          await new Promise((r) => setTimeout(r, 2000));
+          desfecho = await this.lerDesfechoDaBusca();
+          if (desfecho === 'resultados' || desfecho === 'nenhum') {
+            interacao.resolver(this.sessaoId, 'atendido');
+            console.log('🧑 ✅ Captcha resolvido — a pesquisa respondeu');
+            break;
+          }
+          const faltam = Math.round((limite - Date.now()) / 1000);
+          if (faltam > 0 && faltam % 30 === 0 && faltam !== avisou) {
+            avisou = faltam;
+            console.log('🧑 ainda esperando o captcha da pesquisa — ' + faltam + 's restantes');
+          }
         }
       }
 
-      if (!buscaFound) {
-        // Fallback: procurar qualquer input de texto visível que pareça busca
-        await this.page.evaluate((editalNum) => {
-          const inputs = [...document.querySelectorAll('input[type="text"], input:not([type])')];
-          const input = inputs.find(i => {
-            if (i.offsetParent === null) return false;
-            const ph = (i.placeholder || '').toLowerCase();
-            const nm = (i.name || '').toLowerCase();
-            return ph.includes('compra') || ph.includes('número') || ph.includes('busca') ||
-                   nm.includes('compra') || nm.includes('num') || nm.includes('busca');
-          });
-          if (input) {
-            input.value = editalNum;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, edital);
-      }
-
-      await this.delayHumano(500, 1000);
-
-      // Clicar em "Pesquisar"
-      const pesquisarClicked = await this.page.evaluate(() => {
-        const btns = [...document.querySelectorAll('button, input[type="submit"], a.btn')];
-        const btn = btns.find(b => {
-          const text = (b.textContent || b.value || '').toLowerCase();
-          return text.includes('pesquisar') || text.includes('buscar') || text.includes('filtrar');
-        });
-        if (btn) { btn.click(); return true; }
-        return false;
-      });
-
-      if (!pesquisarClicked) {
-        await this.page.keyboard.press('Enter');
-      }
-
-      await new Promise((r) => setTimeout(r, 5000));
       await this.screenshot('busca-resultado');
 
-      // Clicar na sala de disputa / resultado
-      const disputaClicked = await this.page.evaluate(() => {
-        const links = [...document.querySelectorAll('a, button, tr, td, .card, .item')];
-        const disputaLink = links.find(el => {
-          const text = (el.textContent || '').toLowerCase();
-          return text.includes('sala') || text.includes('disputa') ||
-                 text.includes('participar') || text.includes('acessar') ||
-                 text.includes('em andamento');
-        });
-        if (disputaLink) { disputaLink.click(); return true; }
-        return false;
-      });
-
-      if (disputaClicked) {
-        await new Promise((r) => setTimeout(r, 5000));
+      if (desfecho !== 'resultados') {
+        const e = new Error(desfecho === 'nenhum'
+          ? 'A compra ' + numero.rotulo + ' nao apareceu na pesquisa do Compras.gov (Em andamento, '
+            + 'Abertas para participacao + Em disputa). Confira numero/ano e se a compra e do Compras.gov.'
+          : desfecho === 'captcha'
+            ? 'A pesquisa do Compras.gov ficou presa no hCaptcha e ninguem resolveu na tela remota.'
+            : 'A pesquisa do Compras.gov nao respondeu em 30s.');
+        e.semRetry = desfecho !== 'nada';
+        throw e;
       }
 
-      await this.screenshot('sala-disputa');
-      console.log('✅ Na sala de disputa');
+      // O card da compra: o elemento mais interno cujo texto tem "N° numero/ano",
+      // subindo ate o container que tambem tem os icones de acao.
+      const card = await this.page.evaluate((rotulo) => {
+        const alvo = new RegExp('N[°º]\\\\s*' + rotulo.replace('/', '\\\\/') + '(?!\\\\d)');
+        const todos = [...document.querySelectorAll('div, li, article, tr')]
+          .filter((el) => alvo.test((el.innerText || '').replace(/\\s+/g, ' ')));
+        if (!todos.length) return null;
+        // O menor que ainda contem um botao/icone de acao.
+        let el = todos[todos.length - 1];
+        while (el && el !== document.body && !el.querySelector('button, a, i, svg')) el = el.parentElement;
+        if (!el || el === document.body) el = todos[todos.length - 1];
+        el.setAttribute('data-robo-card', '1');
+        return (el.innerText || '').replace(/\\s+/g, ' ').slice(0, 200);
+      }, numero.rotulo);
+
+      if (!card) {
+        const e = new Error('A pesquisa respondeu, mas a compra ' + numero.rotulo + ' nao esta entre os resultados.');
+        e.semRetry = true;
+        throw e;
+      }
+      console.log('🎯 Compra localizada: ' + card);
+
+      // Abrir: o card tem icones de acao a direita (lista e seta). O que cada
+      // um abre ainda NAO foi visto — clica no primeiro e registra onde caiu.
+      const clicou = await this.page.evaluate(() => {
+        const el = document.querySelector('[data-robo-card="1"]');
+        const acao = el && el.querySelector('button, a, i[class*="list"], i[class*="fa-"]');
+        if (acao) { acao.click(); return true; }
+        return false;
+      });
+      await new Promise((r) => setTimeout(r, 4000));
+      await this.adotarAbaViva('ao abrir a compra');
+      await this.screenshot('compra-aberta');
+      console.log((clicou ? '📂 Abri a compra; ' : '📂 Nao achei o icone de abrir; ')
+        + 'a tela ficou em ' + this.page.url());
+      console.log('📍 A sala de disputa ainda nao foi mapeada — a leitura de lances daqui em diante '
+        + 'depende de ver essa tela com um pregao em sessao. Nao estou afirmando estar nela.');
     }, 'navegar-disputa');
   }
 
