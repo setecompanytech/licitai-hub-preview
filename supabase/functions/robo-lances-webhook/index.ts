@@ -542,6 +542,69 @@ serve(async (req) => {
           break;
         }
 
+        // ─── O PREGOEIRO FALOU ───────────────────────────────────────────
+        //
+        // A maior falta apontada pelo cliente: "após a fase de lances vem o
+        // acompanhamento, ele dispara um alerta toda vez que a empresa é
+        // convocada".
+        //
+        // POR QUE `licitacao_mensagens` E NAO `agent_chat_monitor`:
+        // a segunda tem chave estrangeira para `agent_licitacoes`, que e a
+        // tabela do modulo de prospeccao — outro universo. A sessao do robo
+        // carrega `licitacao_id` de `licitacoes`, entao o banco recusaria a
+        // linha. E `licitacao_mensagens` ja e lida pelo `LicitacaoChat`, que
+        // ja tem realtime e ja toca som quando o tipo e "alerta".
+        //
+        // Ou seja: o alerta que faltava nao precisava de tela nova nem de
+        // cron. Precisava de alguem escrevendo na tabela certa.
+        case "mensagem-pregoeiro": {
+          const mensagens = Array.isArray(payload.mensagens) ? payload.mensagens : [];
+          if (!sessao.licitacao_id || mensagens.length === 0) break;
+
+          // O que faz o som tocar. "Convocada", "diligencia", "documento" e
+          // "prazo" sao chamados que exigem acao de gente; o resto e conversa
+          // da sala e entra sem alarme — alerta em tudo deixa de ser alerta.
+          const PEDE_ACAO = /convocad|convoca[çc][ãa]o|dilig[êe]ncia|habilita[çc][ãa]o|documento|prazo|apresent|envie|anexe|recurso|negocia/i;
+
+          for (const m of mensagens) {
+            const texto = String(m.texto || "").slice(0, 2000);
+            if (!texto) continue;
+            const urgente = PEDE_ACAO.test(texto);
+            const autor = String(m.autor || "Pregoeiro").slice(0, 80);
+
+            await supabase.from("licitacao_mensagens").insert({
+              licitacao_id: sessao.licitacao_id,
+              user_id: userId,
+              // "alerta" e o tipo que o LicitacaoChat sonoriza. Usado so
+              // quando o texto pede acao — ver PEDE_ACAO acima.
+              tipo: urgente ? "alerta" : "sistema",
+              conteudo: `💬 **${autor}** (${sessao.portal_nome}): ${texto}`,
+              // O dado cru fica aqui: o conteudo e para ler, o metadata e para
+              // consultar depois sem reprocessar texto.
+              metadata: {
+                origem: "portal",
+                portal: sessao.portal_id,
+                edital: sessao.edital,
+                sessao_id,
+                mensagem_id: m.id ?? null,
+                remetente: autor,
+                requer_acao: urgente,
+              },
+            });
+
+            if (urgente) {
+              await supabase.from("notificacoes").insert({
+                user_id: userId,
+                tipo: "urgente",
+                titulo: `⚠️ O pregoeiro chamou — ${sessao.edital}`,
+                mensagem: texto.slice(0, 200),
+                link: `/processo/${sessao.licitacao_id}`,
+              });
+            }
+          }
+          break;
+        }
+
         case "erro": {
           await supabase
             .from("sessoes_lance_real")

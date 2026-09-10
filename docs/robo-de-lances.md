@@ -581,6 +581,65 @@ banco num lugar que ninguém está olhando.
 Então grava-se o que se sabe — a sessão acabou, com quantas rodadas e de que
 jeito — e quem decide o resultado continua sendo gente.
 
+#### O acompanhamento: alerta de convocação — 10/09/2026
+
+O pedido do cliente: *"após a fase de lances vem o acompanhamento, ele dispara
+um alerta toda vez que a empresa é convocada"*.
+
+A auditoria achou **uma corrente de três elos com dois mortos**:
+
+| Elo | Estado antes |
+| --- | --- |
+| Alguém lê o chat do portal | ❌ `lerMensagensChat()` existia só no Licitações-e, com seletores de palpite, e **nunca era chamado** |
+| Alguém grava a mensagem | ❌ `agent_chat_monitor` **não tinha nenhum escritor** no repositório inteiro |
+| Alguém alerta | ✅ `notificacoes` funciona, com quatro escritores |
+
+E a tela `MonitoramentoChat` prometia *"você receberá notificações sonoras ao ser
+convocado"* lendo `chat_messages` — tabela de conversa com **assistente de IA**
+(`role`/`content`), sem escritor desde fevereiro de 2026. Uma aba dizendo "Chat
+do Pregoeiro" e mostrando outra coisa, vazia.
+
+**A correção mudou a tabela de destino, e o motivo importa.**
+`agent_chat_monitor.licitacao_id` tem chave estrangeira para `agent_licitacoes`
+— a tabela do módulo de prospecção, outro universo. A sessão do robô carrega
+`licitacao_id` de `licitacoes`; o banco recusaria a linha.
+
+O destino certo é **`licitacao_mensagens`**, que já é onde o robô grava e que o
+`LicitacaoChat` já lê — com realtime e **com som quando o tipo é `alerta`**. O
+alerta que faltava não precisava de tela nova nem de cron: precisava de alguém
+escrevendo na tabela certa. Por isso o cron do `agent-monitor` saiu do plano.
+
+O que classifica como urgente é o texto da mensagem —
+`convocad|diligência|habilitação|documento|prazo|apresent|envie|anexe|recurso|negocia`.
+Só esses tocam alarme e viram notificação; o resto entra como conversa. Alerta em
+tudo deixa de ser alerta.
+
+E o laço **deduplica por id de mensagem**: ele relê a mesma tela a cada rodada, e
+sem isso uma fala do pregoeiro viraria alarme a cada 30 segundos até a sessão
+acabar.
+
+**O que está bloqueado, e a prova de que é bloqueio e não preguiça.** Uma sonda
+rodou em 10/09/2026 contra a página do processo `002/2026`, listou o menu
+inteiro e todos os iframes. Resultado: **não existe chat na página do processo**.
+O único item de mensagem é "Impugnações" (peça formal, não conversa); os iframes
+são de suporte e analytics.
+
+O chat do pregoeiro vive na **sala de disputa**, que só existe com pregão
+acontecendo — a mesma dependência externa do `souLider()`. Por isso
+`PortalComprasPortal` **não declara `seletoresChat`**, e `lerMensagensChat()`
+devolve vazio nele.
+
+Isso é deliberado: seletor inventado falha em silêncio — devolve lista vazia e
+parece "nenhuma mensagem". Preferimos o vazio honesto ao vazio que mente.
+
+| | |
+| --- | --- |
+| Contrato `lerMensagensChat()` na classe base | ✅ |
+| Laço chama, deduplica e avisa (`mensagem-pregoeiro`) | ✅ |
+| Webhook grava em `licitacao_mensagens` + notifica | ✅ |
+| Tela lê o que existe, com destaque e som | ✅ |
+| Seletores da sala do Portal de Compras Públicas | ⬜ **precisa de pregão ao vivo** |
+
 ### 7.3 Desempenho
 
 Aqui está a lacuna mais séria, e ela é de **arquitetura**, não de código faltando.

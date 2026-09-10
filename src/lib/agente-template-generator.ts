@@ -178,6 +178,7 @@ O agente envia POST para o \\\`CALLBACK_URL\\\` com:
 
 - \\\`lance-enviado\\\` — Lance enviado com sucesso
 - \\\`lance-concorrente\\\` — Lance de concorrente detectado
+- \\\`mensagem-pregoeiro\\\` — O pregoeiro escreveu na sala (só nos portais que sabem ler o chat)
 - \\\`sessao-encerrada\\\` — Sessão finalizada
 - \\\`erro\\\` — Erro durante execução
 - \\\`heartbeat\\\` — Sinal de vida + capacidade (30s)
@@ -835,6 +836,35 @@ class SessionManager {
 
       try {
         session.rodada++;
+
+        // 0. O pregoeiro falou?
+        //
+        // Vem ANTES da decisao de lance de proposito: uma convocacao ou um
+        // pedido de documento e mais urgente do que a proxima rodada, e quem
+        // opera precisa saber no momento em que acontece — nao depois que o
+        // laco terminar.
+        //
+        // Nao derruba a rodada se falhar: ler chat e informacao adicional, e
+        // o metodo ja devolve vazio quando o portal nao sabe ler.
+        try {
+          const mensagens = await session.portal.lerMensagensChat();
+          // Deduplicar e obrigatorio: o laco rele a MESMA tela a cada rodada.
+          // Sem isto, uma mensagem do pregoeiro viraria um alerta a cada 30
+          // segundos ate a sessao acabar — e alerta repetido deixa de ser lido.
+          session.chatVistas = session.chatVistas || new Set();
+          const novas = mensagens.filter((m) => !session.chatVistas.has(m.id));
+          for (const m of novas) session.chatVistas.add(m.id);
+
+          if (novas.length) {
+            console.log(\`💬 [\${session.sessao_id}] \${novas.length} mensagem(ns) do pregoeiro\`);
+            await sendCallback(session, 'mensagem-pregoeiro', {
+              rodada: session.rodada,
+              mensagens: novas,
+            });
+          }
+        } catch (e) {
+          console.error(\`[\${session.sessao_id}] Falha ao ler o chat: \${e.message}\`);
+        }
 
         // 1. Ler o estado da disputa no portal
         const melhorLance = await session.portal.lerMelhorLance();

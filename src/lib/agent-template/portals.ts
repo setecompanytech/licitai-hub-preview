@@ -38,6 +38,57 @@ class BasePortal {
     throw new Error(\`lerMelhorLance() não implementado para portal \${this.nome}\`);
   }
 
+  /**
+   * As mensagens do pregoeiro, quando o portal tiver uma sala com chat.
+   *
+   * ─── POR QUE ISTO DEVOLVE VAZIO EM VEZ DE LANÇAR ERRO ──────────────────────
+   *
+   * Diferente de \`lerMelhorLance()\`, ler o chat é OPCIONAL: um portal sem chat
+   * não é um portal quebrado. Lançar erro aqui faria a rodada inteira falhar
+   * por causa de algo que nem sempre existe.
+   *
+   * Cada portal declara \`this.seletoresChat\` quando souber onde fica a
+   * conversa. Sem isso, devolve vazio — e vazio significa "não sei ler", que é
+   * diferente de "não há mensagem". Quem chama não deve concluir nada de uma
+   * lista vazia.
+   *
+   * ─── O QUE FOI VERIFICADO, PARA NINGUÉM REFAZER ────────────────────────────
+   *
+   * Portal de Compras Públicas, 10/09/2026: a página do processo NÃO tem chat.
+   * Uma sonda listou o menu inteiro e o único item de mensagem é "Impugnações"
+   * (peça formal, não conversa); os iframes da página são de suporte e
+   * analytics. O chat do pregoeiro vive na SALA DE DISPUTA, que só existe com
+   * pregão acontecendo — mesma dependência externa do \`souLider()\`.
+   *
+   * Por isso o transporte está pronto e os seletores deste portal, não.
+   * Preenchê-los sem ver a tela seria inventar, e seletor inventado falha em
+   * silêncio: devolve vazio e parece "nenhuma mensagem".
+   *
+   * @returns {Promise<Array<{id: string, autor: string, texto: string}>>}
+   */
+  async lerMensagensChat() {
+    const S = this.seletoresChat;
+    if (!S || !S.lista) return [];
+
+    try {
+      return await this.page.evaluate((sel) => {
+        const container = document.querySelector(sel.lista);
+        if (!container) return [];
+        const itens = container.querySelectorAll(sel.item);
+        // As últimas primeiro, e um teto: a sala acumula a sessão inteira, e
+        // reenviar cem mensagens a cada rodada entupiria o callback.
+        return Array.from(itens).slice(-10).map((el, i) => ({
+          id: el.getAttribute('id') || el.getAttribute('data-id') || \`pos-\${i}\`,
+          autor: (el.querySelector(sel.autor)?.textContent || '').replace(/\\s+/g, ' ').trim(),
+          texto: (el.querySelector(sel.texto)?.textContent || '').replace(/\\s+/g, ' ').trim(),
+        })).filter((m) => m.texto);
+      }, S);
+    } catch {
+      // Ler chat nunca derruba a sessão: é informação adicional, não a tarefa.
+      return [];
+    }
+  }
+
   async enviarLance(valor) {
     throw new Error(\`enviarLance() não implementado para portal \${this.nome}\`);
   }
