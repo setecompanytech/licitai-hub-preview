@@ -269,6 +269,23 @@ class BasePortal {
     return true;
   }
 
+  /**
+   * O texto visivel da tela, somando TODOS os frames. Paginas antigas em
+   * frameset (o intro.htm do Comprasnet, 10/09/2026) tem o documento de cima
+   * vazio — o conteudo mora nos frames filhos, e document.body.innerText do
+   * topo nao ve nada. Frame que nao responde entra como vazio, nunca derruba.
+   */
+  async textoDaTela() {
+    const partes = [];
+    for (const f of this.page.frames()) {
+      const t = await f
+        .evaluate(() => (document.body && document.body.innerText) || '')
+        .catch(() => '');
+      if (t && t.trim()) partes.push(t);
+    }
+    return partes.join('\\n');
+  }
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
     // Screenshot e diagnostico, nunca causa de morte: se a aba trocou, tira
@@ -737,10 +754,8 @@ class ComprasGovPortal extends BasePortal {
     await this.adotarAbaViva('depois do login', { urlDeRetorno: this.portaLogin });
 
     // 4. Verificar se precisa autorizar acesso ao Compras.gov
-    const needsAuth = await this.page.evaluate(() => {
-      const body = document.body.innerText.toLowerCase();
-      return body.includes('autorizar') || body.includes('permitir acesso');
-    });
+    const textoPosLogin = (await this.textoDaTela()).toLowerCase();
+    const needsAuth = textoPosLogin.includes('autorizar') || textoPosLogin.includes('permitir acesso');
 
     if (needsAuth) {
       console.log('📋 Autorizando acesso ao Compras.gov...');
@@ -776,19 +791,22 @@ class ComprasGovPortal extends BasePortal {
     // procurava a palavra "Compras" — que esta no logo de toda pagina do
     // portal, inclusive a de login. Falso positivo custa mais que falha: o
     // robo seguiu para buscar edital numa tela onde nao estava logado.
-    const diagnostico = await this.page.evaluate(() => {
-      const body = document.body.innerText || '';
-      const aviso = body.match(/N[aã]o foi poss[ií]vel recuperar o usu[aá]rio[^\\n]*/i);
+    // Le TODOS os frames: a area logada (intro.htm) e um frameset, e a sessao
+    // 8abf4f67 (10/09/2026, 16:26) foi recusada com a Area de Trabalho na tela
+    // porque o documento de cima nao tem texto nenhum.
+    const diagnostico = (() => {
+      const body = textoPosLogin;
+      const aviso = body.match(/n[aã]o foi poss[ií]vel recuperar o usu[aá]rio[^\\n]*/i);
       if (aviso) return { ok: false, motivo: aviso[0].trim() };
-      if (/Acesse sua Conta/i.test(body) && /Selecione o perfil/i.test(body)) {
+      if (/acesse sua conta/i.test(body) && /selecione o perfil/i.test(body)) {
         return { ok: false, motivo: 'o Compras.gov voltou para a escolha de perfil sem entrar' };
       }
       // Palavras que so existem DENTRO — "Compras" sozinha nao vale, esta no logo.
       // As tres primeiras sao da "Area de Trabalho do Fornecedor Brasileiro",
       // lidas da tela real em 10/09/2026.
-      const dentro = /[AÁ]rea de Trabalho do Fornecedor|Placar de Licita[cç][oõ]es|Dados Cadastrais|Bem-vindo|Painel|Meus Preg[oõ]es|Em disputa|Abertas para participa[cç][aã]o|Sair|Minha Conta/i.test(body);
+      const dentro = /[aá]rea de trabalho do fornecedor|placar de licita[cç][oõ]es|dados cadastrais|bem-vindo|painel|meus preg[oõ]es|em disputa|abertas para participa[cç][aã]o|\\bsair\\b|minha conta/i.test(body);
       return dentro ? { ok: true } : { ok: false, motivo: 'a pagina nao tem nenhum sinal de area logada' };
-    });
+    })();
 
     if (!diagnostico.ok) {
       await this.screenshot('login-falha');
