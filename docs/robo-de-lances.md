@@ -640,6 +640,55 @@ parece "nenhuma mensagem". Preferimos o vazio honesto ao vazio que mente.
 | Tela lê o que existe, com destaque e som | ✅ |
 | Seletores da sala do Portal de Compras Públicas | ⬜ **precisa de pregão ao vivo** |
 
+#### Cadastro da proposta no portal — 10/09/2026
+
+**O que foi feito.** `validarProposta` e `formatarItens` saíram de dentro de
+`src/test/envio-proposta-validacao.test.ts` e viraram `src/lib/robo/proposta.ts`.
+
+Isto merece registro porque era pior do que parecia: o teste **declarava as duas
+funções no próprio topo** e testava cópias de si mesmo. Cento e setenta e seis
+linhas, doze casos, zero linha de produção coberta. O contrato estava escrito e
+acordado — marca, modelo e fabricante já estavam lá desde sempre — e nunca tinha
+saído do arquivo de teste. Agora os doze casos cobrem código de verdade.
+
+**O que está bloqueado, e por um motivo diferente do esperado.** O plano supunha
+que o envio de proposta não dependeria de pregão ao vivo, porque a janela de
+proposta fica aberta por dias. Verdade em geral; falso nesta conta.
+
+Uma sonda listou os processos com as datas de sessão: o mais recente é
+`-R./2026` em **20/03/2026**, e `002/2026` em **19/02/2026**. Hoje é 10/09/2026 —
+**todos já passaram.** Não há janela de proposta aberta para ler.
+
+E a página do processo **não tem botão de cadastrar proposta**: a sonda listou
+todos os links, botões e submits sem filtro algum, e os únicos rótulos ligados a
+proposta são itens de menu ("Suas Propostas", "Enviar Documentação", "Dados
+Cadastrais"). "Suas Propostas" é uma tela de **busca** — filtros de UF, objeto,
+órgão, modalidade —, não de cadastro.
+
+Duas causas possíveis e indistinguíveis daqui: a janela encerrada, ou o plano
+vencido escondendo as ações de participação. Em ambos os casos, `enviarProposta`
+continua sem selecionadores reais, e escrevê-los de palpite repetiria o erro que
+esta documentação registra em três lugares diferentes.
+
+**O achado lateral que vale mais que o item bloqueado.** A página do processo
+traz a **tabela de itens do edital**, e ela existe sem pregão acontecendo:
+
+```
+| (sel) | Item | Descrição | Valor Ref | Excl. | Quantidade | Julgamento |
+```
+
+Doze linhas por página, cinco páginas no `002/2026`, e cada descrição tem id
+próprio (`#produtoTexto155`, `156`, `157`…). É a primeira estrutura de itens
+REAL que conseguimos ler deste portal — e ela abre um caminho que não depende de
+sessão pública: conferir os itens que a nossa tela enviou contra os que o portal
+lista, e avisar quando não baterem.
+
+| | |
+| --- | --- |
+| Validação em código de produção, com teste de verdade | ✅ |
+| `PortalComprasPortal.enviarProposta()` | ⬜ **sem formulário para ler** |
+| Tela que dispara o envio | ⬜ botão que sempre falha é pior que botão nenhum |
+
 ### 7.3 Desempenho
 
 Aqui está a lacuna mais séria, e ela é de **arquitetura**, não de código faltando.
