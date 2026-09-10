@@ -12,9 +12,35 @@
 | --- | --- |
 | Direção visual | `prototype-praefectus/index.html` — aprovada pelo Rafael |
 | Frente | Ian + Caio Gabriel (`gabrielcgm-web`) |
-| Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; `main` é produção |
-| Status | **entrega única em 04/09**, após avaliação do tech lead — o plano de fatias a cada poucos dias caiu com o prazo |
-| Última revisão | 04/09/2026 |
+| Onde | branch única `feature/rebrand-ui-ux`, compartilhada pelos dois; **é ela que o Lovable publica desde 10/09/2026** (ver abaixo) |
+| Status | **em produção desde 10/09**, com o robô de lances dentro |
+| Última revisão | 10/09/2026 |
+
+> ### ⚠️ Desde 10/09/2026, produção é ESTA branch — não a `main`
+>
+> Decisão do Giovanny: o Praefectus vai ao ar com a marca nova **sem mesclar na
+> `main`**. O mecanismo é o *branch picker* do Lovable (Project settings → Git →
+> GitHub), que passou de `main` para `feature/rebrand-ui-ux`. O Lovable edita e
+> sincroniza **uma branch só por vez** — e agora é esta.
+>
+> O que isso muda, enquanto o picker estiver aqui:
+>
+> | | Antes | Agora |
+> | --- | --- | --- |
+> | O que o Publish sobe | `main` | **esta branch** |
+> | Onde o Lovable commita | `main` | **esta branch** |
+> | Push na `main` | ia ao ar | **fica parado** até alguém fazer `git merge main` aqui |
+> | Carimbo `src/lib/versao.ts` | exclusivo da `main` | **bumpa aqui** — é o que o `verificar-publicacao.sh` confere no domínio |
+>
+> A regra "`versao.ts` é exclusivo da `main`" (seção 5) existia para evitar conflito
+> enquanto a `main` era produção. Inverteu junto com o picker.
+>
+> **A `main` não foi tocada**: histórico intacto, nome intacto, continua a branch
+> padrão do GitHub. Quem estiver commitando nela precisa migrar:
+> `git fetch origin && git checkout feature/rebrand-ui-ux`. Continua valendo:
+> **nunca rebase nesta branch** — para trazer algo, `git merge`.
+>
+> **Voltar atrás** é o picker de volta para `main` + Publish. Sem git.
 
 ---
 
