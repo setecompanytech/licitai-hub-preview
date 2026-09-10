@@ -68,6 +68,15 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
 
 type DragState = { id: string; offsetX: number; offsetY: number } | null;
+/** Ponteiro apertado num card, ainda sem saber se é clique ou arrasto. */
+type ArrastoPendente = { id: string; x0: number; y0: number; offsetX: number; offsetY: number } | null;
+/**
+ * Quantos pixels o ponteiro precisa andar para o gesto virar arrasto. Até
+ * 10/09/2026 o arrasto armava no próprio `pointerdown`: qualquer clique no
+ * corpo do card já criava o card-fantasma e o sumia no `pointerup` — o
+ * "abre rápido e volta ao normal" que o Ian viu.
+ */
+const LIMIAR_ARRASTO_PX = 6;
 
 export default function KanbanPage() {
   const { user } = useAuth();
@@ -88,6 +97,10 @@ export default function KanbanPage() {
 
   // Drag state — refs para leitura síncrona nos event handlers
   const dragStateRef = useRef<DragState>(null);
+  const pendenteRef = useRef<ArrastoPendente>(null);
+  // Houve arrasto desde o último `pointerdown`? O `click` que o navegador
+  // dispara ao soltar um card arrastado não pode abrir/recolher o card.
+  const arrastouRef = useRef(false);
   const overColRef = useRef<string | null>(null);
   const itemsRef = useRef<LicitacaoKanban[]>([]);
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -97,6 +110,8 @@ export default function KanbanPage() {
   const [ghostPos, setGhostPos] = useState({ x: 0, y: 0 });
   const [overColId, setOverColId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // Ponteiro apertado, esperando o limiar — liga os ouvintes de documento.
+  const [armando, setArmando] = useState(false);
   // Colunas sem nenhum processo ficam recolhidas por padrão: são oito ao todo,
   // e em notebook comum elas não cabem abertas.
   const [mostrarVazias, setMostrarVazias] = useState(false);
@@ -115,8 +130,11 @@ export default function KanbanPage() {
   const handleEdit = (lic: LicitacaoKanban) => { setEditItem(lic); setEditOpen(true); };
   /**
    * Cards abertos. O padrão é RECOLHIDO em duas linhas — identidade + valor,
-   * órgão + data: toda a informação de triagem em ~55px. Clique abre o quadro
-   * completo (objeto inteiro, local, ações); clique na identidade recolhe.
+   * órgão + data: toda a informação de triagem em ~55px. Clique em qualquer
+   * ponto do card abre o quadro completo (objeto inteiro, local, ações);
+   * outro clique recolhe. Até 10/09/2026 só a linha da identidade alternava e
+   * o resto do card era só arrasto — quem clicava no órgão via o card-fantasma
+   * piscar e nada abrir.
    * Ideia do dono do produto, com um aperfeiçoamento: valor e data são
    * critérios de VARREDURA ("qual vale a pena? qual vence antes?") — em vez
    * de escondê-los no recolhido, as duas linhas usam as pontas direitas.
@@ -187,25 +205,38 @@ export default function KanbanPage() {
     setPerdaAlvo(null);
   }, [perdaAlvo, empresaAtiva, registrarPerda]);
 
-  // Pointer Events — funciona em Chrome, Firefox, Safari, mobile
+  // Pointer Events — funciona em Chrome, Firefox, Safari, mobile.
+  // O `pointerdown` só ANOTA onde o gesto começou; quem decide se é arrasto é
+  // o `pointermove`, ao passar do limiar. Sem `preventDefault` aqui: o `click`
+  // precisa continuar chegando ao card, é ele que abre/recolhe.
   const handlePointerDown = useCallback((e: React.PointerEvent, id: string) => {
     // Ignora cliques secundários e elementos interativos filhos
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, [role="menuitem"]')) return;
 
-    e.preventDefault();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    dragStateRef.current = { id, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
-    setDraggedId(id);
-    setGhostPos({ x: e.clientX, y: e.clientY });
-    setIsDragging(true);
+    arrastouRef.current = false;
+    pendenteRef.current = {
+      id, x0: e.clientX, y0: e.clientY,
+      offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top,
+    };
+    setArmando(true);
   }, []);
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!armando && !isDragging) return;
 
     const onMove = (e: PointerEvent) => {
+      const p = pendenteRef.current;
+      if (p && !dragStateRef.current) {
+        if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < LIMIAR_ARRASTO_PX) return;
+        // Passou do limiar: agora é arrasto, e o card-fantasma pode aparecer.
+        dragStateRef.current = { id: p.id, offsetX: p.offsetX, offsetY: p.offsetY };
+        arrastouRef.current = true;
+        setDraggedId(p.id);
+        setIsDragging(true);
+      }
       if (!dragStateRef.current) return;
       e.preventDefault();
       setGhostPos({ x: e.clientX, y: e.clientY });
@@ -226,6 +257,9 @@ export default function KanbanPage() {
     };
 
     const onUp = async () => {
+      pendenteRef.current = null;
+      setArmando(false);
+      // Soltou sem passar do limiar: foi clique, e o `onClick` do card cuida.
       if (!dragStateRef.current) return;
       const { id } = dragStateRef.current;
       const targetCol = overColRef.current;
@@ -248,7 +282,7 @@ export default function KanbanPage() {
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
     };
-  }, [isDragging, moverCard]);
+  }, [armando, isDragging, moverCard]);
 
   useEffect(() => {
     if (!user) return;
@@ -454,130 +488,148 @@ export default function KanbanPage() {
                           </p>
                         </div>
                       )}
-                      {colItems.map((lic) => (
+                      {colItems.map((lic) => {
+                        const aberto = cardsAbertos.has(lic.id);
+                        const dataCurta = lic.data_encerramento
+                          ? new Date(lic.data_encerramento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                          : null;
+                        return (
                         <div
                           key={lic.id}
                           ref={lic.id === focoId ? focoRef : undefined}
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={aberto}
                           className={cn(
                             'bg-card rounded-lg border border-border/50 p-2.5 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
-                            draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-grab',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                            draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-pointer',
+                            aberto && 'border-accent/40',
                             lic.id === focoId && 'ring-2 ring-accent border-accent/50'
                           )}
                           onPointerDown={(e) => handlePointerDown(e, lic.id)}
-                          // Duplo clique abre a edição — o mesmo gesto do
-                          // financeiro. O arrasto só arma com movimento, então
-                          // os dois convivem.
-                          onDoubleClick={() => handleEdit(lic)}
-                          title="Duplo clique para abrir"
+                          /* Três gestos no mesmo card, sem conflito:
+                             - clique (em qualquer ponto) abre/recolhe;
+                             - duplo clique abre o processo — `detail > 1`
+                               deixa o segundo clique passar em branco, senão
+                               ele desfaria o primeiro e o card piscaria;
+                             - arrasto move, e o `click` que o navegador
+                               dispara ao soltar é ignorado por `arrastouRef`.
+                             Botões e itens de menu (que o React faz borbulhar
+                             mesmo de dentro de portal) não alternam o card. */
+                          onClick={(e) => {
+                            if (arrastouRef.current) { arrastouRef.current = false; return; }
+                            if (e.detail > 1) return;
+                            if ((e.target as HTMLElement).closest('button, a, input, [role="menuitem"], [role="menu"]')) return;
+                            alternarCard(lic.id);
+                          }}
+                          onDoubleClick={(e) => {
+                            if ((e.target as HTMLElement).closest('button, a, input, [role="menuitem"], [role="menu"]')) return;
+                            handleEdit(lic);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget) return;
+                            if (e.key === 'Enter') { e.preventDefault(); handleEdit(lic); }
+                            if (e.key === ' ') { e.preventDefault(); alternarCard(lic.id); }
+                          }}
+                          title={aberto ? 'Clique para recolher · duplo clique abre o processo' : 'Clique para ver mais · duplo clique abre o processo'}
                         >
                           <div className="flex items-start gap-1.5">
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
+                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" aria-hidden="true" />
                             <div className="flex-1 min-w-0">
-                              {(() => {
-                                const aberto = cardsAbertos.has(lic.id);
-                                const dataCurta = lic.data_encerramento
-                                  ? new Date(lic.data_encerramento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                                  : null;
-                                return (
-                                  <>
-                                    {/* Linha 1 — identidade à esquerda, VALOR à
-                                        direita. Clique alterna o card; os
-                                        botões só existem no aberto. */}
-                                    <div
-                                      className="flex items-center justify-between gap-1.5 min-w-0 cursor-pointer"
-                                      onPointerDown={(e) => e.stopPropagation()}
-                                      onClick={(e) => { e.stopPropagation(); alternarCard(lic.id); }}
-                                      title={aberto ? 'Clique para recolher' : 'Clique para abrir o processo'}
-                                    >
-                                      <span className="text-xs font-semibold tabular-nums truncate"
-                                        title={lic.modalidade ?? undefined}>
-                                        {identidadeDoProcesso(lic)}
+                              {/* Linha 1 — identidade à esquerda, VALOR à direita.
+                                  O valor fica nos dois estados: é critério de
+                                  varredura, não detalhe. */}
+                              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                <span className="text-xs font-semibold tabular-nums truncate"
+                                  title={lic.modalidade ?? undefined}>
+                                  {identidadeDoProcesso(lic)}
+                                </span>
+                                {lic.valor_estimado ? (
+                                  <span className="text-xs font-semibold tabular-nums shrink-0">{formatCurrency(lic.valor_estimado)}</span>
+                                ) : null}
+                              </div>
+
+                              {/* Linha 2 — órgão à esquerda, DATA à direita. */}
+                              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                <p className="text-[11px] text-muted-foreground truncate" title={lic.orgao ?? undefined}>
+                                  {lic.orgao || '—'}
+                                </p>
+                                {!aberto && dataCurta && (
+                                  <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{dataCurta}</span>
+                                )}
+                              </div>
+
+                              {aberto && (
+                                <>
+                                  {/* Aberto, o objeto vem INTEIRO — o card
+                                      já está expandido; clamp aqui seria
+                                      esconder de quem acabou de pedir. */}
+                                  <p className="text-sm font-medium mt-1.5 leading-snug [overflow-wrap:anywhere]">
+                                    {objetoLegivel(lic.objeto)}
+                                  </p>
+                                  {lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizeStatus(lic.status) as never) && (
+                                    <span className="inline-block mt-1 text-xs text-muted-foreground">
+                                      desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
+                                    </span>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                                    {lic.municipio && lic.uf && (
+                                      <span className="flex items-center gap-0.5">
+                                        <MapPin className="w-2.5 h-2.5" />
+                                        {lic.municipio}/{lic.uf}
                                       </span>
-                                      {!aberto && lic.valor_estimado ? (
-                                        <span className="text-xs font-semibold tabular-nums shrink-0">{formatCurrency(lic.valor_estimado)}</span>
-                                      ) : aberto ? (
-                                        <div className="flex items-center gap-0.5 shrink-0">
-                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <button
-                                                onPointerDown={(e) => e.stopPropagation()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
-                                                title="Mover para etapa"
-                                              >
-                                                <ChevronRight className="w-3 h-3" />
-                                              </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-44">
-                                              {columns.filter(c => c.id !== colunaDe(lic)).map(c => (
-                                                <DropdownMenuItem key={c.id} onClick={() => moverCard(lic.id, c.id)}>
-                                                  <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ background: c.color }} />
-                                                  {c.title}
-                                                </DropdownMenuItem>
-                                              ))}
-                                            </DropdownMenuContent>
-                                          </DropdownMenu>
-                                          <button
-                                            onPointerDown={(e) => e.stopPropagation()}
-                                            onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
-                                            className="p-1 rounded-md hover:bg-accent/10 text-muted-foreground/40 hover:text-accent transition-colors"
-                                            title="Editar processo"
-                                          >
-                                            <Pencil className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      ) : null}
-                                    </div>
-
-                                    {/* Linha 2 — órgão à esquerda, DATA à direita. */}
-                                    <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                      <p className="text-[11px] text-muted-foreground truncate" title={lic.orgao ?? undefined}>
-                                        {lic.orgao || '—'}
-                                      </p>
-                                      {!aberto && dataCurta && (
-                                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{dataCurta}</span>
-                                      )}
-                                    </div>
-
-                                    {aberto && (
-                                      <>
-                                        {/* Aberto, o objeto vem INTEIRO — o card
-                                            já está expandido; clamp aqui seria
-                                            esconder de quem acabou de pedir. */}
-                                        <p className="text-sm font-medium mt-1 leading-snug break-words [overflow-wrap:anywhere]">
-                                          {objetoLegivel(lic.objeto)}
-                                        </p>
-                                        {lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizeStatus(lic.status) as never) && (
-                                          <span className="inline-block mt-1 text-xs text-muted-foreground">
-                                            desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
-                                          </span>
-                                        )}
-                                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                                          {lic.municipio && lic.uf && (
-                                            <span className="flex items-center gap-0.5">
-                                              <MapPin className="w-2.5 h-2.5" />
-                                              {lic.municipio}/{lic.uf}
-                                            </span>
-                                          )}
-                                          {lic.data_encerramento && (
-                                            <span className="flex items-center gap-0.5">
-                                              <Calendar className="w-2.5 h-2.5" />
-                                              {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
-                                            </span>
-                                          )}
-                                        </div>
-                                        {lic.valor_estimado && (
-                                          <p className="text-sm font-semibold text-foreground mt-1 tabular-nums whitespace-nowrap">{formatCurrency(lic.valor_estimado)}</p>
-                                        )}
-                                      </>
                                     )}
-                                  </>
-                                );
-                              })()}
+                                    {lic.data_encerramento && (
+                                      <span className="flex items-center gap-0.5">
+                                        <Calendar className="w-2.5 h-2.5" />
+                                        {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Ações do card aberto. Eram dois ícones a 40%
+                                      de opacidade no canto — ninguém achava. */}
+                                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-border/50">
+                                    <button
+                                      type="button"
+                                      onPointerDown={(e) => e.stopPropagation()}
+                                      onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
+                                      className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                      Abrir processo
+                                    </button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                          title="Mover para outra etapa"
+                                        >
+                                          Mover
+                                          <ChevronRight className="w-3 h-3" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="start" className="w-44">
+                                        {columns.filter(c => c.id !== colunaDe(lic)).map(c => (
+                                          <DropdownMenuItem key={c.id} onClick={() => moverCard(lic.id, c.id)}>
+                                            <div className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ background: c.color }} />
+                                            {c.title}
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     </>
                     )}
@@ -601,7 +653,7 @@ export default function KanbanPage() {
         >
           <div className="bg-card rounded-lg border-2 border-accent/60 p-3 shadow-2xl">
             <p className="text-xs font-semibold tabular-nums truncate">{identidadeDoProcesso(draggedItem)}</p>
-            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-1 break-words [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
+            <p className="text-sm font-medium mt-0.5 leading-snug line-clamp-1 [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
             {draggedItem.municipio && draggedItem.uf && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-0.5">
                 <MapPin className="w-2.5 h-2.5" />{draggedItem.municipio}/{draggedItem.uf}
