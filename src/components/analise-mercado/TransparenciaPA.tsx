@@ -5,13 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Building2, Download, Upload, Search, Loader2, RefreshCw,
+  Building2, Download, Upload, Search, Loader2,
   TrendingUp, TrendingDown, ExternalLink, FileSpreadsheet, Trash2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { readExcelFile, writeExcelFromJson } from '@/lib/excel-utils';
+import { downloadCSV, downloadPDF } from '@/lib/download-utils';
+import { useEmpresa } from '@/contexts/EmpresaContext';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TransparenciaPortal } from '@/data/transparencia-portais';
 
 type EmpenhoData = {
@@ -32,6 +37,11 @@ const formatCurrency = (v: number) => {
   return `R$ ${v.toFixed(0)}`;
 };
 
+/** Dentro de um processo o número é EXATO, com centavos — "R$ 97K" serve
+ *  para panorama, não para conferir um empenho (pedido de 08/09). */
+const brlExato = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const currentYear = new Date().getFullYear();
 const anos = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -39,12 +49,33 @@ type Props = {
   portal: TransparenciaPortal;
 };
 
+type NotaEmpenhoPA = {
+  numero: string; dt_despesa: string; orgao: string; credor: string;
+  id_ne: string; valor_empenhado: number; valor_pago: number;
+  credor_cpf_cnpj?: string | null;
+};
+
+type TotaisCredorPA = {
+  qtd_notas: number; valor_empenhado: number; valor_pago: number; saldo_a_pagar: number;
+};
+
 export default function TransparenciaPA({ portal }: Props) {
+  const { empresaAtiva } = useEmpresa();
   const [dados, setDados] = useState<EmpenhoData[]>([]);
   const [anoFiltro, setAnoFiltro] = useState<string>('todos');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(false);
-  const [scraping, setScraping] = useState(false);
+  // ── API oficial do Pará (08/09) — só o PA tem; os demais seguem com
+  // planilha + portal. Nada aqui é estimado: dados-abertos.sistemas.pa.gov.br
+  const ehParaEstado = portal.tipo === 'estado' && portal.sigla === 'PA';
+  const [extraindo, setExtraindo] = useState(false);
+  const [credor, setCredor] = useState('');
+  const [anoCredor, setAnoCredor] = useState(String(currentYear));
+  const [buscandoCredor, setBuscandoCredor] = useState(false);
+  const [achados, setAchados] = useState<NotaEmpenhoPA[]>([]);
+  const [totaisCredor, setTotaisCredor] = useState<TotaisCredorPA | null>(null);
+  const [paginaCredor, setPaginaCredor] = useState(1);
+  const [buscouCredor, setBuscouCredor] = useState(false);
 
   const portalLabel = portal.tipo === 'estado'
     ? `Estado: ${portal.nome} (${portal.sigla})`
@@ -78,49 +109,164 @@ export default function TransparenciaPA({ portal }: Props) {
 
   useEffect(() => { loadDados(); }, [loadDados]);
 
-  const handleScrape = async () => {
-    setScraping(true);
+  /** Fase A: execução por órgão, da API oficial — um clique popula a aba.
+   *  "Todos os anos" varre os 5 anos do seletor, um a um: antes, caía em
+   *  silêncio no ano corrente e o filtro mentia (08/09). */
+  const extrairDaApiOficial = async () => {
+    setExtraindo(true);
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-transparencia-pa', {
-        body: {
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          portal_nome: portal.nome,
-          portal_sigla: portal.sigla,
-          portal_url: portal.url,
-          portal_tipo: portal.tipo,
-        },
-      });
+      const anosAlvo = anoFiltro !== 'todos' ? [parseInt(anoFiltro)] : anos;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (error) throw error;
-
-      if (data?.fallback) {
-        toast.info(data?.error || 'Use a importação de planilha abaixo.', { duration: 6000 });
-      } else if (data?.success && data?.data?.length > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const rows = data.data.map((d: any) => ({
-          user_id: user.id,
-          orgao: d.orgao,
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          valor_total: d.valor,
-          quantidade_empenhos: d.quantidade || 1,
-        }));
-
-        const { error: insertError } = await supabase.from('transparencia_empenhos').insert(rows);
+      let totalOrgaos = 0;
+      const anosComDado: number[] = [];
+      for (const ano of anosAlvo) {
+        const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
+          body: { modo: 'despesas', ano },
+        });
+        if (error) throw error;
+        if (data?.error) { toast.error(`${ano}: ${data.error}`); continue; }
+        const linhas = (data?.data ?? []) as Array<{ orgao: string; valor: number; quantidade: number }>;
+        if (linhas.length === 0) continue;
+        // Troca o ano inteiro: extração repetida atualiza em vez de duplicar.
+        await supabase.from('transparencia_empenhos')
+          .delete().eq('user_id', user.id).eq('ano', ano);
+        const { error: insertError } = await supabase.from('transparencia_empenhos').insert(
+          linhas.map((l) => ({
+            user_id: user.id,
+            orgao: l.orgao,
+            ano,
+            valor_total: l.valor,
+            quantidade_empenhos: l.quantidade || 1,
+          })),
+        );
         if (insertError) throw insertError;
-
-        const sourceLabel = data.source === 'ai-knowledge' ? 'IA (estimativas)' : 'portal';
-        toast.success(`${rows.length} órgãos importados via ${sourceLabel}!`);
-        loadDados();
-      } else {
-        toast.info('Nenhum dado extraído. Tente importar uma planilha do portal.', { duration: 5000 });
+        totalOrgaos += linhas.length;
+        anosComDado.push(ano);
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao acessar portal');
+      if (totalOrgaos === 0) { toast.info('A API oficial não devolveu órgãos para o período.'); return; }
+      toast.success(`${totalOrgaos} registros importados da API oficial do Pará (${anosComDado.join(', ')}).`, {
+        description: 'Valor = total EMPENHADO por órgão em cada ano, direto do portal de dados abertos.',
+      });
+      loadDados();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao consultar a API do Pará');
     } finally {
-      setScraping(false);
+      setExtraindo(false);
     }
+  };
+
+  /** Fase B: busca de empenhos por nome/CNPJ/nº — a MESMA busca textual do
+   *  portal (backend api-notas-empenho), com os totais que a tela dele
+   *  mostra: notas, empenhado, pago e o saldo a pagar. Instantânea. */
+  const buscarPorCredor = async (pagina = 1) => {
+    setBuscandoCredor(true);
+    if (pagina === 1) { setAchados([]); setTotaisCredor(null); }
+    try {
+      const { data, error } = await supabase.functions.invoke('transparencia-pa-oficial', {
+        body: { modo: 'empenhos', ano: parseInt(anoCredor), credor: credor.trim(), pagina, qtdRegistros: 50 },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      setAchados((prev) => pagina === 1 ? (data.achados ?? []) : [...prev, ...(data.achados ?? [])]);
+      if (data.totais) setTotaisCredor(data.totais as TotaisCredorPA);
+      setPaginaCredor(pagina);
+      setBuscouCredor(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha na busca');
+    } finally {
+      setBuscandoCredor(false);
+    }
+  };
+
+  // ── Exportar RESULTADO da busca por credor (08/09): PDF com timbrado,
+  // Excel, Word e JPG — o JPG existe para o recorte rápido que se manda numa
+  // conversa; os demais para processo, planilha e ofício.
+  const tituloResultado = () =>
+    `Empenhos do credor "${credor.trim()}" — Portal da Transparência do Pará (${anoCredor})`;
+  const cabecalhosResultado = ['Empenho', 'Órgão', 'Credor', 'CNPJ/CPF', 'Data', 'Empenhado (R$)', 'Pago (R$)'];
+  const linhasResultado = () => achados.map((n) => [
+    n.numero, n.orgao, n.credor, n.credor_cpf_cnpj ?? '', n.dt_despesa,
+    n.valor_empenhado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+    n.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+  ]);
+  const rodapeTotais = () => totaisCredor
+    ? `${totaisCredor.qtd_notas} nota(s) · empenhado ${brlExato(totaisCredor.valor_empenhado)} · pago ${brlExato(totaisCredor.valor_pago)} · saldo a pagar ${brlExato(totaisCredor.saldo_a_pagar)}`
+    : '';
+
+  const exportarResultadoPDF = async () => {
+    const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
+    const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    // Sem timbrado o PDF sai cru — dizer POR QUÊ evita parecer defeito:
+    // cada empresa configura o seu (foi o caso da ETHOS em 08/09).
+    if (!timbrado) {
+      toast.info('Esta empresa ainda não tem timbrado configurado — o PDF sai sem identidade visual.', {
+        description: 'Configure em Configurações → Timbrado da empresa.',
+      });
+    }
+    downloadPDF(`empenhos-credor-${anoCredor}`, `${tituloResultado()} — ${rodapeTotais()}`,
+      cabecalhosResultado, linhasResultado(), timbrado);
+  };
+
+  const exportarResultadoExcel = async () => {
+    await writeExcelFromJson(`empenhos-credor-${anoCredor}.xlsx`, 'Empenhos por credor',
+      achados.map((n) => ({
+        'Empenho': n.numero, 'Órgão': n.orgao, 'Credor': n.credor,
+        'CNPJ/CPF': n.credor_cpf_cnpj ?? '', 'Data': n.dt_despesa,
+        'Empenhado (R$)': n.valor_empenhado, 'Pago (R$)': n.valor_pago,
+      })));
+  };
+
+  const exportarResultadoWord = () => {
+    const linhas = linhasResultado()
+      .map((l) => `<tr>${l.map((c) => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:10pt}</style></head><body><h2>${tituloResultado()}</h2><p>${rodapeTotais()}</p><table><tr>${cabecalhosResultado.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `empenhos-credor-${anoCredor}.doc`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const exportarResultadoJPG = () => {
+    const linhas = linhasResultado();
+    const colX = [20, 190, 330, 700, 860, 960, 1150];
+    const W = 1340; const rowH = 30; const topo = 100;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = topo + (linhas.length + 1) * rowH + 30;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { toast.error('Não foi possível gerar a imagem neste navegador.'); return; }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#111111'; ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(tituloResultado(), 20, 34);
+    ctx.font = '14px sans-serif'; ctx.fillStyle = '#444444';
+    ctx.fillText(rodapeTotais(), 20, 60);
+    ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#111111';
+    cabecalhosResultado.forEach((h, i) => ctx.fillText(h, colX[i], topo - 10));
+    ctx.strokeStyle = '#cccccc'; ctx.beginPath();
+    ctx.moveTo(20, topo - 2); ctx.lineTo(W - 20, topo - 2); ctx.stroke();
+    ctx.font = '13px sans-serif';
+    linhas.forEach((l, r) => {
+      const y = topo + (r + 1) * rowH - 10;
+      l.forEach((c, i) => {
+        const max = (colX[i + 1] ?? W - 20) - colX[i] - 12;
+        let texto = String(c);
+        while (ctx.measureText(texto).width > max && texto.length > 3) texto = texto.slice(0, -2) + '…';
+        ctx.fillStyle = '#222222';
+        ctx.fillText(texto, colX[i], y);
+      });
+    });
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `empenhos-credor-${anoCredor}.jpg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/jpeg', 0.95);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +322,14 @@ export default function TransparenciaPA({ portal }: Props) {
       if (!user) return;
       const { error } = await supabase.from('transparencia_empenhos').delete().eq('user_id', user.id);
       if (error) throw error;
+      // Limpar limpa a TELA inteira: a busca por credor tem estado próprio e
+      // ficava de pé depois do clique (08/09) — pesquisa remanescente parece
+      // dado que sobreviveu à limpeza.
+      setCredor('');
+      setAchados([]);
+      setTotaisCredor(null);
+      setBuscouCredor(false);
+      setPaginaCredor(1);
       toast.success('Dados removidos');
       loadDados();
     } catch (e: any) {
@@ -185,9 +339,20 @@ export default function TransparenciaPA({ portal }: Props) {
 
   const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
 
-  const handleExportCSV = async () => {
+  // ── Exportação em formatos (08/09): PDF veste o timbrado da empresa, como
+  // todo documento gerado; Excel e CSV para planilha; Word para quem monta
+  // ofício em cima. JPG fica de fora de propósito: tabela em imagem não se
+  // confere nem se soma — o PDF cobre a impressão.
+  const nomeBase = `transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}`;
+  const cabecalhos = ['Órgão', 'Ano', 'Valor empenhado (R$)'];
+  const linhasExport = () => dadosFiltrados.map(d => [
+    d.orgao, String(d.ano),
+    d.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+  ]);
+
+  const exportarExcel = async () => {
     if (dadosFiltrados.length === 0) return;
-    await writeExcelFromJson(`transparencia-${portal.sigla.toLowerCase()}-${anoFiltro}.xlsx`, `Transparência ${portal.nome}`,
+    await writeExcelFromJson(`${nomeBase}.xlsx`, `Transparência ${portal.nome}`,
       dadosFiltrados.map(d => ({
         'Órgão': d.orgao,
         'Ano': d.ano,
@@ -196,6 +361,38 @@ export default function TransparenciaPA({ portal }: Props) {
         'Categoria': d.categoria || '',
       }))
     );
+  };
+
+  const exportarCSVArquivo = () => {
+    if (dadosFiltrados.length === 0) return;
+    downloadCSV(nomeBase, cabecalhos, linhasExport());
+  };
+
+  const exportarPDF = async () => {
+    if (dadosFiltrados.length === 0) return;
+    const { carregarTimbrado } = await import('@/lib/timbrado/timbrado');
+    const timbrado = await carregarTimbrado(empresaAtiva?.id);
+    if (!timbrado) {
+      toast.info('Esta empresa ainda não tem timbrado configurado — o PDF sai sem identidade visual.', {
+        description: 'Configure em Configurações → Timbrado da empresa.',
+      });
+    }
+    downloadPDF(nomeBase, `Transparência ${portal.nome} — despesas por órgão (${anoFiltro})`,
+      cabecalhos, linhasExport(), timbrado);
+  };
+
+  const exportarWord = () => {
+    if (dadosFiltrados.length === 0) return;
+    const linhas = linhasExport()
+      .map((l) => `<tr>${l.map((c) => `<td>${String(c).replace(/</g, '&lt;')}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Times New Roman}td,th{border:1px solid #999;padding:4px 8px;font-size:11pt}</style></head><body><h2>Transparência ${portal.nome} — despesas por órgão (${anoFiltro})</h2><table><tr>${cabecalhos.map((h) => `<th>${h}</th>`).join('')}</tr>${linhas}</table></body></html>`;
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${nomeBase}.doc`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const top10 = [...dadosFiltrados]
@@ -214,6 +411,12 @@ export default function TransparenciaPA({ portal }: Props) {
   const totalGeral = dados.reduce((s, d) => s + d.valor_total, 0);
   const totalEmpenhos = dados.reduce((s, d) => s + d.quantidade_empenhos, 0);
   const orgaosUnicos = new Set(dados.map(d => d.orgao)).size;
+  // A API oficial agrega por ÓRGÃO e não diz quantas notas há (o portal diz:
+  // 256.868 em 2026) — a importação grava quantidade=1 por linha. Somar isso
+  // e chamar de "Total Empenhos: 70" era mentira de rótulo (confronto de
+  // 08/09). Quando NENHUMA linha tem contagem real, os cards dizem a verdade:
+  // contagem não informada, e a média é POR ÓRGÃO, rotulada como tal.
+  const contagemConhecida = dados.some(d => (d.quantidade_empenhos ?? 1) > 1);
 
   return (
     <div className="space-y-4">
@@ -234,10 +437,16 @@ export default function TransparenciaPA({ portal }: Props) {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" size="sm" onClick={handleScrape} disabled={scraping}>
-          {scraping ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
-          Extrair do Portal
-        </Button>
+        {/* O "Extrair do Portal" de IA foi aposentado (estimava números).
+            Para o PARÁ ele renasceu de verdade: a API oficial de dados
+            abertos do Estado. Para os demais portais, os caminhos honestos
+            continuam sendo a planilha e o link. */}
+        {ehParaEstado && (
+          <Button variant="outline" size="sm" onClick={extrairDaApiOficial} disabled={extraindo}>
+            {extraindo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+            Extração oficial
+          </Button>
+        )}
 
         <label className="cursor-pointer">
           <Button variant="outline" size="sm" asChild>
@@ -248,23 +457,154 @@ export default function TransparenciaPA({ portal }: Props) {
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
         </label>
 
+        {/* Exporta o RESULTADO da busca por credor — posição a pedido (08/09):
+            entre Importar Planilha e Abrir Portal. */}
+        {achados.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-1" /> Exportar Resultado
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={exportarResultadoPDF}>PDF (com timbrado)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoWord}>Word (.doc)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoExcel}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarResultadoJPG}>JPG (imagem)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* Ordem a pedido (08/09): Exportar · Abrir Portal · Limpar. */}
+        {dados.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-1" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={exportarPDF}>PDF (com timbrado)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarExcel}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarWord}>Word (.doc)</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarCSVArquivo}>CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         <a href={portal.url} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm">
             <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
           </Button>
         </a>
 
-        {dados.length > 0 && (
-          <>
-            <Button variant="outline" size="sm" onClick={handleExportCSV}>
-              <Download className="w-4 h-4 mr-1" /> Exportar
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
-              <Trash2 className="w-4 h-4 mr-1" /> Limpar
-            </Button>
-          </>
+        {(dados.length > 0 || achados.length > 0) && (
+          <Button variant="ghost" size="sm" onClick={handleLimparDados} className="text-destructive">
+            <Trash2 className="w-4 h-4 mr-1" /> Limpar
+          </Button>
         )}
       </div>
+
+      {/* ── Fase B: empenhos por credor, a MESMA busca do portal (só PA) ──
+          O caso de uso nº 1 é a empresa procurar A SI MESMA: os próprios
+          empenhos estaduais, com empenhado, pago e o SALDO A RECEBER, sem
+          depender do órgão avisar. Busca textual do backend do portal:
+          nome, CNPJ ou número do empenho — instantânea, com os totais que a
+          tela do portal exibe. */}
+      {ehParaEstado && (
+        <Card className="p-4 space-y-3">
+          <h4 className="text-sm font-semibold flex items-center gap-1.5">
+            <Search className="w-4 h-4 text-muted-foreground" /> Empenhos por credor — busca do portal do Pará
+          </h4>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Placeholder NEUTRO: exemplo com razão social de um assinante
+                aparecia no login de outro (08/09) — nome de empresa não é
+                texto de exemplo. */}
+            <Input placeholder="Nome do credor, CNPJ ou nº do empenho" value={credor}
+              onChange={(e) => setCredor(e.target.value)} className="w-80 h-9"
+              onKeyDown={(e) => { if (e.key === 'Enter' && credor.trim().length >= 4) buscarPorCredor(1); }} />
+            <Select value={anoCredor} onValueChange={setAnoCredor}>
+              <SelectTrigger className="w-28 h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button size="sm" className="h-9" disabled={buscandoCredor || credor.trim().length < 4}
+              onClick={() => buscarPorCredor(1)}>
+              {buscandoCredor ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+              Buscar
+            </Button>
+          </div>
+
+          {totaisCredor && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Notas empenhadas</p>
+                <p className="text-lg font-bold tabular-nums">{totaisCredor.qtd_notas.toLocaleString('pt-BR')}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Valor empenhado</p>
+                <p className="text-lg font-bold tabular-nums">{brlExato(totaisCredor.valor_empenhado)}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Valor pago</p>
+                <p className="text-lg font-bold tabular-nums text-success">{brlExato(totaisCredor.valor_pago)}</p>
+              </div>
+              <div className="rounded-md border border-border/50 p-2.5">
+                <p className="text-xs text-muted-foreground">Saldo a pagar</p>
+                <p className={`text-lg font-bold tabular-nums ${totaisCredor.saldo_a_pagar > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+                  {brlExato(totaisCredor.saldo_a_pagar)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {buscouCredor && !buscandoCredor && achados.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Nenhum empenho encontrado para “{credor.trim()}” em {anoCredor}.
+            </p>
+          )}
+
+          {achados.length > 0 && (
+            <div className="divide-y divide-border/40 max-h-[320px] overflow-y-auto rounded-md border border-border/40">
+              {/* Cada linha abre o DETALHE do empenho no portal oficial (a
+                  pedido, 08/09): itens, processo, datas — para confrontar e
+                  imprimir na fonte. O id_ne é a chave da rota do portal. */}
+              {achados.map((n) => (
+                <a
+                  key={n.id_ne}
+                  href={`https://sistemas.pa.gov.br/portaltransparencia/empenho/notas/detalhe/${n.id_ne}`}
+                  target="_blank" rel="noopener noreferrer"
+                  title="Abrir o detalhe deste empenho no portal oficial (confrontar e imprimir)"
+                  className="flex items-center justify-between gap-3 p-2.5 text-xs hover:bg-muted/40 transition-colors cursor-pointer"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium tabular-nums flex items-center gap-1.5">
+                      {n.numero} · {n.orgao}
+                      <ExternalLink className="w-3 h-3 text-primary shrink-0" />
+                    </p>
+                    <p className="text-muted-foreground truncate">
+                      {n.credor}{n.credor_cpf_cnpj ? ` · ${n.credor_cpf_cnpj}` : ''} · {n.dt_despesa}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 tabular-nums">
+                    <p className="font-semibold">{brlExato(n.valor_empenhado)}</p>
+                    <p className={n.valor_pago > 0 ? 'text-success' : 'text-muted-foreground'}>
+                      pago: {brlExato(n.valor_pago)}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {totaisCredor && achados.length > 0 && achados.length < totaisCredor.qtd_notas && !buscandoCredor && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => buscarPorCredor(paginaCredor + 1)}>
+              Carregar mais ({achados.length} de {totaisCredor.qtd_notas})
+            </Button>
+          )}
+        </Card>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -281,21 +621,33 @@ export default function TransparenciaPA({ portal }: Props) {
             <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Total Empenhos</span>
           </div>
-          <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
+          {contagemConhecida ? (
+            <p className="text-2xl font-bold">{totalEmpenhos.toLocaleString('pt-BR')}</p>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+              <span className="text-xs text-muted-foreground">a fonte agrega por órgão, sem contagem de notas</span>
+            </>
+          )}
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Volume Total</span>
+            <span className="text-xs text-muted-foreground">Volume Total (empenhado)</span>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p>
+          {/* Compacto no card, EXATO no tooltip — panorama e conferência. */}
+          <p className="text-xl font-bold tabular-nums">{brlExato(totalGeral)}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Ticket Médio</span>
+            <span className="text-xs text-muted-foreground">{contagemConhecida ? 'Ticket Médio' : 'Média por órgão'}</span>
           </div>
-          <p className="text-2xl font-bold">{totalEmpenhos > 0 ? formatCurrency(totalGeral / totalEmpenhos) : 'R$ 0'}</p>
+          {contagemConhecida ? (
+            <p className="text-xl font-bold tabular-nums">{totalEmpenhos > 0 ? brlExato(totalGeral / totalEmpenhos) : 'R$ 0,00'}</p>
+          ) : (
+            <p className="text-xl font-bold tabular-nums">{orgaosUnicos > 0 ? brlExato(totalGeral / orgaosUnicos) : 'R$ 0,00'}</p>
+          )}
         </div>
       </div>
 
@@ -304,8 +656,9 @@ export default function TransparenciaPA({ portal }: Props) {
           <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
           <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Clique em <strong>"Extrair do Portal"</strong> para tentar coletar automaticamente do portal de {portal.nome},
-            ou <strong>"Importar Planilha"</strong> para enviar uma planilha baixada do portal.
+            Abra o portal de {portal.nome} pelo botão <strong>"Abrir Portal"</strong>, baixe a planilha
+            de empenhos/despesas e envie por <strong>"Importar Planilha"</strong> — os números aqui
+            são sempre os do próprio portal, nunca estimativas.
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <span>Formatos aceitos: .xlsx, .xls, .csv</span>
@@ -323,7 +676,7 @@ export default function TransparenciaPA({ portal }: Props) {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="orgao" tick={{ fontSize: 9 }} width={160} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => brlExato(v)} />
                   <Bar dataKey="valor_total" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -342,7 +695,7 @@ export default function TransparenciaPA({ portal }: Props) {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => brlExato(v)} />
                 </PieChart>
               </ResponsiveContainer>
             </Card>
@@ -355,7 +708,7 @@ export default function TransparenciaPA({ portal }: Props) {
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis dataKey="ano" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    <Tooltip formatter={(v: number) => brlExato(v)} />
                     <Bar dataKey="valor" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} name="Volume (R$)" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -386,7 +739,7 @@ export default function TransparenciaPA({ portal }: Props) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">{formatCurrency(d.valor_total)}</p>
+                    <p className="text-sm font-semibold tabular-nums">{brlExato(d.valor_total)}</p>
                   </div>
                 </div>
               ))}

@@ -220,3 +220,28 @@ describe('montarRelatorio', () => {
     expect(rel.riscos.find((r) => r.codigo === 'motivo_perda_concentrado')).toBeDefined();
   });
 });
+
+// ── O texto que vai ao PDF cabe na fonte ────────────────────────────────────
+// O caso de 31/08: '→' fora do CP1252 saía como "!’" e desalinhava a linha.
+import { textoSeguroParaPdf } from '@/lib/metas/texto-pdf';
+
+describe('textoSeguroParaPdf', () => {
+  it('troca a seta pelo equivalente que a fonte tem', () => {
+    expect(textoSeguroParaPdf('Conversão participado → ganho'))
+      .toBe('Conversão participado » ganho');
+  });
+
+  it('preserva os tipográficos que o CP1252 conhece', () => {
+    const t = 'Período — “definitivo”, R$ 1.000,00 • 50% – ok…';
+    expect(textoSeguroParaPdf(t)).toBe(t);
+  });
+
+  it('preserva o português inteiro (acentos são Latin-1)', () => {
+    const t = 'Situação de fechamento: proposta não convertida';
+    expect(textoSeguroParaPdf(t)).toBe(t);
+  });
+
+  it('remove o que não tem equivalente em vez de deixar virar lixo', () => {
+    expect(textoSeguroParaPdf('meta ✅ batida')).toBe('meta  batida');
+  });
+});

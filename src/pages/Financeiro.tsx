@@ -54,6 +54,7 @@ import FinPlanoContasPadrao from "@/components/financeiro/FinPlanoContasPadrao";
 import FinIntegracoesFiscais from "@/components/financeiro/FinIntegracoesFiscais";
 import FinLotesAuditoria from "@/components/financeiro/FinLotesAuditoria";
 import FinPedidosAFaturar from "@/components/financeiro/FinPedidosAFaturar";
+import FinCustosPorContrato from "@/components/financeiro/FinCustosPorContrato";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const VIEW_MAP: Record<string, () => JSX.Element> = {
@@ -92,6 +93,7 @@ const VIEW_MAP: Record<string, () => JSX.Element> = {
   importar_ofx: () => <FinImportarOFX />,
   cnab: () => <FinCNAB />,
   previsto_realizado: () => <FinPrevistoRealizado />,
+  custos_contratos: () => <FinCustosPorContrato />,
   resumo_exec: () => <FinResumoExecutivo />,
   aprovacoes: () => <FinAprovacoes />,
   nfse: () => <FinNFSe />,

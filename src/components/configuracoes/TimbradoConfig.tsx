@@ -174,13 +174,13 @@ export default function TimbradoConfig() {
             <Label className="text-xs">Cabeçalho — qualificação (razão social, CNPJ, IE, endereço…)</Label>
             <Textarea value={cabecalho} onChange={(e) => setCabecalho(e.target.value)} rows={3}
               disabled={!isCompanyAdmin} className="mt-1 text-xs"
-              placeholder={'SANTA ROSA COMÉRCIO, DISTRIBUIDORA E REPRESENTAÇÕES LTDA\nCNPJ 24.687.187/0001-01 · IE 15.522.993-1\nRua Tenente Bezerra, 93-A · Mangueirão · Belém/PA · CEP 66640-085'} />
+              placeholder={'RAZÃO SOCIAL DA EMPRESA LTDA\nCNPJ 00.000.000/0000-00 · IE 00.000.000-0\nRua Exemplo, 100 · Bairro · Cidade/UF · CEP 00000-000'} />
           </div>
           <div>
             <Label className="text-xs">Rodapé — contatos (endereço, site, e-mail, telefones)</Label>
             <Textarea value={rodape} onChange={(e) => setRodape(e.target.value)} rows={2}
               disabled={!isCompanyAdmin} className="mt-1 text-xs"
-              placeholder={'www.gruposantarosa.com.br · comercial@gruposantarosa.com.br\n(91) 3225-2678 / 99225-7448'} />
+              placeholder={'www.suaempresa.com.br · contato@suaempresa.com.br\n(00) 0000-0000 / 00000-0000'} />
           </div>
         </div>
       </div>

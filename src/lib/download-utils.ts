@@ -35,16 +35,21 @@ export function downloadPDF(
 
   doc.setFontSize(14);
   doc.setTextColor(0);
-  doc.text(title, 14, yTitulo);
+  // Título QUEBRA na largura útil: numa linha só, um título com totais
+  // anexados saía cortado na borda da página (empenhos-credor, 08/09).
+  const larguraUtil = doc.internal.pageSize.getWidth() - 28;
+  const linhasTitulo = doc.splitTextToSize(title, larguraUtil) as string[];
+  doc.text(linhasTitulo, 14, yTitulo);
+  const fimTitulo = yTitulo + (linhasTitulo.length - 1) * 6;
   doc.setFontSize(8);
   doc.setTextColor(120);
-  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, yTitulo + 6);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, fimTitulo + 6);
 
   const alturaPagina = doc.internal.pageSize.getHeight();
   autoTable(doc, {
     head: [headers],
     body: rows,
-    startY: yTitulo + 12,
+    startY: fimTitulo + 12,
     styles: { fontSize: 7, cellPadding: 2 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 245, 245] },

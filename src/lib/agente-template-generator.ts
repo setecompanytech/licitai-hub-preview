@@ -62,7 +62,7 @@ CALLBACK_URL=https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-w
 
 RUN apt-get update && apt-get install -y \\
     chromium \\
-    libnss3 libatk-bridge2.0-0 libx11-xcb1 \\
+    libnss3 libnss3-tools libatk-bridge2.0-0 libx11-xcb1 \\
     libxcomposite1 libxdamage1 libxrandr2 \\
     libgbm1 libasound2 libpangocairo-1.0-0 \\
     libgtk-3-0 fonts-liberation curl \\
@@ -70,6 +70,11 @@ RUN apt-get update && apt-get install -y \\
     rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Dentro do container o loopback tornaria o agente inalcancavel de fora.
+ENV BIND_HOST=0.0.0.0
+# Aqui o navegador e o chromium do sistema, cuja pasta de policy nao e a mesma
+# do "Chrome for Testing" que o Puppeteer baixa fora do container.
+ENV CHROME_POLICY_DIR=/etc/chromium/policies/managed
 
 WORKDIR /app
 COPY package*.json ./
@@ -185,6 +190,8 @@ const { SessionManager } = require('./session-manager');
 const { PORTALS, getPortal } = require('./portals');
 const { launchBrowser } = require('./browser');
 const { PORTAIS_COM_LANCE_LIBERADO } = require('./estrategia');
+const certificado = require('./certificado');
+const interacaoHumana = require('./interacao-humana');
 const fs = require('fs');
 const path = require('path');
 
@@ -211,18 +218,25 @@ const ROTAS = [
   'GET /sessoes',
   'GET /portais',
   'POST /api/proposta/enviar',
+  'POST /certificado',
+  'POST /sessao/responder',
 ];
 
-// Conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se o arquivo
-// existia — a pasta certs/ da VPS estava vazia e o checklist ficava verde.
+// A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
+// o arquivo existia — a pasta certs/ da VPS estava vazia e o checklist ficava
+// verde. A segunda passou a conferir o arquivo, e ainda ficava verde com o
+// certificado que o Chrome nao tinha como apresentar.
+//
+// Agora quem responde e o modulo que faz a instalacao, olhando as tres coisas
+// que precisam ser verdade: arquivo, chave na base NSS e policy de auto-selecao.
 function certificadoInstalado() {
-  const configurado = process.env.CERT_PATH || null;
-  if (!configurado) return { carregado: false, path: null, motivo: 'CERT_PATH nao configurado' };
-  const caminho = path.isAbsolute(configurado)
-    ? configurado
-    : path.resolve(__dirname, '..', configurado);
-  const existe = fs.existsSync(caminho);
-  return { carregado: existe, path: configurado, motivo: existe ? null : 'arquivo nao encontrado em ' + caminho };
+  try {
+    return certificado.estado();
+  } catch (e) {
+    // Estado indisponivel nao pode virar "carregado: true" nem derrubar o
+    // /health, que e o que o painel usa para saber se o agente esta vivo.
+    return { carregado: false, path: process.env.CERT_PATH || null, motivo: 'nao foi possivel ler o estado do certificado: ' + e.message };
+  }
 }
 
 function authMiddleware(req, res, next) {
@@ -232,6 +246,39 @@ function authMiddleware(req, res, next) {
   }
   next();
 }
+
+
+// ─── POST /sessao/responder ───
+//
+// A pessoa entrega o que a tela pediu; quem digita e o robo.
+//
+// Existe por uma medicao: em 09/09/2026 o codigo do gov.br levava ~50s para ir
+// do celular ate o campo, passando por WhatsApp, leitura e teclado remoto. O
+// codigo vale ~60s. Tres tentativas queimaram e a conta do cliente foi
+// bloqueada por excesso de erro — os codigos nao estavam errados, estavam
+// velhos. Por aqui o mesmo numero chega em ~2s.
+app.post('/sessao/responder', authMiddleware, (req, res) => {
+  const { sessao_id, valor } = req.body || {};
+  if (!sessao_id || valor === undefined || valor === null || valor === '') {
+    return res.status(400).json({ error: 'sessao_id e valor sao obrigatorios' });
+  }
+
+  const pedido = interacaoHumana.pendente(sessao_id);
+  if (!pedido) {
+    // Diferente de erro: pode ser resposta que chegou depois de a tela seguir
+    // sozinha. Dizer isso evita que a interface acuse falha onde nao houve.
+    return res.status(409).json({
+      error: 'Nao ha nada pendente nesta sessao',
+      sessao_id,
+      aceito: false,
+    });
+  }
+
+  interacaoHumana.responder(sessao_id, valor);
+  // O valor NAO entra em log: e codigo de acesso de conta de terceiro.
+  console.log('🧑 Resposta recebida para ' + sessao_id + ' (' + pedido.tipo + ')');
+  res.json({ aceito: true, sessao_id, tipo: pedido.tipo });
+});
 
 // ─── GET /health ───
 app.get('/health', (req, res) => {
@@ -245,6 +292,14 @@ app.get('/health', (req, res) => {
     sessoes: sessionManager.getAllSessions(),
     portais_suportados: Object.keys(PORTALS),
     rotas: ROTAS,
+    // O que esta parado esperando uma pessoa. A interface le daqui para decidir
+    // se mostra campo de codigo, aviso de captcha, ou nada — em vez de ter isso
+    // configurado por portal, que envelheceria no dia em que o cliente
+    // desligasse a verificacao em duas etapas.
+    aguardando_humano: interacaoHumana.todos(),
+    // Como os pedidos recentes terminaram. A interface usa para dizer
+    // "recebido, o robo seguiu" em vez de deixar o cartao sumir em silencio.
+    desfechos_humano: interacaoHumana.desfechosRecentes(),
     // Quais portais podem ENVIAR lance. Lista vazia = o agente le e calcula,
     // mas nao submete nada. O painel precisa poder mostrar isso.
     portais_com_lance_liberado: PORTAIS_COM_LANCE_LIBERADO,
@@ -260,6 +315,14 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       valor_referencia, valor_inicial, valor_minimo,
       decremento_min, decremento_percentual,
       intervalo_segundos, max_lances, credenciais_portal,
+      // O ALVO dentro do processo.
+      //
+      // Esta rota desestrutura uma lista FIXA e repassa campo a campo — o que
+      // nao estiver nomeado aqui e descartado silenciosamente, por mais que
+      // quem chamou tenha enviado. Foi assim que os itens quase chegaram ao
+      // agente sem chegar: a edge function mandava, o session-manager sabia
+      // usar, e esta linha no meio jogava fora.
+      itens, tipo_disputa,
     } = req.body;
 
     const callbackUrl = req.headers['x-callback-url'] || process.env.CALLBACK_URL;
@@ -281,6 +344,10 @@ app.post('/sessao/iniciar', authMiddleware, async (req, res) => {
       decremento_min, decremento_percentual,
       intervalo_segundos: intervalo_segundos || 30,
       max_lances: max_lances || 20,
+      // Normalizado aqui, na entrada: o session-manager e o modulo do portal
+      // tratam ausencia como "abrir o processo e parar", e nao como erro.
+      itens: Array.isArray(itens) ? itens : [],
+      tipo_disputa: tipo_disputa || null,
       credenciais_portal, callbackUrl, agentKey: AGENT_KEY,
     });
 
@@ -451,8 +518,52 @@ app.get('/portais', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(\`🤖 Agente de Lances v2.2.0 rodando na porta \${PORT}\`);
+// ─── POST /certificado ───
+// Recebe o .pfx e o INSTALA de fato: arquivo, base NSS do Chrome e policy de
+// auto-selecao. Antes desta rota o certificado subia para o Storage do Supabase
+// e parava ali — nada o trazia para ca, e o agente nao tinha por onde receber.
+//
+// O corpo vem em base64 porque o restante do protocolo com o Praefectus e JSON;
+// um multipart so para este caso exigiria outra dependencia no agente.
+app.post('/certificado', authMiddleware, async (req, res) => {
+  try {
+    const { arquivo_base64, senha } = req.body || {};
+
+    if (!arquivo_base64 || !senha) {
+      return res.status(400).json({ error: 'arquivo_base64 e senha sao obrigatorios' });
+    }
+
+    const buffer = Buffer.from(arquivo_base64, 'base64');
+    if (buffer.length === 0) {
+      return res.status(400).json({ error: 'arquivo vazio ou base64 invalido' });
+    }
+
+    // A senha nao entra em log nenhum — nem aqui, nem no modulo de instalacao.
+    console.log('📜 Recebido certificado A1 (' + buffer.length + ' bytes) — instalando');
+    const estado = certificado.instalar(buffer, senha);
+
+    console.log(estado.carregado
+      ? '✅ Certificado instalado e apresentavel: ' + estado.titulares.join(', ')
+      : '⚠️  Certificado gravado mas ainda nao apresentavel: ' + estado.motivo);
+
+    res.json({ sucesso: estado.carregado, certificado: estado });
+  } catch (e) {
+    console.error('Falha ao instalar certificado:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Escuta so no loopback por padrao. Escutando em "*", a VPS respondia
+// http://<ip>:3500/health direto da internet, contornando o nginx e entregando
+// versao, RAM, sessoes e portais a quem perguntasse — foi corrigido na maquina
+// em 02/09/2026, mas o template continuava gerando a versao aberta.
+//
+// Em container o loopback deixaria o agente inalcancavel de fora: por isso
+// BIND_HOST existe, e o Dockerfile ja o define como 0.0.0.0.
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+
+app.listen(PORT, BIND_HOST, () => {
+  console.log(\`🤖 Agente de Lances v2.2.0 rodando em \${BIND_HOST}:\${PORT}\`);
   console.log(\`   Rotas: \${ROTAS.length} (\${ROTAS.join(' · ')})\`);
   console.log(\`   Portais: \${Object.keys(PORTALS).join(', ')}\`);
   console.log(\`   Max sessões: \${process.env.MAX_SESSOES_PARALELAS || 3}\`);
@@ -545,13 +656,35 @@ class SessionManager {
       // Instanciar o módulo do portal correto
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
 
+      // O portal precisa saber QUAL sessao ele e para pedir algo a uma pessoa —
+      // um codigo de verificacao, por exemplo — e para a resposta voltar ao
+      // lugar certo quando ha varias sessoes abertas ao mesmo tempo.
+      session.portal.sessaoId = config.sessao_id;
+
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
       await session.portal.login();
 
       // Navegar para a disputa
-      console.log(\`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\`);
-      await session.portal.navegarParaDisputa(config.edital);
+      //
+      // O alvo vai junto: o processo diz ONDE, os itens dizem O QUE. Antes so
+      // o primeiro atravessava, e num pregao por itens o robo abria a pagina
+      // certa sem saber o que acompanhar dentro dela.
+      //
+      // Guardado na sessao tambem, e nao so passado adiante, porque o
+      // /health precisa poder afirmar quantos itens ESTA sessao recebeu —
+      // "o robo recebeu os itens" sem numero visivel e afirmacao sem prova.
+      session.itens = Array.isArray(config.itens) ? config.itens : [];
+      session.tipo_disputa = config.tipo_disputa || null;
+
+      console.log(
+        \`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\` +
+        \` (\${session.itens.length} item(ns), disputa por \${session.tipo_disputa || 'nao informado'})\`
+      );
+      await session.portal.navegarParaDisputa(config.edital, {
+        tipo: session.tipo_disputa,
+        itens: session.itens,
+      });
 
       // Iniciar loop de lances
       this._startBiddingLoop(session);
@@ -564,8 +697,34 @@ class SessionManager {
       // Sem isto, cada sessao que falha deixa um timer de 30s batendo no
       // callback para sempre — e hoje TODA sessao falha antes de comecar.
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
-      // Liberar browser para não travar slots
-      if (session.browser) session.browser.close().catch(() => {});
+      // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
+      try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
+
+      // A JANELA FICA ABERTA UM POUCO DEPOIS DE FALHAR.
+      //
+      // Fechar na hora tornava o erro invisivel. Medido em 09/09/2026: com um
+      // edital que nao existe, o navegador aparece no VNC em 3s e some em 13 —
+      // quem clica para abrir a tela remota chega depois do fim e ve o servidor
+      // vazio, sem nada que explique o que houve. A pessoa conclui que o VNC
+      // esta quebrado, quando o robo apenas ja terminou.
+      //
+      // Manter a janela NAO esconde a falha: o status continua 'erro', o
+      // callback ja saiu e o motivo esta no log. So a tela demora a sumir, e e
+      // nela que esta a explicacao — a pagina onde o robo parou.
+      //
+      // O slot nao fica preso: getCapacity() so conta sessao 'ativo' ou
+      // 'pausado', e esta e 'erro'.
+      const segundos = Number(process.env.SEGUNDOS_JANELA_APOS_ERRO || 60);
+
+      if (session.browser && segundos > 0) {
+        console.log(\`🔎 Janela mantida aberta por \${segundos}s para observacao no VNC — sessao \${config.sessao_id}\`);
+        setTimeout(() => {
+          if (session.browser) session.browser.close().catch(() => {});
+          console.log(\`🔒 Janela de observacao encerrada — sessao \${config.sessao_id}\`);
+        }, segundos * 1000);
+      } else if (session.browser) {
+        session.browser.close().catch(() => {});
+      }
     }
 
     return session;
@@ -723,6 +882,8 @@ class SessionManager {
       session.status = 'encerrado';
       if (session.interval) clearInterval(session.interval);
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+      // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
+      try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
       if (session.browser) session.browser.close().catch(() => {});
       
       sendCallback(session, 'sessao-encerrada', {
@@ -758,6 +919,17 @@ class SessionManager {
       valor_atual: s.valor_atual,
       valor_minimo: s.valor_minimo,
       max_lances: s.max_lances,
+      // A PROVA de que os itens atravessaram, visivel no /health.
+      //
+      // Sem numero exposto, "o robo recebeu os itens" so daria para conferir
+      // abrindo log de VPS. O campo itens_sem_piso esta aqui pelo mesmo motivo:
+      // piso ausente e o estado em que o robo nao deve dar lance, e isso tem
+      // que ser legivel de fora antes do pregao, nao depois.
+      itens_recebidos: Array.isArray(s.itens) ? s.itens.length : 0,
+      itens_sem_piso: Array.isArray(s.itens)
+        ? s.itens.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined).length
+        : 0,
+      tipo_disputa: s.tipo_disputa || null,
       created_at: s.created_at,
     }));
   }
@@ -806,15 +978,41 @@ function getCertConfig(cnpj) {
   return { mode: 'none' };
 }
 
+/**
+ * A tela virtual e a janela do Chrome precisam ter o MESMO tamanho.
+ *
+ * Estavam diferentes: o Xvfb em 1920x1080 e o Chrome em 1366x768. O navegador
+ * ocupava 71% de cada lado — metade da area — e o resto ficava preto. Como o
+ * noVNC encolhe o quadro INTEIRO para caber no painel, o que se via era uma
+ * janelinha no meio de uma moldura preta, e a conclusao natural era que o VNC
+ * estava com defeito.
+ *
+ * Uma variavel so define os dois, para nao voltarem a divergir. Quem mudar a
+ * resolucao do Xvfb no start-vnc.sh precisa mudar TELA_AGENTE junto.
+ */
+function dimensoesDaTela() {
+  const bruto = process.env.TELA_AGENTE || '1920x1080';
+  const partes = String(bruto).toLowerCase().split('x');
+  const largura = parseInt(partes[0], 10);
+  const altura = parseInt(partes[1], 10);
+  return {
+    largura: largura > 0 ? largura : 1920,
+    altura: altura > 0 ? altura : 1080,
+  };
+}
+
 async function launchBrowser(cnpj) {
   const cert = getCertConfig(cnpj);
+  const { largura, altura } = dimensoesDaTela();
 
   const args = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
     '--disable-gpu',
-    '--window-size=1366,768',
+    '--window-size=' + largura + ',' + altura,
+    // Sem posicao fixa a janela nasce deslocada e sobra faixa preta de um lado.
+    '--window-position=0,0',
   ];
 
   // Para certificado A3 via PKCS#11
@@ -825,11 +1023,48 @@ async function launchBrowser(cnpj) {
   // Criar diretório de screenshots
   fs.mkdirSync('./logs/screenshots', { recursive: true });
 
+  /**
+   * MODO VISIVEL (HEADLESS=false): o navegador desenha na tela virtual :99, que
+   * o x11vnc publica e o nginx serve em /vnc/. E o que permite ASSISTIR o robo
+   * trabalhando pelo painel. Sem apontar o DISPLAY, um Chrome nao-headless nao
+   * acha tela nenhuma e morre no start.
+   *
+   * O padrao continua sendo headless: quem nao configurar nada mantem o
+   * comportamento antigo. Ligar a janela e um ato de configuracao.
+   */
+  const visivel = process.env.HEADLESS === 'false';
+  const display = process.env.DISPLAY || ':99';
+
   const browser = await puppeteer.launch({
-    headless: 'new',
+    headless: visivel ? false : 'new',
     args,
+    // Com janela de verdade, o viewport tem que SEGUIR a janela. Fixa-lo faria
+    // a pagina renderizar num retangulo menor dentro dela — exatamente o
+    // defeito que esta mudanca corrige.
+    defaultViewport: visivel ? null : { width: largura, height: altura },
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    env: visivel ? { ...process.env, DISPLAY: display } : process.env,
   });
+
+  console.log(visivel
+    ? '🖥️  Chrome VISIVEL em ' + display + ' a ' + largura + 'x' + altura + ' — acompanhe em /vnc/'
+    : '🕶️  Chrome headless a ' + largura + 'x' + altura);
+
+  // O certificado: dizer a verdade sobre ele, dos dois lados.
+  //
+  // Antes desta linha o log afirmava que o certificado NAO era apresentado —
+  // verdade ate 09/09/2026, e mentira depois que a base NSS e a policy passaram
+  // a existir. Mensagem fixa envelhece; perguntar ao modulo, nao.
+  try {
+    const estadoCert = require('./certificado').estado();
+    if (estadoCert.carregado) {
+      console.log('📜 Certificado pronto para ser apresentado: ' + estadoCert.titulares.join(', '));
+    } else if (cert.mode === 'a1') {
+      console.log('📜 Certificado no disco, mas ainda nao apresentavel: ' + estadoCert.motivo);
+    }
+  } catch (e) {
+    // Instalacao antiga do agente, sem o modulo. Nao e motivo para nao subir.
+  }
 
   const page = await browser.newPage();
 
@@ -838,12 +1073,392 @@ async function launchBrowser(cnpj) {
     '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   );
 
-  await page.setViewport({ width: 1366, height: 768 });
+  // No modo visivel o viewport ja segue a janela (defaultViewport: null).
+  if (!visivel) {
+    await page.setViewport({ width: largura, height: altura });
+  }
 
   return { browser, page, cert };
 }
 
 module.exports = { launchBrowser, getCertConfig };
+`,
+
+  'src/interacao-humana.js': `/**
+ * O que o robo precisa de uma pessoa, e a resposta dela.
+ *
+ * Vive em memoria de proposito: um pedido de codigo de verificacao so vale
+ * enquanto a sessao esta de pe. Persistir isso criaria pedidos zumbis, que
+ * pedem codigo para uma tela que ja fechou.
+ *
+ * O vocabulario e generico — 'codigo', 'captcha', 'confirmacao' — porque o
+ * problema nao e do gov.br. BLL, BNC e qualquer portal com SMS caem no mesmo
+ * padrao, e escrever um caso por portal e como as tres listas de portais que
+ * ja divergiram aqui.
+ */
+
+const pendentes = new Map();
+const respostas = new Map();
+
+/**
+ * Registra o que falta para seguir.
+ * @param {string} sessaoId
+ * @param {{tipo: string, mensagem: string, tela?: string}} pedido
+ */
+function pedir(sessaoId, pedido) {
+  if (!sessaoId) return null;
+  const registro = {
+    tipo: pedido.tipo,
+    mensagem: pedido.mensagem,
+    tela: pedido.tela || null,
+    criado_em: new Date().toISOString(),
+    // Ate quando o robo espera. A interface conta daqui para tras: sem isto a
+    // pessoa nao sabe se tem cinco segundos ou cinco minutos, e age com pressa
+    // desnecessaria — ou desiste achando que ja passou.
+    expira_em: pedido.expira_em || null,
+  };
+  pendentes.set(sessaoId, registro);
+  // Uma resposta antiga nao pode satisfazer um pedido novo: quem respondeu
+  // "123456" ao pedido anterior nao respondeu a este.
+  respostas.delete(sessaoId);
+  return registro;
+}
+
+/** Entrega a resposta. Devolve false quando nao havia pedido — o chamador
+ *  precisa saber a diferenca entre "aceitei" e "nao ha o que responder". */
+function responder(sessaoId, valor) {
+  if (!pendentes.has(sessaoId)) return false;
+  respostas.set(sessaoId, String(valor));
+  return true;
+}
+
+/** Consome a resposta, se houver. Consumir e proposital: cada resposta serve
+ *  uma vez, e um codigo reenviado por engano nao deve ser digitado duas vezes. */
+function colher(sessaoId) {
+  if (!respostas.has(sessaoId)) return null;
+  const v = respostas.get(sessaoId);
+  respostas.delete(sessaoId);
+  return v;
+}
+
+/** O pedido em aberto desta sessao, ou null. */
+function pendente(sessaoId) {
+  return pendentes.get(sessaoId) || null;
+}
+
+/** Fecha o pedido — atendido, expirado ou sessao encerrada. */
+function encerrar(sessaoId) {
+  // Sessao morreu com pedido em aberto: ninguem respondeu a tempo. Dizer isso
+  // e melhor que o cartao sumir sem explicacao.
+  if (pendentes.has(sessaoId)) resolver(sessaoId, 'expirado');
+  pendentes.delete(sessaoId);
+  respostas.delete(sessaoId);
+}
+
+/** Tudo que esta esperando alguem, para o /health. */
+function todos() {
+  return [...pendentes.entries()].map(([sessao_id, p]) => ({ sessao_id, ...p }));
+}
+
+/**
+ * O que ESTA tela esta pedindo — lido do texto, nunca de configuracao.
+ *
+ * Devolve null quando nao ha nada a pedir, e e esse null que faz o campo NAO
+ * aparecer na interface quando o portal nao exige nada.
+ */
+function classificarTela(texto) {
+  const t = String(texto || '');
+  if (/Verifica[çc][ãa]o em duas etapas|c[óo]digo de acesso|c[óo]digo de verifica[çc][ãa]o|token/i.test(t)) {
+    return {
+      tipo: 'codigo',
+      mensagem: 'O portal pediu um codigo de verificacao. Cole aqui o codigo assim que ele chegar — '
+        + 'o robo digita e confirma na hora.',
+    };
+  }
+  if (/captcha|nao sou um rob[oô]|hcaptcha|recaptcha/i.test(t)) {
+    return {
+      tipo: 'captcha',
+      mensagem: 'A pagina exige um gesto humano (captcha). Abra a tela remota (VNC) e clique — '
+        + 'o robo segue sozinho depois disso.',
+    };
+  }
+  return null;
+}
+
+/** O relogio da espera foi renovado — a tela avancou, e ha mais tempo. */
+function renovar(sessaoId, expiraEm) {
+  const p = pendentes.get(sessaoId);
+  if (p) p.expira_em = expiraEm;
+}
+
+/**
+ * Como o pedido terminou.
+ *
+ * Existe porque sumir e ambiguo. Quando o cartao simplesmente desaparece da
+ * tela, quem estava olhando nao sabe se funcionou ou se expirou — e a duvida
+ * faz clicar de novo, que foi como tres codigos do gov.br queimaram em
+ * 09/09/2026 ate a conta ser bloqueada.
+ *
+ * Guardado por pouco tempo de proposito: e um aviso, nao um historico. O que
+ * merece historico esta em sessoes_lance_real.
+ */
+const resolvidos = new Map();
+const JANELA_AVISO_MS = 120000;
+
+function resolver(sessaoId, desfecho) {
+  const p = pendentes.get(sessaoId);
+  if (p) {
+    resolvidos.set(sessaoId, {
+      tipo: p.tipo,
+      desfecho,
+      em: Date.now(),
+    });
+  }
+  pendentes.delete(sessaoId);
+  respostas.delete(sessaoId);
+}
+
+/** Desfechos recentes, para a interface avisar e depois esquecer. */
+function desfechosRecentes() {
+  const agora = Date.now();
+  const saida = [];
+  for (const [sessao_id, r] of resolvidos.entries()) {
+    if (agora - r.em > JANELA_AVISO_MS) {
+      resolvidos.delete(sessao_id);
+      continue;
+    }
+    saida.push({ sessao_id, tipo: r.tipo, desfecho: r.desfecho, em: new Date(r.em).toISOString() });
+  }
+  return saida;
+}
+
+module.exports = {
+  pedir, responder, colher, pendente, encerrar, todos, classificarTela,
+  renovar, resolver, desfechosRecentes,
+};
+`,
+
+  'src/certificado.js': `const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Instalacao do certificado A1 (.pfx) para o Chrome APRESENTAR aos portais.
+ *
+ * Por que este arquivo existe: ate 09/09/2026 o agente sabia dizer se o arquivo
+ * estava no disco e mais nada. O /health respondia "carregado: true", o
+ * Checklist ficava verde, e o certificado nunca chegava a portal nenhum — nao
+ * havia base NSS nem policy. A pessoa pedia um certificado ao contador, pagava
+ * por ele, enviava pela tela, e o resultado era exatamente igual a nao ter
+ * enviado.
+ *
+ * TRES COISAS PRECISAM SER VERDADE, e este modulo cuida das tres:
+ *
+ *   1. o .pfx no disco;
+ *   2. o par certificado+chave dentro da base NSS que o Chrome le;
+ *   3. uma policy de auto-selecao, senao o Chrome abre o dialogo "escolha um
+ *      certificado" — que numa automacao e um travamento sem mensagem.
+ *
+ * DETALHES QUE CUSTARAM TEMPO:
+ *
+ * - O caminho da policy NAO e /etc/opt/chrome/. O binario do Puppeteer e o
+ *   "Chrome for Testing" e le /etc/opt/chrome_for_testing/policies/managed.
+ *   Descoberto com \`strings\` no executavel; chutar o caminho padrao teria
+ *   deixado a policy num diretorio que este Chrome ignora.
+ *
+ * - Toda chamada a certutil/pk12util fecha o stdin. Sem isso eles pedem senha
+ *   num terminal que nao existe e entram em laco infinito de "Invalid password.
+ *   Try again." — o processo nunca retorna.
+ *
+ * - A base NSS e a que o proprio Chrome ja criou (~/.pki/nssdb). Criar outra e
+ *   apontar por variavel nao funciona: o Chrome no Linux le esse caminho fixo.
+ */
+
+const HOME = process.env.HOME || '/root';
+const NSSDB = 'sql:' + HOME + '/.pki/nssdb';
+const ARQUIVO_SENHA_DB = path.join(HOME, '.pki', '.nssdb-pw');
+const POLICY_DIR =
+  process.env.CHROME_POLICY_DIR || '/etc/opt/chrome_for_testing/policies/managed';
+const POLICY_FILE = path.join(POLICY_DIR, 'praefectus-mtls.json');
+
+/**
+ * Onde o certificado do cliente pode ser apresentado.
+ *
+ * Escopo estreito DE PROPOSITO. Com um padrao aberto ("*"), o Chrome ofereceria
+ * o certificado da empresa a qualquer site que pedisse — inclusive um que
+ * pedisse so para coletar. Cada dominio aqui e um portal que exige mTLS.
+ */
+const URLS_MTLS = [
+  'https://[*.]gov.br',
+  'https://[*.]banparanet.com.br',
+  'https://[*.]bbmnetlicitacoes.com.br',
+];
+
+function caminhoDoPfx() {
+  const configurado = process.env.CERT_PATH || './certs/certificado.pfx';
+  return path.isAbsolute(configurado)
+    ? configurado
+    : path.resolve(__dirname, '..', configurado);
+}
+
+/** A base tem senha vazia (foi o Chrome que a criou). O arquivo vazio a informa. */
+function arquivoDeSenhaDaBase() {
+  fs.mkdirSync(path.dirname(ARQUIVO_SENHA_DB), { recursive: true });
+  if (!fs.existsSync(ARQUIVO_SENHA_DB)) fs.writeFileSync(ARQUIVO_SENHA_DB, '', { mode: 0o600 });
+  return ARQUIVO_SENHA_DB;
+}
+
+/** stdin fechado e timeout: ver a nota sobre o laco infinito no topo. */
+function rodar(bin, args) {
+  return execFileSync(bin, args, {
+    encoding: 'utf8',
+    timeout: 30000,
+    input: '',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/** Os apelidos que tem CHAVE PRIVADA na base. */
+function apelidosComChave() {
+  try {
+    const saida = rodar('certutil', ['-K', '-d', NSSDB, '-f', arquivoDeSenhaDaBase()]);
+    return saida
+      .split('\\n')
+      .map(function (l) { return l.match(/^<\\s*\\d+>\\s+\\S+\\s+\\S+\\s+(.+)$/); })
+      .filter(Boolean)
+      .map(function (m) { return m[1].trim(); });
+  } catch (e) {
+    return [];
+  }
+}
+
+/** Os apelidos que tem CERTIFICADO na base. */
+function apelidosComCertificado() {
+  try {
+    const saida = rodar('certutil', ['-L', '-d', NSSDB]);
+    return saida
+      .split('\\n')
+      .map(function (l) { return l.match(/^(.*\\S)\\s{2,}\\S+\\s*$/); })
+      .filter(Boolean)
+      .map(function (m) { return m[1].trim(); })
+      .filter(function (n) {
+        // Descarta o cabecalho da tabela, que casa com o mesmo formato.
+        return n !== 'Certificate Nickname' && n.indexOf('SSL,S/MIME') === -1;
+      });
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Os apresentaveis: precisam ter certificado E chave.
+ *
+ * A intersecao nao e preciosismo. \`certutil -D\` apaga o certificado e DEIXA a
+ * chave privada orfa — descoberto ao remover o certificado de teste e ver o
+ * estado continuar dizendo "instalado". Olhar so as chaves faz a base parecer
+ * povoada quando o Chrome nao tem o que apresentar.
+ */
+function certificadosComChave() {
+  const comCert = apelidosComCertificado();
+  return apelidosComChave().filter(function (n) { return comCert.indexOf(n) !== -1; });
+}
+
+function policyValendo() {
+  try {
+    const bruto = JSON.parse(fs.readFileSync(POLICY_FILE, 'utf8'));
+    const regras = bruto.AutoSelectCertificateForUrls || [];
+    return regras.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * O estado REAL, para o /health. Cada campo e uma verificacao, nao uma suposicao.
+ *
+ * \`carregado\` so e true quando o Chrome conseguiria apresentar o certificado —
+ * arquivo, chave na base E policy. Foi o contrario disso que manteve o Checklist
+ * verde por meses.
+ */
+function estado() {
+  const pfx = caminhoDoPfx();
+  const arquivo = fs.existsSync(pfx);
+  const nicks = certificadosComChave();
+  const policy = policyValendo();
+  // O que decide e a capacidade de APRESENTAR: certificado com chave na base do
+  // Chrome, mais a policy. O .pfx no disco e apenas a origem — quem instalou o
+  // certificado por outro caminho consegue usar, e exigir o arquivo diria que
+  // nao da, o que seria falso na direcao oposta.
+  const pronto = nicks.length > 0 && policy;
+
+  const faltando = [];
+  if (nicks.length === 0) faltando.push('nenhum certificado com chave privada na base NSS do Chrome');
+  if (!policy) faltando.push('policy de auto-selecao ausente em ' + POLICY_FILE);
+
+  return {
+    carregado: pronto,
+    path: process.env.CERT_PATH || './certs/certificado.pfx',
+    arquivo_no_disco: arquivo,
+    instalado_no_navegador: nicks.length > 0,
+    titulares: nicks,
+    policy_ativa: policy,
+    urls_habilitadas: policy ? URLS_MTLS : [],
+    motivo: pronto ? null : faltando.join('; '),
+    observacao: pronto && !arquivo
+      ? 'o .pfx nao esta em ' + pfx + ' — o certificado veio para o navegador por outro caminho'
+      : null,
+  };
+}
+
+function escreverPolicy() {
+  fs.mkdirSync(POLICY_DIR, { recursive: true });
+  const regras = URLS_MTLS.map(function (u) {
+    return JSON.stringify({ pattern: u, filter: {} });
+  });
+  fs.writeFileSync(
+    POLICY_FILE,
+    JSON.stringify({ AutoSelectCertificateForUrls: regras }, null, 2),
+  );
+}
+
+/**
+ * Grava o .pfx, importa na base NSS e garante a policy.
+ *
+ * A senha NUNCA e registrada em log nem devolvida — ela entra pelo argumento do
+ * pk12util e morre aqui. O retorno diz o que passou a ser verdade.
+ */
+function instalar(bufferPfx, senha) {
+  const pfx = caminhoDoPfx();
+  fs.mkdirSync(path.dirname(pfx), { recursive: true });
+  fs.writeFileSync(pfx, bufferPfx, { mode: 0o600 });
+
+  // Substituir e o caso comum (renovacao anual). Sem remover o anterior, a base
+  // acumula certificados vencidos e o Chrome pode apresentar o errado.
+  //
+  // \`-F\` e nao \`-D\`: o -D apaga so o certificado e deixa a chave privada orfa
+  // na base, acumulando material criptografico que ninguem mais usa.
+  apelidosComChave().forEach(function (nick) {
+    try {
+      rodar('certutil', ['-F', '-d', NSSDB, '-n', nick, '-f', arquivoDeSenhaDaBase()]);
+    } catch (e) {
+      console.warn('nao removeu certificado anterior "' + nick + '": ' + e.message);
+    }
+  });
+
+  try {
+    rodar('pk12util', ['-d', NSSDB, '-i', pfx, '-W', senha, '-k', arquivoDeSenhaDaBase()]);
+  } catch (e) {
+    // A mensagem do pk12util distingue senha errada de arquivo corrompido, e
+    // essa diferenca e o que a pessoa precisa para saber o que fazer.
+    const detalhe = ((e.stderr || '') + (e.stdout || '')).trim() || e.message;
+    throw new Error('Falha ao importar o certificado: ' + detalhe);
+  }
+
+  escreverPolicy();
+  return estado();
+}
+
+module.exports = { instalar, estado, escreverPolicy, POLICY_FILE, URLS_MTLS };
 `,
 
   'src/callback.js': `async function sendCallback(session, tipo, payload) {

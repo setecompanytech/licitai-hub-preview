@@ -17,7 +17,20 @@ class BasePortal {
     throw new Error(\`login() não implementado para portal \${this.nome}\`);
   }
 
-  async navegarParaDisputa(edital) {
+  /**
+   * Abre o processo no portal.
+   *
+   * @param {string} edital
+   * @param {{tipo?: 'item'|'lote', itens?: Array<object>}} [alvo] O QUE disputar
+   *        dentro do processo. Opcional, e opcional de propósito: JavaScript
+   *        ignora argumento a mais, então os 22 outros módulos de portal
+   *        continuam válidos sem nenhuma edição — e nenhum deles passa a
+   *        receber um parâmetro que não sabe usar.
+   *
+   *        Quem implementar o uso do alvo deve tratar \`alvo\` ausente como o
+   *        comportamento de sempre: abrir o processo e parar aí.
+   */
+  async navegarParaDisputa(edital, alvo) {
     throw new Error(\`navegarParaDisputa() não implementado para portal \${this.nome}\`);
   }
 
@@ -76,6 +89,65 @@ class BasePortal {
    * O login já foi feito pela rota antes da chamada.
    */
 
+  /**
+   * Digita no campo que a tela esta pedindo, e confirma.
+   *
+   * Existe porque em 09/09/2026 um codigo de verificacao do gov.br levava ~50s
+   * para ir do celular ate o campo — WhatsApp, leitura, troca de aba, teclado
+   * remoto — e o codigo vale ~60s. Tres tentativas queimaram e a conta do
+   * cliente foi bloqueada por excesso de erro. Digitado daqui, o mesmo numero
+   * chega em ~2 segundos.
+   *
+   * Fica no BasePortal, e nao no modulo do gov.br, porque o problema nao e do
+   * gov.br: qualquer portal com SMS ou token cai nele.
+   *
+   * @returns {Promise<string|null>} o que foi feito, ou null se nao achou campo
+   */
+  async responderNaTela(valor) {
+    const ondeDigitou = await this.page.evaluate((v) => {
+      const visivel = (el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+      };
+      const campos = [...document.querySelectorAll('input')].filter(
+        (el) => visivel(el) && !el.disabled && !el.readOnly
+          && ['text', 'tel', 'number', 'password', ''].indexOf((el.type || '').toLowerCase()) !== -1
+      );
+      if (!campos.length) return null;
+
+      // O campo certo primeiro; o primeiro visivel so como ultimo recurso.
+      const pista = (el) => (el.name || '') + ' ' + (el.id || '') + ' '
+        + (el.placeholder || '') + ' ' + (el.getAttribute('aria-label') || '');
+      const alvo = campos.find((el) => /c[oó]digo|token|otp|mfa|verifica/i.test(pista(el))) || campos[0];
+
+      alvo.focus();
+      // Campo com resto da tentativa anterior faz o codigo virar 12 digitos.
+      alvo.value = '';
+      // Angular e React so enxergam valor que chega por evento; atribuir direto
+      // preenche a tela e deixa o estado interno vazio.
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(alvo, v);
+      alvo.dispatchEvent(new Event('input', { bubbles: true }));
+      alvo.dispatchEvent(new Event('change', { bubbles: true }));
+      return (alvo.id || alvo.name || alvo.placeholder || 'campo sem nome');
+    }, String(valor));
+
+    if (!ondeDigitou) return null;
+
+    // Confirmar: botao com rotulo de confirmacao, e Enter como reserva.
+    const clicou = await this.page.evaluate(() => {
+      const botoes = [...document.querySelectorAll('button, input[type=submit]')];
+      const b = botoes.find((el) => /continuar|confirmar|enviar|validar|entrar|avan[cç]ar/i
+        .test((el.textContent || el.value || '')));
+      if (b) { b.click(); return (b.textContent || b.value || '').trim().slice(0, 30); }
+      return null;
+    });
+
+    if (!clicou) await this.page.keyboard.press('Enter');
+    return 'campo "' + ondeDigitou + '"' + (clicou ? ' + botao "' + clicou + '"' : ' + Enter');
+  }
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
     await this.page.screenshot({ path, fullPage: false });
@@ -108,6 +180,7 @@ module.exports = { BasePortal };
 `,
 
   'src/portals/comprasgov.js': `const { BasePortal } = require('./base-portal');
+const interacao = require('../interacao-humana');
 
 /**
  * Módulo de automação para o portal Compras.gov.br (CNET Mobile / ComprasNet-Web)
@@ -126,7 +199,7 @@ module.exports = { BasePortal };
  *   - QR Code:          .modal-qrcode (login sem senha)
  *
  * URL real da área pública: /comprasnet-web/public/compras
- * URL do fornecedor (pós-login): /comprasnet-web/private/fornecedor (a confirmar via VNC)
+ * URL do fornecedor (pós-login): /comprasnet-web/seguro/fornecedor (a confirmar via VNC)
  *
  * ATENÇÃO: A sala de disputa pós-login usa Angular e os seletores internos
  * só podem ser verificados com credenciais reais via VNC no VPS.
@@ -137,9 +210,23 @@ class ComprasGovPortal extends BasePortal {
     super(page, credenciais);
     this.nome = 'comprasgov';
     this.baseUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web';
-    this.loginUrl = 'https://sso.acesso.gov.br';
+    // A porta de entrada NAO e o SSO direto. VERIFICADO em 09/09/2026: o botao
+    // "Efetuar Login" do proprio portal leva para esta pagina ASP, e e ela que
+    // monta a chamada ao SSO com os parametros certos.
+    this.portaLogin = 'https://www.comprasnet.gov.br/seguro/loginPortalUASG.asp';
+    // Endpoint /authorize (nao /login) e client_id "comprasnet.gov.br" (nao
+    // "compras.gov.br"). Com a forma antiga o gov.br acusa "cookies
+    // desabilitados" — sintoma de sessao invalida, nao de cookie — e o
+    // formulario nunca submete.
+    this.loginUrl = 'https://sso.acesso.gov.br/authorize'
+      + '?response_type=code&client_id=comprasnet.gov.br'
+      + '&scope=openid+profile+email+phone+govbr_confiabilidades&state=G'
+      + '&redirect_uri=https://www.comprasnet.gov.br/seguro/landing_sso.asp';
     this.certLoginUrl = 'https://certificado.sso.acesso.gov.br';
     this.publicUrl = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras';
+    // Quantos segundos esperar por um clique humano no VNC quando o captcha
+    // barrar o caminho. Zero desliga a espera e faz falhar na hora.
+    this.segundosEsperaHumano = Number(process.env.SEGUNDOS_ESPERA_HUMANO || 180);
     this.maxRetries = 3;
     this.retryDelay = 2000;
   }
@@ -170,6 +257,77 @@ class ComprasGovPortal extends BasePortal {
   }
 
   /**
+   * O agente tem certificado apresentavel neste momento?
+   *
+   * Carregado sob demanda e com rede de protecao: instalacoes antigas do agente
+   * nao tem o modulo de certificado, e a falta dele nao pode derrubar o login —
+   * so torna a mensagem menos precisa.
+   */
+  temCertificadoInstalado() {
+    try {
+      return require('../certificado').estado().carregado === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * O que aconteceu depois do clique em "Seu certificado digital".
+   *
+   * Tres desfechos sao possiveis e so um e sucesso:
+   *
+   *   autenticado     — saiu do dominio acesso.gov.br: o gov.br aceitou
+   *   sem-certificado — parou em /info/x509, "Certificado digital nao encontrado"
+   *   recusado        — voltou para a propria tela de login do SSO
+   *
+   * Ler o desfecho em vez de esperar "uma navegacao qualquer" e o que permite
+   * dizer a causa. Verificado em 09/09/2026: com a base NSS vazia, o clique faz
+   * sso.acesso.gov.br -> servicos.acesso.gov.br -> sso.acesso.gov.br/login.
+   *
+   * A carencia existe por causa desse vai-e-volta: concluir "recusado" na
+   * primeira leitura pegaria o meio do caminho e chamaria de falha um login que
+   * ainda estava acontecendo.
+   */
+  async esperarDesfechoDoCertificado(timeout = 30000) {
+    const inicio = Date.now();
+    const CARENCIA_MS = 8000;
+    let leiturasNoLogin = 0;
+
+    while (Date.now() - inicio < timeout) {
+      const url = this.page.url();
+
+      if (url.indexOf('/info/x509') !== -1) return 'sem-certificado';
+
+      const semCertificado = await this.page
+        .evaluate(() =>
+          /certificado digital n[ãa]o encontrado/i.test(
+            document.body ? document.body.innerText : ''
+          )
+        )
+        .catch(() => false);
+      if (semCertificado) return 'sem-certificado';
+
+      let host = '';
+      try { host = new URL(url).hostname; } catch (e) { host = ''; }
+
+      // Sair do dominio do login e o unico sinal positivo: o gov.br devolve o
+      // navegador ao sistema que pediu a autenticacao.
+      if (host && !/acesso\\.gov\\.br$/.test(host)) return 'autenticado';
+
+      if (url.indexOf('/login') !== -1 && Date.now() - inicio > CARENCIA_MS) {
+        // Duas leituras seguidas na tela de login: nao e mais o vai-e-volta.
+        if (++leiturasNoLogin >= 2) return 'recusado';
+      } else {
+        leiturasNoLogin = 0;
+      }
+
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    return 'recusado';
+  }
+
+  /**
    * Retry wrapper para operações instáveis
    */
   async comRetry(fn, descricao, tentativas = this.maxRetries) {
@@ -177,6 +335,10 @@ class ComprasGovPortal extends BasePortal {
       try {
         return await fn();
       } catch (err) {
+        // Falha deterministica nao se resolve repetindo. Certificado ausente
+        // continua ausente na terceira tentativa — e o unico efeito de insistir
+        // e transformar 10 segundos de diagnostico em tres minutos de espera.
+        if (err.semRetry) throw err;
         console.warn(\`⚠️ [\${descricao}] Tentativa \${i}/\${tentativas} falhou: \${err.message}\`);
         if (i === tentativas) throw err;
         await new Promise((r) => setTimeout(r, this.retryDelay * i));
@@ -213,80 +375,203 @@ class ComprasGovPortal extends BasePortal {
     await this.aplicarAntiDeteccao();
 
     await this.comRetry(async () => {
-      // 1. Acessar SSO gov.br (a URL exata depende do redirect do portal)
-      //    O portal Compras.gov redireciona para sso.acesso.gov.br com client_id
-      await this.page.goto(this.publicUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-      await this.delayHumano(500, 1200);
+      // 1. Ir direto ao SSO com os parametros que o proprio portal usa.
+      //
+      // A versao anterior abria a pagina publica e cacava um link "Acessar" que
+      // nao existe — o portal e um SPA Angular cuja home publica so tem busca.
+      // Depois caia num fallback para sso.acesso.gov.br sem parametro nenhum, e
+      // ali o gov.br responde "cookies desabilitados" e nao submete nada.
+      await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+      await this.delayHumano(600, 1400);
 
-      // Clicar em "Acessar" ou "Login" se existir na página pública
-      const loginClicked = await this.page.evaluate(() => {
-        const links = [...document.querySelectorAll('a, button')];
-        const loginLink = links.find(el => {
-          const text = (el.textContent || '').toLowerCase();
-          return text.includes('acessar') || text.includes('login') ||
-                 text.includes('entrar') || text.includes('área do fornecedor');
+      if (!this.page.url().includes('acesso.gov.br')) {
+        // Caminho longo, para o caso de o /authorize mudar: entrar pela pagina
+        // do portal e deixar que ELA monte a chamada.
+        console.log('↩️  SSO nao respondeu direto — entrando pela pagina do portal');
+        await this.page.goto(this.portaLogin, { waitUntil: 'networkidle2', timeout: 45000 });
+        await this.delayHumano(600, 1200);
+        await this.page.evaluate(() => {
+          const el = [...document.querySelectorAll('a, button, input')]
+            .find((e) => /Entrar com Gov\\.br/i.test(e.textContent || e.value || ''));
+          if (el) el.click();
         });
-        if (loginLink) { loginLink.click(); return true; }
-        return false;
-      });
-
-      if (loginClicked) {
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
-      }
-
-      // Se não redirecionou para SSO, ir diretamente
-      const currentUrl = this.page.url();
-      if (!currentUrl.includes('sso.acesso.gov.br') && !currentUrl.includes('acesso.gov.br')) {
-        await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
       }
 
       await this.delayHumano(500, 1200);
       await this.screenshot('sso-gov-br');
 
-      // 2. Preencher CPF — Seletor VERIFICADO: #accountId (input[name="accountId"])
+      // O aviso de cookie e o sinal de que a URL do SSO esta malformada. Dizer
+      // isso aqui evita procurar defeito no navegador.
+      const avisoCookie = await this.page.evaluate(() =>
+        /cookies do seu browser/i.test(document.body.innerText || ''));
+      if (avisoCookie) {
+        const e = new Error(
+          'O gov.br respondeu "cookies desabilitados", o que indica sessao SSO invalida — '
+          + 'confira client_id e authorization_id da URL de login.'
+        );
+        e.semRetry = true;
+        throw e;
+      }
+
+      // 2. CPF, quando houver. E um caminho alternativo ao certificado, nao um
+      //    pre-requisito dele.
       const cpfField = await this.aguardarElemento('#accountId', 8000);
       if (cpfField && this.credenciais.cpf) {
         await this.preencherCampo('#accountId', this.credenciais.cpf);
         await this.delayHumano(300, 600);
-
-        // Verificar hCaptcha antes de submeter
         await this.verificarHCaptcha();
-
-        // Botão Continuar — Seletor VERIFICADO: #enter-account-id (button.button-continuar)
         await this.page.click('#enter-account-id');
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {
-          // Pode não navegar se for AJAX
-        });
+        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
         await this.delayHumano(500, 1000);
       }
 
-      // 3. Selecionar certificado digital
-      // Seletor VERIFICADO: #login-certificate (button[value="login-certificate"])
-      // Está dentro de div#cert-digital .item-login-signup-ways
-      // formaction aponta para https://certificado.sso.acesso.gov.br/login?...
-      const certButton = await this.aguardarElemento('#login-certificate', 5000);
-      if (certButton) {
-        console.log('📜 Clicando em "Seu certificado digital"...');
-        await this.page.click('#login-certificate');
-      } else {
-        // Fallback: buscar por texto nos botões
-        const clicked = await this.page.evaluate(() => {
-          const items = [...document.querySelectorAll('.item-login-signup-ways button, .item-login-signup-ways a, button, a')];
-          const certLink = items.find(el => {
-            const text = (el.textContent || '').toLowerCase();
-            return (text.includes('certificado digital') || text.includes('seu certificado')) &&
-                   !text.includes('nuvem');
-          });
-          if (certLink) { certLink.click(); return true; }
-          return false;
-        });
-        if (!clicked) throw new Error('Botão de certificado digital não encontrado no SSO gov.br');
+      // 3. Selecionar certificado digital.
+      // Seletor VERIFICADO: #login-certificate — e um <button name="operation"
+      // value="login-certificate"> com formaction para certificado.sso.acesso.gov.br.
+      const certButton = await this.aguardarElemento('#login-certificate', 8000);
+      if (!certButton) {
+        const e = new Error('Botao de certificado digital nao encontrado na tela do gov.br');
+        e.semRetry = true;
+        throw e;
       }
 
-      console.log('📜 Aguardando autenticação mTLS com certificado...');
-      // O navegador vai redirecionar para certificado.sso.acesso.gov.br
-      // que inicia o handshake TLS client-certificate
-      await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 });
+      // Antes de tentar, saber se ha o que apresentar. Sem isto, "nao entrou"
+      // vira uma frase generica que manda conferir a validade de um
+      // certificado que pode nem existir.
+      if (!this.temCertificadoInstalado()) {
+        const e = new Error(
+          'Nao ha certificado digital instalado no navegador do agente. ' +
+          'Envie o certificado A1 (.pfx) pela tela do Robo de Lances — o A3, de token ou cartao, nao serve.'
+        );
+        e.semRetry = true;
+        throw e;
+      }
+
+      console.log('📜 Clicando em "Seu certificado digital"...');
+      await this.page.evaluate(() =>
+        document.querySelector('#login-certificate').scrollIntoView({ block: 'center' }));
+      await this.delayHumano(400, 900);
+      await this.page.click('#login-certificate').catch(() => {});
+
+      let desfecho = await this.esperarDesfechoDoCertificado(20000);
+
+      // ─── O clique humano, quando o captcha barra o automatico ───────────
+      if (desfecho !== 'autenticado' && this.segundosEsperaHumano > 0) {
+        await this.screenshot('aguardando-clique-humano');
+        console.log('');
+        console.log('🧑 ═══════════════════════════════════════════════════════════');
+        console.log('🧑  PRECISO DE UM CLIQUE HUMANO');
+        console.log('🧑');
+        console.log('🧑  A pagina do gov.br roda hCaptcha, e o botao do certificado');
+        console.log('🧑  so submete com um gesto de pessoa. O certificado JA esta');
+        console.log('🧑  instalado e sera apresentado sozinho depois do clique.');
+        console.log('🧑');
+        console.log('🧑  Abra a aba Agente Cloud > tela remota (VNC) e clique em');
+        console.log('🧑  "Seu certificado digital".');
+        console.log('🧑');
+        console.log('🧑  Esperando ate ' + this.segundosEsperaHumano + 's...');
+        console.log('🧑 ═══════════════════════════════════════════════════════════');
+        console.log('');
+
+        // O pedido nasce da TELA, nao de configuracao. Se o cliente desligar a
+        // verificacao em duas etapas, este ramo simplesmente nao acontece e
+        // nenhuma interface mostra campo nenhum.
+        interacao.pedir(this.sessaoId, {
+          expira_em: new Date(Date.now() + this.segundosEsperaHumano * 1000).toISOString(),
+          tipo: 'captcha',
+          mensagem: 'Abra a tela remota (VNC) e clique em "Seu certificado digital". '
+            + 'A pagina do gov.br exige esse gesto por causa do hCaptcha — o certificado ja esta '
+            + 'instalado e sera apresentado sozinho depois do clique.',
+          tela: 'gov.br — escolha de identificacao',
+        });
+
+        let limite = Date.now() + this.segundosEsperaHumano * 1000;
+        let avisou = 0;
+        let ultimaUrl = this.page.url();
+
+        while (Date.now() < limite) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const agora = this.page.url();
+
+          if (!agora.includes('acesso.gov.br')) {
+            console.log('🧑 ✅ Autenticado — o login saiu do gov.br');
+            desfecho = 'autenticado';
+            interacao.resolver(this.sessaoId, 'atendido');
+            break;
+          }
+
+          // AVANCO DENTRO DO PROPRIO GOV.BR.
+          //
+          // Medido em 09/09/2026: depois do clique humano o gov.br pede
+          // confirmacao de identidade, e essa tela continua em acesso.gov.br. A
+          // versao anterior so perguntava "ja saiu do dominio?", entao seguia
+          // dizendo "esperando o clique" com a tela ja adiantada — e matava o
+          // navegador no meio do fluxo quando o relogio acabava.
+          if (agora !== ultimaUrl) {
+            ultimaUrl = agora;
+            await this.screenshot('govbr-avancou');
+            const tela = await this.page
+              .evaluate(() => (document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 220))
+              .catch(() => '');
+            console.log('🧑 ➡️  A tela avancou: ' + agora.slice(0, 130));
+            if (tela) console.log('🧑     ' + tela);
+            // Cada avanco renova o relogio: quem esta digitando um codigo de
+            // verificacao precisa de mais tempo, nao de menos.
+            // O que ESTA tela pede agora — pode ter mudado de captcha para codigo.
+            const pedido = interacao.classificarTela(tela);
+            if (pedido) {
+              const atual = interacao.pendente(this.sessaoId);
+              if (!atual || atual.tipo !== pedido.tipo) {
+                interacao.pedir(this.sessaoId, {
+                  ...pedido,
+                  tela: String(tela).slice(0, 220),
+                  expira_em: new Date(Date.now() + this.segundosEsperaHumano * 1000).toISOString(),
+                });
+                console.log('🧑 📋 Agora preciso de: ' + pedido.tipo);
+              }
+            }
+
+            limite = Date.now() + this.segundosEsperaHumano * 1000;
+            interacao.renovar(this.sessaoId, new Date(limite).toISOString());
+            avisou = 0;
+          }
+
+          // A resposta de uma pessoa, quando chega pela rota /sessao/responder.
+          // Digitada daqui, e nao pelo teclado remoto, ela chega ao campo antes
+          // de o codigo expirar.
+          const resposta = interacao.colher(this.sessaoId);
+          if (resposta) {
+            const onde = await this.responderNaTela(resposta).catch(() => null);
+            console.log(onde
+              ? '🧑 ⌨️  Resposta digitada e enviada — ' + onde
+              : '🧑 ⚠️  Recebi a resposta mas nao achei onde digitar nesta tela');
+            limite = Date.now() + this.segundosEsperaHumano * 1000;
+            interacao.renovar(this.sessaoId, new Date(limite).toISOString());
+          }
+
+          const faltam = Math.round((limite - Date.now()) / 1000);
+          if (faltam > 0 && faltam % 30 === 0 && faltam !== avisou) {
+            avisou = faltam;
+            console.log('🧑 ainda esperando no VNC — ' + faltam + 's restantes');
+          }
+        }
+      }
+
+      if (desfecho !== 'autenticado') {
+        // A causa nao e o certificado, e dizer que e manda a pessoa procurar
+        // defeito onde nao ha. Em 09/09/2026 ficou provado que o gov.br ACEITA
+        // este certificado: o handshake mTLS fecha com "Verify return code: 0".
+        const erro = new Error(
+          'O login do gov.br nao foi concluido. O certificado esta instalado e valido — ' +
+          'o que falta e o clique em "Seu certificado digital", que a pagina so aceita ' +
+          'de uma pessoa por causa do hCaptcha. Abra a tela remota (VNC) na aba Agente ' +
+          'Cloud ANTES de enviar ao robo e clique nesse botao quando ele aparecer.'
+        );
+        erro.semRetry = true;
+        throw erro;
+      }
+
       await this.delayHumano(1000, 2000);
 
       // Verificar hCaptcha pós-certificado
@@ -315,9 +600,9 @@ class ComprasGovPortal extends BasePortal {
     await this.comRetry(async () => {
       // Tentar URLs conhecidas da área do fornecedor
       const possibleUrls = [
-        \`\${this.baseUrl}/private/fornecedor\`,
+        \`\${this.baseUrl}/seguro/fornecedor\`,
         \`\${this.baseUrl}/pregao/fornecedor\`,
-        \`\${this.baseUrl}/private/home\`,
+        \`\${this.baseUrl}/seguro/home\`,
         this.baseUrl,
       ];
 
@@ -646,38 +931,171 @@ class ComprasGovPortal extends BasePortal {
 module.exports = { ComprasGovPortal };
 `,
 
+  'src/portals/teclado-embaralhado.js': `/**
+ * Login das plataformas com teclado embaralhado — BLL e BNC.
+ *
+ * POR QUE UM ARQUIVO SO PARA AS DUAS: em 09/09/2026 descobriu-se, seguindo o
+ * link "Inicio" do site institucional da BNC, que bllcompras.com e
+ * bnccompras.com rodam o MESMO sistema. Mesmos campos (#Email, #Contador),
+ * mesmo teclado, mesmo botao, mesma mensagem de erro. Duas copias divergiriam.
+ *
+ * COMO O TECLADO FUNCIONA (verificado ao vivo, nao deduzido):
+ *
+ * A senha nao e digitada. Ha cinco teclas, cada uma com um PAR de digitos, e o
+ * par vai no atributo \`name\`:
+ *
+ *     name="0 ou 4"   name="6 ou 9"   name="2 ou 1"   name="3 ou 5"   name="8 ou 7"
+ *
+ * Cada digito aparece em exatamente um par, entao para cada digito da senha
+ * clica-se na tecla que o contem. O servidor recebe a sequencia de pares e
+ * confere que cada digito da senha pertence ao par clicado na posicao.
+ *
+ * OS PARES MUDAM A CADA CARREGAMENTO — por isso a leitura e em tempo de
+ * execucao. Gravar o mapa funcionaria uma vez e falharia depois, em silencio.
+ *
+ * CONSEQUENCIA: a senha destes portais e obrigatoriamente NUMERICA. Nao existe
+ * tecla para letra. Uma senha com letras nao e um caso a tratar, e um dado
+ * errado — e dizer isso e melhor que clicar em nada e culpar o portal.
+ */
+
+function esperar(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Os pares oferecidos AGORA. Reler a cada login e o ponto. */
+async function lerPares(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('input[type=button], button')]
+      .map((b) => b.getAttribute('name') || '')
+      .filter((n) => /^\\d\\s*ou\\s*\\d$/i.test(n))
+  );
+}
+
+/**
+ * Entra no portal e confirma que entrou.
+ *
+ * \`portal\` e a instancia de BasePortal (usa page, credenciais, preencherCampo e
+ * screenshot). Lanca com a razao real em vez de marcar \`loggedIn\` no escuro —
+ * era assim antes, e uma tela de erro passava por sucesso.
+ */
+async function loginComTecladoEmbaralhado(portal, loginUrl) {
+  const page = portal.page;
+  const login = String(portal.credenciais.login || '').trim();
+  const senha = String(portal.credenciais.senha || '').trim();
+
+  if (!login || !senha) {
+    throw new Error('Login e senha do portal nao foram informados ao agente.');
+  }
+  if (!/^\\d+$/.test(senha)) {
+    throw new Error(
+      'A senha deste portal e digitada num teclado que so tem digitos, entao ela ' +
+      'precisa ser somente numeros. A senha cadastrada tem outros caracteres.'
+    );
+  }
+
+  await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+  await esperar(1200);
+
+  await portal.preencherCampo('#Email', login);
+  await esperar(300);
+
+  const pares = await lerPares(page);
+  if (pares.length === 0) {
+    await portal.screenshot('teclado-nao-encontrado');
+    throw new Error(
+      'O teclado virtual nao foi encontrado na tela de login — o portal mudou de layout.'
+    );
+  }
+
+  for (const digito of senha) {
+    const par = pares.find((p) => p.split(/\\s*ou\\s*/i).indexOf(digito) !== -1);
+    if (!par) {
+      throw new Error(
+        'O digito ' + digito + ' nao aparece em nenhuma tecla (' + pares.join(', ') + ').'
+      );
+    }
+    await page.click('input[name="' + par + '"], button[name="' + par + '"]');
+    // Ritmo humano: cliques instantaneos e um sinal de automacao barato de ver.
+    await esperar(120 + Math.floor(Math.random() * 200));
+  }
+
+  // O campo mostra um caractere por clique. Conferir aqui separa "o teclado nao
+  // respondeu" de "a senha esta errada" — duas causas com consertos opostos.
+  const digitados = await page
+    .$eval('#Contador', (el) => (el.value || '').length)
+    .catch(() => -1);
+  if (digitados !== senha.length) {
+    await portal.screenshot('teclado-nao-registrou');
+    throw new Error(
+      'O teclado registrou ' + digitados + ' digito(s) para uma senha de ' +
+      senha.length + '. Os cliques nao chegaram ao portal.'
+    );
+  }
+
+  // O botao nao tem id nem name; o rotulo exato e a identificacao estavel.
+  const enviou = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button, input[type=submit], input[type=button]')]
+      .find((e) => /^\\s*entrar\\s*$/i.test(e.value || e.textContent || ''));
+    if (b) { b.click(); return true; }
+    return false;
+  });
+  if (!enviou) throw new Error('Botao "Entrar" nao encontrado na tela de login.');
+
+  await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 25000 }).catch(() => {});
+  await esperar(2500);
+  await portal.screenshot('pos-login');
+
+  const estado = await page.evaluate(() => ({
+    url: location.href,
+    texto: document.body ? document.body.innerText : '',
+  }));
+
+  // Verificado: com credencial invalida o portal FICA em /Home/Login e mostra
+  // "Usuário ou senha incorretos." num aviso. Sem esta checagem, o modulo
+  // seguiria para a disputa a partir da tela de login.
+  if (/usu[áa]rio ou senha incorretos/i.test(estado.texto)) {
+    throw new Error('O portal recusou o acesso: "Usuario ou senha incorretos."');
+  }
+  if (/\\/Home\\/Login/i.test(estado.url)) {
+    throw new Error(
+      'O portal manteve a tela de login apos o envio — acesso nao concluido.'
+    );
+  }
+
+  portal.loggedIn = true;
+}
+
+module.exports = { loginComTecladoEmbaralhado, lerPares };
+`,
+
   'src/portals/bll.js': `const { BasePortal } = require('./base-portal');
+
+const { loginComTecladoEmbaralhado } = require('./teclado-embaralhado');
 
 /**
  * Módulo de automação para o portal BLL (Bolsa de Licitações e Leilões)
  *
- * URL: https://bll.org.br
- * Autenticação: Login + senha (opcionalmente certificado)
+ * URL operacional: https://bllcompras.com  — VERIFICADA em 09/09/2026
+ * Autenticação: e-mail + senha NUMERICA em teclado embaralhado
+ *
+ * O DOMINIO ESTAVA ERRADO. Este modulo apontava para bll.org.br/wp-login.php —
+ * o login do WordPress do site INSTITUCIONAL. Nunca houve chance de funcionar:
+ * a plataforma de pregao e bllcompras.com, e o site institucional so publica
+ * conteudo. \`bllcompras.com\` redireciona sozinho para /Home/Login.
  */
 class BLLPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'bll';
-    this.baseUrl = 'https://bll.org.br';
+    this.baseUrl = 'https://bllcompras.com';
+    this.loginUrl = 'https://bllcompras.com/Home/Login';
   }
 
   async login() {
-    console.log('🔐 Iniciando login no BLL...');
-    // BLL usa WordPress wp-login.php
-    // Seletores VERIFICADOS em 2026-03-31:
-    //   - Login: #user_login (input[name="log"])
-    //   - Senha: #user_pass (input[name="pwd"])
-    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
-    //   - Form: #loginform
-    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
-
-    await this.preencherCampo('#user_login', this.credenciais.login);
-    await this.preencherCampo('#user_pass', this.credenciais.senha);
-    await this.page.click('#wp-submit');
-
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    await this.screenshot('pos-login');
-    this.loggedIn = true;
+    console.log('🔐 Iniciando login no BLL (bllcompras.com)...');
+    // O teclado embaralhado e identico ao da BNC — mesma plataforma. A logica
+    // mora em teclado-embaralhado.js para as duas nao divergirem.
+    await loginComTecladoEmbaralhado(this, this.loginUrl);
     console.log('✅ Login no BLL realizado');
   }
 
@@ -1400,47 +1818,258 @@ class PortalComprasPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'portal-compras';
-    this.baseUrl = 'https://www.portaldecompraspublicas.com.br';
+    // O login NAO fica no dominio institucional. Ele mora no ambiente de
+    // OPERACAO, que redireciona para um Keycloak. VERIFICADO em 2026-09-08
+    // com login real: abriu o Painel de Operacoes e o cabecalho passou a
+    // exibir "Voce esta logado como: <nome> - <CNPJ>".
+    this.baseUrl = 'https://operacao.portaldecompraspublicas.com.br/4';
+    this.loginUrl = 'https://operacao.portaldecompraspublicas.com.br/18/loginext/';
   }
 
   async login() {
     console.log('🔐 Iniciando login no Portal de Compras Públicas...');
-    // Portal de Compras Públicas é um SPA Angular — VERIFICADO em 2026-03-31
-    // A rota /18/Login retorna 404 (SPA route), precisa navegar via JS
-    // URL: https://www.portaldecompraspublicas.com.br
-    await this.page.goto(this.baseUrl, { waitUntil: 'networkidle2' });
-    
-    // Clicar no botão de login (Angular renderiza dinamicamente)
-    const loginClicked = await this.page.evaluate(() => {
-      const links = [...document.querySelectorAll('a, button, span[role="button"]')];
-      const loginLink = links.find(el => {
-        const text = (el.textContent || '').toLowerCase().trim();
-        return text === 'entrar' || text === 'login' || text.includes('acessar') ||
-               text.includes('fornecedor');
-      });
-      if (loginLink) { loginLink.click(); return true; }
-      return false;
+
+    // A versao anterior deste metodo (31/03) tratava o portal como SPA Angular
+    // e cacava o botao "Entrar" por texto. O portal trocou a autenticacao para
+    // Keycloak desde entao, e o caminho antigo caia em 404. Os seletores abaixo
+    // sao os REAIS, lidos do HTML da pagina de login em 08/09/2026.
+    await this.page.goto(this.loginUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+
+    await this.preencherCampo('#username', this.credenciais.login);
+    await this.preencherCampo('#password', this.credenciais.senha);
+
+    await Promise.all([
+      this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => null),
+      this.page.click('#kc-login'),
+    ]);
+
+    await this.screenshot('pos-login');
+
+    // Nunca cravar loggedIn sem conferir. O codigo antigo marcava sucesso logo
+    // apos esperar 5 segundos, entao credencial errada virava "login realizado"
+    // e o defeito so aparecia rodadas depois, longe da causa.
+    const falhou = await this.page.evaluate(() => {
+      const t = document.body.innerText;
+      return /senha inv|usu[aá]rio inv|credenciais inv|invalid|n[aã]o autorizado/i.test(t)
+          || !!document.querySelector('#username');
     });
-    
-    await new Promise((r) => setTimeout(r, 3000));
-    
-    // Preencher formulário Angular
-    await this.preencherCampo('input[name="login"], input[formcontrolname="login"], input[type="text"]:not([readonly]), #login', this.credenciais.login);
-    await this.preencherCampo('input[name="senha"], input[formcontrolname="senha"], input[type="password"], #senha', this.credenciais.senha);
-    await this.page.evaluate(() => {
-      const btn = [...document.querySelectorAll('button[type="submit"], button')]
-        .find(b => (b.textContent || '').toLowerCase().includes('entrar') ||
-                    (b.textContent || '').toLowerCase().includes('login'));
-      if (btn) btn.click();
-    });
-    await new Promise((r) => setTimeout(r, 5000));
+
+    if (falhou) {
+      this.loggedIn = false;
+      throw new Error('Login recusado pelo Portal de Compras Públicas — confira usuário e senha');
+    }
+
     this.loggedIn = true;
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
 
-  async navegarParaDisputa(edital) {
-    await this.page.goto(\`\${this.baseUrl}/disputa?edital=\${encodeURIComponent(edital)}\`, { waitUntil: 'networkidle2' });
+  async navegarParaDisputa(edital, alvo) {
+    // O QUE disputar dentro do processo, quando a tela informou.
+    //
+    // Registrado ANTES de navegar: se a sessao morrer no meio, o log ja diz o
+    // que ela deveria estar acompanhando. Ate 09/09/2026 nada disso
+    // atravessava — o agente abria o processo e, num pregao com 40 itens, nao
+    // sabia em qual estava, sem que nada denunciasse a cegueira.
+    //
+    // A SELECAO do item na sala de disputa ainda nao existe: depende de ler a
+    // tela com pregao acontecendo, que e o proximo teste. Ate la isto e
+    // registro honesto do que foi recebido, e nao acao.
+    const itensAlvo = (alvo && Array.isArray(alvo.itens)) ? alvo.itens : [];
+    if (itensAlvo.length) {
+      const semPiso = itensAlvo.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined);
+      console.log(
+        \`🎯 Disputa por \${alvo.tipo || 'item'} — \${itensAlvo.length} \` +
+        \`item(ns) recebido(s): \${itensAlvo.slice(0, 8).map((i) => \`#\${i.numero}\${i.lote && i.lote !== 'Único' ? '/' + i.lote : ''}\`).join(', ')}\` +
+        (itensAlvo.length > 8 ? ' …' : '')
+      );
+      // Piso ausente NAO e piso zero. Dizer isso no log evita a conclusao de
+      // que o robo "aceitou" descer ate zero num item que ninguem avaliou.
+      if (semPiso.length) {
+        console.log(
+          \`⚠️  \${semPiso.length} de \${itensAlvo.length} item(ns) vieram SEM piso definido — \` +
+          'para esses o robo nao deve dar lance'
+        );
+      }
+    } else {
+      console.log('ℹ️  Nenhum item informado para esta sessao — o robo vai apenas abrir o processo');
+    }
+
+    // O portal NAO enderecа processo pelo numero do edital. Cada um tem uma
+    // chave interna (\`ttCD_CHAVE\`), e a URL montada a mao —
+    // \`/disputa?edital=X\` — devolvia 404 em qualquer caso. Verificado em
+    // 08/09/2026 pelo VNC: o robo logava e ficava parado num 404.
+    //
+    // O caminho real: abrir "Seus Processos", achar a linha cujo NUMERO bate
+    // com o edital e seguir o link dela.
+    // O estado da conta so existe no DashBoard, e daqui a pouco saimos dele.
+    // Lido agora, serve para explicar a falha la embaixo em vez de mandar o
+    // operador conferir o numero do edital quando o problema e outro.
+    const conta = await this.estadoDaConta().catch(() => null);
+    if (conta && conta.impedida) {
+      console.log(\`⚠️  CONTA INATIVA no portal: \${conta.resumo}\`);
+    }
+
+    // VERIFICADO em 09/09/2026: este e o destino do link "Seus Processos" no
+    // menu real do portal. Nao deduzir de novo.
+    const lista = \`\${this.baseUrl}/SeusPregoes/\`;
+    console.log(\`📋 Procurando "\${edital}" em \${lista}\`);
+    await this.page.goto(lista, { waitUntil: 'networkidle2', timeout: 45000 });
     await new Promise((r) => setTimeout(r, 3000));
+
+    // A lista em si vale foto. Sem ela, "nao encontrado" e uma afirmacao sem
+    // prova: nao da para saber se a pagina veio vazia, veio errada, ou veio
+    // cheia e o numero e que estava errado.
+    await this.screenshot('seus-processos');
+
+    const href = await this.page.evaluate((alvo) => {
+      const limpa = (t) => (t || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const buscado = limpa(alvo);
+      for (const tr of document.querySelectorAll('table tr')) {
+        const link = tr.querySelector('a[href*="DadosPregao"]');
+        if (!link) continue;
+        if (limpa(tr.innerText).includes(buscado)) return link.getAttribute('href');
+      }
+      return null;
+    }, edital);
+
+    if (!href) {
+      // Erro explicito em vez de navegar para lugar nenhum: sem isto o robo
+      // seguiria para o loop de lances olhando uma pagina que nao e a disputa.
+      // DIZER O QUE EXISTE, e nao so o que falta.
+      //
+      // "Confira o numero do edital" manda a pessoa procurar num lugar que ela
+      // ja nao sabe onde fica. A lista esta aberta na tela do robo neste exato
+      // momento — entao a resposta vai junto da pergunta.
+      const processosVisiveis = await this.page.evaluate(() => {
+        const nums = [];
+        for (const tr of document.querySelectorAll('table tr')) {
+          if (!tr.querySelector('a[href*="DadosPregao"]')) continue;
+          const cel = tr.querySelector('td');
+          const t = (cel ? cel.innerText : '').replace(/\\s+/g, ' ').trim();
+          if (t) nums.push(t.slice(0, 24));
+        }
+        return nums.slice(0, 12);
+      }).catch(() => []);
+
+      const lista = processosVisiveis.length
+        ? \` Os processos que aparecem na conta agora sao: \${processosVisiveis.join(', ')}.\`
+        : ' E a lista veio VAZIA — ou a conta nao tem processos inscritos, ou a pagina nao carregou.';
+
+      // A situacao da conta vai junto como CONTEXTO, nunca como causa.
+      //
+      // A versao anterior afirmava que conta vencida impede a listagem, e
+      // parava por ali. Isso e falso, e foi verificado: em 08/09/2026 o robo
+      // achou e abriu o processo 002/2026 com a conta exatamente neste estado,
+      // e em 09/09 a tela de Seus Processos apareceu cheia. O plano vencido
+      // bloqueia DISPUTAR, nao LISTAR.
+      //
+      // Dizer o contrario mandaria renovar um plano para resolver um problema
+      // que a renovacao nao resolve — e o numero do edital continuaria errado.
+      // Duas causas diferentes, ditas separadamente, porque tem consertos
+      // diferentes: o numero do edital e com quem cadastrou a disputa; a
+      // assinatura e com quem paga a mensalidade do portal.
+      // Uma mensagem so, com a causa na frente e o aviso como nota.
+      //
+      // Dois toasts para o mesmo evento competiriam entre si, e o da assinatura
+      // apontaria uma causa que nao e a causa — mandaria pagar mensalidade para
+      // resolver um numero de edital errado.
+      const contexto = conta && conta.impedida && conta.resumo
+        ? \` — Obs.: \${conta.resumo}. Isso e outro assunto: nao impede entrar nem \` +
+          \`listar processos, mas vai impedir dar lance quando a disputa comecar.\`
+        : '';
+
+      const err = new Error(
+        \`Processo "\${edital}" nao encontrado em Seus Processos do Portal de Compras Publicas.\` +
+        lista + contexto
+      );
+      // Repetir nao faz o numero existir.
+      err.semRetry = true;
+      throw err;
+    }
+
+    const url = href.startsWith('http') ? href : \`https://operacao.portaldecompraspublicas.com.br\${href}\`;
+    console.log(\`📋 Processo encontrado: \${url}\`);
+    await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    await new Promise((r) => setTimeout(r, 3000));
+    await this.screenshot('processo');
+
+    // O plano inativo bloqueia a disputa mesmo com o processo aberto. Dizer
+    // isso aqui evita depurar seletor de lance quando o problema e comercial.
+    const contaNoProcesso = await this.estadoDaConta().catch(() => null);
+    if (contaNoProcesso && contaNoProcesso.impedida) {
+      console.log(\`⚠️  Conta impedida no portal (\${contaNoProcesso.resumo}) — participacao em disputa bloqueada pelo proprio portal\`);
+    }
+  }
+
+  /**
+   * O que o portal diz sobre a propria conta, lido no DashBoard.
+   *
+   * Havia uma verificacao parecida, mas ela rodava DEPOIS de abrir o processo,
+   * e lia o banner amarelo do portal ("nao tem um plano ativo") — que existe
+   * mesmo, fotografado em 08/09/2026 sobre os Dados do Processo 002/2026. O
+   * buraco: quando o processo NAO e encontrado, ela nunca chega a rodar, e a
+   * unica frase que sobra manda conferir o numero do edital.
+   *
+   * Esta le no DashBoard, antes de sair dele, e cobre as duas redacoes — a do
+   * banner e a da tabela "Situacao Cadastral", que em 09/09/2026 mostrava
+   * "Inativo", validade 17/04/2026, "Atencao: seu acesso esta vencido." e
+   * "Creditos 0".
+   */
+  async estadoDaConta() {
+    const bruto = await this.page.evaluate(() => {
+      const t = (document.body.innerText || '').replace(/\\s+/g, ' ');
+      // Os VALORES, nao o bloco inteiro. Despejar 240 caracteres da tabela
+      // trazia junto os cabecalhos ("Situacao Validade Validade em Dias
+      // Creditos Acao") e o resultado era ilegivel na tela de quem opera.
+      // A data SO se estiver colada ao contexto de validade. A versao anterior
+      // pegava a primeira data da pagina, que e facilmente o "Homologado em
+      // 23/05/2024" da documentacao — e uma data errada dita com confianca e
+      // pior que nenhuma data. Sem esse casamento, a frase sai generica.
+      const dataM = t.match(/Situa[cç][aã]o Cadastral.{0,80}?\\bInativo\\b.{0,20}?(\\d{2}\\/\\d{2}\\/\\d{4})/i);
+      // Idem para os creditos: so o numero que vem logo depois do aviso.
+      const credM = t.match(/acesso est[aá] vencido\\.?\\s*(\\d+)\\b/i);
+      return {
+        inativo: /Situa[cç][aã]o Cadastral.{0,120}?\\bInativo\\b/i.test(t),
+        vencido: /acesso est[aá] vencido/i.test(t),
+        semPlano: /n[aã]o tem um plano ativo/i.test(t),
+        validade: dataM ? dataM[1] : null,
+        creditos: credM ? credM[1] : null,
+      };
+    });
+
+    // A frase e montada aqui, e nao no chamador, para que todo lugar que
+    // mostrar o estado da conta diga a MESMA coisa.
+    // CADA FRASE E TRANSCRICAO, NUNCA INTERPRETACAO.
+    //
+    // A versao anterior tratava "Inativo" e "vencido" como a mesma coisa, e
+    // dizia "assinatura vencida" quando a pagina so tinha dito "Inativo" —
+    // que pode ser inativo por outro motivo. Afirmar causa que a tela nao
+    // afirmou e inventar dado, ainda que soe plausivel.
+    const partes = [];
+    if (bruto.vencido) {
+      // A pagina disse, com estas palavras, que o acesso esta vencido.
+      partes.push(
+        bruto.validade
+          ? \`o portal informa que o acesso esta vencido desde \${bruto.validade}\`
+          : 'o portal informa que o acesso esta vencido'
+      );
+    } else if (bruto.inativo) {
+      // So sabemos o rotulo. Repetimos o rotulo, sem dizer por que.
+      partes.push('a situacao cadastral da conta aparece como "Inativo"');
+    } else if (bruto.semPlano) {
+      partes.push('o portal informa que a conta nao tem plano ativo');
+    }
+    // Zero creditos so entra se o numero foi lido de fato — \`null\` e diferente
+    // de zero, e um nao-lido nunca vira uma afirmacao.
+    if (bruto.creditos === '0') partes.push('com 0 creditos');
+
+    return {
+      ...bruto,
+      impedida: bruto.inativo || bruto.vencido || bruto.semPlano,
+      // Sem nada lido, nao ha aviso. Preferir silencio a um resumo generico
+      // que soa como diagnostico sem ser um.
+      resumo: partes.length ? partes.join(', ') : null,
+    };
   }
 
   async lerMelhorLance() {
@@ -1469,32 +2098,34 @@ module.exports = { PortalComprasPortal };
 
   'src/portals/bnc.js': `const { BasePortal } = require('./base-portal');
 
+const { loginComTecladoEmbaralhado } = require('./teclado-embaralhado');
+
 /**
- * Módulo para BNC (Brasil Negócios Compras)
+ * Módulo para BNC (Bolsa Nacional de Compras)
  *
- * URL: https://bnc.org.br
- * Autenticação: Login + senha
+ * URL operacional: https://bnccompras.com  — VERIFICADA em 09/09/2026
+ * Autenticação: e-mail + senha NUMERICA em teclado embaralhado
+ *
+ * O DOMINIO ESTAVA ERRADO, pelo mesmo motivo do BLL: bnc.org.br e o site
+ * institucional em WordPress, e os unicos campos de formulario que ele tem sao
+ * de newsletter ("Nome", "Telefone", "Nome da instituicao"). Nao ha login ali.
+ *
+ * O endereco certo saiu do proprio site, seguindo o link "Inicio" — e foi assim
+ * que se descobriu que BNC e BLL rodam a MESMA plataforma: mesmos #Email e
+ * #Contador, mesmo teclado de pares, mesma mensagem de erro. Uma implementacao
+ * atende as duas.
  */
 class BNCPortal extends BasePortal {
   constructor(page, credenciais) {
     super(page, credenciais);
     this.nome = 'bnc';
-    this.baseUrl = 'https://bnc.org.br';
+    this.baseUrl = 'https://bnccompras.com';
+    this.loginUrl = 'https://bnccompras.com/Home/Login';
   }
 
   async login() {
-    console.log('🔐 Iniciando login no BNC...');
-    // BNC usa WordPress wp-login.php (idêntico ao BLL)
-    // Seletores VERIFICADOS em 2026-03-31:
-    //   - Login: #user_login (input[name="log"])
-    //   - Senha: #user_pass (input[name="pwd"])
-    //   - Submit: #wp-submit (input[type="submit"][value="Acessar"])
-    await this.page.goto(\`\${this.baseUrl}/wp-login.php\`, { waitUntil: 'networkidle2' });
-    await this.preencherCampo('#user_login', this.credenciais.login);
-    await this.preencherCampo('#user_pass', this.credenciais.senha);
-    await this.page.click('#wp-submit');
-    await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-    this.loggedIn = true;
+    console.log('🔐 Iniciando login no BNC (bnccompras.com)...');
+    await loginComTecladoEmbaralhado(this, this.loginUrl);
     console.log('✅ Login no BNC realizado');
   }
 

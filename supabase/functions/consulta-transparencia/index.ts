@@ -38,12 +38,19 @@ Deno.serve(async (req) => {
     const { tipo, cnpj, pagina = 1, termo, dataInicio, dataFim, orgao, uf } = await req.json();
 
     const API_KEY = Deno.env.get('PORTAL_TRANSPARENCIA_API_KEY');
+    // Sem a chave a API devolve 401 — e a tela mostrava um erro genérico que
+    // não dizia o que fazer. Falha com instrução é falha que se resolve.
+    if (!API_KEY) {
+      return new Response(JSON.stringify({
+        error: 'A chave da API do Portal da Transparência ainda não foi configurada. '
+          + 'Cadastre um e-mail em portaldatransparencia.gov.br/api-de-dados/cadastrar-email '
+          + '(gratuito, resposta imediata) e informe a chave ao administrador do sistema.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const headers: Record<string, string> = {
       'Accept': 'application/json',
+      'chave-api-dados': API_KEY,
     };
-    if (API_KEY) {
-      headers['chave-api-dados'] = API_KEY;
-    }
 
     let url = '';
     const params = new URLSearchParams();
@@ -73,27 +80,47 @@ Deno.serve(async (req) => {
         break;
       }
       case 'licitacoes': {
-        // Licitações do Poder Executivo Federal
+        // Licitações: a API EXIGE codigoOrgao (spec oficial, conferida em
+        // 08/09). Sem ele, devolver a exigência com instrução — o 400 cru da
+        // API não diz onde achar o código.
+        if (!orgao) {
+          return new Response(JSON.stringify({
+            error: 'Para licitações federais a API exige o código SIAFI do órgão. '
+              + 'Informe-o no campo "Código do órgão" (ex.: 26403 — IFPA; '
+              + 'a lista completa está no Portal da Transparência, em Órgãos).',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         url = `${BASE_URL}/licitacoes`;
+        params.set('codigoOrgao', orgao);
         if (dataInicio) params.set('dataInicial', dataInicio);
         if (dataFim) params.set('dataFinal', dataFim);
-        if (orgao) params.set('codigoOrgao', orgao);
-        if (uf) params.set('uf', uf);
         break;
       }
       case 'contratos': {
-        // Contratos do Poder Executivo Federal
-        url = `${BASE_URL}/contratos`;
-        if (cnpj) params.set('cpfCnpjContratado', cnpj.replace(/\D/g, ''));
-        if (dataInicio) params.set('dataInicial', dataInicio);
-        if (dataFim) params.set('dataFinal', dataFim);
-        if (orgao) params.set('codigoOrgao', orgao);
+        // Dois caminhos oficiais: por CNPJ do contratado (/contratos/cpf-cnpj,
+        // parâmetro cpfCnpj — o caminho antigo cpfCnpjContratado não existe e
+        // devolvia 403 mudo) ou por código SIAFI do órgão (/contratos).
+        const cnpjLimpo = cnpj?.replace(/\D/g, '') || '';
+        if (cnpjLimpo) {
+          url = `${BASE_URL}/contratos/cpf-cnpj`;
+          params.set('cpfCnpj', cnpjLimpo);
+        } else if (orgao) {
+          url = `${BASE_URL}/contratos`;
+          params.set('codigoOrgao', orgao);
+          if (dataInicio) params.set('dataInicial', dataInicio);
+          if (dataFim) params.set('dataFinal', dataFim);
+        } else {
+          return new Response(JSON.stringify({
+            error: 'Informe o CNPJ do contratado OU o código SIAFI do órgão — '
+              + 'a API federal não lista contratos sem um dos dois.',
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         break;
       }
       case 'contratos-cnpj': {
-        // Contratos por CNPJ do contratado
-        url = `${BASE_URL}/contratos/cpfCnpjContratado`;
-        if (cnpj) params.set('cpfCnpjContratado', cnpj.replace(/\D/g, ''));
+        // Contratos por CNPJ do contratado — caminho e parâmetro da spec.
+        url = `${BASE_URL}/contratos/cpf-cnpj`;
+        if (cnpj) params.set('cpfCnpj', cnpj.replace(/\D/g, ''));
         break;
       }
       case 'despesas': {
@@ -160,11 +187,18 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const text = await response.text();
       console.error(`Portal da Transparência API error [${response.status}]:`, text.substring(0, 500));
-      return new Response(JSON.stringify({ 
-        error: `Erro na API do Portal da Transparência (${response.status})`,
-        detalhes: text.substring(0, 200),
+      // Status 200 com {error}: repassar o 4xx fazia o invoke() do front
+      // estourar com "non-2xx status code" — e a mensagem REAL da API
+      // ("Informe um CNPJ válido…") ficava invisível (08/09). A tela já
+      // renderiza data.error; o que a API disse chega ao usuário.
+      let detalhe = text.substring(0, 200);
+      try {
+        const j = JSON.parse(text);
+        detalhe = String(Object.values(j)[0] ?? detalhe);
+      } catch { /* corpo não-JSON: fica o texto cru */ }
+      return new Response(JSON.stringify({
+        error: `A API do Portal da Transparência recusou a consulta: ${detalhe}`,
       }), {
-        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

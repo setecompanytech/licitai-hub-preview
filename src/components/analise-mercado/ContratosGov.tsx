@@ -1,346 +1,247 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Building2, Download, Search, Loader2, RefreshCw,
-  TrendingUp, ExternalLink, FileText, Trash2, FileSpreadsheet
+  Search, Loader2, Building2, FileText, ExternalLink, Download,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { writeExcelFromJson } from '@/lib/excel-utils';
+import { downloadCSV } from '@/lib/download-utils';
+import { mascaraCNPJ, isValidCNPJ } from '@/lib/financeiro/formatters';
 
-type ContratoData = {
-  id?: string;
-  orgao: string;
-  tipo: string;
-  descricao?: string;
-  valor_total: number;
-  quantidade_itens: number;
-  modalidade?: string;
-  situacao?: string;
-  ano: number;
+/**
+ * Atas de Registro de Preços — o espelho OFICIAL do contratos.gov.br (08/09).
+ *
+ * A aba tinha um "Extrair via IA" que estimava números e, aposentado ele,
+ * ficou oca — duplicando a Federal (API), como o dono apontou. Papel novo e
+ * distinto: a Federal consulta CONTRATOS e LICITAÇÕES executados; esta
+ * consulta as ATAS DE REGISTRO DE PREÇOS (módulo ARP da API de dados abertos
+ * do Compras.gov.br), filtradas pelo CNPJ do FORNECEDOR — a empresa vendo as
+ * próprias atas: item, quantidade homologada, quantidade JÁ EMPENHADA,
+ * valores exatos e vigência, com link para a compra no PNCP.
+ */
+
+type ItemArp = {
+  numeroAtaRegistroPreco: string;
+  codigoUnidadeGerenciadora: string;
+  nomeUnidadeGerenciadora: string | null;
+  anoCompra: string;
+  nomeModalidadeCompra: string | null;
+  dataAssinatura: string | null;
+  dataVigenciaInicial: string | null;
+  dataVigenciaFinal: string | null;
+  numeroItem: string;
+  descricaoItem: string | null;
+  quantidadeHomologadaVencedor: number | null;
+  quantidadeEmpenhada: number | null;
+  valorUnitario: number | null;
+  valorTotal: number | null;
+  numeroControlePncpCompra: string | null;
+  itemExcluido: boolean;
 };
 
-const COLORS = ['hsl(var(--accent))', 'hsl(var(--info))', 'hsl(var(--warning))', 'hsl(var(--success))', 'hsl(var(--destructive))', 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', 'hsl(var(--chart-8))'];
+const brlExato = (v: number | null | undefined) =>
+  v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const formatCurrency = (v: number) => {
-  if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`;
-  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}K`;
-  return `R$ ${v.toFixed(0)}`;
+const dataBr = (iso: string | null | undefined) =>
+  iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+
+/** "10763998000130-1-000134/2025" → https://pncp.gov.br/app/editais/{cnpj}/{ano}/{seq} */
+const linkPncpDaCompra = (controle: string | null): string | null => {
+  const m = controle?.match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
+  return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${m[2]}` : null;
 };
-
-const currentYear = new Date().getFullYear();
-const anos = Array.from({ length: 5 }, (_, i) => currentYear - i);
-
-const TIPOS = [
-  { value: 'arp', label: 'Atas de Registro de Preços' },
-  { value: 'contrato', label: 'Contratos' },
-  { value: 'compra', label: 'Compras' },
-];
 
 export default function ContratosGov() {
-  const [dados, setDados] = useState<ContratoData[]>([]);
-  const [anoFiltro, setAnoFiltro] = useState<string>(String(currentYear));
-  const [tipoFiltro, setTipoFiltro] = useState<string>('arp');
-  const [busca, setBusca] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [extracting, setExtracting] = useState(false);
+  const [cnpj, setCnpj] = useState('');
+  const [meses, setMeses] = useState('24');
+  const [buscando, setBuscando] = useState(false);
+  const [buscou, setBuscou] = useState(false);
+  const [erro, setErro] = useState('');
+  const [itens, setItens] = useState<ItemArp[]>([]);
 
-  const loadDados = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let query = (supabase.from('contratos_gov') as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('valor_total', { ascending: false });
-
-      if (anoFiltro !== 'todos') query = query.eq('ano', parseInt(anoFiltro));
-      if (tipoFiltro !== 'todos') query = query.eq('tipo', tipoFiltro);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setDados(data || []);
-    } catch (e: any) {
-      toast.error('Não foi possível carregar os dados de contratos', {
-        description: e.message || 'Verifique sua conexão e tente recarregar a página.',
-        duration: 6000,
-      });
-    } finally {
-      setLoading(false);
+  const buscar = async () => {
+    const digitos = cnpj.replace(/\D/g, '');
+    if (!isValidCNPJ(digitos)) {
+      setErro('CNPJ inválido — confira os dígitos.');
+      setItens([]);
+      setBuscou(true);
+      return;
     }
-  }, [anoFiltro, tipoFiltro]);
-
-  useEffect(() => { loadDados(); }, [loadDados]);
-
-  const handleExtract = async () => {
-    setExtracting(true);
+    setBuscando(true);
+    setErro('');
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-contratos-gov', {
-        body: {
-          ano: anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear,
-          tipo: tipoFiltro !== 'todos' ? tipoFiltro : 'arp',
-        },
+      const { data, error } = await supabase.functions.invoke('consulta-arp-compras', {
+        body: { cnpj: digitos, meses: Number(meses) },
       });
-
       if (error) throw error;
-
-      if (data?.success && data?.data?.length > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const selectedYear = anoFiltro !== 'todos' ? parseInt(anoFiltro) : currentYear;
-        const selectedType = tipoFiltro !== 'todos' ? tipoFiltro : 'arp';
-
-        const rows = data.data.map((d: any) => ({
-          user_id: user.id,
-          orgao: d.orgao,
-          tipo: selectedType,
-          descricao: d.descricao || null,
-          valor_total: d.valor,
-          quantidade_itens: d.quantidade || 1,
-          modalidade: d.modalidade || null,
-          situacao: d.situacao || 'vigente',
-          ano: selectedYear,
-        }));
-
-        const { error: insertError } = await (supabase.from('contratos_gov') as any).insert(rows);
-        if (insertError) throw insertError;
-
-        toast.success(`${rows.length} órgãos importados via IA (estimativas baseadas em dados públicos)`);
-        loadDados();
-      } else {
-        toast.error('Nenhum dado extraído pela IA', {
-          description: data?.error || 'Não foram encontrados contratos para os filtros selecionados. Tente outro ano ou tipo.',
-          duration: 7000,
-        });
-      }
-    } catch (e: any) {
-      toast.error('Falha ao importar dados de contratos', {
-        description: e.message || 'Verifique sua conexão e tente novamente.',
-        duration: 6000,
-      });
+      if (data?.error) { setErro(String(data.error)); setItens([]); return; }
+      setItens(((data?.itens ?? []) as ItemArp[]).filter((i) => !i.itemExcluido));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha na consulta.');
+      setItens([]);
     } finally {
-      setExtracting(false);
+      setBuscando(false);
+      setBuscou(true);
     }
   };
 
-  const handleLimpar = async () => {
-    if (!confirm('Tem certeza que deseja limpar todos os dados de Contratos Gov?')) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error } = await (supabase.from('contratos_gov') as any).delete().eq('user_id', user.id);
-      if (error) throw error;
-      toast.success('Dados removidos');
-      loadDados();
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
+  // Agrupamento por ata: a unidade de leitura é a ATA; os itens são o recheio.
+  const hoje = new Date().toISOString().slice(0, 10);
+  const atas = new Map<string, ItemArp[]>();
+  for (const i of itens) {
+    const chave = `${i.numeroAtaRegistroPreco}·${i.codigoUnidadeGerenciadora}`;
+    if (!atas.has(chave)) atas.set(chave, []);
+    atas.get(chave)!.push(i);
+  }
+  const totalRegistrado = itens.reduce((s, i) => s + (i.valorTotal ?? 0), 0);
+  const atasVigentes = [...atas.values()].filter(
+    (grupo) => (grupo[0].dataVigenciaFinal ?? '') >= hoje,
+  ).length;
 
-  const handleExport = async () => {
-    if (dadosFiltrados.length === 0) return;
-    await writeExcelFromJson(`contratos-gov-${anoFiltro}-${tipoFiltro}.xlsx`, 'Contratos Gov',
-      dadosFiltrados.map(d => ({
-        'Órgão': d.orgao,
-        'Tipo': d.tipo,
-        'Ano': d.ano,
-        'Valor Total (R$)': d.valor_total,
-        'Qtd Itens': d.quantidade_itens,
-        'Modalidade': d.modalidade || '',
-        'Situação': d.situacao || '',
-        'Descrição': d.descricao || '',
-      }))
+  const exportar = () => {
+    downloadCSV(
+      'atas-registro-precos',
+      ['Ata', 'UG', 'Unidade Gerenciadora', 'Vigência início', 'Vigência fim', 'Item', 'Descrição', 'Qtd homologada', 'Qtd empenhada', 'Valor unitário', 'Valor total'],
+      itens.map((i) => [
+        i.numeroAtaRegistroPreco, i.codigoUnidadeGerenciadora, i.nomeUnidadeGerenciadora ?? '',
+        i.dataVigenciaInicial ?? '', i.dataVigenciaFinal ?? '', i.numeroItem,
+        (i.descricaoItem ?? '').substring(0, 150),
+        String(i.quantidadeHomologadaVencedor ?? ''), String(i.quantidadeEmpenhada ?? ''),
+        String(i.valorUnitario ?? ''), String(i.valorTotal ?? ''),
+      ]),
     );
+    toast.success('CSV exportado.');
   };
-
-  const dadosFiltrados = dados.filter(d => !busca || d.orgao.toLowerCase().includes(busca.toLowerCase()));
-
-  const top10 = [...dadosFiltrados].sort((a, b) => b.valor_total - a.valor_total).slice(0, 10);
-
-  const porModalidade = Object.entries(
-    dadosFiltrados.reduce((acc, d) => {
-      const key = d.modalidade || 'Outros';
-      acc[key] = (acc[key] || 0) + d.valor_total;
-      return acc;
-    }, {} as Record<string, number>)
-  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
-
-  const totalGeral = dados.reduce((s, d) => s + d.valor_total, 0);
-  const totalItens = dados.reduce((s, d) => s + d.quantidade_itens, 0);
-  const orgaosUnicos = new Set(dados.map(d => d.orgao)).size;
-  const tipoLabel = TIPOS.find(t => t.value === tipoFiltro)?.label || 'Registros';
 
   return (
     <div className="space-y-4">
-      {/* Header actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={anoFiltro} onValueChange={setAnoFiltro}>
-          <SelectTrigger className="w-32 h-8 text-sm">
-            <SelectValue placeholder="Ano" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+        <h3 className="text-sm font-semibold flex items-center gap-2 mb-1">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          Atas de Registro de Preços — Compras.gov.br
+        </h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          As atas em que o CNPJ consultado é o FORNECEDOR: itens, quantidade homologada, quanto já
+          foi empenhado, valores e vigência — direto da API oficial de dados abertos.
+        </p>
 
-        <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
-          <SelectTrigger className="w-52 h-8 text-sm">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os tipos</SelectItem>
-            {TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" size="sm" onClick={handleExtract} disabled={extracting}>
-          {extracting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
-          Extrair via IA
-        </Button>
-
-        <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer">
-          <Button variant="ghost" size="sm">
-            <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
+        <div className="flex flex-wrap items-center gap-2">
+          <Input placeholder="CNPJ do fornecedor" value={cnpj} inputMode="numeric"
+            onChange={(e) => setCnpj(mascaraCNPJ(e.target.value))} className="w-56"
+            onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }} />
+          <Select value={meses} onValueChange={setMeses}>
+            <SelectTrigger className="w-64 h-10 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="12">Atas iniciadas nos últimos 12 meses</SelectItem>
+              <SelectItem value="24">Atas iniciadas nos últimos 24 meses</SelectItem>
+              <SelectItem value="36">Atas iniciadas nos últimos 36 meses</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={buscar} disabled={buscando}>
+            {buscando ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            Buscar
           </Button>
-        </a>
+          <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer">
+            <Button variant="ghost" size="sm">
+              <ExternalLink className="w-4 h-4 mr-1" /> Abrir Portal
+            </Button>
+          </a>
+          {itens.length > 0 && (
+            <Button variant="outline" size="sm" onClick={exportar}>
+              <Download className="w-4 h-4 mr-1" /> Exportar CSV
+            </Button>
+          )}
+        </div>
 
-        {dados.length > 0 && (
-          <>
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="w-4 h-4 mr-1" /> Exportar
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLimpar} className="text-destructive">
-              <Trash2 className="w-4 h-4 mr-1" /> Limpar
-            </Button>
-          </>
-        )}
+        {erro && <p className="text-sm text-destructive mt-3">{erro}</p>}
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Órgãos</span>
-          </div>
-          <p className="text-lg sm:text-2xl font-bold">{orgaosUnicos}</p>
-          <span className="text-xs text-muted-foreground">identificados</span>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Total {tipoLabel}</span>
-          </div>
-          <p className="text-lg sm:text-2xl font-bold">{totalItens.toLocaleString('pt-BR')}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Volume Total</span>
-          </div>
-          <p className="text-lg sm:text-2xl font-bold">{formatCurrency(totalGeral)}</p>
-        </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-1">
-            <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Ticket Médio</span>
-          </div>
-          <p className="text-lg sm:text-2xl font-bold">{totalItens > 0 ? formatCurrency(totalGeral / totalItens) : 'R$ 0'}</p>
-        </div>
-      </div>
-
-      {dados.length === 0 ? (
-        <Card className="p-8 text-center">
-          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-semibold mb-2">Nenhum dado importado</h3>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Clique em <strong>"Extrair via IA"</strong> para obter estimativas de contratos e atas de registro de preços do Governo Federal via inteligência artificial.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Fonte: <a href="https://contratos.sistema.gov.br/transparencia" target="_blank" rel="noopener noreferrer" className="text-accent underline">contratos.sistema.gov.br</a>
-          </p>
+      {buscou && !buscando && !erro && itens.length === 0 && (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Nenhuma ata encontrada para este fornecedor na janela escolhida. A busca cobre atas
+          INICIADAS no período — amplie a janela para alcançar atas mais antigas.
         </Card>
-      ) : (
-        <>
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Top 10 Órgãos por Volume (R$)</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={top10} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="orgao" tick={{ fontSize: 9 }} width={180} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="valor_total" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
+      )}
 
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">Distribuição por Modalidade</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={porModalidade}
-                    cx="50%" cy="50%" outerRadius={100} dataKey="value"
-                    label={({ name, percent }) => `${name?.substring(0, 20)} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {porModalidade.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
+      {itens.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="stat-card">
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Atas</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{atas.size}</p>
+              <span className="text-xs text-muted-foreground">{atasVigentes} vigente(s) hoje</span>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center gap-2 mb-1">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Itens registrados</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{itens.length}</p>
+            </div>
+            <div className="stat-card lg:col-span-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-muted-foreground">Valor total registrado</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{brlExato(totalRegistrado)}</p>
+            </div>
           </div>
 
-          {/* Table */}
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">Ranking de Órgãos Federais</h3>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Buscar órgão..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-10 h-8 text-sm" />
-              </div>
-            </div>
-            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
-              {dadosFiltrados.map((d, i) => (
-                <div key={d.id || i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-foreground w-8 text-center">{i + 1}º</span>
-                    <div>
-                      <p className="text-sm font-medium">{d.orgao}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-0.5">
-                        <Badge variant="outline" className="text-xs">{d.ano}</Badge>
-                        <Badge variant="secondary" className="text-xs">{TIPOS.find(t => t.value === d.tipo)?.label || d.tipo}</Badge>
-                        {d.modalidade && <Badge variant="outline" className="text-xs">{d.modalidade}</Badge>}
-                        <span className="text-xs text-muted-foreground">{d.quantidade_itens} itens</span>
-                      </div>
-                      {d.descricao && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{d.descricao}</p>}
+          <div className="space-y-3">
+            {[...atas.entries()].map(([chave, grupo]) => {
+              const a = grupo[0];
+              const vigente = (a.dataVigenciaFinal ?? '') >= hoje;
+              const link = linkPncpDaCompra(a.numeroControlePncpCompra);
+              return (
+                <Card key={chave} className="p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                        Ata {a.numeroAtaRegistroPreco}
+                        <Badge variant="outline" className={`text-xs ${vigente ? 'border-success/40 text-success' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                          {vigente ? 'Vigente' : 'Encerrada'}
+                        </Badge>
+                        {a.nomeModalidadeCompra && <Badge variant="outline" className="text-xs">{a.nomeModalidadeCompra}</Badge>}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {a.nomeUnidadeGerenciadora ?? `UG ${a.codigoUnidadeGerenciadora}`} ·
+                        vigência {dataBr(a.dataVigenciaInicial)} a {dataBr(a.dataVigenciaFinal)}
+                      </p>
                     </div>
+                    {link && (
+                      <a href={link} target="_blank" rel="noreferrer"
+                        className="text-xs text-primary inline-flex items-center gap-1 hover:underline shrink-0">
+                        Ver no PNCP <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold">{formatCurrency(d.valor_total)}</p>
-                    <Badge variant={d.situacao === 'vigente' ? 'default' : 'secondary'} className="text-xs">
-                      {d.situacao}
-                    </Badge>
+                  <div className="divide-y divide-border/40 rounded-md border border-border/40">
+                    {grupo.map((i) => (
+                      <div key={`${chave}-${i.numeroItem}`} className="flex items-start justify-between gap-3 p-2.5 text-xs">
+                        <div className="min-w-0">
+                          <p className="font-medium">Item {Number(i.numeroItem)} · {(i.descricaoItem ?? '—').substring(0, 140)}</p>
+                          <p className="text-muted-foreground mt-0.5">
+                            homologado: {i.quantidadeHomologadaVencedor?.toLocaleString('pt-BR') ?? '—'} ·
+                            empenhado: {i.quantidadeEmpenhada?.toLocaleString('pt-BR') ?? '0'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 tabular-nums">
+                          <p className="font-semibold">{brlExato(i.valorTotal)}</p>
+                          <p className="text-muted-foreground">unit.: {brlExato(i.valorUnitario)}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                </Card>
+              );
+            })}
+          </div>
         </>
       )}
     </div>

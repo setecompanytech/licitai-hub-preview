@@ -197,7 +197,7 @@ export default function FinRelatorios() {
   async function gerarTitulos(filename: string, titulo: string, tipo: "a_pagar" | "a_receber") {
     const { data, error } = await supabase
       .from("financeiro_lancamentos")
-      .select("data_vencimento, data_realizado, descricao, valor, status, pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome)")
+      .select("data_vencimento, data_realizado, descricao, valor, status, pessoa:financeiro_pessoas(nome), categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(nome, natureza)")
       .eq("empresa_id", empresaAtiva!.id)
       .eq("tipo", tipo)
       .neq("status", "cancelado")
@@ -206,8 +206,19 @@ export default function FinRelatorios() {
       .order("data_vencimento", { ascending: true });
     if (error) throw error;
 
+    // Transferência entre contas próprias, aporte, empréstimo de sócio:
+    // categoria de natureza MOVIMENTAÇÃO é permuta dentro do caixa, sem
+    // contraparte externa — não é título (CPC 47 / NBC TG 03). O par manual
+    // a_pagar/a_receber que a registra entrava aqui como "recebimento" e
+    // inflou o Contas a Receber em R$ 133 mil (09/09). A exclusão é
+    // declarada no rodapé, nunca silenciosa.
+    const todos = (data || []) as any[];
+    const titulos = todos.filter((l) => l.categoria?.natureza !== "movimentacao");
+    const movExcluida = todos.filter((l) => l.categoria?.natureza === "movimentacao");
+    const totalMov = movExcluida.reduce((s: number, l: any) => s + (Number(l.valor) || 0), 0);
+
     const hoje = hojeLocal();
-    const rows = (data || []).map((l: any) => {
+    const rows = titulos.map((l: any) => {
       const venc = l.data_vencimento as string | null;
       const liquidado = l.status === "realizado" || l.status === "conciliado";
       const situacao = liquidado
@@ -225,18 +236,26 @@ export default function FinRelatorios() {
       ];
     });
 
-    const total = (data || []).reduce((s: number, l: any) => s + (Number(l.valor) || 0), 0);
-    const totalsRow = ["TOTAL", "", "", "", `${(data || []).length} títulos`, fmtBRL(total)];
+    const total = titulos.reduce((s: number, l: any) => s + (Number(l.valor) || 0), 0);
+    const totalsRow = ["TOTAL", "", "", "", `${titulos.length} títulos`, fmtBRL(total)];
+    const notaMov = totalMov > 0
+      ? [[
+          "Movimentação entre contas próprias — fora deste relatório (não é título)",
+          "", "", "",
+          `${movExcluida.length} lançamento${movExcluida.length === 1 ? "" : "s"}`,
+          fmtBRL(totalMov),
+        ]]
+      : [];
 
     const isReceber = tipo === "a_receber";
     const headers = ["Vencimento", isReceber ? "Cliente" : "Fornecedor", "Descrição", "Categoria", "Situação", "Valor"];
 
     if (formato === "pdf") {
-      downloadPDF(filename, titulo, headers, [...rows, totalsRow]);
+      downloadPDF(filename, titulo, headers, [...rows, totalsRow, ...notaMov]);
     } else {
       await writeExcelFile(`${filename}.xlsx`, [{
         name: isReceber ? "Receber" : "Pagar",
-        data: [headers, ...rows, totalsRow],
+        data: [headers, ...rows, totalsRow, ...notaMov],
         colWidths: [12, 28, 38, 22, 14, 16],
       }]);
     }

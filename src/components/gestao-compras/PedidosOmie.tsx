@@ -8,6 +8,109 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+// ── Listas-padrão dos emissores (09/09) ─────────────────────────────────────
+// Campos como "Número de Parcelas" e "Cenário Fiscal" eram INPUT LIVRE com
+// lupa decorativa e placeholder prometendo uma lista que não existia. O
+// padrão de mercado (emissores fiscais) é escolher da lista; digitar é a
+// exceção — e o SelectPadrao abaixo dá as duas coisas sem perder valor
+// herdado que esteja fora da lista.
+const CONDICOES_PAGAMENTO = [
+  'A Vista', '7 Dias', '10 Dias', '14 Dias', '15 Dias', '20 Dias', '21 Dias',
+  '28 Dias', '30 Dias', '45 Dias', '60 Dias', '90 Dias',
+  '2x (30/60)', '3x (30/60/90)', '4x (30/60/90/120)', '6x (mensais)',
+  '10x (mensais)', '12x (mensais)',
+] as const;
+
+// Destilado da Tabela CFOP oficial (09/09): só o essencial da operação —
+// revenda de mercadorias a órgãos públicos, dentro/fora do estado, ST,
+// entrega futura (o par 5.922 simples faturamento + 5.117 entrega é o
+// desenho fiscal do EMPENHO), bonificação, remessas e devoluções. Venda
+// mostra CFOPs de SAÍDA (5/6); compra, os de ENTRADA (1/2). O escape
+// "Outro (digitar)…" do seletor cobre qualquer código fora da lista.
+const CENARIOS_FISCAIS_VENDA = [
+  '5.102 — Venda de mercadoria adquirida de terceiros (dentro do estado)',
+  '6.102 — Venda de mercadoria adquirida de terceiros (fora do estado)',
+  '6.108 — Venda a não contribuinte de outro estado (órgão público)',
+  '5.117 — Venda p/ entrega futura — encomenda (dentro do estado)',
+  '5.922 — Simples faturamento de venda p/ entrega futura',
+  '5.405 — Venda com ICMS ST, contribuinte substituído (dentro do estado)',
+  '6.404 — Venda com ICMS ST já retido (fora do estado)',
+  '5.101 — Venda de produção própria (dentro do estado)',
+  '6.101 — Venda de produção própria (fora do estado)',
+  '5.910 — Remessa em bonificação, doação ou brinde',
+  '5.912 — Remessa de mercadoria p/ demonstração',
+  '5.915 — Remessa p/ conserto ou reparo',
+  '5.202 — Devolução de compra p/ comercialização (dentro do estado)',
+  '6.202 — Devolução de compra p/ comercialização (fora do estado)',
+  '5.949 — Outra saída não especificada',
+] as const;
+
+const CENARIOS_FISCAIS_COMPRA = [
+  '1.102 — Compra p/ comercialização (dentro do estado)',
+  '2.102 — Compra p/ comercialização (outro estado)',
+  '1.403 — Compra p/ comercialização com ICMS ST (dentro do estado)',
+  '2.403 — Compra p/ comercialização com ICMS ST (outro estado)',
+  '1.556 — Compra de material de uso ou consumo (dentro do estado)',
+  '2.556 — Compra de material de uso ou consumo (outro estado)',
+  '1.551 — Compra de bem p/ ativo imobilizado (dentro do estado)',
+  '1.910 — Entrada de bonificação, doação ou brinde',
+  '1.202 — Devolução de venda de mercadoria (dentro do estado)',
+  '2.202 — Devolução de venda de mercadoria (outro estado)',
+  '1.949 — Outra entrada não especificada',
+] as const;
+
+const CATEGORIAS_VENDA = [
+  'Clientes - Revenda de Mercadoria',
+  'Clientes - Venda de Produção Própria',
+  'Clientes - Prestação de Serviço',
+  'Órgão Público - Fornecimento (licitação)',
+  'Outras Receitas',
+] as const;
+
+const CATEGORIAS_COMPRA = [
+  'Fornecedores - Mercadoria para Revenda',
+  'Fornecedores - Insumos de Produção',
+  'Fornecedores - Serviços',
+  'Despesas Operacionais',
+  'Outras Compras',
+] as const;
+
+const LOCAIS_ESTOQUE = ['PADRAO - Local de Estoque Padrão'] as const;
+
+/** Lista padrão + escape para valor livre. Valor herdado fora da lista abre
+ *  em modo digitação (nunca é apagado); "voltar à lista" limpa e reabre o
+ *  seletor. */
+function SelectPadrao({ valor, onChange, opcoes, placeholder }: {
+  valor: string;
+  onChange: (v: string) => void;
+  opcoes: readonly string[];
+  placeholder?: string;
+}) {
+  const foraDaLista = !!valor && !opcoes.includes(valor);
+  const [livre, setLivre] = useState(foraDaLista);
+  useEffect(() => { if (foraDaLista) setLivre(true); }, [foraDaLista]);
+  if (livre) {
+    return (
+      <div className="flex gap-1 mt-1">
+        <Input value={valor} onChange={e => onChange(e.target.value)} className="text-sm" placeholder={placeholder} />
+        <Button type="button" size="sm" variant="ghost" className="px-2 text-xs shrink-0" title="Voltar à lista padrão"
+          onClick={() => { onChange(''); setLivre(false); }}>
+          lista
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <Select value={valor || undefined} onValueChange={v => { if (v === '__outro__') setLivre(true); else onChange(v); }}>
+      <SelectTrigger className="mt-1 text-sm"><SelectValue placeholder={placeholder ?? 'Selecionar…'} /></SelectTrigger>
+      <SelectContent className="max-h-72">
+        {opcoes.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        <SelectItem value="__outro__">Outro (digitar)…</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,6 +121,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
+import CondicoesPagamento from './CondicoesPagamento';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
@@ -82,12 +186,16 @@ type ItemForm = {
 };
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const KANBAN_STATUS: { key: Pedido['status']; label: string }[] = [
-  { key: 'pedido',          label: 'Pedidos'         },
-  { key: 'separar_estoque', label: 'Separar Estoque' },
-  { key: 'faturar',         label: 'Faturar'         },
-  { key: 'faturado',        label: 'Faturado'        },
-  { key: 'entrega',         label: 'Entrega'         },
+// Cada etapa tem cor própria (09/09): o quadro era cinza-sobre-cinza e as
+// colunas de largura fixa deixavam um vão morto à direita — parecia
+// transparente. A cor da etapa pinta a barra do topo, o cabeçalho e a
+// lateral dos cartões, contando o fluxo de relance.
+const KANBAN_STATUS: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
+  { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-info',    chip: 'bg-info/15 text-info',       borda: 'border-l-info' },
+  { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning', chip: 'bg-warning/15 text-warning', borda: 'border-l-warning' },
+  { key: 'faturar',         label: 'Faturar',         barra: 'bg-accent',  texto: 'text-accent',  chip: 'bg-accent/15 text-accent',   borda: 'border-l-accent' },
+  { key: 'faturado',        label: 'Faturado',        barra: 'bg-success', texto: 'text-success', chip: 'bg-success/15 text-success', borda: 'border-l-success' },
+  { key: 'entrega',         label: 'Entrega',         barra: 'bg-primary', texto: 'text-primary', chip: 'bg-primary/15 text-primary', borda: 'border-l-primary' },
 ];
 
 const STATUS_MSG: Record<string, string> = {
@@ -336,7 +444,12 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Local de Estoque</Label>
-              <Input value={item.local_estoque} onChange={e => setItem(i => ({ ...i, local_estoque: e.target.value }))} className="text-sm mt-1" />
+              <SelectPadrao
+                valor={item.local_estoque}
+                onChange={v => setItem(i => ({ ...i, local_estoque: v }))}
+                opcoes={LOCAIS_ESTOQUE}
+                placeholder="Local de estoque…"
+              />
             </div>
           </div>
         </div>
@@ -361,6 +474,21 @@ export default function PedidosOmie() {
   const [pedidos, setPedidos]   = useState<Pedido[]>([]);
   const [produtos, setProdutos] = useState<ProdutoCat[]>([]);
   const [contratos, setContratos] = useState<ContratoOpt[]>([]);
+  const [vendedores, setVendedores] = useState<string[]>([]);
+  // Condições de pagamento vêm do CADASTRO da empresa (modelo dos ERPs);
+  // a lista fixa vira só o fallback de quem ainda não cadastrou nada.
+  const [condicoesCadastro, setCondicoesCadastro] = useState<string[]>([]);
+  const [cadastroCondicoesAberto, setCadastroCondicoesAberto] = useState(false);
+  const carregarCondicoes = () => {
+    if (!empresaAtiva) return;
+    (supabase.from('financeiro_condicoes_pagamento' as never) as any)
+      .select('descricao')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('ativo', true)
+      .order('codigo')
+      .then(({ data }: { data: Array<{ descricao: string }> | null }) =>
+        setCondicoesCadastro([...new Set((data || []).map(d => d.descricao))]));
+  };
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
 
@@ -426,6 +554,14 @@ export default function PedidosOmie() {
     loadPedidos();
     loadProdutos();
     loadContratos();
+    carregarCondicoes();
+    // Vendedor/comprador escolhe-se da EQUIPE, não se datilografa.
+    supabase.from('empresa_membros').select('nome_individual, nome').eq('empresa_id', empresaAtiva.id)
+      .then(({ data }) => {
+        const nomes = [...new Set(((data as Array<{ nome_individual: string | null; nome: string | null }>) || [])
+          .map(m => m.nome_individual || m.nome).filter(Boolean))] as string[];
+        setVendedores(nomes.sort((a, b) => a.localeCompare(b)));
+      });
   }, [empresaAtiva]);
 
   // Abre pedido direto quando vem de outra página via ?pedido=<id>
@@ -1502,12 +1638,13 @@ export default function PedidosOmie() {
             {kanbanCols.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col min-w-[230px] max-w-[230px] rounded-lg border transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-muted/20 border-muted/40'}`}
+                className={`flex flex-col flex-1 min-w-[220px] rounded-lg border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-accent/10 border-accent/60 shadow-inner' : 'bg-card border-border shadow-sm'}`}
               >
-                {/* Column header */}
-                <div className="flex items-center justify-between px-3 py-2.5 border-b border-muted/40">
-                  <span className="font-semibold text-sm">{col.label}</span>
-                  <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                {/* Barra de cor da etapa + cabeçalho */}
+                <div className={`h-1.5 ${col.barra}`} />
+                <div className="flex items-center justify-between px-3 py-2.5 border-b bg-muted/30">
+                  <span className={`font-bold text-sm ${col.texto}`}>{col.label}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums ${col.chip}`}>
                     {col.items.length}
                   </span>
                 </div>
@@ -1515,7 +1652,9 @@ export default function PedidosOmie() {
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {col.items.length === 0 ? (
-                    <p className="text-center text-xs text-muted-foreground py-8">Nenhum registro</p>
+                    <div className="border border-dashed border-border rounded-md py-8 text-center text-xs text-muted-foreground/70 mx-1 mt-1">
+                      Nenhum pedido nesta etapa
+                    </div>
                   ) : col.items.map(p => {
                     const pessoaNome = getPessoaNome(p.pessoa_id);
                     const isHoje = p.previsao_faturamento === todayISO();
@@ -1526,31 +1665,33 @@ export default function PedidosOmie() {
                       <div key={p.id}
                         onPointerDown={e => { if (!(e.target as HTMLElement).closest('button')) startDrag(e, p.id); }}
                         onDoubleClick={() => { if (!draggingId) openEdit(p); }}
-                        className={`bg-background border rounded-lg p-2.5 hover:shadow-sm transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
+                        className={`bg-background border border-l-4 ${col.borda} rounded-lg p-3 shadow-sm hover:shadow-md transition-all select-none touch-none ${draggingId === p.id ? 'opacity-40 scale-95 cursor-grabbing' : 'cursor-grab'}`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-semibold text-muted-foreground">
+                              <span className="text-sm font-bold text-foreground">
                                 Pedido Nº {p.numero}
                               </span>
-                              <Badge variant="outline" className="text-xs px-1 py-0 border-border text-muted-foreground">
+                              <Badge variant="outline" className={`text-xs px-1.5 py-0 font-medium ${p.tipo === 'venda' ? 'bg-success/10 text-success border-success/30' : 'bg-info/10 text-info border-info/30'}`}>
                                 {p.tipo === 'venda' ? 'Venda' : 'Compra'}
                               </Badge>
                               {p.contrato_id && (
-                                <Badge variant="secondary" className="text-xs px-1 py-0">
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                   Contrato
                                 </Badge>
                               )}
                             </div>
                             {pessoaNome && (
-                              <p className="text-xs font-medium mt-0.5 leading-tight truncate">{pessoaNome}</p>
+                              <p className="text-sm font-medium mt-1 leading-tight truncate">{pessoaNome}</p>
                             )}
-                            <p className="text-xs text-muted-foreground mt-0.5">{statusMsg}</p>
-                            <p className="text-xs font-semibold mt-1 text-foreground">
-                              $ {fmtM(p.valor_total)}
+                            <p className={`text-xs mt-0.5 ${isHoje ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>{statusMsg}</p>
+                            <p className="text-base font-bold mt-1.5 text-foreground tabular-nums">
+                              R$ {fmtM(p.valor_total)}
+                              {/* Condição como está escrita — "em 30 Diasx" era o
+                                  sufixo cego de quando o campo só guardava número. */}
                               {p.numero_parcelas && p.numero_parcelas !== 'A Vista' && (
-                                <span className="text-muted-foreground font-normal"> em {p.numero_parcelas}x</span>
+                                <span className="text-xs text-muted-foreground font-normal"> · {p.numero_parcelas}</span>
                               )}
                             </p>
                           </div>
@@ -1655,6 +1796,11 @@ export default function PedidosOmie() {
       {AnexosDialog}
       {HistoricoDialog}
       {DeleteConfirmDialog}
+      <CondicoesPagamento
+        aberto={cadastroCondicoesAberto}
+        aoFechar={() => setCadastroCondicoesAberto(false)}
+        aoMudar={carregarCondicoes}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -1816,25 +1962,35 @@ export default function PedidosOmie() {
             {/* Vendedor / Parcelas / Cenário */}
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">{isVenda ? 'Vendedor' : 'Comprador'} +</Label>
-                <div className="relative mt-1">
-                  <Input value={form.vendedor} onChange={e => setForm(f => ({ ...f, vendedor: e.target.value }))} className="text-sm pr-8" />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                </div>
+                <Label className="text-xs text-muted-foreground">{isVenda ? 'Vendedor' : 'Comprador'}</Label>
+                <SelectPadrao
+                  valor={form.vendedor}
+                  onChange={v => setForm(f => ({ ...f, vendedor: v }))}
+                  opcoes={vendedores}
+                  placeholder="Escolher da equipe…"
+                />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Número de Parcelas ✏ +</Label>
-                <div className="relative mt-1">
-                  <Input value={form.numero_parcelas} onChange={e => setForm(f => ({ ...f, numero_parcelas: e.target.value }))} className="text-sm pr-8" />
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                </div>
+                <Label className="text-xs text-muted-foreground">
+                  Condição de Pagamento{' '}
+                  <button type="button" className="text-accent hover:underline" onClick={() => setCadastroCondicoesAberto(true)}>
+                    (cadastro)
+                  </button>
+                </Label>
+                <SelectPadrao
+                  valor={form.numero_parcelas}
+                  onChange={v => setForm(f => ({ ...f, numero_parcelas: v }))}
+                  opcoes={condicoesCadastro.length ? condicoesCadastro : CONDICOES_PAGAMENTO}
+                  placeholder="A VISTA, BOLETO 30 DIAS…"
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Cenário Fiscal</Label>
-                <Input
-                  value={form.cenario_fiscal}
-                  onChange={e => setForm(f => ({ ...f, cenario_fiscal: e.target.value }))}
-                  className="text-sm mt-1" placeholder="Selecione o cenário na lista..."
+                <SelectPadrao
+                  valor={form.cenario_fiscal}
+                  onChange={v => setForm(f => ({ ...f, cenario_fiscal: v }))}
+                  opcoes={isVenda ? CENARIOS_FISCAIS_VENDA : CENARIOS_FISCAIS_COMPRA}
+                  placeholder="Escolher o cenário (CFOP)…"
                 />
               </div>
             </div>
@@ -1935,7 +2091,12 @@ export default function PedidosOmie() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">Categoria</Label>
-                  <Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="text-sm mt-1" />
+                  <SelectPadrao
+                    valor={form.categoria}
+                    onChange={v => setForm(f => ({ ...f, categoria: v }))}
+                    opcoes={isVenda ? CATEGORIAS_VENDA : CATEGORIAS_COMPRA}
+                    placeholder="Escolher categoria…"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Conta Corrente</Label>

@@ -24,7 +24,7 @@ serve(async (req) => {
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const tipoLabel = tipo_documento || "Ordem de Fornecimento / Empenho / PRD";
-    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho, PRDs e documentos similares. A ESPÉCIE do empenho (ordinário, global ou estimativo) é um campo ROTULADO na nota — leia o rótulo, não deduza pelo conteúdo; sem rótulo, devolva null. Itens divididos em COTA PRINCIPAL e COTA RESERVADA (LC 123/2006) devem vir como linhas separadas, cada uma com a sua cota marcada. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null.`;
+    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho, PRDs e documentos similares. A ESPÉCIE do empenho (ordinário, global ou estimativo) é um campo ROTULADO na nota — leia o rótulo, não deduza pelo conteúdo; sem rótulo, devolva null. Itens divididos em COTA PRINCIPAL e COTA RESERVADA (LC 123/2006) devem vir como linhas separadas, cada uma com a sua cota marcada. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null. IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma; em 08/09 uma observação saiu vertida para o inglês e foi parar no registro oficial do empenho.`;
 
     // Build user message — text or vision
     let userContent: any;
@@ -87,7 +87,7 @@ serve(async (req) => {
                   data_documento: { type: "string", description: "Data do documento no formato YYYY-MM-DD" },
                   orgao_emissor: { type: "string", description: "Órgão que emitiu o documento" },
                   numero_contrato_ref: { type: "string", description: "Número do contrato de referência, se mencionado" },
-                  observacoes: { type: "string", description: "Observações ou informações adicionais relevantes" },
+                  observacoes: { type: "string", description: "Observações ou informações adicionais relevantes — TRANSCRIÇÃO LITERAL do documento, no idioma original (português); nunca traduzir nem resumir em outro idioma" },
                   valor_total: { type: "number", description: "Valor total do documento em reais" },
                   data_entrega: { type: "string", description: "Data de entrega prevista no formato YYYY-MM-DD" },
                   nota_fiscal: { type: "string", description: "Número da nota fiscal, se mencionada" },

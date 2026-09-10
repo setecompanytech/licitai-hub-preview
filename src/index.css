@@ -850,9 +850,30 @@
    que diz que o contrato venceu. */
 
 @media print {
+  /* SEM `size`: declarar `size: A4` impõe retrato e o navegador desabilita
+     a escolha "Paisagem" do diálogo de impressão — era por isso que tabela
+     larga não tinha como deitar na folha (09/09). A orientação é de quem
+     imprime; a folha continua A4 por padrão do diálogo. */
   @page {
-    size: A4;
     margin: 14mm 12mm 16mm;
+  }
+
+  /* Tabela larga rola na tela; no papel não existe rolagem — o contêiner
+     que corta passa a mostrar, e a folha (retrato ou paisagem) acomoda o
+     que couber. Coluna grudada (ações) volta ao fluxo para não carimbar
+     por cima do conteúdo. */
+  .overflow-x-auto,
+  .overflow-auto {
+    overflow: visible !important;
+  }
+  .sticky {
+    position: static !important;
+  }
+
+  /* Botão dentro de tabela (lápis, lixeira, copiar) é operação de tela —
+     no papel é só ruído ao lado de cada linha. */
+  table button {
+    display: none !important;
   }
 
   /* O navegador desliga cor de fundo por padrão. Num documento em que a cor
@@ -977,4 +998,24 @@
     animation: none;
     opacity: 0;
   }
+}
+
+/* ── Esteira de índices oficiais (Jurídico → Índices & Repactuação) ─────────
+   O padrão dos portais econômicos (FGV, agências): os números correm da
+   direita para a esquerda em loop contínuo. A faixa é DUPLICADA no markup e
+   anda -50% — quando a primeira cópia sai, a segunda está exatamente onde a
+   primeira começou, sem emenda visível. Pausa no hover (ler exige parar) e
+   desliga por completo para quem pediu menos movimento ao sistema. */
+@keyframes esteira-indices {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.esteira-indices-faixa {
+  animation: esteira-indices 45s linear infinite;
+}
+.esteira-indices:hover .esteira-indices-faixa {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .esteira-indices-faixa { animation: none; }
 }

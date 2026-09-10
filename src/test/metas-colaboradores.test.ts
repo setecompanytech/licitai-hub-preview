@@ -52,7 +52,7 @@ describe('filtrarColaboradoresDoPainel', () => {
   });
 });
 
-describe('nomeDoColaborador', () => {
+describe('nomeDoColaborador — delega à autoridade da Equipe', () => {
   it('usa o nome quando existe', () => {
     expect(nomeDoColaborador({ nome: 'Giovanny', email: 'g@x.com' })).toBe('Giovanny');
   });
@@ -65,7 +65,21 @@ describe('nomeDoColaborador', () => {
     expect(nomeDoColaborador({ nome: '   ', email: 'g@x.com' })).toBe('g@x.com');
   });
 
-  it('sem nome e sem e-mail, rotula explicitamente', () => {
-    expect(nomeDoColaborador({ nome: null, email: null })).toBe('Sem nome');
+  it('sem nada, rotula explicitamente', () => {
+    expect(nomeDoColaborador({ nome: null, email: null })).toBe('Colaborador');
+  });
+
+  // O caso do print de 08/09: três contas do convite de setor, todas com
+  // nome "Setor Comercial" — quem distingue é o nome_individual da pessoa.
+  it('conta de setor mostra a PESSOA, não o rótulo do setor', () => {
+    expect(nomeDoColaborador({
+      nome: 'Setor Comercial',
+      nome_individual: 'Maria Silva',
+      login_individual: 'COMERCIAL01',
+    })).toBe('Maria Silva (COMERCIAL01)');
+  });
+
+  it('conta de setor sem cadastro individual ainda cai no rótulo', () => {
+    expect(nomeDoColaborador({ nome: 'Setor Comercial' })).toBe('Setor Comercial');
   });
 });

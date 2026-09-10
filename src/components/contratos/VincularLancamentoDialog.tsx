@@ -134,7 +134,11 @@ export default function VincularLancamentoDialog({
 
   return (
     <Dialog open={aberto} onOpenChange={(o) => !o && onFechar()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      {/* A rolagem é da LISTA, não do diálogo: com o diálogo inteiro rolando,
+          o rodapé descia junto e a barra de rolagem cortava o botão
+          "Remover vínculos" (print de 08/09). Fixos, aviso e botões ficam
+          sempre à vista — sem rolar até o fim para agir. */}
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="w-4 h-4" />
@@ -150,6 +154,7 @@ export default function VincularLancamentoDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {carregando ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Procurando lançamentos…
@@ -191,11 +196,12 @@ export default function VincularLancamentoDialog({
             ))}
           </div>
         )}
+        </div>
 
         {/* A conferência da soma avisa e não bloqueia: desconto, retenção e
             glosa fazem a soma divergir legitimamente. */}
         <div
-          className={`rounded-lg border p-3 text-sm flex items-start gap-2 ${
+          className={`shrink-0 rounded-lg border p-3 text-sm flex items-start gap-2 ${
             soma.fecha ? 'border-success/40 bg-success/5' : 'border-warning/40 bg-warning/5'
           }`}
         >
@@ -212,7 +218,7 @@ export default function VincularLancamentoDialog({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="shrink-0 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onFechar}>Cancelar</Button>
           <Button
             size="sm"

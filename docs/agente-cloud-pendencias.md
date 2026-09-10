@@ -5,6 +5,10 @@ Começou como diagnóstico em 16/08/2026, sondando
 pendências foram fechadas — e as especificações continuam valendo como contrato
 para quem for reimplementar.
 
+> 📍 **Procurando o retrato, e não o histórico?** `docs/robo-de-lances.md` traz o
+> estado do robô e o muro de cada portal em uma página, com o que falta para
+> derrubá-lo. Este arquivo é o diário: o passo a passo, com comandos e datas.
+
 > ## ✅ Resolvido em produção em 02/09/2026
 >
 > As três pendências do agente foram implementadas **direto no código que roda
@@ -35,6 +39,15 @@ para quem for reimplementar.
 | 14 | Checklist consultava `credenciais_portal` (singular) | Praefectus | ✅ **resolvido em 31/08** — ver seção 9 |
 | 15 | "Certificado instalado" era verde sem arquivo existir | agente | ✅ **resolvido em 02/09** — ver seção 10 |
 | 16 | "Healthcheck de Seletores" não testava seletor nenhum | Praefectus | ✅ **resolvido em 02/09** — ver seção 10 |
+| 17 | **VNC servia tela vazia** — x11vnc morto e pm2 dizendo "online" | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 18 | **Chrome era headless** — nada para o VNC mostrar | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 19 | Portas 5900 e 6080 abertas na internet, x11vnc sem senha | agente | ✅ **resolvido em 08/09** — ver seção 11 |
+| 20 | **Certificado detectado mas nunca apresentado ao portal** | agente | ✅ **resolvido em 09/09** — ver seção 15 |
+| 21 | `browser.js` e `start-vnc.sh` não existem no template do repo | template | ❌ **aberto** — ver seção 11 |
+| 22 | `/sessao/iniciar` só responde no fim da sessão — a chamada estoura antes | agente | ❌ **aberto** — ver seção 13 |
+| 23 | **Licitações-e exige o Módulo de Segurança do BB** — o login por Chave J não é automatizável como está | agente | ❌ **aberto** — ver seção 14 |
+| 24 | **A VPS tem 8 dos 23 módulos de portal** do template | agente | ❌ **aberto** — ver seção 14 |
+| 25 | `compras-gov` (tela) × `comprasgov` (agente) — vocabulários diferentes | app | ✅ **resolvido em 09/09** — ver seção 14 |
 
 ## O que falta agora
 
@@ -510,3 +523,746 @@ dublê, só para exercitar o roteamento):
 | `POST /api/proposta/enviar` `itens: []` | 400 · diz o que faltou |
 | `POST /api/proposta/enviar` portal inexistente | 400 · lista os 23 disponíveis |
 | `POST /api/proposta/enviar` sem chave | 403 |
+
+---
+
+## 11. O VNC, o Chrome com janela e o que se descobriu sobre o certificado — 08/09/2026
+
+Contexto: o Rafael cobrou status do Robô de Lances e o Giovanny pediu para
+entregar algo demonstrável no mesmo dia. Ao preparar a demonstração, três
+defeitos apareceram — dois deles com a mesma assinatura de falha silenciosa.
+
+### O VNC mostrava uma área de trabalho vazia
+
+A tela "Agente Cloud → VNC" existe no app e promete acompanhar o robô
+trabalhando. Ela nunca mostrou nada, por **dois** motivos independentes.
+
+**Primeiro: o `x11vnc` estava morto, e o pm2 dizia `online`.** O
+`/root/start-vnc.sh` subia os três processos assim:
+
+```sh
+Xvfb :99 ... &          # segundo plano
+x11vnc -display :99 &   # segundo plano
+websockify ... 6080     # PRIMEIRO plano  ← o único que o pm2 vigia
+```
+
+Como só o `websockify` ficava em primeiro plano, era só ele que o pm2
+observava. O `x11vnc` morreu em algum momento entre março e setembro e **nada
+acusou**: o painel seguia verde, a porta 6080 seguia respondendo, e quem
+abrisse o VNC via um retângulo cinza. É o princípio 3 do `CLAUDE.md` violado
+dentro da própria infraestrutura.
+
+Agora os três vão para segundo plano e o script termina em `wait -n`, que
+retorna assim que **qualquer um** deles morre. O script sai com erro, o pm2 vê
+o processo cair e reergue a pilha inteira. Um `pkill` no início mata restos que
+impediriam o Xvfb de tomar o `:99`.
+
+**Segundo: o Chrome subia sem janela.** O `browser.js` usava
+`headless: 'new'`, e ninguém apontava o `DISPLAY` para o `:99`. Mesmo com o
+x11vnc vivo não haveria nada para transmitir — o navegador do robô desenhava
+num buffer invisível.
+
+Passou a ler de configuração, **mantendo `headless` como padrão**:
+
+```js
+const visivel = process.env.HEADLESS === 'false';
+headless: visivel ? false : 'new',
+env: visivel ? { ...process.env, DISPLAY: display } : process.env,
+```
+
+Quem não configurar nada mantém o comportamento antigo. Ligar a janela é ato de
+configuração (`HEADLESS=false` no `.env`), reversível sem tocar em código — que
+era a exigência para mexer em produção no meio do dia.
+
+**Verificação.** Um script isolado subiu o navegador, abriu uma página neutra,
+leu o título e fotografou:
+
+```
+🖥️  Chrome VISIVEL no display :99 — acompanhe em /vnc/
+titulo lido: Example Domain
+logs/screenshots/teste-visivel.png   19.658 bytes
+```
+
+Esse arquivo tem significado próprio: **a pasta `logs/screenshots/` estava
+vazia desde 15/03**. Como o código fotografa a tela a cada login, a pasta vazia
+era a prova de que nenhum portal jamais tinha sido acessado. Aquele PNG é o
+primeiro pixel que o robô desenhou.
+
+### As portas do VNC estavam abertas na internet
+
+Ao reerguer a pilha, o `ss` mostrou `0.0.0.0:5900` e `0.0.0.0:6080` — e o
+x11vnc sobe com `-nopw`, sem senha. Qualquer um na internet podia assistir e
+controlar a área de trabalho de uma máquina que vai guardar certificado digital
+e credenciais de portal.
+
+É a mesma classe do problema da porta 3500, corrigido em 02/09, reaparecendo em
+outro lugar. O nginx faz `proxy_pass` para `127.0.0.1` nos dois casos, então
+fechar não quebra nada: `x11vnc -localhost` e `websockify 127.0.0.1:6080`.
+
+Confirmado depois: `/vnc/vnc.html` continua 200 pelo domínio, e a conexão
+direta em `129.121.48.145:6080` passou a ser recusada.
+
+### O certificado nunca foi apresentado a portal nenhum — pendência 20
+
+Este é o achado que mais muda o planejamento, e contradiz o que se supunha.
+
+`CERT_PATH` aparece em três lugares no código: duas linhas de log e a checagem
+de "o arquivo existe" que alimenta o `/health`. No `browser.js`, onde ele
+deveria entrar de fato, havia isto:
+
+```js
+if (certPath && fs.existsSync(certPath)) {
+  console.log(`📜 Certificado A1 encontrado: ${certPath}`);
+  // Para mTLS, configure via proxy ou flags do Chrome 120+
+}
+```
+
+Um comentário de "fazer depois", não código. **Instalar o `.pfx` não faria o
+Compras.gov nem o PNCP autenticarem** — o Chrome nunca apresentaria o
+certificado. A mensagem de log foi corrigida para dizer a verdade, senão
+alguém depuraria seletor de botão achando que o mTLS estava de pé.
+
+O que falta para fechar, e o que a máquina ainda não tem:
+
+| Item | Estado em 08/09 |
+| --- | --- |
+| `pk12util` / `certutil` (`libnss3-tools`) | ausentes — só há `openssl` |
+| Base NSS do Chrome (`~/.pki/nssdb`) | não existe |
+| Diretório de policy do Chrome | nenhum dos três caminhos existe |
+| Chrome usado | o do Puppeteer (Chrome for Testing 127) |
+
+O caminho é: instalar `libnss3-tools` → criar a base NSS → importar o `.pfx` →
+criar a policy `AutoSelectCertificateForUrls` (sem ela o Chrome abre uma caixa
+de diálogo pedindo o certificado, e diálogo modal trava robô) → usar
+`userDataDir` persistente.
+
+**Duas incertezas que só o teste resolve:** o Chrome for Testing pode não
+obedecer policy gerenciada como o Chrome de marca; e o login do gov.br pode não
+ser mTLS puro, e sim um fluxo com JavaScript onde o certificado é uma etapa
+entre outras.
+
+De qualquer forma isto está **bloqueado até o `.pfx` chegar**. E não é o
+caminho curto: **6 dos 8 portais entram com usuário e senha** e não dependem
+disso.
+
+### `browser.js` e `start-vnc.sh` não estão no template — pendência 21
+
+As correções acima vivem só na VPS. O `src/lib/agent-template/` do repo declara
+`ecosystem.config.js`, `setup-nginx.sh`, `setup.sh`, `src/index.js`, a
+estratégia e os portais — **os dois arquivos corrigidos hoje não estão lá**.
+
+Se a VPS for reconstruída a partir do template, o VNC volta a servir tela vazia
+e o Chrome volta a ser headless, sem nada indicando por quê. É a mesma deriva
+que fez a VPS e o repo se declararem ambos v2.1.0 sendo código diferente.
+
+Decisão pendente do time: trazer os dois para o template, ou registrar
+explicitamente que a infraestrutura da VPS não é reproduzível pelo gerador.
+
+### Backups desta sessão
+
+```
+/opt/agente-lances/src/browser.js.bak-2026-09-08-2122
+/opt/agente-lances/.env.bak-2026-09-08-2122
+/root/start-vnc.sh.bak-2026-09-08-2122
+```
+
+---
+
+## 12. Os primeiros logins reais — 08/09/2026, noite
+
+Com o Chrome visível funcionando, testamos login nos portais de usuário e senha,
+usando credenciais reais do Grupo Santa Rosa. **Nenhum dos quatro entrou na
+primeira tentativa** — e cada um falhou por um motivo diferente. É o que os
+seletores escritos às cegas prometiam.
+
+| Portal | O que aconteceu | Natureza |
+| --- | --- | --- |
+| BLL | `bll.org.br/login` → caiu no `wp-login.php` | endereço errado |
+| Portal de Compras | `/login` → **404** | endereço errado |
+| LicitaNet | **403 Forbidden** até na home | bloqueio anti-robô |
+| Licitações-e | timeout; foi para a consulta pública | endereço errado |
+
+### Os endereços verdadeiros
+
+Descobertos abrindo a home de cada portal e listando os links que levam ao
+acesso — o método que substitui o chute:
+
+```
+BLL              https://bllcompras.com/Home/Login        ← OUTRO DOMINIO
+Portal Compras   https://operacao.portaldecompraspublicas.com.br/18/loginext/
+Licitacoes-e     "Acesso Identificado" e um link javascript:, nao uma URL
+LicitaNet        403 antes de qualquer coisa
+```
+
+O da BLL é o mais instrutivo: o código apontava para `bll.org.br`, que é o
+**site institucional**, enquanto a plataforma de pregão vive em `bllcompras.com`.
+
+### BLL usa teclado virtual embaralhado
+
+Lendo o HTML da página de login verdadeira, apareceram cinco botões assim:
+
+```html
+<input type="button" name="2 ou 0" value="2 ou 0">
+<input type="button" name="7 ou 3" value="7 ou 3">
+<input type="button" name="5 ou 8" value="5 ou 8">
+<input type="button" name="1 ou 4" value="1 ou 4">
+<input type="button" name="6 ou 9" value="6 ou 9">
+<input type="password" id="Contador" name="Contador">
+```
+
+É o teclado estilo banco: a senha **não é digitada, é clicada** em pares de
+dígitos, e o embaralhamento muda a cada carregamento. Automatizável — ler os
+rótulos e clicar o par que contém cada dígito —, mas é trabalho próprio, e
+implica **senha numérica**. A credencial que temos para a BLL tem letras e
+símbolos, então ou ela é de outro acesso, ou existe caminho alternativo.
+
+### Portal de Compras Públicas — ENTROU ✅
+
+Este redireciona para um **Keycloak** (`realms/Portal`), com formulário padrão:
+
+```
+#username · #password · #kc-login
+```
+
+Corrigidos endereço e seletores, o login passou:
+
+```
+✅ Login no Portal de Compras Públicas realizado
+URL final : .../18/4/NaoAssinante/DashBoard/
+Titulo    : Portal de Compras Públicas | Painel de Operações
+```
+
+E a foto mostra o cabeçalho: **"Você está logado como: RAFAEL WILLIAM CASTRO DA
+SILVA - 24.687.187/0001-01"**. É o primeiro login que este robô fez em toda a
+sua existência.
+
+> ⚠️ **Reparar no `NaoAssinante` da URL.** A conta pode ter acesso limitado —
+> vale confirmar com o Rafael se ela participa de disputa ou só consulta.
+
+### Duas correções de método que saíram junto
+
+**`loggedIn = true` era cravado sem conferir.** Tanto na VPS quanto no template,
+o `login()` marcava sucesso logo após esperar a navegação. Credencial errada
+virava "login realizado", e o defeito só apareceria rodadas depois, longe da
+causa. Agora verifica o texto da página e a permanência do formulário, e
+**lança erro** se não entrou.
+
+**A VPS e o template tinham implementações DIFERENTES do mesmo portal.** O
+template trazia uma versão de 31/03 que tratava o portal como SPA Angular e
+caçava o botão "Entrar" por texto; a VPS tinha a versão ingênua com `/login`.
+Nenhuma das duas funcionava hoje, porque o portal migrou para Keycloak nesse
+intervalo. O template foi alinhado com o que foi **verificado em produção**.
+
+### O que isso muda no plano
+
+O caminho até o primeiro lance real ficou concreto, e mais curto do lado certo:
+
+1. ✅ Chrome visível e VNC funcionando
+2. ✅ Login comprovado no Portal de Compras Públicas
+3. ⬜ Navegar até uma disputa (`navegarParaDisputa` ainda tem URL suposta)
+4. ⬜ Ler a tela de lances com um pregão ao vivo
+5. ⬜ Escrever o `souLider()` do portal
+6. ⬜ Liberar o portal em `PORTAIS_COM_LANCE_LIBERADO`
+
+Os passos 3 e 4 dependem de haver disputa acontecendo. Os demais portais
+precisam do mesmo tratamento, e a LicitaNet precisa antes de uma resposta ao
+403 — que pode exigir mudar user-agent, usar IP residencial, ou falar com o
+portal.
+
+---
+
+## 13. O primeiro envio pela interface — 08/09/2026, noite
+
+O botão "Enviar ao robô" foi ao ar e o primeiro clique respondeu **"Edge Function
+returned a non-2xx status code"**. Foram três defeitos empilhados, e cada um
+escondia o seguinte.
+
+### O aviso não dizia a causa
+
+Prometido: "a mensagem real do servidor". Entregue: uma frase que não diz nada.
+
+O cliente do Supabase, quando a função responde não-2xx, devolve `data: null` e
+um `error.message` genérico — o **corpo** da resposta, onde está a causa, fica em
+`error.context`, que é o `Response` cru. Ler só `error.message` joga fora
+exatamente a informação que interessa.
+
+Custo medido: sem a frase na tela, achar o defeito virou comparar consultas de
+duas telas diferentes até topar com um `.single()`.
+
+### `.single()` onde cabem várias linhas
+
+O Checklist mostrava **"Agente Externo Configurado ✓"** e o envio respondia
+**"Nenhum agente ativo configurado"**. Mesma tabela, leituras diferentes:
+
+```
+checklist       .eq(user_id).find(a => a.status === 'ativo')
+enviar-sessao   .eq(user_id).eq(status,'ativo').single()
+```
+
+`.single()` falha com mais de uma linha e devolve `data: null`, que o código lia
+como "não existe". E ter várias linhas é o normal: o `configurar-agente` faz
+upsert com `onConflict: "user_id,nome"`, e o nome carrega o plano — trocar de
+plano cria linha nova em vez de atualizar.
+
+### O agente rodava o arquivo velho
+
+Este é o mais instrutivo, e o erro foi de método.
+
+O `portal-compras.js` foi corrigido às 21:39; o agente tinha sido reiniciado às
+21:27. **O Node guarda o módulo em cache**, então o processo seguiu usando o
+seletor antigo (`#login`) enquanto o disco já tinha o certo (`#username`). Os
+testes diretos passavam porque rodavam como processo separado, lendo o arquivo
+fresco — a discrepância mais confusa possível.
+
+```
+❌ Erro ao iniciar sessão: TimeoutError:
+   Waiting for selector `input[name="login"], #login` failed
+```
+
+> **Regra:** mexeu em qualquer arquivo de `/opt/agente-lances/src/`,
+> `pm2 restart agente-lances`. Teste em processo separado NÃO prova o que o
+> agente está executando.
+
+### E a chamada estourava antes do robô terminar — pendência 22
+
+`/sessao/iniciar` faz `await sessionManager.createSession(...)` antes de
+responder: abre o Chrome, faz login, navega. Nos logs isso levou **12s só para
+falhar** o login. A edge function abortava em **10s** e devolvia "Agente
+inacessível".
+
+Efeito: o robô entraria com sucesso e a tela mostraria erro — o pior tipo de
+mentira, a que desmente algo que deu certo.
+
+Paliativo aplicado: o tempo subiu para 60s. **O conserto de fundo continua
+aberto:** o agente deveria confirmar o recebimento na hora e seguir a sessão em
+segundo plano, avisando o resultado pelo callback que já existe. Enquanto for
+síncrono, qualquer portal mais lento reintroduz o problema.
+
+### O que os logs provaram
+
+Antes de qualquer um desses consertos, a corrente já funcionava:
+
+```
+22:49:06  🚀 Abrindo sessão 361fadb4... (browser #1)
+22:49:06  🔐 Login no portal: portal-compras
+23:00:04  🚀 Abrindo sessão 9ed4b09a... (browser #1)
+```
+
+Duas sessões chegaram pela interface. O botão disparou, a edge function achou o
+agente, **a credencial chegou decifrada** e o agente abriu o navegador. Tudo o
+que foi construído em 08/09 funcionou; só o último passo usava código velho.
+
+---
+
+## 14. O muro do Banco do Brasil e as três listas de portais — 09/09/2026
+
+Dois achados independentes, no mesmo dia, ambos de "o código estava certo sobre
+uma coisa que não era verdade".
+
+### 14.1 O Licitações-e não é automatizável pelo caminho que tentávamos
+
+O Rafael mandou o endereço do portal novo:
+`https://licitacoes-e2.bb.com.br/aop-inter-estatico/`. O módulo da VPS apontava
+para o legado (`www.licitacoes-e.com.br`) e o do repo apontava para
+`licitacoes-e2.bb.com.br/aop/login`.
+
+O `curl` devolve **403 para qualquer caminho** do BB — inclusive os válidos.
+Isso é importante porque significa que **não dá para validar URL do BB sem um
+navegador de verdade**; uma sonda com Chrome respondeu o que o curl não podia:
+
+| URL | Resultado |
+| --- | --- |
+| `/aop-inter-estatico/` | 200 — página real "Novo Licitações-e" |
+| `/aop/login` (o que o template usava) | redireciona para **"página não encontrada!"** |
+| `/aop-inter-estatico/login`, `/aop-inter/`, `/aop/` | 404 |
+| `www.licitacoes-e.com.br/aop/index.jsp` (legado) | 200, com o campo de login exposto |
+
+O portal novo **não tem página de login pública** — os únicos links são
+`para-fornecedores`, "Solicitar adesão digital" e "Quero vender", os dois
+últimos sem `href`.
+
+No legado o campo existe e é `#acessoChaveJ` (placeholder "Chave de acesso") —
+nenhum dos três chutes do template (`input[name="inCodigo"]`,
+`input[id="codigo"]`, `#txtChave`) existe na página. Há um pop-up cobrindo tudo,
+que fecha em `#nlCloseBtn`.
+
+**Mas corrigir o seletor não resolveria.** Com uma chave falsa preenchida, o
+clique em OK leva a:
+
+```
+https://www.licitacoes-e.com.br/aop/gcs/statics/gas/validacao.bb
+"Problemas na verificação da solução de segurança."
+```
+
+`gas` é o **Módulo de Segurança do BB** (Warsaw, da Topaz/Stefanini) — o mesmo
+que `seg.bb.com.br/home.html` manda instalar. É um binário que roda no sistema
+operacional e faz detecção de automação. Sem ele o login para antes de pedir a
+senha.
+
+**Consequência:** o Licitações-e não entra pela mesma porta dos outros portais.
+As saídas possíveis, nenhuma barata:
+
+1. Instalar o Warsaw na VPS (existe `.deb`) e descobrir se ele aceita rodar sob
+   Xvfb — o software é feito justamente para recusar esse cenário.
+2. Operar o Licitações-e de uma máquina real com o módulo instalado.
+3. Tratar o portal como manual e dizer isso ao cliente.
+
+**Não escrevemos o login v1.** Ter o seletor certo levaria o robô exatamente uma
+tela adiante, e a tela seguinte é o muro. Está aqui registrado para ninguém
+gastar o dia refazendo a descoberta.
+
+### 14.2 Três listas de portais, três vocabulários
+
+Comparar a interface com o registro do agente mostrou que existiam **três**
+listas, e que elas discordavam:
+
+| Onde | Quantos | Observação |
+| --- | --- | --- |
+| `CredenciaisPortalForm.tsx` (cópia própria) | 23 | nunca foi migrada |
+| `src/lib/robo/portais.ts` | 10 | a "autoridade única" de 08/09 |
+| `src/portals/index.js` do **template** | 23 | 8 em `portals.ts` + 15 em `portals-estaduais.ts` |
+| `/opt/agente-lances/src/portals/` na **VPS** | 8 | o que realmente está no ar |
+
+Dois defeitos saíram daí:
+
+**O hífen.** A tela chama o portal de `compras-gov`; o agente chama de
+`comprasgov`. Ninguém traduzia. Uma disputa em Compras.gov passava por toda a
+validação, **gravava a linha em `sessoes_lance_real` com status "enviando"**, o
+POST era feito — e só o agente reclamava, com `Portal "compras-gov" não
+suportado`. Sobrava registro no banco de um trabalho que nunca começou.
+
+**A VPS 15 módulos atrás.** O template tem os 23 portais; a VPS tem 8. Isso não
+aparece em lugar nenhum: o `/health` lista o que ela tem, e nada compara com o
+que deveria ter.
+
+**O que foi feito:**
+
+- `src/lib/robo/portais.ts` virou autoridade dos 23, e cada portal declara
+  explicitamente **como o agente o chama** (`agente:`). O `id` continua imutável
+  porque é o que está em `credenciais_portais.portal_id`.
+- `CredenciaisPortalForm` passou a consumir essa lista — a terceira cópia
+  morreu.
+- Espelho Deno em `_shared/robo-portais.ts`, no arranjo de
+  `_shared/licitacao-status.ts`. A tradução é decisão do **servidor**: se
+  viesse do payload, uma aba aberta desde ontem despacharia sessão para um
+  módulo inexistente.
+- `robo-lances-webhook` traduz e **recusa antes de gravar**.
+- O envio consulta o `portais_suportados` do `/health` e, quando o agente no ar
+  não tem o módulo, diz **o que ele tem** em vez de só negar.
+
+**A lista estática não diz se a VPS tem o módulo, de propósito.** Escrever isso
+em código seria uma verdade com prazo de validade, que envelhece em silêncio a
+cada deploy. Quem sabe é o agente, e é a ele que se pergunta.
+
+Dois testes em `src/test/agente-template.test.ts` trancam a volta do defeito:
+todo `agente:` tem que existir no registro do template, e o espelho Deno tem que
+ser idêntico ao mapa do app.
+
+### 14.3 O módulo do Licitações-e foi sincronizado mesmo assim
+
+`licitacoes-e.js` da VPS foi de 73 para 445 linhas (md5 idêntico ao extraído do
+template; backup em `licitacoes-e.js.bak-20260908`), e o pm2 reiniciado — sem
+`pm2 restart`, o cache de `require` do Node continua servindo o módulo antigo,
+que foi a armadilha de 08/09.
+
+Ganhou anti-detecção, renovação de JSESSIONID a cada 15 min, verificação de fase
+randômica a 1,5s, detecção de CAPTCHA — e, principalmente, **login que confere
+se entrou**. O antigo fazia:
+
+```js
+await this.page.waitForNavigation({ ... });
+this.loggedIn = true;          // sem verificar nada
+```
+
+Com o domínio errado, isso escreveria "✅ Login realizado" numa página de erro.
+O novo falha alto. Não entra — o muro do 14.1 continua lá —, mas para de mentir.
+
+---
+
+## 15. O certificado que finalmente chega ao portal — 09/09/2026
+
+A pendência 20 estava aberta desde 08/09 com o diagnóstico certo e a extensão
+errada. O certificado não era apresentado — mas a causa não era uma, eram
+**quatro**, empilhadas, e cada uma sozinha bastaria para o resultado ser zero.
+
+### O que estava quebrado
+
+| # | Elo | Estado |
+| --- | --- | --- |
+| 1 | A senha do `.pfx` | **descartada** — o formulário exigia, validava e jogava fora |
+| 2 | O arquivo → VPS | **não existia** — subia para o Storage e parava lá |
+| 3 | O agente receber | **não existia** — nenhuma rota `/certificado` |
+| 4 | O Chrome apresentar | **não existia** — sem base NSS, sem policy |
+
+E, coroando: a tela ficava **verde** ao fim do passo que funcionava (o upload),
+declarando pronto um caminho que não tinha os outros três. Este é o pior tipo de
+verde já encontrado neste projeto, porque consumia uma ação cara e real da
+pessoa — pedir o certificado ao contador, pagar por ele, enviá-lo — para não
+entregar nada.
+
+### O que foi provado antes de escrever código
+
+Nenhuma linha foi escrita antes de o mecanismo funcionar à mão, com um
+certificado autoassinado de teste:
+
+```
+pk12util -d sql:/root/.pki/nssdb -i teste.pfx -W ...
+  → PKCS12 IMPORT SUCCESSFUL, com chave privada
+servidor HTTPS local com requestCert:true
+  → CLIENTE=teste-mtls ORG=Praefectus Teste
+```
+
+**O Chrome apresentou o certificado sozinho, sem diálogo.** Só então o código foi
+escrito.
+
+**A descoberta que teria custado um dia:** o caminho da policy **não** é
+`/etc/opt/chrome/`. O binário que o Puppeteer baixa é o *Chrome for Testing*, e
+`strings` no executável mostra um único caminho:
+
+```
+/etc/opt/chrome_for_testing/policies
+```
+
+Configurar na pasta padrão teria deixado a policy num diretório que este Chrome
+nunca lê — e o sintoma seria "não funciona", sem pista.
+
+### O defeito que só apareceu ao rodar
+
+A primeira versão de `estado()` lia apenas `certutil -K` (chaves privadas). Ao
+remover o certificado de teste com `certutil -D`, o estado continuou dizendo
+**instalado** — porque `-D` apaga o certificado e **deixa a chave órfã**.
+
+Duas correções: `estado()` passou a cruzar `-L` (certificados) com `-K`
+(chaves), e a substituição usa `-F`, que remove os dois. Quatro testes em
+`src/test/agente-template.test.ts` trancam isso, carregando o módulo com o
+`child_process` trocado.
+
+### O que existe agora
+
+- **`src/certificado.js`** no agente: grava o `.pfx`, importa na base NSS que o
+  Chrome já usa (`~/.pki/nssdb`) e escreve a policy de auto-seleção. Toda
+  chamada a `certutil`/`pk12util` fecha o stdin — sem isso eles pedem senha num
+  terminal inexistente e entram em laço infinito de "Invalid password".
+- **`POST /certificado`** no agente, autenticado. Senha errada devolve a razão
+  real (`SEC_ERROR_BAD_PASSWORD`), não um erro genérico.
+- **`_shared/certificado-agente.ts`**: Storage → decifra a senha → entrega ao
+  agente. O upload chama sozinho; o Checklist tem "Instalar no robô" para
+  repetir quando o agente estiver fora do ar.
+- **`senha_cifrada`** em `cert_upload_tokens`, com a mesma cifra das senhas de
+  portal (chave própria, não a service role).
+- **`/health` honesto**: `carregado` só é `true` com arquivo, chave na base NSS
+  **e** policy. Antes bastava a variável estar preenchida; depois, o arquivo
+  existir. Nenhum dos dois provava nada.
+
+### Escopo do mTLS, de propósito estreito
+
+```js
+const URLS_MTLS = [
+  'https://[*.]gov.br',
+  'https://[*.]banparanet.com.br',
+  'https://[*.]bbmnetlicitacoes.com.br',
+];
+```
+
+Um padrão aberto (`"*"`) faria o Chrome oferecer o certificado da empresa a
+qualquer site que pedisse — inclusive um que pedisse só para coletar.
+
+### O que isto NÃO prova
+
+Que o Compras.gov aceita. O que está provado é que o Chrome do agente
+**apresenta** o certificado quando o portal pede, e que a cadeia inteira
+funciona ponta a ponta com um certificado real de teste. O login gov.br tem
+etapas próprias, e elas só se verificam com o certificado do cliente em mãos.
+
+O que mudou é a natureza do que falta: era "não existe", passou a ser "não foi
+testado com o certificado do cliente".
+
+---
+
+## 16. O caminho do certificado no gov.br, mapeado sem ter o certificado — 09/09/2026
+
+A pergunta era "dá para testar o Compras.gov sem o `.pfx`?". Dá — quase tudo.
+
+### O que o `openssl` respondeu sem certificado nenhum
+
+`openssl s_client` diz se o servidor **pede** certificado de cliente, e isso não
+exige ter um:
+
+| Host | Pede certificado? |
+| --- | --- |
+| **`certificado.sso.acesso.gov.br`** | ✅ `Acceptable client certificate CA names` |
+| `sso.acesso.gov.br` | ❌ `No client certificate CA names sent` |
+| `cnetmobile.estaleiro.serpro.gov.br` | ❌ |
+| `pncp.gov.br` | ❌ |
+
+As ACs aceitas são todas ICP-Brasil — Certisign, Serasa, Soluti, Prodesp, RFB,
+Digiforte. Um e-CNPJ A1 comum serve.
+
+### O teste mais forte possível sem o arquivo
+
+Chrome do agente em `certificado.sso.acesso.gov.br`, base NSS vazia:
+
+```
+200 → https://acesso.gov.br/info/x509/
+"Certificado digital não encontrado! Verifique se o seu
+ certificado digital está corretamente instalado."
+```
+
+Prova três coisas de uma vez: a VPS **alcança** o endpoint, o Chrome fez o
+handshake **sem abrir o diálogo** de escolha (a policy da seção 15 funcionou —
+sem ela a automação teria travado numa janela invisível), e a mensagem de erro
+do portal é identificável.
+
+### O botão, e o que se descobriu ao clicá-lo
+
+```html
+<button id="login-certificate">Seu certificado digital</button>
+```
+
+O id confere com o que o template já documentava desde 31/03. O que **não**
+estava documentado é o que acontece ao clicar sem certificado:
+
+```
+sso.acesso.gov.br/login → servicos.acesso.gov.br → sso.acesso.gov.br/login
+```
+
+Um vai-e-volta que **devolve a tela de login**. Não passa por `/info/x509`.
+
+### O defeito que isso revelou
+
+O módulo esperava com um `waitForNavigation` solto de 60s. Como nenhuma
+navegação "final" acontece, ele estourava — e a mensagem que chegava à pessoa
+era `Navigation timeout of 60000 ms exceeded`. Dentro do `comRetry`, três vezes.
+
+**Medido: 204 segundos para concluir o que se sabia aos 10.**
+
+Agora o módulo lê o **desfecho** em vez de esperar uma navegação qualquer:
+
+| Desfecho | Como se reconhece |
+| --- | --- |
+| `autenticado` | saiu do domínio `acesso.gov.br` |
+| `sem-certificado` | parou em `/info/x509` ou na frase do portal |
+| `recusado` | duas leituras seguidas na tela de login, após 8s de carência |
+
+A carência existe por causa do vai-e-volta: concluir na primeira leitura
+chamaria de falha um login que ainda estava acontecendo.
+
+E `comRetry` passou a honrar `err.semRetry` — certificado ausente continua
+ausente na terceira tentativa.
+
+**Resultado: 204s → 17s.**
+
+### A parte que quase virou uma mentira confiante
+
+A primeira versão classificou a base vazia como **"recusado"**, e a mensagem
+mandava conferir a validade de um certificado que não existe.
+
+O erro de fundo: **sem certificado e certificado recusado são indistinguíveis
+pelo lado do portal** — os dois voltam ao login. Adivinhar produz uma frase
+segura e errada, que é pior que uma vaga.
+
+Quem sabe a diferença é a própria máquina. O módulo passou a consultar
+`require('../certificado').estado().carregado`, e a mensagem virou:
+
+> Não há certificado digital instalado no navegador do agente. Envie o
+> certificado A1 (.pfx) pela tela do Robô de Lances — o A3, de token ou cartão,
+> não serve.
+
+### De quebra: a VPS estava com o módulo de março
+
+`comprasgov.js` foi de 151 para 645 linhas (md5 igual ao extraído do template).
+O da VPS apontava a navegação para `/pregao/fornecedor` **sem** o prefixo
+`/comprasnet-web` — 404 puro. O do template usa a base certa.
+
+Nota para quem for verificar URL nesse portal: é um SPA Angular, e **qualquer**
+caminho sob `/comprasnet-web` devolve 200. Status HTTP não prova rota; só o
+conteúdo renderizado.
+
+### O que continua faltando
+
+O certificado do cliente. Com ele, o `login()` deve seguir em vez de parar — e
+aí a área autenticada (`/private/fornecedor`) pode ser mapeada de verdade, que
+é a parte que nenhuma sonda alcança sem entrar.
+
+---
+
+## 17. BLL e BNC são a mesma plataforma — 09/09/2026
+
+Duas perguntas — "o teclado embaralhado da BLL tem solução?" e "dá para testar
+o BNC?" — tiveram a mesma resposta, porque os dois portais rodam **o mesmo
+sistema**.
+
+### O domínio estava errado nos dois, pelo mesmo motivo
+
+| Portal | Apontava para | É, na verdade | Operacional |
+| --- | --- | --- | --- |
+| BLL | `bll.org.br/wp-login.php` | login do **WordPress institucional** | `bllcompras.com/Home/Login` |
+| BNC | `bnc.org.br/login` | site institucional (WordPress) | `bnccompras.com/Home/Login` |
+
+Os campos que o `bnc.org.br` tem são de **newsletter** — "Nome", "Telefone",
+"Nome da instituição". Nunca houve login ali.
+
+O endereço certo não foi adivinhado: saiu do próprio site institucional,
+seguindo o link "Início". Foi assim que se descobriu a coincidência — as duas
+telas têm `#Email`, `#Contador`, o mesmo teclado e a mesma mensagem de erro.
+**Uma implementação atende as duas**, e é por isso que a lógica mora em
+`src/portals/teclado-embaralhado.js` em vez de duplicada.
+
+### O teclado embaralhado: sim, tem solução, e é simples
+
+A senha não é digitada. Há **cinco teclas, cada uma com um par de dígitos**, e o
+par vai no atributo `name`:
+
+```html
+<input type="button" name="0 ou 4">
+<input type="button" name="6 ou 9">
+<input type="button" name="2 ou 1">
+```
+
+Cada dígito aparece em exatamente um par, então para cada dígito da senha
+clica-se na tecla que o contém. **Não é imagem** — é texto no HTML. Nenhum OCR,
+nenhuma visão computacional: ler atributo e clicar.
+
+**Os pares mudam a cada carregamento.** Verificado: duas visitas à mesma tela
+deram `["0 ou 4","6 ou 9","2 ou 1","3 ou 5","8 ou 7"]` e
+`["6 ou 9","2 ou 1","0 ou 5","8 ou 3","7 ou 4"]`. Gravar o mapa funcionaria uma
+vez e falharia depois, em silêncio — daí a leitura em tempo de execução.
+
+**Consequência:** a senha destes portais é obrigatoriamente **numérica**. Não
+existe tecla para letra. Senha com letra não é um caso a tratar, é um dado
+errado — e o módulo diz isso em 0 segundo, antes de abrir o portal.
+
+### O que foi verificado, e como
+
+Cada passo foi medido antes de virar código:
+
+| Verificação | Resultado |
+| --- | --- |
+| Cliques chegam ao portal? | `#Contador` registrou 4 dígitos para 4 cliques, nos dois |
+| Qual o botão de envio? | `button.btn.btn-primary`, sem id nem name — o rótulo "Entrar" é a identificação estável |
+| Como o portal recusa? | fica em `/Home/Login` e mostra **"Usuário ou senha incorretos."** |
+
+Sem a última linha o módulo seguiria para a disputa a partir da tela de login —
+o mesmo defeito de falha silenciosa já corrigido em três portais.
+
+### Prova de ponta a ponta, sem a senha verdadeira
+
+`login()` real, com credencial inexistente:
+
+```
+bll  → O portal recusou o acesso: "Usuario ou senha incorretos."   36s
+bnc  → O portal recusou o acesso: "Usuario ou senha incorretos."   35s
+bll com senha "abc123"
+     → A senha deste portal e digitada num teclado que so tem
+       digitos...                                                   0s
+```
+
+A recusa **é** a prova: domínio certo, e-mail preenchido, teclado lido, dígitos
+clicados, contador conferido, botão acionado e resposta interpretada. Se
+qualquer elo estivesse errado, a mensagem seria outra — cada falha possível tem
+uma frase própria.
+
+### O que falta
+
+A senha numérica real de cada conta. Com ela, o teste é imediato e não depende
+de pregão agendado: ou entra, ou o portal diz por que não.

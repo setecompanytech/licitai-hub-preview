@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,8 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DollarSign, TrendingUp, TrendingDown, Package, ShoppingCart, AlertTriangle,
-  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2
+  Calendar, Percent, Loader2, Receipt, Lock, Pencil, Check, X, CheckCircle2,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import CabecalhoDoDocumento from '@/components/documento/CabecalhoDoDocumento';
 import SecaoDoDocumento from '@/components/documento/SecaoDoDocumento';
@@ -24,6 +26,9 @@ import RelatorioConsumoAtaDialog from './RelatorioConsumoAtaDialog';
 import ManutencaoAtaSrpDialog from './ManutencaoAtaSrpDialog';
 import EvolucaoMensalDashboard from './EvolucaoMensalDashboard';
 import ContratoEntrega from './ContratoEntrega';
+import ContratoReajuste from './ContratoReajuste';
+import { situacaoDoReajuste } from '@/lib/contratos/reajuste';
+import { TIPOS_REAJUSTE } from '@/lib/contratos/instrumentos';
 import ContratoEficacia from './ContratoEficacia';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -33,8 +38,13 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     contrato: any; itens: any[]; pedidos: any[]; custos: any[]; aditivos: any[];
     /** Nulo enquanto a migration 20260831000002 não tiver sido aplicada. */
     custoRealizado: { custo_pago: number; custo_comprometido: number; custo_digitado: number } | null;
+    /** ATA SRP: os contratos que aderiram aos quantitativos — é deles que o consumo vem. */
+    derivados: Array<{ id: string; numero_contrato: string | null; valor_global: number; data_fim: string | null }>;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  // Os avisos do topo recolhem (08/09): cada um mantém a linha-título à vista.
+  const [perguntaAberta, setPerguntaAberta] = useState(true);
+  const [alertasAbertos, setAlertasAbertos] = useState(true);
   const [editingGlobal, setEditingGlobal] = useState(false);
   const [editandoVigencia, setEditandoVigencia] = useState(false);
   const [vigForm, setVigForm] = useState({ assinatura: '', inicio: '', fim: '' });
@@ -62,7 +72,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       const { data: realizado } = await supabase
         .rpc('contrato_custo_realizado' as never, { p_contrato_id: contratoId } as never);
       if (cancelled) return;
+      // ATA SRP fala outra língua: o consumo vem dos contratos derivados.
+      let derivados: Array<{ id: string; numero_contrato: string | null; valor_global: number; data_fim: string | null }> = [];
+      if ((contratoRes.data as any)?.tipo_documento === 'ata_srp') {
+        const { data: dv } = await supabase
+          .from('contratos')
+          .select('id, numero_contrato, valor_global, data_fim')
+          .eq('ata_srp_id', contratoId)
+          .is('excluido_em', null)
+          .order('data_assinatura', { ascending: true });
+        derivados = ((dv as any[]) || []).map(d => ({ ...d, valor_global: Number(d.valor_global) || 0 }));
+      }
+      if (cancelled) return;
       setData({
+        derivados,
         contrato: contratoRes.data,
         itens: (itensRes.data as any[]) || [],
         pedidos: (pedidosRes.data as any[]) || [],
@@ -227,6 +250,18 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     const pedidosEntregues = pedidosAtivos.filter((p: any) => p.status === 'entregue').length;
     const pedidosAtivosTotal = pedidosAtivos.length;
     const perguntarFormaFornecimento = formaFornecimento === null && saldoEsgotado;
+    // Reajuste em sentido estrito: cumprido 1 ano da data-base (ou do último
+    // reajuste registrado), o direito nasce — e o alerta junto (art. 92, §3º;
+    // interregno da Lei 10.192/2001). Sem data-base registrada, silêncio: o
+    // card "Reajuste por índice" abaixo pede a data em vez de chutar.
+    const reajuste = situacaoDoReajuste({
+      dataBase: (c as any)?.data_base_reajuste,
+      reajustesRegistrados: (data.aditivos as any[])
+        .filter((a) => TIPOS_REAJUSTE.includes(a.tipo))
+        .map((a) => a.data_base_reajuste ?? a.data_assinatura),
+      hoje: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
+    });
+    const reajusteDevido = !!reajuste?.devido;
     // As duas cascatas da ATA precisam concordar: o consumo FINANCEIRO (soma
     // dos contratos derivados) e o FÍSICO (quilos baixados dos itens). Dinheiro
     // andando com quilos parados = contratos derivados com quantidade zerada —
@@ -240,14 +275,14 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
     pedidosAtivos.forEach((p: any) => { if (p.data_pedido) { const k = p.data_pedido.substring(0, 7); meses[k] = (meses[k] || 0) + (p.valor_total || 0); } });
     const pedidosPorMes = Object.entries(meses).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
     return { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao };
+      custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, totalAditivoQtdAcrescimo, totalAditivoQtdSupressao, reajuste, reajusteDevido };
   }, [data]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!calc) return <Card className="p-8 text-center text-muted-foreground">Contrato não encontrado</Card>;
 
   const { c, pedidosAtivos, faturamento, totalCustos, totalCustosTabela, custosDiretos, custoPedidos,
-    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao } = calc;
+    custoPago, custoComprometido, custoDoFinanceiro, custoPrevistoDoEntregue, desvioDeCusto, excesso, decenal, tributos, frete, despAdmin, lucroBruto, lucroLiquido, pctConsumo, diasRestantes, vigencia, fisicoParado, itensAlertaSaldo, alertasSaldoVisiveis, entregaUnicaConcluida, entregaUnicaEmAndamento, pedidosEntregues, pedidosAtivosTotal, perguntarFormaFornecimento, pedidosPorMes, valorGlobalEfetivo, totalAditivoValorAcrescimo, totalAditivoValorSupressao, reajuste, reajusteDevido } = calc;
   const margemBruta = faturamento > 0 ? (lucroBruto / faturamento) * 100 : 0;
   const margemLiquida = faturamento > 0 ? (lucroLiquido / faturamento) * 100 : 0;
 
@@ -309,7 +344,16 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
       {perguntarFormaFornecimento && (
         <div className="rounded-xl p-4 border bg-muted/40 border-border nao-imprime">
-          <p className="text-xs font-semibold">O saldo se esgotou — este contrato é de entrega única?</p>
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setPerguntaAberta((v) => !v)}
+            title={perguntaAberta ? 'Recolher' : 'Expandir'}>
+            <p className="text-xs font-semibold">O saldo se esgotou — este contrato é de entrega única?</p>
+            {perguntaAberta
+              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          </button>
+          {perguntaAberta && (
+          <>
           <p className="text-xs text-muted-foreground mt-1">
             Em entrega única (comum na dispensa), saldo zerado significa fornecimento concluído e
             o alerta deixa de fazer sentido. Em fornecimento contínuo/parcelado, o alerta protege
@@ -325,15 +369,25 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               É fornecimento contínuo
             </Button>
           </div>
+          </>
+          )}
         </div>
       )}
 
-      {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado) && (
+      {(alertasSaldoVisiveis.length > 0 || vigencia.vencido || vigencia.vencendo || fisicoParado || reajusteDevido) && (
         <SecaoDoDocumento numero="1" titulo="Alertas">
         <div className={`rounded-xl p-4 space-y-2 border ${vigencia.vencido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'}`}>
-          <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
-            <AlertTriangle className="w-4 h-4" /> Alertas
-          </h4>
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setAlertasAbertos((v) => !v)}
+            title={alertasAbertos ? 'Recolher os alertas' : 'Expandir os alertas'}>
+            <h4 className={`text-xs font-semibold flex items-center gap-1.5 ${vigencia.vencido ? 'text-destructive' : 'text-warning'}`}>
+              <AlertTriangle className="w-4 h-4" /> Alertas
+            </h4>
+            {alertasAbertos
+              ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+          </button>
+          {alertasAbertos && (<>
           {vigencia.vencido && (
             <p className="text-xs text-destructive/90">
               <strong>{vigencia.frase}</strong> (em {c.data_fim ? new Date(`${c.data_fim}T12:00:00`).toLocaleDateString('pt-BR') : '—'}).
@@ -382,9 +436,19 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               <p className="text-xs text-muted-foreground mt-1">{excesso.providencia}</p>
             </div>
           )}
+          {reajusteDevido && reajuste && (
+            <p className="text-xs text-warning/80">
+              <strong>Reajuste por índice devido</strong> desde{' '}
+              {new Date(reajuste.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')}
+              {(c as any)?.indice_reajuste ? ` (${(c as any).indice_reajuste})` : ''} — o interregno de 1 ano
+              se cumpriu. Aplicação por apostila (art. 136, I); registre o pedido formal antes de assinar
+              qualquer aditivo. Detalhes e estimativa no card “Reajuste por índice”, abaixo.
+            </p>
+          )}
           {alertasSaldoVisiveis.map((i: any) => (
             <p key={i.id} className="text-xs text-warning/80"><strong>{i.descricao}</strong>: saldo baixo (restam {i.saldo_quantitativo_efetivo ?? i.saldo_quantitativo} {i.unidade})</p>
           ))}
+          </>)}
         </div>
         </SecaoDoDocumento>
       )}
@@ -442,13 +506,75 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           {itensAlertaSaldo.length > 0 && <Badge className="text-xs bg-warning/10 text-warning mt-1">{itensAlertaSaldo.length} em alerta</Badge>}
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-3.5 h-3.5" /> Pedidos</div>
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1"><ShoppingCart className="w-3.5 h-3.5" /> {isAtaSrp ? 'Empenhos diretos' : 'Pedidos'}</div>
           <p className="text-lg font-bold">{pedidosAtivos.length}</p>
         </Card>
       </div>
 
-      {/* Cards financeiros - apenas admin/financeiro */}
-      {podeVerCustos && (
+      {/* ── ATA SRP: a segunda linha fala a língua da ata ─────────────────
+          Faturamento/custos/lucro são dos CONTRATOS que aderiram aos
+          quantitativos — mostrá-los aqui zerados fingia execução parada
+          numa ata 100% consumida (09/09). O que a ata responde é: quem
+          consumiu, quanto resta, e a exceção do empenho de entrega única
+          (que consome a ata sem contrato no meio). */}
+      {isAtaSrp && (() => {
+        const derivados = data!.derivados || [];
+        const consumoDerivados = Number(c.valor_consumido) || 0;
+        const empenhosDiretos = pedidosAtivos.reduce((s: number, p: any) => s + (Number(p.valor_total) || 0), 0);
+        const saldoAta = valorGlobalEfetivo - consumoDerivados - empenhosDiretos;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="p-4 border-l-4 border-l-accent">
+              <div className="text-xs text-muted-foreground mb-1">Consumido pelos contratos derivados</div>
+              <p className="text-lg font-bold">{fmt(consumoDerivados)}</p>
+              <p className="text-xs text-muted-foreground">
+                {derivados.length} contrato{derivados.length === 1 ? '' : 's'} · {valorGlobalEfetivo > 0 ? ((consumoDerivados / valorGlobalEfetivo) * 100).toFixed(1) : '0'}% do registrado
+              </p>
+            </Card>
+            <Card className="p-4 border-l-4 border-l-warning">
+              <div className="text-xs text-muted-foreground mb-1">Empenhos diretos (entrega única)</div>
+              {pedidosAtivos.length > 0 ? (
+                <>
+                  <p className="text-lg font-bold">{fmt(empenhosDiretos)}</p>
+                  <p className="text-xs text-muted-foreground">{pedidosAtivos.length} empenho{pedidosAtivos.length === 1 ? '' : 's'} consumindo a ata sem contrato</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-muted-foreground">—</p>
+                  <p className="text-xs text-muted-foreground">nenhum — todo o consumo vem dos contratos</p>
+                </>
+              )}
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground mb-1">Contratos derivados</div>
+              {derivados.length === 0 ? (
+                <p className="text-sm text-muted-foreground">nenhum ainda</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {derivados.slice(0, 3).map(d => (
+                    <Link key={d.id} to={`/gestao-contratos?contrato=${d.id}`}
+                      className="block text-xs font-medium hover:text-accent hover:underline truncate nao-imprime">
+                      {d.numero_contrato || '(sem número)'} · {fmt(d.valor_global)}
+                    </Link>
+                  ))}
+                  {derivados.length > 3 && (
+                    <p className="text-[11px] text-muted-foreground">+{derivados.length - 3} — aba Contratos derivados</p>
+                  )}
+                </div>
+              )}
+            </Card>
+            <Card className={`p-4 border-l-4 ${saldoAta > 0.005 ? 'border-l-success' : 'border-l-destructive'}`}>
+              <div className="text-xs text-muted-foreground mb-1">Saldo da ata</div>
+              <p className={`text-lg font-bold ${saldoAta > 0.005 ? 'text-success' : saldoAta < -0.005 ? 'text-destructive' : ''}`}>{fmt(saldoAta)}</p>
+              <p className="text-xs text-muted-foreground">registrado − derivados − empenhos diretos</p>
+            </Card>
+          </div>
+        );
+      })()}
+
+      {/* Cards financeiros - apenas admin/financeiro; numa ATA o resultado
+          mora nos contratos derivados, não aqui. */}
+      {!isAtaSrp && podeVerCustos && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="p-4 border-l-4 border-l-accent">
             <div className="text-xs text-muted-foreground mb-1">Faturamento</div>
@@ -496,7 +622,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           Comparado só sobre o que JÁ FOI ENTREGUE. Confrontar o custo
           realizado de 40% do contrato com o previsto de 100% dele daria um
           desvio que não existe. */}
-      {podeVerCustos && custoPrevistoDoEntregue > 0 && (
+      {!isAtaSrp && podeVerCustos && custoPrevistoDoEntregue > 0 && (
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold">Custo previsto × realizado</h4>
@@ -513,10 +639,17 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Desvio</p>
+              {/* O sinal matemático lia-se como prejuízo ("por que menos 25%?",
+                  09/09). O número diz o afastamento; a palavra diz o LADO —
+                  economia ou estouro — e ninguém precisa decifrar convenção. */}
               <p className={`font-semibold tabular-nums ${
                 desvioDeCusto === null ? '' : desvioDeCusto > 0 ? 'text-destructive' : 'text-success'
               }`}>
-                {desvioDeCusto === null ? '—' : `${desvioDeCusto > 0 ? '+' : ''}${desvioDeCusto.toFixed(1)}%`}
+                {desvioDeCusto === null
+                  ? '—'
+                  : Math.abs(desvioDeCusto) < 0.05
+                    ? 'no previsto'
+                    : `${Math.abs(desvioDeCusto).toFixed(1)}% ${desvioDeCusto > 0 ? 'acima do previsto (estouro)' : 'abaixo do previsto (economia)'}`}
               </p>
             </div>
           </div>
@@ -540,7 +673,12 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       )}
 
       <DeOndeVem
-        itens={[
+        itens={isAtaSrp ? [
+          { numero: 'Valor global', origem: 'valor registrado na ata' },
+          { numero: 'Consumido', origem: 'soma das contratações derivadas (sem os reequilíbrios/reajustes delas, que não sacam a ata) e dos empenhos diretos de entrega única' },
+          { numero: 'Contratos derivados', origem: 'contratações que aderiram aos quantitativos registrados', ondeEditar: 'Contratos derivados' },
+          { numero: 'Itens', origem: 'quantitativos registrados; o consumido de cada item vem dos contratos derivados', ondeEditar: 'Itens/Lotes' },
+        ] : [
           { numero: 'Valor global', origem: 'valor original do contrato mais os aditivos de acréscimo', ondeEditar: 'Arquivos e Aditivos' },
           { numero: 'Saldo', origem: 'valor global menos o que os pedidos já consumiram' },
           { numero: 'Faturado', origem: 'soma dos pedidos lançados', ondeEditar: 'Pedidos' },
@@ -580,8 +718,8 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </SecaoDoDocumento>
       )}
 
-      {/* Aviso para não-financeiros */}
-      {!podeVerCustos && (
+      {/* Aviso para não-financeiros — só onde há custo escondido (contrato) */}
+      {!isAtaSrp && !podeVerCustos && (
         <Card className="p-4 border border-dashed border-muted-foreground/30">
           <div className="flex items-center gap-2 text-muted-foreground text-xs">
             <Lock className="w-4 h-4" />
@@ -590,14 +728,22 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
         </Card>
       )}
 
-      <SecaoDoDocumento numero="4" titulo="Evolução mensal">
-      <EvolucaoMensalDashboard
-        pedidos={data!.pedidos as any[]}
-        podeVerCustos={podeVerCustos}
-        valorGlobal={valorGlobalEfetivo}
-        dataInicio={c.data_inicio}
-        dataFim={c.data_fim}
-      />
+      <SecaoDoDocumento numero="4" titulo={isAtaSrp ? 'Evolução mensal (empenhos diretos)' : 'Evolução mensal'}>
+      {isAtaSrp && pedidosAtivos.length === 0 ? (
+        <Card className="p-6 text-center text-xs text-muted-foreground">
+          O consumo desta ata acontece pelos contratos derivados — acompanhe a execução mensal no
+          dashboard de cada contrato. Esta seção passa a valer quando houver empenho direto de
+          entrega única contra a ata.
+        </Card>
+      ) : (
+        <EvolucaoMensalDashboard
+          pedidos={data!.pedidos as any[]}
+          podeVerCustos={podeVerCustos}
+          valorGlobal={valorGlobalEfetivo}
+          dataInicio={c.data_inicio}
+          dataFim={c.data_fim}
+        />
+      )}
       </SecaoDoDocumento>
 
       <SecaoDoDocumento numero="5" titulo="Vigência">
@@ -675,6 +821,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
       <SecaoDoDocumento numero="6" titulo="Condições de entrega">
         <ContratoEntrega contratoId={contratoId} />
+        <div className="mt-3">
+          <ContratoReajuste contratoId={contratoId} />
+        </div>
       </SecaoDoDocumento>
 
       {/* Só no papel. Assinar na tela seria promessa falsa — não há assinatura

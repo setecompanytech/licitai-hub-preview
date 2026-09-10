@@ -530,7 +530,12 @@ export default function VinculoContratoSelector({
               className="p-0 w-[--radix-popover-trigger-width] min-w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden"
               align="start"
               sideOffset={4}
-              avoidCollisions={false}
+              // avoidCollisions VOLTOU a valer (08/09): desligado, a lista
+              // abria sempre para baixo e era guilhotinada pela borda da tela
+              // quando o gatilho estava na metade de baixo do modal. Com o
+              // desvio ligado ela VIRA para cima quando não cabe — o teto de
+              // 42vh do CommandList garante que sempre caiba de um dos lados.
+              collisionPadding={12}
               // Evita que o Dialog/Modal pai roube o foco e o evento de wheel
               onWheel={(e) => e.stopPropagation()}
               onPointerDownOutside={(e) => {

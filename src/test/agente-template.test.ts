@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import JSZip from 'jszip';
 import { generateAgentTemplate } from '@/lib/agente-template-generator';
+import { PORTAIS_ROBO } from '@/lib/robo/portais';
 
 /**
  * O agente da VPS é gerado como texto dentro de template literals TypeScript.
@@ -90,9 +93,153 @@ describe('template do agente de lances', () => {
     );
   });
 
+  it('o registro de portais do agente fala o mesmo vocabulário da tela', () => {
+    // O defeito que este teste tranca: a tela chamava o portal de `compras-gov`
+    // e o agente de `comprasgov`. Nada no caminho comparava os dois, então a
+    // sessão era criada, gravada como "enviando", despachada — e só o agente
+    // reclamava, com a linha já no banco. Um hífen.
+    const registro = ler('src/portals/index.js');
+    const doAgente = new Set(
+      [...registro.matchAll(/^\s*'([^']+)':\s*\w+Portal,$/gm)].map((m) => m[1]),
+    );
+
+    expect(doAgente.size).toBeGreaterThan(20);
+
+    const semModulo = PORTAIS_ROBO
+      .filter((p) => !doAgente.has(p.agente))
+      .map((p) => `${p.id} -> ${p.agente}`);
+
+    expect(semModulo).toEqual([]);
+  });
+
+  it('o espelho Deno traduz exatamente o que a lista do app traduz', () => {
+    // Duas cópias de um mapa só se mantêm iguais se algo quebrar quando não
+    // estiverem. É o mesmo arranjo de `_shared/licitacao-status.ts`.
+    const espelho = readFileSync(
+      path.resolve(__dirname, '../../supabase/functions/_shared/robo-portais.ts'),
+      'utf8',
+    );
+
+    const noEspelho = Object.fromEntries(
+      [...espelho.matchAll(/^\s*"([^"]+)":\s*"([^"]+)",$/gm)].map((m) => [m[1], m[2]]),
+    );
+    const noApp = Object.fromEntries(PORTAIS_ROBO.map((p) => [p.id, p.agente]));
+
+    expect(noEspelho).toEqual(noApp);
+  });
+
+  describe('certificado: só é "carregado" o que o Chrome consegue apresentar', () => {
+    /**
+     * Carrega `src/certificado.js` do ZIP com o mundo trocado, para medir a
+     * decisão sem tocar em NSS de verdade.
+     *
+     * `certutil -L` lista certificados; `certutil -K` lista chaves privadas. O
+     * módulo precisa cruzar os dois: `certutil -D` apaga o certificado e DEIXA
+     * a chave órfã, e um estado que olhasse só as chaves diria "instalado"
+     * sobre um certificado que já não existe — foi o que aconteceu ao limpar o
+     * certificado de teste em 09/09/2026.
+     */
+    function carregar(opts: { certs: string[]; chaves: string[]; policy: boolean }) {
+      const saidaL =
+        'Certificate Nickname                    Trust Attributes\n' +
+        '                                        SSL,S/MIME,JAR/XPI\n\n' +
+        opts.certs.map((n) => `${n}                    u,u,u`).join('\n') + '\n';
+      const saidaK =
+        'certutil: Checking token "NSS Certificate DB"\n' +
+        opts.chaves.map((n, i) => `< ${i}> rsa      abc${i}   ${n}`).join('\n') + '\n';
+
+      const falso = {
+        child_process: {
+          execFileSync: (_bin: string, args: string[]) =>
+            args.includes('-K') ? saidaK : saidaL,
+        },
+        fs: {
+          existsSync: () => true,
+          mkdirSync: () => undefined,
+          writeFileSync: () => undefined,
+          readFileSync: () =>
+            opts.policy
+              ? JSON.stringify({ AutoSelectCertificateForUrls: ['{"pattern":"x","filter":{}}'] })
+              : (() => { throw new Error('sem policy'); })(),
+        },
+        path: { join: (...p: string[]) => p.join('/'), dirname: () => '/tmp', isAbsolute: () => true, resolve: (...p: string[]) => p.join('/') },
+      } as Record<string, unknown>;
+
+      const mod = { exports: {} as Record<string, unknown> };
+      const ctx = vm.createContext({
+        require: (n: string) => falso[n],
+        module: mod,
+        exports: mod.exports,
+        process: { env: {} },
+        console,
+        JSON,
+        Buffer,
+      });
+      new vm.Script(ler('src/certificado.js')).runInContext(ctx);
+      return mod.exports as { estado: () => Record<string, unknown> };
+    }
+
+    it('chave órfã, sem certificado, não conta como instalado', () => {
+      const est = carregar({ certs: [], chaves: ['ACME - Teste'], policy: true }).estado();
+      expect(est.instalado_no_navegador).toBe(false);
+      expect(est.carregado).toBe(false);
+    });
+
+    it('certificado sem chave privada não conta — não dá para assinar', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: [], policy: true }).estado();
+      expect(est.carregado).toBe(false);
+    });
+
+    it('com certificado, chave e policy, aí sim', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: ['ACME - Teste'], policy: true }).estado();
+      expect(est.carregado).toBe(true);
+      expect(est.titulares).toEqual(['ACME - Teste']);
+    });
+
+    it('sem policy o Chrome abriria o diálogo de escolha — não é utilizável', () => {
+      const est = carregar({ certs: ['ACME - Teste'], chaves: ['ACME - Teste'], policy: false }).estado();
+      expect(est.carregado).toBe(false);
+      expect(String(est.motivo)).toContain('policy');
+    });
+  });
+
   it('não declara enviarProposta na classe base — o 501 depende disso', () => {
     // Um stub em BasePortal faria todos os 23 portais parecerem prontos, e a
     // falta do formulário só apareceria como 500 no meio de um pregão.
     expect(ler('src/portals/base-portal.js')).not.toMatch(/^\s*async enviarProposta\s*\(/m);
+  });
+
+  it('a rota /sessao/iniciar repassa os itens — campo não nomeado é descartado', () => {
+    // ISTO ACONTECEU, em 10/09/2026, e passou por todas as outras verificações.
+    //
+    // A rota desestrutura uma lista FIXA do `req.body` e repassa campo a campo
+    // ao createSession. O que não estiver nomeado ali some em silêncio: sem
+    // erro, sem log, sem teste vermelho. A edge function mandava os itens, o
+    // session-manager sabia usá-los, o módulo do portal sabia registrá-los —
+    // e esta linha no meio jogava tudo fora.
+    //
+    // O `tsc` não vê (é string), o lint não vê, o build passa. Só um teste que
+    // lê o texto gerado pega. Por isso ele existe.
+    const index = ler('src/index.js');
+
+    const destructuring = index.match(/const \{([\s\S]*?)\} = req\.body;/);
+    expect(destructuring, 'não achei a desestruturação do req.body').toBeTruthy();
+    expect(destructuring![1]).toMatch(/\bitens\b/);
+    expect(destructuring![1]).toMatch(/\btipo_disputa\b/);
+
+    // Nomear na desestruturação não basta — tem que CHEGAR ao createSession.
+    const chamada = index.match(/createSession\(\{([\s\S]*?)\}\);/);
+    expect(chamada, 'não achei a chamada do createSession').toBeTruthy();
+    expect(chamada![1]).toMatch(/itens:/);
+    expect(chamada![1]).toMatch(/tipo_disputa:/);
+  });
+
+  it('o alvo da disputa chega ao módulo do portal e ao /health', () => {
+    // As duas pontas do caminho que os itens percorrem depois da rota. Piso
+    // ausente é estado próprio: nulo não é zero, e o robô não deve dar lance
+    // num item que ninguém avaliou.
+    expect(ler('src/portals/portal-compras.js')).toMatch(/async navegarParaDisputa\(edital, alvo\)/);
+    expect(ler('src/session-manager.js')).toMatch(/itens_recebidos/);
+    expect(ler('src/session-manager.js')).toMatch(/itens_sem_piso/);
   });
 });

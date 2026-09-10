@@ -123,7 +123,11 @@ export default function KillSwitchButton({ sessaoId, licitacaoId, onParada, disa
             <p>Esta ação irá <strong>interromper imediatamente</strong> todas as operações automatizadas em curso:</p>
             <ul className="list-disc list-inside text-xs space-y-1 ml-2">
               <li>Todos os lances pendentes serão cancelados</li>
-              <li>A sessão será encerrada com status "parada emergencial"</li>
+              <li>
+                <strong>Todas as sessões</strong> do robô serão encerradas —
+                inclusive as de <strong>outras disputas</strong>
+              </li>
+              <li>A sessão desta disputa fica com status "parada emergencial"</li>
               <li>O agente externo será notificado para cessar operações</li>
               <li>O evento será registrado na trilha de auditoria imutável</li>
             </ul>

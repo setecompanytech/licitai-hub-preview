@@ -52,6 +52,21 @@ const VINCULO_VAZIO: VinculoContratoValue = {
   valor_unitario: 0,
 };
 
+/**
+ * Número que pode chegar como string pt-BR (09/09): "52.961" é cinquenta e
+ * dois mil, não 52,961 — Number() cru dividiu quantidade e valor do pedido
+ * 728 por mil. Vírgula presente = decimal BR; só pontos em grupos de 3 =
+ * milhar; caso contrário, Number normal.
+ */
+const numeroBr = (v: unknown): number => {
+  if (typeof v === "number") return v;
+  const t = String(v ?? "").trim();
+  if (!t) return 0;
+  if (t.includes(",")) return Number(t.replace(/\./g, "").replace(",", ".")) || 0;
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return Number(t.replace(/\./g, "")) || 0;
+  return Number(t) || 0;
+};
+
 const fmt = (v: number | null | undefined) =>
   v == null ? "—" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -319,7 +334,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
       if (temVinculo) {
         // Caminho com vínculo: cria pedido + lançamento via RPC (recalcula saldo do contrato/ATA)
-        const valorTotal = Number(d.valor_total);
+        const valorTotal = numeroBr(d.valor_total);
 
         // Lista de itens marcados (1 ou mais — cota principal + reservada)
         const itemIds =
@@ -368,8 +383,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           // A quantidade INFORMADA (da nota, ou ajustada pela pessoa) manda,
           // rateada pela fatia quando há mais de um item. A divisão por preço
           // é último recurso — era ela que produzia 498,8914 caixas.
-          const qtdInformada = Number(v!.quantidade) || 0;
-          const vu = v!.valor_unitario || valorTotal;
+          const qtdInformada = numeroBr(v!.quantidade) || 0;
+          const vu = numeroBr(v!.valor_unitario) || valorTotal;
           const qtd = qtdInformada > 0 && valorTotal > 0
             ? Number(((qtdInformada * fatia) / valorTotal).toFixed(4))
             : vu > 0 ? Number((fatia / vu).toFixed(4)) : 1;
@@ -641,6 +656,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 O campo será gravado vazio; cole a chave completa se precisar dela.
                               </p>
                             )}
+                            {/* Avisos do saneamento do servidor (ex.: milhar
+                                engolido no valor, corrigido por qtd×unitário).
+                                Correção silenciosa é tão proibida quanto erro
+                                silencioso. */}
+                            {d.status === "ok" && Array.isArray((d.dados as any)?.avisos) &&
+                              ((d.dados as any).avisos as string[]).map((a, i) => (
+                                <p key={i} className="text-xs text-warning mt-1">{a}</p>
+                              ))}
                             {d.erro && <p className="text-xs text-destructive mt-1">{d.erro}</p>}
                             {/* Onde o arquivo foi parar.
                                 Antes, o documento processado ficava num limbo: o

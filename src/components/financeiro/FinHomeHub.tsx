@@ -51,7 +51,7 @@ export const HUB_ITEMS: HubItem[] = [
 
   // Fiscal
   { id: "emissor_nfe", label: "Emissor NF-e", description: "Emissão homologada SEFAZ schema 4.00.", icon: FileText, group: "fiscal" },
-  { id: "nfe_entrada", label: "NF-e Entrada", description: "Consulta e download de XML por chave.", icon: Inbox, group: "fiscal" },
+  { id: "nfe_entrada", label: "NF-e Recebidas", description: "Notas emitidas contra o CNPJ da empresa: acervo automático, XML, manifestação e Conta a Pagar em 1 clique.", icon: Inbox, group: "fiscal" },
   { id: "nfse", label: "NFS-e Municipal", description: "Monitor e emissão multi-prefeitura.", icon: Building2, group: "fiscal", badge: "Novo" },
   { id: "config_nfe", label: "Configuração NF-e", description: "Provedor (FocusNFe / NFe.io / SEFAZ direto), ambiente e credenciais por empresa.", icon: ShieldCheck, group: "fiscal", badge: "Novo" },
   { id: "pix_cobranca", label: "Cobrança PIX", description: "Gera BR Code (Pix Copia e Cola) e QR Code conforme padrão BACEN.", icon: QrCode, group: "fiscal", badge: "Novo" },
@@ -65,6 +65,7 @@ export const HUB_ITEMS: HubItem[] = [
   { id: "atividade_usuarios", label: "Atividade dos Usuários", description: "Auditoria cronológica por usuário, data e tipo (modelo Omie).", icon: Activity, group: "relatorios", badge: "Novo" },
   { id: "lotes_auditoria", label: "Auditoria de Lotes", description: "Rastreabilidade da origem dos dados (seed, importação, OFX, Pluggy, manual).", icon: History, group: "relatorios", badge: "Novo" },
   { id: "previsto_realizado", label: "Previsto × Realizado", description: "Compare orçamento com execução mensal.", icon: Target, group: "relatorios", badge: "Novo" },
+  { id: "custos_contratos", label: "Custos por Contrato", description: "O que cada contrato vigente custa: despesas vinculadas, custos digitados e rateio opcional. Acesso: admin e Financeiro.", icon: Briefcase, group: "relatorios", badge: "Novo" },
   { id: "relatorios", label: "Relatórios", description: "Exportações personalizadas em PDF/Excel.", icon: FileDown, group: "relatorios" },
   { id: "apuracao", label: "Apuração", description: "Apuração de impostos e tributos.", icon: Calculator, group: "relatorios" },
   { id: "aprovacoes", label: "Aprovação de Pagamentos", description: "Workflow multi-nível com alçada por valor.", icon: ShieldCheck, group: "relatorios", badge: "Novo" },

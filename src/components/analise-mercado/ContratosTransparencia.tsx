@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { downloadCSV } from '@/lib/download-utils';
+import { mascaraCNPJ, isValidCNPJ } from '@/lib/financeiro/formatters';
 
 type ContratoFederal = {
   id?: string;
@@ -40,18 +41,28 @@ const formatCurrency = (v: number) => {
   return `R$ ${v.toFixed(0)}`;
 };
 
-const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
-
 export default function ContratosTransparencia() {
   const [tipo, setTipo] = useState<'contratos' | 'licitacoes'>('contratos');
   const [busca, setBusca] = useState('');
   const [cnpjBusca, setCnpjBusca] = useState('');
-  const [ufFiltro, setUfFiltro] = useState('');
+  // A API federal filtra por CNPJ do contratado ou por código SIAFI do órgão
+  // — UF nunca foi filtro aceito por estes endpoints (spec conferida em
+  // 08/09); o seletor de UF que havia aqui não filtrava nada.
+  const [orgaoBusca, setOrgaoBusca] = useState('');
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<any[]>([]);
   const [erro, setErro] = useState('');
 
   const handleBuscar = async () => {
+    // Dígito verificador ANTES da viagem: um CNPJ com algarismos trocados
+    // (33.743… em vez de 33.734…, o caso de 08/09) voltava da API federal
+    // como erro genérico. Conferir aqui dá resposta imediata e clara.
+    const digitos = cnpjBusca.replace(/\D/g, '');
+    if (digitos.length > 0 && !isValidCNPJ(digitos)) {
+      setErro('CNPJ inválido — confira os dígitos (é comum inverter dois algarismos).');
+      setDados([]);
+      return;
+    }
     setLoading(true);
     setErro('');
     setDados([]);
@@ -67,7 +78,7 @@ export default function ContratosTransparencia() {
         body: {
           tipo,
           cnpj: cnpjBusca || undefined,
-          uf: ufFiltro || undefined,
+          orgao: orgaoBusca.trim() || undefined,
           dataInicio,
           dataFim,
         },
@@ -114,20 +125,15 @@ export default function ContratosTransparencia() {
           <Input
             placeholder="CNPJ do contratado (opcional)"
             value={cnpjBusca}
-            onChange={(e) => setCnpjBusca(e.target.value)}
+            inputMode="numeric"
+            onChange={(e) => setCnpjBusca(mascaraCNPJ(e.target.value))}
           />
 
-          <Select value={ufFiltro} onValueChange={setUfFiltro}>
-            <SelectTrigger>
-              <SelectValue placeholder="UF (opcional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todas as UFs</SelectItem>
-              {UFS.map(uf => (
-                <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            placeholder="Código do órgão SIAFI (ex.: 26403)"
+            value={orgaoBusca}
+            onChange={(e) => setOrgaoBusca(e.target.value)}
+          />
 
           <Button onClick={handleBuscar} disabled={loading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
@@ -145,7 +151,7 @@ export default function ContratosTransparencia() {
           <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
             API Pública
           </Badge>
-          <span>Dados dos últimos 6 meses</span>
+          <span>Contratos: por CNPJ ou órgão · Licitações: exigem o código do órgão · janela de 6 meses</span>
           <a href="https://portaldatransparencia.gov.br" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-accent">
             <ExternalLink className="w-3 h-3" /> Portal da Transparência

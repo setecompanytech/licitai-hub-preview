@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +15,8 @@ import ReactMarkdown from 'react-markdown';
 import {
   TrendingUp, TrendingDown, RefreshCw, Calculator, FileText, Scale, Building2,
   HardHat, Users, DollarSign, Percent, CalendarDays, AlertTriangle, Sparkles,
-  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2, ArrowRight
+  Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2, ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -41,6 +43,19 @@ type SimResult = {
 const fmtCur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
 
+/** O portal oficial de quem CALCULA o índice — conferência na origem, a um
+ *  clique do número. Derivado da fonte gravada na linha (nunca chutado).
+ *  URLs verificadas em 08/09 (a primeira do BCB dava 404 no site novo, que
+ *  responde 200 até para rota inexistente — SPA — e só mostra o erro na tela). */
+const portalOficial = (fonte: string, categoria: string): { nome: string; url: string } => {
+  if (fonte.startsWith('IBGE')) return { nome: 'IBGE', url: 'https://www.ibge.gov.br/indicadores' };
+  if (fonte.startsWith('FGV')) return { nome: 'FGV', url: 'https://portal.fgv.br/indices-economicos' };
+  if (categoria === 'juros') return { nome: 'Banco Central', url: 'https://www.bcb.gov.br/controleinflacao/taxaselic' };
+  // Salário mínimo e demais séries do SGS: o portal público do próprio SGS —
+  // a origem literal de onde estes números foram lidos.
+  return { nome: 'Banco Central (SGS)', url: 'https://www3.bcb.gov.br/sgspub/' };
+};
+
 const categoriaIcons: Record<string, typeof TrendingUp> = {
   inflacao: TrendingUp, construcao: Building2, salario: Users, juros: Percent,
 };
@@ -60,7 +75,10 @@ export default function IndicesRepactuacao() {
   const [catFiltro, setCatFiltro] = useState('todos');
 
   // Simulador
-  const [simValor, setSimValor] = useState('');
+  // Número, não texto: o campo era um Input cru que aceitava "100000,00" sem
+  // máscara e o parse manual espalhava-se por três pontos (08/09). MoneyInput
+  // é o padrão da casa para dinheiro.
+  const [simValor, setSimValor] = useState(0);
   const [simIndice, setSimIndice] = useState('IPCA');
   const [simPerc, setSimPerc] = useState('');
   const [simDataOrig, setSimDataOrig] = useState('');
@@ -117,7 +135,7 @@ export default function IndicesRepactuacao() {
       const { data, error } = await supabase.functions.invoke('indices-economicos', {
         body: {
           action: 'simular_repactuacao',
-          valor_original: parseFloat(simValor.replace(/\./g, '').replace(',', '.')),
+          valor_original: simValor,
           indice: simIndice,
           percentual: parseFloat(simPerc.replace(',', '.')),
           data_base_original: simDataOrig,
@@ -172,6 +190,42 @@ export default function IndicesRepactuacao() {
           </p>
         </div>
 
+        {/* ── A esteira: os índices correndo, como nos portais econômicos ──
+            Visível em todas as abas do menu; os números são os MESMOS da base
+            local (fonte SGS), só mudam de roupa. Duplicada para o loop ser
+            contínuo; a segunda cópia é decorativa para o leitor de tela. */}
+        {indices.length > 0 && (
+          <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted/30 overflow-hidden">
+            <span className="shrink-0 flex items-center px-3 py-2 text-xs font-semibold text-primary whitespace-nowrap border-r border-border bg-card">
+              ÍNDICES OFICIAIS
+            </span>
+            <div className="relative flex-1 overflow-hidden flex items-center">
+              <div className="esteira-indices-faixa flex w-max items-center gap-8 px-4">
+                {[0, 1].map((volta) => (
+                  <span key={volta} className="flex items-center gap-8" aria-hidden={volta === 1}>
+                    {indices.map((idx) => (
+                      <span key={`${volta}-${idx.id}`} className="text-xs whitespace-nowrap tabular-nums">
+                        <b>{idx.sigla}</b>
+                        <span className="text-muted-foreground"> · {idx.periodo} · </span>
+                        <span className={(idx.variacao_mensal ?? 0) < 0 ? 'text-success' : 'text-warning'}>
+                          {idx.categoria === 'salario'
+                            ? fmtCur(idx.valor)
+                            : idx.categoria === 'juros'
+                              ? `${idx.valor}% a.a.`
+                              : fmtPerc(idx.valor)}
+                        </span>
+                        {idx.acumulado_12m != null && (
+                          <span className="text-muted-foreground"> (12m: {fmtPerc(idx.acumulado_12m)})</span>
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="indices">📊 Painel de Índices</TabsTrigger>
@@ -203,7 +257,7 @@ export default function IndicesRepactuacao() {
             ) : indices.length === 0 ? (
               <Card className="p-8 text-center">
                 <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum índice cadastrado. Clique em "Atualizar Índices" para buscar dados via IA.</p>
+                <p className="text-muted-foreground">Nenhum índice cadastrado. Clique em "Atualizar Índices" para buscar as séries oficiais no Banco Central (SGS).</p>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -227,9 +281,13 @@ export default function IndicesRepactuacao() {
                       <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{idx.nome}</p>
                       <div className="flex items-end justify-between">
                         <p className="text-xl font-bold">
-                          {idx.categoria === 'salario' || idx.categoria === 'construcao'
+                          {/* Só salário é dinheiro. INCC é VARIAÇÃO — "R$ 0,66"
+                              afirmava um preço que não existe (print de 08/09). */}
+                          {idx.categoria === 'salario'
                             ? fmtCur(idx.valor)
-                            : `${idx.valor}`
+                            : idx.categoria === 'juros'
+                              ? `${idx.valor}% a.a.`
+                              : fmtPerc(idx.valor)
                           }
                         </p>
                         {idx.variacao_mensal != null && (
@@ -243,6 +301,15 @@ export default function IndicesRepactuacao() {
                         {idx.variacao_anual != null && <span>Ano: {fmtPerc(idx.variacao_anual)}</span>}
                         {idx.acumulado_12m != null && <span>12m: {fmtPerc(idx.acumulado_12m)}</span>}
                       </div>
+                      {(() => {
+                        const portal = portalOficial(idx.fonte, idx.categoria);
+                        return (
+                          <a href={portal.url} target="_blank" rel="noreferrer"
+                            className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                            Conferir no portal do {portal.nome} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        );
+                      })()}
                     </Card>
                   );
                 })}
@@ -382,7 +449,7 @@ export default function IndicesRepactuacao() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs">Valor Original do Contrato (R$)</Label>
-                  <Input placeholder="100.000,00" value={simValor} onChange={e => setSimValor(e.target.value)} />
+                  <MoneyInput value={simValor} onValueChange={setSimValor} />
                 </div>
                 <div>
                   <Label className="text-xs">Índice de Reajuste</Label>
@@ -435,7 +502,7 @@ export default function IndicesRepactuacao() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Valor Original</p>
-                    <p className="text-lg font-bold">{fmtCur(parseFloat(simValor.replace(/\./g, '').replace(',', '.')) || 0)}</p>
+                    <p className="text-lg font-bold">{fmtCur(simValor || 0)}</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Valor Reajustado</p>

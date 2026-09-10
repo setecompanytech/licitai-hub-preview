@@ -39,12 +39,17 @@ type ContratoItem = {
   numero_lote?: string | null; descricao_lote?: string | null;
 };
 
-type Aditivo = { id: string; numero_aditivo: string; tipo: string; };
+type Aditivo = {
+  id: string; numero_aditivo: string; tipo: string;
+  quantidade_acrescimo?: number | null; quantidade_supressao?: number | null;
+};
 
 type ContratoMeta = {
   tipo_documento: 'contrato' | 'ata_srp' | string;
   ata_srp_id: string | null;
   tipo_estrutura?: 'itens' | 'lotes' | string | null;
+  valor_global?: number | null;
+  valor_consumido?: number | null;
 };
 
 /** Chave de agrupamento para identificar o mesmo item físico entre versões */
@@ -76,6 +81,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [consolidado, setConsolidado] = useState(true);
+  // Filtro da coluna Situação: 'todas' (pote único), 'original' ou o id de um
+  // termo aditivo — cada camada mostra a própria capacidade/consumo/saldo.
+  const [situacao, setSituacao] = useState<string>('todas');
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [prodSearch, setProdSearch] = useState('');
   const [prodPopover, setProdPopover] = useState(false);
@@ -159,14 +167,80 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     return result;
   }, [itens, aditivos]);
 
-  // Na visão consolidada, totais calculados apenas sobre o estado efetivo (sem duplicar versões)
+  // Na visão consolidada, totais calculados apenas sobre o estado efetivo (sem duplicar versões).
+  // Sempre sobre o estado VIGENTE (consumido + saldo × preço atual): item.valor_total
+  // guarda só a contratação original e saldo_financeiro do banco acumula acréscimo de
+  // aditivo por cima do preço já reequilibrado (dupla contagem) — os dois descolavam do
+  // Valor Global e acusavam divergência falsa de milhões (09/09).
   const itensExibidos = consolidado ? itensMesclados : itens;
-  const totalContratadoEfetivo = itensMesclados.reduce((s, i) => s + i.valor_total, 0);
-  const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + i.saldo_financeiro, 0);
+  // ——— ATA × contrato: quem consome o quê ————————————————————————————
+  // No CONTRATO, o consumo vem dos pedidos (quantidade_consumida) e o saldo
+  // vive em saldo_quantitativo. Na ATA SRP, quem consome são os CONTRATOS
+  // DERIVADOS, registrados em quantidade_ata_consumida — o saldo_quantitativo
+  // da ata nunca é debitado. Exibir as colunas do contrato numa ata mostrava
+  // consumido 0 com a ata 100% contratada, e o total efetivo dobrava (09/09).
+  const ehAta = meta?.tipo_documento === 'ata_srp';
+  const consumidaDe = (i: ContratoItem) => ehAta
+    ? (Number(i.quantidade_ata_consumida) || 0)
+    : (Number(i.quantidade_consumida) || 0);
+  const saldoQtdDe = (i: ContratoItem) => ehAta
+    ? Math.max((Number(i.quantidade_contratada) || 0) - (Number(i.quantidade_ata_consumida) || 0), 0)
+    : (Number(i.saldo_quantitativo) || 0);
+  const qtdVigenteDe = (i: ContratoItem) => ehAta
+    ? (Number(i.quantidade_contratada) || 0)
+    : (Number(i.quantidade_consumida) || 0) + (Number(i.saldo_quantitativo) || 0);
+  const saldoFinanceiroDe = (i: ContratoItem) => saldoQtdDe(i) * (Number(i.valor_unitario) || 0);
+  const totalSaldoEfetivo = itensMesclados.reduce((s, i) => s + saldoFinanceiroDe(i), 0);
+  // Total efetivo = consumido REAL (R$ dos pedidos, ao preço de cada época) +
+  // saldo × preço vigente. Medir vigente × preço atual superfatura o
+  // reequilíbrio concedido no MEIO do consumo: a parte já consumida foi paga
+  // ao preço antigo e não pode ser reavaliada ao novo — acusaria divergência
+  // falsa contra o Valor Global (09/09).
+  const totalContratadoEfetivo =
+    (Number(meta?.valor_consumido) || 0) + totalSaldoEfetivo;
+
+  // ——— Camadas por Situação (Contrato Original × cada termo aditivo) ———
+  // O saldo do contrato é um pote único: pedidos NÃO são carimbados por termo.
+  // Para conferir "quanto resta de cada camada", a atribuição é FIFO — o consumo
+  // abate primeiro o Contrato Original e depois cada termo, na ordem de registro.
+  // Acréscimo de quantidade por camada: a diferença (vigente − contratada) do item
+  // é repartida entre os termos na proporção dos acréscimos registrados em cada um.
+  // Régua de conferência gerencial, não segregação jurídica de saldos.
+  type Camada = { capacidade: number; consumido: number; saldo: number };
+  const camadasPorItem = useMemo(() => {
+    const acrescDe = (a: Aditivo) =>
+      Math.max((Number(a.quantidade_acrescimo) || 0) - (Number(a.quantidade_supressao) || 0), 0);
+    const somaAcresc = aditivos.reduce((s, a) => s + acrescDe(a), 0);
+    const mapa = new Map<string, Map<string, Camada>>();
+    for (const item of itensMesclados) {
+      const vigente = qtdVigenteDe(item);
+      const acrescimoItem = Math.max(vigente - (Number(item.quantidade_contratada) || 0), 0);
+      const caps: Array<[string, number]> = [['original', vigente - acrescimoItem]];
+      for (const a of aditivos) {
+        caps.push([a.id, somaAcresc > 0 ? acrescimoItem * (acrescDe(a) / somaAcresc) : 0]);
+      }
+      let restante = Number(item.quantidade_consumida) || 0;
+      const porCamada = new Map<string, Camada>();
+      for (const [key, cap] of caps) {
+        const consumido = Math.min(restante, cap);
+        restante -= consumido;
+        porCamada.set(key, { capacidade: cap, consumido, saldo: cap - consumido });
+      }
+      mapa.set(item.id, porCamada);
+    }
+    return mapa;
+    // qtdVigenteDe é recriada a cada render mas só varia com ehAta (meta);
+    // listar meta?.tipo_documento cobre a dependência real sem recomputar à toa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itensMesclados, aditivos, meta?.tipo_documento]);
+
+  const labelSituacao = situacao === 'original'
+    ? (meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original')
+    : (aditivos.find(a => a.id === situacao)?.numero_aditivo ?? '');
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global, valor_consumido').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
@@ -174,7 +248,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
     const [itensRes, aditivosRes, produtosRes] = await Promise.all([
       supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo, quantidade_acrescimo, quantidade_supressao').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       empresaId
         ? supabase.from('produtos').select('id, codigo, descricao, unidade, preco_venda').eq('empresa_id', empresaId).order('descricao')
         : Promise.resolve({ data: [] }),
@@ -495,7 +569,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             <Button
               size="sm"
               variant={consolidado ? 'secondary' : 'outline'}
-              onClick={() => setConsolidado(v => !v)}
+              onClick={() => { setConsolidado(v => !v); setSituacao('todas'); }}
               className="text-xs gap-1.5"
             >
               {consolidado ? <Layers className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
@@ -658,11 +732,40 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         </Card>
       ) : (
         <TooltipProvider>
+        <div className="space-y-1">
+        {consolidado && situacao !== 'todas' && (
+          <p className="text-[11px] text-muted-foreground">
+            Conferindo a camada <span className="font-medium text-foreground">{labelSituacao}</span> —
+            atribuição FIFO: o consumo abate primeiro o Contrato Original e depois cada termo,
+            na ordem de registro. Os pedidos não são carimbados por termo aditivo; esta visão
+            é uma régua de conferência.
+          </p>
+        )}
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
+                <TableHead className="text-xs whitespace-nowrap">
+                  {/* Filtro por camada: qual saldo conferir — o pote todo, só o
+                      contrato original, ou um termo aditivo específico. */}
+                  {consolidado && aditivos.length > 0 && !ehAta ? (
+                    <Select value={situacao} onValueChange={setSituacao}>
+                      <SelectTrigger
+                        className="h-7 w-auto min-w-[110px] gap-1 text-xs border-dashed px-2"
+                        title="Filtrar o saldo por camada: contrato original ou cada termo aditivo"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Situação: todas</SelectItem>
+                        <SelectItem value="original">{meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original'}</SelectItem>
+                        {aditivos.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.numero_aditivo}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : 'Situação'}
+                </TableHead>
                 {meta?.tipo_estrutura === 'lotes' && <TableHead className="text-xs whitespace-nowrap">Lote</TableHead>}
                 {/* Pares que são um assunto só viram UMA coluna com duas
                     linhas (unitário em cima, total embaixo): treze colunas
@@ -681,9 +784,23 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             </TableHeader>
             <TableBody>
               {(itensExibidos as (ContratoItem & Partial<ItemConsolidado>)[]).map(item => {
-                const pct = item.quantidade_contratada > 0
-                  ? (item.quantidade_consumida / item.quantidade_contratada) * 100 : 0;
+                // A régua do % é a quantidade VIGENTE (consumido + saldo):
+                // com aditivo de quantidade, medir sobre a original dizia 79%
+                // enquanto saldo e consumo somavam outra base — as contas não
+                // fechavam à vista (09/09).
+                const qtdVigente = qtdVigenteDe(item);
+                const baseQtd = qtdVigente > (item.quantidade_contratada || 0) ? qtdVigente : (item.quantidade_contratada || 0);
+                const pct = baseQtd > 0 ? (consumidaDe(item) / baseQtd) * 100 : 0;
                 const lowStock = pct >= 80;
+
+                // Camada escolhida no filtro de Situação (visão consolidada):
+                // as colunas Qtd/Consumido/Saldo passam a medir só essa camada.
+                const camadaSel = (consolidado && situacao !== 'todas'
+                  ? camadasPorItem.get(item.id)?.get(situacao)
+                  : null) ?? null;
+                const pctCamada = camadaSel && camadaSel.capacidade > 0
+                  ? (camadaSel.consumido / camadaSel.capacidade) * 100 : 0;
+                const nf = (n: number) => Number(n.toFixed(2)).toLocaleString('pt-BR');
 
                 // Lógica de badge de situação para visão consolidada
                 const foiModificado = !!(item as ItemConsolidado)._foiModificado;
@@ -692,7 +809,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const original = (item as ItemConsolidado)._original ?? null;
 
                 // Para visão plana (todos os registros), usa a lógica original
-                const origemLabel = !consolidado
+                const origemLabel = camadaSel ? labelSituacao : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
                   : foiModificado && aditivoModificador
                     ? `✏ Atualizado: ${aditivoModificador.numero_aditivo}`
@@ -767,11 +884,17 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       >
                         {item.descricao}
                       </button>
-                      <span className="text-[11px] text-muted-foreground">
+                      {/* Sublinha em LINHA ÚNICA: a descrição do vínculo com a
+                          ATA dobrava a célula em duas linhas (09/09). O texto
+                          inteiro fica no title e no olho da descrição. */}
+                      <span
+                        className="block truncate text-[11px] text-muted-foreground"
+                        title={item.ata_item_id ? `Vinculado ao item da ATA: ${ataItemLabel(item.ata_item_id) ?? ''}` : undefined}
+                      >
                         {item.codigo_item && <span className="font-mono">cód. {item.codigo_item}</span>}
                         {isContratoComATA && (
                           item.ata_item_id
-                            ? <span>{item.codigo_item ? ' · ' : ''}⛓ {ataItemLabel(item.ata_item_id)}</span>
+                            ? <span>{item.codigo_item ? ' · ' : ''}ATA: {ataItemLabel(item.ata_item_id)}</span>
                             : <span className="text-warning">{item.codigo_item ? ' · ' : ''}sem vínculo à ata</span>
                         )}
                       </span>
@@ -781,9 +904,28 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">
+                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
+                      {camadaSel ? (
+                        <>
+                          {nf(camadaSel.capacidade)}
+                          <span className="text-muted-foreground"> {uni(item.unidade)}</span>
+                          {camadaSel.capacidade > 0 ? (
+                            <div className="text-[11px] text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
+                          ) : (
+                            <div className="text-[11px] text-muted-foreground">termo sem acréscimo de quantidade</div>
+                          )}
+                        </>
+                      ) : (
+                        <>
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
                       <span className="text-muted-foreground"> {uni(item.unidade)}</span>
+                      {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
+                        <div className="text-[11px] text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
+                          vigente: {qtdVigente.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                        </>
+                      )}
                       {/* Quantidade zerada é a fratura físico×financeiro: o
                           scan não rendeu o número e o total fica em R$ 0,00.
                           O aviso mora ao lado do defeito, não noutra aba. */}
@@ -796,37 +938,91 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         <div>{item.custo_unitario != null ? fmt(item.custo_unitario) : '—'}<span className="text-[10px]">/un</span></div>
                         {/* O "/un" rotula a primeira linha; sem rótulo na segunda,
                             item de quantidade zero mostrava R$ 0,00 sobre R$ 0,00
-                            e parecia valor repetido, não unitário × total. */}
-                        <div className="text-[11px]"><span className="text-[10px]">total </span>{item.custo_total != null ? fmt(item.custo_total) : '—'}</div>
+                            e parecia valor repetido, não unitário × total.
+                            Na visão por camada, o total de custo mede A CAMADA —
+                            camada de quantidade zero mostrava o custo do item
+                            inteiro ao lado de um Valor de R$ 0,00 (09/09). */}
+                        <div className="text-[11px]">
+                          <span className="text-[10px]">total </span>
+                          {camadaSel
+                            ? (camadaSel.capacidade > 0 ? fmt(camadaSel.capacidade * (Number(item.custo_unitario) || 0)) : '—')
+                            : (item.custo_total != null ? fmt(item.custo_total) : '—')}
+                        </div>
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-right whitespace-nowrap font-medium">
                       {fmt(item.valor_unitario)}<span className="text-[10px] text-muted-foreground">/un</span>
                       {(() => {
-                        // O contrato guarda o preço da CONTRATAÇÃO; a ATA evolui por
-                        // reequilíbrio/reajuste. Divergência aqui não é erro — é
-                        // história, e precisa aparecer: era X, a ata hoje registra Y.
+                        // Divergência contrato × ATA tem DUAS histórias, e a nota
+                        // precisa contar a certa (09/09): preço do contrato acima do
+                        // registrado E com reequilíbrio/revisão/reajuste nos aditivos
+                        // é evolução AUTORIZADA — nota neutra, na direção real
+                        // ("contratado a X, reequilibrado +Y%"), não "ATA hoje −37%"
+                        // em tom de alerta. Sem aditivo que autorize, aí sim é aviso.
                         if (!item.ata_item_id) return null;
                         const ataItem = ataItens.find(a => a.id === item.ata_item_id);
                         if (!ataItem || ataItem.valor_unitario == null) return null;
-                        const dif = (ataItem.valor_unitario || 0) - (item.valor_unitario || 0);
-                        if (Math.abs(dif) < 0.005) return null;
-                        const pct = item.valor_unitario ? ((dif / item.valor_unitario) * 100).toFixed(2) : null;
+                        const vAta = Number(ataItem.valor_unitario) || 0;
+                        const vContrato = Number(item.valor_unitario) || 0;
+                        if (Math.abs(vAta - vContrato) < 0.005) return null;
+                        if (temAditivoForaDoObjeto && vContrato > vAta && vAta > 0) {
+                          const pctAumento = ((vContrato - vAta) / vAta) * 100;
+                          return (
+                            <div
+                              className="text-[11px] text-muted-foreground font-normal"
+                              title="Preço da contratação registrado na ATA, atualizado pelo reequilíbrio/revisão/reajuste registrado em Arquivos e Aditivos"
+                            >
+                              contratado na ATA a {fmt(vAta)} · reequilibrado +{pctAumento.toFixed(1).replace('.', ',')}%
+                            </div>
+                          );
+                        }
+                        const pct = vContrato ? (((vAta - vContrato) / vContrato) * 100).toFixed(2).replace('.', ',') : null;
                         return (
-                          <div className="text-[11px] text-warning font-normal">
-                            ATA hoje: {fmt(ataItem.valor_unitario)}{pct ? ` (${dif > 0 ? '+' : ''}${pct}%)` : ''}
+                          <div className="text-[11px] text-warning font-normal" title="Preço do item diverge do registrado na ATA sem aditivo que autorize — confira">
+                            ATA registra {fmt(vAta)}{pct ? ` (${vAta > vContrato ? '+' : ''}${pct}%)` : ''}
                           </div>
                         );
                       })()}
-                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(item.valor_total)}</span></div>
+                      <div className="text-[11px] text-muted-foreground"><span className="text-[10px]">total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap">
-                      {Number(item.quantidade_consumida || 0).toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
+                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
+                      {camadaSel ? (
+                        camadaSel.capacidade > 0 ? (
+                          <>
+                            {nf(camadaSel.consumido)}
+                            <span className="text-muted-foreground ml-1" title={`Consumo atribuído à camada ${labelSituacao} (FIFO)`}>({pctCamada.toFixed(0)}%)</span>
+                          </>
+                        ) : <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <>
+                          {consumidaDe(item).toLocaleString('pt-BR')}
+                          <span
+                            className="text-muted-foreground ml-1"
+                            title={ehAta ? 'Consumido pelos contratos derivados da ata' : 'Sobre a quantidade vigente (contratada + aditivos)'}
+                          >({pct.toFixed(0)}%)</span>
+                          {ehAta && consumidaDe(item) > 0 && (
+                            <div className="text-[11px] text-muted-foreground">pelos contratos derivados</div>
+                          )}
+                        </>
+                      )}
                     </TableCell>
-                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap ${lowStock ? 'text-warning' : 'text-success'}`}>
-                      <div>{Number(item.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
-                      <div className="text-[11px]">{fmt(item.saldo_financeiro)}</div>
+                    <TableCell className={`text-xs text-right font-medium whitespace-nowrap tabular-nums ${lowStock ? 'text-warning' : 'text-success'}`}>
+                      {camadaSel ? (
+                        camadaSel.capacidade > 0 ? (
+                          <>
+                            <div>{nf(camadaSel.saldo)} {uni(item.unidade)}</div>
+                            <div className="text-[11px]">{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
+                          </>
+                        ) : <span className="text-muted-foreground font-normal">—</span>
+                      ) : (
+                        <>
+                          {/* Saldo em R$ sempre CALCULADO (saldo × preço vigente): a coluna
+                              saldo_financeiro do banco acumula acréscimo de aditivo por cima
+                              do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
+                          <div>{saldoQtdDe(item).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
+                          <div className="text-[11px]">{fmt(saldoFinanceiroDe(item))}</div>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-card border-l border-border">
                       <div className="flex items-center gap-0.5">
@@ -846,6 +1042,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
               })}
             </TableBody>
           </Table>
+        </div>
         </div>
         </TooltipProvider>
       )}
@@ -944,12 +1141,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   <div className="font-medium">{fmt(itemVisualizado.valor_total || 0)}</div>
                 </div>
                 <div className="border rounded-md p-2">
-                  <div className="text-muted-foreground">Consumido</div>
-                  <div className="font-medium">{Number(itemVisualizado.quantidade_consumida || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
+                  <div className="text-muted-foreground">Consumido{ehAta ? ' (contratos derivados)' : ''}</div>
+                  <div className="font-medium">{consumidaDe(itemVisualizado).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)}</div>
                 </div>
                 <div className="border rounded-md p-2">
                   <div className="text-muted-foreground">Saldo</div>
-                  <div className="font-medium">{Number(itemVisualizado.saldo_quantitativo || 0).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(itemVisualizado.saldo_financeiro || 0)}</div>
+                  <div className="font-medium">{saldoQtdDe(itemVisualizado).toLocaleString('pt-BR')} {uni(itemVisualizado.unidade)} · {fmt(saldoFinanceiroDe(itemVisualizado))}</div>
                 </div>
               </div>
 

@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     let gravados = 0;
     let totalPaginas: number | null = tarefa.total_paginas;
     let paginasNestaFatia = 0;
+    let ultimoErroUpsert: string | null = null;
 
     while (Date.now() - inicio < TETO_MS) {
       const p = new URLSearchParams({
@@ -62,16 +63,27 @@ Deno.serve(async (req) => {
         pagina: String(pagina),
         tamanhoPagina: "50",
       });
-      let resp = await fetch(`${PNCP}?${p}`, {
-        headers: { Accept: "application/json", "User-Agent": "Praefectus/1.0 (licitacoes@praefectus.com.br)" },
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (resp.status === 429) {
-        await new Promise((r) => setTimeout(r, 2_000));
+      // 35s e falha rastreada: a janela ANUAL estourava 20s SEMPRE, o catch
+      // externo devolvia 500 sem tocar o progresso, e quatro madrugadas de
+      // cron pareceram "nunca rodou" (08/09). Janela agora é MENSAL.
+      let resp: Response;
+      try {
         resp = await fetch(`${PNCP}?${p}`, {
-          headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(20_000),
+          headers: { Accept: "application/json", "User-Agent": "Praefectus/1.0 (licitacoes@praefectus.com.br)" },
+          signal: AbortSignal.timeout(35_000),
         });
+        if (resp.status === 429) {
+          await new Promise((r) => setTimeout(r, 2_000));
+          resp = await fetch(`${PNCP}?${p}`, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(35_000),
+          });
+        }
+      } catch (e) {
+        await db.from("pncp_semeadura_progresso")
+          .update({ pagina_atual: pagina, registros_gravados: (tarefa.registros_gravados || 0) + gravados, atualizado_em: new Date().toISOString() })
+          .eq("id", tarefa.id);
+        return json({ ok: false, tarefa: tarefa.id, pagina, erro: `PNCP: ${(e as Error).message}` }, 502);
       }
       // 204/404 = janela sem registros; qualquer outro erro interrompe a
       // fatia SEM marcar concluído — a próxima invocação retoma daqui.
@@ -90,9 +102,26 @@ Deno.serve(async (req) => {
         const linhas = itens.map(mapRawParaCache).filter(Boolean) as Record<string, unknown>[];
         const dedup = new Map<string, Record<string, unknown>>();
         for (const l of linhas) dedup.set(String(l.fonte_id), l);
-        const { error } = await db.from("pncp_editais_cache").upsert([...dedup.values()], { ignoreDuplicates: true });
-        if (!error) gravados += dedup.size;
-        else console.warn("[semeadura] upsert:", error.message);
+        // O índice único PARCIAL de pncp_id não é coberto pelo ignoreDuplicates
+        // do client: UM duplicado derrubava o lote INTEIRO da página e os
+        // itens novos morriam junto (08/09). Filtra os existentes antes.
+        const ids = [...dedup.keys()];
+        const { data: existentes } = await db
+          .from("pncp_editais_cache").select("pncp_id").in("pncp_id", ids);
+        const jaTem = new Set((existentes ?? []).map((x: any) => String(x.pncp_id)));
+        const novos = [...dedup.values()].filter((l) => !jaTem.has(String(l.pncp_id)));
+        if (novos.length > 0) {
+          const { error } = await db.from("pncp_editais_cache").insert(novos);
+          if (!error) gravados += novos.length;
+          else {
+            // Corrida com o sync: insere um a um, ignorando só o duplicado.
+            for (const n of novos) {
+              const { error: e1 } = await db.from("pncp_editais_cache").insert(n);
+              if (!e1) gravados += 1;
+              else if (!/duplicate key/i.test(e1.message)) ultimoErroUpsert = e1.message;
+            }
+          }
+        }
       }
 
       paginasNestaFatia++;
@@ -117,6 +146,7 @@ Deno.serve(async (req) => {
       tarefa: { id: tarefa.id, modalidade: tarefa.modalidade_id, janela: tarefa.data_inicial },
       paginas_processadas: paginasNestaFatia,
       gravados,
+      upsert_erro: ultimoErroUpsert,
       tarefa_concluida: terminouTarefa,
     });
   } catch (e) {

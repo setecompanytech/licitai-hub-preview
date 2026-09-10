@@ -22,11 +22,12 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
 import heroEstoque from '@/assets/brand/hero-gestao-estoque-pedidos.jpg';
+import { analisarParaMargem, precificarEntrada, situacaoDoPrecoContratado, type AnaliseMargemEmpresa } from '@/lib/financeiro/margem-sugerida';
 import {
   ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
   Clock, Package, Truck, Users, X, Pencil, FileText,
-  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck,
+  Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck, PackagePlus,
 } from 'lucide-react';
 
 // ── Formatters ────────────────────────────────────────────────
@@ -74,6 +75,7 @@ type Produto = {
   ncm: string | null; cfop: string | null; cst_icms: string | null;
   csosn: string | null; cst_pis: string | null; cst_cofins: string | null;
   p_icms: number | null; p_pis: number | null; p_cofins: number | null;
+  codigo_ean?: string | null;
 };
 
 type EstoqueMovimento = {
@@ -83,12 +85,16 @@ type EstoqueMovimento = {
   created_by: string | null; created_at: string;
 };
 
+// Espelho da tabela CANÔNICA nfe_entradas — a legada nfe_recebidas não tinha
+// empresa_id e todo o fluxo de NF-e do Compras falhava em produção (09/09).
+// Unificada, a NF-e que chega pelo webhook do Financeiro também aparece aqui,
+// pronta para a entrada no estoque.
 type NfeRecebida = {
   id: string; empresa_id: string; pedido_id: string | null; fornecedor_id: string | null;
-  numero: string; serie: string; chave_acesso: string | null; data_emissao: string | null;
-  cnpj_emitente: string | null; nome_emitente: string | null;
-  valor_total: number; xml_content: string | null; itens: NFeItemData[] | null;
-  created_at: string;
+  numero: string; serie: string; chave: string | null; data_emissao: string | null;
+  emitente_cnpj: string | null; emitente_nome: string | null;
+  valor_total: number; xml: string | null; itens: NFeItemData[] | null;
+  recebida_em: string; origem?: string | null;
 };
 
 // ── Config ────────────────────────────────────────────────────
@@ -126,6 +132,16 @@ export default function GestaoCompras() {
   const [contratos,    setContratos]    = useState<Contrato[]>([]);
   const [produtos,     setProdutos]     = useState<Produto[]>([]);
   const [nfes,         setNfes]         = useState<NfeRecebida[]>([]);
+  const [nfesComEstoque, setNfesComEstoque] = useState<Set<string>>(new Set());
+  // NF-e que JÁ está no acervo (chegou pelo webhook/importação do Financeiro)
+  // e vai só lançar estoque: o salvar pula o insert e usa este id.
+  const [nfeExistenteId, setNfeExistenteId] = useState<string | null>(null);
+  // Fase B: régua de precificação na entrada — carga tributária e despesas
+  // da DRE real + margem alvo da empresa; preço de contrato vigente por
+  // produto para o confronto sugerido × contratado.
+  const [margemInfo, setMargemInfo] = useState<{ analise: AnaliseMargemEmpresa; alvo: number } | null>(null);
+  const [precosContrato, setPrecosContrato] = useState<Map<string, { preco: number; numero: string }>>(new Map());
+
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState(false);
 
@@ -185,6 +201,47 @@ export default function GestaoCompras() {
   const [nfeDragging,    setNfeDragging]    = useState(false);
   const [nfePdfLoading,  setNfePdfLoading]  = useState(false);
   const [nfeStep,        setNfeStep]        = useState<1|2|3>(1);
+  useEffect(() => {
+    if (!nfeOpen || nfeStep !== 3 || !empresaAtiva?.id || margemInfo) return;
+    (async () => {
+      try {
+        const inicio = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+        const [lancRes, empRes, cfgTribRes, cfgCustosRes, ciRes] = await Promise.all([
+          (supabase as any).from('financeiro_lancamentos')
+            .select('natureza, valor, categoria:financeiro_categorias!financeiro_lancamentos_categoria_id_fkey(grupo_dre, natureza)')
+            .eq('empresa_id', empresaAtiva.id)
+            .in('tipo', ['a_receber', 'a_pagar'])
+            .in('status', ['realizado', 'conciliado'])
+            .gte('data_competencia', inicio),
+          supabase.from('empresas').select('regime_tributario').eq('id', empresaAtiva.id).maybeSingle(),
+          supabase.from('financeiro_config_tributaria').select('*').eq('empresa_id', empresaAtiva.id).maybeSingle(),
+          (supabase.from('financeiro_config_custos' as never) as any).select('margem_alvo').eq('empresa_id', empresaAtiva.id).maybeSingle(),
+          (supabase.from('contrato_itens') as any)
+            .select('produto_id, valor_unitario, contratos!inner(numero_contrato, data_fim, tipo_documento, excluido_em, empresa_id)')
+            .not('produto_id', 'is', null),
+        ]);
+        const analise = analisarParaMargem(
+          (lancRes.data as any[]) || [],
+          (empRes.data as { regime_tributario?: string | null } | null)?.regime_tributario,
+          (cfgTribRes.data as any) ?? null,
+        );
+        const alvoCfg = Number((cfgCustosRes.data as { margem_alvo?: number } | null)?.margem_alvo);
+        const hoje = today();
+        const mapa = new Map<string, { preco: number; numero: string }>();
+        for (const ci of (ciRes.data as any[]) || []) {
+          const c = ci.contratos;
+          if (!c || c.empresa_id !== empresaAtiva.id || c.excluido_em || c.tipo_documento !== 'contrato') continue;
+          if (c.data_fim && c.data_fim < hoje) continue;
+          if (ci.produto_id && Number(ci.valor_unitario) > 0) {
+            mapa.set(ci.produto_id, { preco: Number(ci.valor_unitario), numero: c.numero_contrato || '' });
+          }
+        }
+        setPrecosContrato(mapa);
+        setMargemInfo({ analise, alvo: Number.isFinite(alvoCfg) ? alvoCfg : 10 });
+      } catch { /* régua é apoio: sem ela o lançamento segue */ }
+    })();
+  }, [nfeOpen, nfeStep, empresaAtiva?.id, margemInfo]);
+
   const [nfeFornMatch,   setNfeFornMatch]   = useState<Fornecedor | null>(null);
   const [nfeCriarForn,   setNfeCriarForn]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -214,12 +271,15 @@ export default function GestaoCompras() {
     if (!empresaAtiva) return;
     setLoading(true);
     try {
-      const [{ data: p }, { data: f }, { data: pr }, { data: n }] = await Promise.all([
+      const [{ data: p }, { data: f }, { data: pr }, { data: n }, { data: mov }] = await Promise.all([
         supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
         supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
         supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
-        supabase.from('nfe_recebidas').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
+        (supabase.from('nfe_entradas' as never) as any).select('*').eq('empresa_id', empresaAtiva.id).order('recebida_em', { ascending: false }),
+        // Quais NF-e já viraram estoque: decide o botão "Lançar estoque" e o selo.
+        supabase.from('estoque_movimentos').select('nfe_id').eq('empresa_id', empresaAtiva.id).not('nfe_id', 'is', null),
       ]);
+      setNfesComEstoque(new Set(((mov as Array<{ nfe_id: string }> | null) || []).map(m => m.nfe_id)));
       setPedidos((p as PedidoCompra[]) || []);
       setFornecedores((f as Fornecedor[]) || []);
       setProdutos((pr as Produto[]) || []);
@@ -597,22 +657,43 @@ export default function GestaoCompras() {
       if (!fe && fd) fornecedorId = (fd as any).id;
     }
 
-    const payload: any = {
-      empresa_id: empresaAtiva.id,
-      pedido_id: nfeForm.pedido_id || null,
-      fornecedor_id: fornecedorId,
-      numero: num,
-      serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
-      chave_acesso: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
-      data_emissao: (nfeParsed ? nfeParsed.data_emissao?.split('T')[0] : nfeForm.data_emissao) || null,
-      cnpj_emitente: (nfeParsed?.cnpj_emitente || nfeForm.cnpj_emitente) || null,
-      nome_emitente: (nfeParsed?.nome_emitente || nfeForm.nome_emitente) || null,
-      valor_total: nfeParsed ? nfeParsed.v_nf : parseNum(nfeForm.valor_total),
-      xml_content: nfeMode === 'xml' ? nfeXmlStr : null,
-      itens: nfeParsed ? nfeParsed.itens : null,
-    };
-    const { data: nfeRow, error } = await supabase.from('nfe_recebidas').insert(payload).select('id').single();
-    if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
+    let nfeRow: { id: string } | null = null;
+    if (nfeExistenteId) {
+      // A NF já mora no acervo (webhook/importação) — só complementa o que o
+      // fluxo de compra conhece: fornecedor, pedido e o cache de itens.
+      const { error } = await (supabase.from('nfe_entradas' as never) as any).update({
+        pedido_id: nfeForm.pedido_id || null,
+        fornecedor_id: fornecedorId,
+        itens: nfeParsed ? nfeParsed.itens : null,
+      }).eq('id', nfeExistenteId);
+      if (error) { toast.error('Erro ao atualizar NF-e', { description: error.message }); setSaving(false); return; }
+      nfeRow = { id: nfeExistenteId };
+    } else {
+      const payload: any = {
+        empresa_id: empresaAtiva.id,
+        pedido_id: nfeForm.pedido_id || null,
+        fornecedor_id: fornecedorId,
+        numero: num,
+        serie: nfeParsed ? String(nfeParsed.serie) : (nfeForm.serie || '1'),
+        chave: (nfeParsed?.chave_acesso || nfeForm.chave_acesso) || null,
+        data_emissao: (nfeParsed ? nfeParsed.data_emissao?.split('T')[0] : nfeForm.data_emissao) || null,
+        emitente_cnpj: (nfeParsed?.cnpj_emitente || nfeForm.cnpj_emitente) || null,
+        emitente_nome: (nfeParsed?.nome_emitente || nfeForm.nome_emitente) || null,
+        destinatario_cnpj: (empresaAtiva as { cnpj?: string | null }).cnpj ?? null,
+        valor_total: nfeParsed ? nfeParsed.v_nf : parseNum(nfeForm.valor_total),
+        xml: nfeMode === 'xml' ? nfeXmlStr : null,
+        itens: nfeParsed ? nfeParsed.itens : null,
+        origem: 'importacao_compras',
+        situacao: 'recebida',
+      };
+      // Upsert pela chave: a mesma NF pode já ter chegado pelo webhook — não
+      // vira linha duplicada, os dados do compras complementam a existente.
+      const { data, error } = await (supabase.from('nfe_entradas' as never) as any)
+        .upsert(payload, { onConflict: 'empresa_id,chave' })
+        .select('id').single();
+      if (error) { toast.error('Erro ao importar NF-e', { description: error.message }); setSaving(false); return; }
+      nfeRow = data as { id: string };
+    }
 
     const fornCriado = !!fornecedorId && !nfeFornMatch;
     if (nfeParsed && nfeRow) {
@@ -638,8 +719,25 @@ export default function GestaoCompras() {
         const { error: me } = await supabase.from('estoque_movimentos').insert(rows as any);
         if (me) toast.error('NF-e salva, erro no estoque', { description: me.message });
         else {
-          const parts = [fornCriado ? 'Fornecedor cadastrado' : null, `${rows.length} entrada(s) no estoque`].filter(Boolean).join(' · ');
-          toast.success(`NF-e importada! · ${parts}`);
+          // Custo médio ponderado: (saldo antigo × custo antigo + entrada ×
+          // custo da NF) ÷ novo saldo. O saldo_atual do estado é o de ANTES
+          // da entrada (o trigger recalcula no banco depois do insert).
+          for (const r of rows) {
+            const custoNf = Number(r.preco_unitario) || 0;
+            const qtd = Number(r.quantidade) || 0;
+            if (custoNf <= 0 || qtd <= 0) continue;
+            const p = produtos.find(x => x.id === r.produto_id);
+            const saldoAntes = Math.max(Number(p?.saldo_atual) || 0, 0);
+            const custoAntes = Number(p?.preco_custo_medio) || 0;
+            const novoCusto = saldoAntes > 0 && custoAntes > 0
+              ? (saldoAntes * custoAntes + qtd * custoNf) / (saldoAntes + qtd)
+              : custoNf;
+            await supabase.from('produtos')
+              .update({ preco_custo_medio: Math.round(novoCusto * 100) / 100 } as never)
+              .eq('id', r.produto_id);
+          }
+          const parts = [fornCriado ? 'Fornecedor cadastrado' : null, `${rows.length} entrada(s) no estoque`, 'custo médio atualizado'].filter(Boolean).join(' · ');
+          toast.success(`NF-e ${nfeExistenteId ? 'lançada no estoque' : 'importada'}! · ${parts}`);
         }
       } else {
         toast.success(`NF-e importada!${fornCriado ? ' · Fornecedor cadastrado' : ''}`);
@@ -653,12 +751,42 @@ export default function GestaoCompras() {
 
   const handleDeleteNfe = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const { error } = await supabase.from('nfe_recebidas').delete().eq('id', id);
+    const { error } = await (supabase.from('nfe_entradas' as never) as any).delete().eq('id', id);
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
     toast.success('NF-e excluída. Movimentações de estoque vinculadas foram mantidas.'); loadAll();
   };
 
-  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); };
+  const resetNfeDialog = () => { setNfeParsed(null); setNfeXmlStr(''); setNfeForm(defaultNfeForm()); setNfeMode('xml'); setNfeRegEstoque(false); setNfeItemMaps([]); setNfeStep(1); setNfeFornMatch(null); setNfeCriarForn(false); setNfeExistenteId(null); };
+
+  // NF-e que chegou pronta ao acervo (webhook do Financeiro, importação) e
+  // ainda não virou estoque: reabre o MESMO diálogo de importação direto no
+  // passo de casar itens com o catálogo, pulando o insert no salvar.
+  const abrirLancamentoEstoque = (n: NfeRecebida) => {
+    if (!n.xml) { toast.error('Esta NF-e não tem XML armazenado — importe o arquivo XML para lançar o estoque.'); return; }
+    try {
+      const parsed = parseNFeXML(n.xml);
+      if (!parsed.itens?.length) { toast.error('Nenhum item encontrado no XML desta NF-e.'); return; }
+      resetNfeDialog();
+      setNfeParsed(parsed);
+      setNfeXmlStr(n.xml);
+      const dataEmissao = parsed.data_emissao?.split('T')[0] ?? today();
+      setNfeForm(f => ({ ...f, numero: String(parsed.numero_nf), serie: String(parsed.serie), chave_acesso: parsed.chave_acesso, data_emissao: dataEmissao, cnpj_emitente: parsed.cnpj_emitente, nome_emitente: parsed.nome_emitente, valor_total: String(parsed.v_nf) }));
+      const cnpjNorm = normCnpj(parsed.cnpj_emitente || '');
+      const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
+      setNfeFornMatch(fornFound);
+      setNfeCriarForn(!fornFound && !!cnpjNorm);
+      setNfeItemMaps(parsed.itens.map(item => {
+        const matched = (item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined)
+          ?? (item.c_ean ? produtos.find(p => p.ativo && p.codigo_ean && p.codigo_ean === item.c_ean) : undefined);
+        return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
+      }));
+      setNfeExistenteId(n.id);
+      setNfeStep(2);
+      setNfeOpen(true);
+    } catch {
+      toast.error('Não foi possível ler o XML desta NF-e.');
+    }
+  };
   const resetPedidoForm = () => { setPedidoForm(defaultPedidoForm()); setFormItens([blankItem()]); };
 
   // ── Computed ──────────────────────────────────────────────────
@@ -1118,8 +1246,8 @@ export default function GestaoCompras() {
                             <p className="text-xs text-muted-foreground">Série {n.serie}</p>
                           </td>
                           <td className="py-3 px-2">
-                            <p className="font-medium truncate max-w-[180px]">{n.nome_emitente || '—'}</p>
-                            {n.cnpj_emitente && <p className="text-xs text-muted-foreground">{n.cnpj_emitente}</p>}
+                            <p className="font-medium truncate max-w-[180px]">{n.emitente_nome || '—'}</p>
+                            {n.emitente_cnpj && <p className="text-xs text-muted-foreground">{n.emitente_cnpj}</p>}
                           </td>
                           <td className="py-3 px-2 text-right font-medium">{fmtCurrency(n.valor_total)}</td>
                           <td className="py-3 px-2 hidden sm:table-cell">
@@ -1127,7 +1255,17 @@ export default function GestaoCompras() {
                           </td>
                           <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
                           <td className="py-3 pl-2">
-                            <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <div className="flex items-center justify-end gap-1">
+                              {nfesComEstoque.has(n.id) ? (
+                                <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 whitespace-nowrap">Estoque lançado</Badge>
+                              ) : n.xml ? (
+                                <Button size="sm" variant="outline" className="text-xs whitespace-nowrap"
+                                  onClick={e => { e.stopPropagation(); abrirLancamentoEstoque(n); }}>
+                                  <PackagePlus className="w-3.5 h-3.5 mr-1" /> Lançar estoque
+                                </Button>
+                              ) : null}
+                              <Button size="sm" variant="ghost" onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1423,10 +1561,13 @@ export default function GestaoCompras() {
                     </div>
                     {m.incluir && (
                       <>
-                        <Select value={m.produtoId} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v } : x))}>
+                        {/* value="" derruba o Radix (pitfall conhecido) — o
+                            "não registrar" vive num sentinel e volta a '' no
+                            estado, que é o que o salvar entende. */}
+                        <Select value={m.produtoId || '__skip__'} onValueChange={v => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, produtoId: v === '__skip__' ? '' : v } : x))}>
                           <SelectTrigger className="text-xs h-8"><SelectValue placeholder="— Não registrar no estoque —" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">— Não registrar no estoque —</SelectItem>
+                            <SelectItem value="__skip__">— Não registrar no estoque —</SelectItem>
                             {produtosAtivosParaSelect.map(pr => (
                               <SelectItem key={pr.id} value={pr.id}>{pr.descricao}{pr.codigo ? ` (${pr.codigo})` : ''}</SelectItem>
                             ))}
@@ -1438,6 +1579,41 @@ export default function GestaoCompras() {
                             value={m.novaNome}
                             onChange={e => setNfeItemMaps(arr => arr.map((x, i) => i === idx ? { ...x, novaNome: e.target.value } : x))} />
                         )}
+                        {margemInfo && m.item.v_un_com > 0 && (() => {
+                          // A régua da Fase B, item a item: do custo da NF ao
+                          // preço que sustenta a operação — e o confronto com
+                          // o que o contrato vigente paga por este produto.
+                          const s = precificarEntrada(m.item.v_un_com, {
+                            cargaTributariaPerc: margemInfo.analise.cargaTributariaPerc,
+                            despesaOperacionalPerc: margemInfo.analise.despesaOperacionalPerc,
+                            margemAlvoPerc: margemInfo.alvo,
+                          });
+                          if (s.precoMinimo == null && !s.inviavel) return null;
+                          const ref = m.produtoId && m.produtoId !== '__new__' ? precosContrato.get(m.produtoId) : undefined;
+                          const sit = ref ? situacaoDoPrecoContratado(ref.preco, s) : 'sem_referencia';
+                          return (
+                            <div className="text-xs rounded-md bg-muted/40 px-2 py-1.5 space-y-0.5">
+                              <p>
+                                Venda sugerida: <b>{s.precoSugerido != null ? fmtCurrency(s.precoSugerido) : '—'}</b>
+                                <span className="text-muted-foreground">
+                                  {s.precoMinimo != null ? ` (mínimo ${fmtCurrency(s.precoMinimo)})` : ''} · tributos {margemInfo.analise.cargaTributariaPerc.toFixed(1).replace('.', ',')}% + despesas {margemInfo.analise.despesaOperacionalPerc.toFixed(1).replace('.', ',')}% + alvo {margemInfo.alvo}% — {margemInfo.analise.regimeRotulo}
+                                </span>
+                              </p>
+                              {s.inviavel && (
+                                <p className="text-destructive">Tributos + despesas + margem alvo somam 100% ou mais — nenhum preço fecha; revise a margem alvo em Custos por Contrato.</p>
+                              )}
+                              {ref && sit === 'abaixo_minimo' && (
+                                <p className="text-destructive">⚠ O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — ABAIXO do mínimo: entregar é prejuízo. Caminho jurídico: reequilíbrio (art. 124, II, “d”).</p>
+                              )}
+                              {ref && sit === 'entre_minimo_e_sugerido' && (
+                                <p className="text-warning">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} — cobre custos e tributos, mas fica abaixo da margem alvo.</p>
+                              )}
+                              {ref && sit === 'acima_sugerido' && (
+                                <p className="text-success">O contrato {ref.numero} paga {fmtCurrency(ref.preco)} ✓ acima da venda sugerida.</p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </>
                     )}
                   </div>

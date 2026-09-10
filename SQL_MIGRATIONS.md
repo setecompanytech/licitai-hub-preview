@@ -12695,3 +12695,373 @@ ALTER TABLE public.profiles
 COMMENT ON COLUMN public.profiles.avatar_url IS
   'URL pública da foto no bucket `avatares`. Caminho {user_id}/{uuid}.{ext}.';
 ```
+
+## 2026-09-08 — Dossiê do contrato é da empresa (arquivos, versões e leitura no storage)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- O dossiê do contrato é da EMPRESA (08/09/2026)
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- contrato_arquivos, suas versões e o bucket contratos-docs nasceram com RLS
+-- por USUÁRIO: recorte de publicação, ordem/empenho e versões eram invisíveis
+-- entre colegas — o "O recorte não foi encontrado no dossiê" do Admin ao abrir
+-- um extrato registrado pelo Setor Comercial. Mesmo defeito de classe dos
+-- documentos do Jurídico (princípio nº 2: processo é da empresa).
+
+-- ── Tabela principal ────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Users can view own contract files" ON public.contrato_arquivos;
+DROP POLICY IF EXISTS "Users can insert own contract files" ON public.contrato_arquivos;
+DROP POLICY IF EXISTS "Users can update own contract files" ON public.contrato_arquivos;
+DROP POLICY IF EXISTS "Users can delete own contract files" ON public.contrato_arquivos;
+DROP POLICY IF EXISTS ca_select_membro ON public.contrato_arquivos;
+DROP POLICY IF EXISTS ca_insert_membro ON public.contrato_arquivos;
+DROP POLICY IF EXISTS ca_update_membro ON public.contrato_arquivos;
+DROP POLICY IF EXISTS ca_delete_dono_ou_admin ON public.contrato_arquivos;
+
+CREATE POLICY ca_select_membro ON public.contrato_arquivos
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.contratos c
+                 WHERE c.id = contrato_arquivos.contrato_id
+                   AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+
+CREATE POLICY ca_insert_membro ON public.contrato_arquivos
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id
+    AND EXISTS (SELECT 1 FROM public.contratos c
+                WHERE c.id = contrato_arquivos.contrato_id
+                  AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+
+CREATE POLICY ca_update_membro ON public.contrato_arquivos
+  FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.contratos c
+                 WHERE c.id = contrato_arquivos.contrato_id
+                   AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+
+CREATE POLICY ca_delete_dono_ou_admin ON public.contrato_arquivos
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM public.contratos c
+               WHERE c.id = contrato_arquivos.contrato_id
+                 AND public.is_empresa_admin(auth.uid(), c.empresa_id)));
+
+-- ── Versões ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Owner can view file versions" ON public.contrato_arquivos_versoes;
+DROP POLICY IF EXISTS "Owner can insert file versions" ON public.contrato_arquivos_versoes;
+DROP POLICY IF EXISTS "Owner can delete file versions" ON public.contrato_arquivos_versoes;
+DROP POLICY IF EXISTS cav_select_membro ON public.contrato_arquivos_versoes;
+DROP POLICY IF EXISTS cav_insert_membro ON public.contrato_arquivos_versoes;
+DROP POLICY IF EXISTS cav_delete_dono_ou_admin ON public.contrato_arquivos_versoes;
+
+CREATE POLICY cav_select_membro ON public.contrato_arquivos_versoes
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.contratos c
+                 WHERE c.id = contrato_arquivos_versoes.contrato_id
+                   AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+
+CREATE POLICY cav_insert_membro ON public.contrato_arquivos_versoes
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id
+    AND EXISTS (SELECT 1 FROM public.contratos c
+                WHERE c.id = contrato_arquivos_versoes.contrato_id
+                  AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+
+CREATE POLICY cav_delete_dono_ou_admin ON public.contrato_arquivos_versoes
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM public.contratos c
+               WHERE c.id = contrato_arquivos_versoes.contrato_id
+                 AND public.is_empresa_admin(auth.uid(), c.empresa_id)));
+
+-- ── Storage: leitura por membro via contrato no caminho ─────────────────────
+-- Os arquivos vivem em <user_id>/<contrato_id>/… — o 2º segmento identifica o
+-- contrato, e por ele chega-se à empresa. A escrita continua na pasta do
+-- autor; a LEITURA passa a ser da equipe.
+DROP POLICY IF EXISTS contratos_docs_membros_leem ON storage.objects;
+CREATE POLICY contratos_docs_membros_leem ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'contratos-docs'
+    AND EXISTS (SELECT 1 FROM public.contratos c
+                WHERE c.id::text = (storage.foldername(name))[2]
+                  AND public.is_empresa_member(auth.uid(), c.empresa_id)));
+```
+
+## 2026-09-08 — Semeadura em janelas mensais (a anual estourava o PNCP) — JÁ APLICADA em 08/09 pela rotina administrativa; NÃO colar (recolaria zeraria o progresso pendente)
+
+```sql
+-- A janela ANUAL da semeadura estourava o timeout do PNCP em toda fatia — o
+-- cron disparou por quatro madrugadas e cada invocação morreu na primeira
+-- consulta, sem rastro (08/09). Janela MENSAL responde em segundos.
+DELETE FROM public.pncp_semeadura_progresso WHERE NOT concluido;
+
+INSERT INTO public.pncp_semeadura_progresso (uf, modalidade_id, data_inicial, data_final)
+SELECT 'PA', m, ini::date, LEAST((ini + interval '1 month' - interval '1 day')::date, DATE '2026-09-08')
+FROM unnest(ARRAY[6, 8, 9, 4, 5, 7]) AS m,
+     generate_series(DATE '2023-09-01', DATE '2026-09-01', interval '1 month') AS ini
+ON CONFLICT (uf, modalidade_id, data_inicial) DO NOTHING;
+```
+
+## 2026-09-08 — NF-e sincroniza na Gestão sem F5 (tabela fora da publicação realtime)
+
+```sql
+-- A aba Pedidos assina mudanças em financeiro_documentos_fiscais para
+-- atualizar a coluna NF-e na hora — mas a tabela NUNCA entrou na publicação
+-- supabase_realtime: o canal assinava e nenhum evento chegava (falha
+-- silenciosa). financeiro_lancamentos entrou em 05/2026; esta ficou de fora.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'financeiro_documentos_fiscais'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.financeiro_documentos_fiscais';
+  END IF;
+
+  -- Cinto e suspensório contra drift de ambiente.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'financeiro_lancamentos'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.financeiro_lancamentos';
+  END IF;
+END $$;
+```
+
+## 2026-09-08 — Reajuste por índice: cláusula no contrato + cron dos índices oficiais
+
+```sql
+-- Cláusula de reajuste (art. 25, §7º e art. 92, V da Lei 14.133/2021): a
+-- leitura inteligente extraía prazos e descartava o índice. As colunas
+-- alimentam o alerta de aniversário anual (interregno da Lei 10.192/2001).
+ALTER TABLE public.contratos
+  ADD COLUMN IF NOT EXISTS indice_reajuste text,
+  ADD COLUMN IF NOT EXISTS data_base_reajuste date,
+  ADD COLUMN IF NOT EXISTS reajuste_clausula text;
+
+COMMENT ON COLUMN public.contratos.indice_reajuste IS
+  'Sigla do índice da cláusula de reajuste (IPCA, IGP-M, INPC…) — extraída do documento ou preenchida à mão';
+COMMENT ON COLUMN public.contratos.data_base_reajuste IS
+  'Data-base da contagem do interregno anual (data do orçamento estimado/proposta, conforme a cláusula)';
+COMMENT ON COLUMN public.contratos.reajuste_clausula IS
+  'Frase literal da cláusula de reajuste, para conferência humana';
+
+-- Índices oficiais (SGS/Banco Central) todo dia 15 — o IPCA do mês anterior
+-- sai por volta do dia 10. Rotina permanente por natureza: índice novo todo mês.
+SELECT cron.unschedule('indices-oficiais-mensal')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'indices-oficiais-mensal');
+
+SELECT cron.schedule(
+  'indices-oficiais-mensal',
+  '0 9 15 * *',
+  $$
+  SELECT net.http_post(
+    url := public.supabase_project_url() || '/functions/v1/indices-economicos',
+    headers := public.cron_auth_header(),
+    body := '{"action": "atualizar_indices"}'::jsonb
+  );
+  $$
+);
+```
+
+## 2026-09-08 — Análise de Mercado lê o acervo real — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo (CREATE OR REPLACE)
+
+```sql
+-- RPC que agrega o pncp_editais_cache para a página Análise de Mercado:
+-- totais, série mensal, modalidades, top órgãos e maiores contratações.
+-- (Conteúdo completo em supabase/migrations/20260908000005_analise_mercado_do_acervo.sql)
+```
+
+## 2026-09-08 — Análise de Mercado: janelas de dias + mediana — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- p_dias (semana/mês) vence p_meses; valor_mediano nos totais.
+-- (Conteúdo completo em supabase/migrations/20260908000006_analise_mercado_janelas_curtas.sql)
+```
+
+## 2026-09-08 — Preços por objeto: filtros UF/município/ano no RPC semântico — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- historico_orgao_semantico ganha p_uf, p_municipio, p_ate (DROP + CREATE
+-- para não deixar overload ambíguo no PostgREST).
+-- (Conteúdo completo em supabase/migrations/20260908000007_precos_por_objeto_filtros.sql)
+```
+
+## 2026-09-08 — nfe_entradas: acervo de NF-e de entrada por empresa — JÁ APLICADA em 08/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- Tabela nfe_entradas (nome novo: nfe_recebidas já existia como legado do
+-- Compras, sem empresa_id) + RLS por empresa + publicação realtime.
+-- (Conteúdo completo em supabase/migrations/20260908000008_nfe_entradas.sql)
+```
+
+## 2026-09-09 — Certificado A1: guardar a senha cifrada e marcar a instalação real — PENDENTE de aplicação
+
+A `upload-certificado` exigia a senha do `.pfx` no formulário, validava que veio
+e **descartava**. O arquivo subia para o Storage, a tela dizia "Certificado
+enviado com sucesso", e a senha — que é o que abre o `.pfx` — não existia mais
+em lugar nenhum. Sem ela o `pk12util` não instala o certificado na base NSS do
+Chrome, então o robô nunca teria como apresentá-lo a portal nenhum.
+
+`instalado_no_agente_em` separa dois fatos que a tela tratava como um só: o
+arquivo ter chegado ao Storage e o robô conseguir usá-lo.
+
+```sql
+ALTER TABLE public.cert_upload_tokens
+  ADD COLUMN IF NOT EXISTS senha_cifrada text;
+
+COMMENT ON COLUMN public.cert_upload_tokens.senha_cifrada IS
+  'Senha do .pfx cifrada em AES-GCM (formato v2:iv:ciphertext) por _shared/credenciais-cifra.ts. Necessária para o agente instalar o certificado na base NSS do Chrome.';
+
+ALTER TABLE public.cert_upload_tokens
+  ADD COLUMN IF NOT EXISTS instalado_no_agente_em timestamptz;
+
+COMMENT ON COLUMN public.cert_upload_tokens.instalado_no_agente_em IS
+  'Momento em que o agente confirmou a instalação (base NSS + policy). NULL = o arquivo subiu mas o robô ainda não consegue apresentá-lo.';
+```
+
+## 2026-09-09 — Prorrogação contínua (arts. 106/107) fora do teto do art. 125 — JÁ APLICADA em 09/09 pela rotina administrativa; recolar é inofensivo
+
+```sql
+-- alerta_limite_aditivo_25pct: tipo 'prorrogacao_continua' entra nos isentos
+-- (renova o período, não amplia o objeto).
+-- (Conteúdo completo em supabase/migrations/20260909000001_prorrogacao_continua_fora_do_125.sql)
+```
+
+## 2026-09-09 — Financeiro › Custos por Contrato (carteira) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000002_custos_por_contrato_carteira.sql`
+
+Cria `financeiro_config_custos` (rateio de indiretas POR EMPRESA, desligado por
+padrão — princípio 7), a função `contratos_custos_carteira(empresa, incluir_encerrados)`
+(uma linha por contrato com pago/comprometido/digitado, mesma lógica
+anti-dupla-contagem de `contrato_custo_realizado`) e
+`despesas_indiretas_da_empresa(empresa, meses)` (base do rateio: a pagar sem
+vínculo de contrato, por competência). Acesso das duas funções restrito a admin
+da empresa e equipe financeiro — negado é exceção declarada, não vazio.
+
+## 2026-09-09 — Prorrogação de contrato derivado não consome a ATA — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000003_prorrogacao_nao_consome_ata.sql`
+
+`recalc_consumo_ata_pai` descontava só aditivos de preço; a prorrogação
+(arts. 106/107) ficava de fora e o 2º T.A. do 068/2025 entrou como saque novo
+da ATA-022/2024 (saldo −R$ 10.229.184 na tela). A exclusão agora usa o radical
+normalizado do alerta do art. 125 (`reequilibr|revisao|repactua|reajust|prorrogac`),
+alcançando o tipo novo e o legado. UPDATE no-op reaplicou o cálculo em todas as
+atas: ATA-022/2024 voltou a consumido = global = R$ 8.494.080 (saldo zero) e
+nenhuma ata ficou com consumo acima do global.
+
+## 2026-09-09 — Base do rateio exclui movimentação — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000004_rateio_exclui_movimentacao.sql`
+
+`despesas_indiretas_da_empresa` somava todo a_pagar sem vínculo; na ETHOS,
+R$ 9,86 mi dos R$ 16,8 mi eram movimentação (transferências entre contas
+próprias, aplicações, distribuição de lucro, empréstimos) e a margem do
+068/2025 despencava a -108%. A base agora ignora categorias de natureza
+'movimentacao'; lançamento sem categoria continua entrando (despesa não
+classificada é despesa até prova em contrário).
+
+## 2026-09-09 — nfe_entradas absorve o fluxo do Compras — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000005_nfe_entradas_absorve_compras.sql`
+
+O Compras usava a legada `nfe_recebidas` (sem empresa_id — select/insert
+quebrados em produção). Adiciona a `nfe_entradas` as colunas do fluxo de
+compra (`fornecedor_id`, `pedido_id`, `itens` jsonb); o front do Compras
+migrou para a canônica: NF-e do webhook aparece no Compras pronta para
+"Lançar estoque", e a importação manual upserta pela chave (não duplica a
+que o webhook já trouxe). A legada fica órfã (nenhum código a referencia).
+
+## 2026-09-09 — Margem alvo por empresa (Fase B) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000006_margem_alvo_config.sql`
+
+Coluna `margem_alvo` (percentual transcrito 0–100, padrão 10, CHECK 0–90) em
+`financeiro_config_custos` — a margem líquida alvo usada pela precificação
+assistida na entrada de NF-e (preço = custo ÷ (1 − (trib + desp + alvo))).
+
+## 2026-09-09 — Baixa de estoque na entrega do pedido do contrato (Fase C) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000007_baixa_estoque_pedido_contrato.sql`
+
+Coluna `contrato_pedido_id` em `estoque_movimentos` (FK cascade, única por
+pedido) + trigger `sincronizar_estoque_do_pedido` em contrato_pedidos:
+pedido ENTREGUE de item com produto do catálogo mantém UMA saída no estoque
+(recriada a cada mudança; desfazer a entrega desfaz a baixa; exclusão idem).
+SEM backfill de pedidos antigos, de propósito — criaria saídas retroativas
+sem entradas e afundaria o saldo em negativo fictício; a regra vale do
+registro/edição em diante.
+
+## 2026-09-09 — Aprovação de Pagamentos de verdade — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000008_aprovacao_pagamentos_de_verdade.sql`
+
+A tela anterior era fachada (aprovar escrevia na observação e não tirava da
+fila; rejeitar CANCELAVA o título; a baixa nunca consultou nada). Agora:
+colunas de aprovação no lançamento (status/por/em/valor congelado/motivo),
+config por empresa `financeiro_config_aprovacao` (opt-in desligado; até
+limite_admin a equipe financeiro aprova, acima só admin; janela_dias),
+trilha `financeiro_aprovacoes_log` (escrita só pela RPC), RPC
+`aprovar_pagamento` com alçada conferida no servidor e motivo obrigatório
+na rejeição, e trigger `exigir_aprovacao_pagamento`: com o workflow ativo,
+baixa manual (status→realizado) sem aprovação FALHA em qualquer tela;
+conciliado passa (extrato é fato consumado); valor alterado após aprovação
+volta a pendente.
+
+## 2026-09-09 — Relatório de Consumo da ATA corrigido — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000009_relatorio_consumo_ata_corrigido.sql`
+
+`relatorio_consumo_ata` caía com "aggregate function calls cannot contain
+set-returning function calls" (`array_agg` sobre `regexp_matches`) — trocado
+por `substring()`, escalar. E o acesso exigia ser o DONO da ata, barrando
+colegas — agora vale `is_empresa_member` (princípio 2: processo é da empresa).
+
+## 2026-09-09 — Cadastro de Condições de Pagamento — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000010_condicoes_pagamento.sql`
+
+Tabela `financeiro_condicoes_pagamento` por empresa no modelo dos ERPs:
+código sequencial, descrição, tipo (à vista/a prazo/parcelado), forma de
+pagamento, regra de vencimento em sábado/domingo (prorroga/antecipa/mantém),
+parcelas jsonb {dias, percentual} com CONSTRAINT somando 100% (via função
+IMMUTABLE soma_percentuais_parcelas — CHECK não aceita subquery), dia fixo
+de vencimento, juro diário e % de acréscimo. RLS: membros leem/escrevem,
+admin apaga.
+
+## 2026-09-09 — Itens da sessão do robô de lances — JÁ APLICADA via SQL Editor; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260909000011_itens_da_sessao_do_robo.sql`
+
+Tabela `sessao_lance_itens`: um registro por item/lote disputado, ligado à
+`sessoes_lance_real`. Até aqui só `edital` (string) e três valores agregados
+atravessavam para o agente — num pregão com 40 itens o robô achava o processo
+e não sabia em qual item estava.
+
+As três colunas de valor nascem **separadas e nullable**: `preco_venda`,
+`custo_unitario`, `valor_estimado_orgao`. Colapsá-las num campo só era o
+defeito que esta migration corrige — a Precificação já as separa na origem
+(`catalogo_itens_precificados`), e o achatamento acontecia no transporte.
+Nulo = "não sabido"; zero seria afirmação falsa sobre dinheiro. Mesma regra em
+`valor_minimo` (piso próprio do item) e em `sou_lider` (nulo = o portal não
+informou, que faz o robô aguardar em vez de arriscar).
+
+RLS no padrão da casa: dono OU `is_empresa_member` para ler/escrever, delete
+por `is_empresa_admin`; `empresa_id` nullable porque a sessão-mãe é escopada
+por usuário.
+
+Aditivos, todos nullable e sem mudar semântica de coluna existente:
+`licitacao_itens.custo_unitario`, `sessoes_lance_real.licitacao_id` e
+`sessoes_lance_real.tipo_disputa`. `valor_unitario` fica como está — 17
+arquivos dependem dela.
+
+Aplicada em 09/09/2026, antes de publicar o front — era pré-requisito: sem a
+tabela `sessao_lance_itens` o envio da sessão ao robô falha ao gravar os itens,
+e a gravação em `licitacao_itens` quebraria em silêncio (só `console.warn`),
+deixando os itens visíveis na tela mas não centralizados para os outros
+módulos. Conferido: 4 policies criadas (select/insert/update/delete).

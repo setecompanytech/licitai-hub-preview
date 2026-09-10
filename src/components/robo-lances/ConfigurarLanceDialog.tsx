@@ -24,19 +24,20 @@ import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
+import { PORTAIS_ROBO } from '@/lib/robo/portais';
 
-const portaisDisponiveis = [
-  { id: 'pncp', nome: 'PNCP' },
-  { id: 'compras-gov', nome: 'Compras Governamentais' },
-  { id: 'bll', nome: 'BLL Compras' },
-  { id: 'licitanet', nome: 'Licitanet' },
-  { id: 'licitacoes-e', nome: 'Licitações-e (BB)' },
-  { id: 'portal-compras', nome: 'Portal de Compras Públicas' },
-  { id: 'bnc', nome: 'Bolsa Nacional de Compras' },
-  { id: 'banparanet', nome: 'Banparanet (PA)' },
-  { id: 'bec-sp', nome: 'BEC/SP' },
-  { id: 'compras-rj', nome: 'Compras Públicas RJ' },
-];
+// A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
+// o despacho da sessao. Ela existia aqui e, diferente, no CredenciaisPortalForm.
+//
+// ATENCAO: o `value` do SelectItem abaixo continua sendo o NOME, nao o id, para
+// nao quebrar a exibicao das disputas ja gravadas. Quem consome traduz com
+// `idDoPortal()`. Corrigir na origem exige normalizar tambem o carregamento do
+// formulario — fica registrado como pendencia.
+// Os 23 da autoridade única — a mesma lista do cadastro de credenciais, que até
+// 09/09/2026 tinha 23 enquanto esta tinha 10. Registrar a disputa é legítimo em
+// qualquer portal; quem checa se o robô consegue operá-la é o botão "Enviar ao
+// robô", contra o `portais_suportados` que o agente publica no momento do envio.
+const portaisDisponiveis = PORTAIS_ROBO;
 
 export type DisputeItem = {
   id: string;
@@ -45,7 +46,16 @@ export type DisputeItem = {
   quantidade: number;
   unidade: string;
   valorReferencia: number;
-  valorMinimo: number;
+  /**
+   * Piso PRÓPRIO deste item.
+   *
+   * `null` significa "não definido", e é informação. Antes isto era `0` fixo
+   * em todo item importado: um piso que ninguém escolheu, com cara de
+   * preenchido, igual para itens de margens completamente diferentes. Zero é
+   * uma afirmação falsa sobre dinheiro — do tipo que não se confere justamente
+   * porque parece que alguém já preencheu.
+   */
+  valorMinimo: number | null;
   lote: string;
   disputando: boolean;
   situacao: 'aguardando' | 'disputando' | 'encerrado';
@@ -54,6 +64,19 @@ export type DisputeItem = {
   /** Somente leitura: identifica o produto ofertado (fonte: licitacao_itens). */
   marca?: string;
   modelo?: string;
+  /**
+   * Custo interno, quando a Precificação o conhece. É a fonte do piso
+   * sugerido — e NÃO é preço: nunca deve ser oferecido como valor de lance.
+   */
+  custoUnitario?: number | null;
+  /** Teto publicado pelo órgão no edital, quando extraído. */
+  valorEstimadoOrgao?: number | null;
+  /**
+   * De onde `valorReferencia` veio: 'precificacao' | 'proposta' | 'ia' |
+   * 'manual'. Existe para o operador enxergar qual número está ancorando a
+   * disputa — a mesma coluna já era gravada corretamente pelos outros módulos.
+   */
+  origem?: string;
 };
 
 export type LanceConfig = {
@@ -90,6 +113,117 @@ type LicitacaoRow = {
   data_abertura: string | null;
 };
 
+/**
+ * De onde veio o número que ancora a disputa.
+ *
+ * Existe porque as três origens significam coisas diferentes e, olhando só o
+ * valor, são indistinguíveis: o teto do órgão, o nosso preço de venda e um
+ * custo interno aparecem todos como "R$ alguma coisa". Quem opera precisa ver
+ * a diferença ANTES de mandar o robô, não depois.
+ */
+const ROTULO_ORIGEM: Record<string, { texto: string; titulo: string }> = {
+  precificacao: {
+    texto: 'Precificação',
+    titulo: 'Preço de venda calculado na Precificação',
+  },
+  proposta: {
+    texto: 'Proposta',
+    titulo: 'Preço de venda vindo da Proposta Comercial',
+  },
+  ia: {
+    texto: 'Edital',
+    titulo: 'Valor estimado pelo órgão, extraído do edital — é teto, não é o nosso preço',
+  },
+  manual: {
+    texto: 'Manual',
+    titulo: 'Digitado à mão nesta tela',
+  },
+};
+
+const paraBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/**
+ * A linha de UM item na tabela de itens da disputa.
+ *
+ * É componente, e não JSX repetido, porque a mesma linha é desenhada em dois
+ * lugares — a visão agrupada por lote e a visão plana. Duas cópias divergem:
+ * neste mesmo módulo a lista de portais chegou a ter 10 num arquivo e 23 no
+ * outro, e ninguém percebeu até um portal sumir da tela.
+ */
+function LinhaDeItem({
+  item,
+  larguraDescricao,
+  aoMudarPiso,
+  aoRemover,
+}: {
+  item: DisputeItem;
+  larguraDescricao: string;
+  aoMudarPiso: (id: string, texto: string) => void;
+  aoRemover: (id: string) => void;
+}) {
+  // `null` e `0` são estados diferentes e a tela precisa mostrar essa
+  // diferença: um piso zerado autoriza o robô a descer até zero; um piso
+  // ausente é uma decisão que ninguém tomou ainda.
+  const semPiso = item.valorMinimo === null || item.valorMinimo === undefined;
+  const rotulo = item.origem ? ROTULO_ORIGEM[item.origem] : undefined;
+
+  return (
+    <TableRow>
+      <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
+      <TableCell className={`text-xs ${larguraDescricao}`}>
+        <span className="block truncate">{item.descricao}</span>
+        {(item.marca || item.modelo) && (
+          <span className="block truncate text-muted-foreground">
+            {[item.marca, item.modelo].filter(Boolean).join(' · ')}
+          </span>
+        )}
+        {rotulo && (
+          <span
+            title={rotulo.titulo}
+            className="inline-block mt-0.5 px-1 py-px rounded bg-muted text-[10px] leading-tight text-muted-foreground"
+          >
+            {rotulo.texto}
+          </span>
+        )}
+      </TableCell>
+      <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
+      <TableCell className="text-xs text-center">{item.unidade}</TableCell>
+      <TableCell className="text-xs text-right font-mono">
+        {item.valorReferencia > 0 ? paraBRL(item.valorReferencia) : '—'}
+      </TableCell>
+      <TableCell className="text-xs text-right font-mono font-semibold">
+        {item.valorReferencia > 0 ? paraBRL(item.valorReferencia * item.quantidade) : '—'}
+      </TableCell>
+      <TableCell className="text-right">
+        <Input
+          value={semPiso ? '' : String(item.valorMinimo)}
+          onChange={(e) => aoMudarPiso(item.id, e.target.value)}
+          placeholder="definir"
+          inputMode="decimal"
+          title={
+            item.custoUnitario !== null && item.custoUnitario !== undefined
+              ? `Sugerido a partir do custo da Precificação: ${paraBRL(item.custoUnitario)}`
+              : 'Sem custo conhecido para sugerir — defina o piso deste item'
+          }
+          className={`h-7 w-[88px] text-xs text-right font-mono px-1.5 ml-auto ${
+            semPiso ? 'border-warning/60 placeholder:text-warning' : ''
+          }`}
+        />
+      </TableCell>
+      <TableCell className="text-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+          onClick={() => aoRemover(item.id)}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // Helper: convert LicitacaoItem[] to DisputeItem[]
 function licitacaoItensToDispute(items: LicitacaoItem[]): DisputeItem[] {
   return items.map((item, idx) => ({
@@ -104,7 +238,11 @@ function licitacaoItensToDispute(items: LicitacaoItem[]): DisputeItem[] {
     quantidade: item.quantidade || 1,
     unidade: item.unidade || 'UN',
     valorReferencia: item.valor_unitario || 0,
-    valorMinimo: 0,
+    // O custo sugere o piso, e nada mais. Sem custo conhecido o piso fica
+    // NULO e visível na tabela, pedindo a decisão — em vez de zero silencioso.
+    custoUnitario: item.custo_unitario ?? null,
+    valorMinimo: item.custo_unitario ?? null,
+    origem: item.origem || undefined,
     lote: item.lote || 'Único',
     disputando: true,
     situacao: 'aguardando' as const,
@@ -219,7 +357,12 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         quantidade: p.quantidade || 1,
         unidade: p.unidade || 'UN',
         valorReferencia: p.valor_unitario || 0,
-        valorMinimo: 0,
+        // Extraído do EDITAL: este número é o teto do órgão, não o nosso preço
+        // e muito menos o nosso custo. Nomeá-lo evita que a disputa parta de
+        // uma âncora achando que é outra.
+        valorEstimadoOrgao: p.valor_unitario ?? null,
+        valorMinimo: null,
+        origem: 'ia',
         lote: p.lote || 'Único',
         disputando: true,
         situacao: 'aguardando' as const,
@@ -244,9 +387,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
     if (!user) return [];
     try {
       // 1) Catálogo de Precificação
+      //
+      // `custo_unitario` entra no select porque a Precificação JÁ separa custo
+      // de preço de venda — as duas colunas existem lá, lado a lado. Ler só o
+      // preço e descartar o custo era o começo do achatamento: depois desta
+      // consulta não havia mais como distinguir os dois, e o mesmo campo podia
+      // estar carregando qualquer um dos dois significados.
       const { data: precificados } = await supabase
         .from('catalogo_itens_precificados')
-        .select('descricao, quantidade, unidade, preco_unitario, marca, fabricante, modelo')
+        .select('descricao, quantidade, unidade, preco_unitario, custo_unitario, marca, fabricante, modelo')
         .eq('licitacao_id', licId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
@@ -259,27 +408,62 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
-      const fontes: Array<{ descricao: string; quantidade: number; unidade: string; valor: number; lote: string; origem: 'precificacao' | 'proposta' }> = [];
+      // `custo` viaja separado de `valor` — são coisas diferentes, e juntá-las
+      // num campo só foi o defeito. `null` em qualquer um significa "não
+      // sabido", que é diferente de zero.
+      const fontes: Array<{
+        descricao: string;
+        quantidade: number;
+        unidade: string;
+        valor: number | null;
+        custo: number | null;
+        lote: string;
+        marca: string | null;
+        fabricante: string | null;
+        modelo: string | null;
+        origem: 'precificacao' | 'proposta';
+      }> = [];
 
       (precificados || []).forEach((p: any) => {
         if (p.descricao) fontes.push({
           descricao: p.descricao,
           quantidade: Number(p.quantidade) || 1,
           unidade: p.unidade || 'UN',
-          valor: Number(p.preco_unitario) || 0,
+          valor: Number.isFinite(Number(p.preco_unitario)) ? Number(p.preco_unitario) : null,
+          custo: Number.isFinite(Number(p.custo_unitario)) ? Number(p.custo_unitario) : null,
           lote: 'Único',
+          // Já vinham do select e eram descartados: o item chegava sem marca
+          // na disputa mesmo com a Precificação sabendo qual era.
+          marca: p.marca || null,
+          fabricante: p.fabricante || null,
+          modelo: p.modelo || null,
           origem: 'precificacao',
         });
       });
 
       (composicoes || []).forEach((c: any) => {
         const dados = c.dados_json || {};
+        // O FALLBACK PERIGOSO, REMOVIDO.
+        //
+        // Era `dados.preco_venda || dados.valor_unitario`. Numa composição de
+        // CUSTO, `valor_unitario` é plausivelmente uma linha de custo — então
+        // o robô podia entrar na disputa ancorado abaixo do nosso próprio
+        // preço, e nada na tela denunciaria isso: o campo aparecia preenchido,
+        // com um número que parecia certo.
+        //
+        // Sem `preco_venda` explícito o preço fica NULO e a tela pede. Vazio
+        // pedindo é melhor que errado convincente.
+        const precoVenda = Number(dados.preco_venda);
         if (c.descricao_item) fontes.push({
           descricao: c.descricao_item,
           quantidade: Number(dados.quantidade) || 1,
           unidade: dados.unidade || 'UN',
-          valor: Number(dados.preco_venda || dados.valor_unitario) || 0,
+          valor: Number.isFinite(precoVenda) && precoVenda > 0 ? precoVenda : null,
+          custo: Number.isFinite(Number(dados.custo_unitario)) ? Number(dados.custo_unitario) : null,
           lote: dados.lote || 'Único',
+          marca: dados.marca || null,
+          fabricante: dados.fabricante || null,
+          modelo: dados.modelo || null,
           origem: 'proposta',
         });
       });
@@ -305,10 +489,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             descricao: f.descricao,
             quantidade: f.quantidade,
             unidade: f.unidade,
-            valor_unitario: f.valor,
-            valor_total: f.valor * f.quantidade,
+            valor_unitario: f.valor ?? 0,
+            valor_total: (f.valor ?? 0) * f.quantidade,
+            custo_unitario: f.custo,
+            marca: f.marca,
+            fabricante: f.fabricante,
+            modelo: f.modelo,
             lote: f.lote,
-            origem: 'importado',
+            // A ORIGEM VERDADEIRA, não 'importado'.
+            //
+            // `f.origem` já dizia 'precificacao' ou 'proposta' — a informação
+            // estava na mão e era jogada fora exatamente aqui, na gravação.
+            // Os outros escritores desta tabela (extração por IA, cadastro
+            // manual) sempre gravaram a origem real; só este caminho achatava,
+            // e o resultado era não dar mais para saber de onde veio o número
+            // que ancorava a disputa.
+            origem: f.origem,
           }))
         );
       } catch (e) {
@@ -321,8 +517,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
         descricao: f.descricao,
         quantidade: f.quantidade,
         unidade: f.unidade,
-        valorReferencia: f.valor,
-        valorMinimo: 0,
+        valorReferencia: f.valor ?? 0,
+        custoUnitario: f.custo,
+        // O custo sugere o piso; sem custo o piso fica nulo e a tela pede.
+        valorMinimo: f.custo,
+        origem: f.origem,
+        marca: f.marca || undefined,
+        modelo: f.modelo || undefined,
         lote: f.lote,
         disputando: true,
         situacao: 'aguardando' as const,
@@ -589,7 +790,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       quantidade: parseInt(novoQtd) || 1,
       unidade: novoUnidade || 'UN',
       valorReferencia: parseFloat(novoValorRef) || 0,
-      valorMinimo: 0,
+      valorMinimo: null,
+      origem: 'manual',
       lote: novoLote.trim() || `Lote ${Math.ceil(nextNum / 5)}`,
       disputando: true,
       situacao: 'aguardando',
@@ -602,6 +804,23 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
   const handleRemoveItem = (id: string) => {
     setItens(prev => prev.filter(i => i.id !== id).map((item, idx) => ({ ...item, numero: idx + 1 })));
+  };
+
+  /**
+   * Piso de UM item.
+   *
+   * Campo vazio grava `null`, e não `0`: são coisas diferentes. Zero é um piso
+   * escolhido — autoriza o robô a descer até ele. Nulo é "ninguém decidiu
+   * ainda", e é o estado em que o robô não deve dar lance.
+   */
+  const handlePisoItem = (id: string, texto: string) => {
+    const limpo = texto.replace(/[^\d,.]/g, '').replace(',', '.');
+    const n = parseFloat(limpo);
+    setItens(prev => prev.map(i =>
+      i.id === id
+        ? { ...i, valorMinimo: limpo === '' || !Number.isFinite(n) ? null : n }
+        : i
+    ));
   };
 
   const handleSave = () => {
@@ -1145,35 +1364,19 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                                 <TableHead className="text-xs text-center">Unid.</TableHead>
                                 <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
                                 <TableHead className="text-xs text-right">Vlr Total</TableHead>
+                                <TableHead className="text-xs text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
                                 <TableHead className="text-xs w-10" />
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {loteItens.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                                  <TableCell className="text-xs max-w-[180px]">
-                              <span className="block truncate">{item.descricao}</span>
-                              {(item.marca || item.modelo) && (
-                                <span className="block truncate text-muted-foreground">
-                                  {[item.marca, item.modelo].filter(Boolean).join(" · ")}
-                                </span>
-                              )}
-                            </TableCell>
-                                  <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
-                                  <TableCell className="text-xs text-center">{item.unidade}</TableCell>
-                                  <TableCell className="text-xs text-right font-mono">
-                                    {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-right font-mono font-semibold">
-                                    {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
-                                  </TableCell>
-                                  <TableCell className="text-center">
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
+                                <LinhaDeItem
+                                  key={item.id}
+                                  item={item}
+                                  larguraDescricao="max-w-[180px]"
+                                  aoMudarPiso={handlePisoItem}
+                                  aoRemover={handleRemoveItem}
+                                />
                               ))}
                             </TableBody>
                           </Table>
@@ -1193,35 +1396,19 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <TableHead className="text-xs text-center">Unid.</TableHead>
                           <TableHead className="text-xs text-right">Vlr Unit.</TableHead>
                           <TableHead className="text-xs text-right">Vlr Total</TableHead>
+                          <TableHead className="text-xs text-right" title="Piso deste item — o robô não desce abaixo dele">Piso</TableHead>
                           <TableHead className="text-xs w-10" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {itens.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="text-xs text-center font-medium">{item.numero}</TableCell>
-                            <TableCell className="text-xs max-w-[160px]">
-                              <span className="block truncate">{item.descricao}</span>
-                              {(item.marca || item.modelo) && (
-                                <span className="block truncate text-muted-foreground">
-                                  {[item.marca, item.modelo].filter(Boolean).join(" · ")}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-xs text-center">{item.quantidade}</TableCell>
-                            <TableCell className="text-xs text-center">{item.unidade}</TableCell>
-                            <TableCell className="text-xs text-right font-mono">
-                              {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia) : '—'}
-                            </TableCell>
-                            <TableCell className="text-xs text-right font-mono font-semibold">
-                              {item.valorReferencia > 0 ? formatCurrency(item.valorReferencia * item.quantidade) : '—'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+                          <LinhaDeItem
+                            key={item.id}
+                            item={item}
+                            larguraDescricao="max-w-[160px]"
+                            aoMudarPiso={handlePisoItem}
+                            aoRemover={handleRemoveItem}
+                          />
                         ))}
                       </TableBody>
                     </Table>

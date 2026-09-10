@@ -12,7 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { NATUREZA_DO_VALOR, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
+import { NATUREZA_DO_VALOR, TIPOS_REAJUSTE, avisoDePreclusao, naturezaDoTipo } from '@/lib/contratos/instrumentos';
+import { situacaoDoReajuste } from '@/lib/contratos/reajuste';
 import {
   Plus, Pencil, Trash2, Loader2, FilePlus2, DollarSign, Calendar, Package, Layers, TrendingUp,
   AlertTriangle, CheckCircle2, ShieldAlert, Users
@@ -27,6 +28,10 @@ const TIPOS_ADITIVO: Record<string, { label: string; icon: typeof DollarSign; co
   quantidade: { label: 'Quantidade', icon: Package, color: 'bg-info/10 text-info' },
   valor_quantidade: { label: 'Valor e Qtde', icon: Layers, color: 'bg-info/10 text-info' },
   prazo: { label: 'Prazo', icon: Calendar, color: 'bg-warning/10 text-warning' },
+  // Prorrogação de fornecimento CONTÍNUO (arts. 106/107): renova o período e
+  // o quantitativo — não amplia o objeto, portanto FORA do teto do art. 125.
+  // Nasceu do 2º T.A. do 068/2025 (09/09): +100% legítimo disparava alarme.
+  prorrogacao_continua: { label: 'Prorrogação — fornecimento contínuo (arts. 106/107)', icon: Calendar, color: 'bg-warning/10 text-warning', semLimite: true },
   escopo: { label: 'Escopo', icon: FilePlus2, color: 'bg-muted text-muted-foreground' },
   reequilibrio: { label: 'Reequilíbrio Econômico-Financeiro (art. 124, II, \u201cd\u201d)', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
   revisao: { label: 'Revisão Contratual', icon: TrendingUp, color: 'bg-warning/10 text-warning', semLimite: true },
@@ -101,9 +106,12 @@ const INSTITUTOS_SEM_LIMITE: Array<[RegExp, string]> = [
   [/reajust/i, 'reajuste'],
   [/revis[ãa]o\s+(contratual|de\s+pre)/i, 'revisão contratual'],
 ];
-const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA];
-const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
-const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', ...TIPOS_DE_ATA].includes(tipo);
+// 'prorrogacao' é valor legado gravado antes do tipo dedicado existir — o
+// trigger do banco já o isenta (regex 'prorrogac'); o front tem de espelhar,
+// senão o mesmo termo é isento no banco e acusado de exceder 25% na tela.
+const FORA_DO_ART_125 = [...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA, 'prorrogacao_continua', 'prorrogacao'];
+const showValueFields = (tipo: string) => ['valor', 'valor_quantidade', 'escopo', 'prazo', 'prorrogacao_continua', ...TIPOS_SEM_LIMITE, ...TIPOS_DE_ATA].includes(tipo);
+const showQtyFields = (tipo: string) => ['quantidade', 'valor_quantidade', 'prazo', 'prorrogacao_continua', ...TIPOS_DE_ATA].includes(tipo);
 
 export default function ContratoAditivos({ contratoId }: { contratoId: string }) {
   const { user } = useAuth();
@@ -117,6 +125,22 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
   const [editing, setEditing] = useState<Aditivo | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  // Cláusula de reajuste do contrato — consulta À PARTE e tolerante: as
+  // colunas vêm da 20260908000004, colada à mão, e não podem derrubar o load
+  // principal da aba enquanto a migration não roda.
+  const [clausulaReajuste, setClausulaReajuste] = useState<{ indice: string | null; dataBase: string | null }>({ indice: null, dataBase: null });
+  useEffect(() => {
+    let vivo = true;
+    supabase.from('contratos')
+      .select('indice_reajuste, data_base_reajuste' as never)
+      .eq('id', contratoId).maybeSingle()
+      .then(({ data, error }) => {
+        if (!vivo || error || !data) return;
+        const d = data as unknown as { indice_reajuste: string | null; data_base_reajuste: string | null };
+        setClausulaReajuste({ indice: d.indice_reajuste, dataBase: d.data_base_reajuste });
+      });
+    return () => { vivo = false; };
+  }, [contratoId]);
 
   // Só vale avisar quando o tipo escolhido ENTRA no cálculo do limite: dizer
   // isso num aditivo já classificado como reequilíbrio seria ruído.
@@ -237,7 +261,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
         data_fato_gerador: naturezaDoTipo(form.tipo) === 'revisao' ? (form.data_fato_gerador || null) : null,
         indice_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.indice_reajuste || null) : null,
         data_base_reajuste: naturezaDoTipo(form.tipo) === 'reajuste' ? (form.data_base_reajuste || null) : null,
-        com_ressalva: form.tipo === 'prazo' ? form.com_ressalva : null,
+        com_ressalva: ['prazo', 'prorrogacao_continua'].includes(form.tipo) ? form.com_ressalva : null,
       };
 
       payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
@@ -278,11 +302,27 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
     ? avisoDePreclusao({
         dataFatoGerador: form.data_fato_gerador,
         prorrogacoes: aditivos
-          .filter((a) => a.tipo === 'prazo')
+          .filter((a) => a.tipo === 'prazo' || a.tipo === 'prorrogacao_continua')
           .map((a) => ({
             data_assinatura: a.data_assinatura ?? null,
             com_ressalva: (a as { com_ressalva?: boolean }).com_ressalva ?? false,
           })),
+      })
+    : null;
+
+  // ── Preclusão PREVENTIVA (08/09): o aviso ANTES da assinatura ────────────
+  // O avisoDePreclusao acima é post-mortem — acusa a prorrogação já assinada.
+  // Este dispara na hora certa: ao preencher uma PRORROGAÇÃO num contrato com
+  // reajuste anual vencido e não registrado. Prorrogação aceita sem ressalva
+  // pode ser lida como renúncia (Parecer AGU 3/2023); a orientação do TCU ao
+  // contratado é pedir formalmente antes de assinar. Avisa, não impede.
+  const reajustePendente = ['prazo', 'prorrogacao_continua'].includes(form.tipo)
+    ? situacaoDoReajuste({
+        dataBase: clausulaReajuste.dataBase,
+        reajustesRegistrados: aditivos
+          .filter((a) => TIPOS_REAJUSTE.includes(a.tipo))
+          .map((a) => (a as { data_base_reajuste?: string | null }).data_base_reajuste ?? a.data_assinatura),
+        hoje: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()),
       })
     : null;
 
@@ -564,6 +604,7 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                   <SelectItem value="quantidade">Quantidade</SelectItem>
                   <SelectItem value="valor_quantidade">Valor e Qtde</SelectItem>
                   <SelectItem value="prazo">Prazo</SelectItem>
+                  <SelectItem value="prorrogacao_continua">Prorrogação — fornecimento contínuo (arts. 106/107)</SelectItem>
                   <SelectItem value="escopo">Escopo</SelectItem>
                   <SelectItem value="reequilibrio">Reequilíbrio Econômico-Financeiro (art. 124, II, “d”)</SelectItem>
                   <SelectItem value="revisao">Revisão Contratual</SelectItem>
@@ -671,6 +712,16 @@ export default function ContratoAditivos({ contratoId }: { contratoId: string })
                 <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
                   {NATUREZA_DO_VALOR.revisao.exige.map((e) => <li key={e}>{e}</li>)}
                 </ul>
+                {reajustePendente?.devido && (
+                  <p className="text-xs text-warning border-t border-warning/30 pt-2">
+                    Este contrato tem <b>reajuste anual devido</b> desde{' '}
+                    {new Date(reajustePendente.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')}
+                    {clausulaReajuste.indice ? ` (${clausulaReajuste.indice})` : ''} e ainda não registrado.
+                    Assinar a prorrogação sem ressalvar os preços pode ser lido como renúncia ao reajuste
+                    (preclusão lógica). Peça o reajuste formalmente — a aplicação é por apostila
+                    (art. 136, I) — ou registre a ressalva no termo antes de assinar.
+                  </p>
+                )}
                 {avisoPreclusao && (
                   <p className="text-xs text-warning border-t border-warning/30 pt-2">{avisoPreclusao}</p>
                 )}

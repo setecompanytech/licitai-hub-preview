@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
+import { carregarTimbrado } from '@/lib/timbrado/timbrado';
 import {
   useMetasConfig, useValoresAlvo, useMetas, useRealizadoMensal, useColaboradores,
   useFeriados, useContratosAssinados, usePerdasPorMotivo, useAtividadesPorModulo,
@@ -55,6 +57,7 @@ function hojeSaoPaulo(): string {
 
 export default function RelatoriosMetas() {
   const { user } = useAuth();
+  const { empresaAtiva } = useEmpresa();
   const { isAdmin } = useMembroPermissoes();
   const hoje = hojeSaoPaulo();
 
@@ -156,8 +159,12 @@ export default function RelatoriosMetas() {
     if (!relatorio) return;
     setExportando(true);
     try {
-      if (formato === 'pdf') exportarRelatorioPdf(relatorio);
-      else await exportarRelatorioPlanilha(relatorio);
+      if (formato === 'pdf') {
+        // O relatório veste o timbrado da empresa, como todo documento gerado.
+        exportarRelatorioPdf(relatorio, await carregarTimbrado(empresaAtiva?.id));
+      } else {
+        await exportarRelatorioPlanilha(relatorio);
+      }
 
       // O snapshot congela indicadores E premissas da emissão
       await salvarSnapshot.mutateAsync({

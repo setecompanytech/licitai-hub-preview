@@ -27,6 +27,7 @@ import {
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
   Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
+  Monitor,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -47,6 +48,11 @@ import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
+import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
+import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
+import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
+import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
+import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
@@ -142,7 +148,18 @@ export default function RoboLances() {
     horario: String(r.horario || ''),
     meuLance: Number(r.meu_lance) || 0,
     valorAtual: Number(r.valor_atual) || 0,
-    itens: (r.itens as DisputeItem[]) || [],
+    // Piso `0` gravado ANTES desta mudança nunca foi decisão de ninguém: era o
+    // valor fixo que todo item importado recebia, e não havia campo na tela
+    // para alterá-lo. Lido de volta como zero, ele autorizaria o robô a descer
+    // até zero num item que ninguém avaliou.
+    //
+    // Vira `null` — "ninguém decidiu" — que é o que sempre foi. Um piso zero
+    // escolhido de propósito a partir de agora chega pelo campo da tela, e
+    // ninguém escolhe descer até R$ 0,00.
+    itens: (((r.itens as DisputeItem[]) || []).map((i) => ({
+      ...i,
+      valorMinimo: i.valorMinimo === 0 ? null : i.valorMinimo ?? null,
+    }))) as DisputeItem[],
     tipoDisputa: (r.tipo_disputa as 'item' | 'lote') || 'item',
     licitacaoId: (r.licitacao_id as string) || undefined,
   });
@@ -387,6 +404,233 @@ export default function RoboLances() {
     }
   };
 
+  /**
+   * Manda a disputa selecionada para o robô, de verdade.
+   *
+   * Até 08/09/2026 NADA na interface fazia isto. A edge function
+   * `enviar-sessao` existia, o agente tinha a rota `/sessao/iniciar`, e as duas
+   * pontas nunca se encontraram — "Iniciar disputa" apenas mudava a coluna
+   * `status` no banco. Testar o robô exigia SSH no servidor.
+   *
+   * Enviar NÃO significa dar lance: a lista `PORTAIS_COM_LANCE_LIBERADO` do
+   * agente está vazia, então a estratégia devolve "aguardar" em toda rodada. O
+   * robô entra, navega e lê — que é exatamente o que se quer observar agora.
+   */
+  const [enviandoAoRobo, setEnviandoAoRobo] = useState(false);
+
+  /**
+   * O convite deixou de ser um pop-up e virou um FAROL.
+   *
+   * A primeira versao abria um cartao no meio da tela ao enviar. Resolvia o
+   * "usuario perdido", mas com dois avisos para o mesmo trabalho em quinze
+   * segundos — o cartao do PedidoDoRobo dispara logo depois, e com instrucao
+   * de verdade.
+   *
+   * O que nao podia se perder junto: o estimulo a assistir DESDE O COMECO. A
+   * parte mais convincente do robo e ve-lo entrando no portal e digitando o
+   * login, e isso acontece nos primeiros segundos — quem chega depois so ve
+   * tela preta.
+   *
+   * Entao, em vez de bloquear a tela, o botao que ja existe acende e pulsa.
+   * Aponta em vez de interromper.
+   */
+  const [destacarAssistir, setDestacarAssistir] = useState(false);
+  useEffect(() => {
+    if (!destacarAssistir) return;
+    // Uma sessao que falha dura ~13s, medidos. Vinte segundos cobrem o inicio
+    // sem virar enfeite permanente — farol que fica aceso deixa de ser aviso.
+    const t = setTimeout(() => setDestacarAssistir(false), 20000);
+    return () => clearTimeout(t);
+  }, [destacarAssistir]);
+
+  /**
+   * Um caminho só até a tela do robô, e ele termina COM a tela aberta.
+   *
+   * Antes eram quatro passos: trocar de aba, rolar até quase o fim da página,
+   * achar o painel e clicar em "Abrir VNC Integrado". A sessão pode terminar em
+   * segundos — ninguém chegava a tempo, e a conclusão era que a tela remota não
+   * funcionava.
+   *
+   * O contador existe porque o pedido se repete: enviar duas sessões seguidas
+   * precisa abrir duas vezes, e um booleano já em `true` não dispara efeito
+   * nenhum na segunda.
+   */
+  const [pedidoDeTelaRemota, setPedidoDeTelaRemota] = useState(0);
+
+  /**
+   * Existe robô DE PÉ nesta disputa agora?
+   *
+   * O freio ficava visível o tempo todo, e isso e um defeito proprio: botao
+   * vermelho sem nada para parar treina a pessoa a ignora-lo — exatamente o
+   * contrario do que ele existe para fazer. E, aparecendo sempre, ele competia
+   * em destaque com a acao principal da tela.
+   *
+   * Quem sabe se ha sessao viva e o agente, e e a ele que se pergunta.
+   */
+  const { data: estadoDoRobo } = usePedidosDoRobo();
+  const sessaoVivaDesta = (estadoDoRobo?.sessoesVivas || []).find(
+    (sv) => sv.edital === selectedLance?.edital,
+  );
+
+  const irParaTelaRemota = () => {
+    setActiveMainTab('agente');
+    setPedidoDeTelaRemota((n) => n + 1);
+  };
+
+    const handleEnviarAoRobo = async () => {
+    if (!selectedLance) return;
+
+    const portalId = idDoPortal(selectedLance.portal);
+    if (!portalId) {
+      toast.error(
+        `Portal "${selectedLance.portal}" não é um dos que o robô sabe operar.`,
+        { duration: 10000 },
+      );
+      return;
+    }
+
+    setEnviandoAoRobo(true);
+    setDestacarAssistir(true);
+
+    // O CONVITE SAI NO PRIMEIRO CLIQUE, antes de qualquer ida ao servidor.
+    //
+    // Só assim dá para ver o começo: o robô abre o Chrome e carrega a tela de
+    // login em poucos segundos, e a chamada de envio só retorna DEPOIS que ele
+    // terminou de entrar e navegar. Avisar no fim é avisar quando não serve.
+    //
+    // O id fica guardado para o convite ser retirado caso o envio seja recusado
+    // antes de o robô abrir qualquer coisa — convidar para assistir a uma
+    // sessão que não existe seria a mesma mentira, na direção contrária.
+
+    // Reconhecer o portal não é o mesmo que o agente NO AR saber operá-lo.
+    //
+    // A VPS pode estar num build atrás do template — em 09/09/2026 estava, com 8
+    // dos 23 módulos. Perguntar ao `/health` é a única forma de responder isso
+    // sem escrever no código uma verdade que envelhece. E a resposta vem com a
+    // lista, então a mensagem diz o que ELE tem, não o que falta.
+    try {
+      const { data: saude } = await supabase.functions.invoke(
+        'robo-lances-webhook/healthcheck',
+        { body: {} },
+      );
+      const suportados = (saude as {
+        agentes?: Array<{ portais_suportados?: string[] | null }>;
+      } | null)?.agentes?.[0]?.portais_suportados;
+
+      if (!agenteOpera(portalId, suportados)) {
+        toast.error(
+          `O agente no ar ainda não tem o módulo de ${nomeDoPortal(portalId)}. ` +
+            `Hoje ele opera: ${(suportados || []).join(', ')}.`,
+          { duration: 15000 },
+        );
+        setEnviandoAoRobo(false);
+        return;
+      }
+    } catch {
+      // Healthcheck indisponível não impede o envio: a edge function repete a
+      // validação, e o agente é a autoridade final. Barrar aqui trocaria um
+      // erro informativo por um bloqueio sem causa visível.
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'robo-lances-webhook/enviar-sessao',
+        {
+          body: {
+            lance_config_id: selectedLance.id,
+            portal_id: portalId,
+            portal_nome: nomeDoPortal(selectedLance.portal),
+            edital: selectedLance.edital,
+            valor_referencia: selectedLance.valorReferencia,
+            valor_inicial: selectedLance.valorInicial,
+            valor_minimo: selectedLance.valorMinimo,
+            decremento_min: selectedLance.decrementoMin,
+            decremento_percentual: selectedLance.decrementoPercentual,
+            intervalo_segundos: selectedLance.intervaloSegundos,
+            max_lances: selectedLance.maxLances,
+            // ── O QUE FALTAVA ATRAVESSAR ──────────────────────────────────
+            //
+            // Até aqui o robô recebia `edital` (string), portal e três valores
+            // da disputa inteira. Num pregão com 40 itens ele achava o
+            // processo e não sabia em qual item estava — era uma ilha.
+            //
+            // Os três valores viajam SEPARADOS de propósito. Colapsá-los num
+            // campo só foi o defeito: preço de venda, custo e estimativa do
+            // órgão viram todos "R$ alguma coisa", e depois de gravados não
+            // dá para saber qual âncora a disputa estava usando.
+            empresa_id: empresaAtiva?.id ?? null,
+            licitacao_id: selectedLance.licitacaoId ?? null,
+            tipo_disputa: selectedLance.tipoDisputa,
+            itens: (selectedLance.itens || []).map((i) => ({
+              numero: i.numero,
+              lote: i.lote,
+              descricao: i.descricao,
+              marca: i.marca ?? null,
+              modelo: i.modelo ?? null,
+              quantidade: i.quantidade,
+              unidade: i.unidade,
+              preco_venda: i.valorReferencia > 0 ? i.valorReferencia : null,
+              custo_unitario: i.custoUnitario ?? null,
+              valor_estimado_orgao: i.valorEstimadoOrgao ?? null,
+              // `null` viaja como `null`: o piso ausente é uma decisão que
+              // ninguém tomou, e o agente precisa distinguir isso de zero.
+              valor_minimo: i.valorMinimo ?? null,
+              origem: i.origem ?? null,
+              disputando: i.disputando,
+            })),
+          },
+        },
+      );
+
+      // A mensagem real do servidor, nunca um "erro ao enviar" genérico: a
+      // causa costuma ser credencial ausente ou agente fora do ar, e as duas
+      // têm conserto diferente.
+      //
+      // Ler `error.message` NÃO basta. Quando a função responde não-2xx, o
+      // cliente do Supabase devolve `data: null` e a mensagem literal
+      // "Edge Function returned a non-2xx status code" — o corpo da resposta,
+      // onde está a causa, fica guardado em `error.context`. Sem abrir isso, o
+      // usuário recebe uma frase que não diz nada e o defeito vira caça ao
+      // tesouro. Foi exatamente o que aconteceu no primeiro teste real.
+      let motivo = (data as { error?: string } | null)?.error;
+
+      if (!motivo && error) {
+        const contexto = (error as { context?: Response }).context;
+        if (contexto && typeof contexto.json === 'function') {
+          const corpo = await contexto.json().catch(() => null);
+          motivo = (corpo as { error?: string } | null)?.error;
+        }
+        motivo = motivo || error.message;
+      }
+
+      if (motivo) {
+        // Recusa da edge function: o agente nunca foi acionado, então não há
+        // nada para assistir. Deixar o convite na tela seria convidar para uma
+        // sessão que não existe.
+        toast.error(motivo, { duration: 15000 });
+        return;
+      }
+
+      registrar(
+        'sessao_criada',
+        { portal: portalId, edital: selectedLance.edital, origem: 'botao_enviar_ao_robo' },
+        { licitacaoId: selectedLance.licitacaoId, nivelAutomacao: nivelAutomacao },
+      );
+
+      // Discreto de propósito: o convite grande já está na tela desde o clique,
+      // e ele é que carrega o caminho para assistir. Repetir a mesma oferta
+      // aqui empilharia dois avisos dizendo a mesma coisa. Este só confirma o
+      // que aconteceu, para quem dispensou o convite.
+      toast.success('Sessão aceita pelo robô.', { duration: 6000 });
+    } catch (e) {
+      toast.error(`Não foi possível falar com o robô: ${(e as Error).message}`, {
+        duration: 15000,
+      });
+    } finally {
+      setEnviandoAoRobo(false);
+    }
+  };
+
   const handleEndDispute = async (resultado: 'venceu' | 'perdeu') => {
     if (!selectedLance) return;
 
@@ -580,11 +824,16 @@ export default function RoboLances() {
                   Operador e visualizador ficam com a aba de trabalho. */}
               {isAdmin && (
                 <>
-                  <TabsTrigger value="portais" className="text-xs">
-                    <Globe className="w-3.5 h-3.5 mr-1" /> Portais
-                  </TabsTrigger>
+                  {/* Agente Cloud vem logo depois de Disputar porque é o
+                      movimento seguinte de quem acabou de enviar: a sessão pode
+                      durar segundos, e ter "Portais" no caminho obriga a
+                      atravessar uma aba que não interessa naquele instante.
+                      Portais é cadastro — se faz uma vez, não a cada disputa. */}
                   <TabsTrigger value="agente" className="text-xs">
                     <Shield className="w-3.5 h-3.5 mr-1" /> Agente Cloud
+                  </TabsTrigger>
+                  <TabsTrigger value="portais" className="text-xs">
+                    <Globe className="w-3.5 h-3.5 mr-1" /> Portais
                   </TabsTrigger>
                   <TabsTrigger value="configuracoes" className="text-xs">
                     <Settings className="w-3.5 h-3.5 mr-1" /> Configurações
@@ -717,8 +966,16 @@ export default function RoboLances() {
             ) : (
               <>
                 {/* ── Dispute Header Bar ── */}
-                <div className="border-b border-border bg-card px-4 py-2.5 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-3">
+                {/* `justify-between` SEM gap deixava os dois grupos se
+                    encostarem quando o conteudo crescia — foi o que aconteceu
+                    ao trazer o freio de volta: o botao vermelho colou no selo
+                    "N1 — Assistente".
+
+                    `flex-wrap` faz a barra quebrar em duas linhas em vez de
+                    espremer o titulo, e `shrink-0` no grupo de acoes garante
+                    que quem cede espaco e o texto, nao o botao. */}
+                <div className="border-b border-border bg-card px-4 py-2.5 flex items-center justify-between gap-x-3 gap-y-2 flex-wrap shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div>
                       <h2 className="text-sm font-bold flex items-center gap-2">
                         {selectedLance.edital}
@@ -741,11 +998,20 @@ export default function RoboLances() {
                       N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Kill Switch - visible for levels 2 and 3 */}
-                    {nivelAutomacao >= 2 && selectedLance.status !== 'encerrado' && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO — mas
+                        depende de haver o que frear.
+                        Ele ficava escondido atrás de `nivelAutomacao >= 2`, sob
+                        a premissa de que N1 é assistente e não age sozinho.
+                        Isso deixou de valer quando o botão "Enviar ao robô" foi
+                        construído: em N1 ele dispara uma sessão real, que loga
+                        na conta do cliente e abre um navegador no portal.
+                        Em 09/09/2026 uma sessão travada teve que ser encerrada
+                        por `curl` na VPS, porque a tela não oferecia parada.
+                        Quem consegue disparar tem que conseguir parar. */}
+                    {sessaoVivaDesta && (
                       <KillSwitchButton
-                        sessaoId={undefined}
+                        sessaoId={sessaoVivaDesta.sessao_id}
                         licitacaoId={selectedLance.licitacaoId}
                         onParada={handleParadaEmergencial}
                         disabled={paradaEmergencial}
@@ -767,6 +1033,52 @@ export default function RoboLances() {
                       <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs">
                         ✓ Estratégia Autorizada
                       </Badge>
+                    )}
+
+                    {/* O botão que faltava. Fica FORA do menu "Ações" porque é
+                        a única coisa nesta tela que move o robô de verdade —
+                        escondê-lo atrás de um menu era parte do motivo de
+                        ninguém notar que ele não existia.
+
+                        Só o operador vê: quem tem papel de visualizador
+                        acompanha a disputa, não dispara sessão. */}
+                    {podeOperar && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleEnviarAoRobo}
+                          disabled={enviandoAoRobo}
+                          className="text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
+                        >
+                          {enviandoAoRobo
+                            ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Enviando…</>
+                            : <><Send className="w-3.5 h-3.5" /> Enviar ao robô</>}
+                        </Button>
+
+                        {/* O ATALHO PRECISA VIR ANTES DO ENVIO.
+                            Uma sessão que falha dura ~13 segundos, medidos. Quem
+                            clica em enviar e só depois procura onde assistir
+                            chega quando já acabou — e o que sobra é um spinner
+                            que termina em nada, sem dizer para onde ir. */}
+                        <Button
+                          size="sm"
+                          variant={destacarAssistir ? 'default' : 'ghost'}
+                          onClick={() => {
+                            setDestacarAssistir(false);
+                            irParaTelaRemota();
+                          }}
+                          className={
+                            destacarAssistir
+                              ? 'text-xs gap-1.5 bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse-glow ring-2 ring-accent/40'
+                              : 'text-xs gap-1.5 text-muted-foreground hover:text-foreground'
+                          }
+                          title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
+                        >
+                          <Monitor className="w-3.5 h-3.5" />
+                          {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
+                        </Button>
+                      </div>
                     )}
 
                     <DropdownMenu>
@@ -1036,9 +1348,27 @@ export default function RoboLances() {
         {/* ── AGENTE CLOUD TAB ── */}
         <TabsContent value="agente" className="flex-1 m-0 overflow-auto p-6 space-y-6">
           {!isAdmin ? <SemPermissao /> : (<>
+          {/* A ordem segue o USO e a URGÊNCIA, não a configuração.
+              O painel com prazo não pode exigir rolagem: a tela remota mostra o
+              robô enquanto ele trabalha, e ele pode terminar em segundos. Tudo
+              que ficasse acima dela — checklist inclusive — vira distância a
+              percorrer com o relógio correndo.
+              Sessões vem logo abaixo porque é a mesma pergunta ("o robô
+              funcionou?") respondida depois que a janela fechou.
+              Checklist, config e healthcheck são ajuste: consultados quando
+              algo está errado, não a cada disputa. */}
+          {/* Acima do VNC de propósito: quando o robô pede um código, isso é a
+              coisa mais urgente da tela — e um código de verificação vale
+              segundos. Quando ele não pede nada, este bloco não desenha nada. */}
+          <PedidoDoRobo onAbrirTelaRemota={irParaTelaRemota} />
+          <VncWebViewer abrirEm={pedidoDeTelaRemota} />
+          {/* Logo abaixo da tela remota porque é a alternativa a ela: quem não
+              quer usar o VNC vai querer entrar no portal pelo próprio navegador,
+              e é justamente aí que a tentação de instalar o .pfx aparece. */}
+          <AcessoManualPortal />
+          <SessoesDoRobo />
           <AtivacaoChecklist />
           <AgenteExternoConfig />
-          <VncWebViewer />
           <PortalHealthcheck />
           </>)}
         </TabsContent>

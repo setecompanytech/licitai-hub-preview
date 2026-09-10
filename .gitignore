@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 supabase/.temp/
+
+# Capturas de tela que o agente de lances tira sozinho, trazidas da VPS.
+# Ficam de fora por dois motivos: mostram a conta do cliente logada (nome, CNPJ,
+# telefone) e sao artefato, nao fonte — 15 MB de PNG que crescem a cada teste, e
+# imagem em git nao se apaga depois sem reescrever o historico.
+# O README da pasta explica como atualizar e o que cada nome significa.
+capturas-robo/*.png

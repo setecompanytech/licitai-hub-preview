@@ -195,6 +195,66 @@ export default function FinEmissorNFe() {
   const [pedidosFatura, setPedidosFatura] = useState<PedidoFatura[]>([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
 
+  // ====== Fase D: chegada da esteira Pedidos a Faturar ======
+  // O prefill viaja por sessionStorage e é consumido UMA vez (a chave morre
+  // na leitura — recarregar a página não re-preenche fantasma). Preenche
+  // itens com os dados do pedido + fiscais do produto do contrato e aponta o
+  // destinatário: pessoa do cadastro com o nome do órgão, se existir; senão
+  // nome/UF/município do contrato, para o usuário completar CNPJ e endereço.
+  useEffect(() => {
+    if (!empresaAtiva?.id) return;
+    const bruto = sessionStorage.getItem('praefectus_emissor_prefill');
+    if (!bruto) return;
+    sessionStorage.removeItem('praefectus_emissor_prefill');
+    try {
+      const p = JSON.parse(bruto) as {
+        origem: string; numero_pedido?: string; contrato_numero?: string | null;
+        orgao?: string | null; uf?: string | null; municipio?: string | null;
+        itens?: Array<Partial<ItemNFe>>;
+      };
+      if (p.itens?.length) {
+        setItens(p.itens.map(i => ({ ...itemVazio(), ...i })));
+      }
+      setActiveTab('emissao');
+      setInfoComplementares(prev => prev || [
+        p.contrato_numero ? `Contrato ${p.contrato_numero}` : null,
+        p.numero_pedido ? `Pedido/OF ${p.numero_pedido}` : null,
+      ].filter(Boolean).join(' — '));
+      (async () => {
+        let preenchido = false;
+        if (p.orgao) {
+          const { data } = await supabase
+            .from('financeiro_pessoas')
+            .select('nome, documento')
+            .eq('empresa_id', empresaAtiva.id)
+            .ilike('nome', `%${p.orgao.slice(0, 40)}%`)
+            .limit(1)
+            .maybeSingle();
+          if (data) {
+            setDestinatario(d => ({
+              ...d,
+              nome: (data as { nome: string }).nome,
+              documento: (data as { documento: string | null }).documento || '',
+              uf: p.uf || d.uf,
+              municipio: p.municipio || d.municipio,
+            }));
+            preenchido = true;
+          }
+        }
+        if (!preenchido) {
+          setDestinatario(d => ({
+            ...d,
+            nome: p.orgao || d.nome,
+            uf: p.uf || d.uf,
+            municipio: p.municipio || d.municipio,
+          }));
+        }
+        toast.info(`Dados do pedido ${p.numero_pedido ?? ''} carregados — confira o destinatário (CNPJ/endereço) antes de transmitir.`);
+      })();
+    } catch { /* prefill corrompido: emissor abre limpo */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaAtiva?.id]);
+
   // ====== Cálculo automático do idDest (1=Interna, 2=Interestadual, 3=Exterior) ======
   useEffect(() => {
     const ufEmit = (empresaAtiva?.uf || "").toUpperCase();

@@ -34,13 +34,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { avisoDeExecucaoIncompativel } from '@/lib/contratos/instrumentos';
 import KitFaturamento from '@/components/financeiro/KitFaturamento';
 import {
   Plus, Trash2, Loader2, ShoppingCart, CheckCircle2, Clock, XCircle,
   Upload, FileText, AlertTriangle, DollarSign, Receipt, Pencil, ArrowUpDown, ArrowUp, ArrowDown,
-  ExternalLink, Link2, Eye, TrendingUp, Ban,
+  ExternalLink, Link2, Eye, TrendingUp, Ban, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -61,7 +62,7 @@ function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onS
   );
 }
 
-type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null };
+type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null; produto_id?: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 
 const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
@@ -259,10 +260,34 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
+  const qc = useQueryClient();
+
+  // A NF-e anexada no Financeiro tem de aparecer AQUI sem F5 (08/09): o
+  // vínculo e o documento mudam lá, e esta aba só sabia via cache de 60s.
+  useEffect(() => {
+    if (!contratoId || !empresaAtiva?.id) return;
+    const canal = supabase
+      .channel(`nf-pedidos-${contratoId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'financeiro_lancamentos', filter: `contrato_id=eq.${contratoId}` },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'financeiro_documentos_fiscais', filter: `empresa_id=eq.${empresaAtiva.id}` },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      // DELETE não atravessa filtro: o evento de exclusão carrega só a chave
+      // da linha, sem empresa_id para comparar. Sem esta assinatura à parte,
+      // apagar o documento pela lixeira não some da coluna até o F5.
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'financeiro_documentos_fiscais' },
+        () => qc.invalidateQueries({ queryKey: ['nf-por-pedido'] }))
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [contratoId, empresaAtiva?.id, qc]);
   const navigate = useNavigate();
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [empenhosAbertos, setEmpenhosAbertos] = useState(true);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
@@ -629,7 +654,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id, produto_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
@@ -1044,6 +1069,87 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     }
   };
 
+  // ——— Trava do preço contratado (Fase B, 09/09) ————————————————————————
+  // Pedido é EXECUÇÃO do contrato: unitário divergente do item vinculado não
+  // finaliza — pede revisão. Se o preço mudou por reequilíbrio/reajuste, o
+  // caminho é atualizar o ITEM (Itens/Lotes) antes, e o pedido nasce certo.
+  // Tolerância de 0,5% para arredondamento de centavos. Empenho fica fora:
+  // ele AUTORIZA com o valor literal do documento, não consome item.
+  const precoForaDoContratado = (linhas: Array<{ descricao?: string | null; valor_unitario: string | number; contrato_item_id?: string | null }>): string | null => {
+    for (const l of linhas) {
+      if (!l.contrato_item_id) continue;
+      const item = itens.find(i => i.id === l.contrato_item_id);
+      const contratado = Number(item?.valor_unitario) || 0;
+      const vu = typeof l.valor_unitario === 'number' ? l.valor_unitario : parseFloat(String(l.valor_unitario)) || 0;
+      if (contratado > 0 && vu > 0 && Math.abs(vu - contratado) / contratado > 0.005) {
+        return `"${(l.descricao || 'item').slice(0, 60)}": unitário ${fmt(vu)} difere do contratado ${fmt(contratado)}. Revise o valor — e se o preço mudou por reequilíbrio/reajuste, atualize o item do contrato em Itens/Lotes antes de registrar o pedido.`;
+      }
+    }
+    return null;
+  };
+
+  // ——— Fase C: estoque físico × virtual —————————————————————————————————
+  // Disponível = saldo físico do produto − reservas (pedidos pendentes ou
+  // parciais de QUALQUER contrato apontando itens do mesmo produto). A régua
+  // aparece na criação do pedido; quantidade que não cabe vira confirmação
+  // explícita — a entrada da compra pode legitimamente vir depois.
+  const [estoqueInfo, setEstoqueInfo] = useState<Map<string, { fisico: number; reservado: number }>>(new Map());
+  useEffect(() => {
+    const produtoIds = [...new Set(itens.map(i => i.produto_id).filter(Boolean))] as string[];
+    if (!produtoIds.length) { setEstoqueInfo(new Map()); return; }
+    let vivo = true;
+    (async () => {
+      const [prodRes, ciRes] = await Promise.all([
+        supabase.from('produtos').select('id, saldo_atual').in('id', produtoIds),
+        // types.ts ainda não conhece produto_id em contrato_itens (migration adm.)
+        (supabase.from('contrato_itens') as any).select('id, produto_id').in('produto_id', produtoIds),
+      ]);
+      const linhasCi = (ciRes.data as unknown as Array<{ id: string; produto_id: string }> | null) || [];
+      const prodDoItem = new Map(linhasCi.map(x => [x.id, x.produto_id]));
+      let reservas: Array<{ contrato_item_id: string | null; quantidade: number }> = [];
+      if (linhasCi.length) {
+        const { data } = await supabase.from('contrato_pedidos')
+          .select('contrato_item_id, quantidade')
+          .in('contrato_item_id', linhasCi.map(x => x.id))
+          .in('status', ['pendente', 'parcial']);
+        reservas = (data as typeof reservas) || [];
+      }
+      if (!vivo) return;
+      const mapa = new Map<string, { fisico: number; reservado: number }>();
+      for (const p of (prodRes.data as Array<{ id: string; saldo_atual: number }> | null) || []) {
+        mapa.set(p.id, { fisico: Number(p.saldo_atual) || 0, reservado: 0 });
+      }
+      for (const r of reservas) {
+        const pid = r.contrato_item_id ? prodDoItem.get(r.contrato_item_id) : undefined;
+        const e = pid ? mapa.get(pid) : undefined;
+        if (e) e.reservado += Number(r.quantidade) || 0;
+      }
+      setEstoqueInfo(mapa);
+    })();
+    return () => { vivo = false; };
+  }, [itens, pedidos]);
+
+  const estoqueDoItem = (contratoItemId?: string | null) => {
+    if (!contratoItemId) return null;
+    const item = itens.find(i => i.id === contratoItemId);
+    if (!item?.produto_id) return null;
+    const e = estoqueInfo.get(item.produto_id);
+    if (!e) return null;
+    return { ...e, disponivel: e.fisico - e.reservado };
+  };
+
+  const avisoEstoqueInsuficiente = (linhas: Array<{ descricao?: string | null; quantidade: string | number; contrato_item_id?: string | null }>): string | null => {
+    for (const l of linhas) {
+      const e = estoqueDoItem(l.contrato_item_id);
+      if (!e) continue;
+      const qtd = typeof l.quantidade === 'number' ? l.quantidade : parseFloat(String(l.quantidade)) || 0;
+      if (qtd > e.disponivel) {
+        return `"${(l.descricao || 'item').slice(0, 60)}": pedido de ${qtd.toLocaleString('pt-BR')} com ${e.disponivel.toLocaleString('pt-BR')} disponível (${e.fisico.toLocaleString('pt-BR')} físico − ${e.reservado.toLocaleString('pt-BR')} já reservado em pedidos).`;
+      }
+    }
+    return null;
+  };
+
   const handleSaveSingle = async () => {
     // A mesma bifurcação do upload, no lançamento à mão: quem escolhe "Empenho
     // Ordinário" no tipo do documento está registrando uma AUTORIZAÇÃO, e ela
@@ -1061,6 +1167,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
     const qty = parseFloat(form.quantidade) || 0;
     const unit = parseFloat(form.valor_unitario) || 0;
+
+    const travaPreco = precoForaDoContratado([{ descricao: form.descricao, valor_unitario: unit, contrato_item_id: form.contrato_item_id }]);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+
+    const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: form.descricao, quantidade: qty, contrato_item_id: form.contrato_item_id }]);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nRegistrar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
 
     // Avisa e deixa seguir: há entrega legítima que estoura o saldo previsto —
     // reforço de empenho em andamento, aditivo em tramitação. Barrar seria
@@ -1270,6 +1382,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!form.numero_pedido) { toast.error('Informe o número do pedido'); return; }
 
     const itensSalvar = extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0);
+
+    const travaPreco = precoForaDoContratado(itensSalvar);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+
+    const alertaEstoque = avisoEstoqueInsuficiente(itensSalvar);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nRegistrar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
 
     // A mesma checagem tripla do lançamento avulso: contrato, item e cota do
     // empenho limitam a mesma entrega, e nenhum implica o outro.
@@ -1490,6 +1608,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (editingPedido.nf_quitada) { toast.error('Pedido com NF quitada não pode ser editado.'); return; }
     const qty = parseFloat(editForm.quantidade) || 0;
     const unit = parseFloat(editForm.valor_unitario) || 0;
+    const travaPreco = precoForaDoContratado([{ descricao: editForm.descricao, valor_unitario: unit, contrato_item_id: editForm.contrato_item_id }]);
+    if (travaPreco) { toast.error('Preço fora do contratado', { description: travaPreco }); return; }
+    const alertaEstoque = avisoEstoqueInsuficiente([{ descricao: editForm.descricao, quantidade: qty, contrato_item_id: editForm.contrato_item_id }]);
+    if (alertaEstoque && !confirm(`Estoque insuficiente\n\n${alertaEstoque}\n\nSalvar mesmo assim? (a entrada da compra pode ser lançada depois)`)) return;
     setSavingEdit(true);
     const { error } = await supabase.from('contrato_pedidos').update({
       numero_pedido: editForm.numero_pedido,
@@ -1921,11 +2043,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
                                 }}>
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
-                                  <SelectContent>
+                                  {/* Descrição de item de merenda tem 400+ caracteres, e o
+                                      Radix COPIA o conteúdo da opção para dentro do gatilho:
+                                      o line-clamp-2 (caixa -webkit aninhada) furava o recorte
+                                      do trigger e o texto atravessava o formulário (09/09).
+                                      Uma linha truncada se comporta igual nos dois lugares;
+                                      a descrição completa fica no title e na ficha do item. */}
+                                  <SelectContent className="max-w-[min(560px,90vw)]">
                                     {itens.map(i => (
                                       <SelectItem key={i.id} value={i.id} className="text-xs">
-                                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                        {i.descricao}
+                                        <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                          {i.descricao}
+                                        </span>
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -2053,10 +2183,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       {fonteItens === 'ata' ? (
                         <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
                           <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-w-[min(560px,90vw)]">
                             {itensAta.map(i => (
                               <SelectItem key={i.id} value={i.id}>
-                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -2064,11 +2196,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       ) : (
                         <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
                           <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-w-[min(560px,90vw)]">
                             {itensFiltrados.map(i => (
                               <SelectItem key={i.id} value={i.id}>
-                                <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                  <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                                </span>
                               </SelectItem>
                             ))}
                             {itensFiltrados.length === 0 && (
@@ -2077,6 +2211,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           </SelectContent>
                         </Select>
                       )}
+                      {(() => {
+                        // Fase C: a régua do estoque mora ao lado do item.
+                        const e = estoqueDoItem(form.contrato_item_id);
+                        if (!e) return null;
+                        const qtd = parseFloat(form.quantidade) || 0;
+                        const falta = qtd > 0 && qtd > e.disponivel;
+                        return (
+                          <p className={`text-[11px] mt-1 ${falta ? 'text-warning' : 'text-muted-foreground'}`}>
+                            Estoque: {e.fisico.toLocaleString('pt-BR')} físico · {e.reservado.toLocaleString('pt-BR')} reservado ·{' '}
+                            <b>{e.disponivel.toLocaleString('pt-BR')} disponível</b>
+                            {falta ? ' — quantidade acima do disponível' : ''}
+                          </p>
+                        );
+                      })()}
                     </div>
                     <div className="col-span-2">
                       <Label className="text-xs">Descrição</Label>
@@ -2163,14 +2311,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           precisa estar à vista, com o que já autoriza e o que dele resta. */}
       {empenhosDoContrato.length > 0 && (
         <Card className="p-4 mb-3">
-          <div className="flex items-center justify-between mb-2">
+          {/* O cabeçalho inteiro recolhe/expande (08/09): contrato com vários
+              empenhos empurrava a tabela de pedidos para fora da primeira
+              dobra. Nasce aberto — o painel é o que se olha. */}
+          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setEmpenhosAbertos((v) => !v)}
+            title={empenhosAbertos ? 'Recolher os empenhos' : 'Expandir os empenhos'}>
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Empenhos registrados ({empenhosDoContrato.length})
             </h4>
-            <span className="text-xs text-muted-foreground">autorizam os pedidos abaixo</span>
-          </div>
-          <div className="space-y-2">
+            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              autorizam os pedidos abaixo
+              {empenhosAbertos
+                ? <ChevronUp className="w-4 h-4 shrink-0" />
+                : <ChevronDown className="w-4 h-4 shrink-0" />}
+            </span>
+          </button>
+          {empenhosAbertos && (
+          <div className="space-y-2 mt-2">
             {empenhosDoContrato.map(e => {
               const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
               return (
@@ -2275,6 +2434,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               );
             })}
           </div>
+          )}
         </Card>
       )}
 
@@ -2417,32 +2577,41 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <>
                               <FileText className="w-3 h-3 mr-1 inline" />
                               {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
-                              {p.nf_quitada && p.data_quitacao && (
-                                <span className="ml-1 text-success">
-                                  • Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                </span>
-                              )}
                             </>
+                          );
+                          // A quitação em linha própria (08/09): dentro do selo,
+                          // número e estado disputavam a mesma linha e a leitura
+                          // vinha espremida.
+                          const quitada = p.nf_quitada && p.data_quitacao && (
+                            <p className="text-xs text-success">
+                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </p>
                           );
                           if (!nd.storage_path) {
                             return (
-                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
-                                {rotulo}
-                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                              </Badge>
+                              <>
+                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                  title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
+                                  {rotulo}
+                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                </Badge>
+                                {quitada}
+                              </>
                             );
                           }
                           return (
-                            <button type="button" className="block w-fit"
-                              onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
-                              title={`Abrir ${nd.arquivo_nome} em nova aba`}>
-                              <Badge variant="outline"
-                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
-                                {rotulo}
-                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                              </Badge>
-                            </button>
+                            <>
+                              <button type="button" className="block w-fit"
+                                onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
+                                title={`Abrir ${nd.arquivo_nome} em nova aba`}>
+                                <Badge variant="outline"
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  {rotulo}
+                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                </Badge>
+                              </button>
+                              {quitada}
+                            </>
                           );
                         })()}
                         {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
@@ -2461,10 +2630,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   três grafias da mesma nota, que sem
                                   normalizar viram três linhas diferentes. */}
                               {formatarNumeroNfe(p.nota_fiscal) ?? p.nota_fiscal}
-                              {p.nf_quitada && p.data_quitacao && (
-                                <span className="ml-1 text-success">• Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                              )}
                             </>
+                          );
+                          const quitada = p.nf_quitada && p.data_quitacao && (
+                            <p className="text-xs text-success">
+                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </p>
                           );
                           if (!doc) {
                             // Número sem arquivo é indistinguível de link
@@ -2472,26 +2643,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             // qual dos dois é — e onde se resolve — evita a
                             // conclusão de que o sistema perdeu a nota.
                             return (
-                              <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
-                                {conteudo}
-                                <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                              </Badge>
+                              <>
+                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
+                                  title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
+                                  {conteudo}
+                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                </Badge>
+                                {quitada}
+                              </>
                             );
                           }
                           return (
-                            <button
-                              type="button"
-                              onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
-                              title={`Abrir ${doc.arquivo_nome} em nova aba`}
-                              className="block w-fit"
-                            >
-                              <Badge variant="outline"
-                                className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
-                                {conteudo}
-                                <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                              </Badge>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
+                                title={`Abrir ${doc.arquivo_nome} em nova aba`}
+                                className="block w-fit"
+                              >
+                                <Badge variant="outline"
+                                  className="text-xs text-foreground border-primary/40 hover:bg-primary/5 cursor-pointer transition-colors">
+                                  {conteudo}
+                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                </Badge>
+                              </button>
+                              {quitada}
+                            </>
                           );
                         })()}
                         {linkedNfs.map(nf => {
@@ -2859,11 +3036,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-w-[min(560px,90vw)]">
                     {itens.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                        {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                        <span className="block max-w-[500px] truncate" title={i.descricao}>
+                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                          {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
