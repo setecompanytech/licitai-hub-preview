@@ -12932,7 +12932,7 @@ IMMUTABLE soma_percentuais_parcelas — CHECK não aceita subquery), dia fixo
 de vencimento, juro diário e % de acréscimo. RLS: membros leem/escrevem,
 admin apaga.
 
-## 2026-09-09 — Itens da sessão do robô de lances — PENDENTE de aplicação
+## 2026-09-09 — Itens da sessão do robô de lances — JÁ APLICADA via SQL Editor; recolar é inofensivo
 
 Arquivo: `supabase/migrations/20260909000011_itens_da_sessao_do_robo.sql`
 
@@ -12958,8 +12958,8 @@ Aditivos, todos nullable e sem mudar semântica de coluna existente:
 `sessoes_lance_real.tipo_disputa`. `valor_unitario` fica como está — 17
 arquivos dependem dela.
 
-> ⚠️ **Aplicar ANTES de publicar o front.** Sem a tabela `sessao_lance_itens`
-> o envio da sessão ao robô falha ao gravar os itens. A leitura do custo no
-> catálogo continua funcionando (lá a coluna já existia); o que quebra em
-> silêncio é a gravação em `licitacao_itens`, que só emite `console.warn` —
-> os itens aparecem na tela e não ficam centralizados para os outros módulos.
+Aplicada em 09/09/2026, antes de publicar o front — era pré-requisito: sem a
+tabela `sessao_lance_itens` o envio da sessão ao robô falha ao gravar os itens,
+e a gravação em `licitacao_itens` quebraria em silêncio (só `console.warn`),
+deixando os itens visíveis na tela mas não centralizados para os outros
+módulos. Conferido: 4 policies criadas (select/insert/update/delete).
