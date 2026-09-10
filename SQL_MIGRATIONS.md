@@ -13113,3 +13113,22 @@ ON CONFLICT torna a recarga idempotente. A edge capag-analysis consulta a
 tabela (match por UF + nome sem acento) e completa com SICONFI ao vivo
 (RREO Anexo 03: RCL 12 meses + população). Dado municipal oficial
 sobrescreve a estimativa da IA.
+
+## 2026-09-10 — Saneamento dos crons do PNCP e funções de coleta — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260910000004_saneamento_crons_pncp.sql`
+
+Investigação do "Boletim IA: 0 editais": o cache PNCP parou de ser alimentado
+em 08/09 — o PNCP apertou o rate limit (~26 requisições e começa 429; depois
+da rajada, TARPIT: pendura a conexão até o timeout) e o fan-out de 9 workers
+paralelos do pncp-sync-diario morria inteiro por teto de tempo, 5 execuções
+seguidas presas em "em_andamento". Três correções: (1) jobs 2 e 3
+(pesquisa-tempo-real-30min, coletar-portais-cron) autenticavam com
+service_role defasado do vault — o job 2 tomava 401 a cada meia hora com o
+pg_cron dizendo "succeeded"; ambos migrados para supabase_project_url() +
+cron_auth_header(). (2) pncp-sync-madrugada sai de 06:05 para 03:10 UTC,
+fora da janela da semeadura (04-08h59). (3) Na edge (sem DDL): o sync virou
+CADEIA COM CURSOR (uf/modalidade/data/página passada de elo em elo, ritmo
+2,5s, respiro de 30s e retentativa da MESMA fatia em 429/timeout, até 8
+tentativas); coletar-portais e coletar-diario-belem estavam ABERTAS
+(verify_jwt=false sem checagem interna) e ganharam autorizadoComoCron.

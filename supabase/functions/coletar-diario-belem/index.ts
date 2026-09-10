@@ -5,6 +5,7 @@
 // Deduplicação por hash em `publicacoes_belem_processadas`.
 
 import { createClient } from "@supabase/supabase-js";
+import { autorizadoComoCron, respostaNaoAutorizado } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -239,6 +240,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Só cron/rotina interna: a função queima créditos Firecrawl + OpenAI por
+  // chamada e estava ABERTA (verify_jwt=false sem checagem — saneada 10/09).
+  if (!autorizadoComoCron(req)) return respostaNaoAutorizado(corsHeaders);
 
   const inicio = Date.now();
   try {
