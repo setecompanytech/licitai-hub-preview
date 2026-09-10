@@ -256,7 +256,13 @@ export default function LicitacoesEstrategicas() {
               // Grade de `auto-fill` com mínimo em `min(430px, 100%)`: duas
               // colunas em tela larga, uma em tela estreita, sem breakpoint
               // declarado. É o padrão `.crt-grade` do protótipo.
-              <div className="grid gap-4 items-start [grid-template-columns:repeat(auto-fill,minmax(min(430px,100%),1fr))] [&>*]:min-w-0">
+              //
+              // items-stretch (padrão do grid): cada FILEIRA nivela seus
+              // cartões pela mais alta — com items-start, títulos de uma e
+              // duas linhas deixavam a grade serrilhada (10/09). O rodapé de
+              // cada cartão (órgão/data/valor) ancora embaixo via flex-col +
+              // mt-auto, então o nivelamento não deixa buraco.
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(430px,100%),1fr))] [&>*]:min-w-0">
                 {filtradas.length === 0 && (
                   <Card className="col-span-full flex flex-col items-center text-center px-5 py-16">
                     <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-5">
@@ -282,12 +288,12 @@ export default function LicitacoesEstrategicas() {
                     // fica ilegível. Fechado, volta para a grade de dois.
                     <Card
                       key={lic.id}
-                      className={`p-5 border-l-[3px] hover:shadow-md transition-shadow ${cfg.tarja} ${
+                      className={`p-5 border-l-[3px] hover:shadow-md transition-shadow h-full flex flex-col ${cfg.tarja} ${
                         isExpanded ? 'col-span-full' : ''
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 flex-1">
+                        <div className="flex-1 min-w-0 flex flex-col">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-bold text-sm truncate">{lic.numero}</span>
                             <Badge variant="outline" className={cfg.color + ' text-xs'}>
@@ -299,7 +305,9 @@ export default function LicitacoesEstrategicas() {
                             {lic.salva && <Star className="w-4 h-4 text-warning fill-warning" />}
                           </div>
                           <p className="text-base text-foreground line-clamp-2">{lic.objeto}</p>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          {/* mt-auto ancora a linha de órgão/data/valor no PÉ
+                              do cartão — é ela que alinha entre vizinhos. */}
+                          <div className="flex items-center gap-3 mt-auto pt-1 text-xs text-muted-foreground flex-wrap">
                             <span>{lic.orgao}</span>
                             {lic.uf && <><span>•</span><span>{lic.uf}{lic.municipio ? ` - ${lic.municipio}` : ''}</span></>}
                             <span>•</span>
