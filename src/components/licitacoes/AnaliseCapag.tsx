@@ -16,6 +16,9 @@ type FonteDados = {
   portal?: string;
   url?: string;
   uf_dados?: any;
+  municipio_dados?: Record<string, unknown> | null;
+  siconfi?: { rcl_12m: number | null; populacao: number | null; periodo: string } | null;
+  detalhe?: string;
 };
 
 type CapagData = {
@@ -137,6 +140,9 @@ export default function AnaliseCapag({ orgao, uf, municipio }: Props) {
                 </a>
               )}
             </div>
+          )}
+          {data.fonte_dados?.detalhe && (
+            <p className="text-xs text-muted-foreground -mt-1 mb-3">{data.fonte_dados.detalhe}</p>
           )}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-4">

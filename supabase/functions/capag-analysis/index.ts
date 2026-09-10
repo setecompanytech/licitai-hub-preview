@@ -1,5 +1,15 @@
 ﻿// @ts-nocheck
+// Análise CAPAG com TRÊS camadas de dado oficial (Opção 2 do Conecta, 10/09):
+//   1) Estados: CSV pequeno do Tesouro Transparente, baixado na hora (como antes);
+//   2) Municípios: tabela capag_municipios — a planilha oficial de 24MB do
+//      Tesouro (aba "Prévia da CAPAG") semeada no banco, porque baixar e
+//      parsear XLSX na edge a cada chamada é inviável;
+//   3) SICONFI ao vivo (apidatalake.tesouro.gov.br): RCL dos últimos 12 meses
+//      e população do ente, do RREO Anexo 03 mais recente publicado.
+// A IA continua fazendo a leitura contextual, mas os NÚMEROS oficiais
+// sobrescrevem a estimativa sempre que existem.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireAuth } from "../_shared/auth-rate-limit.ts";
 
 const corsHeaders = {
@@ -69,6 +79,66 @@ async function fetchEstadosCapag(): Promise<EstadoCapag[]> {
   }
 }
 
+/** Comparação de nome de município insensível a caixa e acento. */
+function normalizarNome(s: string): string {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/** Código IBGE dos estados — id_ente do SICONFI para consultas estaduais. */
+const UF_COD_IBGE: Record<string, number> = {
+  RO: 11, AC: 12, AM: 13, RR: 14, PA: 15, AP: 16, TO: 17,
+  MA: 21, PI: 22, CE: 23, RN: 24, PB: 25, PE: 26, AL: 27, SE: 28, BA: 29,
+  MG: 31, ES: 32, RJ: 33, SP: 35, PR: 41, SC: 42, RS: 43,
+  MS: 50, MT: 51, GO: 52, DF: 53,
+};
+
+/** CAPAG municipal oficial, da tabela semeada com a planilha do Tesouro. */
+async function fetchMunicipioCapag(supabase: any, municipio: string, uf: string) {
+  const { data } = await supabase
+    .from("capag_municipios")
+    .select("*")
+    .eq("uf", uf.toUpperCase().trim());
+  if (!data?.length) return null;
+  const alvo = normalizarNome(municipio);
+  return data.find((m: any) => normalizarNome(m.municipio) === alvo) ?? null;
+}
+
+/** RCL (últimos 12 meses) e população do ente, do RREO Anexo 03 mais recente
+ *  no SICONFI. Anda para trás a partir do bimestre corrente; melhor esforço —
+ *  ente que não declarou devolve null sem derrubar a análise. */
+async function fetchRclSiconfi(idEnte: number) {
+  const agora = new Date();
+  const tentativas: { ano: number; periodo: number }[] = [];
+  let ano = agora.getUTCFullYear();
+  let per = Math.max(1, Math.min(6, Math.ceil((agora.getUTCMonth() + 1) / 2) - 1));
+  for (let i = 0; i < 5; i++) {
+    tentativas.push({ ano, periodo: per });
+    per--;
+    if (per < 1) { ano--; per = 6; }
+  }
+  for (const t of tentativas) {
+    try {
+      const url = `https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rreo?an_exercicio=${t.ano}&nr_periodo=${t.periodo}&co_tipo_demonstrativo=RREO&no_anexo=${encodeURIComponent("RREO-Anexo 03")}&id_ente=${idEnte}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(9000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const items = data?.items ?? [];
+      if (!items.length) continue;
+      const rcl = items.find((i: any) =>
+        String(i.conta || "").toUpperCase().startsWith("RECEITA CORRENTE LÍQUIDA (III)") &&
+        String(i.coluna || "").toUpperCase().includes("12 MESES"));
+      if (!rcl) continue;
+      return {
+        rcl_12m: Number(rcl.valor) || null,
+        populacao: Number(items[0]?.populacao) || null,
+        periodo: `${t.periodo}º bimestre/${t.ano}`,
+        instituicao: String(items[0]?.instituicao || ""),
+      };
+    } catch (_) { /* tenta o período anterior */ }
+  }
+  return null;
+}
+
 function mapClassificacaoToNota(classificacao: string): "A" | "B" | "C" | "D" {
   if (classificacao.startsWith("A")) return "A";
   if (classificacao.startsWith("B")) return "B";
@@ -100,10 +170,44 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
 
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     // Step 1: Fetch real CAPAG data from Tesouro Nacional
     const estadosCapag = await fetchEstadosCapag();
     const ufNormalizada = (uf || "").toUpperCase().trim();
     const estadoData = estadosCapag.find(e => e.uf === ufNormalizada);
+
+    // Step 1b: CAPAG municipal oficial (tabela semeada da planilha do Tesouro)
+    let municipioData: any = null;
+    let capagMunReal: any = null;
+    if (municipio && ufNormalizada) {
+      municipioData = await fetchMunicipioCapag(supabase, municipio, ufNormalizada);
+      const semNota = !municipioData?.capag || ["n.d.", "n.e."].includes(municipioData.capag);
+      if (municipioData && !semNota) {
+        // Indicadores gravados como fração 0–1 (razão derivada) → % para exibição.
+        const pct = (v: number | null) => (typeof v === "number" ? Math.round(v * 1000) / 10 : null);
+        capagMunReal = {
+          cod_ibge: municipioData.cod_ibge,
+          municipio: municipioData.municipio,
+          uf: municipioData.uf,
+          classificacao: municipioData.capag,
+          nota_geral: mapClassificacaoToNota(municipioData.capag),
+          endividamento: { percentual: pct(municipioData.indicador1), nota: municipioData.nota1 },
+          poupanca_corrente: { percentual: pct(municipioData.indicador2), nota: municipioData.nota2 },
+          liquidez: { percentual: pct(municipioData.indicador3), nota: municipioData.nota3 },
+          icf: municipioData.icf,
+          posicao: municipioData.posicao,
+          origem_nota: municipioData.origem_nota,
+        };
+      }
+    }
+
+    // Step 1c: SICONFI ao vivo — RCL 12 meses e população do ente.
+    const idEnte = municipioData?.cod_ibge ?? (ufNormalizada ? UF_COD_IBGE[ufNormalizada] : undefined);
+    const siconfi = idEnte ? await fetchRclSiconfi(idEnte) : null;
 
     let dadosReais = "";
     let capagReal: any = null;
@@ -132,6 +236,36 @@ ${estadoData.observacao ? `- Observação: ${estadoData.observacao}` : ""}
 USE OBRIGATORIAMENTE estes dados reais para o estado. Se o órgão é municipal, use os dados do estado como referência e estime a situação do município com base no contexto.`;
     }
 
+    if (capagMunReal) {
+      const posBr = String(capagMunReal.posicao || "").split("-").reverse().join("/");
+      dadosReais += `
+
+DADOS REAIS DO MUNICÍPIO (CAPAG oficial do Tesouro Nacional, posição ${posBr}):
+- Município: ${capagMunReal.municipio}/${capagMunReal.uf} (IBGE ${capagMunReal.cod_ibge})
+- CAPAG Oficial do MUNICÍPIO: ${capagMunReal.classificacao} (${capagMunReal.origem_nota})
+- Indicador 1 (Endividamento DC/RCL): ${capagMunReal.endividamento.percentual}% - Nota ${capagMunReal.endividamento.nota}
+- Indicador 2 (Poupança Corrente): ${capagMunReal.poupanca_corrente.percentual}% - Nota ${capagMunReal.poupanca_corrente.nota}
+- Indicador 3 (Liquidez): ${capagMunReal.liquidez.percentual}% - Nota ${capagMunReal.liquidez.nota}
+- ICF (qualidade da informação): ${capagMunReal.icf || "n.d."}
+${municipioData?.observacao ? `- Observação: ${municipioData.observacao}` : ""}
+
+O órgão é MUNICIPAL e há dado oficial do próprio município: USE OBRIGATORIAMENTE estes dados, que prevalecem sobre os do estado.`;
+    } else if (municipioData) {
+      dadosReais += `
+
+O Tesouro Nacional registra o município ${municipioData.municipio}/${municipioData.uf} SEM nota CAPAG apurada (${municipioData.capag || "sem dado"}) — informe isso e trate a análise como estimativa.`;
+    }
+
+    if (siconfi?.rcl_12m) {
+      dadosReais += `
+
+DADOS AO VIVO DO SICONFI (RREO Anexo 03, ${siconfi.periodo}):
+- Receita Corrente Líquida (últimos 12 meses): R$ ${siconfi.rcl_12m.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+${siconfi.populacao ? `- População do ente: ${siconfi.populacao.toLocaleString("pt-BR")}` : ""}
+
+Use a RCL real para dimensionar a capacidade de pagamento e o porte do ente.`;
+    }
+
     // Step 2: Use AI for contextual analysis enriched with real data
     const prompt = `Você é um analista fiscal especialista em CAPAG do Tesouro Nacional.
 
@@ -142,7 +276,7 @@ ${dadosReais}
 REGRAS:
 - Se o órgão é subordinado a um município ou estado, analise o ente federativo correspondente.
 - SEMPRE forneça valores numéricos para os três indicadores CAPAG.
-- ${estadoData ? "USE os dados reais do Tesouro Nacional fornecidos acima. Para municípios, adapte os indicadores considerando que o município pode ter situação diferente do estado." : "Forneça a MELHOR ESTIMATIVA possível baseada em dados históricos."}
+- ${capagMunReal ? "USE os dados oficiais do MUNICÍPIO fornecidos acima — não estime o que já é oficial." : estadoData ? "USE os dados reais do Tesouro Nacional fornecidos acima. Para municípios, adapte os indicadores considerando que o município pode ter situação diferente do estado." : "Forneça a MELHOR ESTIMATIVA possível baseada em dados históricos."}
 - A classificação dos indicadores DEVE ser "A", "B" ou "C".
 - Indique na descrição quando os dados são oficiais (Tesouro Nacional) vs estimativas.
 
@@ -163,7 +297,7 @@ Responda APENAS com JSON válido:
   "recomendacoes": ["string"],
   "fontes_consulta": ["string"],
   "resumo_executivo": "string",
-  "dados_oficiais": ${estadoData ? "true" : "false"}
+  "dados_oficiais": ${capagMunReal || estadoData ? "true" : "false"}
 }`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -201,19 +335,34 @@ Responda APENAS com JSON válido:
     const parsed = JSON.parse(content);
 
     // Enrich response with real data source info
-    parsed.fonte_dados = estadoData
-      ? { tipo: "oficial", portal: "Tesouro Transparente", url: "https://www.tesourotransparente.gov.br/temas/estados-e-municipios/capacidade-de-pagamento-capag", uf_dados: capagReal }
-      : { tipo: "estimativa_ia", portal: null };
+    const detalhes: string[] = [];
+    if (capagMunReal) detalhes.push(`CAPAG oficial do município (posição ${String(capagMunReal.posicao || "").split("-").reverse().join("/")})`);
+    else if (estadoData) detalhes.push("CAPAG oficial do estado");
+    if (siconfi?.rcl_12m) detalhes.push(`RCL SICONFI ${siconfi.periodo}`);
 
-    // Override with real data for state-level queries
-    if (estadoData && !municipio) {
-      parsed.capag.nota = capagReal.nota_geral;
-      parsed.capag.endividamento.classificacao = capagReal.endividamento.nota;
-      parsed.capag.endividamento.percentual_estimado = capagReal.endividamento.percentual;
-      parsed.capag.poupanca_corrente.classificacao = capagReal.poupanca_corrente.nota;
-      parsed.capag.poupanca_corrente.percentual_estimado = capagReal.poupanca_corrente.percentual;
-      parsed.capag.liquidez.classificacao = capagReal.liquidez.nota;
-      parsed.capag.liquidez.percentual_estimado = capagReal.liquidez.percentual;
+    parsed.fonte_dados = capagMunReal || estadoData
+      ? {
+          tipo: "oficial",
+          portal: siconfi ? "Tesouro Transparente + SICONFI" : "Tesouro Transparente",
+          url: "https://www.tesourotransparente.gov.br/temas/estados-e-municipios/capacidade-de-pagamento-capag",
+          uf_dados: capagReal,
+          municipio_dados: capagMunReal,
+          siconfi,
+          detalhe: detalhes.join(" · "),
+        }
+      : { tipo: "estimativa_ia", portal: null, siconfi, detalhe: detalhes.join(" · ") || undefined };
+
+    // Override with real data: o dado do MUNICÍPIO prevalece; o do estado
+    // só sobrescreve quando a consulta é estadual.
+    const oficial = capagMunReal ?? (estadoData && !municipio ? capagReal : null);
+    if (oficial) {
+      parsed.capag.nota = oficial.nota_geral;
+      parsed.capag.endividamento.classificacao = oficial.endividamento.nota;
+      parsed.capag.endividamento.percentual_estimado = oficial.endividamento.percentual;
+      parsed.capag.poupanca_corrente.classificacao = oficial.poupanca_corrente.nota;
+      parsed.capag.poupanca_corrente.percentual_estimado = oficial.poupanca_corrente.percentual;
+      parsed.capag.liquidez.classificacao = oficial.liquidez.nota;
+      parsed.capag.liquidez.percentual_estimado = oficial.liquidez.percentual;
       parsed.capag.confianca = "alta";
     }
 

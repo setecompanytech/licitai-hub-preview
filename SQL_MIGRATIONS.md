@@ -13095,3 +13095,21 @@ resposta 202 com trabalho em background (EdgeRuntime.waitUntil — pg_net não
 espera minutos). Cron monitorar-dou-4h (30 */4 * * *). Card "Monitoramento
 automático" na aba Diários Oficiais liga/desliga (preferencias_alertas.ativo),
 mostra os termos vigiados e os últimos alertas DOU/DOE.
+
+## 2026-09-10 — CAPAG municipal de verdade (tabela de referência) — JÁ APLICADA via Management API (com seed); recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260910000003_capag_municipios.sql`
+
+A análise CAPAG só tinha dado oficial para ESTADOS; município era estimativa
+de IA. O Tesouro publica a CAPAG de todos os municípios num XLSX de 24MB —
+inviável de baixar/parsear na edge a cada chamada. A aba "Prévia da CAPAG"
+(posição 01/06/2026, 5.568 municípios) virou a tabela `capag_municipios`
+(cod_ibge PK; indicadores em FRAÇÃO 0–1, convenção de razão derivada do
+repo; leitura para autenticados, escrita só service_role). O seed foi
+aplicado por fora da migration (8 lotes de INSERT ... ON CONFLICT DO UPDATE
+gerados da planilha oficial). Atualização é semestral e manual: baixar o
+XLSX novo do CKAN `capag-municipios`, regenerar os lotes e recolar — o
+ON CONFLICT torna a recarga idempotente. A edge capag-analysis consulta a
+tabela (match por UF + nome sem acento) e completa com SICONFI ao vivo
+(RREO Anexo 03: RCL 12 meses + população). Dado municipal oficial
+sobrescreve a estimativa da IA.
