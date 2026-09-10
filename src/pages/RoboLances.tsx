@@ -146,7 +146,18 @@ export default function RoboLances() {
     horario: String(r.horario || ''),
     meuLance: Number(r.meu_lance) || 0,
     valorAtual: Number(r.valor_atual) || 0,
-    itens: (r.itens as DisputeItem[]) || [],
+    // Piso `0` gravado ANTES desta mudança nunca foi decisão de ninguém: era o
+    // valor fixo que todo item importado recebia, e não havia campo na tela
+    // para alterá-lo. Lido de volta como zero, ele autorizaria o robô a descer
+    // até zero num item que ninguém avaliou.
+    //
+    // Vira `null` — "ninguém decidiu" — que é o que sempre foi. Um piso zero
+    // escolhido de propósito a partir de agora chega pelo campo da tela, e
+    // ninguém escolhe descer até R$ 0,00.
+    itens: (((r.itens as DisputeItem[]) || []).map((i) => ({
+      ...i,
+      valorMinimo: i.valorMinimo === 0 ? null : i.valorMinimo ?? null,
+    }))) as DisputeItem[],
     tipoDisputa: (r.tipo_disputa as 'item' | 'lote') || 'item',
     licitacaoId: (r.licitacao_id as string) || undefined,
   });
@@ -535,6 +546,36 @@ export default function RoboLances() {
             decremento_percentual: selectedLance.decrementoPercentual,
             intervalo_segundos: selectedLance.intervaloSegundos,
             max_lances: selectedLance.maxLances,
+            // ── O QUE FALTAVA ATRAVESSAR ──────────────────────────────────
+            //
+            // Até aqui o robô recebia `edital` (string), portal e três valores
+            // da disputa inteira. Num pregão com 40 itens ele achava o
+            // processo e não sabia em qual item estava — era uma ilha.
+            //
+            // Os três valores viajam SEPARADOS de propósito. Colapsá-los num
+            // campo só foi o defeito: preço de venda, custo e estimativa do
+            // órgão viram todos "R$ alguma coisa", e depois de gravados não
+            // dá para saber qual âncora a disputa estava usando.
+            empresa_id: empresaAtiva?.id ?? null,
+            licitacao_id: selectedLance.licitacaoId ?? null,
+            tipo_disputa: selectedLance.tipoDisputa,
+            itens: (selectedLance.itens || []).map((i) => ({
+              numero: i.numero,
+              lote: i.lote,
+              descricao: i.descricao,
+              marca: i.marca ?? null,
+              modelo: i.modelo ?? null,
+              quantidade: i.quantidade,
+              unidade: i.unidade,
+              preco_venda: i.valorReferencia > 0 ? i.valorReferencia : null,
+              custo_unitario: i.custoUnitario ?? null,
+              valor_estimado_orgao: i.valorEstimadoOrgao ?? null,
+              // `null` viaja como `null`: o piso ausente é uma decisão que
+              // ninguém tomou, e o agente precisa distinguir isso de zero.
+              valor_minimo: i.valorMinimo ?? null,
+              origem: i.origem ?? null,
+              disputando: i.disputando,
+            })),
           },
         },
       );

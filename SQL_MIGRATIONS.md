@@ -12931,3 +12931,35 @@ parcelas jsonb {dias, percentual} com CONSTRAINT somando 100% (via função
 IMMUTABLE soma_percentuais_parcelas — CHECK não aceita subquery), dia fixo
 de vencimento, juro diário e % de acréscimo. RLS: membros leem/escrevem,
 admin apaga.
+
+## 2026-09-09 — Itens da sessão do robô de lances — PENDENTE de aplicação
+
+Arquivo: `supabase/migrations/20260909000011_itens_da_sessao_do_robo.sql`
+
+Tabela `sessao_lance_itens`: um registro por item/lote disputado, ligado à
+`sessoes_lance_real`. Até aqui só `edital` (string) e três valores agregados
+atravessavam para o agente — num pregão com 40 itens o robô achava o processo
+e não sabia em qual item estava.
+
+As três colunas de valor nascem **separadas e nullable**: `preco_venda`,
+`custo_unitario`, `valor_estimado_orgao`. Colapsá-las num campo só era o
+defeito que esta migration corrige — a Precificação já as separa na origem
+(`catalogo_itens_precificados`), e o achatamento acontecia no transporte.
+Nulo = "não sabido"; zero seria afirmação falsa sobre dinheiro. Mesma regra em
+`valor_minimo` (piso próprio do item) e em `sou_lider` (nulo = o portal não
+informou, que faz o robô aguardar em vez de arriscar).
+
+RLS no padrão da casa: dono OU `is_empresa_member` para ler/escrever, delete
+por `is_empresa_admin`; `empresa_id` nullable porque a sessão-mãe é escopada
+por usuário.
+
+Aditivos, todos nullable e sem mudar semântica de coluna existente:
+`licitacao_itens.custo_unitario`, `sessoes_lance_real.licitacao_id` e
+`sessoes_lance_real.tipo_disputa`. `valor_unitario` fica como está — 17
+arquivos dependem dela.
+
+> ⚠️ **Aplicar ANTES de publicar o front.** Sem a tabela `sessao_lance_itens`
+> o envio da sessão ao robô falha ao gravar os itens. A leitura do custo no
+> catálogo continua funcionando (lá a coluna já existia); o que quebra em
+> silêncio é a gravação em `licitacao_itens`, que só emite `console.warn` —
+> os itens aparecem na tela e não ficam centralizados para os outros módulos.

@@ -17,6 +17,13 @@ export interface LicitacaoItem {
   unidade: string;
   valor_unitario: number;
   valor_total: number;
+  /**
+   * Custo interno do item, quando conhecido (fonte: Precificação). Opcional
+   * porque a maioria das origens não o conhece — e `null` aqui é "não sabido",
+   * nunca zero. Não confundir com `valor_unitario`, que é o valor da
+   * proposta/edital conforme a origem da linha.
+   */
+  custo_unitario?: number | null;
   lote: string;
   marca: string | null;
   fabricante: string | null;

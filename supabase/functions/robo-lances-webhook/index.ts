@@ -202,10 +202,34 @@ serve(async (req) => {
         );
       }
 
+      // O ROBO NAO ENTRA CEGO.
+      //
+      // Ate 09/09/2026 o que atravessava era `edital` (string) e tres valores
+      // da disputa inteira. Num pregao com 40 itens o agente achava o processo
+      // e nao sabia em qual item estava — e seguia assim mesmo, sem que nada
+      // na tela denunciasse.
+      //
+      // A recusa fica ANTES do insert: sessao gravada com status "enviando"
+      // para um trabalho que nunca deveria comecar e o mesmo tipo de linha
+      // orfa que a busca de credencial ja evita mais acima.
+      const itens = Array.isArray(body.itens) ? body.itens : [];
+      if (itens.length === 0) {
+        return jsonResponse(
+          {
+            error: `A disputa "${body.edital}" foi enviada sem nenhum item. ` +
+                   `O robô precisa saber o que disputar dentro do processo — ` +
+                   `abra a disputa, importe os itens do processo e envie de novo.`,
+          },
+          400
+        );
+      }
+
       // Create session record
       const sessaoData = {
         user_id: user.id,
         lance_config_id: body.lance_config_id,
+        licitacao_id: body.licitacao_id ?? null,
+        tipo_disputa: body.tipo_disputa ?? null,
         portal_id: body.portal_id,
         portal_nome: body.portal_nome,
         edital: body.edital,
@@ -228,6 +252,58 @@ serve(async (req) => {
         .single();
 
       if (sessErr) throw sessErr;
+
+      // OS ITENS DA SESSAO, COM OS TRES VALORES SEPARADOS.
+      //
+      // `preco_venda`, `custo_unitario` e `valor_estimado_orgao` sao colunas
+      // diferentes de proposito. Colapsados num campo so — que era o estado
+      // anterior — o teto do orgao, o nosso preco e um custo interno viram
+      // todos "R$ alguma coisa", e depois de gravado nao da para saber qual
+      // deles estava ancorando a disputa.
+      //
+      // `?? null` em vez de `|| 0` em todos: nulo aqui significa "nao sabido",
+      // e zero seria uma afirmacao falsa sobre dinheiro — do tipo que ninguem
+      // confere justamente porque parece preenchida.
+      const itensDaSessao = itens.map((i: Record<string, unknown>, idx: number) => ({
+        sessao_id: sessao.id,
+        user_id: user.id,
+        empresa_id: body.empresa_id ?? null,
+        numero: Number(i.numero) || idx + 1,
+        lote: i.lote ?? null,
+        descricao: String(i.descricao || ''),
+        marca: i.marca ?? null,
+        modelo: i.modelo ?? null,
+        quantidade: Number(i.quantidade) || 1,
+        unidade: i.unidade || 'UN',
+        preco_venda: i.preco_venda ?? null,
+        custo_unitario: i.custo_unitario ?? null,
+        valor_estimado_orgao: i.valor_estimado_orgao ?? null,
+        valor_minimo: i.valor_minimo ?? null,
+        origem: i.origem ?? null,
+        situacao: 'aguardando',
+      }));
+
+      const { error: itensErr } = await supabase
+        .from("sessao_lance_itens")
+        .insert(itensDaSessao);
+
+      // Falha silenciosa e proibida (principio 3): sem os itens gravados, a
+      // sessao seguiria e ninguem saberia por que o robo nao sabe o que
+      // disputar. Recusar aqui deixa a sessao marcada com a causa.
+      if (itensErr) {
+        await supabase
+          .from("sessoes_lance_real")
+          .update({ status: "erro", erro: `Itens da disputa nao gravados: ${itensErr.message}` })
+          .eq("id", sessao.id);
+
+        return jsonResponse(
+          {
+            error: `A sessão foi criada mas os itens da disputa não foram gravados ` +
+                   `(${itensErr.message}). O robô não foi acionado.`,
+          },
+          500
+        );
+      }
 
       // Log the outgoing webhook
       await supabase.from("webhook_log").insert({
@@ -258,6 +334,25 @@ serve(async (req) => {
             portal_id: portalAgente,
             // login e senha em claro — e o que o modulo do portal consome
             credenciais_portal: credenciais,
+            // O ALVO DENTRO DO PROCESSO.
+            //
+            // `sessaoData` ja leva `tipo_disputa`; os itens vao aqui porque
+            // nao sao coluna da sessao — moram em `sessao_lance_itens`. Sem
+            // eles o agente sabe entrar no processo e nao sabe o que disputar
+            // la dentro.
+            itens: itensDaSessao.map((i) => ({
+              numero: i.numero,
+              lote: i.lote,
+              descricao: i.descricao,
+              marca: i.marca,
+              modelo: i.modelo,
+              quantidade: i.quantidade,
+              unidade: i.unidade,
+              preco_venda: i.preco_venda,
+              custo_unitario: i.custo_unitario,
+              valor_estimado_orgao: i.valor_estimado_orgao,
+              valor_minimo: i.valor_minimo,
+            })),
           }),
           // 10s era MENOS que o trabalho pedido. O agente so responde depois
           // de abrir o Chrome, fazer login e navegar ate a disputa — nos logs

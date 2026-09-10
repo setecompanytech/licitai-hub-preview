@@ -17,7 +17,20 @@ class BasePortal {
     throw new Error(\`login() não implementado para portal \${this.nome}\`);
   }
 
-  async navegarParaDisputa(edital) {
+  /**
+   * Abre o processo no portal.
+   *
+   * @param {string} edital
+   * @param {{tipo?: 'item'|'lote', itens?: Array<object>}} [alvo] O QUE disputar
+   *        dentro do processo. Opcional, e opcional de propósito: JavaScript
+   *        ignora argumento a mais, então os 22 outros módulos de portal
+   *        continuam válidos sem nenhuma edição — e nenhum deles passa a
+   *        receber um parâmetro que não sabe usar.
+   *
+   *        Quem implementar o uso do alvo deve tratar \`alvo\` ausente como o
+   *        comportamento de sempre: abrir o processo e parar aí.
+   */
+  async navegarParaDisputa(edital, alvo) {
     throw new Error(\`navegarParaDisputa() não implementado para portal \${this.nome}\`);
   }
 
@@ -1850,7 +1863,37 @@ class PortalComprasPortal extends BasePortal {
     console.log('✅ Login no Portal de Compras Públicas realizado');
   }
 
-  async navegarParaDisputa(edital) {
+  async navegarParaDisputa(edital, alvo) {
+    // O QUE disputar dentro do processo, quando a tela informou.
+    //
+    // Registrado ANTES de navegar: se a sessao morrer no meio, o log ja diz o
+    // que ela deveria estar acompanhando. Ate 09/09/2026 nada disso
+    // atravessava — o agente abria o processo e, num pregao com 40 itens, nao
+    // sabia em qual estava, sem que nada denunciasse a cegueira.
+    //
+    // A SELECAO do item na sala de disputa ainda nao existe: depende de ler a
+    // tela com pregao acontecendo, que e o proximo teste. Ate la isto e
+    // registro honesto do que foi recebido, e nao acao.
+    const itensAlvo = (alvo && Array.isArray(alvo.itens)) ? alvo.itens : [];
+    if (itensAlvo.length) {
+      const semPiso = itensAlvo.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined);
+      console.log(
+        \`🎯 Disputa por \${alvo.tipo || 'item'} — \${itensAlvo.length} \` +
+        \`item(ns) recebido(s): \${itensAlvo.slice(0, 8).map((i) => \`#\${i.numero}\${i.lote && i.lote !== 'Único' ? '/' + i.lote : ''}\`).join(', ')}\` +
+        (itensAlvo.length > 8 ? ' …' : '')
+      );
+      // Piso ausente NAO e piso zero. Dizer isso no log evita a conclusao de
+      // que o robo "aceitou" descer ate zero num item que ninguem avaliou.
+      if (semPiso.length) {
+        console.log(
+          \`⚠️  \${semPiso.length} de \${itensAlvo.length} item(ns) vieram SEM piso definido — \` +
+          'para esses o robo nao deve dar lance'
+        );
+      }
+    } else {
+      console.log('ℹ️  Nenhum item informado para esta sessao — o robo vai apenas abrir o processo');
+    }
+
     // O portal NAO enderecа processo pelo numero do edital. Cada um tem uma
     // chave interna (\`ttCD_CHAVE\`), e a URL montada a mao —
     // \`/disputa?edital=X\` — devolvia 404 em qualquer caso. Verificado em

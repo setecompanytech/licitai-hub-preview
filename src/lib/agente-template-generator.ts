@@ -654,8 +654,25 @@ class SessionManager {
       await session.portal.login();
 
       // Navegar para a disputa
-      console.log(\`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\`);
-      await session.portal.navegarParaDisputa(config.edital);
+      //
+      // O alvo vai junto: o processo diz ONDE, os itens dizem O QUE. Antes so
+      // o primeiro atravessava, e num pregao por itens o robo abria a pagina
+      // certa sem saber o que acompanhar dentro dela.
+      //
+      // Guardado na sessao tambem, e nao so passado adiante, porque o
+      // /health precisa poder afirmar quantos itens ESTA sessao recebeu —
+      // "o robo recebeu os itens" sem numero visivel e afirmacao sem prova.
+      session.itens = Array.isArray(config.itens) ? config.itens : [];
+      session.tipo_disputa = config.tipo_disputa || null;
+
+      console.log(
+        \`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\` +
+        \` (\${session.itens.length} item(ns), disputa por \${session.tipo_disputa || 'nao informado'})\`
+      );
+      await session.portal.navegarParaDisputa(config.edital, {
+        tipo: session.tipo_disputa,
+        itens: session.itens,
+      });
 
       // Iniciar loop de lances
       this._startBiddingLoop(session);
@@ -890,6 +907,17 @@ class SessionManager {
       valor_atual: s.valor_atual,
       valor_minimo: s.valor_minimo,
       max_lances: s.max_lances,
+      // A PROVA de que os itens atravessaram, visivel no /health.
+      //
+      // Sem numero exposto, "o robo recebeu os itens" so daria para conferir
+      // abrindo log de VPS. O campo itens_sem_piso esta aqui pelo mesmo motivo:
+      // piso ausente e o estado em que o robo nao deve dar lance, e isso tem
+      // que ser legivel de fora antes do pregao, nao depois.
+      itens_recebidos: Array.isArray(s.itens) ? s.itens.length : 0,
+      itens_sem_piso: Array.isArray(s.itens)
+        ? s.itens.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined).length
+        : 0,
+      tipo_disputa: s.tipo_disputa || null,
       created_at: s.created_at,
     }));
   }
