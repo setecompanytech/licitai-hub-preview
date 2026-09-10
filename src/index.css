@@ -1,9 +1,12 @@
-/* Inter no corpo e Cinzel na marca — o pareamento do protótipo.
+/* Inter no corpo, Poppins nos títulos, Cinzel na marca.
    O protótipo carrega Inter em 400/500/600/700/800; ele usa só cinco pesos, e
    700 e 600 concentram quase tudo (221 e 176 regras). Cinzel fica na logo, no
    splash, na AURÉLIA e no título de peça jurídica — os quatro lugares onde ele
-   aparece lá. JetBrains Mono continua para código e identificadores. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+   aparece lá. JetBrains Mono continua para código e identificadores.
+   Poppins entrou em 10/09/2026, só em 600/700, para h1–h6 (regra na @layer
+   base): é a fonte de título das referências que o Rafael mandou. Ver o
+   comentário de fontFamily.heading no tailwind.config.ts. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Cinzel:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -321,7 +324,7 @@
     @apply border-border;
   }
   body {
-    /* text-base = 16px/1.6 pela escala do tailwind.config — piso de leitura */
+    /* text-base = 17px/1.53 pela escala do tailwind.config — piso de leitura */
     @apply bg-background text-foreground text-base antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-text-size-adjust: 100%;
@@ -352,8 +355,13 @@
     overflow-wrap: break-word;
   }
 
-  /* Cabeçalhos: quebra suave preservando legibilidade */
+  /* Cabeçalhos: quebra suave preservando legibilidade.
+     A família vem daqui, e não de classe em .tsx, para que todo título do
+     app — inclusive os que o shadcn renderiza (DialogTitle, CardTitle) —
+     mude num lugar só. `font-brand` (Cinzel) é utility e ganha desta regra
+     onde for aplicada, então a marca não é afetada. */
   h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
     overflow-wrap: break-word;
     word-break: normal;
     hyphens: auto;

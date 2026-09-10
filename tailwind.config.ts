@@ -17,41 +17,51 @@ export default {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
         brand: ["Cinzel", "Georgia", "serif"],
+        // Títulos. Poppins é a fonte das referências que o Rafael mandou em
+        // 10/09 (ConLicitação; o Contabilizei é da mesma família de forma) —
+        // geométrica, pesada, sem serifa. Inter continua no corpo: é a do
+        // Effecti, a terceira referência. A regra que aplica está em
+        // index.css (h1–h6), então nenhum .tsx precisa saber disto.
+        heading: ["Poppins", "Inter", "system-ui", "sans-serif"],
       },
       /**
-       * Escala tipográfica — REBRAND, fatia 2.
+       * Escala tipográfica — REBRAND, revisada em 10/09/2026.
        *
-       * Cada degrau agora corresponde a um papel real do protótipo, e não a
-       * uma progressão abstrata. A densidade é o que dá a cara de sistema de
-       * gestão: o protótipo trabalha o corpo entre 11,5px e 13,5px, onde o app
-       * usava 14px e 16px.
+       * A fatia 2 tinha encolhido tudo para a densidade do protótipo (corpo
+       * entre 11,5px e 13,5px). O Rafael, no primeiro dia com o layout no ar,
+       * devolveu: "é pequena e difícil". As três referências que ele mandou
+       * trabalham leitura entre 17px e 18px, com título grande e pesado.
        *
-       *   xs   11,5px  meta, badge, timestamp        (o mais usado: 5.570 vezes)
-       *   sm   12,5px  corpo secundário, UI densa    (o mais usado no protótipo)
-       *   base 13,5px  botão, campo, texto de leitura
-       *   lg   15px    título de cartão
-       *   xl   17px    título de modal e de estado vazio
-       *   2xl  22px    KPI médio, h1 de módulo secundário
-       *   3xl  26px    h1 de página
-       *   4xl  30px    KPI de destaque
+       * São sites de marketing, e um sistema com tabela de 10 colunas não
+       * cabe em 18px por célula. Então a escala sobe UM degrau acima do padrão
+       * Tailwind na leitura, e menos que isso nos degraus densos — xs e sm
+       * ficam abaixo das referências de propósito, para badge e tabela não
+       * estourarem:
+       *
+       *   xs   13px  meta, badge, timestamp        (era 11,5)
+       *   sm   15px  tabela, UI densa              (era 12,5)
+       *   base 17px  botão, campo, texto de leitura (era 13,5)
+       *   lg   19px  título de cartão              (era 15)
+       *   xl   21px  título de modal e estado vazio (era 17)
+       *   2xl  26px  KPI médio, h1 de módulo       (era 22)
+       *   3xl  34px  h1 de página                  (era 26)
+       *   4xl  40px  KPI de destaque               (era 30)
        *
        * Disciplina de uso preservada: xs SÓ para metadados; sm para UI densa;
        * texto de leitura começa em base.
        *
-       * O entrelinha aperta junto com o corpo — número grande fica em 1,1 a 1,2
-       * e prosa em 1,5 a 1,55, como no protótipo. E o espacejamento fica
-       * negativo só nos corpos grandes, que é onde ele lá aparece (−0,3px no
-       * h1 de 26px).
+       * Entrelinha: prosa em 1,5 a 1,55, número grande em 1,15 a 1,25. O
+       * espacejamento negativo fica só nos corpos grandes, como antes.
        */
       fontSize: {
-        xs: ["0.71875rem", { lineHeight: "1.0625rem", letterSpacing: "0.01em" }],
-        sm: ["0.78125rem", { lineHeight: "1.1875rem" }],
-        base: ["0.84375rem", { lineHeight: "1.3125rem" }],
-        lg: ["0.9375rem", { lineHeight: "1.375rem" }],
-        xl: ["1.0625rem", { lineHeight: "1.5rem", letterSpacing: "-0.008em" }],
-        "2xl": ["1.375rem", { lineHeight: "1.8125rem", letterSpacing: "-0.009em" }],
-        "3xl": ["1.625rem", { lineHeight: "1.9375rem", letterSpacing: "-0.012em" }],
-        "4xl": ["1.875rem", { lineHeight: "2.0625rem", letterSpacing: "-0.015em" }],
+        xs: ["0.8125rem", { lineHeight: "1.125rem", letterSpacing: "0.01em" }],
+        sm: ["0.9375rem", { lineHeight: "1.375rem" }],
+        base: ["1.0625rem", { lineHeight: "1.625rem" }],
+        lg: ["1.1875rem", { lineHeight: "1.6875rem" }],
+        xl: ["1.3125rem", { lineHeight: "1.75rem", letterSpacing: "-0.008em" }],
+        "2xl": ["1.625rem", { lineHeight: "2rem", letterSpacing: "-0.009em" }],
+        "3xl": ["2.125rem", { lineHeight: "2.5rem", letterSpacing: "-0.012em" }],
+        "4xl": ["2.5rem", { lineHeight: "2.875rem", letterSpacing: "-0.015em" }],
       },
       colors: {
         border: "hsl(var(--border))",
