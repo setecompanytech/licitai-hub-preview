@@ -390,9 +390,28 @@ export default function Configuracoes() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Tab: Timbrado ── */}
+          {/* ── Tab: Timbrado — o ÚNICO lugar do timbrado (10/09) ──
+              Dois pipelines convivem e são complementares:
+              1) TimbradoConfig → cabeçalho/rodapé/logotipo dos PDFs de
+                 relatórios e exportações (tabela empresa_timbrado);
+              2) TimbradoUploader → papel timbrado completo (imagem/Word)
+                 usado como fundo/marca d'água nas peças jurídicas e
+                 composições (empresas.timbrado_url).
+              Antes o 2 morava na aba Geral e parecia duplicidade. */}
           <TabsContent value="timbrado" className="space-y-6">
             <TimbradoConfig />
+            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">Papel timbrado completo (fundo / marca d'água)</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Imagem ou documento Word do papel timbrado pronto — usado como fundo nas peças
+                jurídicas, declarações e planilhas de composição. Complementa o cabeçalho/rodapé
+                acima (que veste os relatórios em PDF).
+              </p>
+              <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
+            </section>
           </TabsContent>
 
           {/* ── Tab: Configurações Gerais ── */}
@@ -575,17 +594,10 @@ export default function Configuracoes() {
               </div>
             </section>
 
-            {/* Timbrado e Marca d'Água — Sistema global */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Timbrado e Marca d'Água</h2>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                O timbrado cadastrado aqui será aplicado automaticamente a <strong>todos os documentos gerados</strong> pelo sistema: propostas comerciais, planilhas de composição de custos, declarações, pedidos de recursos, pareceres e demais peças.
-              </p>
-              <TimbradoUploader empresaId={empresaAtiva?.id} timbradoUrl={timbradoUrl} setTimbradoUrl={setTimbradoUrl} />
-            </section>
+            {/* Timbrado saiu daqui (10/09): duplicava a aba dedicada e o
+                usuário configurava em dois lugares sem saber qual valia.
+                O uploader mudou-se para a aba Timbrado — os DOIS pipelines
+                (papel timbrado completo e cabeçalho/rodapé) num lugar só. */}
 
             {/* Notificações */}
             <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">

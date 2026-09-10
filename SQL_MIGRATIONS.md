@@ -13065,3 +13065,17 @@ tabela `sessao_lance_itens` o envio da sessão ao robô falha ao gravar os itens
 e a gravação em `licitacao_itens` quebraria em silêncio (só `console.warn`),
 deixando os itens visíveis na tela mas não centralizados para os outros
 módulos. Conferido: 4 policies criadas (select/insert/update/delete).
+## 2026-09-10 — Alertas de vencimento de documentos por e-mail — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260910000001_alertas_vencimento_email.sql`
+
+Braço EXTERNO do lembrete de documentos (o in-app já existia — lib
+lembretes): `documentos_alertas_config` (opt-in por empresa, antecedência
+5–120 dias), `documentos_alertas_destinatarios` (assessoria contábil/setor
+interno/outro; coluna whatsapp reservada — envio aguarda provedor),
+`documentos_alertas_log` (dedupe 1/dia por destinatário + auditoria; escrita
+só pela edge) e cron `alertas-documentos-diario` (10:00 UTC = 7h Belém)
+chamando a edge `alertas-documentos` (--no-verify-jwt; valida CRON_SECRET).
+Vencido dispara todo dia; antes disso, nos marcos (antecedência/15/7/3/2/1/0).
+Cessação estrutural: upload renova documentos.validade e o doc sai do digest.
+Testado ponta a ponta pelo caminho do cron (200, empresas:0 — opt-in).
