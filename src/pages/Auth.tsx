@@ -622,6 +622,7 @@ export default function Auth() {
         <div className="lg__marca">
           <p className="lg__eyebrow">Plataforma de Licitações com IA</p>
           <div className="lg__logo">PRAE<b>FECTUS</b></div>
+          <span className="lg__linha-acento" aria-hidden="true" />
           <p className="lg__tagline">
             Do edital publicado ao contrato assinado —<br />
             sem perder nenhuma oportunidade pelo caminho.

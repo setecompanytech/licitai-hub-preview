@@ -65,27 +65,55 @@ export function GridFuncionalidades() {
   );
 }
 
-/** Faixa de destaque da IA, com CTA próprio. */
+/** Faixa de destaque da IA — dark card com chat mockup. */
 export function FaixaIA() {
   return (
     <section id="ia" className="lp-section" aria-labelledby="ia-titulo">
       <div className="lp-container">
         <div className="lp-ia">
-          <span className="lp-tag">
-            <Sparkles size={12} aria-hidden="true" style={{ display: 'inline', verticalAlign: '-1px', marginRight: 6 }} />
-            Inteligência artificial
-          </span>
-          <h2 id="ia-titulo" className="lp-h2" style={{ maxWidth: '18ch' }}>
-            A AURÉLIA lê o edital <span className="lp-destaque">antes de você</span>
-          </h2>
-          <ul className="lp-ia__lista">
-            {PONTOS_IA.map((ponto) => (
-              <li key={ponto}>{ponto}</li>
-            ))}
-          </ul>
-          <Link to="/auth" className="lp-btn lp-btn--solid">
-            Analisar meu primeiro edital <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          <div className="lp-ia__grade">
+            <div className="lp-ia__conteudo">
+              <span className="lp-tag">
+                <Sparkles size={12} aria-hidden="true" style={{ display: 'inline', verticalAlign: '-1px', marginRight: 6 }} />
+                Inteligência artificial
+              </span>
+              <h2 id="ia-titulo" className="lp-h2" style={{ maxWidth: '20ch' }}>
+                A AURÉLIA lê o edital{' '}
+                <span style={{ color: 'hsl(221 83% 72%)' }}>antes de você</span>
+              </h2>
+              <ul className="lp-ia__lista">
+                {PONTOS_IA.map((ponto) => (
+                  <li key={ponto}>{ponto}</li>
+                ))}
+              </ul>
+              <Link to="/auth" className="lp-btn lp-btn--solid">
+                Analisar meu primeiro edital <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+
+            {/* Chat mockup decorativo — aria-hidden: conteúdo visual, não informativo */}
+            <div className="lp-chat" aria-hidden="true">
+              <div className="lp-chat__header">
+                <div className="lp-chat__av">✦</div>
+                <div className="lp-chat__info">
+                  <div className="lp-chat__nome">AURÉLIA</div>
+                  <div className="lp-chat__status">Online agora</div>
+                </div>
+              </div>
+              <div className="lp-chat__msg lp-chat__msg--user">
+                📄 Analise o edital PNCP-2024-00892
+              </div>
+              <div className="lp-chat__msg lp-chat__msg--ai">
+                <strong>Score de aderência: 87/100</strong><br />
+                ✓ 3 documentos de habilitação identificados<br />
+                ⚠ Cláusula 14.3 — prazo de entrega agressivo<br />
+                Margem sugerida: 18–22%
+              </div>
+              <div className="lp-chat__dots">
+                <span /><span /><span />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

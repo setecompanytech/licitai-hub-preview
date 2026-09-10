@@ -187,24 +187,22 @@ function MockupKanban() {
 function Hero() {
   return (
     <section className="lp-hero" aria-labelledby="hero-titulo">
+      <div className="lp-orb lp-orb--hero-a" aria-hidden="true" />
+      <div className="lp-orb lp-orb--hero-b" aria-hidden="true" />
       <div className="lp-container lp-hero__grid">
         <div className="lp-hero__col">
-          <span className="lp-tag">Plataforma completa · Lei 14.133/2021</span>
+          <div className="lp-trust-badge">
+            <span className="lp-trust-badge__ic"><span className="lp-trust-badge__dot" /></span>
+            Sistema online · Lei 14.133/2021
+          </div>
           <h1 id="hero-titulo" className="lp-h1">
-            <span className="lp-destaque">Licitações com IA</span>, do edital ao faturamento
+            Vença mais licitações com <span className="lp-destaque">inteligência artificial</span>
           </h1>
           <p className="lp-lead">
-            Monitore, analise, dispute e fature em uma única plataforma — com metas que
-            mostram se o mês fecha antes de ele acabar.
+            Do edital publicado ao contrato faturado — numa plataforma só.
+            Monitoramento automático, análise por IA, robô de lances e gestão completa
+            para quem precisa ganhar.
           </p>
-          <ul className="lp-hero__bullets">
-            {BULLETS_HERO.map((b) => (
-              <li key={b.texto}>
-                <CheckCircle2 size={16} aria-hidden="true" />
-                {b.texto}
-              </li>
-            ))}
-          </ul>
           <div className="lp-hero__acoes">
             <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
               Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
@@ -213,8 +211,19 @@ function Hero() {
               Ver funcionalidades
             </a>
           </div>
+          <div className="lp-prova">
+            <div className="lp-prova__avs">
+              <div className="lp-prova__av lp-prova__av--a">MF</div>
+              <div className="lp-prova__av lp-prova__av--b">AS</div>
+              <div className="lp-prova__av lp-prova__av--c">RC</div>
+              <div className="lp-prova__av lp-prova__av--d">LP</div>
+            </div>
+            <span>Mais de <strong>200 empresas</strong> em todo o Brasil</span>
+          </div>
         </div>
-        <MockupKanban />
+        <div className="lp-browser-wrap">
+          <MockupKanban />
+        </div>
       </div>
     </section>
   );
@@ -224,14 +233,17 @@ function Hero() {
 
 function CtaFinal() {
   return (
-    <section className="lp-section lp-section--alt" aria-labelledby="cta-titulo">
+    <section className="lp-cta-dark" aria-labelledby="cta-titulo">
+      <div className="lp-cta-dark__orb" aria-hidden="true" />
       <div className="lp-container lp-cta-final">
-        <h2 id="cta-titulo" className="lp-h2" style={{ maxWidth: '22ch' }}>
-          Sua próxima licitação começa <span className="lp-destaque">monitorada</span>
+        <span className="lp-tag">Comece agora</span>
+        <h2 id="cta-titulo" className="lp-h2" style={{ color: 'white', maxWidth: '22ch' }}>
+          A próxima licitação que você vencer começa{' '}
+          <span style={{ color: 'hsl(221 83% 72%)' }}>aqui</span>
         </h2>
-        <p className="lp-lead" style={{ maxWidth: '46ch' }}>
-          Crie a conta, cadastre o perfil da sua empresa e receba os editais certos
-          já no primeiro boletim.
+        <p className="lp-lead" style={{ color: 'rgba(255,255,255,0.68)', maxWidth: '48ch' }}>
+          Configure o perfil da sua empresa, ative o monitoramento e receba
+          os editais certos já no primeiro boletim.
         </p>
         <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
           Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />

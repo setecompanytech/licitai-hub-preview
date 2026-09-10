@@ -68,7 +68,7 @@ export function Numeros() {
   }, []);
 
   return (
-    <section className="lp-section" aria-labelledby="numeros-titulo">
+    <section className="lp-section lp-section--azul" aria-labelledby="numeros-titulo">
       <div className="lp-container">
         <h2 id="numeros-titulo" className="sr-only">Praefectus em números</h2>
         <div ref={ref} className="lp-numeros">
