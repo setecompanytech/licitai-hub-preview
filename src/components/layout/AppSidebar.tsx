@@ -263,9 +263,9 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
 
               return (
                 <div key={grupo.title}>
-                  {/* `data-grupo` é âncora de medição, não estilo: o holofote de
-                      boas-vindas (MascoteBoasVindas) precisa de um alvo estável
-                      para recortar o véu em cima do grupo certo. */}
+                  {/* `data-grupo` é âncora, não estilo: um seletor estável por
+                      grupo. O holofote do mascote, que a usava, saiu em 10/09 —
+                      fica como gancho para teste e para quem precisar medir. */}
                   <button
                     data-grupo={grupo.title}
                     onClick={() => setFechados((f) => ({ ...f, [grupo.title]: !aberto ? false : true }))}

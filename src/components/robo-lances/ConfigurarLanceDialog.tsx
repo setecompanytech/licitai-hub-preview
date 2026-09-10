@@ -894,72 +894,105 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-muted-foreground" />
-            {editingLance ? 'Editar Sessão de Lance' : 'Configurar Nova Sessão de Lance'}
-          </DialogTitle>
-          <DialogDescription>
-            {step === 0 && 'Escolha como deseja cadastrar a disputa.'}
-            {step === 1 && `Passo ${editingLance ? '1/2' : '2/3'} — Configure os parâmetros gerais da disputa.`}
-            {step === 2 && `Passo ${editingLance ? '2/2' : '3/3'} — Cadastre os itens/lotes. Os valores da disputa são calculados automaticamente.`}
-          </DialogDescription>
+      {/* ── ESTRUTURA DO MODAL ────────────────────────────────────────────
+          Cabeçalho e trilha de passos FIXOS, corpo com rolagem própria,
+          rodapé FIXO. Antes o DialogContent inteiro rolava, e os botões de
+          avançar sumiam para baixo junto com o formulário.
+
+          `flex flex-col` no lugar do `grid` padrão do shadcn é de propósito,
+          e resolve um defeito real: item de grid cresce até o min-content do
+          conteúdo, e o nome do órgão na lista de processos usa `truncate`
+          (nowrap) — um órgão de nome longo forçava a coluna do modal a
+          ~1150px e aparecia uma barra de rolagem horizontal no rodapé. Com
+          flex-col e `min-w-0` no corpo, o texto é que se corta, não o modal. */}
+      <DialogContent className="max-w-5xl w-[calc(100vw-2rem)] max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0 space-y-3">
+          <div className="space-y-1.5">
+            <DialogTitle className="flex items-center gap-2.5">
+              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
+                <Bot className="w-5 h-5" />
+              </span>
+              {editingLance ? 'Editar Sessão de Lance' : 'Configurar Nova Sessão de Lance'}
+            </DialogTitle>
+            <DialogDescription>
+              {step === 0 && 'Escolha como deseja cadastrar a disputa.'}
+              {step === 1 && `Passo ${editingLance ? '1/2' : '2/3'} — Configure os parâmetros gerais da disputa.`}
+              {step === 2 && `Passo ${editingLance ? '2/2' : '3/3'} — Cadastre os itens/lotes. Os valores da disputa são calculados automaticamente.`}
+            </DialogDescription>
+          </div>
+
+          {/* Trilha de passos. Azul vivo no passo atual é o papel certo dele
+              (estado ativo), não ação — a ação fica no rodapé, em navy. */}
+          <ol className="flex items-center gap-2 flex-wrap" aria-label="Passos">
+            {stepLabels.map((label, idx) => (
+              <li key={label} className="flex items-center gap-2">
+                {idx > 0 && <div className="w-6 h-px bg-border" aria-hidden="true" />}
+                <div
+                  aria-current={currentStepIndex === idx ? 'step' : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    currentStepIndex === idx ? 'bg-accent text-accent-foreground' :
+                    currentStepIndex > idx ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {currentStepIndex > idx && <CheckCircle2 className="w-3 h-3" />}
+                  {label}
+                </div>
+              </li>
+            ))}
+          </ol>
         </DialogHeader>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-2">
-          {stepLabels.map((label, idx) => (
-            <div key={label} className="flex items-center gap-2">
-              {idx > 0 && <div className="w-5 h-px bg-border" />}
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                currentStepIndex === idx ? 'bg-accent text-accent-foreground' :
-                currentStepIndex > idx ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
-              }`}>
-                {currentStepIndex > idx && <CheckCircle2 className="w-3 h-3" />}
-                {label}
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto px-6 py-5">
 
         {/* ── STEP 0: Choose source ── */}
         {step === 0 && !editingLance && (
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-5">
+            {/* Os três caminhos com o MESMO desenho — o recomendado se destaca
+                por um selo e pelo tingido, não por ser o único sem tracejado.
+                Três estilos de borda para três botões iguais liam como três
+                coisas diferentes. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
+                type="button"
                 onClick={() => setStep(1)}
-                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
               >
-                <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
                   <Pencil className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground">Cadastro Manual</p>
+                  <p className="text-sm font-semibold text-foreground">Cadastro Manual</p>
                   <p className="text-xs text-muted-foreground mt-1">Preencha todos os dados manualmente.</p>
                 </div>
               </button>
               <button
-                onClick={() => { /* stay on step 0, show list below */ }}
-                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-accent/40 bg-accent/5 hover:bg-accent/10 transition-all text-center group"
+                type="button"
+                aria-pressed={!showEditalUpload}
+                onClick={() => setShowEditalUpload(false)}
+                className="relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-accent/40 bg-accent/5 hover:bg-accent/10 transition-all text-center group"
               >
-                <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="absolute top-2.5 right-2.5 text-[11px] font-semibold uppercase tracking-wider text-accent bg-accent/10 rounded px-1.5 py-0.5">
+                  Recomendado
+                </span>
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                   <FileSearch className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground">Importar do Kanban</p>
+                  <p className="text-sm font-semibold text-foreground">Importar do Kanban</p>
                   <p className="text-xs text-muted-foreground mt-1">Importe dados + itens precificados.</p>
                 </div>
               </button>
               <button
+                type="button"
+                aria-pressed={showEditalUpload}
                 onClick={() => setShowEditalUpload(true)}
-                className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-accent/50 hover:bg-muted/30 transition-all text-center group"
               >
-                <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-accent/10 transition-colors">
                   <Sparkles className="w-5 h-5 text-muted-foreground group-hover:text-accent" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground">Extrair do Edital (IA)</p>
+                  <p className="text-sm font-semibold text-foreground">Extrair do Edital (IA)</p>
                   <p className="text-xs text-muted-foreground mt-1">Envie o edital e a IA extrai itens e valores.</p>
                 </div>
               </button>
@@ -1098,40 +1131,44 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </div>
                 ) : (
                   <div
-                    className="h-72 w-full overflow-y-scroll rounded-md border border-border/40 bg-muted/10 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
+                    className="min-h-[14rem] max-h-[42vh] w-full min-w-0 overflow-y-auto rounded-lg border border-border/60 bg-muted/10 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
                   >
-                    <div className="space-y-1.5 p-2 pr-3">
+                    <div className="space-y-2 p-2.5">
                       {filteredLicitacoes.map((lic) => (
                         <button
                           key={lic.id}
+                          type="button"
                           onClick={() => handleImportLicitacao(lic)}
                           disabled={loadingItems && selectedLicId === lic.id}
-                          className={`w-full text-left rounded-lg border p-3 transition-all hover:border-accent/50 hover:bg-accent/5 group ${
+                          className={`w-full min-w-0 text-left rounded-lg border bg-card p-3.5 transition-all hover:border-accent/50 hover:bg-accent/5 group ${
                             selectedLicId === lic.id && loadingItems
                               ? 'border-accent bg-accent/5'
                               : 'border-border'
                           }`}
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-foreground">{lic.numero}</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold text-foreground">{lic.numero}</span>
                                 <Badge variant="outline" className={`text-xs ${statusColor(lic.status)}`}>
                                   {lic.status}
                                 </Badge>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5 truncate">{lic.orgao}</p>
+                              {/* `truncate` (nowrap) foi o que estourava o modal
+                                  em grid; aqui o pai tem min-w-0 e o modal é
+                                  flex, então corta o texto, não o layout. */}
+                              <p className="text-xs text-muted-foreground mt-1 truncate">{lic.orgao}</p>
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{lic.objeto}</p>
-                              <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                                {lic.portal && <span>{lic.portal}</span>}
+                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                {lic.portal && <span className="truncate">{lic.portal}</span>}
                                 {lic.valor_estimado && (
-                                  <span className="font-mono font-medium text-foreground">
+                                  <span className="font-mono font-medium text-foreground shrink-0">
                                     {formatCurrency(lic.valor_estimado)}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="shrink-0 ml-3 self-center">
+                            <div className="shrink-0 self-center">
                               {loadingItems && selectedLicId === lic.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                               ) : (
@@ -1550,34 +1587,38 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
           </div>
         )}
 
-        <DialogFooter className="flex justify-between sm:justify-between">
-          {step > 0 && (
-            <Button variant="outline" onClick={() => setStep((step - 1) as 0 | 1)}>
-              Voltar
-            </Button>
-          )}
+        </div>
+
+        {/* Rodapé fixo. A ação principal é `default` (navy), como o protótipo
+            manda para botão de ação; o azul vivo ficou para a trilha de passos,
+            onde significa "aqui", não "clique". */}
+        <DialogFooter className="px-6 py-4 border-t border-border bg-muted/30 shrink-0 flex-row items-center justify-between sm:justify-between gap-3">
+          <div>
+            {step > 0 && (
+              <Button variant="outline" onClick={() => setStep((step - 1) as 0 | 1)}>
+                Voltar
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
             {step === 0 && (
-              <Button onClick={() => setStep(1)} variant="outline" className="text-xs">
-                <Pencil className="w-3.5 h-3.5 mr-1" /> Pular para cadastro manual
+              <Button onClick={() => setStep(1)} variant="outline">
+                <Pencil className="w-4 h-4 mr-1.5" /> Pular para cadastro manual
               </Button>
             )}
             {step === 1 && (
-              <Button
-                onClick={() => setStep(2)}
-                disabled={!step1Valid}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
+              <Button onClick={() => setStep(2)} disabled={!step1Valid}>
                 Próximo: Itens / Lotes
+                <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             )}
             {step === 2 && (
               <Button
                 onClick={handleSave}
                 disabled={itens.length === 0 || somaReferencia <= 0 || valorMinimo > valorInicial}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
                 {editingLance ? 'Salvar Alterações' : 'Cadastrar Sessão'}
               </Button>
             )}

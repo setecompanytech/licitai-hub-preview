@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { BadgeCheck, ChevronRight, GraduationCap, X } from 'lucide-react';
@@ -10,8 +10,15 @@ import '@/styles/mascote.css';
  *
  * Existe porque o Tutorial mora dentro de um grupo recolhido da coluna
  * esquerda: quem entra pela primeira vez não tem como saber que ele está ali.
- * Em vez de descrever o caminho por escrito, o modal ACENDE o caminho — recorta
- * um buraco no véu sobre o grupo "Ferramentas" e aponta para ele.
+ * O modal diz onde é e oferece o atalho "Ferramentas › Tutorial", que leva
+ * direto.
+ *
+ * Até 10/09/2026 ele também ACENDIA o caminho: recortava um buraco no véu
+ * sobre o grupo "Ferramentas" e desenhava uma seta dourada até lá. Saiu a
+ * pedido do Ian — visualmente pesado — e por uma razão estrutural: dependia
+ * de medir a posição de um botão da barra lateral, que agora se esconde até o
+ * mouse chegar na borda. Apontar para o que pode não estar na tela é pior que
+ * não apontar. O atalho dentro do card é o dedo apontado.
  *
  * QUANDO APARECE. Só no primeiro acesso, e só DEPOIS que o OnboardingWizard
  * terminou: os dois disparam na mesma condição e empilhados se atropelariam.
@@ -41,8 +48,7 @@ export function useMascoteBoasVindas(liberado: boolean) {
 
   useEffect(() => {
     if (!user || !liberado || jaViu()) return;
-    // Um quadro de folga para a coluna esquerda existir e ser medível — sem
-    // isso o holofote nasce sem alvo e o modal cai no centro.
+    // Um quadro de folga para a tela assentar antes do modal entrar animando.
     const t = setTimeout(() => setAberto(true), 350);
     return () => clearTimeout(t);
   }, [user, liberado]);
@@ -62,75 +68,9 @@ interface Props {
   onClose: () => void;
 }
 
-/** Onde o holofote cai: o botão do grupo que contém o Tutorial. */
-const SELETOR_ALVO = '[data-grupo="Ferramentas"]';
-
-type Geo = {
-  foco: { top: number; left: number; width: number; height: number };
-  seta: string;
-  padLeft: number;
-} | null;
-
 export default function MascoteBoasVindas({ open, onClose }: Props) {
   const navigate = useNavigate();
-  const cardRef = useRef<HTMLDivElement>(null);
   const okRef = useRef<HTMLButtonElement>(null);
-  const [geo, setGeo] = useState<Geo>(null);
-
-  const medir = useCallback(() => {
-    const alvo = document.querySelector(SELETOR_ALVO);
-    const r = alvo?.getBoundingClientRect();
-
-    // Sem alvo utilizável, nada de holofote nem seta. Abaixo de 900px a coluna
-    // vira gaveta e o rótulo some; apontar para o que não está na tela é pior
-    // que não apontar.
-    const temAlvo =
-      !!r && r.width > 10 && r.height > 10 &&
-      r.bottom > 70 && r.top < window.innerHeight - 20 &&
-      window.innerWidth > 900;
-
-    if (!temAlvo || !r) { setGeo(null); return; }
-
-    const pad = 7;
-    const foco = {
-      top: r.top - pad,
-      left: r.left - pad,
-      width: r.width + pad * 2,
-      height: r.height + pad * 2,
-    };
-
-    // O card encosta na coluna. Vão curto é o que permite conector firme em vez
-    // da curva longa e frouxa do protótipo.
-    const padLeft = Math.min(r.right + 56, window.innerWidth * 0.34);
-
-    const c = cardRef.current?.getBoundingClientRect();
-    if (!c) { setGeo({ foco, seta: '', padLeft }); return; }
-
-    const x1 = c.left - 10;
-    const y1 = c.top + Math.min(c.height * 0.34, 150);
-    const x2 = r.right + 16;
-    const y2 = r.top + r.height / 2;
-
-    // Uma curvatura só, quadrática, com o controle perto do destino: o traço
-    // sai reto do card e se acomoda na horizontal ao chegar. Bezier cúbica com
-    // controles no meio do vão é o que produz a onda de rabisco.
-    const seta = `M ${x1} ${y1} Q ${x2 + (x1 - x2) * 0.35} ${y2} ${x2} ${y2}`;
-
-    setGeo({ foco, seta, padLeft });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    medir();
-    // Segunda medição depois que o card assumiu o padding: a primeira roda com
-    // o card ainda centralizado, e a seta sairia do lugar errado.
-    const t = setTimeout(medir, 30);
-    window.addEventListener('resize', medir);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', medir);
-    };
-  }, [open, medir]);
 
   useEffect(() => {
     if (!open) return;
@@ -145,47 +85,19 @@ export default function MascoteBoasVindas({ open, onClose }: Props) {
   const irParaTutorial = () => { onClose(); navigate('/tutorial'); };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="masc-titulo"
-      className={`masc${geo ? '' : ' masc--sem-alvo'}`}
-      style={geo ? { paddingLeft: geo.padLeft } : undefined}
-    >
-      {geo && (
-        <>
-          <div className="masc__foco" style={geo.foco} aria-hidden="true" />
-          <svg className="masc__seta" aria-hidden="true">
-            <defs>
-              {/* Cabeça sólida e proporcional ao traço de 3px. A do protótipo
-                  tinha 10 unidades para uma linha de 525px — some. */}
-              <marker
-                id="masc-ponta"
-                viewBox="0 0 12 12"
-                refX="10"
-                refY="6"
-                markerWidth="7"
-                markerHeight="7"
-                orient="auto-start-reverse"
-              >
-                <path d="M 0 0 L 12 6 L 0 12 z" fill="hsl(var(--logo-accent))" />
-              </marker>
-            </defs>
-            <path d={geo.seta} markerEnd="url(#masc-ponta)" />
-          </svg>
-        </>
-      )}
-
-      <div className="masc__card" ref={cardRef}>
+    <div role="dialog" aria-modal="true" aria-labelledby="masc-titulo" className="masc">
+      <div className="masc__card">
         <button className="masc__x" onClick={onClose} aria-label="Fechar">
           <X className="w-[17px] h-[17px]" />
         </button>
 
         <div className="masc__robo">
-          <img
-            src={mascote}
-            alt="Praefectus, o assistente de licitações, de terno e com o dedo indicador levantado"
-          />
+          <div className="masc__figura">
+            <img
+              src={mascote}
+              alt="Praefectus, o assistente de licitações, de terno e com o dedo indicador levantado"
+            />
+          </div>
         </div>
 
         <div className="masc__txt">
@@ -205,7 +117,8 @@ export default function MascoteBoasVindas({ open, onClose }: Props) {
             marcando cada etapa conforme avança — o sistema guarda de onde você parou.
           </p>
           <p className="masc__d">
-            Ele mora no menu à esquerda, dentro de <b>Ferramentas</b>. Estou apontando para lá.
+            Ele mora no menu à esquerda, dentro de <b>Ferramentas</b> — ou vá direto pelo
+            atalho abaixo.
           </p>
 
           <button className="masc__caminho" onClick={irParaTutorial}>
