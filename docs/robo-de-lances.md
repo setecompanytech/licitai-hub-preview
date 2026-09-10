@@ -712,6 +712,69 @@ lista, e avisar quando não baterem.
 | `PortalComprasPortal.enviarProposta()` | ⬜ **sem formulário para ler** |
 | Tela que dispara o envio | ⬜ botão que sempre falha é pior que botão nenhum |
 
+#### Conferência dos itens contra o portal — 10/09/2026
+
+Nasceu do achado lateral acima: a tabela de itens existe na página do processo,
+**sem depender de pregão acontecendo**.
+
+O problema que ela resolve: a tela monta os itens do NOSSO lado — Precificação,
+Proposta Comercial, extração do edital — e nada disso conversa com o portal. Um
+número errado, um lote que mudou, uma republicação do edital, e o robô entra
+mirando um item que não existe. Antes, isso só apareceria durante o pregão.
+
+`conferirItens()` é **pura**, como a `decidirLance`, e tem 7 testes próprios.
+Compara o que enviamos com o que o portal publicou e devolve três coisas:
+itens nossos que não existem lá, divergência de valor de referência (com 1% de
+tolerância, porque centavo de arredondamento não é divergência) e itens do
+edital que ficaram de fora.
+
+**Três decisões que valem registro:**
+
+*Item sobrando não reprova.* Disputar 3 itens de um edital com 60 é rotina. Se
+isso acusasse, o aviso seria ignorado no primeiro pregão grande.
+
+*Lista vazia do portal é "não li", não "nada existe".* Sem leitura, a função
+devolve `leu: false` e não afirma nada — acusar 49 itens de faltarem seria
+culpar o usuário por uma falha nossa.
+
+*Colunas mapeadas pelo cabeçalho, não por posição.* `celulas[1]` seria mais
+curto e quebraria calado no dia em que o portal inserir uma coluna.
+
+**Provado com dado real, `002/2026`:**
+
+```
+⚠️ CONFERENCIA: 1 item(ns) que enviamos NAO existem no portal (4321);
+                48 item(ns) do edital ficaram de fora
+```
+
+Leu **49 itens** através das cinco páginas, achou o `4321` inventado e não
+acusou o item 1, que existe.
+
+**E uma ambiguidade que só apareceu por causa do teste.** Mandei o item 1 com
+valor absurdo (999999) e nenhuma divergência foi acusada. Duas leituras opostas
+cabiam: os valores batem, ou não há valor para comparar. O log passou a dizer
+qual é:
+
+```
+ℹ️ O portal listou 49 item(ns) e NENHUM com valor de referencia —
+   a conferencia de valores nao teve o que comparar
+```
+
+Este edital não publica o estimado. A ausência de divergência estava **certa**.
+Sem essa linha, teríamos dado por conferido o que nunca foi olhado.
+
+**Duas armadilhas na implementação, ambas custaram uma sessão real:**
+
+`limpa(tds[i])` com `i` além do número de células — cabeçalho, linha de "nenhum
+resultado" e linhas com colspan chegam curtas, e a célula vira `undefined`. O
+erro (`Cannot read properties of undefined`) ia para o **stderr**, que o pm2
+grava em `error.log`, não em `output.log`. Procurar no arquivo errado fez a
+falha parecer ausência de execução.
+
+E backtick dentro de comentário do template literal — quebrou o arquivo quatro
+vezes num só dia. O teste `agente-template.test.ts` pega, mas só depois de
+rodado; o `tsc` acusa como erro de sintaxe em cascata, que não aponta a causa.
+
 ### 7.3 Desempenho
 
 Aqui está a lacuna mais séria, e ela é de **arquitetura**, não de código faltando.

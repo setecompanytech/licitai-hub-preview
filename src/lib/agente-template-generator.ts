@@ -657,7 +657,7 @@ app.listen(PORT, BIND_HOST, () => {
   'src/session-manager.js': `const { launchBrowser } = require('./browser');
 const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
-const { decidirLance } = require('./estrategia');
+const { decidirLance, conferirItens } = require('./estrategia');
 const os = require('os');
 
 /**
@@ -779,6 +779,61 @@ class SessionManager {
         tipo: session.tipo_disputa,
         itens: session.itens,
       });
+
+      // ── O QUE MANDAMOS BATE COM O QUE O PORTAL PUBLICOU? ──────────────────
+      //
+      // A tela monta os itens do NOSSO lado — Precificacao, Proposta, extracao
+      // do edital — e nada disso conversa com o portal. Um numero errado, um
+      // lote que mudou, uma republicacao do edital, e o robo entra mirando um
+      // item que nao existe, sem que nada acuse.
+      //
+      // Roda so quando o portal sabe ler a lista. O metodo e opcional, como
+      // o do chat: portal que nao implementa segue funcionando igual.
+      if (typeof session.portal.lerItensDoProcesso === 'function' && session.itens.length) {
+        try {
+          const doPortal = await session.portal.lerItensDoProcesso();
+          const conf = conferirItens(session.itens, doPortal);
+          session.conferencia = conf;
+
+          // Quantos itens do portal trazem valor de referencia legivel.
+          //
+          // Existe porque sem este numero "nenhuma divergencia de valor" tem
+          // DUAS leituras opostas e indistinguiveis: os valores batem, ou nao
+          // ha valor nenhum para comparar. Muito edital nao publica o
+          // estimado, e confundir isso com "conferido" seria dar por checado o
+          // que nunca foi olhado.
+          const comValor = doPortal.filter((i) => Number.isFinite(Number(i.valor_referencia)) && Number(i.valor_referencia) > 0).length;
+          if (doPortal.length && comValor === 0) {
+            console.log(
+              \`ℹ️  [\${config.sessao_id}] O portal listou \${doPortal.length} item(ns) e NENHUM com valor de \` +
+              'referencia — a conferencia de valores nao teve o que comparar'
+            );
+          }
+
+          if (!conf.leu) {
+            console.log(\`⚠️  [\${config.sessao_id}] \${conf.resumo}\`);
+          } else if (conf.ok) {
+            console.log(\`✅ [\${config.sessao_id}] \${conf.resumo}\`);
+          } else {
+            console.log(\`⚠️  [\${config.sessao_id}] CONFERENCIA: \${conf.resumo}\`);
+          }
+
+          await sendCallback(session, 'itens-conferidos', {
+            leu: conf.leu,
+            ok: conf.ok,
+            resumo: conf.resumo,
+            faltando: conf.faltando,
+            sobrando: conf.sobrando,
+            divergencias: conf.divergencias,
+            total_no_portal: doPortal.length,
+            com_valor_referencia: comValor,
+          });
+        } catch (e) {
+          // Conferir e informacao adicional. Falhar aqui nao pode impedir a
+          // sessao de acontecer — seria trocar um aviso por uma interrupcao.
+          console.error(\`[\${config.sessao_id}] Falha ao conferir itens: \${e.message}\`);
+        }
+      }
 
       // Iniciar loop de lances
       this._startBiddingLoop(session);

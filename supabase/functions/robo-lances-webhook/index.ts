@@ -625,6 +625,83 @@ serve(async (req) => {
         // O corpo ja estava sendo gravado em `webhook_log` (o insert acontece
         // antes deste switch), entao o historico nao se perdeu — o que faltava
         // era a sessao refletir a rodada, que e o que a tela le.
+        // ─── A CONFERENCIA DOS ITENS CONTRA O PORTAL ─────────────────────
+        //
+        // A tela monta os itens do NOSSO lado (Precificacao, Proposta,
+        // extracao do edital) e nada disso conversa com o portal. Um numero
+        // errado so apareceria durante o pregao, quando nao ha mais o que
+        // fazer.
+        //
+        // So grava quando ha o que dizer: conferencia que bate nao vira
+        // mensagem. Mural cheio de "esta tudo certo" e mural que ninguem le,
+        // e ai o aviso que importa passa junto.
+        case "itens-conferidos": {
+          if (!sessao.licitacao_id) break;
+          const { leu, ok, resumo, faltando, divergencias, total_no_portal, com_valor_referencia } = payload;
+          if (leu && ok) break;
+
+          const linhas: string[] = [];
+          if (!leu) {
+            linhas.push(
+              `Não foi possível ler a lista de itens do portal para conferir o que enviamos. ` +
+              `Isso não impede a sessão — apenas não houve conferência.`
+            );
+          } else {
+            if (Array.isArray(faltando) && faltando.length) {
+              linhas.push(
+                `**${faltando.length} item(ns) que enviamos não existem neste processo** ` +
+                `(nº ${faltando.slice(0, 10).join(', ')}). O robô não teria o que acompanhar neles.`
+              );
+            }
+            if (Array.isArray(divergencias) && divergencias.length) {
+              linhas.push(
+                `**${divergencias.length} item(ns) com valor de referência diferente** do publicado: ` +
+                divergencias.slice(0, 5).map((d: { numero: number; nosso: number; portal: number }) =>
+                  `nº ${d.numero} (nosso R$ ${d.nosso} × portal R$ ${d.portal})`).join('; ')
+              );
+            }
+            // O contexto que evita a leitura errada de "nenhuma divergencia":
+            // edital sem estimado publicado nao foi conferido, foi ignorado.
+            if (total_no_portal && com_valor_referencia === 0) {
+              linhas.push(
+                `Observação: o portal listou ${total_no_portal} item(ns) e nenhum com valor de ` +
+                `referência publicado — a conferência de valores não teve o que comparar.`
+              );
+            }
+          }
+
+          if (!linhas.length) break;
+
+          await supabase.from("licitacao_mensagens").insert({
+            licitacao_id: sessao.licitacao_id,
+            user_id: userId,
+            // "alerta" para item inexistente, que e defeito de cadastro e
+            // custa a disputa; "sistema" para o resto, que e contexto.
+            tipo: Array.isArray(faltando) && faltando.length ? "alerta" : "sistema",
+            conteudo:
+              `🔎 **Conferência dos itens em ${sessao.edital}** (${sessao.portal_nome})\n\n` +
+              linhas.map((l) => `• ${l}`).join('\n'),
+            metadata: {
+              origem: "conferencia-itens",
+              sessao_id,
+              edital: sessao.edital,
+              resumo: resumo ?? null,
+              total_no_portal: total_no_portal ?? null,
+            },
+          });
+
+          if (Array.isArray(faltando) && faltando.length) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "urgente",
+              titulo: `🔎 Itens não conferem — ${sessao.edital}`,
+              mensagem: `${faltando.length} item(ns) enviados ao robô não existem neste processo do portal.`,
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
+          break;
+        }
+
         case "rodada-sem-lance": {
           const { rodada } = payload;
           await supabase

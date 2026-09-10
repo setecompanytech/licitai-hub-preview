@@ -2053,6 +2053,114 @@ class PortalComprasPortal extends BasePortal {
   }
 
   /**
+   * Os itens do edital, lidos da pagina do processo.
+   *
+   * ─── O QUE FOI MAPEADO NA TELA REAL, 10/09/2026 ────────────────────────────
+   *
+   * A pagina do processo traz uma tabela com estas colunas:
+   *
+   *     | (sel) | Item | Descricao | Valor Ref | Excl. | Quantidade | Julgamento |
+   *
+   * No 002/2026 sao 12 linhas por pagina e CINCO paginas, navegadas por
+   * \`?...&ttPagina=N&slA=Edit&ttCD_CHAVE=...\`. Cada descricao tem id proprio
+   * (\`#produtoTexto155\`, \`156\`…), que nao usamos: id de produto e do catalogo
+   * do portal, nao do item do edital.
+   *
+   * ─── POR QUE MAPEAR PELO CABECALHO E NAO POR POSICAO ───────────────────────
+   *
+   * \`celulas[1]\` seria mais curto e quebraria calado no dia em que o portal
+   * inserir uma coluna. Ler o cabecalho custa uma linha e transforma "valores
+   * errados em silencio" em "nao achei a coluna".
+   *
+   * Vale sem pregao acontecendo — foi por isso que virou a primeira estrutura
+   * de itens real que conseguimos ler deste portal.
+   */
+  async lerItensDoProcesso() {
+    const paginas = [];
+    // Teto de 20 paginas: edital grande existe, laco infinito por paginacao
+    // quebrada tambem. O teto e a condicao de parada.
+    for (let p = 1; p <= 20; p++) {
+      const pagina = await this.page.evaluate(() => {
+        // Defensivo de proposito: nem toda linha tem todas as celulas. Cabecalho,
+        // linha de "nenhum resultado" e linhas com colspan chegam curtas, e
+        // a celula no indice vira undefined. Custou uma sessao real descobrir — o teste de
+        // 10/09/2026 morreu exatamente aqui, com "Cannot read properties of
+        // undefined (reading 'innerText')".
+        const limpa = (el) => ((el && el.innerText) || '').replace(/\\s+/g, ' ').trim();
+        const numero = (t) => {
+          // "R$ 1.234,56" -> 1234.56. Milhar com ponto, decimal com virgula.
+          const m = String(t).replace(/[^\\d.,]/g, '').replace(/\\./g, '').replace(',', '.');
+          const n = parseFloat(m);
+          return Number.isFinite(n) ? n : null;
+        };
+
+        // A tabela dos itens e a que tem coluna "Item" E coluna "Quantidade".
+        // Sem os dois, e outra tabela da pagina (datas, documentos).
+        let alvo = null;
+        let cabecalhos = [];
+        for (const tb of document.querySelectorAll('table')) {
+          const ths = [...tb.querySelectorAll('th')].map((th) => limpa(th).toLowerCase());
+          if (ths.some((h) => /^item$/.test(h)) && ths.some((h) => /quantidade/.test(h))) {
+            alvo = tb;
+            cabecalhos = ths;
+            break;
+          }
+        }
+        if (!alvo) return { itens: [], achouTabela: false, temProxima: false };
+
+        const col = (regex) => cabecalhos.findIndex((h) => regex.test(h));
+        const iItem = col(/^item$/);
+        const iDesc = col(/descri/);
+        const iRef = col(/valor\\s*ref/);
+        const iQtd = col(/quantidade/);
+
+        const itens = [];
+        for (const tr of alvo.querySelectorAll('tr')) {
+          const tds = [...tr.querySelectorAll('td')];
+          if (!tds.length) continue;
+          const bruto = iItem >= 0 ? limpa(tds[iItem]) : '';
+          const num = parseInt(bruto.replace(/\\D/g, ''), 10);
+          if (!Number.isFinite(num)) continue;
+          itens.push({
+            numero: num,
+            descricao: iDesc >= 0 && tds[iDesc] ? limpa(tds[iDesc]).slice(0, 180) : '',
+            valor_referencia: iRef >= 0 && tds[iRef] ? numero(limpa(tds[iRef])) : null,
+            quantidade: iQtd >= 0 && tds[iQtd] ? numero(limpa(tds[iQtd])) : null,
+          });
+        }
+
+        // Existe pagina seguinte? A paginacao e por links com o numero.
+        const paginaAtual = new URL(location.href).searchParams.get('ttPagina');
+        const atual = parseInt(paginaAtual || '1', 10) || 1;
+        const temProxima = [...document.querySelectorAll('a[href*="ttPagina="]')].some((a) => {
+          const n = parseInt(new URL(a.href, location.origin).searchParams.get('ttPagina') || '0', 10);
+          return n === atual + 1;
+        });
+
+        return { itens, achouTabela: true, temProxima };
+      });
+
+      if (!pagina.achouTabela) break;
+      paginas.push(...pagina.itens);
+      if (!pagina.temProxima) break;
+
+      const proxima = new URL(this.page.url());
+      proxima.searchParams.set('ttPagina', String(p + 1));
+      await this.page.goto(proxima.toString(), { waitUntil: 'networkidle2', timeout: 45000 });
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    // Deduplica por numero: paginacao quebrada pode repetir a mesma pagina, e
+    // item repetido viraria "divergencia" inventada na conferencia.
+    const vistos = new Set();
+    return paginas.filter((i) => {
+      if (vistos.has(i.numero)) return false;
+      vistos.add(i.numero);
+      return true;
+    });
+  }
+
+  /**
    * O que o portal diz sobre a propria conta, lido no DashBoard.
    *
    * Havia uma verificacao parecida, mas ela rodava DEPOIS de abrir o processo,
