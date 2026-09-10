@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { usePapelEmpresa } from '@/hooks/usePapelEmpresa';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
@@ -105,6 +105,13 @@ export default function RoboLances() {
   const [salvandoPerda, setSalvandoPerda] = useState(false);
   const [lances, setLances] = useState<LanceConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Clicar na disputa já selecionada desmarca e volta ao estado inicial da
+  // tela. Até 10/09/2026 não havia como sair de uma disputa sem trocar de
+  // tela — o Ian pediu para "desclicar" apertando de novo no card.
+  const alternarSelecao = useCallback(
+    (id: string) => setSelectedId((atual) => (atual === id ? null : id)),
+    [],
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [bottomTab, setBottomTab] = useState<'mural' | 'operacoes' | 'simulacao' | 'auditoria'>('mural');
@@ -894,7 +901,9 @@ export default function RoboLances() {
                 {filteredLances.map((lance) => (
                   <button
                     key={lance.id}
-                    onClick={() => setSelectedId(lance.id)}
+                    onClick={() => alternarSelecao(lance.id)}
+                    aria-pressed={selectedId === lance.id}
+                    title={selectedId === lance.id ? 'Clique de novo para desmarcar' : undefined}
                     className={`w-full text-left rounded-lg px-3 py-2.5 transition-colors text-xs group ${
                       selectedId === lance.id
                         ? 'bg-accent text-accent-foreground'
@@ -945,7 +954,7 @@ export default function RoboLances() {
           {/* MAIN CONTENT */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Simultaneous disputes summary bar */}
-            <DisputasResumo lances={lances} onSelect={setSelectedId} selectedId={selectedId} />
+            <DisputasResumo lances={lances} onSelect={alternarSelecao} selectedId={selectedId} />
 
             {!selectedLance ? (
               /* empty state with level selector */

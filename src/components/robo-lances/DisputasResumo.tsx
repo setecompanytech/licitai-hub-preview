@@ -51,6 +51,7 @@ export default function DisputasResumo({ lances, onSelect, selectedId }: Props) 
             <button
               key={lance.id}
               onClick={() => onSelect(lance.id)}
+              aria-pressed={selectedId === lance.id}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs transition-all whitespace-nowrap ${
                 selectedId === lance.id
                   ? 'bg-accent/10 border-accent/40 text-accent'
