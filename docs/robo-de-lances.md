@@ -234,8 +234,9 @@ Oito segundos do login ao processo aberto. Três coisas ficam provadas:
 Operação"* — pregão já acabado. A página é "Dados do Processo", não a sala de
 disputa. Então os seletores de `lerMelhorLance()` continuam sendo os três
 palpites de sempre (`.valor-lance, .melhor, td.valor`) e o `souLider()` continua
-sem existir para este portal. Isso só se escreve **vendo** a sala com pregão
-acontecendo — é o único item que ainda depende do Rafael.
+**sem implementação própria** neste portal — ele herda o da `BasePortal`, que
+devolve `null`, ou seja "não sei dizer quem lidera". Isso só se escreve **vendo**
+a sala com pregão acontecendo — é o único item que ainda depende do Rafael.
 
 Foto: `capturas-robo/20260910-001419-portal-compras-processo-002-2026.png`.
 
@@ -506,8 +507,30 @@ devolveu zero.
 | Monitor de latência do portal (verde/amarelo/vermelho) | ❌ | nenhuma medição de tempo de resposta existe |
 
 **A ressalva que importa:** a regra de margem está coberta por 16 testes, mas
-`souLider()` existe em **1 dos 23 módulos**, e `PORTAIS_COM_LANCE_LIBERADO` está
-vazio. A regra é boa e ainda não foi exercida contra uma tela real.
+`souLider()` tem implementação própria em **1 dos 23 módulos** — nos outros 22 é
+herdado da `BasePortal`, que devolve `null` —, e `PORTAIS_COM_LANCE_LIBERADO`
+está vazio. A regra é boa e ainda não foi exercida contra uma tela real.
+
+#### As duas travas, conferidas na VPS em 10/09/2026
+
+Rodando a `decidirLance` real do agente no ar, com `portalId: 'portal-compras'`:
+
+| Cenário | Decisão |
+| --- | --- |
+| Como está hoje | `aguardar` — *"Portal não está liberado para enviar lance"* |
+| **Se alguém liberasse o portal na lista** | `aguardar` — *"O portal não informou quem está liderando"* |
+| Liberado + `souLider: true` | `aguardar` — *"Já estamos liderando"* |
+| Liberado + `souLider: false` + melhor lance lido | `lance` de R$ 840 |
+| Liberado + `souLider: false` + sem ler melhor lance | `aguardar` |
+
+A leitura que importa: **são duas travas independentes.** Liberar o portal na
+lista, sozinho, não destrava nada — `souLider` herdado devolve `null`, e a
+função trata "não sei" como "não dá lance". Só a quarta linha produz um lance, e
+ela exige três condições que não coexistem hoje.
+
+Uma terceira trava cobre o outro caminho de escrita: `enviarProposta` é
+`undefined` em `PortalComprasPortal`, e a rota devolve 501 antes de abrir o
+navegador.
 
 ### 7.2 Multitarefa
 
