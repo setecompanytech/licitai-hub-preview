@@ -486,6 +486,59 @@ serve(async (req) => {
               valor_atual: payload.valor_final,
             })
             .eq("id", sessao_id);
+
+          // ── O PROCESSO FICA SABENDO, SEM NINGUÉM CLICAR ──────────────────
+          //
+          // Até aqui a sessão terminava e o processo no Kanban não registrava
+          // nada. O único caminho era alguém abrir o Robô de Lances e apertar
+          // um botão (`registrarResultadoDisputa`, RoboLances.tsx) — e quem
+          // acabou de acompanhar um pregão raramente volta para fazer isso.
+          //
+          // O QUE ESTE BLOCO NÃO FAZ, E POR QUÊ: não marca "Vencida" nem
+          // "Perdida". O agente manda `resultado: 'finalizado'` ou
+          // 'parada_emergencial' — ele não tem como saber quem venceu, e
+          // `valor_final` é o valor configurado, não um desfecho (com a trava
+          // ligada nenhum lance chega a ser enviado). Escrever um resultado a
+          // partir disso seria inventar dado.
+          //
+          // Além disso, derrota exige motivo registrado em `comercial_perdas`:
+          // um trigger recusa a mudança de status sem ele. Tentar aqui daria
+          // erro de banco num callback que ninguém está olhando.
+          //
+          // Então o que se grava é o que se sabe: a sessão acabou, com quantas
+          // rodadas e de que jeito. Quem decide o resultado é gente.
+          if (sessao.licitacao_id) {
+            const emergencia = payload.resultado === "parada_emergencial";
+            const rodadas = payload.total_rodadas ?? 0;
+
+            await supabase.from("licitacao_mensagens").insert({
+              licitacao_id: sessao.licitacao_id,
+              user_id: userId,
+              tipo: "sistema",
+              conteudo: emergencia
+                ? `🛑 **Sessão do robô interrompida** em ${sessao.edital} ` +
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
+                  `A parada foi acionada por uma pessoa. O resultado da disputa ainda precisa ser registrado.`
+                : `🏁 **Sessão do robô encerrada** em ${sessao.edital} ` +
+                  `(${sessao.portal_nome}) após ${rodadas} rodada(s). ` +
+                  `O robô acompanha e não envia lance — o resultado da disputa ainda precisa ser registrado.`,
+            });
+
+            // O aviso vai para quem disparou. `notificacoes` é a mesma tabela
+            // que o resto do produto usa (quatro escritores), então o sino do
+            // cabeçalho já a mostra sem tela nova.
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: emergencia ? "alerta" : "info",
+              titulo: emergencia
+                ? `🛑 Robô interrompido — ${sessao.edital}`
+                : `🏁 Robô encerrou — ${sessao.edital}`,
+              mensagem:
+                `A sessão em ${sessao.portal_nome} terminou após ${rodadas} rodada(s). ` +
+                `Abra o processo para registrar como a disputa terminou.`,
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
           break;
         }
 
@@ -598,6 +651,67 @@ serve(async (req) => {
         .eq("id", sessao_id);
 
       return jsonResponse({ parou, sessao_id, tentativas });
+    }
+
+    // ─── focar-sessao ───
+    //
+    // Traz para a frente, na tela virtual do servidor, a janela DAQUELE pregao.
+    //
+    // O agente aguenta 8 sessoes simultaneas e todas desenham na MESMA tela
+    // (:99). Sem isto, com dois pregoes no mesmo horario — que o cliente
+    // descreveu como rotina — o VNC mostra as janelas empilhadas e nao existe
+    // acao possivel para "quero ver o outro".
+    //
+    // Diferente de parar-sessao, aqui NAO se escreve no banco: focar e uma
+    // acao de visualizacao, nao muda o estado de nada. Se falhar, a sessao
+    // continua rodando exatamente como estava.
+    if (action === "focar-sessao") {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) return jsonResponse({ error: "Não autorizado" }, 401);
+      const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (!user) return jsonResponse({ error: "Token inválido" }, 401);
+
+      const { sessao_id } = body;
+      if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+
+      const { data: agentes } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+
+      if (!agentes?.length) return jsonResponse({ error: "Nenhum agente configurado" }, 400);
+
+      let ultimoMotivo: string | null = null;
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/focar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": agente.api_key_hash || "",
+            },
+            body: JSON.stringify({ sessao_id }),
+            signal: AbortSignal.timeout(15000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) return jsonResponse({ focou: true, sessao_id, edital: corpo?.edital ?? null });
+          ultimoMotivo = corpo?.error ?? `o agente respondeu ${resp.status}`;
+        } catch (e) {
+          // 404 aqui costuma ser agente ANTIGO, sem a rota. Dizer isso poupa
+          // procurar defeito onde só falta atualizar o agente da VPS.
+          ultimoMotivo = e instanceof Error ? e.message : "sem resposta";
+        }
+      }
+
+      return jsonResponse(
+        {
+          focou: false,
+          sessao_id,
+          error: ultimoMotivo || "Nenhum agente conseguiu trazer a janela para frente",
+        },
+        502
+      );
     }
 
     if (action === "kill-switch") {

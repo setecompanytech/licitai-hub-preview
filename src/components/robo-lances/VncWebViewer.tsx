@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { usePedidosDoRobo, pararSessaoDoRobo } from './usePedidosDoRobo';
+import { usePedidosDoRobo, pararSessaoDoRobo, focarSessaoDoRobo } from './usePedidosDoRobo';
+import { nomeDoPortal } from '@/lib/robo/portais';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,8 +101,76 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
    * Só aparece com sessão de pé: botão vermelho sem nada para parar treina a
    * pessoa a ignorá-lo.
    */
-  const sessaoViva = (pedidosData?.sessoesVivas || [])[0] || null;
+  const sessoesVivas = pedidosData?.sessoesVivas || [];
+
+  /**
+   * QUAL sessão este painel está comandando.
+   *
+   * Antes era `sessoesVivas[0]` — a primeira, sempre. Com dois pregões ao mesmo
+   * tempo (que o Rafael descreveu como rotina: "tem situações que surgem vários
+   * processos no mesmo horário"), o freio parava uma sessão ARBITRÁRIA, e nada
+   * na tela dizia qual. Apertar o botão vermelho achando que se está parando um
+   * pregão e parar outro é pior do que não ter botão.
+   *
+   * `null` aqui significa "ninguém escolheu ainda", e aí vale a primeira — o
+   * freio nunca some por falta de escolha. O que muda é que agora a tela DIZ
+   * qual está no comando.
+   */
+  const [sessaoEscolhidaId, setSessaoEscolhidaId] = useState<string | null>(null);
+  const sessaoViva =
+    sessoesVivas.find((s) => s.sessao_id === sessaoEscolhidaId) || sessoesVivas[0] || null;
   const [parando, setParando] = useState(false);
+  /** Qual sessão está sendo trazida para a frente — não um booleano, para o
+   *  giro aparecer NO cartão clicado e não travar a lista inteira. */
+  const [focando, setFocando] = useState<string | null>(null);
+
+  /**
+   * Quais sessões estão paradas esperando uma pessoa.
+   *
+   * Com um pregão a pergunta não existia. Com oito, "alguém precisa de mim?" é
+   * a primeira coisa a responder — antes até de listar quais existem.
+   */
+  const sessoesQuePedem = new Set((pedidosData?.pedidos || []).map((p) => p.sessao_id));
+
+  /**
+   * Escolher um pregão faz duas coisas: muda o alvo do freio E pede ao agente
+   * que traga a janela daquela sessão para a frente da tela virtual.
+   *
+   * A escolha local acontece PRIMEIRO e não depende do agente: se o servidor
+   * não conseguir trocar a janela, o operador ainda assim está comandando a
+   * sessão que escolheu. Amarrar as duas faria um erro de vídeo tirar o freio
+   * do lugar certo.
+   */
+  const escolherSessao = async (id: string) => {
+    setSessaoEscolhidaId(id);
+    setFocando(id);
+    try {
+      const r = await focarSessaoDoRobo(id);
+      if (!r.focou) {
+        toast.warning(
+          'A sessão foi selecionada, mas não deu para trazer a janela dela para a frente' +
+            (r.erro ? `: ${r.erro}` : '.'),
+          { duration: 8000 },
+        );
+      }
+    } finally {
+      setFocando(null);
+    }
+  };
+
+  /**
+   * De QUAL pregão veio o pedido de clique.
+   *
+   * Com uma sessão a pergunta não existia. Com várias, "o robô precisa de um
+   * clique seu" sem dizer onde manda a pessoa procurar entre janelas
+   * sobrepostas — e o clique errado resolve o captcha do pregão errado.
+   *
+   * Fica vazio quando a sessão já saiu da lista de vivas: aí o pedido é de algo
+   * que acabou, e inventar um número seria pior que omitir.
+   */
+  const editalDoPedido = pedidoDeClique
+    ? sessoesVivas.find((s) => s.sessao_id === pedidoDeClique.sessao_id)?.edital || null
+    : null;
 
   const pararAgora = async () => {
     if (!sessaoViva) return;
@@ -170,7 +239,10 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
               ) : (
                 <Square className="w-3.5 h-3.5" />
               )}
-              Parar robô
+              {/* Com mais de uma sessão o rótulo NOMEIA qual vai parar. "Parar
+                  robô" com três pregões rodando não diz o suficiente para uma
+                  decisão irreversível. */}
+              {sessoesVivas.length > 1 ? `Parar ${sessaoViva.edital}` : 'Parar robô'}
             </Button>
           )}
           {showViewer && (
@@ -219,6 +291,98 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── Quais pregões estão rodando AGORA ───────────────────────────────
+          Só aparece com duas ou mais: com uma sessão a barra não informa nada
+          que o resto da tela já não diga, e ocupar espaço com isso empurraria
+          o vídeo para baixo à toa.
+
+          Existe porque o agente aguenta 8 sessões simultâneas e a tela mostrava
+          uma. Quem opera precisa saber quantas rodam antes de apertar o freio. */}
+      {sessoesVivas.length > 1 && (
+        <div className="border-t border-border/50 bg-muted/20 px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-70" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+            </span>
+            <span className="text-xs font-medium">
+              {sessoesVivas.length} pregões ao vivo
+            </span>
+            {/* O contador de quem precisa de gente vem ANTES da lista: com oito
+                sessões, o que importa primeiro é "alguma me chama?", não
+                "quais existem". */}
+            {sessoesQuePedem.size > 0 && (
+              <span className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-full px-2 py-0.5 font-medium">
+                {sessoesQuePedem.size} esperando você
+              </span>
+            )}
+          </div>
+
+          <div
+            className="flex items-stretch gap-2 flex-wrap"
+            role="radiogroup"
+            aria-label="Pregão em exibição na tela remota"
+          >
+            {sessoesVivas.map((s) => {
+              const ativa = s.sessao_id === sessaoViva?.sessao_id;
+              const pede = sessoesQuePedem.has(s.sessao_id);
+              const focandoEsta = focando === s.sessao_id;
+              return (
+                <button
+                  key={s.sessao_id}
+                  type="button"
+                  role="radio"
+                  aria-checked={ativa}
+                  disabled={focandoEsta}
+                  onClick={() => escolherSessao(s.sessao_id)}
+                  title={
+                    ativa
+                      ? 'Em exibição. É esta que o botão de parar vai interromper.'
+                      : `Trazer ${s.edital} para a frente da tela`
+                  }
+                  className={`group text-left rounded-lg border px-2.5 py-1.5 transition-all min-w-[7.5rem] ${
+                    ativa
+                      ? 'border-accent bg-accent/10 ring-1 ring-accent/40'
+                      : 'border-border/60 hover:border-border hover:bg-muted/60'
+                  } ${focandoEsta ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {focandoEsta ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />
+                    ) : pede ? (
+                      // Só quem chama ganha ícone. Ícone em todos vira ruído e
+                      // o urgente deixa de saltar.
+                      <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                    ) : (
+                      <Monitor
+                        className={`w-3 h-3 shrink-0 ${ativa ? 'text-accent' : 'text-muted-foreground'}`}
+                      />
+                    )}
+                    <span
+                      className={`text-xs font-mono truncate ${ativa ? 'font-semibold' : ''}`}
+                    >
+                      {s.edital}
+                    </span>
+                  </div>
+                  <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                    {ativa ? 'em exibição' : nomeDoPortal(s.portal_id)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Todas as sessões desenham na MESMA tela virtual (:99). Escolher
+              aqui pede ao servidor que traga aquela janela para a frente — é
+              uma tela só, alternando, não duas lado a lado. Dizer isso evita a
+              expectativa de ver dois pregões ao mesmo tempo. */}
+          <p className="text-[11px] text-muted-foreground mt-2">
+            A escolha traz o pregão para a frente e define qual sessão o botão de parar interrompe.
+            É uma tela só, alternando entre os pregões.
+          </p>
+        </div>
+      )}
 
       {/* Content */}
       {!showViewer ? (
@@ -300,6 +464,9 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
             <div className="absolute top-0 left-0 right-0 z-20 bg-accent text-accent-foreground px-4 py-3 shadow-lg animate-pulse-glow">
               <p className="text-sm font-semibold">
                 👆 Esta é a tela do robô — e o seu clique aqui funciona
+                {editalDoPedido && (
+                  <span className="font-mono font-normal opacity-90"> · {editalDoPedido}</span>
+                )}
               </p>
               <p className="text-xs opacity-90 mt-0.5 leading-snug">{pedidoDeClique.mensagem}</p>
             </div>

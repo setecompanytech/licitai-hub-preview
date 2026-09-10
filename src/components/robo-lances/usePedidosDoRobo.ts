@@ -110,3 +110,43 @@ export async function pararSessaoDoRobo(sessaoId: string): Promise<{
 
   return { parou: (data as { parou?: boolean })?.parou === true };
 }
+
+
+/**
+ * Traz para a frente, na tela do servidor, a janela DAQUELE pregão.
+ *
+ * O agente aguenta 8 sessões simultâneas e todas desenham na mesma tela
+ * virtual. Sem isto, com dois pregões no mesmo horário o VNC mostra as janelas
+ * empilhadas e não há como pedir para ver o outro.
+ *
+ * Mora aqui junto de `pararSessaoDoRobo` porque é a mesma família: as duas
+ * agem sobre UMA sessão escolhida, e quem observa é quem usa as duas.
+ *
+ * @returns `focou` false não derruba nada — a sessão segue rodando, só não foi
+ *          para a frente. `erro` costuma ser agente sem a rota (VPS
+ *          desatualizada) ou janela já fechada.
+ */
+export async function focarSessaoDoRobo(sessaoId: string): Promise<{
+  focou: boolean;
+  erro?: string;
+}> {
+  const { data, error } = await supabase.functions.invoke('robo-lances-webhook', {
+    body: { action: 'focar-sessao', sessao_id: sessaoId },
+  });
+
+  if (error) {
+    // O corpo do erro vem em `context`, não em `message` — mesmo cuidado do
+    // freio, senão a pessoa recebe "non-2xx status code" no lugar da causa.
+    let detalhe = error.message;
+    try {
+      const corpo = await (error as { context?: Response }).context?.json();
+      if (corpo?.error) detalhe = corpo.error;
+    } catch {
+      /* fica a mensagem original */
+    }
+    return { focou: false, erro: detalhe };
+  }
+
+  const corpo = data as { focou?: boolean; error?: string } | null;
+  return { focou: corpo?.focou === true, erro: corpo?.error };
+}

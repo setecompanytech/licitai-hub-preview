@@ -513,10 +513,73 @@ vazio. A regra é boa e ainda não foi exercida contra uma tela real.
 
 | A régua | Nós |
 | --- | --- |
-| Vários pregões simultâneos | ⚠️ até **8 sessões** paralelas — isto temos |
-| Vários itens por pregão | ❌ a sessão leva **um conjunto só** de parâmetros (`valor_inicial`, `valor_minimo`, `decremento`) |
-| Regras de decremento por item | ❌ a tela tem lista de itens, mas ela **não chega ao agente** |
-| Painel colorido: quais pregões já abriram disputa | ❌ |
+| Vários pregões simultâneos | ✅ até **8 sessões** paralelas, **e agora dá para operá-las** |
+| Vários itens por pregão | ⚠️ os itens chegam ao agente desde 10/09; falta a decisão POR item |
+| Regras de decremento por item | ⚠️ cada item já leva o **piso próprio**; o decremento ainda é um só |
+| Painel colorido: quais pregões já abriram disputa | ⚠️ o painel lista as sessões vivas e marca quais pedem alguém |
+
+#### O que mudou em 10/09/2026 — de capacidade para operação
+
+Aguentar 8 sessões nunca foi o problema; **operá-las** era. Dois defeitos
+tornavam o paralelismo inútil na prática:
+
+**O painel só enxergava a primeira.** `VncWebViewer` fazia `sessoesVivas[0]`.
+Com dois pregões no mesmo horário — que o cliente descreve como rotina — o
+botão de parar interrompia uma sessão **arbitrária**, e nada na tela dizia qual.
+Apertar o freio achando que se para um pregão e parar outro é pior que não ter
+freio.
+
+**Todas as janelas desenhavam na mesma tela.** `browser.js` usa
+`DISPLAY || ':99'` para toda sessão. Oito pregões = oito janelas empilhadas num
+monitor virtual, e o VNC mostrando só a de cima. "Quero ver o outro" não era uma
+ação possível.
+
+O conserto: o painel passou a listar todas as sessões vivas, marcando quais
+estão **esperando uma pessoa** (código de verificação, captcha) e qual está em
+exibição; e a rota nova **`POST /sessao/focar`** traz a janela daquele pregão
+para a frente.
+
+A alternativa era uma tela virtual por sessão (Xvfb `:99`, `:100`, `:101`…, com
+x11vnc e websockify próprios). Resolve mais — duas abas lado a lado — e custa
+muito mais: portas, RAM e CPU por sessão. Ficou uma tela só, alternando.
+
+**Duas armadilhas encontradas ao testar, que valem registro:**
+
+`xdotool windowactivate` **não funciona aqui**. A VPS roda Xvfb pelado, sem
+gerenciador de janelas, e o comando falha com *"Your windowmanager claims not to
+support `_NET_ACTIVE_WINDOW`"*. Quem funciona é `windowraise`, que chama
+`XRaiseWindow` direto no servidor X e não depende de WM. O `windowfocus` vai
+junto, mas com o erro engolido de propósito.
+
+E a janela é achada por **PID**, nunca por título: `xdotool search --pid`, com o
+PID guardado no momento em que o navegador abre. Dois pregões no mesmo portal
+têm título idêntico — procurar por título e ativar "a primeira que casar" é
+exatamente o defeito que a rota existe para corrigir.
+
+**Provado em 10/09/2026, 01:10:** duas sessões vivas ao mesmo tempo, cada uma
+com sua janela (`12582915` e `20971523`), alternando entre elas com sucesso. E
+os dois pregões abriram processos **diferentes** no portal — `002/2026` em
+`ttCD_CHAVE=453864`, `039/2025` em `447069`.
+
+#### O processo fica sabendo que a sessão acabou
+
+Antes, a sessão terminava e o processo no Kanban não registrava nada: o único
+caminho era alguém abrir o Robô de Lances e apertar um botão. Agora o callback
+`sessao-encerrada` grava uma mensagem de sistema no processo e dispara
+notificação.
+
+**O que ele deliberadamente NÃO faz:** marcar "Vencida" ou "Perdida". O agente
+manda `resultado: 'finalizado'` ou `'parada_emergencial'` — ele não tem como
+saber quem venceu, e `valor_final` é o valor configurado, não um desfecho (com a
+trava ligada nenhum lance chega a ser enviado). Escrever resultado a partir
+disso seria inventar dado.
+
+Some-se que **derrota exige motivo** registrado em `comercial_perdas`: um
+trigger recusa a mudança de status sem ele. Tentar no callback daria erro de
+banco num lugar que ninguém está olhando.
+
+Então grava-se o que se sabe — a sessão acabou, com quantas rodadas e de que
+jeito — e quem decide o resultado continua sendo gente.
 
 ### 7.3 Desempenho
 

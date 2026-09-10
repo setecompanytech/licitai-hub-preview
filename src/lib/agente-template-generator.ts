@@ -194,6 +194,10 @@ const certificado = require('./certificado');
 const interacaoHumana = require('./interacao-humana');
 const fs = require('fs');
 const path = require('path');
+// Usado só pela rota /sessao/focar, para falar com o xdotool. Nada de entrada
+// do usuário entra nesses comandos: o único valor interpolado é um PID que o
+// próprio agente guardou ao abrir o navegador.
+const { execSync } = require('child_process');
 
 const app = express();
 app.use(cors());
@@ -220,6 +224,7 @@ const ROTAS = [
   'POST /api/proposta/enviar',
   'POST /certificado',
   'POST /sessao/responder',
+  'POST /sessao/focar',
 ];
 
 // A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
@@ -372,6 +377,82 @@ app.post('/sessao/encerrar', authMiddleware, (req, res) => {
   const result = sessionManager.endSession(sessao_id);
   if (!result) return res.status(404).json({ error: 'Sessão não encontrada' });
   res.json({ success: true, status: 'encerrado' });
+});
+
+// ─── POST /sessao/focar ───
+//
+// Traz para a frente a janela do Chrome DAQUELA sessão.
+//
+// Por que isto existe: todas as sessões desenham na MESMA tela virtual (:99).
+// O agente aguenta 8 simultâneas e o Rafael descreveu vários pregoes no mesmo
+// horario como rotina — na pratica, oito janelas empilhadas e o VNC mostrando
+// so a de cima. Sem isto, "assistir ao pregao X" nao e uma acao possivel.
+//
+// A alternativa era uma tela virtual por sessao (Xvfb :99, :100, :101…), com
+// x11vnc e websockify proprios. Resolve mais (duas abas lado a lado), custa
+// muito mais: portas, RAM e CPU por sessao. Escolhido alternar numa tela so.
+app.post('/sessao/focar', authMiddleware, (req, res) => {
+  const { sessao_id } = req.body;
+  if (!sessao_id) return res.status(400).json({ error: 'sessao_id e obrigatorio' });
+
+  const sessao = sessionManager.sessions.get(sessao_id);
+  if (!sessao) return res.status(404).json({ error: 'Sessão não encontrada' });
+
+  // O PID do Chrome daquela sessao, guardado quando o navegador abriu.
+  //
+  // Procurar a janela por TITULO seria o caminho obvio e o errado: dois pregoes
+  // no mesmo portal tem titulo identico, e ativar "a primeira que casar" e
+  // exatamente o defeito que esta rota existe para corrigir.
+  if (!sessao.chromePid) {
+    return res.status(409).json({
+      error: 'A sessão não registrou o processo do navegador — não dá para saber qual janela é dela',
+    });
+  }
+
+  try {
+    // O search por --pid usa a propriedade _NET_WM_PID que o Chrome publica na
+    // janela. Sem a opcao sync de proposito: se a janela ainda nao existe, e
+    // melhor falhar rapido do que pendurar a requisicao esperando.
+    const achadas = execSync(\`xdotool search --pid \${sessao.chromePid} --onlyvisible 2>/dev/null || true\`)
+      .toString().trim().split('\\n').filter(Boolean);
+
+    if (!achadas.length) {
+      return res.status(404).json({
+        error: 'Nenhuma janela visível encontrada para esta sessão (o navegador pode ter fechado)',
+      });
+    }
+
+    // A ULTIMA e a janela principal: o Chrome cria janelas auxiliares antes.
+    const janela = achadas[achadas.length - 1];
+    const ambiente = { env: { ...process.env, DISPLAY: process.env.DISPLAY || ':99' } };
+
+    // windowraise, e NAO windowactivate.
+    //
+    // Verificado em 10/09/2026 contra a VPS: activate falha com "Your
+    // windowmanager claims not to support _NET_ACTIVE_WINDOW". E verdade — o
+    // Xvfb roda pelado, sem gerenciador de janelas nenhum, entao nao ha quem
+    // responda por esse protocolo. raise chama XRaiseWindow direto no servidor
+    // X e nao depende de WM, que e exatamente o caso aqui.
+    execSync(\`xdotool windowraise \${janela}\`, ambiente);
+
+    // O foco de teclado e um extra: quem digita o codigo de verificacao e o
+    // robo, e quem clica no captcha e a pessoa pelo VNC, que envia o evento
+    // para onde o ponteiro esta. Se falhar, a janela ja esta na frente — que
+    // era o pedido. Por isso o erro e engolido de proposito.
+    try {
+      execSync(\`xdotool windowfocus \${janela}\`, ambiente);
+    } catch {
+      /* sem WM o foco pode ser recusado; a janela subiu, que e o que importa */
+    }
+
+    console.log(\`🖥️  Janela da sessão \${sessao_id} trazida para frente (\${sessao.edital})\`);
+    res.json({ success: true, sessao_id, edital: sessao.edital, janela });
+  } catch (err) {
+    // Falha aqui nao derruba nada — a sessao segue rodando, so nao foi para a
+    // frente. Dizer o motivo evita que vire "o VNC esta quebrado".
+    console.error(\`❌ Nao foi possivel focar a sessao \${sessao_id}:\`, err.message);
+    res.status(500).json({ error: 'Nao foi possivel trazer a janela para frente: ' + err.message });
+  }
 });
 
 // ─── POST /sessao/retomar ───
@@ -652,6 +733,18 @@ class SessionManager {
       const { browser, page } = await launchBrowser();
       session.browser = browser;
       session.page = page;
+
+      // O PID do Chrome DESTA sessão, guardado agora e não procurado depois.
+      //
+      // É o que permite trazer a janela certa para a frente (/sessao/focar).
+      // Todas as sessões desenham na mesma tela virtual, e procurar a janela
+      // por título casaria com a de qualquer pregão do mesmo portal — que é
+      // justamente o erro que se quer evitar.
+      //
+      // O encadeamento opcional existe porque browser.process() devolve null
+      // quando o Puppeteer se conecta a um Chrome que ele não abriu. Nesse caso
+      // a rota responde que não sabe qual janela é, em vez de ativar uma ao acaso.
+      session.chromePid = browser.process()?.pid || null;
 
       // Instanciar o módulo do portal correto
       session.portal = getPortal(config.portal_id, page, config.credenciais_portal || {});
