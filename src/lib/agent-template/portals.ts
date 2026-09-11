@@ -286,6 +286,88 @@ class BasePortal {
     return partes.join('\\n');
   }
 
+  /**
+   * Raio-X da tela, para virar seletor depois: URL, titulo e, para cada frame,
+   * o texto visivel, os campos (input/select/textarea/button) com atributos,
+   * cada valor em reais com o CAMINHO no DOM ate ele, e as tabelas com
+   * cabecalho e primeiras linhas. A foto mostra a sala; isto diz como le-la.
+   *
+   * Existe porque a sala de disputa so aparece com pregao em sessao, num
+   * horario que nao escolhemos — e quem mapeia precisa do DOM daquele
+   * segundo, nao de uma imagem. O gravador da sessao chama isto a cada N
+   * segundos; a rota /sessao/:id/inspecionar chama sob demanda.
+   *
+   * Nunca lanca: frame que nao responde entra vazio. So leitura.
+   */
+  async inspecionarTela(opcoes) {
+    const maxTexto = (opcoes && opcoes.maxTexto) || 20000;
+    const saida = { quando: new Date().toISOString(), url: '', titulo: '', frames: [] };
+    try { saida.url = this.page.url(); } catch (e) { /* aba morta */ }
+    try { saida.titulo = await this.page.title(); } catch (e) { /* idem */ }
+    let frames = [];
+    try { frames = this.page.frames(); } catch (e) { frames = []; }
+
+    for (const f of frames) {
+      const dados = await f.evaluate((maxTexto) => {
+        const visivel = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+        const caminho = (el) => {
+          const partes = [];
+          let n = el;
+          for (let i = 0; n && n !== document.body && n.tagName && i < 6; i++) {
+            let s = n.tagName.toLowerCase();
+            if (n.id) s += '#' + n.id;
+            else if (typeof n.className === 'string' && n.className.trim()) s += '.' + n.className.trim().split(/\\s+/).slice(0, 2).join('.');
+            partes.unshift(s);
+            n = n.parentElement;
+          }
+          return partes.join(' > ');
+        };
+        const attrs = (el) => {
+          const o = {};
+          for (const a of el.attributes) {
+            if (a.name.startsWith('_ng') || a.value.length > 200) continue;
+            o[a.name] = a.value;
+          }
+          return o;
+        };
+        const campos = [...document.querySelectorAll('input, select, textarea, button, a[role="button"], [role="button"]')]
+          .slice(0, 400)
+          .map((el) => ({
+            tag: el.tagName.toLowerCase(),
+            tipo: el.type || null,
+            visivel: visivel(el),
+            texto: String(el.innerText || el.value || '').trim().slice(0, 80),
+            caminho: caminho(el),
+            attrs: attrs(el),
+          }));
+
+        // Cada "R$ 1.234,56" com o caminho ate ele: e por aqui que se descobre
+        // qual celula e o melhor lance e qual e o nosso.
+        const reais = [];
+        const andarilho = document.createTreeWalker(document.body || document, NodeFilter.SHOW_TEXT);
+        let no;
+        while ((no = andarilho.nextNode()) && reais.length < 80) {
+          const t = no.nodeValue || '';
+          if (/R\\$\\s?[\\d.]+,\\d{2}/.test(t)) {
+            const el = no.parentElement;
+            reais.push({ texto: t.trim().slice(0, 80), caminho: el ? caminho(el) : '', visivel: el ? visivel(el) : false });
+          }
+        }
+
+        const tabelas = [...document.querySelectorAll('table')].slice(0, 12).map((t) => ({
+          caminho: caminho(t),
+          cabecalho: [...t.querySelectorAll('th')].map((th) => th.innerText.trim().slice(0, 40)).slice(0, 20),
+          linhas: [...t.querySelectorAll('tr')].slice(0, 5).map((tr) => [...tr.children].map((td) => td.innerText.trim().slice(0, 40))),
+        }));
+
+        const texto = (document.body && document.body.innerText) || '';
+        return { url: location.href, texto: texto.slice(0, maxTexto), campos, reais, tabelas };
+      }, maxTexto).catch(() => null);
+      if (dados) saida.frames.push(dados);
+    }
+    return saida;
+  }
+
   async screenshot(nome) {
     const path = \`./logs/screenshots/\${this.nome}-\${nome}-\${Date.now()}.png\`;
     // Screenshot e diagnostico, nunca causa de morte: se a aba trocou, tira

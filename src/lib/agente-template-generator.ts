@@ -56,6 +56,11 @@ CALLBACK_URL=https://uwtyuwktxalnpgrcbbgk.supabase.co/functions/v1/robo-lances-w
 
 # Chrome/Chromium (auto-detectado se não definido)
 # PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# ═══ GRAVADOR DA SESSÃO ═══
+# Foto + raio-X do DOM em logs/sessoes/<id>/ a cada N segundos, para mapear a
+# sala de disputa DEPOIS, sem ninguém olhando na hora. 0 desliga.
+# GRAVADOR_INTERVALO_S=10
 `,
 
   'Dockerfile': `FROM node:20-slim
@@ -226,6 +231,8 @@ const ROTAS = [
   'POST /certificado',
   'POST /sessao/responder',
   'POST /sessao/focar',
+  'GET /sessao/:id/inspecionar',
+  'GET /sessao/:id/gravacoes',
 ];
 
 // A primeira versao conferia se a VARIAVEL CERT_PATH estava preenchida, nunca se
@@ -456,6 +463,52 @@ app.post('/sessao/focar', authMiddleware, (req, res) => {
   }
 });
 
+// ─── GET /sessao/:id/inspecionar ───
+//
+// O raio-X da tela DAQUELA sessao, agora: URL, texto visivel de cada frame,
+// campos com atributos, cada valor em reais com o caminho no DOM, tabelas.
+// So leitura, nada e clicado. E o que permite escrever seletor olhando o DOM
+// real da sala de disputa em vez de adivinhar por foto — o gravador guarda o
+// mesmo raio-X a cada N segundos; esta rota e para quem esta olhando ao vivo.
+app.get('/sessao/:id/inspecionar', authMiddleware, async (req, res) => {
+  const sessao = sessionManager.sessions.get(req.params.id);
+  if (!sessao) return res.status(404).json({ error: 'Sessão não encontrada' });
+  if (!sessao.portal || typeof sessao.portal.inspecionarTela !== 'function') {
+    return res.status(409).json({ error: 'A sessão ainda não tem navegador aberto' });
+  }
+  try {
+    const raio = await sessao.portal.inspecionarTela();
+    res.json({ sessao_id: req.params.id, edital: sessao.edital, status: sessao.status, ...raio });
+  } catch (err) {
+    res.status(500).json({ error: 'Nao consegui inspecionar a tela: ' + err.message });
+  }
+});
+
+// ─── GET /sessao/:id/gravacoes ───
+//
+// O que o gravador ja guardou desta sessao: lista de arquivos com tamanho.
+// Serve para saber, de fora, se ha material para mapear — antes de abrir SSH.
+app.get('/sessao/:id/gravacoes', authMiddleware, (req, res) => {
+  const sessao = sessionManager.sessions.get(req.params.id);
+  const dir = (sessao && sessao.gravadorDir) || path.join('./logs/sessoes', String(req.params.id));
+  let arquivos = [];
+  try {
+    arquivos = fs.readdirSync(dir).sort().map((nome) => {
+      const st = fs.statSync(path.join(dir, nome));
+      return { nome, bytes: st.size };
+    });
+  } catch (e) {
+    return res.status(404).json({ error: 'Nenhuma gravação encontrada para esta sessão', pasta: dir });
+  }
+  res.json({
+    sessao_id: req.params.id,
+    pasta: dir,
+    ligado: !!(sessao && sessao.gravadorInterval),
+    capturas: arquivos.filter((a) => a.nome.endsWith('.json')).length,
+    arquivos,
+  });
+});
+
 // ─── POST /sessao/retomar ───
 app.post('/sessao/retomar', authMiddleware, (req, res) => {
   const { sessao_id } = req.body;
@@ -659,6 +712,9 @@ const { sendCallback } = require('./callback');
 const { getPortal } = require('./portals');
 const { decidirLance, conferirItens } = require('./estrategia');
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 /**
  * Gerenciador de sessões paralelas.
@@ -764,6 +820,10 @@ class SessionManager {
       // um codigo de verificacao, por exemplo — e para a resposta voltar ao
       // lugar certo quando ha varias sessoes abertas ao mesmo tempo.
       session.portal.sessaoId = config.sessao_id;
+
+      // O gravador liga ANTES do login: o filme inteiro interessa, inclusive
+      // o gov.br e a busca — e ninguem precisa estar olhando na hora.
+      this._startGravador(session);
 
       // Login no portal
       console.log(\`🔐 [\${config.sessao_id}] Login no portal: \${config.portal_id}\`);
@@ -884,15 +944,87 @@ class SessionManager {
       if (session.browser && segundos > 0) {
         console.log(\`🔎 Janela mantida aberta por \${segundos}s para observacao no VNC — sessao \${config.sessao_id}\`);
         setTimeout(() => {
+          this._stopGravador(session);
           if (session.browser) session.browser.close().catch(() => {});
           console.log(\`🔒 Janela de observacao encerrada — sessao \${config.sessao_id}\`);
         }, segundos * 1000);
-      } else if (session.browser) {
-        session.browser.close().catch(() => {});
+      } else {
+        this._stopGravador(session);
+        if (session.browser) session.browser.close().catch(() => {});
       }
     }
 
     return session;
+  }
+
+  /**
+   * GRAVADOR DA SESSAO — foto + raio-X do DOM em logs/sessoes/<id>/, a cada
+   * GRAVADOR_INTERVALO_S segundos (padrao 10; 0 desliga).
+   *
+   * Existe por uma razao concreta: a sala de disputa so aparece com pregao em
+   * sessao, num horario que o orgao marca. Quem mapeia os seletores dela
+   * (melhor lance, "voce esta em 1o", campo de lance) precisa do DOM daquele
+   * segundo, e nao pode depender de estar olhando o VNC no exato momento. Com
+   * isto, a operadora disputa de manha e o mapeamento acontece a tarde, com
+   * prova: HHMMSS.png ao lado de HHMMSS.json.
+   *
+   * Um raio-X identico ao anterior nao vira arquivo novo — tela parada nao
+   * gera 360 copias por hora. Cada captura e independente da anterior: se uma
+   * falhar (aba trocando, frame morto), a proxima tenta de novo. Nunca derruba
+   * a sessao — gravar e diagnostico, nao operacao.
+   */
+  _startGravador(session) {
+    const segundos = Number(process.env.GRAVADOR_INTERVALO_S ?? 10);
+    if (!Number.isFinite(segundos) || segundos <= 0) return;
+    const dir = path.join('./logs/sessoes', String(session.sessao_id));
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { return; }
+    session.gravadorDir = dir;
+    session.gravadorCapturas = 0;
+    let ocupado = false;
+    let ultimoHash = null;
+
+    const capturar = async () => {
+      if (ocupado || !session.portal || !session.browser) return;
+      ocupado = true;
+      try {
+        const raio = await session.portal.inspecionarTela();
+        const json = JSON.stringify(raio);
+        // O hash ignora o horario da captura — senao toda captura e "nova" e a
+        // tela parada vira 360 arquivos por hora (aconteceu no primeiro teste).
+        const hash = crypto.createHash('md5').update(JSON.stringify({ ...raio, quando: null })).digest('hex');
+        if (hash !== ultimoHash) {
+          ultimoHash = hash;
+          // Carimbo em hora LOCAL, para casar com o log (que e local).
+          const d = new Date();
+          const carimbo = [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join('')
+            + String(d.getMilliseconds()).padStart(3, '0');
+          fs.writeFileSync(path.join(dir, carimbo + '.json'), json);
+          const aba = session.portal.page;
+          if (aba && !(typeof session.portal.abaMorta === 'function' && session.portal.abaMorta(aba))) {
+            await aba.screenshot({ path: path.join(dir, carimbo + '.png') }).catch(() => {});
+          }
+          session.gravadorCapturas += 1;
+        }
+      } catch (e) {
+        /* gravar e diagnostico; a sessao segue */
+      } finally {
+        ocupado = false;
+      }
+    };
+
+    session.gravadorInterval = setInterval(capturar, segundos * 1000);
+    capturar();
+    console.log(\`🎞️  [\${session.sessao_id}] Gravador ligado: foto + DOM a cada \${segundos}s em \${dir}\`);
+  }
+
+  _stopGravador(session) {
+    if (session.gravadorInterval) {
+      clearInterval(session.gravadorInterval);
+      session.gravadorInterval = null;
+      if (session.gravadorDir) {
+        console.log(\`🎞️  [\${session.sessao_id}] Gravador desligado: \${session.gravadorCapturas || 0} captura(s) em \${session.gravadorDir}\`);
+      }
+    }
   }
 
   _startBiddingLoop(session) {
@@ -1052,6 +1184,7 @@ class SessionManager {
     session.status = 'encerrado';
     if (session.interval) clearInterval(session.interval);
     if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+    this._stopGravador(session);
     if (session.browser) session.browser.close().catch(() => {});
 
     sendCallback(session, 'sessao-encerrada', {
@@ -1076,10 +1209,13 @@ class SessionManager {
       session.status = 'encerrado';
       if (session.interval) clearInterval(session.interval);
       if (session.heartbeatInterval) clearInterval(session.heartbeatInterval);
+      this._stopGravador(session);
       // Pedido sem tela e pedido zumbi: some com ele junto da sessao.
-      try { require('./interacao-humana').encerrar(config.sessao_id); } catch (e) {}
+      // (Era \`config.sessao_id\` — variavel que nao existe neste escopo; o
+      // try engolia o ReferenceError e o pedido humano sobrevivia ao kill.)
+      try { require('./interacao-humana').encerrar(session.sessao_id); } catch (e) {}
       if (session.browser) session.browser.close().catch(() => {});
-      
+
       sendCallback(session, 'sessao-encerrada', {
         resultado: 'parada_emergencial',
         valor_final: session.valor_atual,
