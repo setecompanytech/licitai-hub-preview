@@ -1040,11 +1040,18 @@ class ComprasGovPortal extends BasePortal {
       }
 
       // O card da compra: o elemento mais interno cujo texto tem "N° numero/ano",
-      // subindo ate o container que tambem tem os icones de acao.
-      const card = await this.page.evaluate((rotulo) => {
-        const alvo = new RegExp('N[°º]\\\\s*' + rotulo.replace('/', '\\\\/') + '(?!\\\\d)');
-        const todos = [...document.querySelectorAll('div, li, article, tr')]
-          .filter((el) => alvo.test((el.innerText || '').replace(/\\s+/g, ' ')));
+      // subindo ate o container que tambem tem os icones de acao. Com UASG,
+      // so os cards que tambem trazem esse codigo contam — o numero se repete
+      // entre orgaos (cinco "N° 1/2022" na tela de 10/09/2026).
+      const uasg = alvo && alvo.uasg ? String(alvo.uasg).replace(/\\D/g, '') : '';
+      const card = await this.page.evaluate((rotulo, uasg) => {
+        const padrao = new RegExp('N[°º]\\\\s*' + rotulo.replace('/', '\\\\/') + '(?!\\\\d)');
+        let todos = [...document.querySelectorAll('div, li, article, tr')]
+          .filter((el) => padrao.test((el.innerText || '').replace(/\\s+/g, ' ')));
+        if (uasg) {
+          const comUasg = todos.filter((el) => (el.innerText || '').indexOf(uasg) !== -1);
+          if (comUasg.length) todos = comUasg;
+        }
         if (!todos.length) return null;
         // O menor que ainda contem um botao/icone de acao.
         let el = todos[todos.length - 1];
@@ -1052,12 +1059,15 @@ class ComprasGovPortal extends BasePortal {
         if (!el || el === document.body) el = todos[todos.length - 1];
         el.setAttribute('data-robo-card', '1');
         return (el.innerText || '').replace(/\\s+/g, ' ').slice(0, 200);
-      }, numero.rotulo);
+      }, numero.rotulo, uasg);
 
       if (!card) {
         const e = new Error('A pesquisa respondeu, mas a compra ' + numero.rotulo + ' nao esta entre os resultados.');
         e.semRetry = true;
         throw e;
+      }
+      if (uasg && card.indexOf(uasg) === -1) {
+        console.log('⚠️ A UASG ' + uasg + ' nao aparece no card escolhido — pode ser a compra de outro orgao');
       }
       console.log('🎯 Compra localizada: ' + card);
 

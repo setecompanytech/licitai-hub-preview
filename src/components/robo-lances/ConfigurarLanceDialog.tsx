@@ -24,7 +24,8 @@ import { toast } from 'sonner';
 import { useEditalExtraction, type LicitacaoItem } from '@/hooks/useEditalExtraction';
 import { useLinkedEditalSource } from '@/hooks/useLinkedEditalSource';
 import LimparItensExtraidosButton from '@/components/licitacoes/LimparItensExtraidosButton';
-import { PORTAIS_ROBO } from '@/lib/robo/portais';
+import { PORTAIS_ROBO, idDoPortal } from '@/lib/robo/portais';
+import { cn } from '@/lib/utils';
 
 // A lista mora em `src/lib/robo/portais.ts`, autoridade unica compartilhada com
 // o despacho da sessao. Ela existia aqui e, diferente, no CredenciaisPortalForm.
@@ -98,6 +99,13 @@ export type LanceConfig = {
   itens: DisputeItem[];
   tipoDisputa: 'item' | 'lote';
   licitacaoId?: string;
+  /**
+   * Código da unidade compradora (UASG), 6 dígitos — só faz sentido no
+   * Compras.gov. Existe porque o número da compra NÃO é único lá: em
+   * 10/09/2026 a busca "Em disputa" devolveu cinco "N° 1/2022", de cinco
+   * órgãos. Com a UASG o robô preenche "Unidade compradora" e acha a certa.
+   */
+  uasg?: string;
 };
 
 type LicitacaoRow = {
@@ -286,6 +294,9 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
   // Step 1 fields
   const [edital, setEdital] = useState(editingLance?.edital || '');
   const [portal, setPortal] = useState(editingLance?.portal || '');
+  const [uasg, setUasg] = useState(editingLance?.uasg || '');
+  // O Compras.gov busca por "número+ano" e por UASG; os outros portais, não.
+  const ehComprasGov = idDoPortal(portal) === 'compras-gov';
   const [decrementoMin, setDecrementoMin] = useState(editingLance?.decrementoMin?.toString() || '');
   const [decrementoPercentual, setDecrementoPercentual] = useState(editingLance?.decrementoPercentual?.toString() || '1.5');
   const [intervaloSegundos, setIntervaloSegundos] = useState(editingLance?.intervaloSegundos?.toString() || '30');
@@ -839,6 +850,7 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
       valorAtual: somaReferencia,
       itens, tipoDisputa,
       licitacaoId: licitacaoIdRef,
+      uasg: ehComprasGov && uasg ? uasg : undefined,
     };
     onSave(lance);
     resetForm();
@@ -1213,7 +1225,20 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground">Nº do Edital / Pregão *</label>
-                  <Input value={edital} onChange={(e) => setEdital(e.target.value)} placeholder="PE-001/2026" className="mt-1" />
+                  <Input
+                    value={edital}
+                    onChange={(e) => setEdital(e.target.value)}
+                    placeholder={ehComprasGov ? '90012/2025' : 'PE-001/2026'}
+                    className="mt-1"
+                  />
+                  {ehComprasGov && (
+                    /* O robô só consegue buscar no Compras.gov com número e ano;
+                       "TESTE-COMPRASGOV" é recusado antes de abrir o portal. Dizer
+                       aqui poupa um envio para descobrir. */
+                    <p className={cn('text-[11px] mt-1', /\d{1,6}\s*\/\s*\d{4}/.test(edital) ? 'text-muted-foreground' : 'text-warning')}>
+                      No Compras.gov, use o <b>número da compra</b> no formato número/ano — ex.: 90012/2025.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Portal *</label>
@@ -1227,6 +1252,21 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                   </Select>
                 </div>
               </div>
+              {ehComprasGov && (
+                <div>
+                  <label className="text-xs text-muted-foreground">UASG (código da unidade compradora)</label>
+                  <Input
+                    value={uasg}
+                    onChange={(e) => setUasg(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputMode="numeric"
+                    placeholder="170162"
+                    className="mt-1 w-40"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    O número da compra se repete entre órgãos; a UASG é o que torna a busca exata. Está no edital e na lista do portal (ex.: <b>170162</b> - MINISTERIO DA FAZENDA).
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="text-xs text-muted-foreground">Horário da Sessão</label>
                 <Input type="time" value={horario} onChange={(e) => setHorario(e.target.value)} className="mt-1 w-40" />

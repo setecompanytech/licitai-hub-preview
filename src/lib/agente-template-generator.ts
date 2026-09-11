@@ -846,6 +846,8 @@ class SessionManager {
       // "o robo recebeu os itens" sem numero visivel e afirmacao sem prova.
       session.itens = Array.isArray(config.itens) ? config.itens : [];
       session.tipo_disputa = config.tipo_disputa || null;
+      // UASG (Compras.gov): o numero da compra se repete entre orgaos.
+      session.uasg = config.uasg ? String(config.uasg) : null;
 
       console.log(
         \`📋 [\${config.sessao_id}] Navegando para edital: \${config.edital}\` +
@@ -854,6 +856,7 @@ class SessionManager {
       await session.portal.navegarParaDisputa(config.edital, {
         tipo: session.tipo_disputa,
         itens: session.itens,
+        uasg: session.uasg,
       });
 
       // ── O QUE MANDAMOS BATE COM O QUE O PORTAL PUBLICOU? ──────────────────
@@ -1260,6 +1263,10 @@ class SessionManager {
         ? s.itens.filter((i) => i.valor_minimo === null || i.valor_minimo === undefined).length
         : 0,
       tipo_disputa: s.tipo_disputa || null,
+      uasg: s.uasg || null,
+      // O gravador, visivel de fora: quantas capturas e onde. Sem isto, "esta
+      // gravando" e afirmacao sem prova ate alguem abrir a pasta na VPS.
+      gravador: s.gravadorDir ? { pasta: s.gravadorDir, capturas: s.gravadorCapturas || 0, ligado: !!s.gravadorInterval } : null,
       // A conferencia dos itens contra o portal, para a TELA poder mostrar.
       //
       // Ela ja vira mensagem no processo e notificacao, mas as duas chegam

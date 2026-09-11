@@ -334,6 +334,10 @@ serve(async (req) => {
             portal_id: portalAgente,
             // login e senha em claro — e o que o modulo do portal consome
             credenciais_portal: credenciais,
+            // UASG (Compras.gov): desambigua o numero da compra, que se repete
+            // entre orgaos. Fora do sessaoData de proposito — nao e coluna da
+            // sessao, e assim o envio nao depende de migration.
+            uasg: body.uasg ?? null,
             // O ALVO DENTRO DO PROCESSO.
             //
             // `sessaoData` ja leva `tipo_disputa`; os itens vao aqui porque

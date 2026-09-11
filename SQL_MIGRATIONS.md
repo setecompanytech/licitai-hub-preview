@@ -13132,3 +13132,22 @@ CADEIA COM CURSOR (uf/modalidade/data/página passada de elo em elo, ritmo
 2,5s, respiro de 30s e retentativa da MESMA fatia em 429/timeout, até 8
 tentativas); coletar-portais e coletar-diario-belem estavam ABERTAS
 (verify_jwt=false sem checagem interna) e ganharam autorizadoComoCron.
+
+## 2026-09-11 — UASG na disputa do robô de lances
+
+Arquivo: `supabase/migrations/20260911000001_uasg_na_disputa.sql`
+
+```sql
+ALTER TABLE public.robo_lances_disputas
+  ADD COLUMN IF NOT EXISTS uasg text;
+
+COMMENT ON COLUMN public.robo_lances_disputas.uasg IS
+  'Código da unidade compradora (Compras.gov), 6 dígitos. Desambigua o número da compra, que se repete entre órgãos.';
+```
+
+No Compras.gov o número da compra não é único (cinco "N° 1/2022" de cinco
+órgãos na busca de 10/09/2026); a UASG é o que torna a busca exata. Só a
+disputa ganha a coluna — a sessão não muda, a UASG viaja no corpo para o
+agente. **Aplicar ANTES do Publish** que traz o campo na tela: sem a coluna,
+salvar uma disputa do Compras.gov com UASG preenchida falha com "column uasg
+does not exist".

@@ -170,6 +170,7 @@ export default function RoboLances() {
     }))) as DisputeItem[],
     tipoDisputa: (r.tipo_disputa as 'item' | 'lote') || 'item',
     licitacaoId: (r.licitacao_id as string) || undefined,
+    uasg: (r.uasg as string) || undefined,
   });
 
   // As disputas passam a viver no banco. Abrindo pelo prontuário, o painel
@@ -326,6 +327,7 @@ export default function RoboLances() {
       licitacao_id: lance.licitacaoId ?? processoId ?? null,
       edital: lance.edital,
       portal: lance.portal || null,
+      uasg: lance.uasg || null,
       tipo_disputa: lance.tipoDisputa,
       valor_referencia: lance.valorReferencia,
       valor_inicial: lance.valorInicial,
@@ -569,6 +571,10 @@ export default function RoboLances() {
             empresa_id: empresaAtiva?.id ?? null,
             licitacao_id: selectedLance.licitacaoId ?? null,
             tipo_disputa: selectedLance.tipoDisputa,
+            // Compras.gov: o número da compra se repete entre órgãos; a UASG
+            // desambigua. Vai fora de `sessoes_lance_real` de propósito — a
+            // disputa é o registro, e a sessão não precisa de coluna nova.
+            uasg: selectedLance.uasg ?? null,
             itens: (selectedLance.itens || []).map((i) => ({
               numero: i.numero,
               lote: i.lote,
