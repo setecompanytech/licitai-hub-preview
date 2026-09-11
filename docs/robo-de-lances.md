@@ -1,6 +1,6 @@
 # Robô de Lances — o que existe, o que trava, e o que falta
 
-> **Data desta foto:** 09/09/2026. O que está aqui foi verificado, não deduzido —
+> **Data desta foto:** 11/09/2026. O que está aqui foi verificado, não deduzido —
 > cada afirmação tem como conferir. Onde não deu para verificar, está escrito que
 > não deu.
 
@@ -62,8 +62,9 @@ registrou o cabeçalho:
 ```
 versão                     2.2.0
 slots                      8 (0 em uso)
-rotas                      12 — /health, /sessoes, /portais,
+rotas                      14 — /health, /sessoes, /portais,
                                 /sessao/{iniciar,pausar,encerrar,retomar,responder,focar},
+                                /sessao/:id/{inspecionar,gravacoes},
                                 /kill-switch, /api/proposta/enviar, /certificado
 portais_suportados         8  — comprasgov, bll, licitacoes-e, pncp,
                                 bec-sp, licitanet, portal-compras, bnc
@@ -531,6 +532,63 @@ card abre, e a sala de disputa com um pregão em sessão — `lerMelhorLance` e
 (`alvo.uasg` não existe no payload); (4) o painel do VNC mostra "Nenhuma
 sessão ativa" por cima de uma tela viva quando a sessão terminou em erro e
 o Chrome ficou 60s em observação.
+
+#### 11/09 — o pregão pode acontecer sem ninguém olhando: gravador, raio-X e UASG
+
+O Giovanny quer o teste num pregão real, com uma operadora da Santa Rosa
+disputando do jeito de sempre. Ela não vai esperar a gente; então o robô
+tem que guardar sozinho o que viu, para o mapeamento acontecer depois. Três
+peças, instaladas na VPS e espelhadas no template (md5 iguais: `index.js`
+`55d718ee…`, `session-manager.js` `ba698406…`, `base-portal.js`
+`97f54bb5…`, `comprasgov.js` `d74a6bf5…`):
+
+**`BasePortal.inspecionarTela()` — o raio-X.** URL, título e, para cada
+frame: texto visível, campos (`input/select/textarea/button`) com atributos
+e caminho no DOM, **cada valor em reais com o caminho até ele** (é assim que
+se descobre qual célula é o melhor lance e qual é o nosso), e as tabelas com
+cabeçalho e primeiras linhas. Só leitura; frame que não responde entra
+vazio. Testado na `intro.htm` real: 116 campos, 34 KB, 10 ms.
+
+**Gravador da sessão.** Liga antes do login e grava em
+`logs/sessoes/<id>/HHMMSS.png` + `HHMMSS.json` a cada
+`GRAVADOR_INTERVALO_S` (10; 0 desliga), horário local para casar com o log.
+Raio-X idêntico ao anterior não vira arquivo — no primeiro teste o horário
+da captura entrava no hash e tela parada gerava 360 arquivos/hora; corrigido.
+Desliga no encerrar, no kill-switch e ao fim da janela de observação. O
+`/health` mostra `gravador: {pasta, capturas, ligado}`. Provado com uma
+sessão no PNCP (público, sem tocar na conta do Rafael): ligou, capturou,
+desligou com "5 captura(s)"; a segunda rodada, com a deduplicação certa, deu
+2 capturas em 40s de página parada.
+
+**Rotas `GET /sessao/:id/inspecionar` e `GET /sessao/:id/gravacoes`** — o
+raio-X ao vivo, para quem estiver olhando, e a lista do que já foi gravado,
+para saber de fora se há material antes de abrir SSH.
+
+**UASG.** O número da compra não é único no Compras.gov (cinco "N° 1/2022"
+de cinco órgãos, 10/09). O formulário "Configurar Nova Sessão de Lance"
+ganha o campo **UASG** quando o portal é Compras.gov (e a dica de formato
+número/ano no Nº do edital); grava em `robo_lances_disputas.uasg` (migration
+`20260911000001`, **aplicar antes do Publish**); viaja no corpo do
+`enviar-sessao` fora do `sessaoData` (a sessão não muda de esquema); o
+agente passa `alvo.uasg` e o módulo do Compras.gov preenche "Unidade
+compradora" e **prefere o card que traz a UASG**, avisando quando o
+escolhido não a tem. Edge function publicada.
+
+De passagem: `killAll` chamava `encerrar(config.sessao_id)` com `config`
+fora de escopo — o `try` engolia o `ReferenceError` e o pedido humano
+sobrevivia ao kill-switch. Corrigido para `session.sessao_id`.
+
+**O formato do teste com a operadora** (combinado em 11/09): ela disputa do
+PC dela, com o CPF dela; o robô entra com o do Rafael, na mesma compra, e
+**assiste** — trava de lance fechada, ninguém clica em lance pela tela
+remota. Como é a mesma empresa, se houver proposta cadastrada o robô abre a
+sala como participante, que é a tela a mapear. O que ela precisa passar:
+número/ano da compra, UASG, data e hora da sessão, se há proposta, e se o
+login dela é o próprio CPF (se for o do Rafael, o robô entrando pode
+derrubá-la). Mapeamento à tarde, com a pasta do gravador.
+
+**Aberto:** o número real; o que o ícone do card abre; a sala. O gravador
+existe para responder os dois últimos sem ninguém na frente da tela.
 
 #### A tela remota que "não conectava" — 45 arquivos em cascata
 
@@ -1127,7 +1185,123 @@ troca de não perder dinheiro do cliente amanhã.
 
 ---
 
-## 8. Como conferir cada afirmação daqui
+## 8. Benchmark do robô de lances Praefectus com outros robôs do mercado atual
+
+> Levantado em 10 e 11/09/2026, só com o que é público: sites, artigos,
+> documentação de API dos portais e um projeto aberto. Nada aqui é
+> engenharia reversa de produto de terceiro.
+
+### 8.1 O que cada um diz que faz
+
+| | Effecti | Licitei | WaveCode | Praefectus (hoje) |
+| --- | --- | --- | --- | --- |
+| Portais com robô | "Compras.gov.br e outras plataformas oficiais" — não lista | ComprasNet, Licitanet, BLL, BNC, Compras Públicas | os mesmos + Licitações-e | login em 2 (Compras Públicas, Compras.gov); sala em **zero** |
+| Onde roda | não diz | "100% em nuvem, funciona direto no navegador, não depende da sua máquina" | idem | Chrome na VPS, visível pelo VNC |
+| Várias disputas | "múltiplas disputas simultaneamente", painel único | "10, 20 pregões ao mesmo tempo" | sim | 8 slots, painel com seletor e janela em foco (Fase A) |
+| O que o operador configura | valor mínimo **por item**, "estratégia por item" | **primeiro lance + lance mínimo**, decremento fixo ou %, perfis agressivo/moderado/conservador, mínimo alterável durante a disputa | valor mínimo "inviolável", intervalo | valor inicial, piso por item, decremento mín./%, intervalo, teto de lances |
+| Chat do pregoeiro | "nenhuma mensagem passa despercebida" | — | — | planejado (Plano 2, fase B) |
+| Envio de proposta | sim | — | — | 501 em todos os módulos |
+| Lance | envia | envia | envia | **travado** (`PORTAIS_COM_LANCE_LIBERADO = []`) |
+| Segurança descrita | "respeita limites e intervalos mínimos" | "pode ser desativado a qualquer momento" | "valor mínimo inviolável" | trava por portal, `souLider` obrigatório, piso por item, kill-switch, trilha, `SEGUNDOS_JANELA_APOS_ERRO` |
+| Postura | "o acompanhamento estratégico é recomendado" | "intervenha quando quiser" | — | níveis 1/2/3, 2FA e aceite para o 3 |
+
+Todos os três avisam que o robô executa a estratégia de alguém — ninguém
+vende autonomia.
+
+### 8.2 A tecnologia é a mesma; a distância é de estrada
+
+**Nenhum portal publica API de envio de lance para fornecedor.** Verificado
+em 11/09:
+
+- **Compras.gov** — `dadosabertos.compras.gov.br` ("API Compras.gov.br
+  v1.0.0"): 77 endpoints, **73 `GET …consultar…`**; os 4 restantes são criar
+  usuário, login, resetar e atualizar senha. Zero com `lance` ou `proposta`.
+- **PNCP** — Manual de Integração v2.6 é para órgãos publicarem. "Lance"
+  aparece 10 vezes, todas no campo `linkSistemaOrigem: "url do sistema de
+  origem para envio de proposta / lance"` — o PNCP remete o lance ao portal.
+- **Portal de Compras Públicas** — a única API pública é "Consulta pública de
+  processos" (chave por formulário, 7 dias úteis) + integração com ERP via
+  chamado. O regulamento proíbe robô sem permissão expressa (5.3.1.1, 6.7) e
+  remete a uma área "Desenvolvedores" (6.7.2.2) que **não é pública** — as
+  URLs óbvias dão 404. Pode haver um programa de automação autorizada ali;
+  só se descobre pedindo à eCustomize, que é também o caminho de conformidade.
+- **BLL, BNC, Licitanet, Licitações-e** — nada para fornecedor; a "integração
+  com 150 sistemas" da BNC é do lado do órgão.
+
+Effecti, Licitei e WaveCode não afirmam usar API; a Licitei diz que roda
+navegador em nuvem. Logo **todo o mercado faz o que fazemos**: navegador em
+servidor lendo a tela do portal. As lições de hoje (certificado, hCaptcha,
+aba que morre, frameset) eles pagaram há anos.
+
+Quatro coisas reais que se confundem com "API de lance": o **lance
+parametrizado do próprio Compras.gov** (IN 67/2021, IN 73/2022 art. 19 — um
+recurso dentro do portal, não uma API; a conferir na sala); as APIs de
+**consulta**; a **integração de órgãos**; e "integração direta" como frase
+de venda.
+
+O que eles têm e nós não: **a sala de disputa mapeada em 5–6 portais**,
+corrigida a cada mudança de tela, por anos, com centenas de clientes
+reportando quebra. É a distância inteira, e ela se fecha uma sala por vez,
+olhando a tela — o gravador existe para isso.
+
+O que nós temos e eles não descrevem: a trava por portal com `souLider`
+obrigatório antes de qualquer lance. Eles vendem "manda lance"; nós ainda
+perguntamos "e se o melhor lance for o meu?". Isso é vantagem de desenho,
+não de cobertura.
+
+### 8.3 O projeto aberto: LanceBot (não encurta o caminho)
+
+`github.com/RodrigoRMarinho/LanceBot` (MIT, Python + Playwright, 15
+estrelas, abril/2025). Lido inteiro, 1.040 linhas:
+
+- **não tem sala de disputa** — nem campo de valor, nem botão de confirmar,
+  nem contêiner de melhor lance, nem envio de lance;
+- login **antigo** do ComprasNet (`loginPortal.asp`, `txtLogin`/`txtSenha`),
+  extinto desde o gov.br; busca pela consulta ASP velha;
+- `bidding.py` é matemática de estratégia com `current_price` e
+  `my_last_bid` como **parâmetros que nada preenche**;
+- os 4 "módulos de portal" são stubs de 20 linhas devolvendo "Licitação de
+  teste";
+- gerado por IA em 19/04/2025 (`deepseek_*.txt` no repositório).
+
+Aproveitável, uma ideia: **liderança por valor** — `my_last_bid <=
+current_price` ("se o melhor lance vale o mesmo que o meu último, sou eu").
+Como primária é fraca; como **checagem cruzada** é boa: quando o portal
+disser `souLider = false` mas `melhorLance === seuUltimoLance`, tela e valor
+discordam e o robô deve **parar e avisar**. Uma linha em `decidirLance`,
+depois que `souLider` existir de verdade.
+
+### 8.4 O que vale copiar, e o que não
+
+| Vale | Por quê |
+| --- | --- |
+| **"Primeiro lance" + "lance mínimo"** como os dois números do operador (Licitei) | é mais simples que o nosso formulário, e é o que o Rafael vai querer no dia |
+| **Mínimo alterável durante a disputa** (Licitei) | a margem muda quando o concorrente aparece; travar o piso no cadastro obriga a parar o robô para ajustar |
+| **Chat do pregoeiro com alerta** (Effecti) | já está no Plano 2, fase B — o benchmark confirma que é tabela de entrada, não diferencial |
+| **Checagem cruzada de liderança** (LanceBot) | uma guarda a mais na trava que já existe |
+
+| Não vale | Por quê |
+| --- | --- |
+| "Estratégia por item" com perfis agressivo/moderado/conservador | rótulo sem definição pública; o nosso decremento mín./% por item já é o mesmo conteúdo, com número em vez de adjetivo |
+| Liberar lance "porque o login funcionou" | é o que o mercado vende; é o que a trava impede — e o motivo é o defeito mais caro da auditoria (cobrir o próprio lance) |
+| Copiar seletores de projeto aberto | não existem; o único achado era stub |
+
+### 8.5 O que continua faltando, medido contra eles
+
+1. **A sala** — nenhuma mapeada. Gravador pronto; falta o pregão.
+2. **Proposta no portal** — eles enviam; nós, 501. Plano 2, fase C.
+3. **Chat do pregoeiro** — Plano 2, fase B.
+4. **Mínimo ao vivo** — não existe; hoje o piso é do cadastro.
+5. **Portais** — 2 com login contra 5–6 com sala.
+
+Fontes: effecti.com.br (robo-de-lance, robo-para-licitacao-como-funciona,
+legalidade-do-robo-de-lances), licitei.com.br (robo-de-lances, portais,
+blog/robo-de-lances-comprasnet), wavecode.com.br/solucao/robo-de-lances,
+dadosabertos.compras.gov.br/v3/api-docs, pncp.gov.br/manual,
+portaldecompraspublicas.com.br/regulamento, bibliotecapcp.zendesk.com,
+github.com/RodrigoRMarinho/LanceBot.
+
+## 9. Como conferir cada afirmação daqui
 
 ```sh
 # O que o agente no ar realmente tem
@@ -1164,7 +1338,7 @@ pm2 logs agente-lances --lines 100
 
 ---
 
-## 9. Ligações
+## 10. Ligações
 
 - `docs/agente-cloud-pendencias.md` — o diário: cada investigação com comandos e
   datas. Seções 11 a 17 cobrem tudo que está resumido aqui.
