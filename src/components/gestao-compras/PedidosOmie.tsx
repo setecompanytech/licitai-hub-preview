@@ -81,23 +81,53 @@ const LOCAIS_ESTOQUE = ['PADRAO - Local de Estoque Padrão'] as const;
 /** Lista padrão + escape para valor livre. Valor herdado fora da lista abre
  *  em modo digitação (nunca é apagado); "voltar à lista" limpa e reabre o
  *  seletor. */
-function SelectPadrao({ valor, onChange, opcoes, placeholder }: {
+function SelectPadrao({ valor, onChange, opcoes, placeholder, cfop }: {
   valor: string;
   onChange: (v: string) => void;
   opcoes: readonly string[];
   placeholder?: string;
+  /** Modo CFOP: no "Outro (digitar)", cada dígito afunila a tabela oficial
+      completa ("5.1" → todos os 5.1xx; "5.10" → mais curto ainda). */
+  cfop?: boolean;
 }) {
   const foraDaLista = !!valor && !opcoes.includes(valor);
   const [livre, setLivre] = useState(foraDaLista);
+  const [focado, setFocado] = useState(false);
   useEffect(() => { if (foraDaLista) setLivre(true); }, [foraDaLista]);
   if (livre) {
+    const sugestoes = cfop && focado ? buscarCfop(valor) : [];
     return (
-      <div className="flex gap-1 mt-1">
-        <Input value={valor} onChange={e => onChange(e.target.value)} className="text-sm" placeholder={placeholder} />
-        <Button type="button" size="sm" variant="ghost" className="px-2 text-xs shrink-0" title="Voltar à lista padrão"
-          onClick={() => { onChange(''); setLivre(false); }}>
-          lista
-        </Button>
+      <div className="relative">
+        <div className="flex gap-1 mt-1">
+          <Input value={valor} onChange={e => onChange(e.target.value)} className="text-sm"
+            placeholder={cfop ? 'Digite o número (ex.: 5.1) ou parte da descrição…' : placeholder}
+            onFocus={() => setFocado(true)}
+            onBlur={() => setFocado(false)} />
+          <Button type="button" size="sm" variant="ghost" className="px-2 text-xs shrink-0" title="Voltar à lista padrão"
+            onClick={() => { onChange(''); setLivre(false); }}>
+            lista
+          </Button>
+        </div>
+        {sugestoes.length > 0 && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+            {sugestoes.map(sug => (
+              <button
+                type="button"
+                key={sug.codigo}
+                className="flex w-full items-baseline gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted"
+                // onMouseDown + preventDefault: o clique vence o blur do input.
+                onMouseDown={e => {
+                  e.preventDefault();
+                  onChange(`${formatarCfop(sug.codigo)} — ${sug.descricao}`);
+                  setFocado(false);
+                }}
+              >
+                <span className="font-mono font-semibold shrink-0 tabular-nums">{formatarCfop(sug.codigo)}</span>
+                <span className="text-muted-foreground">{sug.descricao}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -122,6 +152,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
 import CondicoesPagamento from './CondicoesPagamento';
+import { buscarCfop, formatarCfop } from '@/data/cfop';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
@@ -1991,6 +2022,7 @@ export default function PedidosOmie() {
                   onChange={v => setForm(f => ({ ...f, cenario_fiscal: v }))}
                   opcoes={isVenda ? CENARIOS_FISCAIS_VENDA : CENARIOS_FISCAIS_COMPRA}
                   placeholder="Escolher o cenário (CFOP)…"
+                  cfop
                 />
               </div>
             </div>
