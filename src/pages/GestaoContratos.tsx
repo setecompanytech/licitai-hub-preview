@@ -86,6 +86,27 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   suspenso: { label: 'Suspenso', color: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
 };
 
+/**
+ * Ata "encerrada" NÃO significa operação encerrada: contrato derivado firmado
+ * na vigência da ata permanece válido depois dela (Lei 14.133/2021, art. 84 —
+ * a vigência da ata limita NOVAS contratações; o contrato tem vigência
+ * própria, arts. 105-107). O selo "Encerrado" seco induzia ao erro (12/09):
+ * a ata da SEDUC expirou com um derivado ainda vigente. Por isso a ata ganha
+ * o rótulo específico "Vigência encerrada" + o selo de execução ativa.
+ */
+const EXPLICA_ATA_ENCERRADA =
+  'A VIGÊNCIA da ata terminou: ela não admite novas contratações nem adesões. ' +
+  'Os contratos derivados firmados durante a vigência continuam valendo até o fim ' +
+  'da vigência própria de cada um (Lei 14.133/2021, art. 84 c/c arts. 105-107).';
+
+function derivadosVigentesDa(ataId: string, todos: Array<{ ata_srp_id?: string | null; tipo_documento?: string | null; status: string; data_fim: string | null }>): number {
+  return todos.filter(x =>
+    x.ata_srp_id === ataId &&
+    x.tipo_documento === 'contrato' &&
+    ['vigente', 'vencendo'].includes(statusEfetivo(x.status, x.data_fim)),
+  ).length;
+}
+
 type Contrato = {
   id: string; numero_contrato: string; objeto: string; orgao_contratante: string;
   valor_global: number; valor_consumido: number; saldo_remanescente: number;
@@ -551,7 +572,22 @@ export default function GestaoContratos() {
               <div className="flex items-center gap-2 flex-wrap">
                 {isAta && <Badge className="bg-muted text-muted-foreground border-border text-xs"><ScrollText className="w-3 h-3 mr-1" />ATA SRP</Badge>}
                 <h1 className="text-xl font-bold">{c.numero_contrato}</h1>
-                <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
+                {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
+                  <>
+                    <Badge className={`${cfg.color} text-xs cursor-help`} title={EXPLICA_ATA_ENCERRADA}>Vigência encerrada</Badge>
+                    {(() => {
+                      const vivos = derivadosVigentesDa(c.id, contratos);
+                      return vivos > 0 ? (
+                        <Badge className="bg-success/10 text-success text-xs cursor-help" title={EXPLICA_ATA_ENCERRADA}>
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
+                        </Badge>
+                      ) : null;
+                    })()}
+                  </>
+                ) : (
+                  <Badge className={`${cfg.color} text-xs`}>{cfg.label}</Badge>
+                )}
                 {isAta && c.permite_carona && <Badge variant="outline" className="text-xs">Permite carona</Badge>}
               </div>
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2" title={c.objeto}>{c.objeto}</p>
@@ -1255,7 +1291,23 @@ export default function GestaoContratos() {
                           ? rotuloDaAta(c.numero_ata || c.numero_contrato)
                           : rotuloDoContrato(c.numero_contrato)}
                       </span>
-                      <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                      {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' ? (
+                        <Badge className={`${cfg.color} text-xs cursor-help`} title={EXPLICA_ATA_ENCERRADA}>
+                          <Icon className="w-3 h-3 mr-1" />Vigência encerrada
+                        </Badge>
+                      ) : (
+                        <Badge className={`${cfg.color} text-xs`}><Icon className="w-3 h-3 mr-1" />{cfg.label}</Badge>
+                      )}
+                      {/* Ata expirada com derivado vigente: a OPERAÇÃO segue. */}
+                      {isAta && statusEfetivo(c.status, c.data_fim) === 'encerrado' && (() => {
+                        const vivos = derivadosVigentesDa(c.id, doEscopo);
+                        return vivos > 0 ? (
+                          <Badge className="bg-success/10 text-success text-xs cursor-help" title={EXPLICA_ATA_ENCERRADA}>
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Execução ativa — {vivos} contrato{vivos > 1 ? 's' : ''} vigente{vivos > 1 ? 's' : ''}
+                          </Badge>
+                        ) : null;
+                      })()}
                       {/* Os derivados moram dentro da pasta da ata; o cartão diz
                           quantos, senão parecem ter sumido da lista. */}
                       {isAta && (() => {
