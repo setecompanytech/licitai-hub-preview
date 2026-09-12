@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Dados do Relatório Contábil — Simulações LicitaIA
+// Dados do Relatório Contábil — Simulações Praefectus
 // ─────────────────────────────────────────────
 
 export interface CenarioClientes {
@@ -151,7 +151,7 @@ export const mercadoPara = {
   concorrentes: [
     { nome: 'Consultorias manuais', preco: '500–2.000', penetracao: 60 },
     { nome: 'Sistemas básicos', preco: '99–299', penetracao: 25 },
-    { nome: 'LicitaIA', preco: '147–997', penetracao: 0.5 },
+    { nome: 'Praefectus', preco: '147–997', penetracao: 0.5 },
   ],
 };
 

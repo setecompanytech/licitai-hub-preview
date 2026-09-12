@@ -16,7 +16,7 @@ export default {
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
-        brand: ["Cinzel", "Georgia", "serif"],
+        brand: ["Manrope", "Inter", "ui-sans-serif", "sans-serif"],
         // Títulos. Manrope é a fonte da direção LICITA360 aprovada pelo dono
         // em 12/09 (substitui a Poppins da referência anterior). Inter segue
         // no corpo. A regra que aplica está em index.css (h1–h6), então

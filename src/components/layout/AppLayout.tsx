@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import BrandLogo from '@/components/shared/BrandLogo';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
@@ -134,18 +134,20 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   return (
     <div className="min-h-screen bg-background">
       {/* Top header bar */}
-      {/* REBRAND — a barra do topo é navy nos DOIS temas, como no protótipo:
-          ela é a moldura da marca, e é sobre ela que o dourado da logo lê.
-          Antes seguia a superfície do tema (branca no claro), e aí o dourado
-          ficaria invisível. */}
+      {/* LICITA360 — barra do topo CLARA sobre a sidebar escura; a marca vive
+          aqui (a sidebar começa abaixo dela), na versão principal navy+verde. */}
       <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-card border-b border-border flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
         {/* O hambúrguer que ficava aqui saiu em 10/09/2026: quem alterna a
             barra lateral é o botão no topo da própria barra (ver AppSidebar).
             Abaixo de 768px a gaveta do AppTopNav continua com o seu botão. */}
 
         {/* Logo */}
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
-          <PraefectusLogo size="md" />
+        <button
+          onClick={() => navigate('/dashboard')}
+          aria-label="Praefectus — página inicial"
+          className="flex items-center flex-shrink-0"
+        >
+          <BrandLogo className="w-[150px] md:w-[200px]" />
         </button>
 
         {/* REBRAND — a partir de `lg` quem navega é a barra lateral, como no

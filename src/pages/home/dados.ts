@@ -7,7 +7,7 @@
  */
 import {
   Radar, Bell, Crosshair, Kanban, Bot, FileSearch, Calculator, TrendingUp,
-  Users, FileText, ShoppingCart, Target, Send, Trophy, Gauge, Landmark,
+  Users, FileText, ShoppingCart, Target, Send, Trophy, Gauge, Search, Brain,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -59,22 +59,22 @@ export const BULLETS_HERO: { texto: string }[] = [
 
 export const TRIO_VALOR: { icone: LucideIcon; titulo: string; texto: string }[] = [
   {
-    icone: Bot,
-    titulo: 'IA no edital',
+    icone: Search,
+    titulo: 'Busca de editais',
     texto:
-      'A AURÉLIA analisa cláusulas, exigências de habilitação e riscos do edital em minutos — antes de a sua equipe gastar horas nele.',
+      'Encontre oportunidades em todo o Brasil com filtros inteligentes e alertas personalizados.',
   },
   {
-    icone: Landmark,
-    titulo: 'Gestão de ponta a ponta',
+    icone: Brain,
+    titulo: 'Análise com IA',
     texto:
-      'Do aviso de licitação ao pedido faturado: monitoramento, disputa, contrato, compras e financeiro no mesmo lugar.',
+      'Conte com inteligência artificial para analisar editais, identificar requisitos e destacar pontos de atenção.',
   },
   {
-    icone: Gauge,
-    titulo: 'Metas & projeção',
+    icone: FileText,
+    titulo: 'Gestão de propostas',
     texto:
-      'Meta por colaborador com projeção de fechamento, ritmo necessário por dia útil e alerta quando o mês entra em risco.',
+      'Organize sua equipe, acompanhe prazos e mantenha todo o processo em um só lugar.',
   },
 ];
 

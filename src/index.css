@@ -1,12 +1,12 @@
-/* Inter no corpo, Manrope nos títulos, Cinzel na marca.
+/* Inter no corpo, Manrope nos títulos e na marca (identidade 12/09).
    O protótipo carrega Inter em 400/500/600/700/800; ele usa só cinco pesos, e
-   700 e 600 concentram quase tudo (221 e 176 regras). Cinzel fica na logo, no
-   splash, na AURÉLIA e no título de peça jurídica — os quatro lugares onde ele
-   aparece lá. JetBrains Mono continua para código e identificadores.
+   700 e 600 concentram quase tudo (221 e 176 regras). Cinzel saiu em 12/09
+   junto com a marca antiga — a logo nova (BrandLogo) é Manrope 800.
+   JetBrains Mono continua para código e identificadores.
    Manrope entrou em 12/09/2026 (600/700/800), para h1–h6 (regra na @layer
    base): é a fonte de título da direção LICITA360 aprovada pelo dono. Ver o
    comentário de fontFamily.heading no tailwind.config.ts. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=Cinzel:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -118,6 +118,12 @@
     --navy-hover: 209 48% 26%;
     --navy-tint: 210 25% 93%;
     --primary-tint: 160 55% 94%;
+
+    /* Cores da MARCA (prancha aprovada 12/09) — fixas nos dois temas, por
+       isso não são redefinidas no bloco dark: a logo não muda de cor com o
+       tema, muda de VERSÃO (principal × fundo escuro) no BrandLogo. */
+    --brand-navy: 209 61% 16%;   /* #102A43 — nome e arco superior */
+    --brand-green: 162 88% 26%;  /* #087F5B — arco inferior e quadrado */
 
     /* Dourado da marca — é a cor da logo sobre o navy, e só dela. No painel
        inteiro do protótipo não há outro pixel dourado: é assinatura, não cor
@@ -356,7 +362,7 @@
   /* Cabeçalhos: quebra suave preservando legibilidade.
      A família vem daqui, e não de classe em .tsx, para que todo título do
      app — inclusive os que o shadcn renderiza (DialogTitle, CardTitle) —
-     mude num lugar só. `font-brand` (Cinzel) é utility e ganha desta regra
+     mude num lugar só. `font-brand` (Manrope, a fonte da marca) é utility e ganha desta regra
      onde for aplicada, então a marca não é afetada. */
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;

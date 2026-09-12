@@ -329,7 +329,7 @@ export default function Auth() {
         {/* Header */}
         <div className="bg-card border-b border-border">
           <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-center gap-3">
-            <PraefectusLogo size="lg" />
+            <PraefectusLogo size="xl" />
           </div>
         </div>
 

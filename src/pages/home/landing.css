@@ -19,6 +19,7 @@
   --lp-accent: hsl(162 88% 26%);          /* #087F5B — verde de ação LICITA360 */
   --lp-accent-hover: hsl(162 89% 21%);    /* #066649 */
   --lp-accent-soft: hsl(162 88% 26% / 0.09);
+  --lp-accent-bright: hsl(158 58% 52%);   /* verde claro — destaque sobre fundos navy */
   --lp-on-accent: hsl(0 0% 100%);         /* branco sobre verde: AA */
   --lp-success: hsl(162 88% 26%);
   --lp-error: hsl(4 76% 40%);             /* #B42318 */
@@ -111,17 +112,15 @@
   text-wrap: balance;
   margin: 0;
 }
-.lp-h1 { font-size: clamp(2.5rem, 5.5vw, 4.5rem); line-height: 1.08; letter-spacing: -0.03em; font-weight: 800; }
+/* Título principal na régua da identidade: 36/44 no celular, 56/64 no desktop. */
+.lp-h1 { font-size: 2.25rem; line-height: 2.75rem; letter-spacing: -0.02em; font-weight: 800; }
+@media (min-width: 768px) { .lp-h1 { font-size: 3.5rem; line-height: 4rem; } }
 .lp-h2 { font-size: clamp(1.9rem, 3.2vw, 2.9rem); line-height: 1.18; letter-spacing: -0.025em; font-weight: 700; }
 .lp-h3 { font-size: var(--lp-fs-xl); line-height: var(--lp-lh-xl); letter-spacing: -0.015em; font-weight: 600; }
 .lp-h4 { font-size: var(--lp-fs-lg); line-height: 1.35; letter-spacing: -0.01em; font-weight: 600; }
 
-.lp-destaque {
-  background: linear-gradient(135deg, var(--lp-accent) 0%, hsl(199 89% 48%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+/* Destaque do título é o verde de ação puro — sem gradiente, como na prancha. */
+.lp-destaque { color: var(--lp-accent); }
 .lp-lead { font-size: var(--lp-fs-md); line-height: var(--lp-lh-md); color: var(--lp-text-2); margin: 0; }
 /* Corpo de leitura da landing: 18px (auditoria de tipografia).
    A variante compacta (16px) é o piso — usada em contextos densos como o footer. */
@@ -167,7 +166,8 @@
   font-size: var(--lp-fs-sm);
   line-height: var(--lp-lh-sm);
   font-weight: 600;
-  border-radius: var(--lp-r-1);
+  border-radius: 10px;        /* raio de botão da identidade */
+  min-height: 44px;           /* alvo de toque mínimo da identidade */
   padding: var(--lp-sp-3) var(--lp-sp-5);
   border: 1px solid transparent;
   cursor: pointer;
@@ -191,7 +191,7 @@
   font-weight: 600;
 }
 .lp-btn--ghost:hover { border-color: var(--lp-accent); color: var(--lp-accent); background: var(--lp-accent-soft); }
-.lp-btn--lg { padding: 14px 28px; font-size: var(--lp-fs-base); border-radius: 12px; }
+.lp-btn--lg { padding: 14px 28px; font-size: var(--lp-fs-base); }
 
 /* ── Header ── */
 .lp-header {
@@ -210,14 +210,21 @@
   gap: var(--lp-sp-5);
   min-height: 64px;
 }
-.lp-header__brand {
+.lp-header__brand { display: flex; align-items: center; text-decoration: none; }
+/* Marca no cabeçalho: 150px no celular, 200px no desktop (guia da identidade). */
+.lp-header__logo { display: block; width: 150px; height: auto; }
+@media (min-width: 768px) { .lp-header__logo { width: 200px; } }
+
+/* Eyebrow do hero — a linha "gestão pública, mais oportunidades" da prancha. */
+.lp-eyebrow {
+  margin: 0;
   font-family: var(--lp-font-display);
+  font-size: var(--lp-fs-xs);
+  line-height: var(--lp-lh-xs);
   font-weight: 700;
-  font-size: var(--lp-fs-md);
   letter-spacing: 0.14em;
-  color: var(--lp-accent);
-  text-decoration: none;
-  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--lp-text-3);
 }
 .lp-header__nav { display: none; align-items: center; gap: var(--lp-sp-2); }
 @media (min-width: 1024px) { .lp-header__nav { display: flex; } }
@@ -314,8 +321,8 @@
   padding-block: 5.5rem 7rem;
   background:
     radial-gradient(ellipse 140% 60% at 80% -10%, hsl(160 55% 92%) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 50% at -5% 80%, hsl(199 89% 92%) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 55% 105%, hsl(220 50% 95%) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at -5% 80%, hsl(158 55% 93%) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 55% 105%, hsl(212 33% 95%) 0%, transparent 50%),
     var(--lp-bg);
 }
 @media (min-width: 1024px) { .lp-hero { padding-block: 7.5rem 9rem; } }
@@ -411,8 +418,8 @@
 .lp-card {
   background: var(--lp-surface-1);
   border: 1px solid var(--lp-border-1);
-  border-radius: 16px;
-  padding: var(--lp-sp-6);
+  border-radius: 16px;        /* raio de cartão da identidade */
+  padding: var(--lp-sp-5);    /* 24px, o padding de cartão da identidade */
   box-shadow: var(--lp-shadow-1);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   position: relative;
@@ -477,8 +484,8 @@
 .lp-ia {
   position: relative;
   overflow: hidden;
-  background: hsl(222 47% 9%);
-  border: 1px solid hsl(222 47% 16%);
+  background: hsl(209 61% 12%);
+  border: 1px solid hsl(209 50% 20%);
   border-radius: var(--lp-r-3);
   padding: var(--lp-sp-7) var(--lp-sp-5);
   color: rgba(255,255,255,0.88);
@@ -615,10 +622,10 @@
 /* ── CTA final ── */
 .lp-cta-final { text-align: center; display: grid; gap: var(--lp-sp-5); justify-items: center; }
 
-/* ── Footer ── dark navy para fechamento profissional ── */
+/* ── Footer ── navy #102A43 da identidade, com a versão inversa da marca ── */
 .lp-footer {
   border-top: none;
-  background: hsl(222 47% 9%);
+  background: hsl(209 61% 16%);
   padding-block: var(--lp-sp-7) var(--lp-sp-5);
   color: rgba(255,255,255,0.72);
 }
@@ -669,65 +676,10 @@
 .lp-orb--hero-b {
   width: 500px; height: 380px;
   bottom: -80px; left: 5%;
-  background: hsl(199 89% 72% / 0.13);
+  background: hsl(158 58% 52% / 0.13);
 }
 
-/* ── Trust badge com pulsação ── */
-.lp-trust-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: white;
-  border: 1px solid var(--lp-border-1);
-  border-radius: 999px;
-  padding: 6px 18px 6px 6px;
-  box-shadow: 0 2px 12px hsl(220 30% 15% / 0.09);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--lp-text-2);
-}
-.lp-trust-badge__ic {
-  display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: hsl(142 72% 93%);
-  flex-shrink: 0;
-}
-.lp-trust-badge__dot {
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: hsl(142 72% 38%);
-  animation: lp-pulse 2.5s ease-in-out infinite;
-}
-@keyframes lp-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(142 72% 38% / 0.5); }
-  55% { box-shadow: 0 0 0 7px hsl(142 72% 38% / 0); }
-}
-
-/* ── Social proof avatars ── */
-.lp-prova {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-  color: var(--lp-text-3);
-}
-.lp-prova strong { color: var(--lp-text-2); font-weight: 600; }
-.lp-prova__avs { display: flex; }
-.lp-prova__av {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  border: 2.5px solid white;
-  margin-left: -10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10.5px; font-weight: 700; color: white;
-  flex-shrink: 0;
-}
-.lp-prova__av:first-child { margin-left: 0; }
-.lp-prova__av--a { background: hsl(162 88% 26%); }
-.lp-prova__av--b { background: hsl(162 70% 32%); }
-.lp-prova__av--c { background: hsl(199 89% 40%); }
-.lp-prova__av--d { background: hsl(174 62% 40%); }
+/* Trust badge e social proof saíram do hero em 12/09 (prancha nova). */
 
 /* ── Browser glow wrap ── */
 .lp-browser-wrap { position: relative; }
@@ -758,13 +710,13 @@
   background: hsl(162 88% 26% / 0.15);
   border-color: hsl(162 88% 26% / 0.35);
 }
-.lp-ia .lp-btn--solid { background: white; color: hsl(222 47% 9%); font-weight: 700; }
+.lp-ia .lp-btn--solid { background: white; color: hsl(209 61% 16%); font-weight: 700; }
 .lp-ia .lp-btn--solid:hover { background: rgba(255,255,255,0.92); filter: none; }
 
 /* Chat mockup AURÉLIA */
 .lp-chat {
-  background: hsl(222 47% 13%);
-  border: 1px solid hsl(222 47% 22%);
+  background: hsl(209 55% 18%);
+  border: 1px solid hsl(209 45% 26%);
   border-radius: 18px;
   padding: 20px;
   display: grid;
@@ -773,13 +725,13 @@
 .lp-chat__header {
   display: flex; align-items: center; gap: 10px;
   padding-bottom: 16px;
-  border-bottom: 1px solid hsl(222 47% 22%);
+  border-bottom: 1px solid hsl(209 45% 26%);
   margin-bottom: 2px;
 }
 .lp-chat__av {
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, hsl(162 88% 26%), hsl(199 89% 50%));
+  background: linear-gradient(135deg, hsl(162 88% 26%), hsl(158 58% 52%));
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; flex-shrink: 0;
 }
@@ -811,8 +763,8 @@
   max-width: 85%;
 }
 .lp-chat__msg--ai {
-  background: hsl(222 47% 19%);
-  border: 1px solid hsl(222 47% 26%);
+  background: hsl(209 50% 22%);
+  border: 1px solid hsl(209 42% 30%);
   color: rgba(255,255,255,0.88);
   border-radius: 4px 12px 12px 12px;
   max-width: 95%;
@@ -821,8 +773,8 @@
 .lp-chat__dots {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 10px 14px;
-  background: hsl(222 47% 19%);
-  border: 1px solid hsl(222 47% 26%);
+  background: hsl(209 50% 22%);
+  border: 1px solid hsl(209 42% 30%);
   border-radius: 4px 12px 12px 12px;
 }
 .lp-chat__dots span {
@@ -865,7 +817,7 @@
 .lp-cta-dark {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(140deg, hsl(222 47% 8%) 0%, hsl(219 55% 14%) 100%);
+  background: linear-gradient(140deg, hsl(209 61% 12%) 0%, hsl(209 61% 18%) 100%);
   padding-block: var(--lp-sp-9);
 }
 .lp-cta-dark__orb {
@@ -886,35 +838,15 @@
 }
 .lp-cta-dark .lp-btn--solid {
   background: white;
-  color: hsl(222 47% 9%);
+  color: hsl(209 61% 16%);
   font-weight: 700;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 .lp-cta-dark .lp-btn--solid:hover { background: rgba(255,255,255,0.92); }
 
-/* ── Header: brand melhorado ── */
-.lp-header__brand {
-  position: relative;
-  font-family: 'Barlow Condensed', var(--lp-font-display);
-  font-weight: 800;
-  font-size: 22px;
-  letter-spacing: 0.12em;
-  color: hsl(222 47% 10%);
-  text-decoration: none;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.lp-header__brand::before {
-  content: '';
-  display: block;
-  width: 8px; height: 8px;
-  background: linear-gradient(140deg, var(--lp-accent), hsl(199 89% 50%));
-  border-radius: 2px;
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
+/* O bloco "brand melhorado" (Barlow Condensed + losango) saiu em 12/09: a
+   marca do cabeçalho agora é o BrandLogo em SVG, estilizado no topo deste
+   arquivo (.lp-header__brand / .lp-header__logo). */
 
 /* ── Banda de portais / social proof ── */
 .lp-banda {
@@ -1100,9 +1032,6 @@
 .lp-footer .lp-header__brand {
   color: white;
   font-size: 20px;
-}
-.lp-footer .lp-header__brand::before {
-  background: linear-gradient(140deg, hsl(158 55% 62%), hsl(199 89% 65%));
 }
 
 /* ── Scroll reveal (IntersectionObserver) ── */

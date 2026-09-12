@@ -60,7 +60,7 @@ function CabecalhoABNT() {
           RELATÓRIO CONTÁBIL E TRIBUTÁRIO — ANÁLISE DE VIABILIDADE
         </h1>
         <p className="text-sm text-muted-foreground">
-          Plataforma LicitaIA — SaaS B2B para Licitações Públicas
+          Plataforma Praefectus — SaaS B2B para Licitações Públicas
         </p>
         <p className="text-xs text-muted-foreground">
           Elaborado conforme ABNT NBR 14724 · NBC TSP · Lei 14.133/2021 · Lei Complementar 123/2006
@@ -477,7 +477,7 @@ function ParecerTecnico() {
         <div>
           <h3 className="font-semibold mb-1">1. Objeto</h3>
           <p className="text-muted-foreground">
-            Análise de viabilidade econômico-financeira da plataforma LicitaIA, SaaS B2B destinado à gestão inteligente de licitações públicas,
+            Análise de viabilidade econômico-financeira da plataforma Praefectus, SaaS B2B destinado à gestão inteligente de licitações públicas,
             com projeções para 4 cenários de escala (20, 50, 500 e 1.000 clientes), comparação tributária entre Simples Nacional,
             Lucro Presumido e Lucro Real, e análise do mercado regional do Estado do Pará.
           </p>
@@ -525,7 +525,7 @@ function ParecerTecnico() {
           <p className="text-muted-foreground">
             O Pará apresenta 144 municípios com volume anual de compras públicas estimado entre R$ 15–20 bilhões, porém com penetração digital
             de apenas 18%. Há aproximadamente 3.200 empresas ativas em licitações, sendo que 60% ainda utilizam consultorias manuais
-            (R$ 500–2.000/mês). O "Plano Pará" (R$ 147/mês) posiciona a LicitaIA como alternativa competitiva, com diferencial
+            (R$ 500–2.000/mês). O "Plano Pará" (R$ 147/mês) posiciona a Praefectus como alternativa competitiva, com diferencial
             nos portais regionais (Banparanet, IOEPA) que concorrentes nacionais não cobrem.
           </p>
         </div>

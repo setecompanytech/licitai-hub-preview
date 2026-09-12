@@ -554,7 +554,7 @@ export function exportLegalWord(
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="LicitaIA">
+<meta name="generator" content="Praefectus">
 <!--[if gte mso 9]>
 <xml>
   <w:WordDocument>

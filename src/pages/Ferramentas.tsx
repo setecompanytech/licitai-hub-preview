@@ -149,7 +149,7 @@ export default function Ferramentas() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Nossas Ferramentas</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Acesse todas as funcionalidades da plataforma LicitaIA em um só lugar.
+            Acesse todas as funcionalidades da plataforma Praefectus em um só lugar.
           </p>
         </div>
         <Button

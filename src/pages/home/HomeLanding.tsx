@@ -1,13 +1,12 @@
-import '@fontsource/space-grotesk/600.css';
-import '@fontsource/space-grotesk/700.css';
 import './landing.css';
 
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, ChevronDown, Menu, X, ShieldCheck, Zap, Lock, Award } from 'lucide-react';
+import BrandLogo from '@/components/shared/BrandLogo';
 import FloatingChat from '@/components/chat/FloatingChat';
 import { storeUtmParams } from '@/lib/tracking';
-import { BULLETS_HERO, GRUPOS_FUNCIONALIDADES, FOOTER_COLUNAS } from './dados';
+import { GRUPOS_FUNCIONALIDADES, FOOTER_COLUNAS } from './dados';
 import { TrioValor, GridFuncionalidades, FaixaIA, Processo } from './SecoesConteudo';
 import { Numeros, Depoimentos, Faq } from './SecoesInterativas';
 
@@ -45,7 +44,9 @@ function Header() {
   return (
     <header className="lp-header">
       <div className="lp-container lp-header__in">
-        <a href="/" className="lp-header__brand">PRAEFECTUS</a>
+        <a href="/" className="lp-header__brand" aria-label="Praefectus — página inicial">
+          <BrandLogo className="lp-header__logo" />
+        </a>
 
         <nav className="lp-header__nav" aria-label="Navegação principal">
           <div className="lp-dropdown" ref={dropdownRef}>
@@ -216,35 +217,22 @@ function Hero() {
         <div className="lp-orb lp-orb--hero-b" aria-hidden="true" />
         <div className="lp-container lp-hero__grid">
           <div className="lp-hero__col">
-            <div className="lp-trust-badge">
-              <span className="lp-trust-badge__ic"><span className="lp-trust-badge__dot" /></span>
-              Sistema online · Lei 14.133/2021
-            </div>
+            <p className="lp-eyebrow">Gestão pública, mais oportunidades</p>
             <h1 id="hero-titulo" className="lp-h1">
-              Vença mais licitações<br />
-              com <span className="lp-destaque">inteligência artificial</span>
+              Sua próxima oportunidade{' '}
+              <span className="lp-destaque">começa aqui.</span>
             </h1>
             <p className="lp-lead" style={{ maxWidth: '48ch' }}>
-              Do edital publicado ao contrato faturado — numa plataforma só.
-              Monitoramento automático, análise por IA, robô de lances e gestão
-              completa para quem precisa ganhar.
+              Encontre editais, organize propostas e acompanhe resultados em um
+              só lugar.
             </p>
             <div className="lp-hero__acoes">
               <Link to="/auth" className="lp-btn lp-btn--solid lp-btn--lg">
-                Entrar na plataforma <ArrowRight size={16} aria-hidden="true" />
+                Explorar plataforma <ArrowRight size={16} aria-hidden="true" />
               </Link>
-              <a href="#funcionalidades" className="lp-btn lp-btn--ghost lp-btn--lg">
-                Ver funcionalidades
-              </a>
-            </div>
-            <div className="lp-prova">
-              <div className="lp-prova__avs">
-                <div className="lp-prova__av lp-prova__av--a">MF</div>
-                <div className="lp-prova__av lp-prova__av--b">AS</div>
-                <div className="lp-prova__av lp-prova__av--c">RC</div>
-                <div className="lp-prova__av lp-prova__av--d">LP</div>
-              </div>
-              <span>Mais de <strong>200 empresas</strong> em todo o Brasil</span>
+              <Link to="/solucoes" className="lp-btn lp-btn--ghost lp-btn--lg">
+                Conhecer soluções
+              </Link>
             </div>
           </div>
           <div className="lp-browser-wrap">
@@ -338,7 +326,7 @@ function CtaFinal() {
         <span className="lp-tag">Comece agora</span>
         <h2 id="cta-titulo" className="lp-h2" style={{ color: 'white', maxWidth: '22ch' }}>
           A próxima licitação que você vencer começa{' '}
-          <span style={{ color: 'hsl(221 83% 72%)' }}>aqui</span>
+          <span style={{ color: 'var(--lp-accent-bright)' }}>aqui</span>
         </h2>
         <p className="lp-lead" style={{ color: 'rgba(255,255,255,0.68)', maxWidth: '48ch' }}>
           Configure o perfil da sua empresa, ative o monitoramento e receba
@@ -358,7 +346,9 @@ function Footer() {
       <div className="lp-container">
         <div className="lp-footer__grid">
           <div className="lp-footer__col">
-            <a href="/" className="lp-header__brand">PRAEFECTUS</a>
+            <a href="/" aria-label="Praefectus — página inicial">
+              <BrandLogo variant="dark" width={180} />
+            </a>
             <p className="lp-body lp-body--compacto" style={{ maxWidth: '32ch' }}>
               Gestão de licitações com inteligência artificial, do monitoramento
               do edital ao faturamento do contrato.
