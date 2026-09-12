@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles , Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
@@ -1146,7 +1147,13 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                     className="min-h-[14rem] max-h-[42vh] w-full min-w-0 overflow-y-auto rounded-lg border border-border/60 bg-muted/10 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30"
                   >
                     <div className="space-y-2 p-2.5">
-                      {filteredLicitacoes.map((lic) => (
+                      {filteredLicitacoes.map((lic) => {
+                        // A mesma autoridade de nomeação das outras telas:
+                        // "6", "00046" e "126" crus não identificam nada. O
+                        // dado gravado segue o do portal — só a LEITURA é
+                        // padronizada, com a forma original no hover.
+                        const identidade = identidadeDoEdital({ numeroCompra: lic.numero, modalidade: lic.modalidade });
+                        return (
                         <button
                           key={lic.id}
                           type="button"
@@ -1161,7 +1168,15 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold text-foreground">{lic.numero}</span>
+                                <span
+                                  className="text-sm font-bold text-foreground cursor-help"
+                                  title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
+                                >
+                                  {identidade.rotulo}
+                                </span>
+                                {identidade.srpNoTexto && (
+                                  <Badge variant="outline" className="text-xs">SRP</Badge>
+                                )}
                                 <Badge variant="outline" className={`text-xs ${statusColor(lic.status)}`}>
                                   {lic.status}
                                 </Badge>
@@ -1189,7 +1204,8 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
                             </div>
                           </div>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
