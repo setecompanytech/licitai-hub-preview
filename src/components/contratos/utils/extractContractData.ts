@@ -22,11 +22,38 @@ export async function extractContractDataFromFile(
     // uma parte, itens de outra. O importador foi reformado e este caminho não;
     // o mesmo arquivo lia certo numa tela e errado na outra.
     const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-    const texto = await extractTextFromFile(file, 156, false, 40, aoProgredir);
+    let texto = await extractTextFromFile(file, 156, false, 40, aoProgredir);
+
+    // Última cartada antes de desistir (12/09): o PDF INTEIRO vai ao Claude
+    // pela rota nativa da edge de OCR — ela lê o arquivo direto, inclusive
+    // páginas escaneadas e PDFs "protegidos" onde o texto virou curva e o
+    // canvas+OCR por página voltava vazio. A rota existia na edge e nenhum
+    // cliente a usava.
+    if (texto.trim().length < 80 && file.name.toLowerCase().endsWith('.pdf') && file.size <= 30 * 1024 * 1024) {
+      aoProgredir?.('Texto ilegível pelo OCR — tentando a leitura nativa do PDF…');
+      try {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 0x8000) {
+          bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+        }
+        const { data: ocrData, error: ocrErr } = await supabase.functions.invoke('document-vision-extract', {
+          body: { fileName: file.name, pdf_base64: btoa(bin), mode: 'ocr' },
+        });
+        if (!ocrErr && typeof ocrData?.text === 'string' && ocrData.text.trim().length >= 80) {
+          texto = ocrData.text;
+        }
+      } catch { /* o diagnóstico abaixo assume */ }
+    }
+
     aoProgredir?.('Estruturando os dados lidos…');
 
     if (texto.trim().length < 80) {
-      ultimoErroDeExtracao = 'O documento não rendeu texto legível, nem por OCR.';
+      ultimoErroDeExtracao =
+        'O documento não rendeu texto legível — nem pela camada de texto, nem pelo OCR ' +
+        'das páginas, nem pela leitura nativa do PDF. Se o arquivo tiver senha, salve uma ' +
+        'cópia sem senha e use o ícone de substituir; se for foto de baixa qualidade, ' +
+        'digitalize novamente.';
       return null;
     }
 
@@ -63,7 +90,14 @@ export async function extractContractDataFromFile(
     ultimoErroDeExtracao = null;
     return resposta.data.data;
   } catch (e) {
-    ultimoErroDeExtracao = e instanceof Error ? e.message : 'Erro inesperado na leitura.';
+    // O pdf.js lança PasswordException para PDF com senha — em inglês e sem
+    // contexto. Traduzido para a ação que resolve.
+    const nome = (e as { name?: string } | null)?.name ?? '';
+    const msg = e instanceof Error ? e.message : '';
+    ultimoErroDeExtracao =
+      nome === 'PasswordException' || /password/i.test(msg)
+        ? 'O PDF está protegido por senha e o leitor não consegue abri-lo. Salve uma cópia sem senha (imprimir → salvar como PDF) e use o ícone de substituir.'
+        : msg || 'Erro inesperado na leitura.';
     console.warn('[extractContractDataFromFile]', e);
     return null;
   }
