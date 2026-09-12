@@ -17,7 +17,7 @@ import BoletimConfig from '@/components/boletins/BoletimConfig';
 
 export default function Boletins() {
   const { user } = useAuth();
-  const [enviosRecentes, setEnviosRecentes] = useState<{ id: string; tipo: string; created_at: string }[]>([]);
+  const [enviosRecentes, setEnviosRecentes] = useState<{ id: string; tipo: string; created_at: string; email: string | null; status: string | null }[]>([]);
 
   useEffect(() => {
     if (user) loadEnvios();
@@ -26,7 +26,7 @@ export default function Boletins() {
   const loadEnvios = async () => {
     const { data } = await supabase
       .from('boletim_envios')
-      .select('id, tipo, created_at')
+      .select('id, tipo, created_at, email, status')
       .order('created_at', { ascending: false })
       .limit(50);
     if (data) setEnviosRecentes(data);
