@@ -104,7 +104,7 @@ export default function LembreteDeVencimento() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed right-5 top-[76px] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5"
+      className="flex flex-col gap-2.5"
     >
       {mostrados.map((l) => {
         const { caixa, texto, Icone } = ESTILO[l.gravidade];

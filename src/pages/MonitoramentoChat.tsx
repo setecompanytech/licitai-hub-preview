@@ -11,58 +11,14 @@ import {
   Search, RefreshCw, Volume2, VolumeX, Play, Pause,
   Megaphone, FileWarning, HelpCircle, FileEdit, Info, AlertTriangle
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import LicitacaoChat from '@/components/licitacoes/LicitacaoChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-// --- Sound Alert System ---
-function useSoundAlert() {
-  const audioCtxRef = useRef<AudioContext | null>(null);
-
-  const playAlert = useCallback((type: 'convocacao' | 'mensagem' | 'alerta') => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      if (type === 'convocacao') {
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-        oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.5);
-      } else if (type === 'alerta') {
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(660, ctx.currentTime);
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.3);
-      } else {
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(520, ctx.currentTime);
-        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.2);
-      }
-    } catch (e) {
-      console.warn('Sound alert failed:', e);
-    }
-  }, []);
-
-  return playAlert;
-}
+// O beep morava aqui dentro e só existia com a tela aberta. Agora a
+// autoridade é a lib compartilhada com o lembrete global de convocação
+// (AppLayout): mesmo som, mesmo volume, mesma vibração em qualquer página.
+import { gravarConfigSom, lerConfigSom, tocarAlerta, vibrar, type ConfigSom } from '@/lib/alertas/som';
 
 /**
  * Uma fala do pregoeiro, lida pelo robô na sala e gravada no processo.
@@ -91,9 +47,9 @@ export default function MonitoramentoChat() {
   const [searchParams] = useSearchParams();
   const licitacaoId = searchParams.get('lid');
   const licitacaoNumero = searchParams.get('num');
-  const [alertaSonoro, setAlertaSonoro] = useState(true);
+  const [configSom, setConfigSom] = useState<ConfigSom>(() => lerConfigSom());
   const [mainTab, setMainTab] = useState(licitacaoId ? 'processo' : 'chat');
-  const playAlert = useSoundAlert();
+  const somLigado = !configSom.mudo && configSom.volume > 0;
 
   // O que o pregoeiro falou, em todos os processos da empresa.
   const [mensagens, setMensagens] = useState<MensagemDoPortal[]>([]);
@@ -130,9 +86,13 @@ export default function MonitoramentoChat() {
           // de convocação.
           if (nova?.metadata?.requer_acao === undefined && nova?.tipo !== 'alerta') return;
           loadMessages();
-          // O som que existia e nunca tinha quem o disparasse. Só para o que
-          // pede ação — alarme em toda fala vira ruído e para de ser ouvido.
-          if (alertaSonoro && nova?.metadata?.requer_acao) playAlert('convocacao');
+          // Só para o que pede ação — alarme em toda fala vira ruído e para
+          // de ser ouvido. Mudo e volume são resolvidos pela própria lib; a
+          // vibração acompanha (celular/tablet — desktop ignora em silêncio).
+          if (nova?.metadata?.requer_acao) {
+            tocarAlerta('convocacao');
+            vibrar('convocacao');
+          }
         },
       )
       .subscribe();
@@ -140,16 +100,25 @@ export default function MonitoramentoChat() {
     return () => {
       supabase.removeChannel(channel);
     };
-    // `alertaSonoro` e `playAlert` de fora: reassinar o canal a cada toggle de
-    // som derrubaria e recriaria a conexão sem necessidade.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleToggleSom = (checked: boolean) => {
-    setAlertaSonoro(checked);
-    if (checked) {
-      setTimeout(() => playAlert('mensagem'), 100);
-    }
+  const alternarMudo = () => {
+    const novo = { ...configSom, mudo: !configSom.mudo };
+    setConfigSom(novo);
+    gravarConfigSom(novo);
+    if (!novo.mudo) setTimeout(() => tocarAlerta('mensagem'), 100);
+  };
+
+  // O arraste atualiza a tela em tempo real; gravar + tocar o feedback só no
+  // soltar, senão vira metralhadora de beep a cada pixel.
+  const aoArrastarVolume = ([v]: number[]) => {
+    setConfigSom((atual) => ({ ...atual, volume: v / 100 }));
+  };
+  const aoSoltarVolume = ([v]: number[]) => {
+    const novo = { volume: v / 100, mudo: false };
+    setConfigSom(novo);
+    gravarConfigSom(novo);
+    if (v > 0) tocarAlerta('mensagem', v / 100);
   };
 
   return (
@@ -166,19 +135,54 @@ export default function MonitoramentoChat() {
             </p>
           </div>
           <div className="flex items-center gap-3 self-start sm:self-auto">
+            {/* Volume manual: o botão silencia/religa, o slider gradua. A
+                preferência vale para o site inteiro — o lembrete global de
+                convocação usa o mesmo ajuste. */}
             <div className="flex items-center gap-2 text-sm">
-              {alertaSonoro ? <Volume2 className="w-4 h-4 text-success" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
-              <Switch checked={alertaSonoro} onCheckedChange={handleToggleSom} />
-              <span className="text-xs text-muted-foreground">{alertaSonoro ? 'Som ativo' : 'Mudo'}</span>
+              <button
+                type="button"
+                onClick={alternarMudo}
+                title={somLigado ? 'Silenciar alertas' : 'Reativar o som'}
+                aria-label={somLigado ? 'Silenciar alertas' : 'Reativar o som'}
+                className="rounded p-1 transition-colors hover:bg-foreground/10"
+              >
+                {somLigado
+                  ? <Volume2 className="w-4 h-4 text-success" />
+                  : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              <Slider
+                value={[configSom.mudo ? 0 : Math.round(configSom.volume * 100)]}
+                onValueChange={aoArrastarVolume}
+                onValueCommit={aoSoltarVolume}
+                max={100}
+                step={5}
+                aria-label="Volume dos alertas"
+                className="w-28"
+              />
+              <span className="w-14 text-xs text-muted-foreground tabular-nums">
+                {somLigado ? `${Math.round(configSom.volume * 100)}%` : 'Mudo'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Sound alert indicator */}
-        {alertaSonoro && (
+        {somLigado ? (
           <div className="flex items-center gap-2 px-3 py-2 bg-success/10 rounded-lg border border-success/20 text-xs text-success">
             <Volume2 className="w-4 h-4 animate-pulse" />
-            <span>Alertas sonoros ativados — você receberá notificações sonoras ao ser convocado ou quando houver mensagens urgentes</span>
+            <span>
+              Alertas ativados em {Math.round(configSom.volume * 100)}% — convocações e menções à
+              empresa tocam som, vibram (celular/tablet) e aparecem como caixinhas em qualquer tela
+              do sistema, levando de volta para cá.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border text-xs text-muted-foreground">
+            <VolumeX className="w-4 h-4" />
+            <span>
+              Som silenciado — as caixinhas de convocação continuam aparecendo, mas sem som nem
+              vibração.
+            </span>
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
 import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
+import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
 import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
@@ -285,8 +286,13 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           <MaintenanceBanner showModal />
           <AlertaVencimentoBanner />
         </div>
-        {/* Vencimento de certidão não é assunto só da página de Documentos. */}
-        <LembreteDeVencimento />
+        {/* O canto dos lembretes: convocação de pregoeiro (urgente, em cima) e
+            vencimento de certidão dividem a MESMA pilha — dois `fixed` no mesmo
+            ponto se sobrepunham. O contêiner não captura clique quando vazio. */}
+        <div className="pointer-events-none fixed right-5 top-[76px] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
+          <LembreteDeConvocacao />
+          <LembreteDeVencimento />
+        </div>
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
         {/* Carimbo invisível, para conferir o que está publicado. */}
         <span data-versao={VERSAO_APP} className="hidden" />
