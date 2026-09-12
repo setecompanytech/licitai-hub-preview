@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore } from 'lucide-react';
+import { ListChecks, Brain, Bell, Mail, MessageSquare, Building2, ArrowRight, Loader2, Clock, FolderOpen, Archive, ArchiveRestore, Folder, List, LayoutGrid } from 'lucide-react';
+import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import { toast } from 'sonner';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -40,6 +41,27 @@ function diasAte(iso: string | null): number | null {
 }
 
 /**
+ * Modo de exibição dos compromissos: lista (detalhe) ou PASTAS — grade de
+ * cartões-pasta ao estilo Finder, com densidade que a pessoa escolhe
+ * (2, 4, 6 ou 8 por linha). Preferência do navegador, não do banco.
+ */
+type Vista = { modo: 'lista' | 'pastas'; colunas: number };
+const COLUNAS_OPCOES = [2, 4, 6, 8] as const;
+const VISTA_CHAVE = 'praefectus:compromissos-vista';
+
+function lerVista(): Vista {
+  try {
+    const v = JSON.parse(localStorage.getItem(VISTA_CHAVE) || '{}') as Partial<Vista>;
+    return {
+      modo: v.modo === 'pastas' ? 'pastas' : 'lista',
+      colunas: COLUNAS_OPCOES.includes(v.colunas as never) ? Number(v.colunas) : 4,
+    };
+  } catch {
+    return { modo: 'lista', colunas: 4 };
+  }
+}
+
+/**
  * Lista compacta de compromissos (processos_interesse) embarcada na aba
  * Compromissos da Gestão. Mostra prazos, score IA e atalho para a página completa.
  */
@@ -53,6 +75,11 @@ export default function CompromissosResumo() {
   const [opening, setOpening] = useState<string | null>(null);
   const [arquivando, setArquivando] = useState<string | null>(null);
   const [verArquivados, setVerArquivados] = useState(false);
+  const [vista, setVista] = useState<Vista>(() => lerVista());
+  const mudarVista = useCallback((nova: Vista) => {
+    setVista(nova);
+    try { localStorage.setItem(VISTA_CHAVE, JSON.stringify(nova)); } catch { /* sem storage */ }
+  }, []);
   // Arquivar deixou de ser um gesto mudo: sem desfecho registrado, pergunta.
   const [aArquivar, setAArquivar] = useState<Item | null>(null);
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
@@ -218,6 +245,44 @@ export default function CompromissosResumo() {
             : `${visiveis.length} compromissos ativos — exibindo prazos críticos primeiro`}
         </p>
         <div className="flex items-center gap-1">
+          {/* Vista: lista detalhada ou pastas (grade estilo Finder). Na grade,
+              a pessoa escolhe a densidade — 2, 4, 6 ou 8 pastas por linha. */}
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => mudarVista({ ...vista, modo: 'lista' })}
+              title="Ver como lista"
+              aria-pressed={vista.modo === 'lista'}
+              className={`px-2 py-1.5 text-xs flex items-center gap-1 transition-colors ${vista.modo === 'lista' ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <List className="w-3.5 h-3.5" /> Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => mudarVista({ ...vista, modo: 'pastas' })}
+              title="Ver como pastas"
+              aria-pressed={vista.modo === 'pastas'}
+              className={`px-2 py-1.5 text-xs flex items-center gap-1 transition-colors border-l border-border ${vista.modo === 'pastas' ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> Pastas
+            </button>
+          </div>
+          {vista.modo === 'pastas' && (
+            <div className="flex items-center rounded-lg border border-border overflow-hidden" role="group" aria-label="Pastas por linha">
+              {COLUNAS_OPCOES.map((c, i) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => mudarVista({ ...vista, colunas: c })}
+                  title={`${c} pastas por linha`}
+                  aria-pressed={vista.colunas === c}
+                  className={`px-2 py-1.5 text-xs tabular-nums transition-colors ${i > 0 ? 'border-l border-border' : ''} ${vista.colunas === c ? 'bg-accent/15 text-accent font-semibold' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
           {arquivados.length > 0 && (
             <Button variant="ghost" size="sm" className="text-xs" onClick={() => setVerArquivados(v => !v)}>
               <Archive className="w-3.5 h-3.5 mr-1" />
@@ -240,7 +305,71 @@ export default function CompromissosResumo() {
         </Card>
       )}
 
-      {visiveis.map((p) => {
+      {vista.modo === 'pastas' && visiveis.length > 0 && (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${vista.colunas}, minmax(0, 1fr))` }}>
+          {visiveis.map((p) => {
+            const dias = diasAte(p.data_encerramento);
+            const urgencia = dias === null ? 'normal' : dias <= 1 ? 'danger' : dias <= 3 ? 'warning' : 'normal';
+            const corPasta = { danger: 'text-destructive', warning: 'text-warning', normal: 'text-accent' }[urgencia];
+            const chipPrazo = {
+              danger: 'bg-destructive/15 text-destructive',
+              warning: 'bg-warning/15 text-warning',
+              normal: 'bg-success/10 text-success',
+            }[urgencia];
+            const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
+            return (
+              <div
+                key={p.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirPasta(p)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirPasta(p); } }}
+                title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : identidade.rotulo}
+                className="group flex h-full cursor-pointer flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left transition-all hover:border-accent/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  {opening === p.id
+                    ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+                    : <Folder className={`h-7 w-7 ${corPasta}`} strokeWidth={1.5} />}
+                  {dias !== null && dias >= 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${chipPrazo}`}>
+                      {dias === 0 ? 'hoje' : `${dias}d`}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-semibold leading-snug line-clamp-2">{identidade.rotulo}</p>
+                <p className="text-xs leading-snug text-muted-foreground line-clamp-2">{p.objeto}</p>
+                <div className="mt-auto flex items-end justify-between gap-1 pt-1 min-w-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-muted-foreground">{p.orgao}</p>
+                    <p className="text-xs font-medium text-foreground">{fmtCurrency(p.valor_estimado)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (p.status === 'arquivado') { alternarArquivo(p); return; }
+                      setAArquivar(p);
+                    }}
+                    disabled={arquivando === p.id}
+                    title={p.status === 'arquivado' ? 'Restaurar' : 'Arquivar'}
+                    aria-label={p.status === 'arquivado' ? 'Restaurar compromisso' : 'Arquivar compromisso'}
+                    className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    {arquivando === p.id
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : p.status === 'arquivado'
+                      ? <ArchiveRestore className="h-3.5 w-3.5" />
+                      : <Archive className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {vista.modo === 'lista' && visiveis.map((p) => {
         const dias = diasAte(p.data_encerramento);
         const urgencia = dias === null ? 'normal'
           : dias <= 1 ? 'danger'
@@ -251,6 +380,7 @@ export default function CompromissosResumo() {
           warning: 'bg-warning/15 text-warning border-warning/30',
           normal: 'bg-success/10 text-success border-success/30',
         };
+        const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
         return (
           <Card key={p.id} className="p-3.5">
             <div className="flex items-start justify-between gap-3">
@@ -259,9 +389,14 @@ export default function CompromissosResumo() {
                   <Badge variant="outline" className="text-xs">
                     <ListChecks className="w-3 h-3 mr-1" />{p.status}
                   </Badge>
-                  <span className="text-xs font-mono text-muted-foreground">{p.numero}</span>
-                  {p.modalidade && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{p.modalidade}</span>
+                  <span
+                    className="text-xs font-semibold cursor-help"
+                    title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
+                  >
+                    {identidade.rotulo}
+                  </span>
+                  {identidade.srpNoTexto && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">SRP</span>
                   )}
                   {dias !== null && dias >= 0 && (
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorMap[urgencia]}`}>
