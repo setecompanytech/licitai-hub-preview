@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -269,6 +270,36 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   };
 
   useEffect(() => { loadData(); }, [contratoId]);
+
+  // Deep-link dos cards do Dashboard (?aba=contratos-aditivos&reler=1):
+  // "reanalise os documentos anexados" tinha que ser UM clique, não "vá à
+  // aba Arquivos, ache o documento e clique em Reler". Dispara a releitura
+  // do documento principal (tipo 'contrato'; na falta, o primeiro PDF) e
+  // limpa o parâmetro para o F5 não reler de novo.
+  const [buscaParams, setBuscaParams] = useSearchParams();
+  const autoRelerRef = useRef(false);
+  useEffect(() => {
+    if (autoRelerRef.current) return;
+    if (buscaParams.get('reler') !== '1') return;
+    if (loading) return;
+    autoRelerRef.current = true;
+    const next = new URLSearchParams(buscaParams);
+    next.delete('reler');
+    setBuscaParams(next, { replace: true });
+    const principal =
+      arquivos.find((a) => a.tipo === 'contrato') ??
+      arquivos.find((a) => String(a.nome_arquivo || '').toLowerCase().endsWith('.pdf')) ??
+      arquivos[0];
+    if (!principal) {
+      toast.warning('Nenhum documento anexado para reanalisar — envie o PDF do contrato.');
+      return;
+    }
+    toast.info(`Relendo ${principal.nome_arquivo}…`, {
+      description: 'A leitura preenche só o que estiver em branco — correções manuais são preservadas.',
+    });
+    handleReler(principal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscaParams, loading, arquivos]);
 
   const parentTipoDocumento: 'ata_srp' | 'contrato' | null =
     parentContrato?.tipo_documento === 'ata_srp' ? 'ata_srp'

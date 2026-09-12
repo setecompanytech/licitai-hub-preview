@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import BotaoReanalisar from '@/components/contratos/BotaoReanalisar';
 import { toast } from 'sonner';
 import { TrendingUp, Pencil, Check, X, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -51,6 +53,19 @@ type CalculoExato = {
   fator: number;
   percentual: number;
 };
+
+/**
+ * Índices oficiais com série mensal no SGS/BCB — os que a calculadora exata
+ * sabe calcular. A cláusula pode prever outro (setorial, tabela própria):
+ * o "Outro (digitar)" cobre, com o aviso de que o cálculo será manual.
+ */
+const INDICES_OFICIAIS = [
+  { sigla: 'IPCA', rotulo: 'IPCA — IBGE · preços ao consumidor amplo (o mais comum)' },
+  { sigla: 'INPC', rotulo: 'INPC — IBGE · preços ao consumidor' },
+  { sigla: 'IGP-M', rotulo: 'IGP-M — FGV · índice geral de preços do mercado' },
+  { sigla: 'IGP-DI', rotulo: 'IGP-DI — FGV · disponibilidade interna' },
+  { sigla: 'INCC-DI', rotulo: 'INCC-DI — FGV · custo da construção (obras)' },
+] as const;
 
 const brl = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -270,9 +285,40 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Índice da cláusula (sigla)</Label>
-              <Input placeholder="IPCA, IGP-M, INPC…" value={form.indice}
-                onChange={(e) => setForm((f) => ({ ...f, indice: e.target.value }))} />
+              <Label className="text-xs text-muted-foreground">Índice da cláusula</Label>
+              {/* Filtro padronizado (pedido de 12/09): os índices oficiais com
+                  série no SGS entram por seleção — sigla digitada à mão errava
+                  grafia ("IGPM") e a calculadora não achava a série. Cláusula
+                  com índice fora da lista usa o "Outro (digitar)". */}
+              {form.indice && !INDICES_OFICIAIS.some((i) => i.sigla === form.indice) ? (
+                <div className="flex gap-1">
+                  <Input placeholder="Sigla do índice da cláusula" value={form.indice}
+                    onChange={(e) => setForm((f) => ({ ...f, indice: e.target.value }))} />
+                  <Button type="button" size="sm" variant="ghost" className="px-2 text-xs shrink-0 self-center"
+                    title="Voltar à lista de índices oficiais"
+                    onClick={() => setForm((f) => ({ ...f, indice: '' }))}>
+                    lista
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.indice || undefined}
+                  onValueChange={(v) => setForm((f) => ({ ...f, indice: v === '__outro__' ? 'OUTRO' : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar o índice…" /></SelectTrigger>
+                  <SelectContent>
+                    {INDICES_OFICIAIS.map((i) => (
+                      <SelectItem key={i.sigla} value={i.sigla}>{i.rotulo}</SelectItem>
+                    ))}
+                    <SelectItem value="__outro__">Outro (digitar)…</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {form.indice && !INDICES_OFICIAIS.some((i) => i.sigla === form.indice) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Índice fora da base oficial SGS — a calculadora exata não o cobre; o cálculo será manual.
+                </p>
+              )}
             </div>
             <div>
               {/* A data-base é a da PROPOSTA/orçamento, não a da assinatura:
@@ -299,9 +345,10 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
           </p>
           <p>
             O edital é obrigado a prever índice de reajustamento (art. 25, §7º). Sem o índice e a
-            data-base, o sistema não vigia o aniversário anual — reenvie o PDF do contrato para a
-            leitura automática, ou preencha aqui pelo lápis.
+            data-base, o sistema não vigia o aniversário anual — reanalise os documentos já
+            anexados, ou preencha aqui pelo lápis.
           </p>
+          <BotaoReanalisar />
         </div>
       ) : (
         <div className="space-y-2 text-xs">

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import BotaoReanalisar from '@/components/contratos/BotaoReanalisar';
 import { toast } from 'sonner';
 import { Truck, Pencil, Check, X, Loader2, AlertTriangle } from 'lucide-react';
 import { ROTULO_DO_MARCO } from '@/lib/contratos/prazo-de-entrega';
@@ -203,9 +204,10 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
             <AlertTriangle className="w-3.5 h-3.5" /> Nenhuma condição de entrega registrada
           </p>
           <p>
-            Sem elas, a aba Pedidos não calcula a data-limite de cada pedido. Reenvie
-            o PDF do contrato para a leitura automática, ou preencha aqui.
+            Sem elas, a aba Pedidos não calcula a data-limite de cada pedido. Os documentos já
+            anexados podem responder: reanalise-os, ou preencha aqui pelo lápis.
           </p>
+          <BotaoReanalisar />
         </div>
       ) : (
         <div className="space-y-2">
