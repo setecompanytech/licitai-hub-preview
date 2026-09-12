@@ -93,6 +93,14 @@ const FIN_ENTRIES: FinEntry[] = HUB_ITEMS.map((i) => ({
 
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
+
+  // A lupa da barra superior abre a mesma busca do Ctrl+K: o atalho era o
+  // ÚNICO gatilho e ninguém descobre atalho sem placa (pedido de 12/09).
+  useEffect(() => {
+    const abrir = () => setOpen(true);
+    window.addEventListener('praefectus:abrir-busca', abrir);
+    return () => window.removeEventListener('praefectus:abrir-busca', abrir);
+  }, []);
   const navigate = useNavigate();
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
+import { Bell, Search, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import AlertaBadge from '@/components/alertas/AlertaBadge';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
@@ -175,6 +175,15 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
           {/* Sobre o navy, os controles do topo são claros — eles não seguem a
               superfície do tema, seguem a barra. */}
+          <button
+            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
+            title="Pesquisa geral (Ctrl+K)"
+            aria-label="Pesquisa geral"
+          >
+            <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+          </button>
+
           <button
             className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
