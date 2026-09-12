@@ -89,11 +89,16 @@ function isFreteGratis(frete?: string) {
 }
 
 /** Validates if an image URL looks real (not a fake/placeholder) */
-function isValidImageUrl(url?: string): boolean {
+export function isValidImageUrl(url?: string): boolean {
   if (!url) return false;
   const trimmed = url.trim();
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
   // Known good CDNs
+  // Miniaturas do Google Shopping (o que o Serper devolve): URL SEM extensão
+  // de arquivo — a regra "só aceita se termina em .jpg/.png" derrubava todas
+  // e a grade inteira virava caixinha de placeholder (visto em 12/09).
+  if (/encrypted-tbn\d\.gstatic\.com\/(shopping|images)/i.test(trimmed)) return true;
+  if (/lh\d\.googleusercontent\.com\//i.test(trimmed)) return true;
   if (/http2\.mlstatic\.com\/D_/i.test(trimmed)) return true;
   if (/m\.media-amazon\.com\/images\/I\//i.test(trimmed)) return true;
   if (/images\.kabum\.com\.br/i.test(trimmed)) return true;
