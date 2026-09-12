@@ -20,6 +20,7 @@ import {
   ChevronDown, ChevronUp, Archive, ArchiveRestore,
 } from 'lucide-react';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
+import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -492,6 +493,10 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
             {filtered.map((p) => {
               const cfg = statusConfig[p.status] || statusConfig.interessado;
               const StatusIcon = cfg.icon;
+              // Identidade padronizada: cada portal grava o número do seu
+              // jeito ("P.E. 044", "6", "Pregão Eletrônico SRP Nº 014") —
+              // aqui todos leem igual, e o hover preserva a forma original.
+              const identidade = identidadeDoEdital({ numeroCompra: p.numero, modalidade: p.modalidade });
               return (
                 <Card key={p.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-4">
@@ -501,7 +506,17 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {cfg.label}
                         </Badge>
-                        <span className="font-semibold text-sm">{p.numero}</span>
+                        <span
+                          className="font-semibold text-sm cursor-help"
+                          title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
+                        >
+                          {identidade.rotulo}
+                        </span>
+                        {identidade.srpNoTexto && (
+                          <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
+                            SRP
+                          </Badge>
+                        )}
                         {p.data_encerramento && <Countdown targetDate={p.data_encerramento} />}
                         {p.auto_cadastro && (
                           <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-xs">
@@ -621,7 +636,7 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                 {acaoDialog?.tipo === 'rejeitar' ? 'Rejeitar Processo' : 'Remover Processo'}
               </DialogTitle>
               <DialogDescription>
-                Processo <strong>{acaoDialog?.processo.numero}</strong> — {acaoDialog?.processo.orgao}
+                Processo <strong>{acaoDialog ? identidadeDoEdital({ numeroCompra: acaoDialog.processo.numero, modalidade: acaoDialog.processo.modalidade }).rotulo : ''}</strong> — {acaoDialog?.processo.orgao}
               </DialogDescription>
               {acaoDialog?.tipo === 'remover' && (
                 <p className="text-sm text-muted-foreground">

@@ -22,12 +22,14 @@ export type DadosIdentidade = {
 export type IdentidadeEdital = {
   /** "Pregão Eletrônico nº 9/2026" — pronto para exibir. */
   rotulo: string;
-  /** "nº 9/2026", ou null quando o texto não rendeu número+ano. */
+  /** "nº 9/2026" (ou "nº 9" quando nenhuma fonte traz o ano), ou null. */
   numeroPadronizado: string | null;
   /** Exatamente como o portal publicou. */
   bruto: string;
   /** true quando o padronizado difere do bruto — é quando vale mostrar a origem. */
   reescrito: boolean;
+  /** O texto publicado carrega "SRP" — vira chip, não some na padronização. */
+  srpNoTexto: boolean;
 };
 
 /** "Pregão - Eletrônico" → "Pregão Eletrônico"; espaços duplicados caem. */
@@ -39,7 +41,7 @@ export function normalizarModalidade(modalidade?: string | null): string {
 }
 
 /** Extrai {numero, ano} do texto publicado. Ordem dos padrões importa. */
-function extrairNumeroAno(texto: string, anoCompra?: string | number | null): { numero: number; ano: string } | null {
+function extrairNumeroAno(texto: string, anoCompra?: string | number | null): { numero: number; ano: string | null } | null {
   // "9/2026", "011/2026", "90008/2025", "9/2026-0025" (sufixo interno ignorado)
   let m = texto.match(/(\d{1,6})\s*[/.-]\s*(20\d{2})/);
   if (m) return { numero: parseInt(m[1], 10), ano: m[2] };
@@ -48,10 +50,11 @@ function extrairNumeroAno(texto: string, anoCompra?: string | number | null): { 
   m = texto.match(/(20\d{2})\s*[/.-]\s*(\d{1,6})/);
   if (m) return { numero: parseInt(m[2], 10), ano: m[1] };
 
-  // Só um número ("007 SRP") + ano real vindo do PNCP
+  // Só um número ("P.E. 044", "6", "007 SRP"): o ano vem do PNCP quando
+  // existe; sem nenhuma fonte de ano, padroniza o número e NÃO inventa ano.
   const ano = String(anoCompra ?? '').trim();
   m = texto.match(/(\d{1,6})/);
-  if (m && /^20\d{2}$/.test(ano)) return { numero: parseInt(m[1], 10), ano };
+  if (m) return { numero: parseInt(m[1], 10), ano: /^20\d{2}$/.test(ano) ? ano : null };
 
   return null;
 }
@@ -61,7 +64,9 @@ export function identidadeDoEdital(dados: DadosIdentidade): IdentidadeEdital {
   const modalidade = normalizarModalidade(dados.modalidade);
 
   const extraido = bruto ? extrairNumeroAno(bruto, dados.anoCompra) : null;
-  const numeroPadronizado = extraido ? `nº ${extraido.numero}/${extraido.ano}` : null;
+  const numeroPadronizado = extraido
+    ? (extraido.ano ? `nº ${extraido.numero}/${extraido.ano}` : `nº ${extraido.numero}`)
+    : null;
 
   let rotulo: string;
   if (modalidade && numeroPadronizado) rotulo = `${modalidade} ${numeroPadronizado}`;
@@ -76,5 +81,6 @@ export function identidadeDoEdital(dados: DadosIdentidade): IdentidadeEdital {
     numeroPadronizado,
     bruto,
     reescrito: numeroPadronizado !== null && numeroPadronizado.replace(/^nº\s*/, '') !== bruto,
+    srpNoTexto: /\bSRP\b/i.test(bruto),
   };
 }

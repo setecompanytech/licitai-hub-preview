@@ -22,11 +22,23 @@ describe('identidadeDoEdital', () => {
     expect(id.rotulo).toBe('Pregão Eletrônico nº 7/2026');
   });
 
-  it('sem ano no texto e sem ano_compra, não inventa: mantém o bruto', () => {
+  it('sem ano em nenhuma fonte, padroniza o número e NÃO inventa ano', () => {
     const id = identidadeDoEdital({ numeroCompra: '007 SRP', modalidade: 'Pregão Eletrônico' });
-    expect(id.numeroPadronizado).toBeNull();
-    expect(id.rotulo).toBe('Pregão Eletrônico 007 SRP');
-    expect(id.reescrito).toBe(false);
+    expect(id.numeroPadronizado).toBe('nº 7');
+    expect(id.rotulo).toBe('Pregão Eletrônico nº 7');
+    expect(id.srpNoTexto).toBe(true);
+  });
+
+  // Os casos do Meus Compromissos (12/09): "P.E. 044", "6" e
+  // "Pregão Eletrônico SRP Nº 014", todos sem ano no cadastro.
+  it('padroniza os formatos do Meus Compromissos', () => {
+    expect(identidadeDoEdital({ numeroCompra: 'P.E. 044', modalidade: 'Pregão Eletrônico' }).rotulo)
+      .toBe('Pregão Eletrônico nº 44');
+    expect(identidadeDoEdital({ numeroCompra: '6', modalidade: 'Pregão Eletrônico' }).rotulo)
+      .toBe('Pregão Eletrônico nº 6');
+    const srp = identidadeDoEdital({ numeroCompra: 'Pregão Eletrônico SRP Nº 014', modalidade: 'Pregão Eletrônico' });
+    expect(srp.rotulo).toBe('Pregão Eletrônico nº 14');
+    expect(srp.srpNoTexto).toBe(true);
   });
 
   it('aceita ano na frente ("2026/007")', () => {
