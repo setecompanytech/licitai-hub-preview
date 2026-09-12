@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight } from 'lucide-react';
+import { Upload, Download, Trash2, FileText, Folder, Search, Eye, ExternalLink, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ARTIGO_POR_GRUPO, LABEL_SEGMENTO, classificarTipo } from '@/lib/habilitacao/tipos';
@@ -84,6 +84,16 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
   // Upload para Habilitação pergunta o grupo da Lei; 'auto' classifica pelo
   // nome do arquivo com a mesma taxonomia do checklist.
   const [grupoHab, setGrupoHab] = useState<string>('auto');
+  // Grupos da Lei recolhíveis: clique no cabeçalho abre/fecha. Todos nascem
+  // abertos — recolher é gesto de quem quer varrer a lista, não o padrão.
+  const [gruposFechados, setGruposFechados] = useState<Set<string>>(new Set());
+  const alternarGrupo = (key: string) => {
+    setGruposFechados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(key)) novo.delete(key); else novo.add(key);
+      return novo;
+    });
+  };
   // editalViewer: o "Edital em tela" (arquivos materializados do PNCP) mora na
   // pasta Edital desta aba — antes vivia solto na Visão Geral, criando dois
   // mundos de arquivo (a pasta dizia "0 arquivos" com o edital renderizando
@@ -260,18 +270,30 @@ export default function AnexosManager({ licitacaoId, editalViewer, pncpEditalCou
             .sort((x, y) => String((x.metadata as { referencia?: string } | null)?.referencia || x.nome_arquivo)
               .localeCompare(String((y.metadata as { referencia?: string } | null)?.referencia || y.nome_arquivo), 'pt-BR', { numeric: true }));
           if (!doGrupo.length) return null;
+          const fechado = gruposFechados.has(key);
           return (
             <div key={key}>
-              <div className="flex items-center gap-2 px-3 py-2 bg-muted/30">
+              <button
+                type="button"
+                onClick={() => alternarGrupo(key)}
+                aria-expanded={!fechado}
+                title={fechado ? 'Abrir o grupo' : 'Recolher o grupo'}
+                className="flex w-full items-center gap-2 px-3 py-2 bg-muted/30 text-left transition-colors hover:bg-muted/60"
+              >
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${fechado ? '-rotate-90' : ''}`}
+                />
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
                 {ARTIGO_POR_GRUPO[key] && (
                   <Badge variant="outline" className="text-xs">{ARTIGO_POR_GRUPO[key]}</Badge>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto">{doGrupo.length} arquivo(s)</span>
-              </div>
-              <div className="divide-y divide-border">
-                {doGrupo.map((a) => renderAnexo(a))}
-              </div>
+              </button>
+              {!fechado && (
+                <div className="divide-y divide-border">
+                  {doGrupo.map((a) => renderAnexo(a))}
+                </div>
+              )}
             </div>
           );
         })}
