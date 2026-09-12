@@ -286,12 +286,19 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     const next = new URLSearchParams(buscaParams);
     next.delete('reler');
     setBuscaParams(next, { replace: true });
+    // O documento-fonte das cláusulas é o INSTRUMENTO (contrato ou ata), na
+    // ordem de autoridade — nunca empenho nem publicação: o primeiro seletor
+    // procurava tipo 'contrato' (valor que não existe: é 'contrato_original')
+    // e caía no primeiro PDF da lista, que era uma Nota de Empenho (12/09).
+    const ORDEM_DE_AUTORIDADE = ['contrato_original', 'ata_srp', 'prorrogacao_continuo', 'aditivo_reequilibrio', 'ata_aditivo_prazo'];
     const principal =
-      arquivos.find((a) => a.tipo === 'contrato') ??
-      arquivos.find((a) => String(a.nome_arquivo || '').toLowerCase().endsWith('.pdf')) ??
-      arquivos[0];
+      ORDEM_DE_AUTORIDADE.map((t) => arquivos.find((a) => a.tipo === t)).find(Boolean) ??
+      arquivos.find((a) => /contrato|ata(?!mento)/i.test(String(a.nome_arquivo || '')) &&
+        String(a.nome_arquivo || '').toLowerCase().endsWith('.pdf'));
     if (!principal) {
-      toast.warning('Nenhum documento anexado para reanalisar — envie o PDF do contrato.');
+      toast.warning('Nenhum contrato, ata ou aditivo anexado para reanalisar.', {
+        description: 'A leitura de cláusulas usa o instrumento — empenhos e publicações não a alimentam. Envie o PDF do contrato.',
+      });
       return;
     }
     toast.info(`Relendo ${principal.nome_arquivo}…`, {
