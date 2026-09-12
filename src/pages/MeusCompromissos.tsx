@@ -548,7 +548,12 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
+                  </div>
+
+                  {/* As ações moram numa LINHA no rodapé: empilhadas à direita,
+                      seis botões ditavam a altura do cartão e o conteúdo curto
+                      deixava um vazio enorme embaixo (apontado em 12/09). */}
+                  <div className="flex items-center flex-wrap justify-end gap-1 border-t border-border/50 pt-2">
                       {p.status === 'interessado' && (
                         <>
                           <Button size="sm" variant="outline" onClick={() => handleAnaliseIA(p)} disabled={analisandoIA === p.id}>
@@ -591,13 +596,12 @@ Formate em Markdown com seções numeradas. Não inclua saudações, apresentaç
                         </Button>
                       )}
                       {p.url && (
-                        <Button size="sm" variant="outline" asChild>
+                        <Button size="sm" variant="outline" asChild title="Abrir no portal de origem">
                           <a href={p.url} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </Button>
                       )}
-                    </div>
                   </div>
 
                   {/* IA Analysis result */}
