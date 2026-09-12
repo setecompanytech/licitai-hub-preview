@@ -84,8 +84,21 @@ export default function KanbanPage() {
   const { atualizarStatus, registrarPerda, arquivarProcesso } = useLicitacaoIntegration();
   // `?focus=<id>` vem do painel: destaca e rola até o card em vez de largar o
   // usuário num quadro de oito colunas para procurar o processo na mão.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const focoId = searchParams.get('focus');
+  // A aba ativa vive na URL (`?aba=compromissos`): quem abre uma pasta a
+  // partir da aba Compromissos e clica em Voltar retorna à MESMA aba — antes
+  // o histórico gravava `/kanban` seco e o retorno caía na aba padrão.
+  const abaAtiva = ['kanban', 'compromissos', 'historico'].includes(searchParams.get('aba') || '')
+    ? (searchParams.get('aba') as string)
+    : 'kanban';
+  const mudarAba = (v: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (v === 'kanban') next.delete('aba'); else next.set('aba', v);
+      return next;
+    }, { replace: true });
+  };
   const focoRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<LicitacaoKanban[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,7 +381,7 @@ export default function KanbanPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="kanban" className="space-y-4">
+      <Tabs value={abaAtiva} onValueChange={mudarAba} className="space-y-4">
         <TabsList>
           <TabsTrigger value="kanban" className="gap-1.5"><LayoutDashboard className="w-3.5 h-3.5" /> Kanban</TabsTrigger>
           <TabsTrigger value="compromissos" className="gap-1.5"><ListChecks className="w-3.5 h-3.5" /> Compromissos</TabsTrigger>
