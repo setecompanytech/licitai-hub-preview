@@ -4,7 +4,24 @@ import { identidadeDoProcesso, siglaDaModalidade, objetoLegivel } from '@/lib/li
 describe('identidadeDoProcesso', () => {
   it('o caso do print: "033" ganha a modalidade e vira identidade', () => {
     expect(identidadeDoProcesso({ numero: '033', modalidade: 'Pregão Eletrônico' }))
-      .toBe('PE 033');
+      .toBe('PE nº 33');
+  });
+
+  // A duplicidade de 12/09: o portal grava a modalidade DENTRO do campo
+  // número, e o card virava "PREGÃO Pregão Eletrônico SRP Nº 014".
+  it('número que carrega modalidade e SRP não duplica no card', () => {
+    expect(identidadeDoProcesso({ numero: 'Pregão Eletrônico SRP Nº 014', modalidade: 'Pregão - Eletrônico' }))
+      .toBe('PE nº 14 · SRP');
+    expect(identidadeDoProcesso({ numero: 'P.E. 044', modalidade: 'Pregão - Eletrônico' }))
+      .toBe('PE nº 44');
+    expect(identidadeDoProcesso({ numero: '00046', modalidade: 'Pregão Eletrônico' }))
+      .toBe('PE nº 46');
+    expect(identidadeDoProcesso({ numero: '011/2026', modalidade: 'Pregão Eletrônico' }))
+      .toBe('PE nº 11/2026');
+  });
+
+  it('"Pregão - Eletrônico" com hífen vira PE, não PREGÃO', () => {
+    expect(siglaDaModalidade('Pregão - Eletrônico')).toBe('PE');
   });
 
   it('as modalidades correntes viram as siglas do setor', () => {
@@ -26,7 +43,7 @@ describe('identidadeDoProcesso', () => {
   });
 
   it('sem modalidade, o número segura a identidade sozinho', () => {
-    expect(identidadeDoProcesso({ numero: '99023/2026', modalidade: null })).toBe('99023/2026');
+    expect(identidadeDoProcesso({ numero: '99023/2026', modalidade: null })).toBe('nº 99023/2026');
   });
 
   it('nunca devolve vazio — card sem identidade é o defeito de origem', () => {

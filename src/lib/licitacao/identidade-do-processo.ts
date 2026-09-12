@@ -10,14 +10,18 @@
  * monitoramento); faltava o padrão de apresentação. Este módulo é o padrão.
  */
 
+import { identidadeDoEdital } from './identidade-edital';
+
 /**
  * Siglas correntes do setor. Texto livre de modalidade → sigla curta.
  * Modalidade que não casa com nenhuma volta como veio — sigla inventada
  * confunde mais do que texto longo.
  */
 const SIGLAS: Array<[RegExp, string]> = [
-  [/preg[aã]o\s*eletr/i, 'PE'],
-  [/preg[aã]o\s*presencial/i, 'PP'],
+  // Separador tolerante: os portais escrevem "Pregão - Eletrônico" com hífen,
+  // e o \s* deixava esses cair na sigla genérica 'PREGÃO' (visto em 12/09).
+  [/preg[aã]o[\s-]*eletr/i, 'PE'],
+  [/preg[aã]o[\s-]*presencial/i, 'PP'],
   [/preg[aã]o/i, 'PREGÃO'],
   [/concorr[êe]ncia/i, 'CONC'],
   [/dispensa/i, 'DL'],
@@ -42,8 +46,14 @@ export function siglaDaModalidade(modalidade: string | null | undefined): string
 const NAO_E_NUMERO = /^(processo\s*manual|manual|s\/n|sem\s*n[uú]mero)?$/i;
 
 /**
- * A linha de identidade do card: "PE 033", "DL 07/2026/PMPA", "Processo
- * manual". Nunca devolve vazio — card sem identidade é o defeito de origem.
+ * A linha de identidade do card: "PE nº 33", "DL nº 7/2026", "PE nº 14 · SRP",
+ * "Processo manual". Nunca devolve vazio — card sem identidade é o defeito
+ * de origem.
+ *
+ * O NÚMERO passa pela mesma autoridade das outras telas (identidade-edital):
+ * antes o campo cru era colado atrás da sigla e o portal que grava
+ * "Pregão Eletrônico SRP Nº 014" no número virava "PREGÃO Pregão Eletrônico
+ * SRP Nº 014" no card — a duplicidade apontada em 12/09.
  */
 export function identidadeDoProcesso(p: {
   numero?: string | null;
@@ -53,10 +63,15 @@ export function identidadeDoProcesso(p: {
   const numero = String(p.numero ?? '').trim();
   const temNumero = !NAO_E_NUMERO.test(numero);
 
-  if (sigla && temNumero) return `${sigla} ${numero}`;
-  if (temNumero) return numero;
-  if (sigla) return `${sigla} · processo manual`;
-  return 'Processo manual';
+  if (!temNumero) return sigla ? `${sigla} · processo manual` : 'Processo manual';
+
+  const id = identidadeDoEdital({ numeroCompra: numero, modalidade: p.modalidade });
+  const srp = id.srpNoTexto ? ' · SRP' : '';
+  if (id.numeroPadronizado) {
+    return sigla ? `${sigla} ${id.numeroPadronizado}${srp}` : `${id.numeroPadronizado}${srp}`;
+  }
+  // Número sem dígito extraível: fica como veio — padronização não inventa.
+  return sigla ? `${sigla} ${numero}` : numero;
 }
 
 /**
