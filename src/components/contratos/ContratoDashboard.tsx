@@ -806,9 +806,9 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
           </div>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(c.data_assinatura).toLocaleDateString('pt-BR') : '—'}</p></div>
-          <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(c.data_inicio).toLocaleDateString('pt-BR') : '—'}</p></div>
-          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${vigencia.vencido ? 'text-destructive' : vigencia.vencendo ? 'text-warning' : ''}`}>{c.data_fim ? new Date(c.data_fim).toLocaleDateString('pt-BR') : '—'}</p></div>
+          <div><span className="text-muted-foreground">Assinatura:</span><p className="font-medium">{c.data_assinatura ? new Date(`${c.data_assinatura.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
+          <div><span className="text-muted-foreground">Início:</span><p className="font-medium">{c.data_inicio ? new Date(`${c.data_inicio.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
+          <div><span className="text-muted-foreground">Fim:</span><p className={`font-medium ${vigencia.vencido ? 'text-destructive' : vigencia.vencendo ? 'text-warning' : ''}`}>{c.data_fim ? new Date(`${c.data_fim.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '—'}</p></div>
           <div>
             <span className="text-muted-foreground">{vigencia.vencido ? 'Situação:' : 'Dias restantes:'}</span>
             <p className={`font-medium ${vigencia.vencido ? 'text-destructive font-bold' : vigencia.vencendo ? 'text-warning font-bold' : ''}`}>
