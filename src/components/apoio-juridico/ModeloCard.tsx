@@ -85,11 +85,11 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); triggerNativeNewTab(); } }}
-      className="group relative grid grid-cols-[2.25rem_1fr_auto] items-start gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
+      className="group relative grid grid-cols-[2rem_1fr_auto] items-start gap-2.5 px-3 py-2 border-b border-border/40 last:border-b-0 hover:bg-accent/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-accent/10 focus-visible:ring-1 focus-visible:ring-accent/40"
     >
       {/* Numeração forense */}
       <div className="flex flex-col items-center pt-0.5 shrink-0">
-        <span className="text-[14px] font-semibold text-muted-foreground tabular-nums leading-none">
+        <span className="text-xs font-semibold text-muted-foreground tabular-nums leading-none">
           {numero}
         </span>
         <span className="block w-4 h-px bg-border/60 mt-1" />
@@ -102,14 +102,14 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
 
       {/* Caput + descrição + fundamentação */}
       <div className="min-w-0">
-        <h4 className="text-[15px] font-semibold text-foreground leading-snug tracking-tight">
+        <h4 className="text-sm font-semibold text-foreground leading-snug">
           {m.titulo}
         </h4>
-        <p className="text-[13px] text-muted-foreground mt-1 leading-snug line-clamp-2">
+        <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
           {m.descricao}
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-          <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-foreground tabular-nums whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground tabular-nums whitespace-nowrap">
             <span className="text-muted-foreground">§</span> {m.fundamentacao}
           </span>
           {m.requisitosFiltro.includes('indices') && (
@@ -142,7 +142,7 @@ export default function ModeloCard({ modelo: m, pedidosCount = 0, index, onAbrir
           asChild
           size="sm"
           variant="ghost"
-          className="h-8 px-2.5 text-[11.5px] uppercase tracking-wider font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
+          className="h-7 px-2 text-xs uppercase tracking-wide font-semibold text-accent hover:text-accent hover:bg-accent/10 gap-1 shrink-0"
         >
           <a
             ref={cardLinkRef}

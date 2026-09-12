@@ -1594,7 +1594,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-semibold">
                   Praefectus · Acervo Jurídico
                 </p>
-                <h2 className="text-base font-bold text-foreground leading-tight mt-0.5 tracking-tight">
+                <h2 className="text-sm font-bold text-foreground leading-tight mt-0.5">
                   Compêndio de Modelos Processuais e Administrativos
                 </h2>
               </div>
@@ -1624,16 +1624,16 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       Contraste AA garantido: bg-secondary + text-secondary-foreground
                       (par de tokens validado em light/dark). Fallback sólido antes
                       do blur para navegadores sem backdrop-filter. */}
-                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2.5 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border text-secondary-foreground shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-3 px-4 py-2 bg-secondary supports-[backdrop-filter]:bg-secondary/95 backdrop-blur-sm border-y border-border text-secondary-foreground shadow-[inset_3px_0_0_0_hsl(var(--accent))]">
                     <div className="flex items-baseline gap-2.5 min-w-0">
-                      <span className="text-[13px] font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
+                      <span className="text-xs font-bold text-secondary-foreground tabular-nums tracking-wider shrink-0">
                         CAP. {romano}
                       </span>
                       <span className="w-px h-3.5 bg-secondary-foreground/30 shrink-0" aria-hidden="true" />
-                      <h3 className="text-[13px] font-bold uppercase tracking-[0.12em] text-secondary-foreground truncate">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-secondary-foreground truncate">
                         {cat}
                       </h3>
-                      <span className="text-[12px] text-secondary-foreground/75 tabular-nums shrink-0">
+                      <span className="text-xs text-secondary-foreground/75 tabular-nums shrink-0">
                         ({items.length} {items.length === 1 ? 'peça' : 'peças'})
                       </span>
                     </div>
