@@ -43,6 +43,8 @@ type BuscaParams = {
   modalidade: string;
   situacao: string;
   esfera: string;
+  /** Código IBGE do município — filtro exato, aceito pelo PNCP e pela RPC. */
+  municipioIbge?: string;
 };
 
 function calcularStatus(item: Record<string, unknown>): string {
@@ -231,7 +233,7 @@ async function buscarNoCache(params: BuscaParams, cors: HeadersInit): Promise<Re
     sc.rpc('busca_editais_instantanea', {
       p_q: params.termo || null,
       p_uf: params.uf || null,
-      p_municipio_ibge: null,
+      p_municipio_ibge: params.municipioIbge || null,
       p_esfera: params.esfera || null,
       p_modalidade_id: params.modalidade && params.modalidade !== 'all' && params.modalidade !== '0'
         ? Number(params.modalidade) : null,
@@ -282,6 +284,7 @@ Deno.serve(async (req) => {
       situacao = 'abertas',
       esfera,
       cnpjs,
+      municipioIbge,
     } = parsedBody;
     // CNPJs fornecidos diretamente pelo usuário (apenas dígitos)
     const cnpjsParam: string[] = Array.isArray(cnpjs)
@@ -298,12 +301,16 @@ Deno.serve(async (req) => {
     const dataInicialFiltro = dataInicial || formatIsoDate(inicio90);
     const dataFinalFiltro = dataFinal || formatIsoDate(hoje);
     const modalidadeFiltro = modalidade ? String(modalidade) : '';
+    // Município ANTES era cortado só no navegador, página a página — o total
+    // de páginas vinha sem o filtro e as últimas ficavam vazias (12/09).
+    const municipioIbgeFiltro = municipioIbge ? String(municipioIbge).replace(/\D/g, '') : '';
     const esferaFiltro = esfera && esfera !== 'all' ? String(esfera) : '';
 
     const buscaParams: BuscaParams = {
       termo, uf, pagina: paginaAtual, tamanhoPagina: pageSize,
       dataInicial: dataInicialFiltro, dataFinal: dataFinalFiltro,
       modalidade: modalidadeFiltro, situacao, esfera: esferaFiltro,
+      municipioIbge: municipioIbgeFiltro,
     };
 
     // PNCP limita o intervalo de busca a 365 dias. Se o usuário pedir mais,
@@ -378,6 +385,7 @@ Deno.serve(async (req) => {
           if (ufEfetiva) p.set('uf', ufEfetiva.toUpperCase());
           if (cnpjUasg) p.set('cnpj', cnpjUasg);
           if (esferaFiltro) p.set('codigoEsfera', esferaFiltro);
+          if (municipioIbgeFiltro) p.set('codigoMunicipioIbge', municipioIbgeFiltro);
           p.set('codigoModalidadeContratacao', String(modId));
           p.set('dataInicial', dataInicialPncp.replace(/-/g, ''));
           p.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
@@ -460,6 +468,7 @@ Deno.serve(async (req) => {
     if (ufEfetiva) params.set('uf', ufEfetiva.toUpperCase());
     if (cnpjUasg) params.set('cnpj', cnpjUasg);
     if (esferaFiltro) params.set('codigoEsfera', esferaFiltro);
+    if (municipioIbgeFiltro) params.set('codigoMunicipioIbge', municipioIbgeFiltro);
     params.set('codigoModalidadeContratacao', modalidadeFiltro);
     params.set('dataInicial', dataInicialPncp.replace(/-/g, ''));
     params.set('dataFinal', dataFinalFiltro.replace(/-/g, ''));
@@ -518,6 +527,7 @@ Deno.serve(async (req) => {
           modalidade: parsedBody.modalidade ? String(parsedBody.modalidade) : '',
           situacao: String(parsedBody.situacao || 'abertas'),
           esfera: String(parsedBody.esfera || ''),
+          municipioIbge: parsedBody.municipioIbge ? String(parsedBody.municipioIbge).replace(/\D/g, '') : '',
         }, cors);
       } catch (cacheErr) {
         console.error('Cache fallback error:', cacheErr);

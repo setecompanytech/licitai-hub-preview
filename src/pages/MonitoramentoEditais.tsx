@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
 import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
+import { fetchMunicipiosUF } from '@/lib/ibge-municipios';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
@@ -518,15 +519,42 @@ export default function MonitoramentoEditais() {
         return sig.length > 4 ? sig : `__sem_chave__${Math.random()}`;
       };
 
+      // Municípios → código IBGE (tudo-ou-nada): resolvidos, o corte acontece
+      // no SERVIDOR (RPC e PNCP aceitam codigoMunicipioIbge) e o total de
+      // páginas volta a ser VERDADEIRO — antes o corte era só local, página a
+      // página, e o sistema anunciava 15 páginas com as últimas vazias
+      // (12/09). Nome que não resolver mantém o corte local, sem perder nada.
+      let muniIbgeList: (string | null)[] = [null];
+      if (filtros.municipios.length > 0) {
+        const codigos: string[] = [];
+        const porUf = new Map<string, string[]>();
+        for (const m of filtros.municipios) {
+          const [nomeM, ufM] = m.split('/').map(x => x.trim());
+          if (nomeM && ufM) porUf.set(ufM, [...(porUf.get(ufM) || []), nomeM]);
+        }
+        for (const [ufM, nomes] of porUf) {
+          try {
+            const lista = await fetchMunicipiosUF(ufM);
+            for (const nomeM of nomes) {
+              const hit = lista.find(x => x.nome.toLowerCase() === nomeM.toLowerCase());
+              if (hit) codigos.push(String(hit.id));
+            }
+          } catch { /* IBGE fora do ar: cai no corte local desta busca */ }
+        }
+        if (codigos.length === filtros.municipios.length) muniIbgeList = codigos;
+        logCtx({ etapa: 'municipios_ibge', pedidos: filtros.municipios.length, resolvidos: codigos.length });
+      }
+
       const consultarCache = async (dIni?: string | null, dFim?: string | null) => {
         const calls: Promise<{ data: any[] | null; error: any }>[] = [];
         for (const uf of ufsList) {
           for (const mod of modList) {
+           for (const muni of muniIbgeList) {
             calls.push(
               Promise.resolve(supabase.rpc('busca_editais_instantanea' as any, {
                 p_q: termo,
                 p_uf: uf,
-                p_municipio_ibge: null,
+                p_municipio_ibge: muni,
                 p_esfera: null,
                 p_modalidade_id: mod,
                 p_segmento: null,
@@ -540,6 +568,7 @@ export default function MonitoramentoEditais() {
                 p_margem_preferencia: filtros.margensPreferencia.length === 1 ? filtros.margensPreferencia[0] : null,
               }) as any)
             );
+           }
           }
         }
 
@@ -617,21 +646,24 @@ export default function MonitoramentoEditais() {
           : '';
 
         const liveCalls = ufsList.flatMap(uf =>
-          modalidadesList.map(modalidade =>
-            supabase.functions.invoke('busca-licitacoes', {
-              body: {
-                termo: termo || '',
-                uf: uf || '',
-                pagina: pag,
-                tamanhoPagina: tamanho,
-                dataInicial: dataIniEfetiva,
-                dataFinal: dataFimEfetiva,
-                modalidade: modalidade != null ? String(modalidade) : '',
-                situacao: 'todas',
-                esfera,
-                cnpjs: cnpjsEfetivos.length > 0 ? cnpjsEfetivos : undefined,
-              },
-            })
+          modalidadesList.flatMap(modalidade =>
+            muniIbgeList.map(muni =>
+              supabase.functions.invoke('busca-licitacoes', {
+                body: {
+                  termo: termo || '',
+                  uf: uf || '',
+                  pagina: pag,
+                  tamanhoPagina: tamanho,
+                  dataInicial: dataIniEfetiva,
+                  dataFinal: dataFimEfetiva,
+                  modalidade: modalidade != null ? String(modalidade) : '',
+                  situacao: 'todas',
+                  esfera,
+                  cnpjs: cnpjsEfetivos.length > 0 ? cnpjsEfetivos : undefined,
+                  municipioIbge: muni || undefined,
+                },
+              })
+            )
           )
         );
 
@@ -908,11 +940,20 @@ export default function MonitoramentoEditais() {
         });
       }
 
+      // Honestidade na paginação: quando um filtro fino SÓ local (órgão,
+      // unidade, status…) cortou itens desta página, o número de páginas —
+      // que vem do servidor, sem esse filtro — pode incluir páginas vazias.
+      // O aviso declara isso em vez de deixar o usuário achar que é defeito.
+      const aviso = reduziu
+        ? `Filtros finos são aplicados página a página — das ${paginas} páginas, algumas podem vir vazias.`
+        : undefined;
+
       setResultado({
         data: editais,
         total,
         paginas,
         pagina: pag,
+        aviso,
       });
       setPagina(pag);
 
