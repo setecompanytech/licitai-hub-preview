@@ -1,12 +1,12 @@
-/* Inter no corpo, Poppins nos títulos, Cinzel na marca.
+/* Inter no corpo, Manrope nos títulos, Cinzel na marca.
    O protótipo carrega Inter em 400/500/600/700/800; ele usa só cinco pesos, e
    700 e 600 concentram quase tudo (221 e 176 regras). Cinzel fica na logo, no
    splash, na AURÉLIA e no título de peça jurídica — os quatro lugares onde ele
    aparece lá. JetBrains Mono continua para código e identificadores.
-   Poppins entrou em 10/09/2026, só em 600/700, para h1–h6 (regra na @layer
-   base): é a fonte de título das referências que o Rafael mandou. Ver o
+   Manrope entrou em 12/09/2026 (600/700/800), para h1–h6 (regra na @layer
+   base): é a fonte de título da direção LICITA360 aprovada pelo dono. Ver o
    comentário de fontFamily.heading no tailwind.config.ts. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&family=Cinzel:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=Cinzel:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -30,59 +30,58 @@
      dele, que é a versão legível que ele próprio já usava para texto.
      ========================================================================== */
   :root {
-    --background: 216 38% 97%;
-    --foreground: 222 47% 11%;
+    --background: 216 33% 97%;   /* #F5F7FA */
+    --foreground: 218 54% 20%;   /* #172B4D */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 218 54% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 218 54% 20%;
 
-    /* Navy da marca (#101B2D). No shadcn `--primary` é a cor do botão
-       primário, e é assim que o protótipo usa: `.btn--primario` é navy,
-       enquanto o azul fica para link, foco e estado ativo. 17.2:1 com
-       branco por cima. */
-    --primary: 217 48% 12%;
+    /* Verde de ação (#087F5B) — direção LICITA360 aprovada pelo dono em
+       12/09: o botão primário é verde nas referências (CTA da landing e do
+       painel). O navy #102A43 vira estrutura (sidebar, hero), não ação.
+       5.2:1 com branco por cima. */
+    --primary: 162 88% 26%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary-foreground: 218 54% 20%;
 
     --muted: 213 33% 95%;
-    /* #64748B cru dava 4.39:1 sobre o fundo — abaixo do AA. 43% dá 5.06:1. */
-    --muted-foreground: 215 16% 43%;
+    /* #526477 da paleta nova — 5.6:1 sobre o fundo. */
+    --muted-foreground: 211 18% 39%;
 
-    /* Azul de ação (#2563EB). Substitui o laranja: é o que o protótipo usa
-       em foco, link e estado ativo, exatamente onde o laranja estava.
-       4.83:1 como texto sobre o fundo, 5.20:1 com branco por cima. */
-    --accent: 221 83% 53%;
+    /* Verde de ação também em link, foco e estado ativo — nas referências
+       novas há UMA cor de ação, não duas. 5.2:1 sobre o fundo. */
+    --accent: 162 88% 26%;
     --accent-foreground: 0 0% 100%;
 
     /* Estados: o tom CHEIO do protótipo reprova como texto sobre fundo claro
        (error 4.46, success 3.11, warning 2.93) — o mesmo "lavado" que já
        tinha sido corrigido aqui antes. Entra a tinta `*-ink` do protótipo,
        que é a cor que ele usa para texto sobre a tinta clara. */
-    --destructive: 0 74% 42%;   /* --error-ink   #B91C1C — 5.96:1 */
+    --destructive: 4 76% 40%;   /* #B42318 da paleta nova — 6.0:1 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 72% 29%;     /* --success-ink #15803D — 4.71:1 */
+    --success: 162 88% 26%;     /* mesmo verde da ação — como nas referências */
     --success-foreground: 0 0% 100%;
 
-    --warning: 26 90% 37%;      /* --warning-ink #B45309 — 4.69:1 */
+    --warning: 23 83% 31%;      /* #92400E da paleta nova — 7.0:1 */
     --warning-foreground: 0 0% 100%;
 
     /* Info segue neutro: sob a regra de contenção, azul não é estado — e
        agora que o azul virou a cor de ação, misturar os dois seria pior. */
-    --info: 215 16% 43%;
+    --info: 211 18% 39%;
     --info-foreground: 0 0% 100%;
 
     /* Séries de gráfico — exceção contida à regra de cor. As cinco primeiras
        são a família `--cat-*` do protótipo, que já nasceu como cinco tons
        distinguíveis entre si. */
-    --chart-1: 221 83% 53%;     /* --cat-op       #2563EB */
+    --chart-1: 162 88% 30%;     /* verde da marca */
     --chart-2: 192 91% 36%;     /* --cat-banco    #0891B2 */
-    --chart-3: 142 76% 36%;     /* --cat-cadastro #16A34A */
+    --chart-3: 221 83% 53%;     /* azul vira série, não ação */
     --chart-4: 32 95% 44%;      /* --cat-fiscal   #D97706 */
     --chart-5: 262 83% 58%;     /* --cat-analise  #7C3AED */
     /* 6 a 8 servem ContratosGov e TransparenciaPA, que pedem oito séries.
@@ -96,34 +95,35 @@
     /* Escala de intensidade do mapa de licitações por estado — do menor ao
        maior volume. Seis passos, como no protótipo: o 1 quase se confunde com
        a superfície e o 6 é o azul cheio da marca. */
-    --map-1: 214 100% 97%;
-    --map-2: 214 95% 93%;
-    --map-3: 213 97% 87%;
-    --map-4: 212 96% 78%;
-    --map-5: 213 94% 68%;
-    --map-6: 221 83% 53%;
+    --map-1: 160 60% 96%;
+    --map-2: 160 55% 90%;
+    --map-3: 161 50% 80%;
+    --map-4: 161 52% 64%;
+    --map-5: 162 60% 42%;
+    --map-6: 162 88% 26%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    /* O anel de foco é o azul, não o navy: navy sobre navy some no escuro,
-       e era exatamente o que acontecia (o valor era o mesmo nos dois temas). */
-    --ring: 221 83% 53%;
+    --border: 212 27% 89%;   /* #DCE3EB */
+    --input: 212 27% 89%;
+    /* O anel de foco segue a cor de ação. */
+    --ring: 162 88% 30%;
 
-    --radius: 0.5rem;
+    /* 1rem no cartão (rounded-lg); botão e campo têm 10px fixos no
+       tailwind.config — a régua das referências novas. */
+    --radius: 1rem;
 
     /* Navy da marca, em três passos — header, hover e tinta.
        O protótipo os separa de propósito: o botão escuro CLAREIA no hover
        (o inverso do botão claro). */
-    --navy: 217 48% 12%;
-    --navy-hover: 217 45% 22%;
-    --navy-tint: 220 20% 93%;
-    --primary-tint: 213 84% 93%;
+    --navy: 209 61% 16%;        /* #102A43 da paleta nova */
+    --navy-hover: 209 48% 26%;
+    --navy-tint: 210 25% 93%;
+    --primary-tint: 160 55% 94%;
 
     /* Dourado da marca — é a cor da logo sobre o navy, e só dela. No painel
        inteiro do protótipo não há outro pixel dourado: é assinatura, não cor
        de interface. O tom do header é mais claro de propósito (3.6:1 sobre o
        azul primário, contra 1.5:1 do laranja antigo). */
-    --logo-accent: 46 79% 71%;  /* #F0D77B */
+    --logo-accent: 158 55% 56%;  /* verde claro sobre o navy — marca na direção nova */
     --gold: 46 65% 52%;         /* #D4AF37 */
     --gold-deep: 39 62% 41%;    /* #A87B28 */
     --gold-hi: 45 76% 87%;      /* #F7ECC4 */
@@ -132,9 +132,9 @@
        É o que dá o aviso mais leve do protótipo: hoje o app tem uma cor por
        estado e precisa compor alfa na mão (`bg-warning/10`). A `*-line`
        existe porque caixa de alerta grande sem contorno boia sobre o fundo. */
-    --success-tint: 141 84% 93%;      --success-ink: 142 72% 29%;      --success-line: 141 59% 78%;
-    --warning-tint: 48 96% 89%;       --warning-ink: 26 90% 37%;       --warning-line: 44 67% 76%;
-    --destructive-tint: 0 93% 94%;    --destructive-ink: 0 74% 42%;    --destructive-line: 0 68% 85%;
+    --success-tint: 160 55% 94%;      --success-ink: 162 88% 24%;      --success-line: 160 45% 78%;
+    --warning-tint: 42 95% 90%;       --warning-ink: 23 83% 31%;       --warning-line: 40 65% 76%;
+    --destructive-tint: 5 86% 95%;    --destructive-ink: 4 76% 40%;    --destructive-line: 5 65% 85%;
 
     /* Carregamento — a base do skeleton e a faixa clara que o varre.
        Valores do protótipo (#E3E9F1 / #F1F5FA). A base precisa destacar do
@@ -147,38 +147,39 @@
        consumidor no repositório — o AppTopNav pinta com os tokens base. Ficam
        alinhados à paleta nova para não apodrecerem divergentes; quem de fato
        repinta a navegação é `--accent`. */
-    --nav-bg: 217 48% 12%;
-    --nav-fg: 215 16% 82%;
-    --nav-active: 46 79% 71%;
-    --nav-hover: 217 45% 22%;
-    --nav-border: 217 40% 24%;
+    --nav-bg: 209 61% 16%;
+    --nav-fg: 210 22% 84%;
+    --nav-active: 158 55% 56%;
+    --nav-hover: 209 48% 24%;
+    --nav-border: 209 45% 26%;
 
     /* Gradientes refeitos com a paleta nova — os anteriores eram navy->laranja. */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(199 89% 48%));
-    --gradient-hero: linear-gradient(160deg, hsl(217 48% 12%) 0%, hsl(217 45% 18%) 50%, hsl(217 42% 26%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(174 62% 38%));
+    --gradient-hero: linear-gradient(160deg, hsl(209 61% 16%) 0%, hsl(209 52% 22%) 50%, hsl(208 45% 30%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(213 33% 96%));
-    --gradient-dark: linear-gradient(135deg, hsl(217 48% 12%), hsl(217 45% 22%));
-    --gradient-accent-subtle: linear-gradient(135deg, hsl(221 83% 53% / 0.06), hsl(199 89% 48% / 0.02));
+    --gradient-dark: linear-gradient(135deg, hsl(209 61% 16%), hsl(209 48% 26%));
+    --gradient-accent-subtle: linear-gradient(135deg, hsl(162 88% 26% / 0.06), hsl(174 62% 38% / 0.02));
     --gradient-warm: linear-gradient(135deg, hsl(216 38% 98%), hsl(213 33% 95%));
 
     /* Sombras: o protótipo escreve 28 `box-shadow` à mão sobre 4 tokens.
        sm e md vêm dele; lg e xl são derivados na mesma família (navy com
        alfa). O brilho deixou de ser laranja e passou a seguir `--accent`. */
-    --shadow-sm: 0 2px 8px 0 hsl(217 48% 12% / 0.05);
-    --shadow-md: 0 4px 16px -2px hsl(217 48% 12% / 0.08), 0 2px 4px -2px hsl(217 48% 12% / 0.04);
-    --shadow-lg: 0 10px 30px -4px hsl(217 48% 12% / 0.10), 0 4px 12px -4px hsl(217 48% 12% / 0.04);
-    --shadow-xl: 0 24px 48px -12px hsl(217 48% 12% / 0.16);
+    --shadow-sm: 0 2px 8px 0 hsl(209 61% 16% / 0.05);
+    --shadow-md: 0 4px 16px -2px hsl(209 61% 16% / 0.08), 0 2px 4px -2px hsl(209 61% 16% / 0.04);
+    --shadow-lg: 0 10px 30px -4px hsl(209 61% 16% / 0.10), 0 4px 12px -4px hsl(209 61% 16% / 0.04);
+    --shadow-xl: 0 24px 48px -12px hsl(209 61% 16% / 0.16);
     --shadow-glow: 0 0 24px hsl(var(--accent) / 0.18), 0 0 48px hsl(var(--accent) / 0.06);
     --shadow-glow-sm: 0 0 12px hsl(var(--accent) / 0.1);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 48% 12%;
+    /* Sidebar ESCURA nos dois temas — a marca da direção nova. */
+    --sidebar-background: 209 61% 16%;
+    --sidebar-foreground: 210 25% 88%;
+    --sidebar-primary: 162 88% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 84% 93%;
-    --sidebar-accent-foreground: 221 83% 53%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent: 209 48% 24%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 209 45% 24%;
+    --sidebar-ring: 158 55% 56%;
   }
 
   /* ==========================================================================
@@ -197,48 +198,45 @@
      pendente, e está registrada no checklist de `docs/rebranding-front-end.md`.
      ========================================================================== */
   .dark {
-    --background: 217 48% 7%;
-    --foreground: 216 38% 95%;
+    --background: 209 55% 7%;
+    --foreground: 210 30% 95%;
 
-    --card: 217 40% 11%;
-    --card-foreground: 216 38% 95%;
+    --card: 209 45% 11%;
+    --card-foreground: 210 30% 95%;
 
-    --popover: 217 40% 11%;
-    --popover-foreground: 216 38% 95%;
+    --popover: 209 45% 11%;
+    --popover-foreground: 210 30% 95%;
 
-    /* O navy do claro (12%) invertido dá 88%: um azul pálido que funciona
-       como botão claro sobre fundo escuro — 13.9:1 sobre o fundo, 12.6:1 com
-       a tinta navy por cima. Antes o dark colapsava `--primary` e `--accent`
-       no mesmo laranja; agora eles seguem distintos, como no claro. */
-    --primary: 217 48% 88%;
-    --primary-foreground: 217 48% 12%;
+    /* O verde de ação clareia no escuro para manter contraste; a tinta por
+       cima é o navy profundo, como o claro faz com o branco. */
+    --primary: 158 58% 52%;
+    --primary-foreground: 209 61% 10%;
 
-    --secondary: 217 30% 17%;
-    --secondary-foreground: 216 38% 92%;
+    --secondary: 209 35% 17%;
+    --secondary-foreground: 210 30% 92%;
 
-    --muted: 217 28% 15%;
-    --muted-foreground: 215 16% 65%;
+    --muted: 209 30% 15%;
+    --muted-foreground: 211 18% 65%;
 
-    /* O azul de ação clareia para 65%: o #2563EB do claro dá só 3.68:1 sobre
-       o fundo escuro. 65% dá 5.79:1, com a tinta navy por cima em 5.23:1. */
-    --accent: 221 83% 65%;
-    --accent-foreground: 217 48% 12%;
+    /* O verde clareia para 52%: 5.4:1 sobre o fundo escuro. */
+    --accent: 158 58% 52%;
+    --accent-foreground: 209 61% 10%;
 
-    --destructive: 0 74% 62%;
-    --destructive-foreground: 217 48% 12%;
+    --destructive: 4 76% 62%;
+    --destructive-foreground: 209 61% 10%;
 
-    --success: 142 60% 48%;
-    --success-foreground: 217 48% 12%;
+    --success: 158 58% 52%;
+    --success-foreground: 209 61% 10%;
 
-    --warning: 32 90% 58%;
-    --warning-foreground: 217 48% 12%;
+    --warning: 28 88% 58%;
+    --warning-foreground: 209 61% 10%;
 
-    --info: 215 16% 65%;
-    --info-foreground: 217 48% 12%;
+    --info: 211 18% 65%;
+    --info-foreground: 209 61% 10%;
 
-    --chart-1: 221 83% 65%;
+    --chart-1: 158 58% 52%;
     --chart-2: 192 85% 50%;
-    --chart-3: 142 60% 48%;
+    --chart-3: 221 83% 65%;
     --chart-4: 32 90% 58%;
     --chart-5: 262 83% 72%;
     --chart-6: 46 70% 62%;
@@ -247,36 +245,36 @@
 
     /* No escuro a escala do mapa sobe a partir do fundo em vez de descer do
        branco: o passo 1 mal se destaca da superfície, o 6 é o azul cheio. */
-    --map-1: 217 35% 15%;
-    --map-2: 217 40% 21%;
-    --map-3: 216 50% 29%;
-    --map-4: 217 60% 38%;
-    --map-5: 219 72% 50%;
-    --map-6: 221 83% 65%;
+    --map-1: 200 30% 14%;
+    --map-2: 180 32% 19%;
+    --map-3: 168 38% 26%;
+    --map-4: 163 45% 34%;
+    --map-5: 160 52% 43%;
+    --map-6: 158 58% 52%;
 
-    --border: 217 28% 20%;
-    --input: 217 28% 20%;
+    --border: 209 30% 20%;
+    --input: 209 30% 20%;
     /* Era `215 55% 20%` nos DOIS temas — navy sobre fundo escuro, praticamente
        invisível. O anel de foco é a única pista de teclado que existe. */
-    --ring: 221 83% 65%;
+    --ring: 158 58% 52%;
 
-    --navy: 217 48% 9%;
-    --navy-hover: 217 42% 18%;
-    --navy-tint: 217 30% 17%;
-    --primary-tint: 221 45% 22%;
+    --navy: 209 61% 12%;
+    --navy-hover: 209 48% 20%;
+    --navy-tint: 209 35% 17%;
+    --primary-tint: 162 45% 18%;
 
     /* O dourado atravessa os dois temas quase igual: ele já nasceu claro para
        viver sobre o navy do header, que é escuro nos dois. */
-    --logo-accent: 46 79% 71%;
+    --logo-accent: 158 55% 56%;
     --gold: 46 70% 58%;
     --gold-deep: 39 62% 48%;
     --gold-hi: 45 40% 26%;
 
     /* Trio por estado invertido: a tinta vira superfície escura, a `*-ink`
        vira o texto claro, e a linha fica no meio. */
-    --success-tint: 142 40% 13%;      --success-ink: 142 60% 62%;      --success-line: 142 32% 28%;
-    --warning-tint: 32 45% 13%;       --warning-ink: 32 90% 62%;       --warning-line: 32 38% 30%;
-    --destructive-tint: 0 45% 13%;    --destructive-ink: 0 74% 68%;    --destructive-line: 0 38% 30%;
+    --success-tint: 160 40% 13%;      --success-ink: 158 55% 60%;      --success-line: 160 32% 28%;
+    --warning-tint: 30 45% 13%;       --warning-ink: 28 88% 62%;       --warning-line: 30 38% 30%;
+    --destructive-tint: 5 45% 13%;    --destructive-ink: 4 76% 68%;    --destructive-line: 5 38% 30%;
 
     /* No escuro o skeleton sobe em vez de descer: fica acima do `--card`
        (217 40% 11%) e abaixo do `--border` (217 28% 20%), que é a faixa onde
@@ -284,21 +282,21 @@
     --skeleton-bg: 217 30% 16%;
     --skeleton-hi: 217 26% 24%;
 
-    --nav-bg: 217 48% 5%;
-    --nav-fg: 215 16% 72%;
-    --nav-active: 46 79% 71%;
-    --nav-hover: 217 42% 14%;
-    --nav-border: 217 32% 16%;
+    --nav-bg: 209 61% 12%;
+    --nav-fg: 210 22% 76%;
+    --nav-active: 158 55% 56%;
+    --nav-hover: 209 48% 18%;
+    --nav-border: 209 40% 20%;
 
     /* Os 6 gradientes NÃO tinham override no escuro: `--gradient-card` era
        branco->cinza-claro e `--gradient-warm` era bege, ambos claros mesmo
        com o tema escuro ligado. */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(199 89% 60%));
-    --gradient-hero: linear-gradient(160deg, hsl(217 48% 6%) 0%, hsl(217 44% 11%) 50%, hsl(217 40% 16%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(217 40% 12%), hsl(217 42% 9%));
-    --gradient-dark: linear-gradient(135deg, hsl(217 48% 6%), hsl(217 44% 12%));
-    --gradient-accent-subtle: linear-gradient(135deg, hsl(221 83% 65% / 0.10), hsl(199 89% 60% / 0.03));
-    --gradient-warm: linear-gradient(135deg, hsl(217 40% 12%), hsl(217 34% 15%));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(174 62% 45%));
+    --gradient-hero: linear-gradient(160deg, hsl(209 58% 6%) 0%, hsl(209 52% 11%) 50%, hsl(208 45% 16%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(209 45% 12%), hsl(209 48% 9%));
+    --gradient-dark: linear-gradient(135deg, hsl(209 58% 6%), hsl(209 50% 12%));
+    --gradient-accent-subtle: linear-gradient(135deg, hsl(158 58% 52% / 0.10), hsl(174 62% 45% / 0.03));
+    --gradient-warm: linear-gradient(135deg, hsl(209 45% 12%), hsl(209 36% 15%));
 
     /* As 6 sombras também não tinham override: usavam `hsl(215 45% 12% / α)`,
        ou seja, sombra escura sobre fundo escuro — que não aparece. No escuro
@@ -308,14 +306,14 @@
     --shadow-lg: 0 10px 30px -4px hsl(217 60% 2% / 0.58), 0 4px 12px -4px hsl(217 60% 2% / 0.40);
     --shadow-xl: 0 24px 48px -12px hsl(217 60% 2% / 0.70);
 
-    --sidebar-background: 217 44% 9%;
-    --sidebar-foreground: 216 38% 92%;
-    --sidebar-primary: 217 48% 88%;
-    --sidebar-primary-foreground: 217 48% 12%;
-    --sidebar-accent: 221 45% 22%;
-    --sidebar-accent-foreground: 221 83% 65%;
-    --sidebar-border: 217 28% 18%;
-    --sidebar-ring: 221 83% 65%;
+    --sidebar-background: 209 58% 10%;
+    --sidebar-foreground: 210 25% 88%;
+    --sidebar-primary: 158 58% 52%;
+    --sidebar-primary-foreground: 209 61% 10%;
+    --sidebar-accent: 209 45% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 209 40% 20%;
+    --sidebar-ring: 158 55% 56%;
   }
 }
 
@@ -362,6 +360,10 @@
      onde for aplicada, então a marca não é afetada. */
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
+  }
+  /* Título grande respira melhor levemente comprimido — régua da direção nova. */
+  h1, h2 {
+    letter-spacing: -0.02em;
     overflow-wrap: break-word;
     word-break: normal;
     hyphens: auto;

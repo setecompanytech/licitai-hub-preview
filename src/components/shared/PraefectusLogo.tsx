@@ -15,12 +15,13 @@ const sizeClasses = {
 };
 
 export default function PraefectusLogo({ size = 'md', className, variant = 'default' }: PraefectusLogoProps) {
-  // O dourado da marca agora existe como token. Antes esta linha apontava para
-  // `--accent`, que era o laranja — a variável já se chamava `goldColor`, então
-  // a intenção era essa desde o começo. No protótipo o dourado é a cor da
-  // logo, e só dela.
-  const navyColor = variant === 'light' ? 'text-white' : 'text-primary';
-  const goldColor = 'text-gold-logo';
+  // Direção LICITA360 (12/09): o acento da marca virou VERDE. Sobre fundo
+  // escuro (variant light: splash, login) usa o verde-claro do token
+  // `--logo-accent`, afinado para o navy; sobre fundo claro (topbar branca)
+  // usa o verde cheio de ação — o claro lavava sobre branco. O nome
+  // `goldColor` fica pela história: é a variável do ACENTO da marca.
+  const navyColor = variant === 'light' ? 'text-white' : 'text-navy';
+  const goldColor = variant === 'light' ? 'text-gold-logo' : 'text-accent';
 
   return (
     <span

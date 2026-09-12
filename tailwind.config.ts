@@ -17,12 +17,11 @@ export default {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
         brand: ["Cinzel", "Georgia", "serif"],
-        // Títulos. Poppins é a fonte das referências que o Rafael mandou em
-        // 10/09 (ConLicitação; o Contabilizei é da mesma família de forma) —
-        // geométrica, pesada, sem serifa. Inter continua no corpo: é a do
-        // Effecti, a terceira referência. A regra que aplica está em
-        // index.css (h1–h6), então nenhum .tsx precisa saber disto.
-        heading: ["Poppins", "Inter", "system-ui", "sans-serif"],
+        // Títulos. Manrope é a fonte da direção LICITA360 aprovada pelo dono
+        // em 12/09 (substitui a Poppins da referência anterior). Inter segue
+        // no corpo. A regra que aplica está em index.css (h1–h6), então
+        // nenhum .tsx precisa saber disto.
+        heading: ["Manrope", "Inter", "system-ui", "sans-serif"],
       },
       /**
        * Escala tipográfica — REBRAND, revisada em 10/09/2026.
@@ -169,9 +168,12 @@ export default {
         },
       },
       borderRadius: {
+        // Régua da direção nova: cartão 16px (via --radius), botão e campo
+        // 10px FIXOS — antes md derivava do --radius e subir o cartão para
+        // 16px inflaria botões junto.
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "0.625rem",
+        sm: "0.5rem",
       },
       /**
        * Sombra e gradiente NÃO existiam aqui — e por isso os tokens

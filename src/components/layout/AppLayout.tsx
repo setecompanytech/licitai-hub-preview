@@ -138,14 +138,14 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           ela é a moldura da marca, e é sobre ela que o dourado da logo lê.
           Antes seguia a superfície do tema (branca no claro), e aí o dourado
           ficaria invisível. */}
-      <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-navy border-b border-navy-hover flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
+      <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-card border-b border-border flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
         {/* O hambúrguer que ficava aqui saiu em 10/09/2026: quem alterna a
             barra lateral é o botão no topo da própria barra (ver AppSidebar).
             Abaixo de 768px a gaveta do AppTopNav continua com o seu botão. */}
 
         {/* Logo */}
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 group flex-shrink-0">
-          <PraefectusLogo size="md" variant="light" />
+          <PraefectusLogo size="md" />
         </button>
 
         {/* REBRAND — a partir de `lg` quem navega é a barra lateral, como no
@@ -176,7 +176,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           {/* Sobre o navy, os controles do topo são claros — eles não seguem a
               superfície do tema, seguem a barra. */}
           <button
-            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
             title="Pesquisa geral (Ctrl+K)"
             aria-label="Pesquisa geral"
@@ -185,7 +185,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           </button>
 
           <button
-            className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => setNotifOpen(!notifOpen)}
             title="Notificações"
           >
@@ -202,7 +202,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           </div>
 
           <button
-            className="hidden sm:flex p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="hidden sm:flex p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => navigate('/configuracoes')}
             title="Configurações"
           >
@@ -211,7 +211,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
 
           <span
             aria-hidden="true"
-            className="hidden lg:block w-px h-6 bg-white/15 mx-1.5"
+            className="hidden lg:block w-px h-6 bg-border mx-1.5"
           />
 
           <div className="hidden lg:block">
@@ -221,7 +221,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/15 ring-1 ring-white/25 flex items-center justify-center text-white text-xs sm:text-sm font-bold hover:ring-2 hover:ring-white/50 transition-all cursor-pointer overflow-hidden shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-navy text-white ring-1 ring-border flex items-center justify-center text-xs sm:text-sm font-bold hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer overflow-hidden shrink-0"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >

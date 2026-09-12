@@ -63,7 +63,7 @@ interface Props {
 
 /** Marcador de item ativo: barra de 3px encostada na borda esquerda. */
 const MARCADOR_ATIVO =
-  'before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-accent';
+  'before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-sidebar-primary';
 
 export default function AppSidebar({ aberta = true, onAlternar }: Props) {
   const navigate = useNavigate();
@@ -193,7 +193,7 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
           if (autoEsconde && !e.currentTarget.contains(e.relatedTarget as Node | null)) esconderComAtraso();
         }}
         className={cn(
-          'nao-imprime hidden md:flex flex-shrink-0 flex-col bg-card border-r border-border z-30 overflow-hidden ease-out',
+          'nao-imprime hidden md:flex flex-shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border z-30 overflow-hidden ease-out',
           autoEsconde
             ? cn(
                 'fixed left-0 top-16 bottom-0 w-14 transition-transform duration-200',
@@ -208,15 +208,15 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
       {aberta ? (
         <div className="flex flex-col w-[264px] h-full">
           <div className="flex items-center gap-1.5 pl-4 pr-2 pt-4 pb-2.5">
-            <div className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border focus-within:border-accent transition-colors">
-              <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-lg border border-sidebar-border focus-within:border-sidebar-ring transition-colors">
+              <Search className="w-4 h-4 text-sidebar-foreground/60 flex-shrink-0" aria-hidden="true" />
               <input
                 ref={inputBusca}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar módulo..."
                 aria-label="Buscar módulo"
-                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50"
               />
             </div>
             <BotaoComDica rotulo="Recolher menu" onClick={onAlternar}>
@@ -226,7 +226,7 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
 
           <nav className="flex-1 overflow-y-auto px-3 pb-6 scrollbar-thin">
             {filtrados.length === 0 && (
-              <p className="px-2 py-5 text-center text-sm text-muted-foreground">
+              <p className="px-2 py-5 text-center text-sm text-sidebar-foreground/60">
                 Nenhum módulo encontrado.
               </p>
             )}
@@ -251,8 +251,8 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
                     className={cn(
                       'relative flex items-center gap-3 w-full px-2.5 py-2 rounded-lg text-sm text-left transition-colors',
                       ativo
-                        ? cn('bg-primary-tint text-accent font-semibold', MARCADOR_ATIVO)
-                        : 'text-foreground hover:bg-muted',
+                        ? cn('bg-sidebar-accent text-sidebar-accent-foreground font-semibold', MARCADOR_ATIVO)
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
                     )}
                   >
                     <Icone className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
@@ -271,8 +271,8 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
                     onClick={() => setFechados((f) => ({ ...f, [grupo.title]: !aberto ? false : true }))}
                     aria-expanded={aberto}
                     className={cn(
-                      'flex items-center gap-3 w-full px-2.5 py-2.5 rounded-lg text-left transition-colors hover:bg-muted',
-                      temAtivo ? 'text-accent' : 'text-foreground',
+                      'flex items-center gap-3 w-full px-2.5 py-2.5 rounded-lg text-left transition-colors hover:bg-sidebar-accent/60',
+                      temAtivo ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground',
                     )}
                   >
                     <Icone className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
@@ -281,7 +281,7 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
                     </span>
                     <ChevronDown
                       className={cn(
-                        'w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform',
+                        'w-4 h-4 flex-shrink-0 text-sidebar-foreground/60 transition-transform',
                         aberto && 'rotate-180',
                       )}
                       aria-hidden="true"
@@ -299,8 +299,8 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
                             className={cn(
                               'relative flex items-center w-full pl-9 pr-2.5 py-2 rounded-lg text-sm text-left leading-snug transition-colors',
                               ativo
-                                ? cn('bg-primary-tint text-accent font-semibold', MARCADOR_ATIVO)
-                                : 'text-foreground hover:bg-muted',
+                                ? cn('bg-sidebar-accent text-sidebar-accent-foreground font-semibold', MARCADOR_ATIVO)
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
                             )}
                           >
                             <span className="truncate">{item.label}</span>
@@ -423,8 +423,8 @@ function BotaoComDica({
           className={cn(
             'relative flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors',
             ativo
-              ? cn('bg-primary-tint text-accent', MARCADOR_ATIVO, 'before:-left-2')
-              : 'text-foreground hover:bg-muted',
+              ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-2')
+              : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
           )}
           {...resto}
         >
@@ -479,9 +479,9 @@ function GrupoNoTrilho({
               className={cn(
                 'relative flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors',
                 temAtivo
-                  ? cn('bg-primary-tint text-accent', MARCADOR_ATIVO, 'before:-left-2')
-                  : 'text-foreground hover:bg-muted',
-                flyoutAberto && !temAtivo && 'bg-muted',
+                  ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-2')
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
+                flyoutAberto && !temAtivo && 'bg-sidebar-accent/60',
               )}
             >
               {children}
