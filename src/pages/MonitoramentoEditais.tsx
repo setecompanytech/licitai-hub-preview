@@ -9,6 +9,7 @@ import {
   Rocket, ArrowRight, CheckCircle, ListChecks, ChevronDown, ChevronUp, X, Eraser
 } from 'lucide-react';
 import EditalActionsModal, { type EditalSeed } from '@/components/monitoramento/EditalActionsModal';
+import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { Button } from '@/components/ui/button';
@@ -2010,6 +2011,12 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
   const statusCfg = STATUS_CONFIG[edital.status] || STATUS_CONFIG.encerrado;
   const { Icon: StatusIcon } = statusCfg;
 
+  const identidade = useMemo(() => identidadeDoEdital({
+    numeroCompra: edital.numeroCompra,
+    modalidade: edital.modalidade,
+    anoCompra: edital.anoCompra,
+  }), [edital.numeroCompra, edital.modalidade, edital.anoCompra]);
+
   const diasRestantes = edital.status === 'aberto'
     ? calcularDiasRestantes(edital.dataEncerramento)
     : null;
@@ -2095,10 +2102,39 @@ function EditalCard({ edital, favoritado, onFavoritar, licitacaoId, compromissoI
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center flex-wrap gap-2 mb-1">
-                  <span className="text-xs text-muted-foreground tabular-nums">{edital.numeroCompra}</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                    {edital.modalidade}
-                  </span>
+                  {/* Identidade padronizada: cada portal publica o número do
+                      seu jeito ("011/2026", "PE nº 9/2026-0025 PMPD", "007
+                      SRP"); aqui todos leem igual — modalidade + nº N/AAAA,
+                      derivados dos dados oficiais. O tooltip preserva a forma
+                      bruta (é ela que consta no diário e na sala de disputa). */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground px-2 py-0.5 rounded-md bg-muted border border-border cursor-help">
+                          {identidade.rotulo}
+                          {(identidade.reescrito || edital.numeroControlePncp) && (
+                            <Info className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-sm text-xs leading-relaxed p-3">
+                        <p>
+                          <strong>Como o portal publica:</strong>{' '}
+                          <span className="font-mono">{identidade.bruto || 'sem número'}</span>
+                        </p>
+                        {edital.numeroControlePncp && (
+                          <p className="mt-1">
+                            <strong>Controle PNCP:</strong>{' '}
+                            <span className="font-mono">{edital.numeroControlePncp}</span>
+                          </p>
+                        )}
+                        <p className="mt-1 text-muted-foreground">
+                          Identificação padronizada a partir dos dados oficiais — use a forma do
+                          portal ao peticionar ou falar com o pregoeiro.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   {edital.srp && (
                     <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                       SRP
