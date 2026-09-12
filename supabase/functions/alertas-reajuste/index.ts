@@ -43,6 +43,57 @@ serve(async (req) => {
   if (!autorizadoComoCron(req)) return respostaNaoAutorizado(corsHeaders);
 
   try {
+    // Sondas de diagnóstico (12/09, CRON-only): reproduzem as rotas de
+    // leitura fora do fluxo do usuário, para capturar o erro real que a edge
+    // de visão engole no console. Foi assim que a falta de créditos da
+    // Anthropic foi encontrada. Passivas — só rodam sob CRON_SECRET.
+    const corpo = await req.clone().json().catch(() => ({}));
+
+    // Sonda 2: o document-vision-extract de ponta a ponta (rota de imagens),
+    // com uma imagem real de texto (capa do DOE) — isola a rota OpenAI.
+    if (corpo?.probe_vision) {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const img = await fetch("https://www.ioepa.com.br/pages/2026/2026.09.10.DOE.jpg", { signal: AbortSignal.timeout(20000) });
+      if (!img.ok) {
+        return new Response(JSON.stringify({ ok: false, erro: `capa DOE HTTP ${img.status}` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const bytes = new Uint8Array(await img.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const dataUrl = `data:image/jpeg;base64,${btoa(bin)}`;
+      const { data, error } = await sb.functions.invoke("document-vision-extract", {
+        body: { fileName: "probe-doe.jpg", images: [{ name: "probe-doe.jpg", dataUrl }], mode: "ocr" },
+      });
+      let detalhe: string | null = null;
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (ctx) { try { detalhe = (await ctx.clone().text()).slice(0, 300); } catch { /* sem corpo */ } }
+      return new Response(JSON.stringify({
+        ok: !error,
+        erro: error ? `${error.message} · ${detalhe ?? ""}` : null,
+        motor: data?._motor ?? null,
+        texto_len: typeof data?.text === "string" ? data.text.length : null,
+        amostra: typeof data?.text === "string" ? data.text.slice(0, 160) : null,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (corpo?.probe_claude) {
+      const { chamarClaude } = await import("../_shared/claude-client.ts");
+      try {
+        const texto = await chamarClaude(
+          "Extraia todo o texto visível deste documento.",
+          corpo.probe_claude.pdf_base64
+            ? { pdfBase64: corpo.probe_claude.pdf_base64 }
+            : { texto: "PROBE: responda apenas OK" },
+          { sistema: "Você é um OCR. Responda só com o texto extraído.", maxTokens: 500 },
+        );
+        return new Response(JSON.stringify({ ok: true, texto: texto.slice(0, 300) }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, erro: e instanceof Error ? e.message : String(e) }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

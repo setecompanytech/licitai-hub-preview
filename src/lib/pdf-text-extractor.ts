@@ -253,8 +253,14 @@ async function extractTextFromPDFData(
 
     const reconstituido = montar();
     return reconstituido.length > soNativo.length ? reconstituido : soNativo;
-  } catch {
-    return soNativo;
+  } catch (e) {
+    // OCR morreu no meio. Com texto nativo aproveitável, ele ainda serve e a
+    // leitura segue; sem NADA, engolir o erro deixava a tela com "não rendeu
+    // texto" genérico enquanto o motivo real (crédito da API, limite, rede)
+    // ficava só no console — foi assim que a falta de créditos da Anthropic
+    // passou despercebida em 12/09. Falha silenciosa é proibida.
+    if (soNativo.trim().length >= 80) return soNativo;
+    throw e;
   }
 }
 
