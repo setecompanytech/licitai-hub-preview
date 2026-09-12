@@ -570,13 +570,26 @@ serve(async (req) => {
           }
         }
 
-        // Log
+        // Log — com o instantâneo do conteúdo, que é o que a aba Boletins
+        // abre ao clique (antes o clique não tinha o que mostrar).
         await supabase.from("boletim_envios").insert({
           user_id: sub.user_id,
           tipo,
           email: sub.email,
           status: emailsFail === 0 ? "enviado" : emailsFail === deduplicated.length ? "erro" : "parcial",
           erro: emailsFail > 0 ? `${emailsFail}/${deduplicated.length} falharam` : null,
+          total_itens: deduplicated.length,
+          conteudo: {
+            editais: deduplicated.slice(0, 20).map((lic: LicitacaoUnificada) => ({
+              orgao: lic.orgao ?? null,
+              objeto: lic.objeto ?? lic.titulo ?? null,
+              municipio: lic.municipio ?? null,
+              uf: lic.uf ?? null,
+              valor: lic.valor_estimado ?? null,
+              url: lic.url_edital ?? lic.url_portal ?? null,
+              data_abertura: lic.data_abertura ?? null,
+            })),
+          },
         });
 
         allResults.push({

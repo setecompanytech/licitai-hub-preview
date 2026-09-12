@@ -17,7 +17,7 @@ import BoletimConfig from '@/components/boletins/BoletimConfig';
 
 export default function Boletins() {
   const { user } = useAuth();
-  const [enviosRecentes, setEnviosRecentes] = useState<any[]>([]);
+  const [enviosRecentes, setEnviosRecentes] = useState<{ id: string; tipo: string; created_at: string }[]>([]);
 
   useEffect(() => {
     if (user) loadEnvios();
@@ -26,9 +26,9 @@ export default function Boletins() {
   const loadEnvios = async () => {
     const { data } = await supabase
       .from('boletim_envios')
-      .select('*')
+      .select('id, tipo, created_at')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(50);
     if (data) setEnviosRecentes(data);
   };
 
@@ -49,7 +49,9 @@ export default function Boletins() {
         <div className="grid grid-cols-3 gap-3">
           <div className="stat-card text-center">
             <FileText className="w-5 h-5 mx-auto mb-1 text-success" />
-            <p className="text-lg font-bold">{enviosRecentes.filter(e => e.tipo === 'manha').length}</p>
+            {/* O Boletim IA é o boletim das 06h — 'ia_diario' conta como manhã.
+                Antes o filtro só conhecia 'manha' e o cartão vivia em zero. */}
+            <p className="text-lg font-bold">{enviosRecentes.filter(e => e.tipo === 'manha' || e.tipo === 'ia_diario').length}</p>
             <p className="text-xs text-muted-foreground">Enviados Manhã</p>
           </div>
           <div className="stat-card text-center">

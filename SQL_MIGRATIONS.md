@@ -13151,3 +13151,17 @@ disputa ganha a coluna — a sessão não muda, a UASG viaja no corpo para o
 agente. **Aplicar ANTES do Publish** que traz o campo na tela: sem a coluna,
 salvar uma disputa do Compras.gov com UASG preenchida falha com "column uasg
 does not exist".
+
+## 2026-09-12 — Boletins Diários: a lista abre o conteúdo enviado — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260912000001_boletim_envios_conteudo.sql`
+
+A aba "Boletins" listava envios mas o clique não fazia nada: o painel só
+renderizava com itens > 0 e `itens: []` era fixo no código — o conteúdo do
+boletim não era gravado, só ia no e-mail. Além disso o tipo real dos envios
+('ia_diario') não existia no mapeamento da tela: tudo virava "Boletim da
+Tarde" e os contadores viviam em zero. Colunas novas em boletim_envios:
+total_itens e conteudo (instantâneo: resumo + até 20 editais), preenchidas
+pelas edges boletim-ia-diario e envio-boletim. Testado pelo caminho do cron:
+linha nova com 58 itens/20 arquivados e resumo real; a chave de idempotência
+do e-mail impediu o reenvio duplicado do dia.

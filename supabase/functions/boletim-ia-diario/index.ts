@@ -180,9 +180,25 @@ async function processarUsuario(supabase: any, pref: any) {
     },
   });
 
+  // O instantâneo do que o e-mail levou — é o que a aba Boletins abre ao
+  // clique. Sem isto, a lista era uma fachada: o conteúdo só existia no e-mail.
   await supabase.from('boletim_envios').insert({
     user_id: pref.user_id, email: pref.email, tipo: 'ia_diario',
     status: error ? 'erro' : 'enviado', erro: error?.message || null,
+    total_itens: editais.length,
+    conteudo: {
+      resumo,
+      uf_sede: ufSede,
+      editais: editaisTemplate.slice(0, 20).map(e => ({
+        orgao: e.orgao ?? null,
+        objeto: e.objeto ?? null,
+        municipio: e.municipio ?? null,
+        uf: e.uf ?? null,
+        valor: e.valor_total_estimado ?? null,
+        url: e.url ?? null,
+        data_abertura: e.data_abertura ?? null,
+      })),
+    },
   });
 
   return { user_id: pref.user_id, email: pref.email, total: editais.length, uf_sede: ufSede, error: error?.message };
