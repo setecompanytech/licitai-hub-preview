@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { downloadCSV, downloadPDF, downloadJSON } from '@/lib/download-utils';
+import { identidadeDoEdital } from '@/lib/licitacao/identidade-edital';
 
 // A quarta lista de status que existia aqui ('Publicado', 'Homologado' no
 // masculino, 'Contrato Assinado'…) era a origem dos valores que nenhuma outra
@@ -307,7 +308,20 @@ export default function HistoricoLicitacoes() {
                   return (
                     <tr key={lic.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                       <td className="px-4 py-3">
-                        <span className="text-xs tabular-nums text-muted-foreground block">{lic.numero}</span>
+                        {(() => {
+                          // Autoridade única de nomeação — "P.E. 044", "6" e
+                          // "00046" crus não identificam; a forma do portal
+                          // fica no hover.
+                          const identidade = identidadeDoEdital({ numeroCompra: lic.numero, modalidade: lic.modalidade });
+                          return (
+                            <span
+                              className="text-xs font-medium text-muted-foreground block cursor-help"
+                              title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
+                            >
+                              {identidade.rotulo}{identidade.srpNoTexto ? ' · SRP' : ''}
+                            </span>
+                          );
+                        })()}
                         <span className="text-sm font-medium line-clamp-1">{lic.objeto}</span>
                       </td>
                       <td className="px-4 py-3">
@@ -382,7 +396,7 @@ export default function HistoricoLicitacoes() {
       <Dialog open={!!editingLic} onOpenChange={(o) => !o && setEditingLic(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Atualizar Resultado — {editingLic?.numero}</DialogTitle>
+            <DialogTitle>Atualizar Resultado — {editingLic ? identidadeDoEdital({ numeroCompra: editingLic.numero, modalidade: editingLic.modalidade }).rotulo : ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
