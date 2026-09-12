@@ -24,15 +24,19 @@ function generateToken(): string {
     .join('')
 }
 
-// Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
-// gateway validates the caller's JWT (anon or service_role) before the request
-// reaches this code. No in-function auth check is needed.
+// Auth (corrigido em 12/09): o comentário antigo dizia "verify_jwt = true no
+// config.toml", mas o config declarava FALSE — a função estava aberta ao
+// público, apta a disparar e-mail em nome do domínio. Só edges internas a
+// chamam (com o service_role); a trava padrão da casa aceita exatamente isso.
+import { autorizadoComoCron, respostaNaoAutorizado } from '../_shared/cron-auth.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+
+  if (!autorizadoComoCron(req)) return respostaNaoAutorizado(corsHeaders)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

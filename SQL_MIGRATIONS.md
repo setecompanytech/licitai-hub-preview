@@ -13165,3 +13165,22 @@ total_itens e conteudo (instantâneo: resumo + até 20 editais), preenchidas
 pelas edges boletim-ia-diario e envio-boletim. Testado pelo caminho do cron:
 linha nova com 58 itens/20 arquivados e resumo real; a chave de idempotência
 do e-mail impediu o reenvio duplicado do dia.
+
+## 2026-09-12 — Alertas escalonados de reajuste contratual — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260912000002_alertas_reajuste.sql`
+
+A régua do interregno anual (lib contratos/reajuste) era passiva. Agora a
+edge alertas-reajuste (cron diário 10:20 UTC, job alertas-reajuste-diario)
+dispara nos marcos 90/60/30/7/0 dias antes do aniversário da data-base e,
+devido, um lembrete mensal: alerta no sistema (alertas_gerados, por membro)
++ e-mail digest por empresa aos destinatários de alertas das certidões
+(template reajuste-contratual). Dedupe permanente por (contrato, marco) em
+contratos_reajuste_alertas_log (RLS: leitura por membro da empresa; escrita
+só service_role). No mesmo pacote, SEM DDL: ação calculo_reajuste na edge
+indices-economicos (fator exato pela série SGS/BCB — determinístico, zero
+IA) + calculadora e estudo técnico imprimível no card Reajuste do contrato.
+Correção de segurança: send-transactional-email estava ABERTO (config.toml
+com verify_jwt=false e nenhuma checagem interna, ao contrário do que o
+comentário do código dizia) — ganhou autorizadoComoCron; o único chamador
+que usava o token do usuário (gerar-link-certificado) passou ao adminClient.

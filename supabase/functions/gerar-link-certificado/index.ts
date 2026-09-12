@@ -75,7 +75,10 @@ Deno.serve(async (req) => {
 
     // Send transactional email
     try {
-      await supabase.functions.invoke("send-transactional-email", {
+      // adminClient: o send-transactional-email agora exige service_role
+      // (estava aberto ao público — travado em 12/09). O usuário já foi
+      // autenticado no topo desta função.
+      await adminClient.functions.invoke("send-transactional-email", {
         body: {
           templateName: "cert-upload-link",
           recipientEmail: user.email,

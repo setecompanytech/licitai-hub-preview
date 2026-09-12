@@ -136,6 +136,77 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // ── Cálculo EXATO do reajuste por números-índices (12/09) ─────────────
+    // A fórmula do reajustamento em sentido estrito: fator = produto dos
+    // fatores mensais do índice entre o mês seguinte à data-base e o mês da
+    // data-alvo (equivale à razão dos números-índices I_alvo / I_base).
+    // 100% determinístico, série oficial do SGS — IA NENHUMA nos números:
+    // este é o cálculo que embasa requerimento protocolado no órgão.
+    if (action === 'calculo_reajuste') {
+      const SERIES_CALC: Record<string, { serie: number; fonte: string }> = {
+        'IPCA': { serie: 433, fonte: 'IBGE · BCB/SGS 433' },
+        'INPC': { serie: 188, fonte: 'IBGE · BCB/SGS 188' },
+        'IGP-M': { serie: 189, fonte: 'FGV · BCB/SGS 189' },
+        'IGPM': { serie: 189, fonte: 'FGV · BCB/SGS 189' },
+        'IGP-DI': { serie: 190, fonte: 'FGV · BCB/SGS 190' },
+        'INCC-DI': { serie: 192, fonte: 'FGV · BCB/SGS 192' },
+        'INCC': { serie: 192, fonte: 'FGV · BCB/SGS 192' },
+      };
+      const sigla = String(body.indice || '').trim().toUpperCase();
+      const info = SERIES_CALC[sigla];
+      if (!info) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Índice "${sigla}" sem série mensal mapeada. Disponíveis: ${Object.keys(SERIES_CALC).join(', ')}.`,
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const dataBase = String(body.data_base || '').slice(0, 10);
+      const dataAlvo = String(body.data_alvo || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dataBase) || !/^\d{4}-\d{2}-\d{2}$/.test(dataAlvo) || dataAlvo <= dataBase) {
+        return new Response(JSON.stringify({ success: false, error: 'Datas inválidas: data_base e data_alvo em YYYY-MM-DD, alvo depois da base.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Janela: mês seguinte ao da data-base até o mês da data-alvo.
+      const [ab, mb] = dataBase.split('-').map(Number);
+      const [aa, ma] = dataAlvo.split('-').map(Number);
+      const iniAno = mb === 12 ? ab + 1 : ab;
+      const iniMes = mb === 12 ? 1 : mb + 1;
+      const p2 = (n: number) => String(n).padStart(2, '0');
+      const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${info.serie}/dados?formato=json` +
+        `&dataInicial=01/${p2(iniMes)}/${iniAno}&dataFinal=28/${p2(ma)}/${aa}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) {
+        return new Response(JSON.stringify({ success: false, error: `SGS/BCB indisponível (HTTP ${res.status}) — tente novamente.` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const serie = await res.json() as Array<{ data: string; valor: string }>;
+      const meses: Array<{ competencia: string; variacao: number; fator: number }> = [];
+      let fator = 1;
+      for (const linha of serie) {
+        const v = parseFloat(String(linha.valor).replace(',', '.'));
+        if (!Number.isFinite(v)) continue;
+        const f = 1 + v / 100;
+        fator *= f;
+        meses.push({ competencia: linha.data.slice(3), variacao: v, fator: f });
+      }
+      const mesesEsperados = (aa - iniAno) * 12 + (ma - iniMes) + 1;
+      const completo = meses.length >= mesesEsperados;
+      return new Response(JSON.stringify({
+        success: true,
+        indice: sigla,
+        fonte: info.fonte,
+        data_base: dataBase,
+        data_alvo: dataAlvo,
+        meses,
+        meses_esperados: mesesEsperados,
+        completo,
+        serie_ate: meses.length ? meses[meses.length - 1].competencia : null,
+        fator,
+        percentual: (fator - 1) * 100,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (action === 'simular_repactuacao') {
       const { valor_original, indice, percentual, data_base_original, data_base_reajuste, tipo_servico } = body;
 

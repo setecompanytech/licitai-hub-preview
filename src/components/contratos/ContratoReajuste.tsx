@@ -33,6 +33,23 @@ type Clausula = {
   data_base_reajuste: string | null;
   reajuste_clausula: string | null;
   valor_global: number | null;
+  numero_contrato: string | null;
+  orgao_contratante: string | null;
+  objeto: string | null;
+};
+
+/** Resultado do cálculo exato — série oficial SGS/BCB, zero IA nos números. */
+type CalculoExato = {
+  indice: string;
+  fonte: string;
+  data_base: string;
+  data_alvo: string;
+  meses: Array<{ competencia: string; variacao: number; fator: number }>;
+  meses_esperados: number;
+  completo: boolean;
+  serie_ate: string | null;
+  fator: number;
+  percentual: number;
 };
 
 const brl = (v: number) =>
@@ -48,13 +65,18 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({ indice: '', dataBase: '' });
+  // Calculadora exata: série oficial entre a data-base (marco) e o aniversário.
+  const [calculo, setCalculo] = useState<CalculoExato | null>(null);
+  const [calculando, setCalculando] = useState(false);
+  const [baseCalculo, setBaseCalculo] = useState<string>('');
+  const [memoriaAberta, setMemoriaAberta] = useState(false);
 
   useEffect(() => {
     let vivo = true;
     (async () => {
       const { data, error } = await supabase
         .from('contratos')
-        .select('indice_reajuste, data_base_reajuste, reajuste_clausula, valor_global' as never)
+        .select('indice_reajuste, data_base_reajuste, reajuste_clausula, valor_global, numero_contrato, orgao_contratante, objeto' as never)
         .eq('id', contratoId)
         .single();
       if (!vivo) return;
@@ -126,6 +148,105 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
     reajustesRegistrados,
     hoje: hojeLocal(),
   });
+
+  /** "84451,07" ou "84451.07" — os dois formatos entram. */
+  const parseBrl = (s: string): number => {
+    const t = s.trim();
+    if (!t) return NaN;
+    return t.includes(',') ? parseFloat(t.replace(/\./g, '').replace(',', '.')) : parseFloat(t);
+  };
+
+  // O número do REQUERIMENTO: fator real da série oficial entre o marco e o
+  // aniversário (razão dos números-índices). Determinístico — IA nenhuma.
+  const calcularExato = async () => {
+    if (!situacao || !dados?.indice_reajuste) return;
+    setCalculando(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('indices-economicos', {
+        body: {
+          action: 'calculo_reajuste',
+          indice: dados.indice_reajuste,
+          data_base: situacao.marco,
+          data_alvo: situacao.aniversario,
+        },
+      });
+      if (error) throw error;
+      if (!res?.success) throw new Error(res?.error || 'Falha no cálculo');
+      setCalculo(res as CalculoExato);
+      if (!baseCalculo && dados.valor_global) {
+        setBaseCalculo(Number(dados.valor_global).toFixed(2).replace('.', ','));
+      }
+    } catch (e) {
+      toast.error('Não foi possível calcular', { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCalculando(false);
+    }
+  };
+
+  /** Estudo técnico imprimível: memória de cálculo linha a linha, fonte
+   *  oficial citada e fundamentação — pronto para instruir o requerimento. */
+  const gerarEstudo = () => {
+    if (!calculo || !situacao || !dados) return;
+    const base = parseBrl(baseCalculo);
+    const temBase = Number.isFinite(base) && base > 0;
+    const num = (v: number, casas = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+    const linhas = calculo.meses
+      .map((m) => `<tr><td>${m.competencia}</td><td class="n">${num(m.variacao)}%</td><td class="n">${m.fator.toFixed(6).replace('.', ',')}</td></tr>`)
+      .join('');
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Estudo Técnico — Reajuste ${dados.numero_contrato ?? ''}</title>
+<style>
+  body{font-family:Georgia,'Times New Roman',serif;color:#111;max-width:760px;margin:2rem auto;padding:0 1.5rem;font-size:13px;line-height:1.55}
+  h1{font-size:16px;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+  h2{font-size:13px;text-transform:uppercase;margin-top:1.6em;border-bottom:1px solid #999;padding-bottom:2px}
+  table{width:100%;border-collapse:collapse;margin:.6em 0}
+  th,td{border:1px solid #bbb;padding:3px 8px;text-align:left}
+  th{background:#f0f0f0} .n{text-align:right;font-variant-numeric:tabular-nums}
+  .destaque{border:1px solid #999;background:#f7f7f7;padding:8px 12px;margin:.8em 0}
+  .rodape{margin-top:3em;text-align:center}
+  @media print{body{margin:0 auto}}
+</style></head><body>
+<h1>Estudo Técnico — Reajustamento Contratual por Números-Índices</h1>
+<h2>1. Identificação</h2>
+<table>
+  <tr><th>Contrato</th><td>${dados.numero_contrato ?? '—'}</td></tr>
+  <tr><th>Órgão contratante</th><td>${dados.orgao_contratante ?? '—'}</td></tr>
+  <tr><th>Objeto</th><td>${(dados.objeto ?? '—').slice(0, 300)}</td></tr>
+  <tr><th>Índice da cláusula</th><td>${calculo.indice} (${calculo.fonte})</td></tr>
+  <tr><th>${situacao.marcoEhReajusteAnterior ? 'Marco (último reajuste)' : 'Data-base (proposta/orçamento)'}</th><td>${dataBr(calculo.data_base)}</td></tr>
+  <tr><th>Aniversário anual</th><td>${dataBr(calculo.data_alvo)}</td></tr>
+</table>
+<h2>2. Fundamentação Jurídica</h2>
+<p>O reajustamento em sentido estrito recompõe a variação inflacionária ordinária pelo índice
+previsto em cláusula (Lei nº 14.133/2021, art. 6º, LVIII, art. 25, §7º e art. 92, §3º),
+observado o interregno mínimo de 1 (um) ano contado da data-base — periodicidade inferior é
+nula (Lei nº 10.192/2001, arts. 2º e 3º). A aplicação dá-se por simples apostila
+(Lei nº 14.133/2021, art. 136, I), dispensado termo aditivo. Recomenda-se o requerimento
+formal antes da assinatura de qualquer aditivo, ante o risco de preclusão lógica
+(Parecer nº 3/2023 AGU).</p>
+<h2>3. Memória de Cálculo — série oficial ${calculo.fonte}</h2>
+<table><tr><th>Competência</th><th class="n">Variação mensal</th><th class="n">Fator (1 + i)</th></tr>${linhas}</table>
+<div class="destaque">
+  <p><b>Fator acumulado</b> (produto dos fatores mensais = razão dos números-índices):
+  <b>${calculo.fator.toFixed(6).replace('.', ',')}</b> → variação de <b>${num(calculo.percentual)}%</b></p>
+  ${calculo.completo ? '' : `<p><b>Atenção:</b> série oficial disponível até ${calculo.serie_ate ?? '—'} — fator PARCIAL (${calculo.meses.length} de ${calculo.meses_esperados} meses). Refaça o cálculo após a divulgação dos meses faltantes.</p>`}
+  ${temBase ? `<p><b>Base de cálculo:</b> R$ ${num(base)} · <b>Reajuste:</b> R$ ${num(base * (calculo.fator - 1))} · <b>Valor reajustado:</b> R$ ${num(base * calculo.fator)}</p>
+  <p>O reajuste incide sobre o <b>saldo remanescente</b> a executar na data do aniversário; a base informada acima é de responsabilidade do requerente.</p>` : ''}
+</div>
+<h2>4. Fontes</h2>
+<p>Série temporal oficial obtida do Sistema Gerenciador de Séries Temporais (SGS) do Banco
+Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].trim()}. Consulta em ${new Date().toLocaleDateString('pt-BR')}.</p>
+<div class="rodape">
+  <p>_________________________________________</p>
+  <p>Responsável pelo estudo</p>
+</div>
+<script>window.print()</script>
+</body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('Habilite pop-ups para gerar o estudo.'); return; }
+    w.document.write(html);
+    w.document.close();
+  };
   const estimativa = situacao?.devido
     ? valorEstimadoDoReajuste(Number(dados?.valor_global ?? 0), indiceOficial?.acumulado_12m)
     : null;
@@ -226,6 +347,86 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
                 pedido formal <b>antes</b> de assinar qualquer aditivo: prorrogação aceita sem ressalva
                 pode ser lida como renúncia (preclusão lógica).
               </p>
+
+              {/* Calculadora EXATA: série oficial entre o marco e o aniversário
+                  (razão dos números-índices) — o número do requerimento. */}
+              <div className="rounded-md border border-border bg-card p-2.5 space-y-2 nao-imprime">
+                {!calculo ? (
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={calcularExato} disabled={calculando}>
+                    {calculando ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5 mr-1" />}
+                    Calcular pela série oficial (SGS/BCB)
+                  </Button>
+                ) : (
+                  <>
+                    <p>
+                      <b>{calculo.indice}</b> entre {dataBr(calculo.data_base)} e {dataBr(calculo.data_alvo)}:{' '}
+                      fator <b className="tabular-nums">{calculo.fator.toFixed(6).replace('.', ',')}</b>{' '}
+                      → <b className="tabular-nums text-foreground">
+                        {calculo.percentual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                      </b>
+                      <span className="text-muted-foreground"> · {calculo.fonte}</span>
+                    </p>
+                    {!calculo.completo && (
+                      <p className="text-warning flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        Série divulgada até {calculo.serie_ate ?? '—'} — fator parcial
+                        ({calculo.meses.length}/{calculo.meses_esperados} meses). Refaça após a divulgação.
+                      </p>
+                    )}
+                    <div className="flex items-end gap-2 flex-wrap">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Base de cálculo (R$) — use o saldo a executar</Label>
+                        <Input className="h-8 w-40 text-xs tabular-nums" value={baseCalculo}
+                          onChange={(e) => setBaseCalculo(e.target.value)} placeholder="0,00" />
+                      </div>
+                      {(() => {
+                        const base = parseBrl(baseCalculo);
+                        if (!Number.isFinite(base) || base <= 0) return null;
+                        return (
+                          <p className="pb-1.5">
+                            Reajuste: <b className="tabular-nums">{brl(base * (calculo.fator - 1))}</b>{' '}
+                            · Reajustado: <b className="tabular-nums">{brl(base * calculo.fator)}</b>
+                          </p>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setMemoriaAberta((v) => !v)}>
+                        {memoriaAberta ? 'Ocultar memória de cálculo' : `Memória de cálculo (${calculo.meses.length} meses)`}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={gerarEstudo}>
+                        Gerar estudo técnico
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => { setCalculo(null); setMemoriaAberta(false); }}>
+                        Refazer
+                      </Button>
+                    </div>
+                    {memoriaAberta && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-muted-foreground">
+                              <th className="text-left py-0.5">Competência</th>
+                              <th className="text-right">Variação</th>
+                              <th className="text-right">Fator</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {calculo.meses.map((m) => (
+                              <tr key={m.competencia} className="border-t border-border/50">
+                                <td className="py-0.5">{m.competencia}</td>
+                                <td className="text-right tabular-nums">{m.variacao.toFixed(2).replace('.', ',')}%</td>
+                                <td className="text-right tabular-nums">{m.fator.toFixed(6).replace('.', ',')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
               <Link to="/indices-repactuacao" className="text-primary inline-flex items-center gap-1 nao-imprime">
                 Abrir índices e simulador <ExternalLink className="w-3 h-3" />
               </Link>
