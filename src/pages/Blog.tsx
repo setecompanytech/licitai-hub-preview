@@ -313,7 +313,7 @@ export default function Blog() {
 
         {/* Lista */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[1, 2, 3].map(i => (
               <Card key={i} className="p-6">
                 <Skeleton className="mb-2 h-5 w-3/4" />
@@ -327,14 +327,25 @@ export default function Blog() {
             icone={<Search />}
             titulo="Nenhum artigo encontrado"
             descricao={
-              busca || categoriaAtiva !== 'todos'
+              temFiltro
                 ? 'Nenhum artigo casa com a busca ou a categoria escolhida — limpe os filtros para ver tudo'
                 : 'Gere artigos com IA para alimentar o blog'
             }
-            acao={botaoGerar}
+            acao={
+              temFiltro ? (
+                <Button variant="outline" onClick={limparFiltros}>
+                  <X aria-hidden="true" />
+                  Limpar filtros
+                </Button>
+              ) : (
+                botaoGerar
+              )
+            }
           />
         ) : (
-          <div className="space-y-3">
+          /* Grade, como o registro declara para /blog (`padrao: 'cartoes'`) —
+             a pilha de coluna única contrariava o contrato de layout. */
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {artigosFiltrados.map(artigo => (
               <Card
                 key={artigo.id}

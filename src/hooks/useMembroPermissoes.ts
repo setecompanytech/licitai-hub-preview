@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { isSectorAllowedForRoute, ehRotaAdministrativa } from '@/lib/route-permissions';
+import { isSectorAllowedForRoute, ehRotaAdministrativa, ehRotaDoOperador } from '@/lib/route-permissions';
 
 const withTimeoutSignal = (ms = 6000) => {
   const controller = new AbortController();
@@ -132,6 +132,9 @@ export function useMembroPermissoes() {
    * Admin global libera tudo. Caso contrário, valida pelo setor do membro.
    */
   const canAccessRoute = (path: string): boolean => {
+    // O painel do operador do SaaS não se abre para assinante nenhum — nem
+    // para o administrador da empresa, que passa por todo o resto.
+    if (ehRotaDoOperador(path)) return isGlobalAdmin;
     if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
     // Administração da empresa é do administrador — setor não abre essa porta.
     if (ehRotaAdministrativa(path)) return false;

@@ -32,6 +32,21 @@ export const ROTAS_ADMINISTRATIVAS: string[] = [
 
 export const ehRotaAdministrativa = (path: string): boolean =>
   ROTAS_ADMINISTRATIVAS.some((r) => path === r || path.startsWith(`${r}?`) || path.startsWith(`${r}/`));
+
+/**
+ * Rota do OPERADOR do Praefectus — quem administra o SaaS, não quem assina.
+ *
+ * A distinção existe em `useUserRole` desde sempre (`isSystemAdmin` para o
+ * operador, `isCompanyAdmin` para o dono da empresa), mas a navegação não a
+ * respeitava: `canAccessRoute` liberava TUDO para o administrador da
+ * empresa, e o grupo "Admin" — templates de IA, assinaturas dos clientes,
+ * marketing, auditoria, métricas do SaaS — aparecia no menu de qualquer
+ * assinante. A rota em si sempre esteve protegida pelo AdminGuard, então
+ * não houve vazamento de dado; o que vazava era a EXISTÊNCIA do painel, e
+ * quem clicasse batia num "Acesso Restrito" sem entender por quê.
+ */
+export const ehRotaDoOperador = (path: string): boolean =>
+  path === '/admin' || path.startsWith('/admin/');
 export const ROUTE_SECTOR_MAP: Record<string, Setor[]> = {
   // --- Painel (todos veem)
   '/dashboard': ['geral', 'financeiro', 'comercial', 'logistica', 'juridico', 'contabil', 'licitacoes', 'documentos'],

@@ -37,10 +37,25 @@ export default function Ebook() {
     }
   };
 
+  /* A tela tem UMA ação, e ela é o motivo da tela existir — então mora no
+     cabeçalho, onde a identidade 12/09 põe a ação principal, e não enterrada
+     no meio do cartão. O contexto do arquivo ("PDF A4 • sumário clicável")
+     continua no cartão, que é onde ele descreve o material. */
+  const botaoBaixar = (
+    <Button onClick={handleDownload} disabled={generating}>
+      {generating ? (
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      ) : (
+        <Download aria-hidden="true" />
+      )}
+      {generating ? 'Gerando PDF...' : 'Baixar guia completo'}
+    </Button>
+  );
+
   return (
     <AppLayout>
       <div className="max-w-3xl space-y-6">
-        <CabecalhoPagina />
+        <CabecalhoPagina acoes={botaoBaixar} />
 
         <Card className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -57,17 +72,7 @@ export default function Ebook() {
               <p className="mt-1 text-base text-muted-foreground">
                 10 capítulos ilustrados com capturas de tela, explicações didáticas, passo a passo e dicas práticas para cada módulo.
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button onClick={handleDownload} disabled={generating}>
-                  {generating ? (
-                    <Loader2 className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Download aria-hidden="true" />
-                  )}
-                  {generating ? 'Gerando PDF...' : 'Baixar guia completo'}
-                </Button>
-                <span className="text-xs text-muted-foreground">PDF A4 • sumário clicável • ilustrado</span>
-              </div>
+              <p className="mt-4 text-xs text-muted-foreground">PDF A4 • sumário clicável • ilustrado</p>
             </div>
           </div>
         </Card>

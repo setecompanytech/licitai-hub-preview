@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
+// `Badge` renderiza uma <div>; dentro de um <button> só cabe conteúdo de
+// frase, então os selos que vivem em linhas clicáveis usam `badgeVariants`
+// num <span> — mesma pele, HTML conforme. Fora de botão, o componente.
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -313,12 +316,32 @@ export default function CalendarioLicitacoes() {
   /* Marcação do dia por classe, não por `style` com `hsl(...)` escrito à mão:
      cor dentro do .tsx é o que a identidade 12/09 proíbe, e a tinta do token
      acompanha o tema sozinha. `modifiersClassNames` é a API equivalente do
-     react-day-picker — mesmos quatro modificadores, mesma leitura. */
+     react-day-picker — mesmos quatro modificadores, mesma leitura.
+
+     A prioridade é dada por ESPECIFICIDADE, não pela ordem em que o Tailwind
+     emite as utilities: `[&&]` repete a classe no seletor (0,2,0) e `[&&&]`
+     repete três vezes (0,3,0). Sem isso a tinta do marcador empata em 0,1,0
+     com `day_selected`/`day_today` de `ui/calendar.tsx` (`bg-primary` +
+     `text-primary-foreground`) e o desempate vira ordem do arquivo: o fundo
+     resolvia para a tinta clara e o número continuava BRANCO — o dia
+     selecionado com licitação ficava ilegível, e ele é o caminho comum,
+     porque a tela abre com hoje já selecionado.
+
+     Ordem entre os marcadores, agora explícita em vez de acidental:
+       urgente (0,3,0) > licitação (0,2,0)  — vermelho não pode ser encoberto
+       documento (0,2,0) > backup (0,1,0)   — vencimento na frente do backup
+     O `rounded-full` também precisa do reforço: solto, ele perde para o
+     `rounded-md` do botão de dia e o marcador saía quadrado, ao contrário
+     das bolinhas da legenda.
+
+     A seleção volta a se distinguir por um anel `ring-inset` (por dentro,
+     para não invadir o dia vizinho), que não disputa com a tinta. */
+  const anelSelecionado = 'aria-selected:ring-2 aria-selected:ring-inset aria-selected:ring-ring';
   const modifiersClassNames = {
-    licitacao: 'bg-primary-tint text-primary font-semibold rounded-full',
-    documento: 'border-2 border-warning rounded-full',
-    urgente: 'bg-destructive-tint text-destructive-ink font-semibold rounded-full',
-    backup: 'border-2 border-info rounded-full',
+    licitacao: `[&&]:rounded-full [&&]:bg-primary-tint [&&]:text-primary font-semibold ${anelSelecionado}`,
+    documento: `[&&]:rounded-full [&&]:border-2 [&&]:border-warning ${anelSelecionado}`,
+    urgente: `[&&&]:rounded-full [&&&]:bg-destructive-tint [&&&]:text-destructive-ink font-semibold ${anelSelecionado}`,
+    backup: `[&]:rounded-full [&]:border-2 [&]:border-info ${anelSelecionado}`,
   };
 
   const formatCurrency = (v: number) =>
@@ -505,7 +528,7 @@ export default function CalendarioLicitacoes() {
                         </span>
                       </span>
                       <span className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="muted">{l.status}</Badge>
+                        <span className={badgeVariants({ variant: 'muted' })}>{l.status}</span>
                         {l.valor_estimado && (
                           <span className="text-sm font-medium tabular-nums text-foreground">
                             {formatCurrency(l.valor_estimado)}
