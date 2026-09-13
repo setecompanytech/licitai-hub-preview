@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Target, Lock, Pencil, Gauge, SlidersHorizontal, Users } from 'lucide-react';
+import { Target, Lock, Pencil, Gauge, Users } from 'lucide-react';
 import ParametrizacaoMetas from '@/components/metas/ParametrizacaoMetas';
 import DefinirMetaDialog from '@/components/metas/DefinirMetaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -58,7 +59,7 @@ export default function DefinirMetas() {
         <div role="status" aria-label="Carregando" className="space-y-4">
           <Skeleton className="h-9 w-64" />
           <Skeleton className="h-5 w-96 max-w-full" />
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full rounded-lg" />
         </div>
       </AppLayout>
     );
@@ -67,20 +68,19 @@ export default function DefinirMetas() {
   if (!isAdmin) {
     return (
       <AppLayout>
-        <CabecalhoPagina icone={<SlidersHorizontal />} titulo="Definir Metas" />
-        <Card className="p-12 text-center">
-          <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-muted text-muted-foreground flex items-center justify-center mb-4">
-            <Lock className="w-6 h-6" />
-          </div>
-          <p className="text-lg font-semibold text-foreground">Acesso restrito</p>
-          <p className="text-base text-muted-foreground mt-1 max-w-md mx-auto">
-            Definir metas é atribuição do administrador. Seu acompanhamento está em
-            Gestão → Metas do Comercial.
-          </p>
-          <Button variant="outline" className="mt-6"
-            onClick={() => navigate('/metas-comercial')}>
-            Ir para o painel
-          </Button>
+        {/* Título, descrição, ícone e trilha vêm do registro de páginas. */}
+        <CabecalhoPagina />
+        <Card>
+          <EstadoVazio
+            icone={<Lock />}
+            titulo="Acesso restrito"
+            descricao="Definir metas é atribuição do administrador. Seu acompanhamento está em Gestão → Metas do Comercial."
+            acao={
+              <Button variant="outline" onClick={() => navigate('/metas-comercial')}>
+                Ir para o painel
+              </Button>
+            }
+          />
         </Card>
       </AppLayout>
     );
@@ -88,13 +88,19 @@ export default function DefinirMetas() {
 
   return (
     <AppLayout>
+      {/* A meta nasce por colaborador (botão Definir/Editar em cada linha), então
+          a ação do topo é a travessia para o acompanhamento.
+
+          DIVERGÊNCIA REGISTRADA: o registro de páginas declara `acao: 'Nova
+          meta'` para /definir-metas (src/lib/navegacao/paginas.ts), ação que
+          esta tela nunca teve — não há "nova meta" solta: toda meta pertence a
+          um colaborador e a um mês. Ou o registro perde a ação, ou o diálogo
+          ganha um seletor de colaborador; a decisão é de quem mantém o
+          registro, que fica fora deste lote. */}
       <CabecalhoPagina
-        icone={<SlidersHorizontal />}
-        titulo="Definir Metas"
-        descricao="Onde o alvo é escrito. O acompanhamento fica em Gestão → Metas do Comercial."
         acoes={
           <Button variant="outline" onClick={() => navigate('/metas-comercial')}>
-            <Gauge className="w-4 h-4" />
+            <Gauge aria-hidden="true" />
             Ver o painel
           </Button>
         }
@@ -104,9 +110,9 @@ export default function DefinirMetas() {
         {/* ── Meta mensal por colaborador ── */}
         <Card>
           <CardContent className="p-6 space-y-4">
-            <div className="flex items-end gap-3 flex-wrap">
-              <div className="flex-1 min-w-[8rem]">
-                <Label htmlFor="definir-metas-mes" className="text-sm text-muted-foreground mb-1 block">Mês</Label>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[12rem] flex-1">
+                <Label htmlFor="definir-metas-mes" className="mb-1 block text-sm text-muted-foreground">Mês</Label>
                 <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
                   <SelectTrigger id="definir-metas-mes"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -117,7 +123,7 @@ export default function DefinirMetas() {
                 </Select>
               </div>
               <div className="w-full sm:w-32">
-                <Label htmlFor="definir-metas-ano" className="text-sm text-muted-foreground mb-1 block">Ano</Label>
+                <Label htmlFor="definir-metas-ano" className="mb-1 block text-sm text-muted-foreground">Ano</Label>
                 <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
                   <SelectTrigger id="definir-metas-ano"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -130,38 +136,37 @@ export default function DefinirMetas() {
             {/* A equipe inteira de uma vez, em vez de um seletor por pessoa:
                 quem define metas define as de todos no mesmo dia, e comparar
                 lado a lado é o que evita alvo desigual sem querer. */}
-            <div className="rounded-lg border border-border divide-y divide-border">
+            <div className="divide-y divide-border rounded-lg border border-border">
               {(colaboradores ?? []).length === 0 && (
-                <div className="p-8 text-center">
-                  <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-3">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <p className="text-base font-semibold text-foreground">Nenhum colaborador comercial cadastrado</p>
-                  <p className="text-sm text-muted-foreground mt-1">Cadastre a equipe em Ferramentas → Equipe.</p>
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Users />}
+                  titulo="Nenhum colaborador comercial cadastrado"
+                  descricao="Cadastre a equipe em Ferramentas → Equipe."
+                />
               )}
               {(colaboradores ?? []).map((c) => {
                 const m = metaDe(c.user_id);
                 const nome = nomeExibido(c as never) || c.user_id.slice(0, 8);
                 return (
-                  <div key={c.user_id} className="flex items-center justify-between gap-3 p-4 flex-wrap">
+                  <div key={c.user_id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{nome}</p>
+                      <p className="truncate text-base font-medium text-foreground">{nome}</p>
                       {m ? (
-                        <p className="text-xs text-muted-foreground tabular-nums">
+                        <p className="text-sm text-muted-foreground tabular-nums">
                           {m.meta_contratos ? `${m.meta_contratos} contrato(s) · ` : ''}
                           {formatBRL(Number(m.meta_faturamento) || 0)} faturado
                           {m.meta_quitacao ? ` · ${formatBRL(Number(m.meta_quitacao))} quitado` : ''}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground">Sem meta para {NOMES_MES[mes - 1]}</p>
+                        <p className="text-sm text-muted-foreground">Sem meta para {NOMES_MES[mes - 1]}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
                       {m && <Badge variant="success">Meta definida</Badge>}
                       <Button size="sm" variant={m ? 'outline' : 'default'}
                         onClick={() => setEmEdicao({ user_id: c.user_id, nome })}>
-                        {m ? <Pencil className="w-4 h-4" /> : <Target className="w-4 h-4" />}
+                        {m ? <Pencil aria-hidden="true" /> : <Target aria-hidden="true" />}
                         {m ? 'Editar' : 'Definir'}
                       </Button>
                     </div>

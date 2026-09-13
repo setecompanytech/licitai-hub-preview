@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import {
   CheckCircle2, AlertTriangle, Edit3, DollarSign, Package,
@@ -200,14 +201,16 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
         <div className="flex flex-wrap gap-2">
           {itens.length === 0 && (
             <Button onClick={dispararPrecificacao} disabled={precificando}>
-              {precificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
-              Extrair e Precificar
+              {precificando
+                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                : <BarChart3 className="h-4 w-4" aria-hidden="true" />}
+              Extrair e precificar
             </Button>
           )}
           {itens.length > 0 && (
             <Button onClick={aprovarTodos} variant="default">
-              <CheckCircle2 className="h-4 w-4" />
-              Aprovar Todos
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              Aprovar todos
             </Button>
           )}
         </div>
@@ -215,13 +218,12 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
 
       {itens.length === 0 ? (
         <Card>
-          <CardContent className="p-8 text-center">
-            <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-4">
-              <Package className="h-6 w-6" />
-            </div>
-            <p className="text-base font-semibold text-foreground">Nenhum item extraído ainda</p>
-            <p className="text-sm text-muted-foreground mt-1">Clique em "Extrair e Precificar" para iniciar o motor autônomo.</p>
-          </CardContent>
+          <EstadoVazio
+            icone={<Package />}
+            tamanho="compacto"
+            titulo="Nenhum item extraído ainda"
+            descricao="Use “Extrair e precificar” para iniciar o motor autônomo."
+          />
         </Card>
       ) : (
         <div className="rounded-lg border border-border bg-card max-h-[500px] overflow-auto">
@@ -306,8 +308,8 @@ export default function PrecificacaoReview({ licitacaoId }: { licitacaoId: strin
 
                     {/* Margem */}
                     <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap ${
-                      (item.margem_bruta_perc ?? 0) >= 15 ? 'text-success' :
-                      (item.margem_bruta_perc ?? 0) >= 8 ? 'text-warning' : 'text-destructive'
+                      (item.margem_bruta_perc ?? 0) >= 15 ? 'text-success-ink' :
+                      (item.margem_bruta_perc ?? 0) >= 8 ? 'text-warning-ink' : 'text-destructive-ink'
                     }`}>
                       {item.margem_bruta_perc?.toFixed(1) ?? '0'}%
                     </TableCell>

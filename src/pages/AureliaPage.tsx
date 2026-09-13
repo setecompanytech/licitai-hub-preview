@@ -3,11 +3,32 @@ import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen, Sparkles } from 'lucide-react';
+import { Send, Loader2, FileText, ClipboardCheck, DollarSign, Target, Scale, Zap, FolderOpen } from 'lucide-react';
 import { streamAIChat, ChatMessage } from '@/lib/ai-stream';
 import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import { useProcessoAtivo } from '@/hooks/useProcessoAtivo';
 import { cn } from '@/lib/utils';
+import roboAvatar from '@/assets/brand/icon-robo-avatar.png';
+
+/**
+ * O robô da marca no lugar do monograma "AU" — o mesmo avatar que o painel
+ * flutuante da AURÉLIA já usa, para a consultora ter uma cara só no app.
+ * Pintado sobre a tinta verde clara, que dá contraste ao desenho azul.
+ */
+function AvatarAurelia({ tamanho = 'sm' }: { tamanho?: 'sm' | 'lg' }) {
+  const grande = tamanho === 'lg';
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-tint ring-1 ring-border',
+        grande ? 'h-20 w-20' : 'mt-1 h-8 w-8',
+      )}
+    >
+      <img src={roboAvatar} alt="" className={cn('object-contain', grande ? 'h-14 w-14' : 'h-6 w-6')} />
+    </span>
+  );
+}
 
 const quickActions = [
   { icon: FileText, label: 'Interpretar Edital', prompt: 'Quero colar o texto de um edital para você analisar' },
@@ -72,17 +93,15 @@ export default function AureliaPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto min-h-[calc(100vh-120px)] flex flex-col">
-        <CabecalhoPagina
-          icone={<Sparkles />}
-          titulo="AURÉLIA"
-          descricao="Sua consultora sênior em licitações públicas — Praefectus Intelligence"
-        />
+        {/* `/assistente` é a rota do menu; a URL atendida é `/aurelia`, então o
+            registro é apontado à mão para o título/descrição virem de lá. */}
+        <CabecalhoPagina rota="/assistente" />
 
         {showWelcome ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             {/* Avatar da consultora */}
-            <div aria-hidden="true" className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center mb-6">
-              <span className="text-2xl font-bold tracking-wider">AU</span>
+            <div className="mb-6">
+              <AvatarAurelia tamanho="lg" />
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">Como posso ajudar hoje?</h2>
             <p className="text-base text-muted-foreground mb-6 text-center max-w-md">
@@ -90,7 +109,7 @@ export default function AureliaPage() {
             </p>
 
             {processo && (
-              <div className="mb-6 px-3 py-1.5 rounded-full bg-primary-tint border border-border text-xs flex items-center gap-2 max-w-full">
+              <div className="mb-6 flex max-w-full items-center gap-2 rounded-full border border-border bg-primary-tint px-3 py-1 text-xs">
                 <FolderOpen className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-primary font-medium">Analisando: {processo.numero || 'S/N'}</span>
                 <span className="text-muted-foreground truncate max-w-[200px]">— {processo.orgao}</span>
@@ -98,7 +117,7 @@ export default function AureliaPage() {
             )}
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-xl mb-8">
+            <div className="mb-8 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               {quickActions.map((qa) => (
                 <Button
                   key={qa.label}
@@ -107,7 +126,7 @@ export default function AureliaPage() {
                   className="h-auto flex-col gap-2 p-4 rounded-lg whitespace-normal text-center"
                 >
                   <qa.icon className="w-5 h-5 text-primary" />
-                  <span className="text-xs font-medium text-foreground">{qa.label}</span>
+                  <span className="text-sm font-medium text-foreground">{qa.label}</span>
                 </Button>
               ))}
             </div>
@@ -142,13 +161,9 @@ export default function AureliaPage() {
             <div className="flex-1 overflow-y-auto py-6 space-y-4">
               {messages.map((msg, i) => (
                 <div key={i} className={cn("flex gap-3", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  {msg.role === 'assistant' && (
-                    <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 mt-1">
-                      <span className="text-xs font-bold">AU</span>
-                    </div>
-                  )}
+                  {msg.role === 'assistant' && <AvatarAurelia />}
                   <div className={cn(
-                    "max-w-[80%] rounded-lg px-4 py-3 text-sm",
+                    "max-w-[80%] rounded-lg px-4 py-3 text-base leading-6",
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card border border-border text-foreground'
@@ -161,10 +176,8 @@ export default function AureliaPage() {
               ))}
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
-                  <div aria-hidden="true" className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold">AU</span>
-                  </div>
-                  <div className="bg-card border border-border rounded-lg px-4 py-3 text-sm text-muted-foreground flex items-center gap-2" role="status">
+                  <AvatarAurelia />
+                  <div className="bg-card border border-border rounded-lg px-4 py-3 text-base leading-6 text-muted-foreground flex items-center gap-2" role="status">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     AURÉLIA está analisando…
                   </div>

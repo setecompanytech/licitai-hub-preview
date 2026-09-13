@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Target, Loader2, Pencil, TrendingUp, CalendarDays, AlertTriangle,
-  Gauge, Info, Trophy, Send, UserRound,
+  Target, Loader2, TrendingUp, CalendarDays, AlertTriangle,
+  Gauge, Info, Trophy, Send, UserRound, Users,
 } from 'lucide-react';
 import {
   useMetasConfig, useValoresAlvo, useRealizadoMensal, useFeriados,
@@ -41,19 +43,15 @@ function hojeEmSaoPaulo(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
 
-const ESTILO_ALERTA: Record<Exclude<Severidade, 'nenhum'>, { classe: string; titulo: string }> = {
-  atencao: {
-    classe: 'border-warning/40 bg-warning/10 text-warning',
-    titulo: 'Atenção',
-  },
-  risco: {
-    classe: 'border-warning/50 bg-warning/15 text-warning',
-    titulo: 'Meta em risco',
-  },
-  critico: {
-    classe: 'border-destructive/40 bg-destructive/10 text-destructive',
-    titulo: 'Risco crítico',
-  },
+/**
+ * Severidade → família semântica do Alert (tinta: fundo *-tint, texto *-ink).
+ * `atencao` e `risco` compartilham a família de aviso; o título é que separa
+ * os dois — cor nunca é a única pista.
+ */
+const ESTILO_ALERTA: Record<Exclude<Severidade, 'nenhum'>, { variante: 'warning' | 'destructive'; titulo: string }> = {
+  atencao: { variante: 'warning', titulo: 'Atenção' },
+  risco: { variante: 'warning', titulo: 'Meta em risco' },
+  critico: { variante: 'destructive', titulo: 'Risco crítico' },
 };
 
 function Indicador({
@@ -66,14 +64,14 @@ function Indicador({
   destaque?: boolean;
 }) {
   return (
-    <Card className={destaque ? 'border-primary/40' : undefined}>
-      <CardContent className="p-4">
+    <Card className={destaque ? 'border-primary' : undefined}>
+      <CardContent className="p-6">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-xs text-muted-foreground">{rotulo}</span>
-          <Icone className={`w-4 h-4 shrink-0 ${destaque ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className="text-sm text-muted-foreground">{rotulo}</span>
+          <Icone aria-hidden="true" className={cn('w-4 h-4 shrink-0', destaque ? 'text-primary' : 'text-muted-foreground')} />
         </div>
-        <p className="text-xl font-bold tabular-nums mt-1">{valor}</p>
-        {detalhe && <p className="text-xs text-muted-foreground mt-0.5">{detalhe}</p>}
+        <p className="mt-2 text-[2rem] leading-10 font-bold tabular-nums text-foreground">{valor}</p>
+        {detalhe && <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p>}
       </CardContent>
     </Card>
   );
@@ -220,12 +218,22 @@ export default function PainelMetas() {
     <div className="space-y-4">
       {/* ── Seletores ── */}
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-3 p-4">
-          <div className="min-w-[200px] flex-1">
-            <Label className="text-sm text-muted-foreground mb-1 block">Colaborador</Label>
+        <CardContent className="flex flex-wrap items-end gap-4 p-6">
+          <div className="min-w-[12rem] flex-1">
+            {/* `htmlFor` só quando o campo existe: no ramo do colaborador o valor
+                é um bloco de leitura, não um controle rotulável, e `label[for]`
+                apontando para um <div> não associa nada. Lá o nome chega pelo
+                aria-labelledby do grupo. */}
+            <Label
+              id="painel-metas-colaborador-rotulo"
+              htmlFor={isAdmin ? 'painel-metas-colaborador' : undefined}
+              className="mb-1 block text-sm text-muted-foreground"
+            >
+              Colaborador
+            </Label>
             {isAdmin ? (
               <Select value={selecionado} onValueChange={setUserId}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger id="painel-metas-colaborador">
                   <SelectValue placeholder={carregandoColaboradores ? 'Carregando…' : 'Selecione'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -237,16 +245,20 @@ export default function PainelMetas() {
                 </SelectContent>
               </Select>
             ) : (
-              <div className="h-9 flex items-center gap-2 px-3 rounded-md border bg-muted/30 text-sm">
-                <UserRound className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <div
+                role="group"
+                aria-labelledby="painel-metas-colaborador-rotulo"
+                className="flex h-11 items-center gap-2 rounded-md border border-border bg-muted px-3 text-sm text-foreground"
+              >
+                <UserRound aria-hidden="true" className="w-4 h-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{nomeColaborador}</span>
               </div>
             )}
           </div>
-          <div className="w-[150px]">
-            <Label className="text-sm text-muted-foreground mb-1 block">Mês</Label>
+          <div className="w-full sm:w-44">
+            <Label htmlFor="painel-metas-mes" className="mb-1 block text-sm text-muted-foreground">Mês</Label>
             <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="painel-metas-mes"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {NOMES_MES.map((nome, i) => (
                   <SelectItem key={nome} value={String(i + 1)}>{nome}</SelectItem>
@@ -254,10 +266,10 @@ export default function PainelMetas() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-[110px]">
-            <Label className="text-sm text-muted-foreground mb-1 block">Ano</Label>
+          <div className="w-full sm:w-32">
+            <Label htmlFor="painel-metas-ano" className="mb-1 block text-sm text-muted-foreground">Ano</Label>
             <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="painel-metas-ano"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {anos.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
               </SelectContent>
@@ -274,10 +286,10 @@ export default function PainelMetas() {
               um botão que a regra não permite mais. */}
           {isAdmin && !meta && selecionado && (
             <Button
-              size="sm" variant="outline" className="h-9"
+              variant="outline"
               onClick={() => navigate('/definir-metas')}
             >
-              <Target className="w-3.5 h-3.5 mr-1.5" />
+              <Target aria-hidden="true" />
               Definir em Ferramentas
             </Button>
           )}
@@ -285,57 +297,52 @@ export default function PainelMetas() {
       </Card>
 
       {carregando ? (
-        <Card className="p-12 text-center">
-          <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
+        <Card>
+          <div role="status" aria-label="Carregando" className="flex items-center justify-center p-12">
+            <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
         </Card>
       ) : !selecionado ? (
-        <Card className="p-12 text-center">
-          <p className="text-base text-muted-foreground">
-            Nenhum colaborador encontrado nesta empresa.
-          </p>
+        <Card>
+          <EstadoVazio
+            icone={<Users />}
+            titulo="Nenhum colaborador encontrado"
+            descricao="Nenhum colaborador do comercial foi encontrado nesta empresa."
+          />
         </Card>
       ) : !meta ? (
-        <Card className="p-12 text-center">
-          <Target className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-base font-medium text-muted-foreground">
-            Sem meta definida para {NOMES_MES[mes - 1].toLowerCase()} de {ano}
-          </p>
-          {isAdmin ? (
-            <>
-              <p className="text-base text-muted-foreground mt-1 mb-4">
-                Defina a meta de {nomeColaborador} para o painel calcular projeção e alertas.
-              </p>
-              <Button size="sm" onClick={() => navigate('/definir-metas')}>
-                <Target className="w-3.5 h-3.5 mr-1.5" />
+        <Card>
+          <EstadoVazio
+            icone={<Target />}
+            titulo={`Sem meta definida para ${NOMES_MES[mes - 1].toLowerCase()} de ${ano}`}
+            descricao={isAdmin
+              ? `Defina a meta de ${nomeColaborador} para o painel calcular projeção e alertas.`
+              : 'Um administrador da empresa precisa definir sua meta do mês para o painel calcular projeção e alertas.'}
+            acao={isAdmin ? (
+              <Button onClick={() => navigate('/definir-metas')}>
+                <Target aria-hidden="true" />
                 Definir em Ferramentas
               </Button>
-            </>
-          ) : (
-            <p className="text-base text-muted-foreground mt-1">
-              Um administrador da empresa precisa definir sua meta do mês para o painel
-              calcular projeção e alertas.
-            </p>
-          )}
+            ) : undefined}
+          />
         </Card>
       ) : analise && (
         <>
           {/* ── Alerta ── */}
           {analise.severidade !== 'nenhum' && (
-            <div className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${ESTILO_ALERTA[analise.severidade].classe}`}>
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-              <div className="text-base">
-                <p className="font-semibold">{ESTILO_ALERTA[analise.severidade].titulo}</p>
-                <p className="opacity-90 mt-0.5">
-                  {formatFracao(analise.projecao.percentualRealizado, 0)} da meta com{' '}
-                  {analise.projecao.diasUteisRestantes} dia(s) útil(eis) restante(s).
-                  Abaixo do mínimo de {Number(config?.alerta_percentual_minimo ?? 70)}% configurado.
-                </p>
-              </div>
-            </div>
+            <Alert variant={ESTILO_ALERTA[analise.severidade].variante}>
+              <AlertTriangle aria-hidden="true" className="w-4 h-4" />
+              <AlertTitle>{ESTILO_ALERTA[analise.severidade].titulo}</AlertTitle>
+              <AlertDescription>
+                {formatFracao(analise.projecao.percentualRealizado, 0)} da meta com{' '}
+                {analise.projecao.diasUteisRestantes} dia(s) útil(eis) restante(s).
+                Abaixo do mínimo de {Number(config?.alerta_percentual_minimo ?? 70)}% configurado.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* ── Meta × realizado ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Indicador
               rotulo="Meta do mês"
               valor={formatBRL(paraReais(analise.projecao.metaCent))}
@@ -380,9 +387,9 @@ export default function PainelMetas() {
           {(analise.pontas.contratos.alvo > 0
             || analise.pontas.faturamento.alvo > 0
             || analise.pontas.quitacao.alvo > 0) && (
-            <div className="rounded-xl border bg-card p-4 space-y-3">
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-muted-foreground" />
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+              <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <Target aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                 As três pontas do mês
               </p>
               {([
@@ -397,29 +404,26 @@ export default function PainelMetas() {
                 const principal = meta.base_meta === l.chave;
                 const exibir = (v: number) => (l.moeda ? formatBRL(v) : String(v));
                 return (
-                  <div key={l.chave} className="space-y-1">
+                  <div key={l.chave} className="space-y-1.5">
                     <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-medium flex items-center gap-1.5">
+                      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                         {l.titulo}
-                        {principal && (
-                          <span className="rounded bg-primary/15 px-1 py-px text-[10px] font-semibold text-primary">
-                            principal
-                          </span>
-                        )}
-                        <span className="text-muted-foreground font-normal">· {l.sub}</span>
+                        {principal && <Badge variant="info">principal</Badge>}
+                        <span className="font-normal text-muted-foreground">· {l.sub}</span>
                       </span>
-                      <span className="text-xs tabular-nums whitespace-nowrap">
+                      <span className="whitespace-nowrap text-sm tabular-nums text-foreground">
                         <strong>{exibir(l.p.feito)}</strong>
                         <span className="text-muted-foreground"> de {exibir(l.p.alvo)}</span>
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={cn('h-full rounded-full transition-all',
-                          pct >= 100 ? 'bg-success' : principal ? 'bg-primary' : 'bg-muted-foreground/40')}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    <Progress
+                      value={pct}
+                      className="h-2"
+                      indicatorClassName={cn(
+                        pct >= 100 ? 'bg-success' : principal ? 'bg-primary' : 'bg-muted-foreground',
+                      )}
+                      aria-label={`${l.titulo}: ${exibir(l.p.feito)} de ${exibir(l.p.alvo)}`}
+                    />
                   </div>
                 );
               })}
@@ -431,8 +435,8 @@ export default function PainelMetas() {
               igual com 24% e com 98% — exceção à régua de cor encerrada em
               2026-08-08. */}
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+            <CardContent className="p-6">
+              <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
                 <span>Progresso</span>
                 <span className="tabular-nums">
                   {formatFracao(analise.projecao.percentualRealizado, 1)}
@@ -451,42 +455,42 @@ export default function PainelMetas() {
 
           {/* ── O que falta fazer ── */}
           <Card>
-            <CardHeader className="py-3 px-5 border-b">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-muted-foreground" />
+            <CardHeader className="border-b p-6">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Gauge aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                 O que falta para bater a meta
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-5">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Send className="w-3 h-3" /> Participações
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Send aria-hidden="true" className="w-4 h-4" /> Participações
                   </p>
-                  <p className="text-2xl font-bold tabular-nums mt-1">
+                  <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                     {analise.projecao.participacoesNecessarias}
                   </p>
                   <p className="text-xs text-muted-foreground">propostas a enviar</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Trophy className="w-3 h-3" /> Contratos
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Trophy aria-hidden="true" className="w-4 h-4" /> Contratos
                   </p>
-                  <p className="text-2xl font-bold tabular-nums mt-1">
+                  <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                     {analise.projecao.contratosNecessarios}
                   </p>
                   <p className="text-xs text-muted-foreground">a ganhar</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Ritmo necessário</p>
-                  <p className="text-2xl font-bold tabular-nums mt-1">
+                  <p className="text-sm text-muted-foreground">Ritmo necessário</p>
+                  <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                     {formatBRL(paraReais(analise.projecao.runRateNecessarioCent))}
                   </p>
                   <p className="text-xs text-muted-foreground">por dia útil restante</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Ritmo atual</p>
-                  <p className="text-2xl font-bold tabular-nums mt-1">
+                  <p className="text-sm text-muted-foreground">Ritmo atual</p>
+                  <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                     {formatBRL(paraReais(analise.projecao.ritmoDiarioCent))}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -499,21 +503,18 @@ export default function PainelMetas() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-                <span className="text-muted-foreground text-xs">Projeção de fechamento:</span>
-                <span className="font-semibold tabular-nums">
+              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-6 text-sm">
+                <span className="text-sm text-muted-foreground">Projeção de fechamento:</span>
+                <span className="font-semibold tabular-nums text-foreground">
                   {formatBRL(paraReais(analise.projecao.projecaoFimMesCent))}
                 </span>
-                {/* Bater a meta é ESTADO, não ação: verde de sucesso quando a
-                    projeção alcança, contorno neutro quando não — o laranja
-                    fica reservado a botão/link/foco (regra da auditoria). */}
+                {/* Bater a meta é ESTADO, não ação: tinta de sucesso quando a
+                    projeção alcança, neutra quando não — o verde de ação fica
+                    reservado a botão/link/foco (regra da auditoria). */}
                 <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-xs',
-                    analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent &&
-                      'border-success/40 bg-success/10 text-success',
-                  )}
+                  variant={
+                    analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent ? 'success' : 'muted'
+                  }
                 >
                   {analise.projecao.projecaoFimMesCent >= analise.projecao.metaCent
                     ? 'Bate a meta no ritmo atual'
@@ -525,44 +526,41 @@ export default function PainelMetas() {
 
           {/* ── Premissas ── */}
           <Card>
-            <CardHeader className="py-3 px-5 border-b">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Info className="w-4 h-4 text-muted-foreground" />
+            <CardHeader className="border-b p-6">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+                <Info aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                 Premissas do cálculo
-                <Badge
-                  variant={analise.projecao.premissas.confianca === 'alta' ? 'default' : 'outline'}
-                  className="text-xs ml-1"
-                >
+                <Badge variant={analise.projecao.premissas.confianca === 'alta' ? 'success' : 'muted'}>
                   confiança {analise.projecao.premissas.confianca}
                 </Badge>
-                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
                   {analise.historico.length} mês(es) de histórico
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <CardContent className="space-y-6 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground">Conversão participado → ganho</p>
-                  <p className="font-semibold tabular-nums mt-0.5">
+                  <p className="text-sm text-muted-foreground">Conversão participado → ganho</p>
+                  <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
                     {formatFracao(analise.projecao.premissas.txGanho, 1)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Conversão ganho → faturado</p>
-                  <p className="font-semibold tabular-nums mt-0.5">
+                  <p className="text-sm text-muted-foreground">Conversão ganho → faturado</p>
+                  <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
                     {formatFracao(analise.projecao.premissas.txFaturamento, 1)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Ticket ponderado</p>
-                  <p className="font-semibold tabular-nums mt-0.5">
+                  <p className="text-sm text-muted-foreground">Ticket ponderado</p>
+                  <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
                     {formatBRL(paraReais(analise.projecao.premissas.ticketPonderadoCent))}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Índice sazonal</p>
-                  <p className="font-semibold tabular-nums mt-0.5">
+                  <p className="text-sm text-muted-foreground">Índice sazonal</p>
+                  <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
                     {analise.projecao.premissas.indiceSazonal.toFixed(2)}
                   </p>
                 </div>
@@ -570,12 +568,12 @@ export default function PainelMetas() {
 
               {analise.tickets.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1.5">
+                  <p className="mb-2 text-sm text-muted-foreground">
                     Carteira na janela de {janelaMeses} mês(es)
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {analise.tickets.map((t) => (
-                      <Badge key={t.modalidade} variant="outline" className="text-xs font-normal">
+                      <Badge key={t.modalidade} variant="muted" className="font-normal">
                         {rotuloModalidade(t.modalidade)} · {formatFracao(t.mix, 0)} ·{' '}
                         {formatBRL(paraReais(t.ticketCent))} ({t.amostra})
                       </Badge>
@@ -585,16 +583,16 @@ export default function PainelMetas() {
               )}
 
               {analise.projecao.premissas.motivosBaixaConfianca.length > 0 && (
-                <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5">
-                  <p className="text-sm font-medium text-warning mb-1">
-                    O que puxou a confiança para baixo
-                  </p>
-                  <ul className="text-base text-muted-foreground space-y-0.5 list-disc list-inside">
-                    {analise.projecao.premissas.motivosBaixaConfianca.map((m) => (
-                      <li key={m}>{m}</li>
-                    ))}
-                  </ul>
-                </div>
+                <Alert variant="warning">
+                  <AlertTitle>O que puxou a confiança para baixo</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc list-inside space-y-1">
+                      {analise.projecao.premissas.motivosBaixaConfianca.map((m) => (
+                        <li key={m}>{m}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
               )}
             </CardContent>
           </Card>

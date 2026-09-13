@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -10,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  FileText, FileSpreadsheet, Loader2, AlertTriangle, Info, Save,
+  FileText, FileSpreadsheet, Loader2, AlertTriangle, Info, Save, Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,10 +44,15 @@ const TIPOS: { valor: TipoRelatorio; label: string }[] = [
   { valor: 'MES', label: 'Mensal — mês inteiro' },
 ];
 
-const CorSeveridade: Record<string, string> = {
-  alta: 'bg-destructive/10 text-destructive border-destructive/30',
-  media: 'bg-warning/10 text-warning border-warning/30',
-  baixa: 'bg-muted text-muted-foreground border-border',
+/**
+ * Severidade do risco → família semântica do Badge (tinta: fundo *-tint, texto
+ * *-ink). O texto da severidade fica visível no próprio badge: a cor é
+ * reforço, nunca a única pista.
+ */
+const VarianteSeveridade: Record<string, 'danger' | 'warning' | 'muted'> = {
+  alta: 'danger',
+  media: 'warning',
+  baixa: 'muted',
 };
 
 function hojeSaoPaulo(): string {
@@ -183,19 +189,20 @@ export default function RelatoriosMetas() {
 
   return (
     <div className="space-y-4">
+      {/* ── Seletores e emissão ── */}
       <Card>
-        <CardHeader className="py-3 px-5 border-b">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" />
+        <CardHeader className="border-b p-6">
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <FileText aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
             Relatório por colaborador
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-5">
+        <CardContent className="p-6">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[200px] flex-1">
-              <Label className="text-xs text-muted-foreground mb-1 block">Colaborador</Label>
+            <div className="min-w-[12rem] flex-1">
+              <Label htmlFor="relatorios-metas-colaborador" className="mb-1 block text-sm text-muted-foreground">Colaborador</Label>
               <Select value={selecionado} onValueChange={setColaboradorId} disabled={!isAdmin}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger id="relatorios-metas-colaborador"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {disponiveis.map((c) => (
                     <SelectItem key={c.user_id} value={c.user_id}>
@@ -206,137 +213,145 @@ export default function RelatoriosMetas() {
               </Select>
             </div>
 
-            <div className="w-[220px]">
-              <Label className="text-xs text-muted-foreground mb-1 block">Tipo</Label>
+            <div className="w-full sm:w-56">
+              <Label htmlFor="relatorios-metas-tipo" className="mb-1 block text-sm text-muted-foreground">Tipo</Label>
               <Select value={tipo} onValueChange={(v) => setTipo(v as TipoRelatorio)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="relatorios-metas-tipo"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TIPOS.map((t) => <SelectItem key={t.valor} value={t.valor}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-[140px]">
-              <Label className="text-xs text-muted-foreground mb-1 block">Mês</Label>
+            <div className="w-full sm:w-44">
+              <Label htmlFor="relatorios-metas-mes" className="mb-1 block text-sm text-muted-foreground">Mês</Label>
               <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="relatorios-metas-mes"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-[100px]">
-              <Label className="text-xs text-muted-foreground mb-1 block">Ano</Label>
+            <div className="w-full sm:w-32">
+              <Label htmlFor="relatorios-metas-ano" className="mb-1 block text-sm text-muted-foreground">Ano</Label>
               <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="relatorios-metas-ano"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[ano - 1, ano, ano + 1].map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <Button
-              size="sm" className="h-9"
-              disabled={!relatorio || exportando}
-              onClick={() => exportar('pdf')}
-            >
-              {exportando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FileText className="w-3.5 h-3.5 mr-1.5" />}
-              PDF
-            </Button>
-            <Button
-              size="sm" variant="outline" className="h-9"
-              disabled={!relatorio || exportando}
-              onClick={() => exportar('xlsx')}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-              Planilha
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                disabled={!relatorio || exportando}
+                onClick={() => exportar('pdf')}
+              >
+                {exportando
+                  ? <Loader2 aria-hidden="true" className="animate-spin" />
+                  : <FileText aria-hidden="true" />}
+                PDF
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!relatorio || exportando}
+                onClick={() => exportar('xlsx')}
+              >
+                <FileSpreadsheet aria-hidden="true" />
+                Planilha
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {!relatorio ? (
-        <Card className="p-12 text-center">
-          <FileText className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Selecione um colaborador para montar o relatório.
-          </p>
+        <Card>
+          <EstadoVazio
+            icone={<FileText />}
+            titulo="Nenhum relatório montado"
+            descricao="Selecione um colaborador para montar o relatório."
+          />
         </Card>
       ) : (
         <>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold">{relatorio.periodo.rotulo}</h3>
-            <Badge variant="outline" className="text-xs">{relatorio.colaborador}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold text-foreground">{relatorio.periodo.rotulo}</h3>
+            <Badge variant="muted">{relatorio.colaborador}</Badge>
             {relatorio.parcial && (
-              <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
-                <Info className="w-3 h-3 mr-1" /> Período em curso — números parciais
+              <Badge variant="warning">
+                <Info aria-hidden="true" className="mr-1 h-3 w-3" /> Período em curso — números parciais
               </Badge>
             )}
-            <span className="ml-auto text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Save className="w-3 h-3" /> A exportação registra o snapshot do período
+            <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <Save aria-hidden="true" className="h-3 w-3" /> A exportação registra o snapshot do período
             </span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader className="py-2.5 px-4 border-b">
-                <CardTitle className="text-xs font-semibold">Indicadores do período</CardTitle>
+              <CardHeader className="border-b p-6">
+                <CardTitle className="text-lg font-semibold">Indicadores do período</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableBody>
-                    {relatorio.indicadores.map((i) => (
-                      <TableRow key={i.rotulo} className="text-sm">
-                        <TableCell className="pl-4 text-muted-foreground">{i.rotulo}</TableCell>
-                        <TableCell className="text-right pr-4 font-medium tabular-nums">{i.valor}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableBody>
+                      {relatorio.indicadores.map((i) => (
+                        <TableRow key={i.rotulo}>
+                          <TableCell className="pl-6 text-sm text-muted-foreground">{i.rotulo}</TableCell>
+                          <TableCell className="pr-6 text-right text-sm font-medium tabular-nums">{i.valor}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="py-2.5 px-4 border-b">
-                <CardTitle className="text-xs font-semibold">
+              <CardHeader className="border-b p-6">
+                <CardTitle className="text-lg font-semibold">
                   {relatorio.tipo === 'MES' ? 'Situação de fechamento' : 'Caminho até a meta'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableBody>
-                    {relatorio.sugestoes.map((s) => (
-                      <TableRow key={s.rotulo} className="text-sm">
-                        <TableCell className="pl-4 text-muted-foreground">{s.rotulo}</TableCell>
-                        <TableCell className="text-right pr-4 font-medium tabular-nums">{s.valor}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableBody>
+                      {relatorio.sugestoes.map((s) => (
+                        <TableRow key={s.rotulo}>
+                          <TableCell className="pl-6 text-sm text-muted-foreground">{s.rotulo}</TableCell>
+                          <TableCell className="pr-6 text-right text-sm font-medium tabular-nums">{s.valor}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>
 
           {relatorio.riscos.length > 0 && (
             <Card>
-              <CardHeader className="py-2.5 px-4 border-b">
-                <CardTitle className="text-xs font-semibold flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />
+              <CardHeader className="border-b p-6">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+                  <AlertTriangle aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                   Riscos identificados
-                  <Badge variant="outline" className="text-[10px]">{relatorio.riscos.length}</Badge>
+                  <Badge variant="muted">{relatorio.riscos.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0 divide-y">
+              <CardContent className="divide-y divide-border p-0">
                 {relatorio.riscos.map((r) => (
-                  <div key={r.codigo} className="px-4 py-3">
-                    <div className="flex items-start gap-2">
-                      <Badge variant="outline" className={`text-[10px] shrink-0 ${CorSeveridade[r.severidade]}`}>
+                  <div key={r.codigo} className="px-6 py-4">
+                    <div className="flex items-start gap-3">
+                      <Badge variant={VarianteSeveridade[r.severidade] ?? 'muted'} className="shrink-0">
                         {r.severidade}
                       </Badge>
                       <div className="min-w-0">
-                        <p className="text-sm">{r.descricao}</p>
-                        {r.acao && <p className="text-xs text-muted-foreground mt-0.5">→ {r.acao}</p>}
+                        <p className="text-sm text-foreground">{r.descricao}</p>
+                        {r.acao && <p className="mt-1 text-xs text-muted-foreground">→ {r.acao}</p>}
                       </div>
                     </div>
                   </div>
@@ -345,52 +360,59 @@ export default function RelatoriosMetas() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader className="py-2.5 px-4 border-b">
-                <CardTitle className="text-xs font-semibold">Trabalhos registrados no sistema</CardTitle>
+              <CardHeader className="border-b p-6">
+                <CardTitle className="text-lg font-semibold">Trabalhos registrados no sistema</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {relatorio.atividades.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-muted-foreground text-center">
-                    Nenhuma atividade registrada no período.
-                  </p>
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<Activity />}
+                    titulo="Nenhuma atividade no período"
+                    descricao="Registros de licitações, propostas e contratos do período aparecem aqui."
+                  />
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="text-xs bg-muted/30">
-                        <TableHead className="pl-4">Módulo</TableHead>
-                        <TableHead className="text-right pr-4 w-[100px]">Registros</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {relatorio.atividades.map((a) => (
-                        <TableRow key={a.modulo} className="text-sm">
-                          <TableCell className="pl-4">{a.modulo}</TableCell>
-                          <TableCell className="text-right pr-4 tabular-nums">{a.quantidade}</TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted">
+                          <TableHead className="pl-6">Módulo</TableHead>
+                          <TableHead className="w-[110px] pr-6 text-right">Registros</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {relatorio.atividades.map((a) => (
+                          <TableRow key={a.modulo}>
+                            <TableCell className="pl-6 text-sm">{a.modulo}</TableCell>
+                            <TableCell className="pr-6 text-right text-sm tabular-nums">{a.quantidade}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="py-2.5 px-4 border-b">
-                <CardTitle className="text-xs font-semibold">Premissas do cálculo</CardTitle>
+              <CardHeader className="border-b p-6">
+                <CardTitle className="text-lg font-semibold">Premissas do cálculo</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableBody>
-                    {relatorio.premissas.map((p) => (
-                      <TableRow key={p.rotulo} className="text-sm">
-                        <TableCell className="pl-4 text-muted-foreground">{p.rotulo}</TableCell>
-                        <TableCell className="text-right pr-4 font-medium tabular-nums">{p.valor}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableBody>
+                      {relatorio.premissas.map((p) => (
+                        <TableRow key={p.rotulo}>
+                          <TableCell className="pl-6 text-sm text-muted-foreground">{p.rotulo}</TableCell>
+                          <TableCell className="pr-6 text-right text-sm font-medium tabular-nums">{p.valor}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>

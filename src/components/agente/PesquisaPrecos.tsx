@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useId } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,30 +6,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import {
   Search, TrendingUp, TrendingDown, Minus, ExternalLink,
-  Loader2, BarChart3, History, ShieldCheck, AlertTriangle,
-  DollarSign, Filter, Bell,
+  Loader2, BarChart3, History, ShieldCheck, DollarSign,
 } from 'lucide-react';
 
-const FONTES_CONFIG: Record<string, { nome: string; cor: string; tipo: string }> = {
-  pncp_ata: { nome: 'PNCP — Atas', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
-  pncp_contratacao: { nome: 'PNCP — Contratos', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
-  painel_mpog: { nome: 'Painel MPOG', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
-  bps: { nome: 'BPS Saúde', cor: 'bg-muted text-muted-foreground', tipo: 'oficial' },
-  mercadolivre: { nome: 'Mercado Livre', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
-  amazon: { nome: 'Amazon', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
-  americanas: { nome: 'Americanas', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
-  magalu: { nome: 'Magazine Luiza', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
-  dental_cremer: { nome: 'Dental Cremer', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_saude' },
-  cirurgica_fernandes: { nome: 'Cirúrgica Fernandes', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_saude' },
-  kabum: { nome: 'KaBuM!', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_ti' },
-  pichau: { nome: 'Pichau', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_ti' },
-  leroy_merlin: { nome: 'Leroy Merlin', cor: 'bg-muted text-muted-foreground', tipo: 'nicho_construcao' },
-  marketplace: { nome: 'Marketplace', cor: 'bg-muted text-muted-foreground', tipo: 'marketplace' },
-  historico_proprio: { nome: 'Histórico Próprio', cor: 'bg-primary/20 text-primary', tipo: 'interno' },
+type VarianteStatus = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+// A fonte é dado (o portal de onde o preço veio), não estado: badge neutro para
+// as externas e a tinta da marca para o que nasceu aqui dentro. A classe é
+// necessária porque `info` e `muted` dividem o mesmo fundo no Badge — sem ela o
+// destaque do histórico próprio só existiria no código; cor de status (success,
+// warning) fica reservada a estado de verdade.
+const FONTES_CONFIG: Record<string, { nome: string; variante: VarianteStatus; tipo: string; classe?: string }> = {
+  pncp_ata: { nome: 'PNCP — Atas', variante: 'muted', tipo: 'oficial' },
+  pncp_contratacao: { nome: 'PNCP — Contratos', variante: 'muted', tipo: 'oficial' },
+  painel_mpog: { nome: 'Painel MPOG', variante: 'muted', tipo: 'oficial' },
+  bps: { nome: 'BPS Saúde', variante: 'muted', tipo: 'oficial' },
+  mercadolivre: { nome: 'Mercado Livre', variante: 'muted', tipo: 'marketplace' },
+  amazon: { nome: 'Amazon', variante: 'muted', tipo: 'marketplace' },
+  americanas: { nome: 'Americanas', variante: 'muted', tipo: 'marketplace' },
+  magalu: { nome: 'Magazine Luiza', variante: 'muted', tipo: 'marketplace' },
+  dental_cremer: { nome: 'Dental Cremer', variante: 'muted', tipo: 'nicho_saude' },
+  cirurgica_fernandes: { nome: 'Cirúrgica Fernandes', variante: 'muted', tipo: 'nicho_saude' },
+  kabum: { nome: 'KaBuM!', variante: 'muted', tipo: 'nicho_ti' },
+  pichau: { nome: 'Pichau', variante: 'muted', tipo: 'nicho_ti' },
+  leroy_merlin: { nome: 'Leroy Merlin', variante: 'muted', tipo: 'nicho_construcao' },
+  marketplace: { nome: 'Marketplace', variante: 'muted', tipo: 'marketplace' },
+  historico_proprio: {
+    nome: 'Histórico próprio',
+    variante: 'info',
+    tipo: 'interno',
+    classe: 'border-primary bg-primary-tint text-primary',
+  },
 };
 
 interface PesquisaPrecosProps {
@@ -51,6 +64,9 @@ export default function PesquisaPrecos({
   const [resultados, setResultados] = useState<any>(null);
   const [filtroFonte, setFiltroFonte] = useState<string | null>(null);
   const [abaSelecionada, setAbaSelecionada] = useState<'resultados' | 'historico' | 'estatisticas'>('resultados');
+  // O componente é reutilizável (aba do agente, diálogo de precificação): os
+  // ids dos campos precisam ser únicos por instância para o label casar.
+  const campoId = useId();
 
   const buscar = useCallback(async () => {
     if (!query.trim()) return;
@@ -96,49 +112,61 @@ export default function PesquisaPrecos({
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
+      {/* Busca */}
       <div className="space-y-3">
         {!compacto && (
           <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" />
+            <Search className="h-5 w-5 text-primary" aria-hidden="true" />
             <h3 className="text-lg font-semibold text-foreground">
-              Pesquisa de Preços <span className="text-primary">AURÉLIA</span>
+              Pesquisa de preços <span className="text-primary">AURÉLIA</span>
             </h3>
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && buscar()}
-            placeholder="Ex: Luva de procedimento não estéril tamanho M caixa com 100 unidades"
-            className="flex-1"
-          />
-          <Input
-            value={catmat}
-            onChange={(e) => setCatmat(e.target.value)}
-            placeholder="CATMAT (opt.)"
-            className="w-32"
-          />
-          <Button onClick={buscar} disabled={buscando || !query.trim()}>
-            {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            {!compacto && (buscando ? ' Buscando...' : ' Buscar')}
+        <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="min-w-0 flex-1">
+            <label htmlFor={`${campoId}-item`} className="mb-1 block text-sm font-medium text-foreground">
+              Descrição do item
+            </label>
+            <Input
+              id={`${campoId}-item`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && buscar()}
+              placeholder="Ex: Luva de procedimento não estéril tamanho M caixa com 100 unidades"
+            />
+          </div>
+          <div className="md:w-40">
+            <label htmlFor={`${campoId}-catmat`} className="mb-1 block text-sm font-medium text-foreground">
+              CATMAT (opcional)
+            </label>
+            <Input
+              id={`${campoId}-catmat`}
+              value={catmat}
+              onChange={(e) => setCatmat(e.target.value)}
+              placeholder="Código"
+            />
+          </div>
+          <Button onClick={buscar} disabled={buscando || !query.trim()} className="w-full md:w-auto">
+            {buscando
+              ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              : <Search className="h-4 w-4" aria-hidden="true" />}
+            {buscando ? 'Buscando...' : 'Buscar'}
           </Button>
         </div>
 
         {/* Termos normalizados */}
         {resultados?.query_normalizada && (
-          <div className="flex items-center gap-2 flex-wrap text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted-foreground">Termos:</span>
             {resultados.query_normalizada.termos_gerais?.map((t: string, i: number) => (
-              <Badge key={i} variant="outline" className="text-xs">{t}</Badge>
+              <Badge key={i} variant="muted">{t}</Badge>
             ))}
-            <Badge variant={resultados.cache ? 'secondary' : 'default'} className="text-xs">
+            <Badge variant={resultados.cache ? 'muted' : 'info'}>
               {resultados.cache ? 'Cache' : 'Tempo real'}
             </Badge>
             {resultados.duracao_ms && (
-              <span className="text-muted-foreground">{resultados.duracao_ms}ms</span>
+              <span className="text-muted-foreground tabular-nums">{resultados.duracao_ms}ms</span>
             )}
           </div>
         )}
@@ -147,48 +175,43 @@ export default function PesquisaPrecos({
       {/* Estatísticas Rápidas */}
       {resultados?.estatisticas && resultados.estatisticas.total_registros > 0 && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Preço Sugerido</p>
-                <p className="text-lg font-bold text-primary">
-                  {formatCurrency(resultados.estatisticas.preco_sugerido)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Mínimo</p>
-                <p className="text-lg font-bold text-success">
-                  {formatCurrency(resultados.estatisticas.minimo)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Mediana</p>
-                <p className="text-lg font-bold text-foreground">
-                  {formatCurrency(resultados.estatisticas.mediana)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-3 text-center">
-                <p className="text-xs text-muted-foreground">Máximo</p>
-                <p className="text-lg font-bold text-destructive">
-                  {formatCurrency(resultados.estatisticas.maximo)}
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 [&>*]:min-w-0">
+            <div className="rounded-lg border border-border bg-primary-tint p-6 shadow-sm">
+              <p className="text-sm font-medium text-muted-foreground">Preço sugerido</p>
+              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-primary">
+                {formatCurrency(resultados.estatisticas.preco_sugerido)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <p className="text-sm font-medium text-muted-foreground">Mínimo</p>
+              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-success-ink">
+                {formatCurrency(resultados.estatisticas.minimo)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <p className="text-sm font-medium text-muted-foreground">Mediana</p>
+              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-foreground">
+                {formatCurrency(resultados.estatisticas.mediana)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <p className="text-sm font-medium text-muted-foreground">Máximo</p>
+              <p className="mt-1 text-[2rem] leading-10 font-bold tabular-nums text-destructive-ink">
+                {formatCurrency(resultados.estatisticas.maximo)}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <Badge variant={
-                resultados.estatisticas.confiabilidade === 'alta' ? 'default' :
-                resultados.estatisticas.confiabilidade === 'media' ? 'secondary' : 'outline'
-              }>
-                <ShieldCheck className="h-3 w-3 mr-1" />
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant={
+                  resultados.estatisticas.confiabilidade === 'alta' ? 'success' :
+                  resultados.estatisticas.confiabilidade === 'media' ? 'warning' : 'muted'
+                }
+                className="gap-1"
+              >
+                <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 {resultados.estatisticas.confiabilidade === 'alta' ? 'Alta confiança' :
                  resultados.estatisticas.confiabilidade === 'media' ? 'Média confiança' : 'Baixa confiança'}
               </Badge>
@@ -199,12 +222,12 @@ export default function PesquisaPrecos({
             </div>
 
             {onPrecoSelecionado && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   onClick={() => onPrecoSelecionado(resultados.estatisticas.preco_sugerido)}
                 >
-                  <DollarSign className="h-3 w-3 mr-1" />
+                  <DollarSign className="h-4 w-4" aria-hidden="true" />
                   Usar sugerido ({formatCurrency(resultados.estatisticas.preco_sugerido)})
                 </Button>
                 <Button
@@ -223,27 +246,27 @@ export default function PesquisaPrecos({
       {/* Tabs de resultados */}
       {resultados && resultados.estatisticas?.total_registros > 0 && (
         <Tabs value={abaSelecionada} onValueChange={(v) => setAbaSelecionada(v as any)}>
-          <TabsList className="bg-muted/50">
+          <TabsList>
             <TabsTrigger value="resultados">
               Resultados ({resultados.resultados?.length ?? 0})
             </TabsTrigger>
-            <TabsTrigger value="historico">
-              <History className="h-3 w-3 mr-1" />
+            <TabsTrigger value="historico" className="gap-2">
+              <History className="h-4 w-4" aria-hidden="true" />
               Histórico
             </TabsTrigger>
-            <TabsTrigger value="estatisticas">
-              <BarChart3 className="h-3 w-3 mr-1" />
-              Por Fonte
+            <TabsTrigger value="estatisticas" className="gap-2">
+              <BarChart3 className="h-4 w-4" aria-hidden="true" />
+              Por fonte
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="resultados">
             {/* Filtro por fonte */}
-            <div className="flex gap-1.5 flex-wrap mb-3">
+            <div className="mb-3 flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant={filtroFonte === null ? 'default' : 'outline'}
-                className="text-xs h-7"
+                aria-pressed={filtroFonte === null}
                 onClick={() => setFiltroFonte(null)}
               >
                 Todas
@@ -253,7 +276,7 @@ export default function PesquisaPrecos({
                   key={fonte}
                   size="sm"
                   variant={filtroFonte === fonte ? 'default' : 'outline'}
-                  className="text-xs h-7"
+                  aria-pressed={filtroFonte === fonte}
                   onClick={() => setFiltroFonte(filtroFonte === fonte ? null : fonte)}
                 >
                   {FONTES_CONFIG[fonte]?.nome ?? fonte} ({count as number})
@@ -270,28 +293,26 @@ export default function PesquisaPrecos({
                     return (
                       <div
                         key={i}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
                       >
-                        <span className="text-xs text-muted-foreground w-6">#{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{r.titulo}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={`text-xs ${fonteCfg.cor}`}>
-                              {fonteCfg.nome}
-                            </Badge>
+                        <span className="w-6 text-xs text-muted-foreground tabular-nums">#{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{r.titulo}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Badge variant={fonteCfg.variante} className={fonteCfg.classe}>{fonteCfg.nome}</Badge>
                             <span className="text-xs text-muted-foreground">{r.vendedor}</span>
                             {r.orgao && (
                               <span className="text-xs text-muted-foreground">• {r.orgao} ({r.uf_orgao})</span>
                             )}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-foreground">{formatCurrency(r.preco_unitario)}</p>
+                        <div className="shrink-0 text-right">
+                          <p className="font-semibold tabular-nums text-foreground">{formatCurrency(r.preco_unitario)}</p>
                           {onPrecoSelecionado && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs h-6 mt-1"
+                              className="mt-1"
                               onClick={() => onPrecoSelecionado(r.preco_unitario)}
                             >
                               Usar
@@ -303,9 +324,10 @@ export default function PesquisaPrecos({
                             href={r.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-primary transition-colors"
+                            aria-label={`Abrir anúncio de ${r.titulo} em nova aba`}
+                            className="rounded-md p-2 text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-4 w-4" aria-hidden="true" />
                           </a>
                         )}
                       </div>
@@ -331,18 +353,16 @@ export default function PesquisaPrecos({
                 const media = precosFonte.reduce((a: number, b: number) => a + b, 0) / precosFonte.length;
 
                 return (
-                  <Card key={fonte} className="bg-card border-border">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge className={`text-xs ${fonteCfg.cor}`}>{fonteCfg.nome}</Badge>
-                          <span className="text-xs text-muted-foreground">{count as number} resultados</span>
-                        </div>
-                        <div className="flex gap-4 text-xs">
-                          <span className="text-muted-foreground">Mín: <strong className="text-success">{formatCurrency(min)}</strong></span>
-                          <span className="text-muted-foreground">Méd: <strong className="text-foreground">{formatCurrency(media)}</strong></span>
-                          <span className="text-muted-foreground">Máx: <strong className="text-destructive">{formatCurrency(max)}</strong></span>
-                        </div>
+                  <Card key={fonte}>
+                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-6">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={fonteCfg.variante} className={fonteCfg.classe}>{fonteCfg.nome}</Badge>
+                        <span className="text-sm text-muted-foreground">{count as number} resultados</span>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <span className="text-muted-foreground">Mín: <strong className="tabular-nums text-success-ink">{formatCurrency(min)}</strong></span>
+                        <span className="text-muted-foreground">Méd: <strong className="tabular-nums text-foreground">{formatCurrency(media)}</strong></span>
+                        <span className="text-muted-foreground">Máx: <strong className="tabular-nums text-destructive-ink">{formatCurrency(max)}</strong></span>
                       </div>
                     </CardContent>
                   </Card>
@@ -353,16 +373,24 @@ export default function PesquisaPrecos({
         </Tabs>
       )}
 
-      {/* Empty state */}
-      {!resultados && !buscando && (
-        <Card className="bg-card border-border">
-          <CardContent className="p-8 text-center">
-            <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-muted-foreground">Digite a descrição do item para pesquisar preços.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              AURÉLIA busca automaticamente em fontes oficiais, marketplaces e histórico.
-            </p>
-          </CardContent>
+      {/* Nada pesquisado ainda — ou pesquisa sem resultado */}
+      {!buscando && !(resultados?.estatisticas?.total_registros > 0) && (
+        <Card>
+          {resultados ? (
+            <EstadoVazio
+              icone={<Search />}
+              tamanho="compacto"
+              titulo="Nenhum preço encontrado para este item"
+              descricao="Tente uma descrição mais curta, sem marca, ou informe o código CATMAT."
+            />
+          ) : (
+            <EstadoVazio
+              icone={<Search />}
+              tamanho="compacto"
+              titulo="Digite a descrição do item para pesquisar preços"
+              descricao="A AURÉLIA busca em fontes oficiais, marketplaces e no seu histórico."
+            />
+          )}
         </Card>
       )}
     </div>
@@ -397,21 +425,21 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="flex h-32 items-center justify-center" role="status" aria-label="Carregando histórico">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
       </div>
     );
   }
 
   if (historico.length === 0) {
     return (
-      <Card className="bg-card border-border">
-        <CardContent className="p-6 text-center">
-          <History className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">
-            Histórico insuficiente para este item. A série temporal será construída a cada nova pesquisa.
-          </p>
-        </CardContent>
+      <Card>
+        <EstadoVazio
+          icone={<History />}
+          tamanho="compacto"
+          titulo="Histórico insuficiente para este item"
+          descricao="A série temporal é construída a cada nova pesquisa."
+        />
       </Card>
     );
   }
@@ -426,20 +454,20 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-foreground">Histórico de Variação</h4>
-        <span className={`text-sm font-medium ${
-          variacaoTotal > 5 ? 'text-destructive' : variacaoTotal < -5 ? 'text-success' : 'text-muted-foreground'
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-lg font-semibold text-foreground">Histórico de variação</h4>
+        <span className={`text-sm font-medium tabular-nums ${
+          variacaoTotal > 5 ? 'text-destructive-ink' : variacaoTotal < -5 ? 'text-success-ink' : 'text-muted-foreground'
         }`}>
           {variacaoTotal > 0 ? '+' : ''}{variacaoTotal.toFixed(1)}% no período
-          {variacaoTotal > 5 ? <TrendingUp className="h-3 w-3 inline ml-1" /> :
-           variacaoTotal < -5 ? <TrendingDown className="h-3 w-3 inline ml-1" /> :
-           <Minus className="h-3 w-3 inline ml-1" />}
+          {variacaoTotal > 5 ? <TrendingUp aria-hidden="true" className="ml-1 inline h-3 w-3" /> :
+           variacaoTotal < -5 ? <TrendingDown aria-hidden="true" className="ml-1 inline h-3 w-3" /> :
+           <Minus aria-hidden="true" className="ml-1 inline h-3 w-3" />}
         </span>
       </div>
 
-      {/* Simple bar chart */}
-      <div className="flex items-end gap-1 h-24">
+      {/* Barras da mediana — a mesma série da tabela abaixo */}
+      <div className="flex h-24 items-end gap-1">
         {historico.slice(-30).map((h, i) => {
           const maxPreco = Math.max(...historico.map(x => Number(x.preco_mediana)));
           const altura = (Number(h.preco_mediana) / maxPreco) * 100;
@@ -448,10 +476,10 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
-                    className={`flex-1 min-w-1 rounded-t transition-colors ${
-                      h.tendencia === 'alta' ? 'bg-destructive/60' :
-                      h.tendencia === 'queda' ? 'bg-success/60' : 'bg-primary/40'
-                    } hover:opacity-80`}
+                    className={`min-w-1 flex-1 rounded-t transition-opacity hover:opacity-80 ${
+                      h.tendencia === 'alta' ? 'bg-destructive' :
+                      h.tendencia === 'queda' ? 'bg-success' : 'bg-primary'
+                    }`}
                     style={{ height: `${altura}%` }}
                   />
                 </TooltipTrigger>
@@ -468,46 +496,46 @@ function HistoricoVariacao({ descricao, codigoCatmat }: { descricao: string; cod
         })}
       </div>
 
-      {/* Table */}
-      <ScrollArea className="h-[200px]">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-muted-foreground border-b border-border">
-              <th className="text-left p-2">Data</th>
-              <th className="text-right p-2">Mínimo</th>
-              <th className="text-right p-2">Mediana</th>
-              <th className="text-right p-2">Máximo</th>
-              <th className="text-right p-2">Variação</th>
-              <th className="text-center p-2">Tendência</th>
-              <th className="text-right p-2">Reg.</th>
-            </tr>
-          </thead>
-          <tbody>
+      {/* Série por data */}
+      <div className="max-h-[16rem] overflow-auto rounded-lg border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted">
+              <TableHead>Data</TableHead>
+              <TableHead className="text-right">Mínimo</TableHead>
+              <TableHead className="text-right">Mediana</TableHead>
+              <TableHead className="text-right">Máximo</TableHead>
+              <TableHead className="text-right">Variação</TableHead>
+              <TableHead>Tendência</TableHead>
+              <TableHead className="text-right">Reg.</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {[...historico].reverse().map((h, i) => (
-              <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
-                <td className="p-2 text-foreground">{formatDate(h.data_coleta)}</td>
-                <td className="p-2 text-right text-success">{formatCurrency(h.preco_minimo)}</td>
-                <td className="p-2 text-right font-medium text-foreground">{formatCurrency(h.preco_mediana)}</td>
-                <td className="p-2 text-right text-destructive">{formatCurrency(h.preco_maximo)}</td>
-                <td className="p-2 text-right">
+              <TableRow key={i}>
+                <TableCell nowrap className="text-foreground tabular-nums">{formatDate(h.data_coleta)}</TableCell>
+                <TableCell nowrap className="text-right tabular-nums text-success-ink">{formatCurrency(h.preco_minimo)}</TableCell>
+                <TableCell nowrap className="text-right font-medium tabular-nums text-foreground">{formatCurrency(h.preco_mediana)}</TableCell>
+                <TableCell nowrap className="text-right tabular-nums text-destructive-ink">{formatCurrency(h.preco_maximo)}</TableCell>
+                <TableCell nowrap className="text-right tabular-nums">
                   {h.variacao_pct ? (
-                    <span className={Number(h.variacao_pct) > 0 ? 'text-destructive' : 'text-success'}>
+                    <span className={Number(h.variacao_pct) > 0 ? 'text-destructive-ink' : 'text-success-ink'}>
                       {Number(h.variacao_pct) > 0 ? '+' : ''}{Number(h.variacao_pct).toFixed(1)}%
                     </span>
                   ) : '—'}
-                </td>
-                <td className="p-2 text-center">
-                  {h.tendencia === 'alta' && <TrendingUp className="h-3 w-3 text-destructive inline" />}
-                  {h.tendencia === 'queda' && <TrendingDown className="h-3 w-3 text-success inline" />}
-                  {h.tendencia === 'estavel' && <Minus className="h-3 w-3 text-muted-foreground inline" />}
+                </TableCell>
+                <TableCell nowrap>
+                  {h.tendencia === 'alta' && <Badge variant="danger" className="gap-1"><TrendingUp aria-hidden="true" className="h-3 w-3" />Alta</Badge>}
+                  {h.tendencia === 'queda' && <Badge variant="success" className="gap-1"><TrendingDown aria-hidden="true" className="h-3 w-3" />Queda</Badge>}
+                  {h.tendencia === 'estavel' && <Badge variant="muted" className="gap-1"><Minus aria-hidden="true" className="h-3 w-3" />Estável</Badge>}
                   {!h.tendencia && '—'}
-                </td>
-                <td className="p-2 text-right text-muted-foreground">{h.total_registros}</td>
-              </tr>
+                </TableCell>
+                <TableCell nowrap className="text-right tabular-nums text-muted-foreground">{h.total_registros}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </ScrollArea>
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

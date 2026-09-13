@@ -5,6 +5,7 @@ import { sanitizeAureliaOutput } from '@/prompts/aurelia-system-prompt';
 import AureliaQuickCard from './AureliaQuickCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -126,9 +127,9 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
        cartões de análise em `card`. Tudo sai de token e acompanha o tema —
        nada de cor escrita à mão. */
     <div className="rounded-lg border border-border bg-muted overflow-hidden">
-      <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-xs font-bold text-primary-foreground">IA</span>
-        <span className="text-base font-semibold text-foreground">AURÉLIA — Análise Deste Edital</span>
+      <div className="px-4 py-3 border-b border-border bg-card flex flex-wrap items-center gap-2">
+        <Badge>IA</Badge>
+        <h3 className="text-lg font-semibold text-foreground">AURÉLIA — Análise Deste Edital</h3>
       </div>
 
       <div className={cn("grid grid-cols-1 gap-3 p-4", colunas === 2 && "md:grid-cols-2")}>
@@ -152,7 +153,7 @@ export default function AureliaEditalPanel({ edital, empresa, colunas = 2 }: Aur
             {chatMessages.map((msg, i) => (
               <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
-                  "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                  "max-w-[85%] rounded-lg px-3 py-2 text-base leading-6",
                   msg.role === 'user'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-foreground'

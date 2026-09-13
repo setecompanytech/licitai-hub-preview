@@ -5,6 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -48,7 +49,7 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <XCircle className="w-4 h-4 text-destructive" />
+            <XCircle aria-hidden="true" className="w-4 h-4 text-destructive" />
             Registrar perda do processo
           </DialogTitle>
           <DialogDescription>
@@ -56,13 +57,13 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-1">
+        <div className="space-y-4 py-1">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">
+            <Label htmlFor="perda-motivo" className="text-sm font-medium">
               Motivo <span className="text-destructive">*</span>
             </Label>
             <Select value={motivoId} onValueChange={setMotivoId} disabled={isLoading}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger id="perda-motivo">
                 <SelectValue placeholder={isLoading ? 'Carregando…' : 'Selecione o motivo da perda'} />
               </SelectTrigger>
               <SelectContent>
@@ -72,24 +73,27 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
               </SelectContent>
             </Select>
             {!isLoading && (motivos?.length ?? 0) === 0 && (
-              <p className="flex items-start gap-1.5 text-base text-warning">
-                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Nenhum motivo ativo cadastrado. Um administrador precisa configurá-los em
-                Metas do Comercial → Parametrização.
-              </p>
+              <Alert variant="warning">
+                <AlertTriangle aria-hidden="true" className="w-4 h-4" />
+                <AlertDescription>
+                  Nenhum motivo ativo cadastrado. Um administrador precisa configurá-los em
+                  Metas do Comercial → Parametrização.
+                </AlertDescription>
+              </Alert>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Observação</Label>
+            <Label htmlFor="perda-observacao" className="text-sm font-medium">Observação</Label>
             <Textarea
+              id="perda-observacao"
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               placeholder="Detalhe o que levou à perda (opcional, mas ajuda na análise do mês)."
-              className="min-h-[90px]"
+              className="min-h-24"
               maxLength={500}
             />
-            <p className="text-xs text-muted-foreground text-right">{observacao.length}/500</p>
+            <p className="text-right text-xs text-muted-foreground">{observacao.length}/500</p>
           </div>
         </div>
 
@@ -98,11 +102,11 @@ export default function RegistrarPerdaDialog({ alvo, onCancelar, onConfirmar, sa
             Cancelar
           </Button>
           <Button
-            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            variant="destructive"
             disabled={!podeConfirmar}
             onClick={() => onConfirmar({ motivoId, observacao: observacao.trim() })}
           >
-            {salvando && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+            {salvando && <Loader2 aria-hidden="true" className="animate-spin" />}
             Confirmar perda
           </Button>
         </DialogFooter>

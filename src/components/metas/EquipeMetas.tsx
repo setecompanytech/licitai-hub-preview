@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Users } from 'lucide-react';
 import { useMetas, useRealizadoMensal, useColaboradores } from '@/hooks/useMetasComercial';
 import { filtrarColaboradoresDoPainel } from '@/lib/metas/colaboradores';
@@ -23,12 +25,16 @@ const brl = (v: number) =>
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-/** Faixa de atingimento — mesma leitura que a Fase 5 usará no multiplicador. */
-const faixaDe = (pct: number | null) => {
-  if (pct === null) return { rotulo: 'sem meta', cls: 'bg-muted text-muted-foreground border-border' };
-  if (pct >= 100) return { rotulo: 'meta batida', cls: 'bg-success/10 text-success border-success/30' };
-  if (pct >= 80) return { rotulo: 'na faixa', cls: 'bg-warning/10 text-warning border-warning/30' };
-  return { rotulo: 'abaixo', cls: 'bg-destructive/10 text-destructive border-destructive/30' };
+/**
+ * Faixa de atingimento — mesma leitura que a Fase 5 usará no multiplicador.
+ * A cor vem da família semântica do Badge (tinta); o rótulo é que informa, a
+ * cor só reforça.
+ */
+const faixaDe = (pct: number | null): { rotulo: string; variante: 'muted' | 'success' | 'warning' | 'danger' } => {
+  if (pct === null) return { rotulo: 'sem meta', variante: 'muted' };
+  if (pct >= 100) return { rotulo: 'meta batida', variante: 'success' };
+  if (pct >= 80) return { rotulo: 'na faixa', variante: 'warning' };
+  return { rotulo: 'abaixo', variante: 'danger' };
 };
 
 export default function EquipeMetas() {
@@ -68,70 +74,90 @@ export default function EquipeMetas() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Users className="w-4 h-4 text-accent" />
-          <span className="font-semibold text-sm">Cumprimento por colaborador</span>
-
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <Select value={base} onValueChange={(v) => setBase(v as typeof base)}>
-              <SelectTrigger className="h-8 w-[190px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="faturamento">Meta de faturamento</SelectItem>
-                <SelectItem value="contratos">Meta de contratos ganhos</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
-              <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-              <SelectTrigger className="h-8 w-[90px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[hoje.getFullYear() - 1, hoje.getFullYear()].map((a) => (
-                  <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {pctEquipe !== null && (
-          <p className="text-xs text-muted-foreground mt-3">
-            Equipe: <span className="font-semibold text-foreground tabular-nums">{pctEquipe}%</span> da meta
-            {base === 'faturamento' ? ` · ${brl(totalFeito)} de ${brl(totalAlvo)}` : ` · ${totalFeito} de ${totalAlvo}`}
+      {/* ── Filtros e leitura da equipe ── */}
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Users aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
+            Cumprimento por colaborador
           </p>
-        )}
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[14rem] flex-1">
+              <Label htmlFor="equipe-metas-base" className="mb-1 block text-sm text-muted-foreground">Base da comparação</Label>
+              <Select value={base} onValueChange={(v) => setBase(v as typeof base)}>
+                <SelectTrigger id="equipe-metas-base"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="faturamento">Meta de faturamento</SelectItem>
+                  <SelectItem value="contratos">Meta de contratos ganhos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-32">
+              <Label htmlFor="equipe-metas-mes" className="mb-1 block text-sm text-muted-foreground">Mês</Label>
+              <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+                <SelectTrigger id="equipe-metas-mes"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-32">
+              <Label htmlFor="equipe-metas-ano" className="mb-1 block text-sm text-muted-foreground">Ano</Label>
+              <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                <SelectTrigger id="equipe-metas-ano"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[hoje.getFullYear() - 1, hoje.getFullYear()].map((a) => (
+                    <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {pctEquipe !== null && (
+            <p className="text-sm text-muted-foreground">
+              Equipe: <span className="font-semibold text-foreground tabular-nums">{pctEquipe}%</span> da meta
+              {base === 'faturamento' ? ` · ${brl(totalFeito)} de ${brl(totalAlvo)}` : ` · ${totalFeito} de ${totalAlvo}`}
+            </p>
+          )}
+        </CardContent>
       </Card>
 
       {linhas.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          Nenhum colaborador do comercial com meta ou movimento neste período.
+        <Card>
+          <EstadoVazio
+            icone={<Users />}
+            titulo="Nenhum colaborador no período"
+            descricao="Nenhum colaborador do comercial com meta ou movimento neste período."
+          />
         </Card>
       ) : (
         <Card className="divide-y divide-border">
           {linhas.map((l) => {
             const faixa = faixaDe(l.pct);
             return (
-              <div key={l.user_id} className="p-4 space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium">{l.nome}</span>
-                  <Badge variant="outline" className={`text-xs ${faixa.cls}`}>{faixa.rotulo}</Badge>
+              <div key={l.user_id} className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">{l.nome}</span>
+                  <Badge variant={faixa.variante}>{faixa.rotulo}</Badge>
                   <span className="text-xs text-muted-foreground">
                     {l.participados} participação(ões) no mês
                   </span>
-                  <span className="ml-auto text-sm tabular-nums whitespace-nowrap">
+                  <span className="ml-auto whitespace-nowrap text-sm tabular-nums text-foreground">
                     {base === 'faturamento'
                       ? <>{brl(l.feito)} <span className="text-muted-foreground">de {l.alvo > 0 ? brl(l.alvo) : '—'}</span></>
                       : <>{l.feito} <span className="text-muted-foreground">de {l.alvo > 0 ? l.alvo : '—'}</span></>}
                   </span>
-                  <span className="text-sm font-semibold tabular-nums w-14 text-right">
+                  <span className="w-14 text-right text-sm font-semibold tabular-nums text-foreground">
                     {l.pct === null ? '—' : `${l.pct}%`}
                   </span>
                 </div>
-                <Progress value={Math.min(l.pct ?? 0, 100)} className="h-1.5" />
+                <Progress
+                  value={Math.min(l.pct ?? 0, 100)}
+                  className="h-2"
+                  aria-label={`${l.nome}: ${l.pct === null ? 'sem meta definida' : `${l.pct}% da meta`}`}
+                />
               </div>
             );
           })}

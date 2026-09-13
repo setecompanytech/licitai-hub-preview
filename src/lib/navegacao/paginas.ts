@@ -66,7 +66,11 @@ export const paginasPadrao: PaginaPadrao[] = [
   },
   {
     rota: '/analytics', grupo: 'Inteligência', titulo: 'Analytics', icone: BarChart3,
-    descricao: 'Desempenho da operação por período, órgão e responsável',
+    // A tela não quebra por período, órgão nem responsável: as agregações de
+    // `useAnalyticsData` são modalidade, status e UF, mais a evolução dos
+    // últimos seis meses no gráfico de barras — que a descrição resume como
+    // "mês a mês" porque descrição do registro não carrega número.
+    descricao: 'Desempenho da operação por modalidade, status e UF, com a evolução mês a mês',
     padrao: 'painel',
   },
   {
@@ -218,7 +222,9 @@ export const paginasPadrao: PaginaPadrao[] = [
   },
   {
     rota: '/api-integracao', grupo: 'Ferramentas', titulo: 'API e integração', icone: Plug,
-    descricao: 'Chaves, endpoints e exemplos para conectar outros sistemas',
+    // "Chaves" só volta quando existir tela que emita e revogue chave de API:
+    // hoje a autenticação é o JWT do próprio usuário, obtido no login.
+    descricao: 'Token, endpoints e exemplos para conectar outros sistemas',
     padrao: 'cartoes',
   },
   {

@@ -1,10 +1,11 @@
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useMetasEmTempoReal } from '@/hooks/useMetasComercial';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, LayoutDashboard, Lock, FileText, Users } from 'lucide-react';
+import { LayoutDashboard, Lock, FileText, Users } from 'lucide-react';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import EquipeMetas from '@/components/metas/EquipeMetas';
 import PainelMetas from '@/components/metas/PainelMetas';
@@ -38,28 +39,27 @@ export default function MetasComercial() {
 
   return (
     <AppLayout>
-      <CabecalhoPagina
-        icone={<Target />}
-        titulo="Metas do Comercial"
-        descricao="Metas mensais por colaborador, com valores-alvo e alertas configuráveis"
-      />
+      {/* Título, descrição, ícone e trilha vêm do registro
+          `lib/navegacao/paginas.ts` pela própria rota — a tela não repete o
+          que já está padronizado. */}
+      <CabecalhoPagina />
 
       {/* ?tab= permite entrar direto na parametrização — é por onde o
           administrador chega, vindo do cartão Administração do Painel. */}
       <Tabs value={aba} onValueChange={trocarAba} className="space-y-4">
         <TabsList>
           <TabsTrigger value="painel" className="gap-2">
-            <LayoutDashboard className="w-4 h-4" /> Painel
+            <LayoutDashboard className="w-4 h-4" aria-hidden="true" /> Painel
           </TabsTrigger>
           {/* Leitura de gestão: a equipe inteira lado a lado. Painel e
               Relatórios continuam servindo ao acompanhamento individual. */}
           {isAdmin && (
             <TabsTrigger value="equipe" className="gap-2">
-              <Users className="w-4 h-4" /> Equipe
+              <Users className="w-4 h-4" aria-hidden="true" /> Equipe
             </TabsTrigger>
           )}
           <TabsTrigger value="relatorios" className="gap-2">
-            <FileText className="w-4 h-4" /> Relatórios
+            <FileText className="w-4 h-4" aria-hidden="true" /> Relatórios
           </TabsTrigger>
         </TabsList>
 
@@ -71,15 +71,12 @@ export default function MetasComercial() {
           {loading ? null : isAdmin ? (
             <EquipeMetas />
           ) : (
-            <Card className="p-12 text-center">
-              <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-muted text-muted-foreground flex items-center justify-center mb-4">
-                <Lock className="w-6 h-6" />
-              </div>
-              <p className="text-lg font-semibold text-foreground">Acesso restrito</p>
-              <p className="text-base text-muted-foreground mt-1 max-w-md mx-auto">
-                O cumprimento de meta da equipe é visão do administrador. Seu próprio
-                acompanhamento está na aba Painel.
-              </p>
+            <Card>
+              <EstadoVazio
+                icone={<Lock />}
+                titulo="Acesso restrito"
+                descricao="O cumprimento de meta da equipe é visão do administrador. Seu próprio acompanhamento está na aba Painel."
+              />
             </Card>
           )}
         </TabsContent>

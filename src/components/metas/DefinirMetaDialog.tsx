@@ -76,7 +76,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-muted-foreground" />
+            <Target aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
             {metaAtual ? 'Editar meta' : 'Definir meta'}
           </DialogTitle>
           <DialogDescription>
@@ -91,57 +91,59 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
               quê compará-lo — e olhar um ponto só esconde onde a esteira
               travou: contratos em dia com quitação zerada é ter fechado e não
               entregado, e o painel mostrava isso como meta batida. */}
-          <div className="rounded-lg border p-3 space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="rounded-lg border border-border p-4 space-y-4">
+            <p className="text-sm font-semibold text-foreground">
               Metas do mês
             </p>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm text-muted-foreground mb-1 block">
+                <Label htmlFor="meta-contratos" className="mb-1 block text-sm text-muted-foreground">
                   1 · Contratos a ganhar
                 </Label>
                 <Input
+                  id="meta-contratos"
                   type="number" min={0} placeholder="—"
                   value={contratos}
                   onChange={(e) => setContratos(e.target.value)}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">valor assinado</p>
+                <p className="mt-1 text-xs text-muted-foreground">valor assinado</p>
               </div>
               <div>
-                <Label className="text-sm text-muted-foreground mb-1 block">
+                <Label htmlFor="meta-participacoes" className="mb-1 block text-sm text-muted-foreground">
                   Participações
                 </Label>
                 <Input
+                  id="meta-participacoes"
                   type="number" min={0} placeholder="—"
                   value={participacoes}
                   onChange={(e) => setParticipacoes(e.target.value)}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">propostas a enviar</p>
+                <p className="mt-1 text-xs text-muted-foreground">propostas a enviar</p>
               </div>
             </div>
 
             <div>
-              <Label className="text-sm text-muted-foreground mb-1 block">
+              <Label htmlFor="meta-faturamento" className="mb-1 block text-sm text-muted-foreground">
                 2 · Faturamento (R$)
               </Label>
-              <MoneyInput autoFocus value={faturamento} onValueChange={setFaturamento} />
-              <p className="text-[11px] text-muted-foreground mt-1">a nota saiu</p>
+              <MoneyInput id="meta-faturamento" autoFocus value={faturamento} onValueChange={setFaturamento} />
+              <p className="mt-1 text-xs text-muted-foreground">a nota saiu</p>
             </div>
 
             <div>
-              <Label className="text-sm text-muted-foreground mb-1 block">
+              <Label htmlFor="meta-quitacao" className="mb-1 block text-sm text-muted-foreground">
                 3 · NF-e quitada (R$)
               </Label>
-              <MoneyInput value={quitacao} onValueChange={setQuitacao} />
-              <p className="text-[11px] text-muted-foreground mt-1">o dinheiro entrou</p>
+              <MoneyInput id="meta-quitacao" value={quitacao} onValueChange={setQuitacao} />
+              <p className="mt-1 text-xs text-muted-foreground">o dinheiro entrou</p>
             </div>
           </div>
 
           <div>
-            <Label className="text-sm text-muted-foreground mb-1 block">Meta principal</Label>
+            <Label htmlFor="meta-principal" className="mb-1 block text-sm text-muted-foreground">Meta principal</Label>
             <Select value={base} onValueChange={(v) => setBase(v as BaseMeta)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="meta-principal"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="faturamento">{BASES_META.faturamento.label}</SelectItem>
                 <SelectItem value="nf_quitada">{BASES_META.nf_quitada.label}</SelectItem>
@@ -150,20 +152,21 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
             </Select>
             {/* Uma só manda no alarme, senão o painel grita três vezes pelo
                 mesmo mês e a pessoa aprende a ignorar os três. */}
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               É esta que dispara o alerta de risco e a projeção de fechamento.
               As outras duas continuam medidas e exibidas.
             </p>
             {valorDaPrincipal <= 0 && (
-              <p className="text-[11px] text-warning mt-1">
+              <p className="mt-1 text-xs text-warning-ink">
                 A meta principal precisa ter valor — sem ele o painel alertaria sobre zero.
               </p>
             )}
           </div>
 
           <div>
-            <Label className="text-sm text-muted-foreground mb-1 block">Observação (opcional)</Label>
+            <Label htmlFor="meta-observacao" className="mb-1 block text-sm text-muted-foreground">Observação (opcional)</Label>
             <Textarea
+              id="meta-observacao"
               rows={2}
               placeholder="Contexto da meta, acordo com o colaborador…"
               value={observacao}
@@ -173,7 +176,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onFechar} disabled={salvar.isPending}>Cancelar</Button>
+          <Button variant="outline" onClick={onFechar} disabled={salvar.isPending}>Cancelar</Button>
           <Button
             disabled={!podeSalvar}
             onClick={() =>
@@ -193,7 +196,7 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
               )
             }
           >
-            {salvar.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+            {salvar.isPending && <Loader2 aria-hidden="true" className="animate-spin" />}
             Salvar meta
           </Button>
         </DialogFooter>

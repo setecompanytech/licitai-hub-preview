@@ -143,7 +143,7 @@ export default function AureliaChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] rounded-lg overflow-hidden shadow-lg border border-border bg-card flex flex-col"
+            className="fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow-md border border-border bg-card flex flex-col"
             // Abre do mesmo lado em que o botão está encostado.
             // Só a posição vive em `style`: cor e raio saem de token, para
             // acompanhar o tema e aparecer nos greps de conferência.

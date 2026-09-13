@@ -4,6 +4,7 @@ import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Send, Loader2, Sparkles, Scale, BarChart3,
   BookOpen, ExternalLink, Trash2, Download, Globe
@@ -18,6 +19,40 @@ type Message = {
   sources?: { title: string; url: string }[];
   timestamp: Date;
 };
+
+/**
+ * Tipografia da resposta em markdown.
+ *
+ * As classes `prose-*` que viviam aqui não pintavam nada: o
+ * `@tailwindcss/typography` está no package.json mas NÃO está registrado em
+ * `tailwind.config.ts`, então `prose`, `prose-sm` e companhia não geram CSS —
+ * e o preflight do Tailwind zera título e lista. O texto saía achatado. Aqui o
+ * mesmo desenho é escrito com variantes que existem de fato, e toda cor vem de
+ * token.
+ *
+ * Não há variante de `table` aqui de propósito: o `<ReactMarkdown>` roda sem
+ * plugins e o `remark-gfm` não está no projeto, então tabela em pipe nunca vira
+ * `<table>` — classe que não pinta nada é a mesma armadilha das `prose-*`. Se o
+ * gfm entrar um dia, a tabela precisa de contêiner de rolagem, e isso se faz por
+ * componente, não por variante:
+ *   <ReactMarkdown components={{
+ *     table: (p) => <div className="overflow-x-auto"><table className="w-full text-sm" {...p} /></div>,
+ *   }}>
+ */
+const MARKDOWN_RESPOSTA = [
+  'max-w-none text-base leading-6 text-foreground',
+  '[&_h1]:mb-3 [&_h1]:mt-6 [&_h1]:text-lg [&_h1]:font-semibold',
+  '[&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-2 [&_h2]:text-lg [&_h2]:font-semibold',
+  '[&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold',
+  '[&_p]:mb-4 [&_p:last-child]:mb-0',
+  '[&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1',
+  '[&_strong]:font-semibold [&_strong]:text-foreground',
+  '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2',
+  '[&_blockquote]:my-4 [&_blockquote]:rounded-md [&_blockquote]:border [&_blockquote]:border-border [&_blockquote]:bg-muted [&_blockquote]:px-3 [&_blockquote]:py-2',
+  '[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm',
+  '[&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-4 [&_pre]:text-sm',
+  '[&_hr]:my-4 [&_hr]:border-border',
+].join(' ');
 
 const SUGGESTION_CHIPS = [
   { label: 'Análise de balanço com passivo zero', icon: BarChart3, category: 'contabil' },
@@ -266,31 +301,27 @@ export default function AssistenteEspecializado() {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
-              <div aria-hidden="true" className="w-16 h-16 rounded-full bg-primary-tint text-primary flex items-center justify-center">
-                <Sparkles className="w-8 h-8" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold mb-1">Assistente IA Especializada</h2>
-                <p className="text-base text-muted-foreground max-w-md">
-                  Pergunte sobre legislação, jurisprudência, balanços patrimoniais, índices econômicos,
-                  habilitação em licitações ou qualquer tema jurídico-contábil.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-w-2xl w-full">
-                {SUGGESTION_CHIPS.map((chip) => (
-                  <Button
-                    key={chip.label}
-                    variant="outline"
-                    onClick={() => handleSend(chip.label)}
-                    className="h-auto justify-start gap-2 px-3 py-3 text-left whitespace-normal font-medium"
-                  >
-                    <chip.icon className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-sm text-foreground">{chip.label}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <EstadoVazio
+              className="h-full"
+              icone={<Sparkles />}
+              titulo="Assistente IA Especializada"
+              descricao="Pergunte sobre legislação, jurisprudência, balanços patrimoniais, índices econômicos, habilitação em licitações ou qualquer tema jurídico-contábil."
+              acao={
+                <div className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                  {SUGGESTION_CHIPS.map((chip) => (
+                    <Button
+                      key={chip.label}
+                      variant="outline"
+                      onClick={() => handleSend(chip.label)}
+                      className="h-auto justify-start gap-2 px-3 py-3 text-left whitespace-normal font-medium"
+                    >
+                      <chip.icon className="w-4 h-4 text-primary shrink-0" />
+                      <span className="text-sm text-foreground">{chip.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              }
+            />
           )}
 
           {messages.map((msg) => (
@@ -301,24 +332,24 @@ export default function AssistenteEspecializado() {
                   : 'bg-card border border-border'
               }`}>
                 {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-base prose-h2:border-b prose-h2:border-border prose-h2:pb-2 prose-h3:text-sm prose-strong:text-foreground prose-blockquote:border-border prose-blockquote:bg-muted prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:rounded-md [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:pl-5">
+                  <div className={MARKDOWN_RESPOSTA}>
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-base leading-6 whitespace-pre-wrap">{msg.content}</p>
                 )}
 
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-border">
+                  <div className="mt-3 pt-3 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground mb-2">Fontes consultadas:</p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {msg.sources.map((s, i) => (
                         <a
                           key={i}
                           href={s.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-primary-tint text-primary hover:underline transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md bg-primary-tint px-2 py-1 text-xs text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           <ExternalLink className="w-3 h-3" />
                           {s.title?.slice(0, 40) || new URL(s.url).hostname}

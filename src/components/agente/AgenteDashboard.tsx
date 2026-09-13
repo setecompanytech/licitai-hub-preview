@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ import {
   TrendingUp, Target, RefreshCw, Settings, DollarSign, Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import PrecificacaoReview from './PrecificacaoReview';
 import PesquisaPrecos from './PesquisaPrecos';
 
@@ -95,21 +95,8 @@ const TONS: Record<Tom, string> = {
   warning: 'bg-warning-tint text-warning-ink',
 };
 
-function EstadoVazio({ icone: Icone, titulo, texto }: { icone: React.ElementType; titulo: string; texto?: string }) {
-  return (
-    <div className="text-center py-12">
-      <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-full bg-primary-tint text-primary flex items-center justify-center mb-4">
-        <Icone className="w-6 h-6" />
-      </div>
-      <p className="text-base font-semibold text-foreground">{titulo}</p>
-      {texto && <p className="text-sm text-muted-foreground mt-1">{texto}</p>}
-    </div>
-  );
-}
-
 export default function AgenteDashboard() {
   const { empresaAtiva } = useEmpresa();
-  const { user } = useAuth();
   const [metricas, setMetricas] = useState<AgentMetricas | null>(null);
   const [licitacoes, setLicitacoes] = useState<AgentLicitacao[]>([]);
   const [acoesLog, setAcoesLog] = useState<AgentAcaoLog[]>([]);
@@ -242,8 +229,12 @@ export default function AgenteDashboard() {
 
   if (!empresaAtiva?.id) {
     return (
-      <Card className="p-12">
-        <EstadoVazio icone={Bot} titulo="Selecione uma empresa" texto="Escolha uma empresa para acessar o AURÉLIA Agent." />
+      <Card>
+        <EstadoVazio
+          icone={<Bot />}
+          titulo="Selecione uma empresa"
+          descricao="Escolha uma empresa para acessar o AURÉLIA Agent."
+        />
       </Card>
     );
   }
@@ -262,14 +253,14 @@ export default function AgenteDashboard() {
       {/* Barra de controle: o título da página vem do CabecalhoPagina (AgentePage). */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Label htmlFor="agente-ativo" className="text-sm text-muted-foreground">Agente</Label>
+          <Label htmlFor="agente-ativo" className="text-sm font-medium text-foreground">Agente</Label>
           <Switch id="agente-ativo" checked={agenteAtivo} onCheckedChange={toggleAgente} />
           <Badge variant={agenteAtivo ? 'success' : 'muted'}>
             {agenteAtivo ? 'Ativo' : 'Inativo'}
           </Badge>
         </div>
         <Button variant="outline" onClick={carregarDados} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
       </div>
@@ -308,23 +299,23 @@ export default function AgenteDashboard() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="monitoradas" className="gap-2">
-            <Target className="h-4 w-4" />
+            <Target className="h-4 w-4" aria-hidden="true" />
             Licitações ({licitacoes.length})
           </TabsTrigger>
           <TabsTrigger value="precificacao" className="gap-2">
-            <DollarSign className="h-4 w-4" />
+            <DollarSign className="h-4 w-4" aria-hidden="true" />
             Precificação
           </TabsTrigger>
           <TabsTrigger value="pesquisa" className="gap-2">
-            <Search className="h-4 w-4" />
-            Pesquisa de Preços
+            <Search className="h-4 w-4" aria-hidden="true" />
+            Pesquisa de preços
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Log de Ações
+            <Activity className="h-4 w-4" aria-hidden="true" />
+            Log de ações
           </TabsTrigger>
           <TabsTrigger value="config" className="gap-2">
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4" aria-hidden="true" />
             Configurações
           </TabsTrigger>
         </TabsList>
@@ -335,9 +326,9 @@ export default function AgenteDashboard() {
             <div className="space-y-3">
               {licitacoes.length === 0 && (
                 <EstadoVazio
-                  icone={Bot}
+                  icone={<Bot />}
                   titulo="Nenhuma licitação monitorada pelo agente"
-                  texto="Ative o agente e configure os critérios de busca."
+                  descricao="Ative o agente e configure os critérios de busca."
                 />
               )}
 
@@ -346,7 +337,7 @@ export default function AgenteDashboard() {
                 const Icon = cfg.icon;
 
                 return (
-                  <Card key={lic.id} className="hover:border-primary/40 transition-colors">
+                  <Card key={lic.id} className="hover:border-primary transition-colors">
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -398,9 +389,9 @@ export default function AgenteDashboard() {
           <div className="space-y-4">
             {licitacoes.length === 0 ? (
               <EstadoVazio
-                icone={DollarSign}
+                icone={<DollarSign />}
                 titulo="Nenhuma licitação para precificar"
-                texto="Aprove licitações na aba anterior para iniciar a precificação."
+                descricao="Aprove licitações na aba anterior para iniciar a precificação."
               />
             ) : (
               <div className="space-y-6">
@@ -433,7 +424,7 @@ export default function AgenteDashboard() {
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
               {acoesLog.length === 0 && (
-                <EstadoVazio icone={Activity} titulo="Nenhuma ação registrada ainda" />
+                <EstadoVazio icone={<Activity />} titulo="Nenhuma ação registrada ainda" />
               )}
 
               {acoesLog.map((log) => {
@@ -550,7 +541,7 @@ function AgentConfig({ empresaId }: { empresaId: string }) {
     }
   };
 
-  const rotulo = 'text-sm text-muted-foreground mb-1 block';
+  const rotulo = 'mb-1 block text-sm font-medium text-foreground';
 
   return (
     <div className="space-y-6 max-w-2xl">

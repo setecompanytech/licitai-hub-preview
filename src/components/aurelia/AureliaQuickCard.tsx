@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AureliaQuickCardProps {
   title: string;
@@ -16,10 +17,10 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
   return (
     /* Sem `hover:scale`: o cartão carrega parágrafos inteiros e mora em coluna
        rolável — escalar no hover fazia o texto tremer sob o mouse. */
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-primary [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">{icon}</span>
-        <h4 className="text-base font-semibold text-foreground">{title}</h4>
+        <span className="text-primary [&>svg]:h-5 [&>svg]:w-5" aria-hidden="true">{icon}</span>
+        <h4 className="text-lg font-semibold text-foreground">{title}</h4>
       </div>
 
       {isLoading && (
@@ -34,19 +35,24 @@ export default function AureliaQuickCard({ title, icon, content, isLoading, erro
       )}
 
       {error && !isLoading && (
-        <div className="flex flex-col items-center gap-2 py-2" role="alert">
-          <AlertTriangle className="w-5 h-5 text-destructive" />
-          <p className="text-xs text-muted-foreground">Erro na análise</p>
-          {onRetry && (
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              <RefreshCw className="w-4 h-4" /> Tentar novamente
-            </Button>
-          )}
-        </div>
+        /* Estado de ERRO usa Alert variant="destructive" — tinta, não texto
+           cinza com um ícone vermelho solto. O botão de retry vem junto, para
+           a falha nunca ficar sem saída (princípio 3 do projeto). */
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-col items-start gap-2">
+            <span>Erro na análise</span>
+            {onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                <RefreshCw className="w-4 h-4" /> Tentar novamente
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
 
       {!isLoading && !error && content && (
-        <p className="text-sm text-foreground whitespace-pre-wrap">{content}</p>
+        <p className="text-base leading-6 text-foreground whitespace-pre-wrap">{content}</p>
       )}
     </div>
   );

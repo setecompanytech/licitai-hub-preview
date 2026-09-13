@@ -2,7 +2,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Code2, Copy, CheckCircle2, Lock } from 'lucide-react';
+import { Copy, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -60,49 +60,52 @@ export default function ApiIntegracao() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-5xl">
-        <CabecalhoPagina
-          icone={<Code2 />}
-          titulo="API de Integração (ERP)"
-          descricao="Endpoints REST para integrar com sistemas externos (ERPs, CRMs, etc.)"
-        />
+      <div className="max-w-5xl space-y-6">
+        {/* Título, descrição e ícone vêm de `lib/navegacao/paginas.ts` —
+            /api-integracao é item de menu. O "(ERP)" que estava no h1 virou
+            a primeira linha do bloco de endpoints, onde o leitor precisa
+            dele. */}
+        <CabecalhoPagina />
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-2">Autenticação</h2>
           <p className="text-sm text-muted-foreground mb-3">
-            Envie o token JWT do usuário no header <code className="bg-muted px-1 rounded-sm">Authorization: Bearer {'<token>'}</code>.
+            Envie o token JWT do usuário no header <code className="rounded-sm bg-muted px-1 font-mono">Authorization: Bearer {'<token>'}</code>.
             O token é obtido ao fazer login na plataforma.
           </p>
-          <div className="bg-muted rounded-lg p-4 text-sm font-mono relative overflow-x-auto">
-            <pre className="whitespace-pre-wrap pr-10">{curlExample}</pre>
+          <div className="relative overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
+            <pre className="whitespace-pre-wrap pr-12">{curlExample}</pre>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 h-8 w-8"
+              className="absolute right-2 top-2"
               onClick={() => copyExample(-1, curlExample)}
               aria-label="Copiar exemplo de autenticação"
             >
-              {copiedIdx === -1 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+              {copiedIdx === -1 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Endpoints Disponíveis</h2>
+          <h2 className="text-lg font-semibold mb-2">Endpoints disponíveis</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            REST em JSON, para integrar com sistemas externos — ERPs, CRMs e afins.
+          </p>
           <div className="space-y-2">
             {endpoints.map((ep, idx) => (
               <div
                 key={idx}
-                className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted"
               >
-                <Badge variant={methodVariant[ep.method]} className="font-mono min-w-[60px] justify-center">
+                <Badge variant={methodVariant[ep.method]} className="min-w-16 justify-center font-mono">
                   {ep.method}
                 </Badge>
-                <code className="text-sm font-mono text-foreground sm:min-w-[200px] break-all">{ep.path}</code>
-                <span className="text-sm text-muted-foreground flex-1 min-w-[12rem]">{ep.desc}</span>
+                <code className="break-all font-mono text-sm text-foreground sm:min-w-48">{ep.path}</code>
+                <span className="min-w-48 flex-1 text-sm text-muted-foreground">{ep.desc}</span>
                 {ep.auth && (
                   <Badge variant="muted" className="gap-1">
-                    <Lock className="w-3 h-3" aria-hidden="true" /> Auth
+                    <Lock className="h-3 w-3" aria-hidden="true" /> Requer token
                   </Badge>
                 )}
               </div>
@@ -111,27 +114,33 @@ export default function ApiIntegracao() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Exemplo: Criar Licitação</h2>
-          <div className="bg-muted rounded-lg p-4 text-sm font-mono relative overflow-x-auto">
-            <pre className="whitespace-pre-wrap pr-10">{postExample}</pre>
+          <h2 className="text-lg font-semibold mb-2">Exemplo: criar licitação</h2>
+          <div className="relative overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm">
+            <pre className="whitespace-pre-wrap pr-12">{postExample}</pre>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 h-8 w-8"
+              className="absolute right-2 top-2"
               onClick={() => copyExample(-2, postExample)}
               aria-label="Copiar exemplo de criação"
             >
-              {copiedIdx === -2 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+              {copiedIdx === -2 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
         </Card>
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-2">Base URL</h2>
-          <div className="bg-muted rounded-lg p-4 text-sm font-mono flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 rounded-md bg-muted p-4 font-mono text-sm">
             <span className="min-w-0 break-all">{BASE_URL}</span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => copyExample(-3, BASE_URL)} aria-label="Copiar Base URL">
-              {copiedIdx === -3 ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => copyExample(-3, BASE_URL)}
+              aria-label="Copiar Base URL"
+            >
+              {copiedIdx === -3 ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
         </Card>
