@@ -276,7 +276,12 @@ export default function DocumentosManager({ licitacaoId, numeroProcesso, orgao, 
               <Input value={titulo} onChange={e => setTitulo(e.target.value)} className="text-base font-semibold" aria-label="Título do documento" />
             </DialogTitle>
           </DialogHeader>
-          <RichEditor value={conteudo} onChange={setConteudo} />
+          {/* Declaração e ofício são do assinante, e costumam ser copiados
+              daqui direto para o campo do portal. Sem esta marca, o carimbo
+              anticópia do `security-guard` ia junto. */}
+          <div data-conteudo-do-cliente>
+            <RichEditor value={conteudo} onChange={setConteudo} />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
             <Button onClick={handleSalvar}><Save className="w-4 h-4" aria-hidden="true" /> Salvar (nova versão)</Button>

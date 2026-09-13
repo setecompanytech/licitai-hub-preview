@@ -16,22 +16,36 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
+import { STATUS_QUE_RESERVAM } from '@/lib/estoque/reserva';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
-import LinhaKpis from '@/components/shared/LinhaKpis';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
+import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
+import AbasGestao from '@/components/gestao/AbasGestao';
+import AreaComPainel from '@/components/gestao/AreaComPainel';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
+import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
+import SeloSituacao, { AvisoDeContexto, ValorIndisponivel, type TomSituacao } from '@/components/gestao/SeloSituacao';
 import { Skeleton } from '@/components/ui/skeleton';
 import { analisarParaMargem, precificarEntrada, situacaoDoPrecoContratado, type AnaliseMargemEmpresa } from '@/lib/financeiro/margem-sugerida';
 import {
-  ShoppingCart, Plus, Search, Trash2, ArrowLeft, Loader2,
+  ShoppingCart, Plus, Trash2, ArrowLeft, Loader2,
   Building2, Calendar, DollarSign, AlertTriangle, CheckCircle2,
   Clock, Package, Truck, Users, X, Pencil, FileText,
   Warehouse, TrendingUp, TrendingDown, Upload, RotateCcw, AlertCircle, ShieldCheck, PackagePlus,
+  Download, History, Boxes,
 } from 'lucide-react';
 
 // ── Formatters ────────────────────────────────────────────────
@@ -70,6 +84,19 @@ type ItemPedido = {
 };
 
 type Contrato = { id: string; numero_contrato: string; orgao_contratante: string; objeto: string };
+
+// `contrato_itens.produto_id` existe no banco desde a migration administrativa
+// de 24/08, mas nunca entrou no types.ts gerado. Esta é a forma mínima do
+// construtor de consulta que a apuração de reserva usa — evita `any` sem
+// fingir que o tipo gerado conhece a coluna.
+type ConsultaSemTipoGerado = {
+  select: (colunas: string) => {
+    not: (coluna: string, operador: string, valor: null) => PromiseLike<{
+      data: unknown;
+      error: { message: string } | null;
+    }>;
+  };
+};
 
 type Produto = {
   id: string; empresa_id: string; codigo: string | null; descricao: string;
@@ -127,6 +154,27 @@ type FormItem = { descricao: string; unidade: string; quantidade: string; preco_
 const blankItem = (): FormItem => ({ descricao: '', unidade: 'UN', quantidade: '1', preco_unitario: '0' });
 
 // ═══════════════════════════════════════════════════════════════
+// DOIS SISTEMAS DE PEDIDO CONVIVEM NESTE MÓDULO — leia antes de mexer.
+//
+//  · VIVO — `pedidos` / `pedido_itens`, na aba Pedidos (PedidosOmie). Tem
+//    `tipo: 'venda' | 'compra'`, portanto cobre os dois lados, e é lido por
+//    `FinPedidosAFaturar` (faturamento) e por `ContratoPedidos` (kanban do
+//    contrato). É o sistema que o resto do app enxerga.
+//
+//  · LEGADO — `pedidos_compra` / `itens_pedido_compra`, cujo formulário mora
+//    NESTA página. Fora daqui, nenhuma tela o lê. Não dá para apagar por
+//    conta própria: `nfe_entradas.pedido_id` e `estoque_movimentos.pedido_id`
+//    têm chave estrangeira APONTANDO PARA ELE, então o vínculo NF-e ↔ pedido
+//    e a rastreabilidade das entradas dependem da tabela existir — e pode
+//    haver dados de cliente nela. A migração para o sistema vivo exige mexer
+//    nessas duas FKs, o que é decisão do dono do produto.
+//
+// O que mudou aqui: o botão "Novo pedido" do cabeçalho passa a existir só na
+// aba Pedidos e a apontar para o sistema VIVO. O formulário legado, que antes
+// aparecia como um segundo "Novo pedido" idêntico na aba Certificado (o ramo
+// `else` da cadeia), ficou com uma porta só, na aba NF-e, chamada "Pedido ao
+// fornecedor" — que é onde o registro dele é de fato consumido.
+// ═══════════════════════════════════════════════════════════════
 export default function GestaoCompras() {
   // A aba Pedidos tem a sua ação principal no CabecalhoPagina; quem abre o
   // formulário é o próprio PedidosOmie, por esta referência.
@@ -141,6 +189,8 @@ export default function GestaoCompras() {
   const [produtos,     setProdutos]     = useState<Produto[]>([]);
   const [nfes,         setNfes]         = useState<NfeRecebida[]>([]);
   const [nfesComEstoque, setNfesComEstoque] = useState<Set<string>>(new Set());
+  // Quando a primeira movimentação daquela NF-e entrou — só para o Histórico.
+  const [nfeEstoqueEm, setNfeEstoqueEm] = useState<Map<string, string>>(new Map());
   // NF-e que JÁ está no acervo (chegou pelo webhook/importação do Financeiro)
   // e vai só lançar estoque: o salvar pula o insert e usa este id.
   const [nfeExistenteId, setNfeExistenteId] = useState<string | null>(null);
@@ -154,17 +204,59 @@ export default function GestaoCompras() {
   const [saving,       setSaving]       = useState(false);
 
   // ── State: navegação ──────────────────────────────────────────
-  const [mainTab,         setMainTab]         = useState('pedidos');
+  // A aba mora em `?aba=`: com `useState` ela voltava para "Pedidos" a cada F5
+  // e a cada retorno pelo botão Voltar do navegador. É o mesmo hook que
+  // Contratos usa — a divergência entre as duas telas estava registrada no
+  // inventário e se resolve aqui.
+  const [mainTab,         setMainTab]         = useAbaNaUrl('pedidos');
   const [selectedPedido,  setSelectedPedido]  = useState<PedidoCompra | null>(null);
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
+  const [selectedNfe,     setSelectedNfe]     = useState<NfeRecebida | null>(null);
+  const [selectedForn,    setSelectedForn]    = useState<Pessoa | null>(null);
   const [itensPedido,     setItensPedido]     = useState<ItemPedido[]>([]);
   const [movimentos,      setMovimentos]      = useState<EstoqueMovimento[]>([]);
+  // Subabas dos painéis laterais (composição exigida pelas referências).
+  const [abaProduto,      setAbaProduto]      = useState<'movimentacoes' | 'vinculos'>('movimentacoes');
+  const [abaNfe,          setAbaNfe]          = useState<'resumo' | 'itens' | 'arquivos' | 'historico'>('resumo');
+  // Pedido novo pedido depois de trocar de aba: PedidosOmie só existe quando a
+  // aba "Pedidos" está montada, então a chamada espera o commit do React.
+  const [novoPedidoAoEntrar, setNovoPedidoAoEntrar] = useState(false);
+  const [pularOnboarding, setPularOnboarding] = useState(false);
 
   // ── State: filtros ────────────────────────────────────────────
-  const [search,        setSearch]       = useState('');
-  const [statusFilter,  setStatusFilter] = useState('all');
   const [fornSearch,    setFornSearch]   = useState('');
   const [estoqSearch,   setEstoqSearch]  = useState('');
+  const [estoqSituacao, setEstoqSituacao] = useState('todas');
+  const [nfeSearch,     setNfeSearch]    = useState('');
+  const [nfeDe,         setNfeDe]        = useState('');
+  const [nfeAte,        setNfeAte]       = useState('');
+  const [nfeSituacao,   setNfeSituacao]  = useState('todas');
+
+  // ── State: confirmação de exclusão ────────────────────────────
+  // Apagar sem perguntar era o comportamento de pedido e fornecedor: um clique
+  // em cima do ícone errado levava o registro embora sem volta.
+  const [pedidoAExcluir, setPedidoAExcluir] = useState<PedidoCompra | null>(null);
+  const [fornAExcluir,   setFornAExcluir]   = useState<Pessoa | null>(null);
+  const [nfeAExcluir,    setNfeAExcluir]    = useState<NfeRecebida | null>(null);
+  const [produtoAExcluir, setProdutoAExcluir] = useState<Produto | null>(null);
+
+  // ── Reserva de estoque — DERIVADA, nunca persistida ───────────
+  // O modelo de dados tem apenas `produtos.saldo_atual` e `produtos.saldo_minimo`.
+  // Não existe coluna de reserva nem de disponível em lugar nenhum do schema.
+  // A única apuração de reserva que o app faz vive na aba Pedidos do contrato
+  // (`ContratoPedidos.tsx`): soma de `contrato_pedidos.quantidade` com status
+  // 'pendente' ou 'parcial', agrupada pelo `produto_id` do `contrato_itens`
+  // correspondente; disponível = físico − reservado. Reusamos EXATAMENTE esse
+  // cálculo aqui para a aba Estoque mostrar as três colunas da referência.
+  //
+  // `null` significa "não apurado" — e é o estado quando a consulta falha. Nesse
+  // caso as colunas Reservado e Disponível saem como indisponíveis, nunca 0:
+  // zero é uma afirmação sobre o produto, ausência de apuração é uma afirmação
+  // sobre o sistema.
+  const [reservas, setReservas] = useState<Map<string, number> | null>(null);
+  const [reservasErro, setReservasErro] = useState<string | null>(null);
+  // Quais contratos reservam cada produto — alimenta a subaba "Vínculos".
+  const [contratosPorProduto, setContratosPorProduto] = useState<Map<string, { numero: string; quantidade: number }[]>>(new Map());
 
   // ── State: dialogs Pedido ────────────────────────────────────
   const [pedidoOpen, setPedidoOpen] = useState(false);
@@ -274,20 +366,48 @@ export default function GestaoCompras() {
       .then(({ data }) => setMovimentos((data as EstoqueMovimento[]) || []));
   }, [selectedProduto?.id]);
 
+  // O "Gerar pedido" do aviso de reposição troca de aba e só então dispara o
+  // formulário: a referência ao PedidosOmie só aponta para algo depois que a
+  // aba monta, e o efeito roda depois do commit.
+  useEffect(() => {
+    if (!novoPedidoAoEntrar || mainTab !== 'pedidos') return;
+    pedidosRef.current?.novoPedido();
+    setNovoPedidoAoEntrar(false);
+  }, [novoPedidoAoEntrar, mainTab]);
+
   // ── Loaders ───────────────────────────────────────────────────
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+
   const loadAll = async () => {
     if (!empresaAtiva) return;
     setLoading(true);
     try {
-      const [{ data: p }, { data: f }, { data: pr }, { data: n }, { data: mov }] = await Promise.all([
+      const [pRes, fRes, prRes, nRes, movRes] = await Promise.all([
         supabase.from('pedidos_compra').select('*').eq('empresa_id', empresaAtiva.id).order('created_at', { ascending: false }),
         supabase.from('fornecedores').select('*').eq('empresa_id', empresaAtiva.id).order('razao_social'),
         supabase.from('produtos').select('*').eq('empresa_id', empresaAtiva.id).order('descricao'),
         (supabase.from('nfe_entradas' as never) as any).select('*').eq('empresa_id', empresaAtiva.id).order('recebida_em', { ascending: false }),
-        // Quais NF-e já viraram estoque: decide o botão "Lançar estoque" e o selo.
-        supabase.from('estoque_movimentos').select('nfe_id').eq('empresa_id', empresaAtiva.id).not('nfe_id', 'is', null),
+        // Quais NF-e já viraram estoque: decide o botão "Lançar estoque" e o
+        // selo. O created_at vem junto para o Histórico do painel poder dizer
+        // QUANDO a entrada foi lançada, em vez de só que foi.
+        supabase.from('estoque_movimentos').select('nfe_id, created_at').eq('empresa_id', empresaAtiva.id).not('nfe_id', 'is', null),
       ]);
-      setNfesComEstoque(new Set(((mov as Array<{ nfe_id: string }> | null) || []).map(m => m.nfe_id)));
+      // Princípio 3 do CLAUDE.md: a mensagem real do banco vai para a tela. O
+      // `catch` genérico de antes trocava "column X does not exist" por
+      // "verifique sua conexão" — e a pessoa reiniciava o roteador.
+      const primeiroErro = [pRes, fRes, prRes, nRes, movRes].find(r => (r as { error?: { message?: string } }).error);
+      if (primeiroErro) throw new Error((primeiroErro as { error: { message: string } }).error.message);
+
+      const p = pRes.data, f = fRes.data, pr = prRes.data, n = nRes.data, mov = movRes.data;
+      setErroCarga(null);
+      const movNfe = (mov as Array<{ nfe_id: string; created_at: string }> | null) || [];
+      setNfesComEstoque(new Set(movNfe.map(m => m.nfe_id)));
+      const quando = new Map<string, string>();
+      for (const m of movNfe) {
+        const anterior = quando.get(m.nfe_id);
+        if (!anterior || m.created_at < anterior) quando.set(m.nfe_id, m.created_at);
+      }
+      setNfeEstoqueEm(quando);
       setPedidos((p as PedidoCompra[]) || []);
       setFornecedores((f as Fornecedor[]) || []);
       setProdutos((pr as Produto[]) || []);
@@ -301,18 +421,90 @@ export default function GestaoCompras() {
         const upd = ((pr as Produto[]) || []).find(x => x.id === selectedProduto.id);
         if (upd) setSelectedProduto(upd);
       }
-    } catch {
-      toast.error('Erro ao carregar dados. Verifique sua conexão.');
+      if (selectedNfe) {
+        const upd = ((n as unknown as NfeRecebida[]) || []).find(x => x.id === selectedNfe.id);
+        setSelectedNfe(upd ?? null);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErroCarga(msg);
+      toast.error('Erro ao carregar dados de compras', { description: msg });
     } finally {
       setLoading(false);
     }
+    void loadReservas();
   };
 
   const loadContratos = async () => {
-    if (!user) return;
-    const { data } = await supabase.from('contratos').select('id, numero_contrato, orgao_contratante, objeto')
-      .eq('user_id', user.id).neq('status', 'encerrado').order('created_at', { ascending: false });
+    if (!empresaAtiva) return;
+    // Princípio 2 do CLAUDE.md: o processo é da empresa. Filtrar por
+    // `user_id` escondia do colega o contrato que ele não criou — e o select
+    // de vínculo do pedido aparecia vazio para metade da equipe.
+    const { data, error } = await supabase.from('contratos').select('id, numero_contrato, orgao_contratante, objeto')
+      .eq('empresa_id', empresaAtiva.id).neq('status', 'encerrado').order('created_at', { ascending: false });
+    if (error) { toast.error('Não foi possível carregar os contratos', { description: error.message }); return; }
     setContratos((data as Contrato[]) || []);
+  };
+
+  /**
+   * Apuração da reserva de estoque — derivada, em memória, a cada carga.
+   *
+   * Mesma regra de `ContratoPedidos.tsx`: pedido de contrato com status
+   * 'pendente' ou 'parcial' segura a quantidade do produto do item. Nada disso
+   * é gravado; se a consulta falhar, `reservas` fica `null` e a tela declara a
+   * ausência de apuração em vez de exibir zero.
+   */
+  const loadReservas = async () => {
+    if (!empresaAtiva) return;
+    try {
+      // `contrato_itens` não tem empresa_id — o RLS do contrato é quem limita
+      // o retorno; o filtro por empresa é conferido no join, como já se faz na
+      // régua de margem desta mesma tela. types.ts ainda não conhece
+      // produto_id (migration administrativa de 24/08), daí o cast.
+      const { data: ciData, error: ciErro } = await (supabase.from('contrato_itens') as unknown as ConsultaSemTipoGerado)
+        .select('id, produto_id, contratos!inner(numero_contrato, empresa_id, excluido_em)')
+        .not('produto_id', 'is', null);
+      if (ciErro) throw new Error(ciErro.message);
+
+      type LinhaCi = { id: string; produto_id: string; contratos: { numero_contrato: string | null; empresa_id: string | null; excluido_em: string | null } | null };
+      const linhas = ((ciData as LinhaCi[] | null) || [])
+        .filter(l => l.contratos && l.contratos.empresa_id === empresaAtiva.id && !l.contratos.excluido_em);
+
+      const mapaReserva = new Map<string, number>();
+      const mapaContratos = new Map<string, { numero: string; quantidade: number }[]>();
+
+      if (linhas.length) {
+        const { data: pedData, error: pedErro } = await supabase.from('contrato_pedidos')
+          .select('contrato_item_id, quantidade')
+          .in('contrato_item_id', linhas.map(l => l.id))
+          .in('status', [...STATUS_QUE_RESERVAM]);
+        if (pedErro) throw new Error(pedErro.message);
+
+        const itemPara = new Map(linhas.map(l => [l.id, l]));
+        for (const r of (pedData as Array<{ contrato_item_id: string | null; quantidade: number }> | null) || []) {
+          const linha = r.contrato_item_id ? itemPara.get(r.contrato_item_id) : undefined;
+          if (!linha) continue;
+          const qtd = Number(r.quantidade) || 0;
+          mapaReserva.set(linha.produto_id, (mapaReserva.get(linha.produto_id) ?? 0) + qtd);
+          const numero = linha.contratos?.numero_contrato || 'Contrato sem número';
+          const lista = mapaContratos.get(linha.produto_id) ?? [];
+          const existente = lista.find(x => x.numero === numero);
+          if (existente) existente.quantidade += qtd;
+          else lista.push({ numero, quantidade: qtd });
+          mapaContratos.set(linha.produto_id, lista);
+        }
+      }
+      // Produto ausente do mapa significa zero APURADO (nenhum pedido de
+      // contrato pendente o segura) — quem distingue isso de "não apurado" é o
+      // próprio `reservas` ser um Map e não `null`.
+      setReservas(mapaReserva);
+      setContratosPorProduto(mapaContratos);
+      setReservasErro(null);
+    } catch (e) {
+      setReservas(null);
+      setContratosPorProduto(new Map());
+      setReservasErro(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const reloadMovimentos = async (prodId: string) => {
@@ -386,19 +578,21 @@ export default function GestaoCompras() {
   };
 
   // ── Delete pedido / fornecedor ────────────────────────────────
-  const handleDeletePedido = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    await supabase.from('pedidos_compra').delete().eq('id', id);
+  // Os dois apagavam no clique, sem pergunta e sem ler o erro do banco. Agora
+  // passam pelo AlertDialog de confirmação e o erro real chega ao toast.
+  const handleDeletePedido = async (id: string) => {
+    const { error } = await supabase.from('pedidos_compra').delete().eq('id', id);
+    setPedidoAExcluir(null);
+    if (error) { toast.error('Não foi possível excluir o pedido', { description: error.message }); return; }
     toast.success('Pedido excluído');
     if (selectedPedido?.id === id) setSelectedPedido(null);
     loadAll();
   };
 
-  const handleDeleteFornecedor = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const { error } = await supabase.from('fornecedores').delete().eq('id', id);
-    if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
-    toast.success('Fornecedor excluído'); loadAll();
+  const handleDeleteFornecedor = async (pessoa: Pessoa) => {
+    setFornAExcluir(null);
+    if (selectedForn?.id === pessoa.id) setSelectedForn(null);
+    deletePessoa.mutate({ id: pessoa.id });
   };
 
   // ── Busca CNPJ (BrasilAPI) ────────────────────────────────────
@@ -453,9 +647,9 @@ export default function GestaoCompras() {
     setSaving(false); setProdutoOpen(false); setEditingProduto(null); setProdutoForm(defaultProdutoForm()); loadAll();
   };
 
-  const handleDeleteProduto = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteProduto = async (id: string) => {
     const { error } = await supabase.from('produtos').delete().eq('id', id);
+    setProdutoAExcluir(null);
     if (error) { toast.error('Não foi possível excluir. Há movimentações?', { description: error.message }); return; }
     toast.success('Produto excluído');
     if (selectedProduto?.id === id) setSelectedProduto(null);
@@ -757,10 +951,11 @@ export default function GestaoCompras() {
     if (selectedProduto) reloadMovimentos(selectedProduto.id);
   };
 
-  const handleDeleteNfe = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteNfe = async (id: string) => {
     const { error } = await (supabase.from('nfe_entradas' as never) as any).delete().eq('id', id);
+    setNfeAExcluir(null);
     if (error) { toast.error('Não foi possível excluir', { description: error.message }); return; }
+    if (selectedNfe?.id === id) setSelectedNfe(null);
     toast.success('NF-e excluída. Movimentações de estoque vinculadas foram mantidas.'); loadAll();
   };
 
@@ -799,120 +994,542 @@ export default function GestaoCompras() {
 
   // ── Computed ──────────────────────────────────────────────────
   const todayStr       = today();
-  const abertos        = pedidos.filter(p => p.status === 'rascunho' || p.status === 'aguardando');
-  const valorComp      = abertos.reduce((s, p) => s + p.valor_total, 0);
-  const contrVinc      = new Set(pedidos.map(p => p.contrato_id).filter(Boolean)).size;
-  const atrasados      = abertos.filter(p => p.data_entrega_prevista && p.data_entrega_prevista < todayStr).length;
-  const filtPedidos    = pedidos.filter(p => { const forn = fornecedores.find(f => f.id === p.fornecedor_id); const cont = contratos.find(c => c.id === p.contrato_id); const txt = `${p.observacoes ?? ''} ${forn?.razao_social ?? ''} ${cont?.numero_contrato ?? ''}`.toLowerCase(); return (!search || txt.includes(search.toLowerCase())) && (statusFilter === 'all' || p.status === statusFilter); });
-  const filtForn       = fornecedores.filter(f => !fornSearch || f.razao_social.toLowerCase().includes(fornSearch.toLowerCase()) || (f.categoria ?? '').toLowerCase().includes(fornSearch.toLowerCase()));
-  const filtProdutos   = produtos.filter(p => !estoqSearch || p.descricao.toLowerCase().includes(estoqSearch.toLowerCase()) || (p.codigo ?? '').toLowerCase().includes(estoqSearch.toLowerCase()) || (p.categoria ?? '').toLowerCase().includes(estoqSearch.toLowerCase()));
   const prodAlerta     = produtos.filter(p => p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo).length;
   const valorEstoque   = produtos.filter(p => p.ativo).reduce((s, p) => s + p.saldo_atual * p.preco_custo_medio, 0);
-  const isOnboarding   = !loading && !pedidos.length && !fornecedores.length && !produtos.length && !nfes.length;
+  // O guia some quando há dado — ou quando a pessoa clica num passo que leva
+  // a uma aba: sem isto, "Registre uma Compra" trocava a aba por baixo de uma
+  // tela de onboarding que continuava cobrindo tudo, e nada acontecia.
+  const isOnboarding   = !loading && !pularOnboarding && !pedidos.length && !fornecedores.length && !produtos.length && !nfes.length;
 
   const produtosAtivosParaSelect = produtos.filter(p => p.ativo);
 
-  // ══ DETAIL: PRODUTO ══════════════════════════════════════════
-  if (selectedProduto) {
-    const p = selectedProduto;
-    const emAlerta = p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
-    return (
-      <AppLayout>
-        <Button variant="ghost" size="sm" onClick={() => setSelectedProduto(null)} className="mb-4">
-          <ArrowLeft className="w-4 h-4" /> Voltar ao Estoque
-        </Button>
-        <CabecalhoPagina
-          titulo={p.descricao}
-          icone={<Package />}
-          // Detalhe não é item de menu: o título é o do produto e a trilha
-          // ganha mais um degrau depois do que o registro dá para a rota.
-          trilha={[...trilhaDaRota('/gestao-compras'), { rotulo: p.descricao }]}
-          descricao={
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              {p.categoria && <span>{p.categoria}</span>}
-              <span>Unidade: {p.unidade}</span>
-              <span>Mínimo: {p.saldo_minimo} {p.unidade}</span>
-              {p.preco_custo_medio > 0 && <span>Custo médio: {fmtCurrency(p.preco_custo_medio)}</span>}
-            </span>
-          }
-          acoes={
-            <>
-              <Button variant="outline" aria-label="Editar produto" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}>
-                <Pencil className="w-4 h-4" /> Editar
-              </Button>
-              <Button onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
-                <Plus className="w-4 h-4" /> Movimentação
-              </Button>
-            </>
-          }
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            {p.codigo && <Badge variant="info">{p.codigo}</Badge>}
-            {!p.ativo && <Badge variant="muted">Inativo</Badge>}
-            {emAlerta && <Badge variant="danger"><AlertCircle className="w-3 h-3 mr-1" />Estoque baixo</Badge>}
-            <div className={`ml-auto rounded-lg border px-4 py-2 text-right ${emAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
-              <p className="text-xs text-muted-foreground">Saldo atual</p>
-              <p className={`text-[2rem] leading-10 font-bold tabular-nums ${emAlerta ? 'text-destructive-ink' : 'text-success-ink'}`}>
-                {p.saldo_atual.toLocaleString('pt-BR')} <span className="text-sm font-normal">{p.unidade}</span>
+  /**
+   * Saldo físico, reserva e disponível de um produto.
+   *
+   * Só o físico é coluna (`produtos.saldo_atual`). Reserva e disponível são
+   * derivados da apuração de `loadReservas` e voltam `null` enquanto ela não
+   * concluiu ou falhou — nunca 0.
+   */
+  const estoqueDoProduto = (p: Produto) => {
+    const fisico = Number(p.saldo_atual) || 0;
+    if (!reservas) return { fisico, reservado: null as number | null, disponivel: null as number | null };
+    const reservado = reservas.get(p.id) ?? 0;
+    return { fisico, reservado, disponivel: fisico - reservado };
+  };
+
+  const situacaoDoProduto = (p: Produto): { tom: TomSituacao; texto: string; explicacao: string } => {
+    if (!p.ativo) return { tom: 'neutro', texto: 'Inativo', explicacao: 'Produto desativado no catálogo.' };
+    if (p.saldo_atual <= 0) return { tom: 'critico', texto: 'Sem saldo', explicacao: 'Saldo físico zerado ou negativo.' };
+    if (p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo) {
+      return { tom: 'atencao', texto: 'Abaixo do mínimo', explicacao: `Saldo físico ${p.saldo_atual} ≤ mínimo ${p.saldo_minimo}.` };
+    }
+    if (p.saldo_minimo <= 0) return { tom: 'neutro', texto: 'Sem mínimo definido', explicacao: 'Sem ponto de reposição cadastrado — não há como dizer se o nível está adequado.' };
+    return { tom: 'sucesso', texto: 'Em nível', explicacao: `Saldo físico ${p.saldo_atual} acima do mínimo ${p.saldo_minimo}.` };
+  };
+
+  const filtProdutos = produtos.filter(p => {
+    const busca = estoqSearch.trim().toLowerCase();
+    const casaBusca = !busca
+      || p.descricao.toLowerCase().includes(busca)
+      || (p.codigo ?? '').toLowerCase().includes(busca)
+      || (p.categoria ?? '').toLowerCase().includes(busca);
+    if (!casaBusca) return false;
+    if (estoqSituacao === 'todas') return true;
+    if (estoqSituacao === 'inativos') return !p.ativo;
+    if (estoqSituacao === 'alerta') return p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
+    if (estoqSituacao === 'sem_saldo') return p.ativo && p.saldo_atual <= 0;
+    return true;
+  });
+  const filtrosEstoqueAplicados = (estoqSearch ? 1 : 0) + (estoqSituacao !== 'todas' ? 1 : 0);
+
+  // Fornecedores vêm de `financeiro_pessoas` (cadastro unificado com o
+  // Financeiro). A tabela `fornecedores` continua viva porque é ela que a
+  // auto-detecção por CNPJ da NF-e alimenta e para quem o pedido legado aponta.
+  const filtForn = pessoasFornecedores.filter(f => {
+    const busca = fornSearch.trim().toLowerCase();
+    if (!busca) return true;
+    return f.nome.toLowerCase().includes(busca)
+      || (f.nome_fantasia ?? '').toLowerCase().includes(busca)
+      || (f.documento ?? '').includes(busca)
+      || (f.email ?? '').toLowerCase().includes(busca);
+  });
+
+  const situacaoEstoqueDaNfe = (n: NfeRecebida): { tom: TomSituacao; texto: string; explicacao: string } => {
+    if (nfesComEstoque.has(n.id)) return { tom: 'sucesso', texto: 'Estoque lançado', explicacao: 'Há movimentações de estoque apontando para esta NF-e.' };
+    if (!n.xml) return { tom: 'indisponivel', texto: 'Sem XML', explicacao: 'Sem o XML armazenado não há itens para conferir — importe o arquivo para lançar.' };
+    return { tom: 'atencao', texto: 'Entrada a conferir', explicacao: 'XML disponível e nenhuma movimentação de estoque vinculada.' };
+  };
+
+  const filtNfes = nfes.filter(n => {
+    const busca = nfeSearch.trim().toLowerCase();
+    const casaBusca = !busca
+      || String(n.numero ?? '').toLowerCase().includes(busca)
+      || (n.emitente_nome ?? '').toLowerCase().includes(busca)
+      || (n.emitente_cnpj ?? '').includes(busca)
+      || (n.chave ?? '').includes(busca);
+    if (!casaBusca) return false;
+    if (nfeDe && (!n.data_emissao || n.data_emissao < nfeDe)) return false;
+    if (nfeAte && (!n.data_emissao || n.data_emissao > nfeAte)) return false;
+    if (nfeSituacao === 'todas') return true;
+    if (nfeSituacao === 'lancada') return nfesComEstoque.has(n.id);
+    if (nfeSituacao === 'pendente') return !nfesComEstoque.has(n.id) && !!n.xml;
+    if (nfeSituacao === 'sem_xml') return !n.xml;
+    return true;
+  });
+  const filtrosNfeAplicados = (nfeSearch ? 1 : 0) + (nfeDe ? 1 : 0) + (nfeAte ? 1 : 0) + (nfeSituacao !== 'todas' ? 1 : 0);
+  const nfesPendentes = nfes.filter(n => !nfesComEstoque.has(n.id) && !!n.xml).length;
+  const valorNfes = nfes.reduce((s, n) => s + (Number(n.valor_total) || 0), 0);
+
+  /** Baixa o XML guardado da NF-e — arquivo real, gerado do que está no banco. */
+  const baixarXml = (n: NfeRecebida) => {
+    if (!n.xml) { toast.error('Esta NF-e não tem XML armazenado.'); return; }
+    const url = URL.createObjectURL(new Blob([n.xml], { type: 'application/xml' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nfe-${n.chave || `${n.numero}-${n.serie}`}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ══ CONFIRMAÇÕES DE EXCLUSÃO ═════════════════════════════════
+  const confirmarExclusaoPedido = (
+    <AlertDialog open={!!pedidoAExcluir} onOpenChange={o => { if (!o) setPedidoAExcluir(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir este pedido de compra?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p className="font-medium text-foreground">{pedidoAExcluir?.observacoes || 'Pedido de compra'}</p>
+              <p>
+                Os itens do pedido vão junto. NF-e e movimentações que apontam para ele
+                permanecem, mas perdem o vínculo. Não há como desfazer.
               </p>
             </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => pedidoAExcluir && handleDeletePedido(pedidoAExcluir.id)}
+          >
+            Excluir pedido
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  // ══ PAINEL: PRODUTO ══════════════════════════════════════════
+  const painelProduto = selectedProduto && (() => {
+    const p = selectedProduto;
+    const { fisico, reservado, disponivel } = estoqueDoProduto(p);
+    const sit = situacaoDoProduto(p);
+    const precisaRepor = p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
+    const vinculosContrato = contratosPorProduto.get(p.id) ?? [];
+    const nfesDoProduto = movimentos
+      .filter(m => m.nfe_id)
+      .map(m => ({ mov: m, nfe: nfes.find(n => n.id === m.nfe_id) }))
+      .filter(x => x.nfe);
+    const pedidosDoProduto = movimentos
+      .filter(m => m.pedido_id)
+      .map(m => ({ mov: m, pedido: pedidos.find(x => x.id === m.pedido_id) }))
+      .filter(x => x.pedido);
+
+    // As quatro caixas do resumo. Reservado e Disponível são DERIVADOS; quando
+    // a apuração não veio, saem como indisponíveis — nunca como zero.
+    const caixas: { rotulo: string; valor: React.ReactNode; tom: string }[] = [
+      { rotulo: 'Saldo físico', valor: fisico.toLocaleString('pt-BR'), tom: 'bg-muted text-foreground' },
+      {
+        rotulo: 'Reservado',
+        valor: reservado === null ? <ValorIndisponivel razao="Reserva não apurada" /> : reservado.toLocaleString('pt-BR'),
+        tom: 'bg-warning-tint text-warning-ink',
+      },
+      {
+        rotulo: 'Disponível',
+        valor: disponivel === null ? <ValorIndisponivel razao="Reserva não apurada" /> : disponivel.toLocaleString('pt-BR'),
+        tom: disponivel !== null && disponivel < 0 ? 'bg-destructive-tint text-destructive-ink' : 'bg-success-tint text-success-ink',
+      },
+      { rotulo: 'Mínimo', valor: p.saldo_minimo > 0 ? p.saldo_minimo.toLocaleString('pt-BR') : <ValorIndisponivel razao="Sem ponto de reposição" />, tom: 'bg-muted text-foreground' },
+    ];
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="g-titulo-secao text-foreground">{p.descricao}</h2>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {p.codigo && <SeloSituacao tom="neutro">{p.codigo}</SeloSituacao>}
+            <SeloSituacao tom={sit.tom} explicacao={sit.explicacao}>{sit.texto}</SeloSituacao>
           </div>
-        </CabecalhoPagina>
+        </div>
 
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <RotateCcw className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Histórico de movimentações
-          </h2>
-          {movimentos.length === 0 ? (
-            <EstadoVazio
-              tamanho="compacto"
-              icone={<RotateCcw />}
-              titulo="Nenhuma movimentação"
-              descricao="Entradas, saídas e ajustes deste produto aparecem aqui."
-            />
-          ) : (
-            <div className="divide-y divide-border">
-              {movimentos.map(m => {
-                const cfg = movConfig[m.tipo];
-                const Icon = cfg.icon;
-                const absQty = Math.abs(m.quantidade);
-                const sign = m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '-' : (m.quantidade >= 0 ? '+' : '');
-                return (
-                  <div key={m.id} className="flex items-center gap-3 py-3">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full ${cfg.bg} flex-shrink-0`}>
-                      <Icon className={`w-4 h-4 ${cfg.color}`} aria-hidden="true" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-semibold tabular-nums ${cfg.color}`}>
-                          {sign}{absQty.toLocaleString('pt-BR')} {p.unidade}
-                        </span>
-                        <Badge variant="info">{cfg.label}</Badge>
-                        {m.origem && m.origem !== 'manual' && (
-                          <Badge variant="muted" className="capitalize">{m.origem.replace(/_/g, ' ')}</Badge>
-                        )}
-                      </div>
-                      {m.observacoes && <p className="text-xs text-muted-foreground mt-1">{m.observacoes}</p>}
-                      {m.preco_unitario != null && m.preco_unitario > 0 && (
-                        <p className="text-xs text-muted-foreground tabular-nums">{fmtCurrency(m.preco_unitario)}/un · Total: {fmtCurrency(m.preco_unitario * absQty)}</p>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground flex-shrink-0">
-                      {new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                );
-              })}
+        <div className="grid grid-cols-2 gap-2">
+          {caixas.map(c => (
+            <div key={c.rotulo} className={`rounded-[var(--g-raio)] px-3 py-2 ${c.tom}`}>
+              <p className="g-meta opacity-80">{c.rotulo}</p>
+              <p className="truncate text-xl font-bold leading-7 tabular-nums">{c.valor}</p>
+              <p className="g-meta opacity-80">{p.unidade}</p>
             </div>
-          )}
-        </Card>
+          ))}
+        </div>
 
-        {/* dialogs disponíveis na tela de detalhe */}
-        <ProdutoDialog open={produtoOpen} onOpenChange={setProdutoOpen} editing={editingProduto} form={produtoForm} setForm={setProdutoForm} saving={saving} onSave={handleSaveProduto} onClose={() => { setEditingProduto(null); setProdutoForm(defaultProdutoForm()); }} />
-        <MovDialog open={movOpen} onOpenChange={setMovOpen} form={movForm} setForm={setMovForm} saving={saving} onSave={handleSaveMovimento} produtos={produtosAtivosParaSelect} />
-      </AppLayout>
+        {/* A referência mostra as três colunas; o schema só tem o físico. Quem
+            lê a tela precisa saber de onde vêm as outras duas. */}
+        <p className="g-meta text-muted-foreground">
+          Reservado e disponível são apurados na hora, a partir dos pedidos de contrato
+          pendentes ou parciais que apontam para este produto — não são colunas do estoque.
+        </p>
+
+        {precisaRepor && (
+          <AvisoDeContexto
+            titulo="Abaixo do ponto de reposição"
+            acao={
+              <Button size="sm" onClick={() => { setMainTab('pedidos'); setNovoPedidoAoEntrar(true); }}>
+                <ShoppingCart className="h-4 w-4" /> Gerar pedido
+              </Button>
+            }
+          >
+            {`Saldo físico ${fisico.toLocaleString('pt-BR')} ${p.unidade} contra mínimo de ${p.saldo_minimo.toLocaleString('pt-BR')} ${p.unidade}.`}
+          </AvisoDeContexto>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}>
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setMovForm(f => ({ ...f, produto_id: p.id })); setMovOpen(true); }}>
+            <Plus className="h-4 w-4" /> Movimentação
+          </Button>
+          <Button variant="ghost" size="sm" aria-label={`Excluir ${p.descricao}`} onClick={() => setProdutoAExcluir(p)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+
+        <Tabs value={abaProduto} onValueChange={v => setAbaProduto(v as typeof abaProduto)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+            <TabsTrigger value="vinculos">Vínculos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="movimentacoes" className="mt-3">
+            {movimentos.length === 0 ? (
+              <EstadoVazio tamanho="compacto" icone={<RotateCcw />} titulo="Nenhuma movimentação"
+                descricao="Entradas, saídas e ajustes deste produto aparecem aqui." />
+            ) : (
+              <ul className="divide-y divide-border">
+                {movimentos.map(m => {
+                  const cfg = movConfig[m.tipo];
+                  const Icone = cfg.icon;
+                  const abs = Math.abs(m.quantidade);
+                  const sinal = m.tipo === 'entrada' ? '+' : m.tipo === 'saida' ? '-' : (m.quantidade >= 0 ? '+' : '−');
+                  return (
+                    <li key={m.id} className="flex items-start gap-3 py-2.5">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${cfg.bg}`}>
+                        <Icone className={`h-4 w-4 ${cfg.color}`} aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`g-corpo font-semibold tabular-nums ${cfg.color}`}>
+                          {sinal}{abs.toLocaleString('pt-BR')} {p.unidade}
+                          <span className="ml-2 font-normal text-muted-foreground">{cfg.label}</span>
+                        </p>
+                        <p className="g-meta text-muted-foreground">
+                          {new Date(m.created_at).toLocaleDateString('pt-BR')}
+                          {m.origem ? ` · ${m.origem.replace(/_/g, ' ')}` : ''}
+                          {m.preco_unitario != null && m.preco_unitario > 0 ? ` · ${fmtCurrency(m.preco_unitario)}/un` : ''}
+                        </p>
+                        {m.observacoes && <p className="g-meta text-muted-foreground">{m.observacoes}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </TabsContent>
+
+          <TabsContent value="vinculos" className="mt-3 flex flex-col gap-4">
+            <BlocoDoPainel titulo="Contratos que reservam">
+              {reservas === null ? (
+                <p className="g-corpo text-muted-foreground">
+                  <ValorIndisponivel razao="Reserva não apurada" />
+                </p>
+              ) : vinculosContrato.length === 0 ? (
+                <p className="g-corpo text-muted-foreground">Nenhum pedido de contrato pendente segura este produto.</p>
+              ) : (
+                <ListaDeCampos
+                  campos={vinculosContrato.map(v => ({
+                    rotulo: v.numero,
+                    valor: `${v.quantidade.toLocaleString('pt-BR')} ${p.unidade}`,
+                    numerico: true,
+                  }))}
+                />
+              )}
+            </BlocoDoPainel>
+
+            <BlocoDoPainel titulo="NF-e de entrada">
+              {nfesDoProduto.length === 0 ? (
+                <p className="g-corpo text-muted-foreground">Nenhuma entrada veio de NF-e.</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {nfesDoProduto.map(({ mov, nfe }) => (
+                    <li key={mov.id}>
+                      <button type="button"
+                        className="g-corpo w-full rounded text-left text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => { setSelectedProduto(null); setMainTab('nfe'); setSelectedNfe(nfe!); setAbaNfe('resumo'); }}>
+                        Nº {nfe!.numero}/{nfe!.serie} — {nfe!.emitente_nome || 'emitente não informado'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </BlocoDoPainel>
+
+            <BlocoDoPainel titulo="Pedidos de compra">
+              {pedidosDoProduto.length === 0 ? (
+                <p className="g-corpo text-muted-foreground">Nenhuma entrada veio de pedido de compra.</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {pedidosDoProduto.map(({ mov, pedido }) => (
+                    <li key={mov.id}>
+                      <button type="button"
+                        className="g-corpo w-full rounded text-left text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => { setSelectedProduto(null); setSelectedPedido(pedido!); }}>
+                        {pedido!.observacoes || 'Pedido de compra'} — {fmtCurrency(pedido!.valor_total)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </BlocoDoPainel>
+          </TabsContent>
+        </Tabs>
+      </div>
     );
-  }
+  })();
+
+  // ══ PAINEL: NF-e ═════════════════════════════════════════════
+  const painelNfe = selectedNfe && (() => {
+    const n = selectedNfe;
+    const sit = situacaoEstoqueDaNfe(n);
+    const pedido = pedidos.find(p => p.id === n.pedido_id) ?? null;
+    const contrato = pedido?.contrato_id ? contratos.find(c => c.id === pedido.contrato_id) ?? null : null;
+    const fornecedor = fornecedores.find(f => f.id === n.fornecedor_id) ?? null;
+    const itens = Array.isArray(n.itens) ? n.itens : [];
+    const lancadaEm = nfeEstoqueEm.get(n.id) ?? null;
+
+    // Histórico só com o que o banco registra. Não há tabela de eventos da
+    // NF-e: inventar "XML validado" ou "conferida por fulano" seria dado de
+    // demonstração numa tela de produção.
+    const historico: { quando: string | null; titulo: string; detalhe: string }[] = [
+      { quando: n.data_emissao, titulo: 'Emitida pelo fornecedor', detalhe: n.emitente_nome || 'Emitente não informado' },
+      { quando: n.recebida_em, titulo: 'Recebida no acervo', detalhe: n.origem === 'importacao_compras' ? 'Importada em Compras' : (n.origem || 'Origem não informada') },
+      ...(lancadaEm ? [{ quando: lancadaEm, titulo: 'Entrada lançada no estoque', detalhe: 'Movimentações vinculadas a esta NF-e' }] : []),
+    ].filter(h => h.quando);
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="g-titulo-secao text-foreground">Nº {n.numero} · Série {n.serie}</h2>
+          <p className="g-corpo text-muted-foreground">{n.emitente_nome || 'Emitente não informado'}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <SeloSituacao tom={sit.tom} explicacao={sit.explicacao}>{sit.texto}</SeloSituacao>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {/* "Conferir entrada" é o mesmo fluxo de lançamento no estoque: abre o
+              assistente no passo de casar os itens da nota com o catálogo. */}
+          {!nfesComEstoque.has(n.id) && n.xml && (
+            <Button size="sm" onClick={() => abrirLancamentoEstoque(n)}>
+              <PackagePlus className="h-4 w-4" /> Conferir entrada
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" aria-label={`Excluir NF-e ${n.numero}`} onClick={() => setNfeAExcluir(n)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+
+        <Tabs value={abaNfe} onValueChange={v => setAbaNfe(v as typeof abaNfe)}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="resumo">Resumo</TabsTrigger>
+            <TabsTrigger value="itens">Itens ({itens.length})</TabsTrigger>
+            <TabsTrigger value="arquivos">XML/PDF</TabsTrigger>
+            <TabsTrigger value="historico">Histórico</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="resumo" className="mt-3 flex flex-col gap-4">
+            <ListaDeCampos
+              campos={[
+                { rotulo: 'Emissão', valor: fmtDate(n.data_emissao) },
+                { rotulo: 'Valor total', valor: fmtCurrency(Number(n.valor_total) || 0), numerico: true },
+                { rotulo: 'CNPJ do emitente', valor: n.emitente_cnpj || <ValorIndisponivel razao="Não informado" /> },
+                { rotulo: 'Recebida em', valor: new Date(n.recebida_em).toLocaleString('pt-BR') },
+                { rotulo: 'Chave de acesso', largo: true, valor: n.chave ? <span className="break-all font-mono text-xs">{n.chave}</span> : <ValorIndisponivel razao="Não informada" /> },
+              ]}
+            />
+            <BlocoDoPainel titulo="Vínculos">
+              <ListaDeCampos
+                campos={[
+                  {
+                    rotulo: 'Fornecedor',
+                    valor: fornecedor ? fornecedor.razao_social : <ValorIndisponivel razao="Não vinculado" />,
+                  },
+                  {
+                    rotulo: 'Pedido de compra',
+                    valor: pedido ? (
+                      <button type="button"
+                        className="rounded text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => { setSelectedNfe(null); setSelectedPedido(pedido); }}>
+                        {pedido.observacoes || 'Pedido de compra'}
+                      </button>
+                    ) : <ValorIndisponivel razao="Não vinculado" />,
+                  },
+                  {
+                    rotulo: 'Contrato',
+                    valor: contrato ? `${contrato.numero_contrato} — ${contrato.orgao_contratante}` : <ValorIndisponivel razao="Sem contrato pelo pedido" />,
+                  },
+                ]}
+              />
+            </BlocoDoPainel>
+          </TabsContent>
+
+          <TabsContent value="itens" className="mt-3">
+            {itens.length === 0 ? (
+              <EstadoVazio tamanho="compacto" icone={<Package />} titulo="Nenhum item guardado"
+                descricao="Os itens são extraídos do XML na importação. Esta nota chegou sem eles." />
+            ) : (
+              <ul className="divide-y divide-border">
+                {itens.map((it, i) => (
+                  <li key={i} className="py-2.5">
+                    <p className="g-corpo font-medium text-foreground">{it.x_prod}</p>
+                    <p className="g-meta tabular-nums text-muted-foreground">
+                      {it.q_com} {it.u_com} · {fmtCurrency(it.v_un_com)}/un
+                      {it.c_prod ? ` · Cód. ${it.c_prod}` : ''}
+                      {it.ncm ? ` · NCM ${it.ncm}` : ''}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+
+          <TabsContent value="arquivos" className="mt-3 flex flex-col gap-3">
+            {n.xml ? (
+              <>
+                <p className="g-corpo text-muted-foreground">O XML autorizado está guardado com a nota.</p>
+                <Button variant="outline" size="sm" className="self-start" onClick={() => baixarXml(n)}>
+                  <Download className="h-4 w-4" /> Baixar XML
+                </Button>
+              </>
+            ) : (
+              <p className="g-corpo text-muted-foreground">
+                <ValorIndisponivel razao="XML não armazenado" /> — esta nota entrou sem o arquivo.
+                Importe o XML para poder conferir a entrada.
+              </p>
+            )}
+            {/* O DANFE em PDF é lido para extrair dados e NÃO é guardado: não há
+                coluna nem bucket para ele. Dizer o contrário criaria um botão
+                que baixa nada. */}
+            <p className="g-meta text-muted-foreground">
+              O PDF do DANFE é usado apenas para extrair os dados na importação — ele não fica
+              armazenado, então não há download de PDF aqui.
+            </p>
+          </TabsContent>
+
+          <TabsContent value="historico" className="mt-3">
+            {historico.length === 0 ? (
+              <EstadoVazio tamanho="compacto" icone={<History />} titulo="Sem histórico"
+                descricao="Nenhuma data foi registrada para esta nota." />
+            ) : (
+              <ul className="divide-y divide-border">
+                {historico.map((h, i) => (
+                  <li key={i} className="py-2.5">
+                    <p className="g-corpo font-medium text-foreground">{h.titulo}</p>
+                    <p className="g-meta text-muted-foreground">
+                      {h.quando!.includes('T')
+                        ? new Date(h.quando!).toLocaleString('pt-BR')
+                        : fmtDate(h.quando!)} · {h.detalhe}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  })();
+
+  // ══ PAINEL: FORNECEDOR ═══════════════════════════════════════
+  const painelFornecedor = selectedForn && (() => {
+    const f = selectedForn;
+    const endereco = (f.endereco ?? null) as { logradouro?: string; numero?: string; bairro?: string; municipio?: string; uf?: string; cep?: string } | null;
+    // O elo entre a pessoa do Financeiro e a linha de `fornecedores` é o
+    // documento — é por CNPJ que a NF-e reconhece o emitente.
+    const doc = normCnpj(f.documento ?? '');
+    const legado = doc ? fornecedores.find(x => normCnpj(x.cnpj || '') === doc) ?? null : null;
+    const nfesDele = legado ? nfes.filter(n => n.fornecedor_id === legado.id) : [];
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="g-titulo-secao text-foreground">{f.nome}</h2>
+          {f.nome_fantasia && <p className="g-corpo text-muted-foreground">{f.nome_fantasia}</p>}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <SeloSituacao tom={f.ativo ? 'ativo' : 'neutro'}>{f.ativo ? 'Ativo' : 'Inativo'}</SeloSituacao>
+            {f.tipo === 'ambos' && <SeloSituacao tom="neutro">Cliente e fornecedor</SeloSituacao>}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}>
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+          <Button variant="ghost" size="sm" aria-label={`Excluir ${f.nome}`} onClick={() => setFornAExcluir(f)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+
+        <ListaDeCampos
+          campos={[
+            { rotulo: 'Documento', valor: f.documento || <ValorIndisponivel razao="Não informado" /> },
+            { rotulo: 'E-mail', valor: f.email || <ValorIndisponivel razao="Não informado" /> },
+            { rotulo: 'Telefone', valor: f.telefone || <ValorIndisponivel razao="Não informado" /> },
+            { rotulo: 'Regime tributário', valor: f.regime_tributario || <ValorIndisponivel razao="Não informado" /> },
+            { rotulo: 'Prazo padrão', valor: f.prazo_padrao_dias != null ? `${f.prazo_padrao_dias} dia(s)` : <ValorIndisponivel razao="Não informado" />, numerico: f.prazo_padrao_dias != null },
+            {
+              rotulo: 'Endereço', largo: true,
+              valor: endereco && (endereco.logradouro || endereco.municipio)
+                ? [endereco.logradouro, endereco.numero, endereco.bairro, endereco.municipio, endereco.uf, endereco.cep].filter(Boolean).join(', ')
+                : <ValorIndisponivel razao="Não informado" />,
+            },
+          ]}
+        />
+
+        <BlocoDoPainel titulo="NF-e recebidas">
+          {!legado ? (
+            <p className="g-corpo text-muted-foreground">
+              Sem cadastro correspondente na base que a NF-e usa para reconhecer emitente — o
+              vínculo nasce quando uma nota deste CNPJ é importada.
+            </p>
+          ) : nfesDele.length === 0 ? (
+            <p className="g-corpo text-muted-foreground">Nenhuma NF-e deste fornecedor foi importada.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {nfesDele.slice(0, 8).map(n => (
+                <li key={n.id}>
+                  <button type="button"
+                    className="g-corpo w-full rounded text-left text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => { setSelectedForn(null); setMainTab('nfe'); setSelectedNfe(n); setAbaNfe('resumo'); }}>
+                    Nº {n.numero}/{n.serie} · {fmtDate(n.data_emissao)} · {fmtCurrency(Number(n.valor_total) || 0)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </BlocoDoPainel>
+      </div>
+    );
+  })();
 
   // ══ DETAIL: PEDIDO ═══════════════════════════════════════════
   if (selectedPedido) {
@@ -930,6 +1547,7 @@ export default function GestaoCompras() {
           <ArrowLeft className="w-4 h-4" /> Todos os pedidos
         </Button>
         <CabecalhoPagina
+          denso
           titulo={p.observacoes || 'Pedido de compra'}
           icone={<ShoppingCart />}
           trilha={[...trilhaDaRota('/gestao-compras'), { rotulo: p.observacoes || 'Pedido de compra' }]}
@@ -953,7 +1571,7 @@ export default function GestaoCompras() {
                   <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="ghost" aria-label="Excluir pedido" onClick={e => handleDeletePedido(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              <Button variant="ghost" aria-label="Excluir pedido" onClick={() => setPedidoAExcluir(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
             </>
           }
         >
@@ -1047,6 +1665,11 @@ export default function GestaoCompras() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* A confirmação vive nos dois ramos porque o detalhe do pedido é um
+            return antecipado — sem isto, o botão de excluir daqui não teria
+            onde abrir o diálogo. */}
+        {confirmarExclusaoPedido}
       </AppLayout>
     );
   }
@@ -1059,6 +1682,7 @@ export default function GestaoCompras() {
           a tela não repete o que já está padronizado. A ação principal muda com
           a aba ativa (Produtos e Pedidos têm barra própria dentro da aba). */}
       <CabecalhoPagina
+          denso
         acoes={!isOnboarding && (
           mainTab === 'fornecedores' ? (
             <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo fornecedor</Button>
@@ -1066,11 +1690,14 @@ export default function GestaoCompras() {
             <Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo produto</Button>
           ) : mainTab === 'nfe' ? (
             <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>
-          ) : mainTab === 'produtos' ? null : mainTab === 'pedidos' ? (
+          ) : mainTab === 'pedidos' ? (
             <Button onClick={() => pedidosRef.current?.novoPedido()}><Plus className="w-4 h-4" /> Novo pedido</Button>
-          ) : (
-            <Button onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}><Plus className="w-4 h-4" /> Novo pedido</Button>
-          )
+          ) : null
+          // Produto e Certificado têm a ação dentro da própria aba. O ramo que
+          // existia aqui no `else` abria o formulário de pedido LEGADO
+          // (`pedidos_compra`) a partir da aba Certificado — dois botões
+          // idênticos, "Novo pedido", criando registros em sistemas
+          // diferentes. É a navegação duplicada que o padrão proíbe.
         )}
       />
 
@@ -1097,226 +1724,509 @@ export default function GestaoCompras() {
         <div className="min-h-[60vh] flex flex-col justify-center">
           <OnboardingCompras
             onCadastrarFornecedor={() => { setEditingPessoa(null); setPessoaOpen(true); }}
-            onNovoPedido={() => { resetPedidoForm(); setPedidoOpen(true); }}
-            onEstoque={() => { setMainTab('estoque'); openNovoProduto(); }}
+            // Quem começa agora entra pelo sistema VIVO de pedidos (aba
+            // Pedidos, tabela `pedidos`), não pelo formulário legado de
+            // `pedidos_compra`, cujos registros nenhuma lista exibe.
+            onNovoPedido={() => { setPularOnboarding(true); setMainTab('pedidos'); setNovoPedidoAoEntrar(true); }}
+            onEstoque={() => { setPularOnboarding(true); setMainTab('estoque'); openNovoProduto(); }}
             onImportarNfe={() => { resetNfeDialog(); setNfeOpen(true); }}
           />
         </div>
       ) : (
-        <Tabs
-          value={mainTab}
-          onValueChange={(v) => {
-            setMainTab(v);
-            // Rede de segurança: mesmo que alguma alteração escape do aviso,
-            // entrar na aba de Estoque busca os produtos de novo.
-            if (v === 'estoque' || v === 'produtos') void loadAll();
-          }}
-        >
-          <TabsList className="mb-4">
-            <TabsTrigger value="pedidos"><ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" /> Pedidos</TabsTrigger>
-            <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-2" aria-hidden="true" /> Produtos</TabsTrigger>
-            <TabsTrigger value="fornecedores"><Users className="w-4 h-4 mr-2" aria-hidden="true" /> Fornecedores</TabsTrigger>
-            <TabsTrigger value="estoque"><Warehouse className="w-4 h-4 mr-2" aria-hidden="true" /> Estoque</TabsTrigger>
-            <TabsTrigger value="nfe"><FileText className="w-4 h-4 mr-2" aria-hidden="true" /> NF-e</TabsTrigger>
-            <TabsTrigger value="certificado"><ShieldCheck className="w-4 h-4 mr-2" aria-hidden="true" /> Certificado</TabsTrigger>
-          </TabsList>
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Princípio 3: a carga que falhou diz o que aconteceu e oferece
+              nova tentativa, em vez de deixar a tela parecendo vazia. */}
+          {erroCarga && (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-wrap items-center gap-3">
+                <span className="min-w-0 flex-1">Não foi possível carregar os dados de compras: {erroCarga}</span>
+                <Button size="sm" variant="outline" onClick={() => void loadAll()}>Tentar novamente</Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-          {/* ══ ABA PRODUTOS ══ */}
-          <TabsContent value="produtos">
-            <ProdutosOmie aoMudar={loadAll} />
-          </TabsContent>
+          {/* Abas sublinhadas do módulo Gestão. Os `value` são os mesmos de
+              sempre (pedidos|produtos|fornecedores|estoque|nfe|certificado) —
+              o que mudou é que agora eles moram em `?aba=`. */}
+          <AbasGestao
+            valor={mainTab}
+            aoMudar={(v) => {
+              setMainTab(v);
+              // Rede de segurança preservada: entrar em Estoque ou Produtos
+              // busca os produtos de novo.
+              if (v === 'estoque' || v === 'produtos') void loadAll();
+            }}
+            abas={[
+              { valor: 'pedidos', rotulo: 'Pedidos' },
+              { valor: 'produtos', rotulo: 'Produtos' },
+              { valor: 'fornecedores', rotulo: 'Fornecedores', contagem: pessoasFornecedores.length },
+              { valor: 'estoque', rotulo: 'Estoque', contagem: produtos.length },
+              { valor: 'nfe', rotulo: 'NF-e', contagem: nfes.length },
+              { valor: 'certificado', rotulo: 'Certificado' },
+            ]}
+          />
 
           {/* ══ ABA PEDIDOS ══ */}
-          <TabsContent value="pedidos">
-            <PedidosOmie ref={pedidosRef} />
-          </TabsContent>
+          {mainTab === 'pedidos' && <PedidosOmie ref={pedidosRef} />}
+
+          {/* ══ ABA PRODUTOS ══ */}
+          {mainTab === 'produtos' && <ProdutosOmie aoMudar={loadAll} />}
 
           {/* ══ ABA FORNECEDORES ══ */}
-          <TabsContent value="fornecedores" className="space-y-4">
-            <div className="relative">
-              <Label htmlFor="busca-fornecedor" className="sr-only">Buscar fornecedor</Label>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input id="busca-fornecedor" placeholder="Buscar fornecedor, CNPJ ou e-mail..." value={fornSearch} onChange={e => setFornSearch(e.target.value)} className="pl-9" />
-            </div>
-            {pessoasFornecedores.length === 0 ? (
-              <Card>
-                <EstadoVazio
-                  icone={<Users />}
-                  titulo="Nenhum fornecedor cadastrado"
-                  descricao="Cadastre os fornecedores com quem a empresa compra."
-                  acao={<Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="w-4 h-4" /> Novo fornecedor</Button>}
+          {mainTab === 'fornecedores' && (
+            <AreaComPainel
+              painel={painelFornecedor}
+              tituloPainel={selectedForn?.nome ?? 'Fornecedor'}
+              aoFechar={() => setSelectedForn(null)}
+            >
+              <div className="flex min-w-0 flex-col gap-4">
+                <BarraFiltros
+                  busca={fornSearch}
+                  aoBuscar={setFornSearch}
+                  placeholderBusca="Buscar fornecedor, CNPJ ou e-mail..."
+                  filtrosAplicados={fornSearch ? 1 : 0}
+                  aoLimpar={() => setFornSearch('')}
+                  acao={
+                    <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}>
+                      <Plus className="h-4 w-4" /> Novo fornecedor
+                    </Button>
+                  }
                 />
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {pessoasFornecedores
-                  .filter(f => !fornSearch || f.nome.toLowerCase().includes(fornSearch.toLowerCase()) || (f.documento ?? '').includes(fornSearch) || (f.email ?? '').toLowerCase().includes(fornSearch.toLowerCase()))
-                  .map(f => (
-                  <Card key={f.id} className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold">{f.nome}</span>
-                          {f.nome_fantasia && <span className="text-xs text-muted-foreground">({f.nome_fantasia})</span>}
-                          {f.tipo === 'ambos' && <Badge variant="info">Cliente e Fornecedor</Badge>}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                          {f.documento && <span>{f.documento}</span>}
-                          {f.email && <span>{f.email}</span>}
-                          {f.telefone && <span className="flex items-center gap-1"><Users className="w-3 h-3" aria-hidden="true" />{f.telefone}</span>}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" aria-label={`Editar ${f.nome}`} onClick={() => { setEditingPessoa(f); setPessoaOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" aria-label={`Excluir ${f.nome}`} onClick={() => deletePessoa.mutate({ id: f.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                <TabelaGestao
+                  descricao="Fornecedores cadastrados da empresa"
+                  itens={filtForn}
+                  chaveDoItem={(f) => f.id}
+                  aoSelecionar={(f) => setSelectedForn(f)}
+                  selecionado={(f) => selectedForn?.id === f.id}
+                  colunas={[
+                    {
+                      chave: 'nome', titulo: 'Fornecedor',
+                      render: (f) => (
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium text-foreground">{f.nome}</span>
+                          {f.nome_fantasia && <span className="g-meta truncate text-muted-foreground">{f.nome_fantasia}</span>}
+                        </span>
+                      ),
+                    },
+                    {
+                      chave: 'documento', titulo: 'Documento', prioridade: 'desktop',
+                      render: (f) => f.documento || <ValorIndisponivel razao="Não informado" />,
+                    },
+                    {
+                      chave: 'contato', titulo: 'Contato', prioridade: 'desktop',
+                      render: (f) => (
+                        <span className="flex min-w-0 flex-col">
+                          {f.email && <span className="truncate">{f.email}</span>}
+                          {f.telefone && <span className="g-meta text-muted-foreground">{f.telefone}</span>}
+                          {!f.email && !f.telefone && <ValorIndisponivel razao="Sem contato" />}
+                        </span>
+                      ),
+                    },
+                    {
+                      chave: 'situacao', titulo: 'Situação', largura: '11rem',
+                      render: (f) => (
+                        <span className="flex flex-wrap gap-1">
+                          <SeloSituacao tom={f.ativo ? 'ativo' : 'neutro'}>{f.ativo ? 'Ativo' : 'Inativo'}</SeloSituacao>
+                          {f.tipo === 'ambos' && <SeloSituacao tom="neutro">Também cliente</SeloSituacao>}
+                        </span>
+                      ),
+                    },
+                  ]}
+                  vazio={
+                    <EstadoVazio
+                      icone={<Users />}
+                      titulo={fornSearch ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor cadastrado'}
+                      descricao={fornSearch ? 'Ajuste a busca para ver outros cadastros.' : 'Cadastre os fornecedores com quem a empresa compra.'}
+                      acao={!fornSearch && <Button onClick={() => { setEditingPessoa(null); setPessoaOpen(true); }}><Plus className="h-4 w-4" /> Novo fornecedor</Button>}
+                    />
+                  }
+                  rodape={`${filtForn.length} de ${pessoasFornecedores.length} fornecedor(es)`}
+                />
               </div>
-            )}
-          </TabsContent>
+            </AreaComPainel>
+          )}
 
           {/* ══ ABA ESTOQUE ══ */}
-          <TabsContent value="estoque" className="space-y-4">
-            {/* Métricas */}
-            <LinhaKpis
-              itens={[
-                { rotulo: 'Produtos ativos', valor: String(produtos.filter(p => p.ativo).length), icone: Package },
-                { rotulo: 'Em alerta', valor: String(prodAlerta), icone: AlertCircle, tom: prodAlerta > 0 ? 'aviso' : 'neutro' },
-                { rotulo: 'Valor em estoque', valor: fmtCurrency(valorEstoque), icone: DollarSign, tom: 'ok' },
-              ]}
-            />
-
-            <div className="relative">
-              <Label htmlFor="busca-estoque" className="sr-only">Buscar produto</Label>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <Input id="busca-estoque" placeholder="Buscar produto, código ou categoria..." value={estoqSearch} onChange={e => setEstoqSearch(e.target.value)} className="pl-9" />
-            </div>
-
-            {filtProdutos.length === 0 ? (
-              <Card>
-                <EstadoVazio
-                  icone={<Warehouse />}
-                  titulo="Nenhum produto cadastrado"
-                  descricao="Cadastre os produtos e materiais que a empresa controla em estoque."
-                  acao={<Button onClick={openNovoProduto}><Plus className="w-4 h-4" /> Novo produto</Button>}
+          {mainTab === 'estoque' && (
+            <AreaComPainel
+              painel={painelProduto}
+              tituloPainel={selectedProduto?.descricao ?? 'Produto'}
+              aoFechar={() => setSelectedProduto(null)}
+            >
+              <div className="flex min-w-0 flex-col gap-4">
+                <FaixaIndicadores
+                  itens={[
+                    { rotulo: 'Produtos ativos', valor: produtos.filter(p => p.ativo).length, icone: Package },
+                    {
+                      rotulo: 'Abaixo do mínimo', valor: prodAlerta, icone: AlertCircle,
+                      tom: prodAlerta > 0 ? 'aviso' : 'neutro',
+                      aoClicar: () => setEstoqSituacao(estoqSituacao === 'alerta' ? 'todas' : 'alerta'),
+                      ativo: estoqSituacao === 'alerta',
+                    },
+                    {
+                      rotulo: 'Reservado',
+                      // `null` quando a apuração não veio — a faixa mostra "—"
+                      // com a razão, nunca 0.
+                      valor: reservas ? [...reservas.values()].reduce((s, v) => s + v, 0).toLocaleString('pt-BR') : null,
+                      razaoIndisponivel: 'Reserva não apurada',
+                      detalhe: 'Pedidos de contrato pendentes',
+                      icone: Boxes,
+                    },
+                    { rotulo: 'Valor em estoque', valor: fmtCurrency(valorEstoque), detalhe: 'Saldo físico × custo médio', icone: DollarSign, tom: 'ok' },
+                  ]}
                 />
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtProdutos.map(p => {
-                  const emAlerta = p.ativo && p.saldo_minimo > 0 && p.saldo_atual <= p.saldo_minimo;
-                  return (
-                    <Card key={p.id} className={`p-4 cursor-pointer hover:shadow-md transition-shadow ${!p.ativo ? 'opacity-60' : ''}`} onClick={() => setSelectedProduto(p)}>
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{p.descricao}</p>
-                          <div className="flex items-center gap-1 mt-1 flex-wrap">
-                            {p.codigo && <span className="text-xs text-muted-foreground">{p.codigo}</span>}
-                            {p.categoria && <Badge variant="info">{p.categoria}</Badge>}
-                            {!p.ativo && <Badge variant="muted">Inativo</Badge>}
-                          </div>
-                        </div>
-                        <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Editar ${p.descricao}`} onClick={() => { setEditingProduto(p); setProdutoForm({ codigo: p.codigo ?? '', descricao: p.descricao, unidade: p.unidade, categoria: p.categoria ?? '', saldo_minimo: String(p.saldo_minimo), preco_custo_medio: String(p.preco_custo_medio), ativo: p.ativo, ncm: p.ncm ?? '', cfop: p.cfop ?? '', cst_icms: p.cst_icms ?? '', csosn: p.csosn ?? '', cst_pis: p.cst_pis ?? '', cst_cofins: p.cst_cofins ?? '', p_icms: p.p_icms != null ? String(p.p_icms) : '', p_pis: p.p_pis != null ? String(p.p_pis) : '', p_cofins: p.p_cofins != null ? String(p.p_cofins) : '' }); setProdutoOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Excluir ${p.descricao}`} onClick={e => handleDeleteProduto(p.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                        </div>
-                      </div>
-                      <div className={`flex items-end justify-between gap-2 p-3 rounded-lg border ${emAlerta ? 'border-destructive-line bg-destructive-tint' : 'border-success-line bg-success-tint'}`}>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Saldo</p>
-                          <p className={`text-[2rem] leading-10 font-bold tabular-nums ${emAlerta ? 'text-destructive-ink' : 'text-success-ink'}`}>{p.saldo_atual.toLocaleString('pt-BR')}</p>
-                          <p className="text-xs text-muted-foreground">{p.unidade}</p>
-                        </div>
-                        <div className="text-right">
-                          {emAlerta && <div className="flex items-center justify-end gap-1 text-destructive-ink text-xs mb-1"><AlertCircle className="w-3 h-3" aria-hidden="true" />Estoque baixo</div>}
-                          <p className="text-xs text-muted-foreground">Mín: {p.saldo_minimo} {p.unidade}</p>
-                          {p.preco_custo_medio > 0 && <p className="text-xs text-muted-foreground tabular-nums">Custo: {fmtCurrency(p.preco_custo_medio)}/un</p>}
-                        </div>
-                      </div>
-                      {p.saldo_atual > 0 && p.preco_custo_medio > 0 && (
-                        <p className="text-xs text-muted-foreground text-right tabular-nums mt-1">Valor: {fmtCurrency(p.saldo_atual * p.preco_custo_medio)}</p>
-                      )}
-                    </Card>
-                  );
-                })}
+
+                <BarraFiltros
+                  busca={estoqSearch}
+                  aoBuscar={setEstoqSearch}
+                  placeholderBusca="Buscar produto, código ou categoria..."
+                  filtrosAplicados={filtrosEstoqueAplicados}
+                  aoLimpar={() => { setEstoqSearch(''); setEstoqSituacao('todas'); }}
+                  acao={<Button onClick={openNovoProduto}><Plus className="h-4 w-4" /> Novo produto</Button>}
+                >
+                  <Select value={estoqSituacao} onValueChange={setEstoqSituacao}>
+                    <SelectTrigger className="g-controle w-52" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as situações</SelectItem>
+                      <SelectItem value="alerta">Abaixo do mínimo</SelectItem>
+                      <SelectItem value="sem_saldo">Sem saldo</SelectItem>
+                      <SelectItem value="inativos">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </BarraFiltros>
+
+                {/* Falhou a apuração da reserva: a tela diz, com o erro do
+                    banco, em vez de mostrar zero nas duas colunas. */}
+                {reservasErro && (
+                  <AvisoDeContexto
+                    titulo="Reserva e disponível não apurados"
+                    acao={<Button size="sm" variant="outline" onClick={() => void loadReservas()}>Tentar novamente</Button>}
+                  >
+                    {`Não foi possível somar os pedidos de contrato pendentes: ${reservasErro}`}
+                  </AvisoDeContexto>
+                )}
+
+                <TabelaGestao
+                  descricao="Produtos em estoque com saldo físico, reserva e disponibilidade"
+                  itens={filtProdutos}
+                  chaveDoItem={(p) => p.id}
+                  aoSelecionar={(p) => { setSelectedProduto(p); setAbaProduto('movimentacoes'); }}
+                  selecionado={(p) => selectedProduto?.id === p.id}
+                  colunas={[
+                    {
+                      chave: 'produto', titulo: 'Produto',
+                      render: (p) => (
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium text-foreground">{p.descricao}</span>
+                          {p.categoria && <span className="g-meta truncate text-muted-foreground">{p.categoria}</span>}
+                        </span>
+                      ),
+                    },
+                    {
+                      chave: 'codigo', titulo: 'Código', prioridade: 'desktop', largura: '8rem',
+                      render: (p) => p.codigo || <ValorIndisponivel razao="Sem código" />,
+                    },
+                    {
+                      chave: 'unidade', titulo: 'Unidade', alinhamento: 'centro', prioridade: 'desktop', largura: '6rem',
+                      render: (p) => p.unidade,
+                    },
+                    {
+                      chave: 'fisico', titulo: 'Saldo físico', alinhamento: 'direita', largura: '8rem',
+                      tituloCurto: 'Físico',
+                      render: (p) => estoqueDoProduto(p).fisico.toLocaleString('pt-BR'),
+                    },
+                    {
+                      chave: 'reservado', titulo: 'Reservado', alinhamento: 'direita', prioridade: 'desktop', largura: '9rem',
+                      render: (p) => {
+                        const { reservado } = estoqueDoProduto(p);
+                        return reservado === null
+                          ? <ValorIndisponivel razao="Não apurado" />
+                          : reservado.toLocaleString('pt-BR');
+                      },
+                    },
+                    {
+                      chave: 'disponivel', titulo: 'Disponível', alinhamento: 'direita', largura: '9rem',
+                      render: (p) => {
+                        const { disponivel } = estoqueDoProduto(p);
+                        if (disponivel === null) return <ValorIndisponivel razao="Não apurado" />;
+                        return (
+                          <span className={disponivel < 0 ? 'font-semibold text-destructive-ink' : undefined}>
+                            {disponivel.toLocaleString('pt-BR')}
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      chave: 'situacao', titulo: 'Situação', largura: '12rem',
+                      render: (p) => {
+                        const s = situacaoDoProduto(p);
+                        return <SeloSituacao tom={s.tom} explicacao={s.explicacao}>{s.texto}</SeloSituacao>;
+                      },
+                    },
+                  ]}
+                  vazio={
+                    <EstadoVazio
+                      icone={<Warehouse />}
+                      titulo={filtrosEstoqueAplicados ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}
+                      descricao={filtrosEstoqueAplicados ? 'Ajuste a busca ou a situação para ver outros produtos.' : 'Cadastre os produtos e materiais que a empresa controla em estoque.'}
+                      acao={!filtrosEstoqueAplicados && <Button onClick={openNovoProduto}><Plus className="h-4 w-4" /> Novo produto</Button>}
+                    />
+                  }
+                  rodape={
+                    <>
+                      <span>{filtProdutos.length} de {produtos.length} produto(s)</span>
+                      {/* A origem das colunas derivadas fica declarada onde
+                          elas aparecem, não só no código. */}
+                      <span className="g-meta">
+                        Reservado = pedidos de contrato pendentes ou parciais · Disponível = físico − reservado
+                      </span>
+                    </>
+                  }
+                />
               </div>
-            )}
-          </TabsContent>
+            </AreaComPainel>
+          )}
 
           {/* ══ ABA NF-e ══ */}
-          <TabsContent value="nfe" className="space-y-4">
-            {nfes.length === 0 ? (
-              <Card>
-                <EstadoVazio
-                  icone={<FileText />}
-                  titulo="Nenhuma NF-e importada"
-                  descricao="Importe o XML ou o DANFE das notas recebidas para lançar o estoque."
-                  acao={<Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="w-4 h-4" /> Importar NF-e</Button>}
+          {mainTab === 'nfe' && (
+            <AreaComPainel
+              painel={painelNfe}
+              tituloPainel={selectedNfe ? `NF-e ${selectedNfe.numero}/${selectedNfe.serie}` : 'NF-e'}
+              aoFechar={() => setSelectedNfe(null)}
+            >
+              <div className="flex min-w-0 flex-col gap-4">
+                <FaixaIndicadores
+                  itens={[
+                    { rotulo: 'Notas no acervo', valor: nfes.length, icone: FileText },
+                    {
+                      rotulo: 'Entradas a conferir', valor: nfesPendentes, icone: PackagePlus,
+                      tom: nfesPendentes > 0 ? 'aviso' : 'neutro',
+                      aoClicar: () => setNfeSituacao(nfeSituacao === 'pendente' ? 'todas' : 'pendente'),
+                      ativo: nfeSituacao === 'pendente',
+                    },
+                    { rotulo: 'Valor das notas', valor: fmtCurrency(valorNfes), detalhe: 'Soma do acervo', icone: DollarSign },
+                  ]}
                 />
-              </Card>
-            ) : (
-              <Card className="overflow-x-auto p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-sm font-semibold">
-                      <th className="text-left py-3 px-4">Número / Série</th>
-                      <th className="text-left py-3 px-2">Emitente</th>
-                      <th className="text-right py-3 px-2">Valor</th>
-                      <th className="text-left py-3 px-2 hidden sm:table-cell">Pedido</th>
-                      <th className="text-left py-3 px-2 hidden sm:table-cell">Emissão</th>
-                      <th className="py-3 pl-2 pr-4 w-10"><span className="sr-only">Ações</span></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {nfes.map(n => {
-                      const ped = pedidos.find(p => p.id === n.pedido_id);
-                      return (
-                        <tr key={n.id} className="hover:bg-muted">
-                          <td className="py-3 px-4">
-                            <p className="font-medium">Nº {n.numero}</p>
-                            <p className="text-xs text-muted-foreground">Série {n.serie}</p>
-                          </td>
-                          <td className="py-3 px-2">
-                            <p className="font-medium truncate max-w-[180px]">{n.emitente_nome || '—'}</p>
-                            {n.emitente_cnpj && <p className="text-xs text-muted-foreground">{n.emitente_cnpj}</p>}
-                          </td>
-                          <td className="py-3 px-2 text-right tabular-nums font-medium">{fmtCurrency(n.valor_total)}</td>
-                          <td className="py-3 px-2 hidden sm:table-cell">
-                            {ped ? <Badge variant="info" truncate className="max-w-[180px]">{ped.observacoes || 'Pedido'}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
-                          </td>
-                          <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{fmtDate(n.data_emissao)}</td>
-                          <td className="py-3 pl-2 pr-4">
-                            <div className="flex items-center justify-end gap-1">
-                              {nfesComEstoque.has(n.id) ? (
-                                <Badge variant="success">Estoque lançado</Badge>
-                              ) : n.xml ? (
-                                <Button size="sm" variant="outline" className="whitespace-nowrap"
-                                  onClick={e => { e.stopPropagation(); abrirLancamentoEstoque(n); }}>
-                                  <PackagePlus className="w-4 h-4" /> Lançar estoque
-                                </Button>
-                              ) : null}
-                              <Button size="sm" variant="ghost" aria-label={`Excluir NF-e ${n.numero}`} onClick={e => handleDeleteNfe(n.id, e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </Card>
-            )}
-          </TabsContent>
+
+                <BarraFiltros
+                  busca={nfeSearch}
+                  aoBuscar={setNfeSearch}
+                  placeholderBusca="Buscar por número, emitente, CNPJ ou chave..."
+                  filtrosAplicados={filtrosNfeAplicados}
+                  aoLimpar={() => { setNfeSearch(''); setNfeDe(''); setNfeAte(''); setNfeSituacao('todas'); }}
+                  acao={
+                    <>
+                      {/* O pedido LEGADO (`pedidos_compra`) é o único alvo que a
+                          coluna nfe_entradas.pedido_id aceita — é por isso que
+                          este formulário continua acessível, e é a única porta
+                          que restou para ele. Ver o comentário do cabeçalho
+                          sobre os dois sistemas de pedido. */}
+                      <Button variant="outline" onClick={() => { resetPedidoForm(); setPedidoOpen(true); }}>
+                        <Truck className="h-4 w-4" /> Pedido ao fornecedor
+                      </Button>
+                      <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}>
+                        <Plus className="h-4 w-4" /> Importar NF-e
+                      </Button>
+                    </>
+                  }
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label htmlFor="nfe-de" className="g-meta text-muted-foreground">Emissão de</Label>
+                    <Input id="nfe-de" type="date" value={nfeDe} onChange={e => setNfeDe(e.target.value)} className="g-controle w-40" />
+                    <Label htmlFor="nfe-ate" className="g-meta text-muted-foreground">até</Label>
+                    <Input id="nfe-ate" type="date" value={nfeAte} onChange={e => setNfeAte(e.target.value)} className="g-controle w-40" />
+                  </div>
+                  <Select value={nfeSituacao} onValueChange={setNfeSituacao}>
+                    <SelectTrigger className="g-controle w-56" aria-label="Situação do estoque"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as situações</SelectItem>
+                      <SelectItem value="pendente">Entrada a conferir</SelectItem>
+                      <SelectItem value="lancada">Estoque lançado</SelectItem>
+                      <SelectItem value="sem_xml">Sem XML</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </BarraFiltros>
+
+                <TabelaGestao
+                  descricao="NF-e de entrada recebidas pela empresa"
+                  itens={filtNfes}
+                  chaveDoItem={(n) => n.id}
+                  aoSelecionar={(n) => { setSelectedNfe(n); setAbaNfe('resumo'); }}
+                  selecionado={(n) => selectedNfe?.id === n.id}
+                  colunas={[
+                    {
+                      chave: 'numero', titulo: 'Número / Série', largura: '10rem', tituloCurto: 'Nota',
+                      render: (n) => (
+                        <span className="flex flex-col">
+                          <span className="font-medium text-foreground">Nº {n.numero}</span>
+                          <span className="g-meta text-muted-foreground">Série {n.serie}</span>
+                        </span>
+                      ),
+                    },
+                    {
+                      chave: 'emitente', titulo: 'Emitente',
+                      render: (n) => (
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium text-foreground">{n.emitente_nome || 'Não informado'}</span>
+                          {n.emitente_cnpj && <span className="g-meta truncate text-muted-foreground">{n.emitente_cnpj}</span>}
+                        </span>
+                      ),
+                    },
+                    {
+                      chave: 'emissao', titulo: 'Emissão', prioridade: 'desktop', largura: '8rem',
+                      render: (n) => n.data_emissao ? fmtDate(n.data_emissao) : <ValorIndisponivel razao="Sem data" />,
+                    },
+                    {
+                      chave: 'valor', titulo: 'Valor', alinhamento: 'direita', largura: '9rem',
+                      render: (n) => fmtCurrency(Number(n.valor_total) || 0),
+                    },
+                    {
+                      chave: 'pedido', titulo: 'Pedido', prioridade: 'desktop', largura: '12rem',
+                      render: (n) => {
+                        const ped = pedidos.find(p => p.id === n.pedido_id);
+                        return ped
+                          ? <span className="truncate">{ped.observacoes || 'Pedido de compra'}</span>
+                          : <ValorIndisponivel razao="Sem vínculo" />;
+                      },
+                    },
+                    {
+                      chave: 'estoque', titulo: 'Situação do estoque', largura: '13rem', tituloCurto: 'Estoque',
+                      render: (n) => {
+                        const s = situacaoEstoqueDaNfe(n);
+                        return <SeloSituacao tom={s.tom} explicacao={s.explicacao}>{s.texto}</SeloSituacao>;
+                      },
+                    },
+                    {
+                      chave: 'acoes', titulo: <span className="sr-only">Ações</span>, alinhamento: 'direita',
+                      prioridade: 'desktop', largura: '11rem',
+                      render: (n) => (
+                        <span className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                          {/* O Set nfesComEstoque continua decidindo: nota já
+                              lançada não oferece o botão de novo. */}
+                          {!nfesComEstoque.has(n.id) && n.xml && (
+                            <Button size="sm" variant="outline" className="whitespace-nowrap"
+                              onClick={() => abrirLancamentoEstoque(n)}>
+                              <PackagePlus className="h-4 w-4" /> Conferir
+                            </Button>
+                          )}
+                          {n.xml && (
+                            <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Baixar XML da NF-e ${n.numero}`}
+                              onClick={() => baixarXml(n)}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="w-9 px-0" aria-label={`Excluir NF-e ${n.numero}`}
+                            onClick={() => setNfeAExcluir(n)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </span>
+                      ),
+                    },
+                  ]}
+                  vazio={
+                    <EstadoVazio
+                      icone={<FileText />}
+                      titulo={filtrosNfeAplicados ? 'Nenhuma NF-e encontrada' : 'Nenhuma NF-e importada'}
+                      descricao={filtrosNfeAplicados ? 'Ajuste os filtros para ver outras notas.' : 'Importe o XML ou o DANFE das notas recebidas para lançar o estoque.'}
+                      acao={!filtrosNfeAplicados && <Button onClick={() => { resetNfeDialog(); setNfeOpen(true); }}><Plus className="h-4 w-4" /> Importar NF-e</Button>}
+                    />
+                  }
+                  rodape={`${filtNfes.length} de ${nfes.length} nota(s)`}
+                />
+              </div>
+            </AreaComPainel>
+          )}
 
           {/* ══ ABA CERTIFICADO ══ */}
-          <TabsContent value="certificado" className="space-y-4">
-            <CertificadoDigital />
-          </TabsContent>
-        </Tabs>
+          {mainTab === 'certificado' && <CertificadoDigital />}
+        </div>
       )}
 
       {/* ══ DIALOGS GLOBAIS ══════════════════════════════════════ */}
+
+      {/* Confirmações — nenhuma exclusão desta tela apaga no primeiro clique. */}
+      {confirmarExclusaoPedido}
+
+      <AlertDialog open={!!fornAExcluir} onOpenChange={o => { if (!o) setFornAExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este fornecedor?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p className="font-medium text-foreground">{fornAExcluir?.nome}</p>
+                <p>
+                  O cadastro é compartilhado com o Financeiro: some das duas telas. Lançamentos e
+                  notas já registrados permanecem, mas ficam sem o cadastro por trás.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => fornAExcluir && handleDeleteFornecedor(fornAExcluir)}
+            >
+              Excluir fornecedor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!produtoAExcluir} onOpenChange={o => { if (!o) setProdutoAExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este produto?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p className="font-medium text-foreground">{produtoAExcluir?.descricao}</p>
+                <p>
+                  Produto com movimentações de estoque não sai — o banco recusa, e a tela mostra o
+                  motivo. Sem movimentações, a exclusão é definitiva.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => produtoAExcluir && handleDeleteProduto(produtoAExcluir.id)}
+            >
+              Excluir produto
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!nfeAExcluir} onOpenChange={o => { if (!o) setNfeAExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir esta NF-e do acervo?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p className="font-medium text-foreground">
+                  Nº {nfeAExcluir?.numero} · Série {nfeAExcluir?.serie} — {nfeAExcluir?.emitente_nome || 'emitente não informado'}
+                </p>
+                <p>
+                  O XML guardado vai junto. As movimentações de estoque que vieram dela
+                  permanecem — o saldo não muda. Não há como desfazer.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => nfeAExcluir && handleDeleteNfe(nfeAExcluir.id)}
+            >
+              Excluir NF-e
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       {/* Dialog: Novo Pedido */}
       <Dialog open={pedidoOpen} onOpenChange={o => { setPedidoOpen(o); if (!o) resetPedidoForm(); }}>

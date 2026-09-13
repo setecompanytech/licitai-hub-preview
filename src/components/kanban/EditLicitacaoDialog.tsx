@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import AureliaEditalPanel from '@/components/aurelia/AureliaEditalPanel';
+import { STATUS_PROCESSO } from '@/lib/licitacao/status';
 
 type LicitacaoKanban = {
   id: string;
@@ -41,10 +42,13 @@ type LicitacaoKanban = {
 // 'Arquivada' saiu da lista: arquivar não é mais um status, é o botão
 // Arquivar/Restaurar no rodapé do diálogo. Deixá-la aqui permitiria gravar
 // status='Arquivada' e voltar a apagar o desfecho.
-const STATUS_OPTIONS = [
-  'Monitorando', 'Em Análise', 'Proposta Enviada', 'Em Disputa',
-  'Vencida', 'Homologada', 'Perdida',
-];
+//
+// A lista DERIVA de `STATUS_PROCESSO` em vez de repetir os sete literais: era a
+// última cópia do vocabulário dentro do módulo Kanban, e o princípio 1 do
+// CLAUDE.md existe porque três cópias divergentes já mantiveram o arquivamento
+// automático quebrado por meses. Status novo no vocabulário aparece aqui
+// sozinho; a única exceção continua explícita e comentada.
+const STATUS_OPTIONS: string[] = STATUS_PROCESSO.filter((s) => s !== 'Arquivada');
 
 const UFS = [
   'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',

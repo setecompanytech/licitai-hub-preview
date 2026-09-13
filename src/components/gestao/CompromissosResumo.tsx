@@ -258,7 +258,7 @@ export default function CompromissosResumo() {
           o caminho. */}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="g-corpo text-muted-foreground">
           {verArquivados
             ? `${arquivados.length} compromisso(s) arquivado(s)`
             : `${visiveis.length} compromissos ativos — exibindo prazos críticos primeiro`}
@@ -368,12 +368,12 @@ export default function CompromissosResumo() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm font-semibold line-clamp-2">{identidade.rotulo}</p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{p.objeto}</p>
+                <p className="g-corpo font-semibold line-clamp-2">{identidade.rotulo}</p>
+                <p className="g-meta text-muted-foreground line-clamp-2">{p.objeto}</p>
                 <div className="mt-auto flex min-w-0 items-end justify-between gap-1 pt-1">
                   <div className="min-w-0">
-                    <p className="truncate text-xs text-muted-foreground">{p.orgao}</p>
-                    <p className="text-sm font-medium text-foreground tabular-nums">{fmtCurrency(p.valor_estimado)}</p>
+                    <p className="truncate g-meta text-muted-foreground">{p.orgao}</p>
+                    <p className="g-corpo font-medium text-foreground tabular-nums">{fmtCurrency(p.valor_estimado)}</p>
                   </div>
                   <Button
                     type="button"
@@ -421,7 +421,7 @@ export default function CompromissosResumo() {
                     <ListChecks className="h-3 w-3" aria-hidden="true" />{p.status}
                   </Badge>
                   <span
-                    className="cursor-help text-sm font-semibold"
+                    className="cursor-help g-corpo font-semibold"
                     title={identidade.reescrito ? `Como o portal publica: ${identidade.bruto}` : undefined}
                   >
                     {identidade.rotulo}
@@ -441,8 +441,8 @@ export default function CompromissosResumo() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm font-medium line-clamp-1">{p.objeto}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <p className="g-corpo font-medium line-clamp-1">{p.objeto}</p>
+                <div className="g-meta mt-2 flex flex-wrap items-center gap-3 text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Building2 className="h-4 w-4" aria-hidden="true" />{p.orgao}
                   </span>

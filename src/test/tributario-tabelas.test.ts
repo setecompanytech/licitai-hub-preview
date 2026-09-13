@@ -151,7 +151,14 @@ const COPIAS_ANEXO_I: { arquivo: string; constante: string; chave?: string }[] =
   { arquivo: 'src/data/simples-nacional-anexos.ts', constante: 'ANEXO_I', chave: 'faixas' },
   { arquivo: 'src/lib/financeiro/simples-nacional-2026.ts', constante: 'ANEXO_I' },
   { arquivo: 'src/components/configuracoes/ApuracaoRegimeTributario.tsx', constante: 'SIMPLES_FAIXAS' },
-  { arquivo: 'src/components/contratos/ContratoCustos.tsx', constante: 'SIMPLES_FAIXAS' },
+  // Eram 5. `ContratoCustos.tsx` saiu em 13/09/2026 junto com o componente:
+  // ele tinha ZERO imports no repo — a tela de custos do contrato foi
+  // reimplementada dentro do ContratoDashboard — e a única coisa que o
+  // mantinha citado aqui era a própria cópia da tabela. Apagar um sítio de
+  // cópia é a direção que este arquivo defende ("a saída certa NÃO é
+  // acrescentá-lo à lista — é importar a tabela canônica"); mover a constante
+  // para um módulo de dados teria CRIADO uma cópia nova para um consumidor que
+  // não existe, já que a tabela canônica vive em src/data/simples-nacional-anexos.ts.
   { arquivo: 'src/components/proposta/SimplesNacionalCalculadora.tsx', constante: 'FAIXAS_ANEXO_I' },
 ];
 
@@ -256,7 +263,7 @@ describe('cópias da tabela do Anexo I', () => {
     expect(sitiosComTabelaDoAnexoI()).toEqual(COPIAS_ANEXO_I.map((c) => c.arquivo).sort());
   });
 
-  it('as 6 são idênticas entre si — consolidar não muda número em produção', () => {
+  it('as cópias são idênticas entre si — consolidar não muda número em produção', () => {
     // Registrado porque é a licença para a fase de consolidação: unificar as 6
     // numa só é refatoração pura. Note que esta asserção sozinha teria poder ZERO
     // de detecção se todas carregassem o mesmo erro — por isso a autoridade está

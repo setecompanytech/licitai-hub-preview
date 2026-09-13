@@ -110,15 +110,39 @@ function protectTextSelection() {
   document.head.appendChild(style);
 }
 
-/** Sobrescreve copy para adicionar watermark */
-function copyWatermark() {
+/**
+ * Carimba a cópia — exceto onde o conteúdo é do cliente.
+ *
+ * O carimbo existe para proteger o que é NOSSO: texto do site, análise da
+ * Aurélia, conteúdo editorial. Ele estava sendo colado em toda cópia da
+ * aplicação, inclusive na prévia da proposta — e a proposta é do assinante.
+ * O efeito prático: quem selecionava a própria proposta e colava no campo do
+ * portal de compras entregava "© PRAEFECTUS — Conteúdo protegido" dentro da
+ * peça licitatória, revelando o fornecedor de software e sujando um documento
+ * que responde por regra de habilitação.
+ *
+ * A regra que o comando de 13/09 escreve — "o documento gerado usa a
+ * identidade da empresa proponente, não a marca PRAEFECTUS" — vale para o que
+ * sai da tela, não só para o PDF.
+ *
+ * Marque com `data-conteudo-do-cliente` qualquer região cujo texto pertença a
+ * quem assina: prévia de proposta, documento gerado, planilha de custos,
+ * declaração. Dentro dela a cópia sai limpa.
+ */
+export function copyWatermark() {
   document.addEventListener('copy', (e: ClipboardEvent) => {
-    const selection = window.getSelection()?.toString() || '';
-    if (selection && e.clipboardData) {
-      const watermarked = `${selection}\n\n© PRAEFECTUS — Conteúdo protegido. Reprodução não autorizada proibida.\nhttps://praefectus.com.br`;
-      e.clipboardData.setData('text/plain', watermarked);
-      e.preventDefault();
-    }
+    const selection = window.getSelection();
+    const texto = selection?.toString() || '';
+    if (!texto || !e.clipboardData) return;
+
+    // `anchorNode` costuma ser um nó de texto, que não tem `closest`.
+    const no = selection?.anchorNode;
+    const elemento = no?.nodeType === Node.ELEMENT_NODE ? (no as Element) : no?.parentElement;
+    if (elemento?.closest('[data-conteudo-do-cliente]')) return;
+
+    const watermarked = `${texto}\n\n© PRAEFECTUS — Conteúdo protegido. Reprodução não autorizada proibida.\nhttps://praefectus.com.br`;
+    e.clipboardData.setData('text/plain', watermarked);
+    e.preventDefault();
   });
 }
 

@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
+import { useTrilhaDaPagina } from './contexto-trilha';
 import { cn } from '@/lib/utils';
 
 /**
@@ -34,9 +35,14 @@ export default function TrilhaDoTopo({
   className?: string;
 }) {
   const { pathname } = useLocation();
+  // Trilha declarada pela própria página vence a derivada da rota: quem sabe
+  // que `/gestao-contratos?contrato=x` se chama "ATA 022/2024" é a tela, não o
+  // roteador. Sem declaração, a rota resolve.
+  const daPagina = useTrilhaDaPagina();
   // O primeiro degrau do registro é sempre "Painel"; na faixa ele é redundante
   // com a marca, que já leva ao painel e fica dois centímetros à esquerda.
-  const doRegistro = trilhaDaRota(pathname).slice(1);
+  const base = daPagina ?? trilhaDaRota(pathname);
+  const doRegistro = base[0]?.rotulo === 'Painel' ? base.slice(1) : base;
   const degraus = [...doRegistro, ...(extra ?? [])];
 
   if (degraus.length === 0) return null;

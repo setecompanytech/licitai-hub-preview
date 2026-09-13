@@ -36,8 +36,8 @@ O operador pode acionar a parada emergencial a qualquer momento, interrompendo i
 - Nível 2 (Semiautomático): Operador autoriza a estratégia previamente. Sistema executa dentro de limites estritos.
 - Nível 3 (Automação Controlada): Requer dupla autenticação, base contratual/técnica/jurídica e aceite expresso desta política.
 
-6. DUPLA AUTENTICAÇÃO (NÍVEL 3)
-O Nível 3 exige verificação por código enviado ao e-mail cadastrado antes de iniciar qualquer sessão automatizada.
+6. CONFIRMAÇÃO POR CÓDIGO (NÍVEL 3)
+O Nível 3 exige a digitação de um código de confirmação antes de iniciar qualquer sessão automatizada. ATENÇÃO: na versão atual esse código é gerado e conferido no próprio navegador, e NÃO é enviado por e-mail nem por SMS — ele confirma a intenção de quem está na tela, mas não comprova identidade e não substitui autenticação de dois fatores. Não conte com ele como barreira de segurança.
 
 7. REVOGAÇÃO
 O aceite pode ser revogado a qualquer momento, cessando imediatamente qualquer automação ativa.
@@ -71,13 +71,33 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
 
   const precisa2fa = nivel === 3;
 
+  /**
+   * ─── ISTO NÃO É 2FA, E A TELA PRECISA DIZER ISSO ──────────────────────────
+   *
+   * O código é sorteado AQUI, no navegador, guardado numa variável de estado
+   * desta mesma página e mostrado à mesma pessoa que vai digitá-lo. Não há
+   * segundo canal, não há segundo fator e não há nada que um atacante com a
+   * sessão aberta não veja — ele é, no máximo, uma confirmação de intenção,
+   * como digitar "AUTORIZO".
+   *
+   * A interface anunciava "Código de verificação enviado para <e-mail>", o que
+   * é falso: nenhum e-mail sai daqui. Quem lia isso acreditava ter uma trava
+   * que não existe — e o Nível 3 é justamente o que envia lance com dinheiro
+   * da empresa sem confirmação humana.
+   *
+   * O conserto de verdade (gerar e conferir o código no servidor, entregá-lo
+   * por outro canal) é trabalho de backend e está FORA do escopo desta leva.
+   * O que se faz aqui é parar de mentir sobre o que existe. Pendência
+   * registrada no relatório da reestruturação de 13/09/2026.
+   */
   const handleEnviar2fa = () => {
-    // Generate a simple 6-digit code and show it (in production, send via email)
     const code = String(Math.floor(100000 + Math.random() * 900000));
     setCodigoGerado(code);
     setCodigo2faEnviado(true);
-    toast.info(`Código de verificação enviado para ${user?.email}`, {
-      description: `Para fins de demonstração, o código é: ${code}`,
+    toast.warning('Código gerado nesta tela — não foi enviado por e-mail', {
+      description:
+        `Código: ${code}. Ele é sorteado e conferido no próprio navegador: confirma a ` +
+        'intenção de quem está aqui, mas não comprova identidade.',
       duration: 15000,
     });
   };
@@ -104,7 +124,10 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
     setSaving(true);
     try {
       const { data, error } = await supabase
-        .from('robo_aceite_termos' as any)
+        // `as never` (e não `as any`) é o padrão do repo para tabela que o
+        // `types.ts` gerado ainda não expõe — mantém a checagem ligada no
+        // resto da cadeia em vez de desligá-la.
+        .from('robo_aceite_termos' as never)
         .insert({
           user_id: user.id,
           nivel_automacao: nivel,
@@ -116,7 +139,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
           dupla_autenticacao_verificada: precisa2fa,
           ip_aceite: null,
           user_agent_aceite: navigator.userAgent,
-        })
+        } as never)
         .select('id')
         .single();
 
@@ -133,7 +156,7 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
       });
 
       toast.success('Termos aceitos com sucesso!');
-      onAceite((data as any).id);
+      onAceite((data as unknown as { id: string }).id);
       onOpenChange(false);
 
       // Reset
@@ -200,10 +223,16 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
             <div className="border border-destructive-line rounded-lg p-4 bg-destructive-tint space-y-3">
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4 text-destructive-ink" aria-hidden="true" />
-                <span className="text-sm font-semibold text-destructive-ink">Dupla Autenticação Obrigatória</span>
+                <span className="text-sm font-semibold text-destructive-ink">
+                  Confirmação por código (não é autenticação de dois fatores)
+                </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                O Nível 3 exige verificação adicional. Um código será enviado ao e-mail {user?.email}.
+                O Nível 3 pede a digitação de um código antes de prosseguir. Na versão atual
+                esse código é <strong className="text-foreground">gerado e conferido neste
+                navegador</strong> — nada é enviado para {user?.email} nem para nenhum outro
+                canal. Ele registra que você confirmou aqui; não comprova identidade e não
+                substitui autenticação de dois fatores.
               </p>
               <div className="flex flex-wrap items-end gap-2">
                 <Button
@@ -212,11 +241,11 @@ export default function AceiteTermosDialog({ open, onOpenChange, nivel, sessaoId
                   onClick={handleEnviar2fa}
                   disabled={codigo2faEnviado}
                 >
-                  {codigo2faEnviado ? 'Código enviado ✓' : 'Enviar código'}
+                  {codigo2faEnviado ? 'Código gerado ✓' : 'Gerar código'}
                 </Button>
                 {codigo2faEnviado && (
                   <div>
-                    <Label htmlFor="aceite-codigo-2fa" className="mb-1 block">Código recebido</Label>
+                    <Label htmlFor="aceite-codigo-2fa" className="mb-1 block">Código exibido no aviso</Label>
                     <Input
                       id="aceite-codigo-2fa"
                       value={codigo2fa}

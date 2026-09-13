@@ -27,6 +27,13 @@ import { extractContractDataFromFile, motivoDaUltimaFalha } from './utils/extrac
 import { validateExtractedContract, buildParentUpdates } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
 import { createLogger } from '@/services/logger';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AbasGestao from '@/components/gestao/AbasGestao';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
+import AreaComPainel from '@/components/gestao/AreaComPainel';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
+import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
 
 const logger = createLogger('ContratoArquivos');
 
@@ -227,6 +234,17 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   const [arquivos, setArquivos] = useState<any[]>([]);
   const [aditivos, setAditivos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  /**
+   * Subaba: documentos, termos aditivos e o diário de auditoria.
+   *
+   * Os três viviam na mesma rolagem, nesta ordem: diário no topo, arquivos no
+   * meio, aditivos no fim. Quem vinha conferir um termo passava por tudo.
+   */
+  const [subAba, setSubAba] = useState<'arquivos' | 'aditivos' | 'auditoria'>('arquivos');
+  /** Busca local sobre os documentos já carregados — nenhuma consulta nova. */
+  const [buscaArquivo, setBuscaArquivo] = useState('');
+  /** Termo aberto no painel lateral. */
+  const [aditivoSelecionado, setAditivoSelecionado] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [editDialog, setEditDialog] = useState<{ open: boolean; arquivo: any | null }>({ open: false, arquivo: null });
   const [editFile, setEditFile] = useState<File | null>(null);
@@ -1325,214 +1343,379 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
-  return (
-    <div className="space-y-4">
-      <ContratoIaAuditoriaPanel contratoId={contratoId} />
-      {/* Upload + Aditivo unified area */}
-      <Card className="p-4 space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-          <div className="flex-1">
-            <Label className="text-xs font-semibold mb-1 block">Registro de Documento / Aditivo</Label>
-            <Select value={uploadTipo} onValueChange={(v) => { setUploadTipo(v); setPendingFile(null); setAditivoForm(emptyAditivoForm); }}>
-              <SelectTrigger className="w-full sm:w-[260px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(tiposDisponiveis).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* A consequência, depois da escolha — que é quando se quer saber o
-                que vai acontecer. No rótulo ela produzia linhas longas demais
-                para o menu, e ninguém lê um menu até o fim. */}
-            {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo) && (
-              <p className="text-xs text-muted-foreground mt-1 max-w-[26rem]">
-                {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo)}
-              </p>
+  /** Abre um documento do contrato pelo id — é o que a Auditoria pede emprestado. */
+  const verDocumentoPorId = (arquivoId: string) => {
+    const arq = arquivos.find((f: any) => f.id === arquivoId);
+    if (!arq) {
+      toast.error('O documento não está mais anexado a este contrato.');
+      return;
+    }
+    handleVisualizar(arq);
+  };
+
+  // ── Busca local dos documentos ───────────────────────────────────────────
+  // Filtra o que já está carregado. Contrato com dois anos de vida acumula
+  // dezenas de anexos, e achar "3º termo" rolando cartões empilhados era a
+  // razão de a aba nunca caber numa tela.
+  const termoArquivo = buscaArquivo.trim().toLowerCase();
+  const arquivosVisiveis = termoArquivo
+    ? arquivos.filter((a: any) =>
+        (a.nome_arquivo ?? '').toLowerCase().includes(termoArquivo)
+        || (a.descricao ?? '').toLowerCase().includes(termoArquivo)
+        || (TIPOS_ARQUIVO[a.tipo]?.label ?? a.tipo ?? '').toLowerCase().includes(termoArquivo))
+    : arquivos;
+
+  const aditivoAberto = aditivos.find((a: any) => a.id === aditivoSelecionado) ?? null;
+
+  /**
+   * A área de registro — seletor de tipo, envio do arquivo e, quando o tipo é
+   * de aditivo, o formulário do termo.
+   *
+   * Desenhada uma vez e usada nas subabas Arquivos e Aditivos, porque ela é
+   * literalmente as duas coisas ("Registro de Documento / Aditivo"): quem está
+   * na aba de aditivos precisa poder registrar um sem voltar. Só uma das
+   * subabas fica montada por vez, e o estado do formulário mora aqui no
+   * componente — trocar de subaba no meio do preenchimento não perde nada.
+   */
+  const areaDeRegistro = (
+    <Card className="g-cartao p-4 space-y-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+        <div className="flex-1">
+          <Label className="g-meta font-semibold mb-1 block">Registro de Documento / Aditivo</Label>
+          <Select value={uploadTipo} onValueChange={(v) => { setUploadTipo(v); setPendingFile(null); setAditivoForm(emptyAditivoForm); }}>
+            <SelectTrigger className="w-full sm:w-[260px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(tiposDisponiveis).map(([key, { label }]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* A consequência, depois da escolha — que é quando se quer saber o
+              que vai acontecer. No rótulo ela produzia linhas longas demais
+              para o menu, e ninguém lê um menu até o fim. */}
+          {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo) && (
+            <p className="g-meta text-muted-foreground mt-1 max-w-[26rem]">
+              {efeitoNoLimite(TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo)}
+            </p>
+          )}
+          {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
+            <p className="g-meta text-warning-ink mt-1 flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" />
+              Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
+            </p>
+          )}
+          {/* Cada instituto da ATA carrega a própria regra — o seletor diz qual. */}
+          {uploadTipo === 'ata_aditivo_adesao' && (
+            <p className="g-meta text-foreground mt-1">
+              Somadas, as adesões não podem exceder o dobro do quantitativo registrado
+              (Decreto 11.462/2023, art. 32, §4º) — o sistema confere ao gravar.
+            </p>
+          )}
+          {uploadTipo === 'ata_aditivo_prazo' && (
+            <p className="g-meta text-muted-foreground mt-1">
+              A ARP vale 1 ano, prorrogável por igual período — 24 meses no total (art. 84).
+            </p>
+          )}
+          {uploadTipo === 'contrato_derivado' && (
+            <p className="g-meta text-muted-foreground mt-1">
+              O arquivo fica guardado aqui; para saldo, itens e pedidos, registre o contrato
+              na aba <strong>Contratos derivados</strong>, vinculado a esta ATA.
+            </p>
+          )}
+        </div>
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            size="sm"
+            className="g-controle"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+            Enviar Arquivo
+          </Button>
+        </div>
+      </div>
+
+      {/* Aditivo detail fields - shown when aditivo type selected */}
+      {showAditivoFields && (
+        <div className="border rounded-[var(--g-raio)] p-4 space-y-4 bg-muted/30">
+          <p className="g-meta font-semibold text-muted-foreground">Dados do Aditivo {pendingFile && <Badge variant="outline" className="ml-2 g-meta">Arquivo: {pendingFile.name}</Badge>}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="g-meta">Nº/Identificação</Label>
+              <Input value={aditivoForm.numero_aditivo} onChange={(e) => setAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
+            </div>
+            <div>
+              <Label className="g-meta">Data Assinatura</Label>
+              <Input type="date" value={aditivoForm.data_assinatura} onChange={(e) => setAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
+            </div>
+
+            {showValueFields(uploadTipo) && (
+              <>
+                {/* Calculator for reequilíbrio types */}
+                {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
+                  <div className="sm:col-span-2 rounded-[var(--g-raio)] border border-warning-line bg-warning-tint p-3 space-y-2">
+                    <p className="g-meta font-semibold text-warning-ink flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
+                    </p>
+                    {precificacaoMargem !== null && (
+                      <p className="g-meta text-warning-ink">
+                        Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="g-meta text-muted-foreground">Custo atual (R$/un)</Label>
+                        <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
+                      </div>
+                      <div>
+                        <Label className="g-meta text-muted-foreground">Novo custo (R$/un)</Label>
+                        <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
+                      </div>
+                    </div>
+                    {calcCustoAtual && calcCustoNovo && (() => {
+                      const margem = precificacaoMargem ?? 0;
+                      const markup = 1 + margem / 100;
+                      const precoAtual = (parseFloat(calcCustoAtual) || 0) * markup;
+                      const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
+                      const diferenca = precoNovo - precoAtual;
+                      return (
+                        <div className="flex items-center gap-3 g-meta flex-wrap">
+                          <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
+                          <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
+                          <span className={diferenca >= 0 ? 'text-success-ink font-semibold' : 'text-destructive-ink font-semibold'}>
+                            Diferença unitária: {diferenca >= 0 ? '+' : ''}{fmt(diferenca)}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="g-meta h-6 px-2 border-border text-primary"
+                            onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
+                          >
+                            Aplicar
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                <div>
+                  <Label className="g-meta">Valor Acréscimo (R$)</Label>
+                  <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
+                </div>
+                <div>
+                  <Label className="g-meta">Valor Supressão (R$)</Label>
+                  <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
+                </div>
+              </>
             )}
-            {TIPOS_ARQUIVO[uploadTipo]?.semLimite && (
-              <p className="text-xs text-warning-ink mt-1 flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" />
-                Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
-              </p>
+
+            {showQtyFields(uploadTipo) && (
+              <>
+                <div>
+                  <Label className="g-meta">Qtde Acréscimo</Label>
+                  <Input type="number" step="1" value={aditivoForm.quantidade_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
+                </div>
+                <div>
+                  <Label className="g-meta">Qtde Supressão</Label>
+                  <Input type="number" step="1" value={aditivoForm.quantidade_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
+                </div>
+              </>
             )}
-            {/* Cada instituto da ATA carrega a própria regra — o seletor diz qual. */}
-            {uploadTipo === 'ata_aditivo_adesao' && (
-              <p className="text-xs text-foreground mt-1">
-                Somadas, as adesões não podem exceder o dobro do quantitativo registrado
-                (Decreto 11.462/2023, art. 32, §4º) — o sistema confere ao gravar.
-              </p>
+
+            {(showDateField(uploadTipo) || isAditivoType(uploadTipo)) && (
+              <div>
+                <Label className="g-meta">Nova Data Fim (se prorrogação)</Label>
+                <Input type="date" value={aditivoForm.nova_data_fim} onChange={(e) => setAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
+              </div>
             )}
-            {uploadTipo === 'ata_aditivo_prazo' && (
-              <p className="text-xs text-muted-foreground mt-1">
-                A ARP vale 1 ano, prorrogável por igual período — 24 meses no total (art. 84).
-              </p>
-            )}
-            {uploadTipo === 'contrato_derivado' && (
-              <p className="text-xs text-muted-foreground mt-1">
-                O arquivo fica guardado aqui; para saldo, itens e pedidos, registre o contrato
-                na aba <strong>Contratos derivados</strong>, vinculado a esta ATA.
-              </p>
-            )}
+
+            <div className="sm:col-span-2">
+              <Label className="g-meta">Justificativa / Fundamentação</Label>
+              <Textarea value={aditivoForm.justificativa} onChange={(e) => setAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="g-meta">Observações</Label>
+              <Textarea value={aditivoForm.observacoes} onChange={(e) => setAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+            </div>
           </div>
-          <div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={handleFileSelected}
-            />
-            <Button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              size="sm"
-            >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-              Enviar Arquivo
+
+          {/* Live preview */}
+          {(showValueFields(uploadTipo) || showQtyFields(uploadTipo)) && (
+            <Card className="p-3 bg-muted/50">
+              <p className="g-meta text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+              <div className="flex flex-wrap gap-4 g-meta">
+                {showValueFields(uploadTipo) && (
+                  <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                    Saldo Valor: {fmt((parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0))}
+                  </span>
+                )}
+                {showQtyFields(uploadTipo) && (
+                  <span className={`font-semibold ${(parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                    Saldo Qtde: {fmtQty((parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0))}
+                  </span>
+                )}
+              </div>
+            </Card>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="g-controle" onClick={() => { setShowAditivoFields(false); setPendingFile(null); setAditivoForm(emptyAditivoForm); setUploadTipo('contrato_original'); }}>
+              Cancelar
+            </Button>
+            <Button size="sm" className="g-controle" onClick={handleConfirmAditivo} disabled={uploading}>
+              {uploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {pendingFile ? 'Enviar e Registrar Aditivo' : 'Registrar Aditivo (sem arquivo)'}
             </Button>
           </div>
         </div>
+      )}
+    </Card>
+  );
 
-        {/* Aditivo detail fields - shown when aditivo type selected */}
-        {showAditivoFields && (
-          <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-            <p className="text-xs font-semibold text-muted-foreground">Dados do Aditivo {pendingFile && <Badge variant="outline" className="ml-2 text-xs">Arquivo: {pendingFile.name}</Badge>}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Nº/Identificação</Label>
-                <Input value={aditivoForm.numero_aditivo} onChange={(e) => setAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
-              </div>
-              <div>
-                <Label className="text-xs">Data Assinatura</Label>
-                <Input type="date" value={aditivoForm.data_assinatura} onChange={(e) => setAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
-              </div>
+  /** O painel do termo aditivo selecionado — o cartão de antes, inteiro. */
+  const painelDoAditivo = aditivoAberto ? (() => {
+    const a = aditivoAberto as any;
+    const Icon = ADITIVO_ICON[a.tipo] || FilePlus2;
+    const tipoLabel = { valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Quantidade e Valor', prazo: 'Prazo', prazo_valor: 'Prazo e Valor', prazo_quantidade: 'Prazo e Quantidade', escopo: 'Escopo' }[a.tipo as string] || a.tipo;
+    const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
+    const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
+    const arq = arquivos.find((f: any) => f.id === a.arquivo_id);
+    return (
+      <div className="flex flex-col gap-4">
+        <BlocoDoPainel
+          titulo={
+            <span className="inline-flex items-center gap-2">
+              <span className="rounded-[var(--g-raio)] bg-muted p-1.5"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+              {a.numero_aditivo}
+            </span>
+          }
+          acao={<Badge variant="outline" className="g-meta">{tipoLabel}</Badge>}
+        >
+          <ListaDeCampos
+            campos={[
+              { rotulo: 'Acréscimo (R$)', numerico: true, valor: fmt(a.valor_acrescimo || 0) },
+              { rotulo: 'Supressão (R$)', numerico: true, valor: fmt(a.valor_supressao || 0) },
+              {
+                rotulo: 'Saldo de valor',
+                numerico: true,
+                valor: <span className={saldoValor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}>{fmt(saldoValor)}</span>,
+              },
+              { rotulo: 'Acréscimo (qtde)', numerico: true, valor: `+${fmtQty(a.quantidade_acrescimo || 0)}` },
+              { rotulo: 'Supressão (qtde)', numerico: true, valor: `-${fmtQty(a.quantidade_supressao || 0)}` },
+              {
+                rotulo: 'Saldo de quantidade',
+                numerico: true,
+                valor: <span className={saldoQtyItem >= 0 ? 'text-success-ink' : 'text-destructive-ink'}>{fmtQty(saldoQtyItem)}</span>,
+              },
+              {
+                rotulo: 'Nova vigência',
+                valor: a.nova_data_fim
+                  ? new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')
+                  : <ValorIndisponivel razao="Não prorroga" />,
+              },
+              {
+                rotulo: 'Assinatura',
+                valor: (a.data_assinatura || a.data_aditivo)
+                  ? new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')
+                  : <ValorIndisponivel razao="Não informada" />,
+              },
+            ]}
+          />
+        </BlocoDoPainel>
 
-              {showValueFields(uploadTipo) && (
-                <>
-                  {/* Calculator for reequilíbrio types */}
-                  {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
-                    <div className="sm:col-span-2 rounded-lg border border-warning-line bg-warning-tint p-3 space-y-2">
-                      <p className="text-xs font-semibold text-warning-ink flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3" /> Calculadora de Reequilíbrio
-                      </p>
-                      {precificacaoMargem !== null && (
-                        <p className="text-xs text-warning-ink">
-                          Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
-                        </p>
-                      )}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Custo atual (R$/un)</Label>
-                          <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Novo custo (R$/un)</Label>
-                          <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
-                        </div>
-                      </div>
-                      {calcCustoAtual && calcCustoNovo && (() => {
-                        const margem = precificacaoMargem ?? 0;
-                        const markup = 1 + margem / 100;
-                        const precoAtual = (parseFloat(calcCustoAtual) || 0) * markup;
-                        const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
-                        const diferenca = precoNovo - precoAtual;
-                        return (
-                          <div className="flex items-center gap-3 text-xs flex-wrap">
-                            <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
-                            <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
-                            <span className={diferenca >= 0 ? 'text-success-ink font-semibold' : 'text-destructive-ink font-semibold'}>
-                              Diferença unitária: {diferenca >= 0 ? '+' : ''}{fmt(diferenca)}
-                            </span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-6 px-2 border-border text-primary"
-                              onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
-                            >
-                              Aplicar
-                            </Button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  <div>
-                    <Label className="text-xs">Valor Acréscimo (R$)</Label>
-                    <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Valor Supressão (R$)</Label>
-                    <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
-                  </div>
-                </>
-              )}
-
-              {showQtyFields(uploadTipo) && (
-                <>
-                  <div>
-                    <Label className="text-xs">Qtde Acréscimo</Label>
-                    <Input type="number" step="1" value={aditivoForm.quantidade_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Qtde Supressão</Label>
-                    <Input type="number" step="1" value={aditivoForm.quantidade_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
-                  </div>
-                </>
-              )}
-
-              {(showDateField(uploadTipo) || isAditivoType(uploadTipo)) && (
-                <div>
-                  <Label className="text-xs">Nova Data Fim (se prorrogação)</Label>
-                  <Input type="date" value={aditivoForm.nova_data_fim} onChange={(e) => setAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
-                </div>
-              )}
-
-              <div className="sm:col-span-2">
-                <Label className="text-xs">Justificativa / Fundamentação</Label>
-                <Textarea value={aditivoForm.justificativa} onChange={(e) => setAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs">Observações</Label>
-                <Textarea value={aditivoForm.observacoes} onChange={(e) => setAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
-              </div>
+        <BlocoDoPainel titulo="Justificativa / fundamentação">
+          {a.justificativa
+            ? <p className="g-corpo whitespace-pre-wrap leading-relaxed">{a.justificativa}</p>
+            : <ValorIndisponivel razao="Não registrada" />}
+          {a.observacoes && (
+            <div className="rounded-[var(--g-raio)] border bg-muted/30 p-3">
+              <p className="g-meta text-muted-foreground mb-1">Observações</p>
+              <p className="g-meta whitespace-pre-wrap">{a.observacoes}</p>
             </div>
+          )}
+        </BlocoDoPainel>
 
-            {/* Live preview */}
-            {(showValueFields(uploadTipo) || showQtyFields(uploadTipo)) && (
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
-                <div className="flex flex-wrap gap-4 text-xs">
-                  {showValueFields(uploadTipo) && (
-                    <span className={`font-semibold ${(parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
-                      Saldo Valor: {fmt((parseFloat(aditivoForm.valor_acrescimo) || 0) - (parseFloat(aditivoForm.valor_supressao) || 0))}
-                    </span>
-                  )}
-                  {showQtyFields(uploadTipo) && (
-                    <span className={`font-semibold ${(parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
-                      Saldo Qtde: {fmtQty((parseFloat(aditivoForm.quantidade_acrescimo) || 0) - (parseFloat(aditivoForm.quantidade_supressao) || 0))}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setShowAditivoFields(false); setPendingFile(null); setAditivoForm(emptyAditivoForm); setUploadTipo('contrato_original'); }}>
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={handleConfirmAditivo} disabled={uploading}>
-                {uploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                {pendingFile ? 'Enviar e Registrar Aditivo' : 'Registrar Aditivo (sem arquivo)'}
-              </Button>
+        <BlocoDoPainel titulo="Documento do termo">
+          {/* "Onde está o arquivo deste aditivo?" — a pergunta que o cartão não
+              respondia. O elo (arquivo_id) já existia no banco; faltava a tela
+              usá-lo. E o registro anterior ao elo automático (ou digitado sem
+              documento) resolve o vínculo aqui mesmo, em vez de virar beco. */}
+          {arq ? (
+            <button
+              type="button"
+              onClick={() => handleVisualizar(arq)}
+              title="Visualizar o documento deste aditivo"
+              className="g-corpo inline-flex items-center gap-1.5 text-primary hover:underline"
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span className="truncate">{arq.nome_arquivo}</span>
+              <Eye className="w-4 h-4 shrink-0" />
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <ValorIndisponivel razao="Sem arquivo vinculado" />
+              {arquivos.length > 0 && (
+                <Select onValueChange={async (fid) => {
+                  const { error } = await supabase.from('contrato_aditivos')
+                    .update({ arquivo_id: fid } as never).eq('id', a.id);
+                  if (error) { toast.error('Não foi possível vincular', { description: error.message }); return; }
+                  toast.success('Arquivo vinculado ao aditivo.');
+                  loadData();
+                }}>
+                  <SelectTrigger className="g-controle rounded-[var(--g-raio)]">
+                    <SelectValue placeholder="Vincular arquivo…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {arquivos.map((f: any) => (
+                      <SelectItem key={f.id} value={f.id} className="g-meta">
+                        {f.nome_arquivo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          </div>
-        )}
-      </Card>
+          )}
+        </BlocoDoPainel>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" className="g-controle text-destructive-ink"
+            onClick={() => { handleDeleteAditivo(a.id); setAditivoSelecionado(null); }}>
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir termo
+          </Button>
+        </div>
+      </div>
+    );
+  })() : null;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {/* ── Subabas ──────────────────────────────────────────────────────────
+          Documentos, termos aditivos e o diário de auditoria são três assuntos
+          que dividiam a mesma rolagem: o diário aberto no topo empurrava a
+          lista de arquivos para fora da tela, e os aditivos ficavam depois de
+          tudo. Separados, cada um começa no alto da sua subaba. */}
+      <AbasGestao
+        abas={[
+          { valor: 'arquivos', rotulo: 'Arquivos', contagem: arquivos.length },
+          { valor: 'aditivos', rotulo: 'Aditivos', contagem: aditivos.length },
+          { valor: 'auditoria', rotulo: 'Auditoria' },
+        ]}
+        valor={subAba}
+        aoMudar={(v) => setSubAba(v as 'arquivos' | 'aditivos' | 'auditoria')}
+      />
 
       {/* Hidden input for file replacement */}
       <input
@@ -1543,246 +1726,298 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         onChange={onReplaceFileSelected}
       />
 
-      {/* File list */}
-      {arquivos.length === 0 ? (
-        <Card className="p-8 text-center">
-          <File className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhum documento anexado a este contrato</p>
-          <p className="text-xs text-muted-foreground mt-1">Envie o contrato original, aditivos e outros documentos.</p>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {arquivos.map((arq) => {
-            const tipoConfig = TIPOS_ARQUIVO[arq.tipo] || TIPOS_ARQUIVO.outro;
-            return (
-              <Card key={arq.id} className="p-3 flex items-center gap-3">
-                <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium truncate">{arq.nome_arquivo}</span>
-                    <Badge className={`text-xs ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{formatBytes(arq.tamanho_bytes)}</span>
-                    <span>{new Date(arq.created_at).toLocaleDateString('pt-BR')}</span>
-                    {arq.descricao && <span className="truncate" title={arq.descricao}>{arq.descricao}</span>}
-                  </div>
-                  {/* Onde a leitura está. Sem isto o OCR de um documento
-                      escaneado — que leva minutos — é um spinner mudo, e a
-                      espera correta é indistinguível de travamento. */}
-                  {releituraDe(arq.id) && (
-                    <p className="text-xs text-primary mt-0.5 flex items-center gap-1.5">
-                      <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                      {releituraDe(arq.id)!.mensagem}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  {/* Reler o que já está guardado. Sem isto, alimentar o
-                      Dashboard com o que a leitura passou a extrair exigia
-                      APAGAR o documento e anexá-lo de novo — destruir o
-                      registro do dossiê para reprocessar um arquivo que nunca
-                      saiu do lugar. */}
-                  <Button size="icon" variant="ghost" className="h-8 w-8"
-                    onClick={() => handleReler(arq)} disabled={!!releituraDe(arq.id)}
-                    title="Reler com a IA e preencher os campos em branco do contrato">
-                    {releituraDe(arq.id)
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <Sparkles className="w-4 h-4" />}
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleVisualizar(arq)} title="Visualizar em tela">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDownload(arq)} title="Baixar">
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
-                    {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(arq)} title="Editar">
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(arq)} title="Excluir">
-                    <Trash2 className="w-4 h-4 text-destructive-ink" />
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+      {subAba === 'arquivos' && (
+        <>
+          {areaDeRegistro}
+
+          <BarraFiltros
+            busca={buscaArquivo}
+            aoBuscar={setBuscaArquivo}
+            placeholderBusca="Buscar por nome, tipo ou descrição do documento..."
+            filtrosAplicados={termoArquivo ? 1 : 0}
+            aoLimpar={() => setBuscaArquivo('')}
+          />
+
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : arquivos.length === 0 ? (
+            <Card className="g-cartao p-8 text-center">
+              <File className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="g-corpo text-muted-foreground">Nenhum documento anexado a este contrato</p>
+              <p className="g-meta text-muted-foreground mt-1">Envie o contrato original, aditivos e outros documentos.</p>
+            </Card>
+          ) : arquivosVisiveis.length === 0 ? (
+            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
+              Nenhum documento corresponde à busca “{buscaArquivo}”.
+            </Card>
+          ) : (
+            /* Os documentos eram cartões empilhados de ~90px cada: dez anexos
+               davam quase uma tela inteira só de molduras. Em tabela, a mesma
+               informação — nome, tipo, tamanho, data, descrição — cabe em
+               linhas de 44px, e as seis ações continuam todas na linha. */
+            <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="g-meta whitespace-nowrap">Documento</TableHead>
+                    <TableHead className="g-meta whitespace-nowrap">Tipo</TableHead>
+                    <TableHead className="g-meta text-right whitespace-nowrap">Tamanho</TableHead>
+                    <TableHead className="g-meta whitespace-nowrap">Data</TableHead>
+                    <TableHead className="g-meta sticky right-0 bg-card border-l border-border">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {arquivosVisiveis.map((arq: any) => {
+                    const tipoConfig = TIPOS_ARQUIVO[arq.tipo] || TIPOS_ARQUIVO.outro;
+                    return (
+                      <TableRow key={arq.id}>
+                        <TableCell className="g-corpo max-w-[24rem]">
+                          <div className="flex items-start gap-2">
+                            <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => handleVisualizar(arq)}
+                                title="Visualizar em tela"
+                                className="block w-full truncate text-left font-medium text-foreground hover:text-primary hover:underline"
+                              >
+                                {arq.nome_arquivo}
+                              </button>
+                              {arq.descricao && (
+                                <span className="g-meta block truncate text-muted-foreground" title={arq.descricao}>
+                                  {arq.descricao}
+                                </span>
+                              )}
+                              {/* Onde a leitura está. Sem isto o OCR de um documento
+                                  escaneado — que leva minutos — é um spinner mudo, e a
+                                  espera correta é indistinguível de travamento. */}
+                              {releituraDe(arq.id) && (
+                                <p className="g-meta text-primary mt-0.5 flex items-center gap-1.5">
+                                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                  {releituraDe(arq.id)!.mensagem}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="g-meta whitespace-nowrap">
+                          <Badge className={`g-meta ${tipoConfig.color}`}>{tipoConfig.label}</Badge>
+                        </TableCell>
+                        <TableCell className="g-meta text-right whitespace-nowrap tabular-nums text-muted-foreground">
+                          {formatBytes(arq.tamanho_bytes)}
+                        </TableCell>
+                        <TableCell className="g-meta whitespace-nowrap tabular-nums text-muted-foreground">
+                          {new Date(arq.created_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="sticky right-0 bg-card border-l border-border">
+                          <div className="flex gap-0.5">
+                            {/* Reler o que já está guardado. Sem isto, alimentar o
+                                Dashboard com o que a leitura passou a extrair exigia
+                                APAGAR o documento e anexá-lo de novo — destruir o
+                                registro do dossiê para reprocessar um arquivo que nunca
+                                saiu do lugar. */}
+                            <Button size="icon" variant="ghost" className="h-8 w-8"
+                              onClick={() => handleReler(arq)} disabled={!!releituraDe(arq.id)}
+                              title="Reler com a IA e preencher os campos em branco do contrato">
+                              {releituraDe(arq.id)
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Sparkles className="w-4 h-4" />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleVisualizar(arq)} title="Visualizar em tela">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDownload(arq)} title="Baixar">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleReplaceFile(arq)} disabled={replacingId === arq.id} title="Substituir arquivo + reextrair valores">
+                              {replacingId === arq.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(arq)} title="Editar">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(arq)} title="Excluir">
+                              <Trash2 className="w-4 h-4 text-destructive-ink" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Aditivos summary + list */}
-      {aditivos.length > 0 && (
-        <div className="space-y-4">
-          {/* O resumo geral se vestia igual aos cartões de cada termo, e os
-              dois níveis se confundiam. Agora ele é UM cartão de consolidado —
-              filete de destaque, fundo próprio, valores maiores — e os termos
-              individuais seguem abaixo, visivelmente subordinados. */}
-          {/* As métricas moram DENTRO do cartão de consolidado (um fechamento
-              errado as tinha deixado soltas na página, desalinhadas do filete)
-              e centralizadas em suas colunas — a régua ocupa a largura toda,
-              simétrica com os quadros dos termos abaixo. */}
-          <Card className="p-4 border-l-4 border-l-accent bg-muted/40">
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <Layers className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Aditivos Registrados</span>
-              <span className="text-xs text-muted-foreground">
-                resumo geral das alterações contratuais · {aditivos.length} termo{aditivos.length > 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
-                <p className="text-base font-bold text-success-ink">{fmt(totalAcrescimo)}</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
-                <p className="text-base font-bold text-destructive-ink">{fmt(totalSupressao)}</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
-                <p className={`text-base font-bold ${saldoAditivos >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(saldoAditivos)}</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
-                <p className="text-base font-bold text-success-ink">+{fmtQty(totalQtyAcrescimo)}</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
-                <p className="text-base font-bold text-destructive-ink">-{fmtQty(totalQtySupressao)}</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
-                <p className={`text-base font-bold ${saldoQty >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtQty(saldoQty)}</p>
-              </div>
-            </div>
-          </Card>
+      {subAba === 'aditivos' && (
+        <>
+          {/* O resumo geral vestia-se igual aos cartões de cada termo, e os dois
+              níveis se confundiam. Agora ele é a tira de indicadores do topo —
+              seis medidas, cada uma com a própria base declarada — e os termos
+              ficam na tabela abaixo, visivelmente subordinados. */}
+          {aditivos.length > 0 && (
+            <FaixaIndicadores
+              itens={[
+                { rotulo: 'Acréscimos (R$)', valor: fmt(totalAcrescimo), detalhe: `soma de ${aditivos.length} termo${aditivos.length > 1 ? 's' : ''}`, tom: 'ok' },
+                { rotulo: 'Supressões (R$)', valor: fmt(totalSupressao), detalhe: 'soma das reduções registradas', tom: 'aviso' },
+                { rotulo: 'Saldo de valor', valor: fmt(saldoAditivos), detalhe: 'acréscimos − supressões', tom: saldoAditivos >= 0 ? 'ok' : 'critico' },
+                { rotulo: 'Acrésc. de quantidade', valor: `+${fmtQty(totalQtyAcrescimo)}`, detalhe: 'soma dos termos de quantidade', tom: 'ok' },
+                { rotulo: 'Supr. de quantidade', valor: `-${fmtQty(totalQtySupressao)}`, detalhe: 'soma das reduções de quantidade', tom: 'aviso' },
+                { rotulo: 'Saldo de quantidade', valor: fmtQty(saldoQty), detalhe: 'acréscimos − supressões', tom: saldoQty >= 0 ? 'ok' : 'critico' },
+              ]}
+            />
+          )}
 
-          {aditivos.map((a: any) => {
-            const Icon = ADITIVO_ICON[a.tipo] || FilePlus2;
-            const tipoLabel = { valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Quantidade e Valor', prazo: 'Prazo', prazo_valor: 'Prazo e Valor', prazo_quantidade: 'Prazo e Quantidade', escopo: 'Escopo' }[a.tipo as string] || a.tipo;
-            const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
-            const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
-            return (
-              <Card key={a.id} className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold">{a.numero_aditivo}</span>
-                      <Badge variant="outline" className="text-xs">{tipoLabel}</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {(a.valor_acrescimo || 0) > 0 && <span className="text-success-ink">+{fmt(a.valor_acrescimo)}</span>}
-                      {(a.valor_supressao || 0) > 0 && <span className="text-destructive-ink">-{fmt(a.valor_supressao)}</span>}
-                      {(a.quantidade_acrescimo || 0) > 0 && <span className="text-success-ink">+{fmtQty(a.quantidade_acrescimo)} un</span>}
-                      {(a.quantidade_supressao || 0) > 0 && <span className="text-destructive-ink">-{fmtQty(a.quantidade_supressao)} un</span>}
-                      {a.nova_data_fim && <span>Nova vigência: {new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
-                      {(a.data_assinatura || a.data_aditivo) && <span>Assinatura: {new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
-                    </div>
-                    {a.justificativa && (
-                      /* A justificativa vive cortada em duas linhas; o clique
-                         abre a leitura integral — mesmo gesto da descrição do
-                         item na aba Itens/Lotes. */
-                      <button
-                        type="button"
-                        onClick={() => setJustificativaAberta(a)}
-                        title="Ler a justificativa completa"
-                        className="mt-1 block w-full text-left text-xs text-muted-foreground line-clamp-2 hover:text-foreground hover:underline"
-                      >
-                        {a.justificativa}
-                      </button>
-                    )}
-                    {(() => {
-                      // "Onde está o arquivo deste aditivo?" — a pergunta que o
-                      // cartão não respondia. O elo (arquivo_id) já existia no
-                      // banco; faltava a tela usá-lo.
+          {areaDeRegistro}
+
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : aditivos.length === 0 ? (
+            <Card className="g-cartao p-8 text-center">
+              <FilePlus2 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="g-corpo text-muted-foreground">Nenhum termo aditivo registrado</p>
+              <p className="g-meta text-muted-foreground mt-1">
+                Escolha um tipo de aditivo acima e envie o termo — apostilamentos e aditivos moram
+                na mesma lista, distinguidos pelo tipo.
+              </p>
+            </Card>
+          ) : (
+            <AreaComPainel
+              painel={painelDoAditivo}
+              tituloPainel="Termo aditivo"
+              aoFechar={() => setAditivoSelecionado(null)}
+            >
+              <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="g-meta whitespace-nowrap">Termo</TableHead>
+                      <TableHead className="g-meta whitespace-nowrap">Tipo</TableHead>
+                      <TableHead className="g-meta text-right whitespace-nowrap">Efeito no valor</TableHead>
+                      <TableHead className="g-meta text-right whitespace-nowrap">Efeito na quantidade</TableHead>
+                      <TableHead className="g-meta whitespace-nowrap">Vigência / assinatura</TableHead>
+                      <TableHead className="g-meta whitespace-nowrap">Documento</TableHead>
+                      <TableHead className="g-meta sticky right-0 bg-card border-l border-border">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aditivos.map((a: any) => {
+                      const Icon = ADITIVO_ICON[a.tipo] || FilePlus2;
+                      const tipoLabel = { valor: 'Valor', quantidade: 'Quantidade', valor_quantidade: 'Quantidade e Valor', prazo: 'Prazo', prazo_valor: 'Prazo e Valor', prazo_quantidade: 'Prazo e Quantidade', escopo: 'Escopo' }[a.tipo as string] || a.tipo;
+                      const saldoValor = (a.valor_acrescimo || 0) - (a.valor_supressao || 0);
+                      const saldoQtyItem = (a.quantidade_acrescimo || 0) - (a.quantidade_supressao || 0);
                       const arq = arquivos.find((f: any) => f.id === a.arquivo_id);
-                      if (arq) {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => handleVisualizar(arq)}
-                            title="Visualizar o documento deste aditivo"
-                            className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                          >
-                            <FileText className="w-3 h-3 shrink-0" />
-                            <span className="truncate max-w-[420px]">{arq.nome_arquivo}</span>
-                            <Eye className="w-3 h-3 shrink-0" />
-                          </button>
-                        );
-                      }
-                      // Registro anterior ao elo automático (ou digitado sem
-                      // documento): dizer "sem arquivo" com o arquivo logo acima
-                      // na lista era beco — o vínculo agora se faz aqui mesmo.
+                      const selecionado = aditivoSelecionado === a.id;
                       return (
-                        <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          <span className="text-xs text-muted-foreground italic">sem arquivo vinculado</span>
-                          {arquivos.length > 0 && (
-                            <Select onValueChange={async (fid) => {
-                              const { error } = await supabase.from('contrato_aditivos')
-                                .update({ arquivo_id: fid } as never).eq('id', a.id);
-                              if (error) { toast.error('Não foi possível vincular', { description: error.message }); return; }
-                              toast.success('Arquivo vinculado ao aditivo.');
-                              loadData();
-                            }}>
-                              <SelectTrigger className="h-6 w-auto max-w-[340px] text-xs px-2">
-                                <SelectValue placeholder="Vincular arquivo…" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {arquivos.map((f: any) => (
-                                  <SelectItem key={f.id} value={f.id} className="text-xs">
-                                    {f.nome_arquivo}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
+                        <TableRow
+                          key={a.id}
+                          data-state={selecionado ? 'selected' : undefined}
+                          className={selecionado ? 'border-l-2 border-l-primary' : undefined}
+                        >
+                          <TableCell className="g-corpo max-w-[16rem]">
+                            <button
+                              type="button"
+                              onClick={() => setAditivoSelecionado(a.id)}
+                              title="Abrir o termo no painel"
+                              className="flex w-full items-center gap-2 text-left font-medium text-foreground hover:text-primary hover:underline"
+                            >
+                              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                              <span className="truncate">{a.numero_aditivo}</span>
+                            </button>
+                            {a.justificativa && (
+                              /* A justificativa vive cortada; o clique abre a
+                                 leitura integral — mesmo gesto da descrição do
+                                 item na aba Itens/Lotes. */
+                              <button
+                                type="button"
+                                onClick={() => setJustificativaAberta(a)}
+                                title="Ler a justificativa completa"
+                                className="g-meta mt-0.5 block w-full truncate text-left text-muted-foreground hover:text-foreground hover:underline"
+                              >
+                                {a.justificativa}
+                              </button>
+                            )}
+                          </TableCell>
+                          <TableCell className="g-meta whitespace-nowrap">
+                            <Badge variant="outline" className="g-meta">{tipoLabel}</Badge>
+                          </TableCell>
+                          <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                            {(a.valor_acrescimo || 0) > 0 && <div className="text-success-ink">+{fmt(a.valor_acrescimo)}</div>}
+                            {(a.valor_supressao || 0) > 0 && <div className="text-destructive-ink">-{fmt(a.valor_supressao)}</div>}
+                            {(a.valor_acrescimo || 0) === 0 && (a.valor_supressao || 0) === 0 ? (
+                              <span className="text-muted-foreground">não altera</span>
+                            ) : (
+                              <div className={`font-medium ${saldoValor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                                saldo {fmt(saldoValor)}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="g-meta text-right whitespace-nowrap tabular-nums">
+                            {(a.quantidade_acrescimo || 0) > 0 && <div className="text-success-ink">+{fmtQty(a.quantidade_acrescimo)}</div>}
+                            {(a.quantidade_supressao || 0) > 0 && <div className="text-destructive-ink">-{fmtQty(a.quantidade_supressao)}</div>}
+                            {(a.quantidade_acrescimo || 0) === 0 && (a.quantidade_supressao || 0) === 0 ? (
+                              <span className="text-muted-foreground">não altera</span>
+                            ) : (
+                              <div className={`font-medium ${saldoQtyItem >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
+                                saldo {fmtQty(saldoQtyItem)}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="g-meta whitespace-nowrap tabular-nums text-muted-foreground">
+                            <div>
+                              {a.nova_data_fim
+                                ? `nova vigência: ${new Date(a.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                : 'não prorroga'}
+                            </div>
+                            <div>
+                              {(a.data_assinatura || a.data_aditivo)
+                                ? `assinado em ${new Date((a.data_assinatura || a.data_aditivo) + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                : 'sem data de assinatura'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="g-meta max-w-[14rem]">
+                            {arq ? (
+                              <button
+                                type="button"
+                                onClick={() => handleVisualizar(arq)}
+                                title="Visualizar o documento deste aditivo"
+                                className="inline-flex max-w-full items-center gap-1.5 text-primary hover:underline"
+                              >
+                                <FileText className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{arq.nome_arquivo}</span>
+                              </button>
+                            ) : (
+                              <span className="text-warning-ink">sem arquivo vinculado</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="sticky right-0 bg-card border-l border-border">
+                            <div className="flex gap-0.5">
+                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Abrir o termo no painel"
+                                onClick={() => setAditivoSelecionado(a.id)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Excluir termo"
+                                onClick={() => handleDeleteAditivo(a.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive-ink" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       );
-                    })()}
-                  </div>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => handleDeleteAditivo(a.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive-ink" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Acréscimos (R$)</div>
-                    <p className="text-xs font-bold text-success-ink">{fmt(a.valor_acrescimo || 0)}</p>
-                  </div>
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Supressões (R$)</div>
-                    <p className="text-xs font-bold text-destructive-ink">{fmt(a.valor_supressao || 0)}</p>
-                  </div>
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Valor</div>
-                    <p className={`text-xs font-bold ${saldoValor >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmt(saldoValor)}</p>
-                  </div>
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Acrésc. Qtde</div>
-                    <p className="text-xs font-bold text-success-ink">+{fmtQty(a.quantidade_acrescimo || 0)}</p>
-                  </div>
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Supr. Qtde</div>
-                    <p className="text-xs font-bold text-destructive-ink">-{fmtQty(a.quantidade_supressao || 0)}</p>
-                  </div>
-                  <div className="rounded-lg border p-2">
-                    <div className="text-xs text-muted-foreground mb-0.5">Saldo Qtde</div>
-                    <p className={`text-xs font-bold ${saldoQtyItem >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>{fmtQty(saldoQtyItem)}</p>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </AreaComPainel>
+          )}
+        </>
       )}
 
-      {/* Edit dialog */}
+      {subAba === 'auditoria' && (
+        <ContratoIaAuditoriaPanel contratoId={contratoId} aoVerDocumento={verDocumentoPorId} />
+      )}
+
       {/* Leitura integral da justificativa do termo */}
       <Dialog open={!!justificativaAberta} onOpenChange={(v) => !v && setJustificativaAberta(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -1793,14 +2028,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           </DialogHeader>
           {justificativaAberta && (
             <div className="space-y-3">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{justificativaAberta.justificativa}</p>
+              <p className="g-corpo leading-relaxed whitespace-pre-wrap">{justificativaAberta.justificativa}</p>
               {justificativaAberta.observacoes && (
-                <div className="border rounded-md p-3 bg-muted/30 text-xs">
+                <div className="border rounded-md p-3 bg-muted/30 g-meta">
                   <div className="text-muted-foreground mb-1">Observações</div>
                   <p className="whitespace-pre-wrap">{justificativaAberta.observacoes}</p>
                 </div>
               )}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 g-meta text-muted-foreground">
                 {justificativaAberta.nova_data_fim && (
                   <span>Nova vigência: {new Date(justificativaAberta.nova_data_fim + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                 )}
@@ -1833,7 +2068,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <Label className="text-xs">Tipo do Documento</Label>
+              <Label className="g-meta">Tipo do Documento</Label>
               <Select value={editTipo} onValueChange={(v) => {
                 setEditTipo(v);
                 if (isAditivoType(v) && !editLinkedAditivoId) {
@@ -1848,39 +2083,39 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 </SelectContent>
               </Select>
               {TIPOS_ARQUIVO[editTipo]?.semLimite && (
-                <p className="text-xs text-warning-ink mt-1 flex items-center gap-1">
+                <p className="g-meta text-warning-ink mt-1 flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" />
                   Não sujeito ao limite de 25% do art. 125, Lei 14.133/21.
                 </p>
               )}
             </div>
             <div>
-              <Label className="text-xs">Descrição (opcional)</Label>
+              <Label className="g-meta">Descrição (opcional)</Label>
               <Input value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} placeholder="Ex: 1º Aditivo de Prazo" />
             </div>
 
             {/* Aditivo fields in edit */}
             {isAditivoType(editTipo) && (
-              <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-                <p className="text-xs font-semibold text-muted-foreground">Dados do Aditivo</p>
+              <div className="border rounded-[var(--g-raio)] p-4 space-y-3 bg-muted/30">
+                <p className="g-meta font-semibold text-muted-foreground">Dados do Aditivo</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Nº/Identificação</Label>
+                    <Label className="g-meta">Nº/Identificação</Label>
                     <Input value={editAditivoForm.numero_aditivo} onChange={(e) => setEditAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
                   </div>
                   <div>
-                    <Label className="text-xs">Data Assinatura</Label>
+                    <Label className="g-meta">Data Assinatura</Label>
                     <Input type="date" value={editAditivoForm.data_assinatura} onChange={(e) => setEditAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
                   </div>
 
                   {showValueFields(editTipo) && (
                     <>
                       <div>
-                        <Label className="text-xs">Valor Acréscimo (R$)</Label>
+                        <Label className="g-meta">Valor Acréscimo (R$)</Label>
                         <MoneyInput value={parseFloat(editAditivoForm.valor_acrescimo) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
                       </div>
                       <div>
-                        <Label className="text-xs">Valor Supressão (R$)</Label>
+                        <Label className="g-meta">Valor Supressão (R$)</Label>
                         <MoneyInput value={parseFloat(editAditivoForm.valor_supressao) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
                       </div>
                     </>
@@ -1889,11 +2124,11 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   {showQtyFields(editTipo) && (
                     <>
                       <div>
-                        <Label className="text-xs">Qtde Acréscimo</Label>
+                        <Label className="g-meta">Qtde Acréscimo</Label>
                         <Input type="number" step="1" value={editAditivoForm.quantidade_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
                       </div>
                       <div>
-                        <Label className="text-xs">Qtde Supressão</Label>
+                        <Label className="g-meta">Qtde Supressão</Label>
                         <Input type="number" step="1" value={editAditivoForm.quantidade_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
                       </div>
                     </>
@@ -1901,17 +2136,17 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
                   {(showDateField(editTipo) || isAditivoType(editTipo)) && (
                     <div>
-                      <Label className="text-xs">Nova Data Fim (se prorrogação)</Label>
+                      <Label className="g-meta">Nova Data Fim (se prorrogação)</Label>
                       <Input type="date" value={editAditivoForm.nova_data_fim} onChange={(e) => setEditAditivoForm(f => ({ ...f, nova_data_fim: e.target.value }))} />
                     </div>
                   )}
 
                   <div className="sm:col-span-2">
-                    <Label className="text-xs">Justificativa / Fundamentação</Label>
+                    <Label className="g-meta">Justificativa / Fundamentação</Label>
                     <Textarea value={editAditivoForm.justificativa} onChange={(e) => setEditAditivoForm(f => ({ ...f, justificativa: e.target.value }))} rows={2} placeholder="Fundamentação legal do aditivo" />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label className="text-xs">Observações</Label>
+                    <Label className="g-meta">Observações</Label>
                     <Textarea value={editAditivoForm.observacoes} onChange={(e) => setEditAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
                 </div>
@@ -1919,8 +2154,8 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                 {/* Preview */}
                 {(showValueFields(editTipo) || showQtyFields(editTipo)) && (
                   <Card className="p-3 bg-muted/50">
-                    <p className="text-xs text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
-                    <div className="flex flex-wrap gap-4 text-xs">
+                    <p className="g-meta text-muted-foreground mb-1 font-medium">Resumo do Aditivo</p>
+                    <div className="flex flex-wrap gap-4 g-meta">
                       {showValueFields(editTipo) && (
                         <span className={`font-semibold ${(parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0) >= 0 ? 'text-success-ink' : 'text-destructive-ink'}`}>
                           Saldo Valor: {fmt((parseFloat(editAditivoForm.valor_acrescimo) || 0) - (parseFloat(editAditivoForm.valor_supressao) || 0))}
@@ -1938,7 +2173,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             )}
 
             <div>
-              <Label className="text-xs">Substituir arquivo</Label>
+              <Label className="g-meta">Substituir arquivo</Label>
               <div className="mt-1">
                 <input ref={editFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
                 <Button variant="outline" size="sm" onClick={() => editFileRef.current?.click()}>
@@ -1946,7 +2181,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   {editFile ? editFile.name : 'Selecionar novo arquivo'}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Deixe em branco para manter o arquivo atual.</p>
+              <p className="g-meta text-muted-foreground mt-1">Deixe em branco para manter o arquivo atual.</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditDialog({ open: false, arquivo: null })}>Cancelar</Button>

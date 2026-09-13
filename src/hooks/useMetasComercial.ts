@@ -400,6 +400,15 @@ export function useSalvarMeta() {
             ano: input.ano,
             mes: input.mes,
             meta_faturamento: input.meta_faturamento,
+            // A ponta 3 (o dinheiro entrou) estava na assinatura e FORA do
+            // payload: o valor digitado no diálogo era aceito, o toast dizia
+            // "Meta salva" e a coluna continuava NULL. O painel lê
+            // `meta.meta_quitacao` para desenhar essa ponta, então ela
+            // simplesmente não aparecia — sem erro, sem rastro, e a pessoa
+            // redigitava achando que tinha esquecido de salvar.
+            // `?? null` preserva a distinção que a coluna carrega: NULL é
+            // "não definida", não "zero".
+            meta_quitacao: input.meta_quitacao ?? null,
             meta_contratos: input.meta_contratos ?? null,
             meta_participacoes: input.meta_participacoes ?? null,
             base_meta: input.base_meta ?? 'faturamento',

@@ -5,13 +5,15 @@ import { Calendar } from '@/components/ui/calendar';
 // frase, então os selos que vivem em linhas clicáveis usam `badgeVariants`
 // num <span> — mesma pele, HTML conforme. Fora de botão, o componente.
 import { Badge, badgeVariants } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   CalendarDays, FileText, AlertTriangle, Clock, CheckCircle2,
-  ChevronRight, Shield, Building2, Database, Trophy, FileWarning,
+  ChevronRight, Shield, Building2, Database, Trophy, FileWarning, RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // Autoridade única do vocabulário de status (CLAUDE.md, princípio 1).
@@ -68,6 +70,33 @@ function calcDocStatus(validade: string): 'ok' | 'vencendo' | 'vencido' {
   return diff <= 30 ? 'vencendo' : 'ok';
 }
 
+/* Todo evento da agenda tem que alcançar a origem dele — era o defeito central
+   desta tela: a data existia, mas o clique não levava ao registro.
+
+   Para a validade de documento, quem decide o destino é a fonte de onde a
+   consulta tirou a data (é por isso que `DocValidade.origem` existe):
+
+     documento            → /documentos           (habilitação)
+     certificado_empresa  → /empresas             (certificado digital da PJ)
+     certificado_portal   → /robo-lances          (credenciais de portal)
+
+   O cadastro de credencial de portal mora na aba "Portais" do Robô de Lances,
+   e essa aba ainda vive em `useState` — `RoboLances` não lê `?aba=`. Mandar
+   `?aba=portais` seria um link que finge navegar e cai em "Disputar" sem
+   avisar; por isso leva-se à tela, e a aba fica a um clique. Quando o Robô
+   adotar `useAbaNaUrl`, é só completar o parâmetro aqui. */
+const rotaDaOrigem: Record<DocValidade['origem'], string> = {
+  documento: '/documentos',
+  certificado_empresa: '/empresas',
+  certificado_portal: '/robo-lances',
+};
+
+const rotuloDaOrigem: Record<DocValidade['origem'], string> = {
+  documento: 'Abrir em Documentos',
+  certificado_empresa: 'Abrir em Empresas',
+  certificado_portal: 'Abrir em Robô de lances',
+};
+
 export default function CalendarioLicitacoes() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState('todos');
@@ -77,14 +106,24 @@ export default function CalendarioLicitacoes() {
   const hoje = new Date();
 
   // Fetch licitações
-  const { data: licitacoes = [] } = useQuery({
+  const {
+    data: licitacoes = [],
+    isLoading: carregandoLicitacoes,
+    error: erroLicitacoes,
+    refetch: recarregarLicitacoes,
+  } = useQuery({
     queryKey: ['calendario-licitacoes', user?.id, empresaAtiva?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('licitacoes')
         .select('id, numero, objeto, orgao, status, data_abertura, data_encerramento, modalidade, valor_estimado')
         .order('data_abertura', { ascending: true });
+      // CLAUDE.md, princípio 3: falha silenciosa é proibida. Sem este `throw`
+      // o react-query nunca enxerga o erro do banco — a consulta "termina bem"
+      // com zero linhas e a tela pinta "nada agendado", imagem idêntica à de
+      // uma agenda de verdade vazia. Quem tem sessão hoje não descobre.
+      if (error) throw error;
       // Agenda da empresa, como o painel que a exibe (RLS limita ao permitido)
       return (data || []) as LicitacaoEvento[];
     },
@@ -92,19 +131,31 @@ export default function CalendarioLicitacoes() {
   });
 
   // Fetch document expiry dates
-  const { data: docsValidade = [] } = useQuery({
+  const {
+    data: docsValidade = [],
+    isLoading: carregandoDocs,
+    error: erroDocs,
+    refetch: recarregarDocs,
+  } = useQuery({
     queryKey: ['calendario-docs-validade', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const docs: DocValidade[] = [];
+      // As três fontes são independentes, então as falhas são acumuladas e
+      // nomeadas: "não consegui ler X" é acionável, "deu erro" não é.
+      const falhas: string[] = [];
 
       // 1) Documentos with validade
-      const { data: documentos } = await supabase
+      const { data: documentos, error: erroDocumentos } = await supabase
         .from('documentos')
         .select('id, nome, tipo, validade')
         .eq('user_id', user.id)
         .not('validade', 'is', null);
-      (documentos || []).forEach((d: any) => {
+      if (erroDocumentos) falhas.push('documentos de habilitação');
+      // Sem `any`: as três tabelas já estão no `types.ts` gerado, então a
+      // linha vem tipada da própria consulta. O `any` que estava aqui é de
+      // quando elas ainda não estavam — e engolia erro de coluna renomeada.
+      (documentos || []).forEach((d) => {
         if (d.validade) {
           docs.push({
             id: d.id,
@@ -118,12 +169,13 @@ export default function CalendarioLicitacoes() {
       });
 
       // 2) Empresa certificates
-      const { data: empresas } = await supabase
+      const { data: empresas, error: erroEmpresas } = await supabase
         .from('empresas')
         .select('id, razao_social, certificado_validade')
         .eq('created_by', user.id)
         .not('certificado_validade', 'is', null);
-      (empresas || []).forEach((e: any) => {
+      if (erroEmpresas) falhas.push('certificados das empresas');
+      (empresas || []).forEach((e) => {
         if (e.certificado_validade) {
           docs.push({
             id: `cert-emp-${e.id}`,
@@ -137,12 +189,13 @@ export default function CalendarioLicitacoes() {
       });
 
       // 3) Portal credentials certificates
-      const { data: creds } = await supabase
-        .from('credenciais_portais_safe' as any)
+      const { data: creds, error: erroCreds } = await supabase
+        .from('credenciais_portais_safe')
         .select('id, portal_nome, validade_certificado')
         .eq('user_id', user.id)
         .not('validade_certificado', 'is', null);
-      (creds || []).forEach((c: any) => {
+      if (erroCreds) falhas.push('certificados dos portais');
+      (creds || []).forEach((c) => {
         if (c.validade_certificado) {
           docs.push({
             id: `cert-portal-${c.id}`,
@@ -155,24 +208,39 @@ export default function CalendarioLicitacoes() {
         }
       });
 
+      // Lista parcial de vencimentos é pior do que lista nenhuma: quem olha e
+      // não vê a certidão conclui que ela está em dia. Falhou uma fonte, a
+      // aba inteira vira erro com retentativa.
+      if (falhas.length > 0) {
+        throw new Error(`Não foi possível ler ${falhas.join(', ')}.`);
+      }
+
       return docs;
     },
     enabled: !!user,
   });
 
   // Fetch backup config for calendar integration
-  const { data: backupConfig } = useQuery({
+  const {
+    data: backupConfig,
+    isLoading: carregandoBackup,
+    error: erroBackup,
+    refetch: recarregarBackup,
+  } = useQuery({
     queryKey: ['calendario-backup-config', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
-        .from('backup_config' as any)
+      const { data, error } = await supabase
+        .from('backup_config')
         .select('*')
         .eq('user_id', user.id)
         .eq('ativo', true)
         .eq('alerta_calendario', true)
         .maybeSingle();
-      return data as any;
+      // `maybeSingle` já devolve `data: null` sem erro quando não há linha —
+      // então um `error` aqui é falha de verdade, não ausência de config.
+      if (error) throw error;
+      return data;
     },
     enabled: !!user,
   });
@@ -274,6 +342,21 @@ export default function CalendarioLicitacoes() {
     [docsValidade]
   );
 
+  /* BUG corrigido: a aba Documentos ordenava com `docsValidade.sort(...)`, que
+     ordena NO LUGAR — e o array é o objeto que o react-query guarda em cache.
+     Cada render reordenava o cache do lado de fora da biblioteca; quem lesse
+     `docsValidade` depois (o mapa do calendário, o .ICS) recebia uma ordem
+     diferente da que tinha gravado. A cópia isola a ordenação da apresentação,
+     e o `useMemo` ainda tira o sort do caminho de cada render. */
+  const docsOrdenados = useMemo(
+    () =>
+      [...docsValidade].sort((a, b) => {
+        const order = { vencido: 0, vencendo: 1, ok: 2 };
+        return order[a.status] - order[b.status] || new Date(a.validade).getTime() - new Date(b.validade).getTime();
+      }),
+    [docsValidade]
+  );
+
   // As duas metades do alerta, cada uma em seu Alert — a mesma filtragem que
   // antes era repetida cinco vezes dentro do JSX.
   const docsVencidos = useMemo(() => docsAlerta.filter((d) => d.status === 'vencido'), [docsAlerta]);
@@ -360,8 +443,145 @@ export default function CalendarioLicitacoes() {
     return <FileText className="w-4 h-4 text-warning" />;
   };
 
+  const irParaProcesso = (id: string) => navigate(`/processo/${id}`);
+  const irParaOrigemDoDoc = (doc: DocValidade) => navigate(rotaDaOrigem[doc.origem]);
+
+  /* A grade do mês ganha a coluna larga da composição (≈65%), e o calendário
+     do shadcn nasce com célula de 36px fixos (`w-9`) — largura que não olha
+     para o contêiner. Numa coluna de 65% ele ficaria encolhido no canto
+     esquerdo, com dois terços do cartão vazios. Estas linhas trocam largura
+     fixa por `flex-1` e deixam a grade acompanhar a coluna; todo o resto do
+     `classNames` continua vindo de `ui/calendar.tsx` (lá o spread do que
+     recebemos é aplicado DEPOIS dos padrões, então só estas chaves mudam).
+
+     `day` recompõe `buttonVariants({ variant: 'ghost' })` de propósito: é o
+     mesmo par `hover:bg-muted / hover:text-foreground` (0,2,0) que a análise
+     de especificidade dos marcadores acima pressupõe. Escrever o hover à mão
+     aqui faria os dois textos divergirem sem ninguém perceber. */
+  const calendarioFluido = {
+    months: 'flex w-full flex-col',
+    month: 'w-full space-y-4',
+    table: 'w-full border-collapse',
+    head_row: 'flex w-full',
+    head_cell: 'flex-1 rounded-md text-[0.8rem] font-normal text-muted-foreground',
+    row: 'mt-2 flex w-full',
+    cell: 'relative flex-1 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
+    day: cn(buttonVariants({ variant: 'ghost' }), 'h-10 w-full p-0 font-normal aria-selected:opacity-100'),
+  };
+
+  /* CLAUDE.md, princípio 3 — falha silenciosa é proibida. Nenhuma das três
+     consultas tratava `error`: queda de rede, RLS negando ou view ausente
+     davam exatamente a mesma tela de "nada agendado". Cada fonte que falhou é
+     nomeada, com a mensagem real do banco, e uma retentativa só refaz o que
+     quebrou (não vale re-baixar a agenda inteira porque o backup falhou). */
+  const fontesComErro: { rotulo: string; mensagem: string; recarregar: () => void }[] = [];
+  if (erroLicitacoes) {
+    fontesComErro.push({
+      rotulo: 'Processos do calendário',
+      mensagem: (erroLicitacoes as Error).message,
+      recarregar: () => void recarregarLicitacoes(),
+    });
+  }
+  if (erroDocs) {
+    fontesComErro.push({
+      rotulo: 'Validade de documentos',
+      mensagem: (erroDocs as Error).message,
+      recarregar: () => void recarregarDocs(),
+    });
+  }
+  if (erroBackup) {
+    fontesComErro.push({
+      rotulo: 'Agenda de backup',
+      mensagem: (erroBackup as Error).message,
+      recarregar: () => void recarregarBackup(),
+    });
+  }
+
+  /* Estado de carregando — não existia. As três consultas usavam `data = []`
+     como padrão e ninguém lia `isLoading`, então enquanto a rede trabalhava a
+     tela desenhava os estados VAZIOS por inteiro ("Nenhum evento nesta data",
+     KPIs em 0) e depois trocava tudo de uma vez. Quem abria a tela lia um
+     "não há nada" que era mentira.
+
+     `isLoading` do react-query v5 é `isPending && isFetching`: consulta
+     desabilitada (sem `user`) não entra aqui, então a tela sem sessão não fica
+     presa num esqueleto eterno. */
+  const carregando = carregandoLicitacoes || carregandoDocs || carregandoBackup;
+
+  if (carregando) {
+    return (
+      <div className="space-y-4" role="status" aria-busy="true">
+        <span className="sr-only">Carregando a agenda</span>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]">
+          <Card className="order-2 space-y-4 p-6 lg:order-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-10 w-40" />
+            </div>
+            <Skeleton className="h-[320px] w-full rounded-md" />
+            <div className="flex flex-wrap gap-3">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-4 w-24" />
+              ))}
+            </div>
+          </Card>
+          <Card className="order-1 space-y-4 p-6 lg:order-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          </Card>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Card key={i} className="space-y-2 p-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-3 w-28" />
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {/* Erro antes de tudo: o que está errado na tela precisa ser lido antes
+          do que ela conseguiu montar. */}
+      {fontesComErro.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="w-5 h-5" aria-hidden="true" />
+          <AlertTitle>Parte da agenda não pôde ser carregada</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <ul className="space-y-1">
+              {fontesComErro.map((f) => (
+                <li key={f.rotulo}>
+                  • <strong>{f.rotulo}</strong> — {f.mensagem}
+                </li>
+              ))}
+            </ul>
+            <p>
+              O que aparece abaixo está incompleto: a ausência de um evento aqui{' '}
+              <strong>não</strong> significa que ele não existe.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => fontesComErro.forEach((f) => f.recarregar())}
+            >
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Alertas urgentes — Alert de ui em tinta (`destructive`/`warning`), no
           lugar das caixas com alfa composto na mão (`bg-destructive/10`). */}
       {(urgentes.length > 0 || docsVencidos.length > 0) && (
@@ -374,12 +594,22 @@ export default function CalendarioLicitacoes() {
                 <p className="font-semibold">
                   {urgentes.length} licitaç{urgentes.length > 1 ? 'ões' : 'ão'} nos próximos 3 dias
                 </p>
+                {/* Cada linha do alerta é um evento, então cada linha abre o
+                    processo. Alerta que só narra obriga a pessoa a procurar o
+                    mesmo registro de novo em outra tela. */}
                 <ul className="mt-1 space-y-1">
                   {urgentes.map((l) => (
                     <li key={l.id}>
-                      • {l.numero} — {l.orgao} —{' '}
-                      {l.data_abertura &&
-                        format(new Date(l.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      •{' '}
+                      <button
+                        type="button"
+                        onClick={() => irParaProcesso(l.id)}
+                        className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                      >
+                        {l.numero} — {l.orgao} —{' '}
+                        {l.data_abertura &&
+                          format(new Date(l.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -393,7 +623,15 @@ export default function CalendarioLicitacoes() {
                 <ul className="mt-1 space-y-1">
                   {docsVencidos.map((d) => (
                     <li key={d.id}>
-                      • {d.nome} — venceu em {format(new Date(d.validade), 'dd/MM/yyyy')}
+                      •{' '}
+                      <button
+                        type="button"
+                        onClick={() => irParaOrigemDoDoc(d)}
+                        title={rotuloDaOrigem[d.origem]}
+                        className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                      >
+                        {d.nome} — venceu em {format(new Date(d.validade), 'dd/MM/yyyy')}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -418,8 +656,16 @@ export default function CalendarioLicitacoes() {
                 );
                 return (
                   <li key={d.id}>
-                    • {d.nome} — vence em <strong>{diff} dia{diff > 1 ? 's' : ''}</strong> (
-                    {format(new Date(d.validade), 'dd/MM/yyyy')})
+                    •{' '}
+                    <button
+                      type="button"
+                      onClick={() => irParaOrigemDoDoc(d)}
+                      title={rotuloDaOrigem[d.origem]}
+                      className="text-left underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                    >
+                      {d.nome} — vence em <strong>{diff} dia{diff > 1 ? 's' : ''}</strong> (
+                      {format(new Date(d.validade), 'dd/MM/yyyy')})
+                    </button>
                   </li>
                 );
               })}
@@ -428,9 +674,24 @@ export default function CalendarioLicitacoes() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Composição da referência: a grade do mês ocupa ≈65% da área útil e o
+          painel de agenda e alertas os ≈35% restantes. Estava invertido —
+          `lg:grid-cols-3` com o calendário em 1 coluna e o painel em 2 dava
+          33%/67%, o oposto do contrato.
+
+          `minmax(0, …fr)` em vez de `65fr`/`35fr` puro porque o padrão de uma
+          coluna de grade é `min-width: auto`: sem isso, o texto longo do objeto
+          empurra a coluna do painel para além da fração e o `truncate` das
+          linhas nunca chega a valer.
+
+          Abaixo de `lg` a AGENDA vem primeiro (`order`), como manda a regra de
+          celular do padrão: a lista do que acontece vale mais do que a grade do
+          mês numa tela estreita. A ordem no DOM continua calendário → painel
+          para que a navegação por teclado no desktop siga a leitura visual da
+          esquerda para a direita, que é onde esta tela é operada. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]">
         {/* Calendar */}
-        <Card className="lg:col-span-1 p-6">
+        <Card className="order-2 p-6 lg:order-1">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" aria-hidden="true" />
@@ -468,7 +729,8 @@ export default function CalendarioLicitacoes() {
             locale={ptBR}
             modifiers={modifiers}
             modifiersClassNames={modifiersClassNames}
-            className="rounded-md border border-border pointer-events-auto"
+            classNames={calendarioFluido}
+            className="w-full rounded-md border border-border pointer-events-auto"
           />
           <div className="flex flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -487,15 +749,17 @@ export default function CalendarioLicitacoes() {
         </Card>
 
         {/* Events panel */}
-        <Card className="lg:col-span-2 p-6">
+        <Card className="order-1 p-6 lg:order-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            {/* Título e abas empilhados: na coluna de 35% a fila de três abas
+                não cabe ao lado da data por extenso. */}
+            <div className="mb-4 space-y-3">
               <h2 className="text-lg font-semibold">
                 {selectedDate
                   ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                   : 'Selecione uma data'}
               </h2>
-              <TabsList>
+              <TabsList className="w-full justify-start overflow-x-auto">
                 <TabsTrigger value="todos">Dia</TabsTrigger>
                 <TabsTrigger value="proximos">Próximos 30d</TabsTrigger>
                 <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -514,13 +778,16 @@ export default function CalendarioLicitacoes() {
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
                   {selectedEvents.licitacoes.map((l) => (
+                    /* Levava a `/kanban` — destino fixo que abria o quadro
+                       inteiro e deixava a pessoa procurar de novo o processo
+                       que ela acabou de clicar. O `id` já vem na consulta. */
                     <button
                       key={l.id}
                       type="button"
-                      className="flex w-full items-center justify-between gap-3 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() => navigate('/kanban')}
+                      className="group flex w-full flex-col gap-2 p-3 text-left rounded-lg border border-border bg-card hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => irParaProcesso(l.id)}
                     >
-                      <span className="flex items-start gap-3 min-w-0">
+                      <span className="flex items-start gap-2 min-w-0">
                         <span
                           aria-hidden="true"
                           className={cn(
@@ -528,52 +795,61 @@ export default function CalendarioLicitacoes() {
                             statusColors[l.status] || 'bg-muted-foreground'
                           )}
                         />
-                        <span className="min-w-0 block">
-                          <span className="block text-sm font-medium truncate">{l.numero}</span>
+                        <span className="min-w-0 flex-1 block">
+                          <span className="block text-sm font-medium truncate group-hover:underline">{l.numero}</span>
                           <span className="block text-sm text-muted-foreground truncate">{l.orgao}</span>
                           <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
                         </span>
+                        <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                       </span>
-                      <span className="flex items-center gap-2 flex-shrink-0">
+                      {/* Selo e valor descem para a segunda linha: na coluna
+                          estreita eles disputavam espaço com o objeto e as duas
+                          coisas ficavam truncadas. */}
+                      <span className="flex flex-wrap items-center gap-2 pl-4">
                         <span className={badgeVariants({ variant: 'muted' })}>{l.status}</span>
                         {l.valor_estimado && (
                           <span className="text-sm font-medium tabular-nums text-foreground">
                             {formatCurrency(l.valor_estimado)}
                           </span>
                         )}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                       </span>
                     </button>
                   ))}
                   {selectedEvents.docs.map((doc) => (
-                    <div
+                    <button
                       key={doc.id}
+                      type="button"
+                      onClick={() => irParaOrigemDoDoc(doc)}
+                      title={rotuloDaOrigem[doc.origem]}
                       className={cn(
-                        'flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border',
+                        'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         doc.status === 'vencido'
                           ? 'border-destructive-line bg-destructive-tint'
                           : 'border-warning-line bg-warning-tint'
                       )}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex items-center gap-2 min-w-0">
                         {origemIcon(doc.origem)}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.nome}</p>
-                          <p
+                        <span className="min-w-0 block">
+                          <span className="block text-sm font-medium truncate group-hover:underline">{doc.nome}</span>
+                          <span
                             className={cn(
-                              'text-sm',
+                              'block text-sm',
                               doc.status === 'vencido' ? 'text-destructive-ink' : 'text-warning-ink'
                             )}
                           >
                             {doc.status === 'vencido' ? 'Vencido' : 'Vence'} em{' '}
                             {format(new Date(doc.validade), 'dd/MM/yyyy')}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={doc.status === 'vencido' ? 'danger' : 'warning'}>
-                        {doc.status === 'vencido' ? 'Vencido' : 'Vencendo'}
-                      </Badge>
-                    </div>
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2 flex-shrink-0">
+                        <span className={badgeVariants({ variant: doc.status === 'vencido' ? 'danger' : 'warning' })}>
+                          {doc.status === 'vencido' ? 'Vencido' : 'Vencendo'}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                      </span>
+                    </button>
                   ))}
                   {selectedEvents.backups && (
                     <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-border bg-card">
@@ -613,10 +889,10 @@ export default function CalendarioLicitacoes() {
                         key={l.id}
                         type="button"
                         className={cn(
-                          'flex w-full items-center justify-between gap-3 p-3 text-left rounded-lg border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'group flex w-full flex-col gap-2 p-3 text-left rounded-lg border transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           isUrgent ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-card'
                         )}
-                        onClick={() => navigate('/kanban')}
+                        onClick={() => irParaProcesso(l.id)}
                       >
                         <span className="flex items-start gap-3 min-w-0">
                           <span className="text-center flex-shrink-0 w-12 block">
@@ -625,14 +901,15 @@ export default function CalendarioLicitacoes() {
                               {format(d, 'MMM', { locale: ptBR })}
                             </span>
                           </span>
-                          <span className="min-w-0 block">
-                            <span className="block text-sm font-medium truncate">
+                          <span className="min-w-0 flex-1 block">
+                            <span className="block text-sm font-medium truncate group-hover:underline">
                               {l.numero} — {l.orgao}
                             </span>
                             <span className="block text-sm text-muted-foreground truncate">{l.objeto}</span>
                           </span>
+                          <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                         </span>
-                        <span className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+                        <span className="flex flex-wrap items-center gap-2 pl-[3.75rem]">
                           {isUrgent && (
                             <span className={badgeVariants({ variant: 'danger' })}>
                               {diffDias === 0 ? 'Hoje' : `Em ${diffDias}d`}
@@ -649,7 +926,7 @@ export default function CalendarioLicitacoes() {
 
             {/* Tab: documents */}
             <TabsContent value="documentos" className="mt-0">
-              {docsValidade.length === 0 ? (
+              {docsOrdenados.length === 0 ? (
                 <EstadoVazio
                   tamanho="compacto"
                   icone={<FileText />}
@@ -658,59 +935,60 @@ export default function CalendarioLicitacoes() {
                 />
               ) : (
                 <div className="space-y-2 h-[min(52vh,520px)] overflow-y-auto overscroll-contain pr-2">
-                  {docsValidade
-                    .sort((a, b) => {
-                      const order = { vencido: 0, vencendo: 1, ok: 2 };
-                      return order[a.status] - order[b.status] || new Date(a.validade).getTime() - new Date(b.validade).getTime();
-                    })
-                    .map((doc) => {
-                      const val = new Date(doc.validade);
-                      const diff = Math.ceil((val.getTime() - hoje.getTime()) / 86400000);
-                      return (
-                        <div
-                          key={doc.id}
-                          className={cn(
-                            'flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border',
-                            doc.status === 'vencido'
-                              ? 'border-destructive-line bg-destructive-tint'
-                              : doc.status === 'vencendo'
-                              ? 'border-warning-line bg-warning-tint'
-                              : 'border-border bg-card'
-                          )}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            {origemIcon(doc.origem)}
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{doc.nome}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Validade: {format(val, 'dd/MM/yyyy')}
-                                {doc.status === 'vencido'
-                                  ? ` (vencido há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''})`
-                                  : doc.status === 'vencendo'
-                                  ? ` (${diff} dia${diff > 1 ? 's' : ''} restante${diff > 1 ? 's' : ''})`
-                                  : ''}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge
-                            variant={
-                              doc.status === 'vencido'
-                                ? 'danger'
+                  {docsOrdenados.map((doc) => {
+                    const val = new Date(doc.validade);
+                    const diff = Math.ceil((val.getTime() - hoje.getTime()) / 86400000);
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => irParaOrigemDoDoc(doc)}
+                        title={rotuloDaOrigem[doc.origem]}
+                        className={cn(
+                          'group flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          doc.status === 'vencido'
+                            ? 'border-destructive-line bg-destructive-tint'
+                            : doc.status === 'vencendo'
+                            ? 'border-warning-line bg-warning-tint'
+                            : 'border-border bg-card hover:bg-muted'
+                        )}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          {origemIcon(doc.origem)}
+                          <span className="min-w-0 block">
+                            <span className="block text-sm font-medium truncate group-hover:underline">{doc.nome}</span>
+                            <span className="block text-sm text-muted-foreground">
+                              Validade: {format(val, 'dd/MM/yyyy')}
+                              {doc.status === 'vencido'
+                                ? ` (vencido há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''})`
                                 : doc.status === 'vencendo'
-                                ? 'warning'
-                                : 'success'
-                            }
-                            className="flex-shrink-0"
+                                ? ` (${diff} dia${diff > 1 ? 's' : ''} restante${diff > 1 ? 's' : ''})`
+                                : ''}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2 flex-shrink-0">
+                          <span
+                            className={badgeVariants({
+                              variant:
+                                doc.status === 'vencido'
+                                  ? 'danger'
+                                  : doc.status === 'vencendo'
+                                  ? 'warning'
+                                  : 'success',
+                            })}
                           >
                             {doc.status === 'vencido'
                               ? 'Vencido'
                               : doc.status === 'vencendo'
                               ? 'Vencendo'
                               : 'Regular'}
-                          </Badge>
-                        </div>
-                      );
-                    })}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>

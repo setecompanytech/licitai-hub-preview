@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import { SecaoGestao } from '@/components/gestao/TelaGestao';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -123,19 +123,14 @@ export default function FeriadosManager() {
   };
 
   return (
-    <Card>
-      {/* O seletor de ano é IRMÃO do título, não filho: CardTitle renderiza um
-          <h3>, que não comporta bloco de formulário dentro. */}
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b p-6">
-        <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-          <CalendarDays aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
-          Feriados
+    <SecaoGestao
+      titulo="Feriados"
+      acoes={
+        <div className="flex items-center gap-2">
           <Badge variant="muted">{feriados?.length ?? 0} em {ano}</Badge>
-        </CardTitle>
-        <div className="w-full sm:w-32">
           <Label htmlFor="feriados-ano" className="sr-only">Ano dos feriados</Label>
           <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
-            <SelectTrigger id="feriados-ano" className="font-normal"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="feriados-ano" className="g-controle w-28 font-normal"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[anoAtual - 1, anoAtual, anoAtual + 1].map((a) => (
                 <SelectItem key={a} value={String(a)}>{a}</SelectItem>
@@ -143,10 +138,10 @@ export default function FeriadosManager() {
             </SelectContent>
           </Select>
         </div>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        <div className="border-b p-6 pb-0">
+      }
+    >
+      <div className="g-cartao flex flex-col">
+        <div className="flex flex-col gap-4 border-b border-border p-4 sm:p-6">
           <Alert variant="info">
             <Info aria-hidden="true" className="w-4 h-4" />
             <AlertDescription>
@@ -158,29 +153,31 @@ export default function FeriadosManager() {
           </Alert>
 
           {/* Formulário */}
-          <div className="flex flex-wrap items-end gap-3 py-6">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="w-full sm:w-44">
-              <Label htmlFor="feriado-data" className="mb-1 block text-sm text-muted-foreground">Data</Label>
+              <Label htmlFor="feriado-data" className="g-meta mb-1 block text-muted-foreground">Data</Label>
               <Input
                 id="feriado-data"
                 type="date"
+                className="g-controle"
                 value={rascunho.data}
                 onChange={(e) => setRascunho((r) => ({ ...r, data: e.target.value }))}
               />
             </div>
 
             <div className="min-w-[12rem] flex-1">
-              <Label htmlFor="feriado-descricao" className="mb-1 block text-sm text-muted-foreground">Descrição</Label>
+              <Label htmlFor="feriado-descricao" className="g-meta mb-1 block text-muted-foreground">Descrição</Label>
               <Input
                 id="feriado-descricao"
                 placeholder="Independência do Brasil"
+                className="g-controle"
                 value={rascunho.descricao}
                 onChange={(e) => setRascunho((r) => ({ ...r, descricao: e.target.value }))}
               />
             </div>
 
             <div className="w-full sm:w-48">
-              <Label htmlFor="feriado-abrangencia" className="mb-1 block text-sm text-muted-foreground">Abrangência</Label>
+              <Label htmlFor="feriado-abrangencia" className="g-meta mb-1 block text-muted-foreground">Abrangência</Label>
               <Select
                 value={rascunho.uf}
                 onValueChange={(v) => setRascunho((r) => ({
@@ -189,7 +186,7 @@ export default function FeriadosManager() {
                   municipio: v === NACIONAL ? '' : r.municipio,
                 }))}
               >
-                <SelectTrigger id="feriado-abrangencia"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="feriado-abrangencia" className="g-controle"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NACIONAL}>Nacional</SelectItem>
                   {UFS_BRASIL.map((u) => (
@@ -203,12 +200,13 @@ export default function FeriadosManager() {
             </div>
 
             <div className="w-full sm:w-48">
-              <Label htmlFor="feriado-municipio" className="mb-1 block text-sm text-muted-foreground">
-                Município {ufEscolhida === '' && <span className="text-xs">(só com UF)</span>}
+              <Label htmlFor="feriado-municipio" className="g-meta mb-1 block text-muted-foreground">
+                Município {ufEscolhida === '' && <span>(só com UF)</span>}
               </Label>
               <Input
                 id="feriado-municipio"
                 placeholder="deixe vazio = estadual"
+                className="g-controle"
                 disabled={ufEscolhida === ''}
                 value={rascunho.municipio}
                 onChange={(e) => setRascunho((r) => ({ ...r, municipio: e.target.value }))}
@@ -233,33 +231,29 @@ export default function FeriadosManager() {
           </div>
 
           {/* Avisos — nenhum bloqueia o cadastro, só informam */}
-          {(cairaNoFimDeSemana || semPracaAtingida) && (
-            <div className="space-y-2 pb-6">
-              {cairaNoFimDeSemana && (
-                <Alert variant="info">
-                  <Info aria-hidden="true" className="w-4 h-4" />
-                  <AlertDescription>
-                    Essa data cai em fim de semana — já não era dia útil, então o cálculo não muda.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {semPracaAtingida && (
-                <Alert variant="warning">
-                  <AlertTriangle aria-hidden="true" className="w-4 h-4" />
-                  <AlertDescription>
-                    Nenhum colaborador tem praça em{' '}
-                    <strong>{rascunho.municipio.trim() ? `${rascunho.municipio}/${ufEscolhida}` : ufEscolhida}</strong>.
-                    O feriado será salvo, mas não afetará ninguém até alguém receber essa praça.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
+          {cairaNoFimDeSemana && (
+            <Alert variant="info">
+              <Info aria-hidden="true" className="w-4 h-4" />
+              <AlertDescription>
+                Essa data cai em fim de semana — já não era dia útil, então o cálculo não muda.
+              </AlertDescription>
+            </Alert>
+          )}
+          {semPracaAtingida && (
+            <Alert variant="warning">
+              <AlertTriangle aria-hidden="true" className="w-4 h-4" />
+              <AlertDescription>
+                Nenhum colaborador tem praça em{' '}
+                <strong>{rascunho.municipio.trim() ? `${rascunho.municipio}/${ufEscolhida}` : ufEscolhida}</strong>.
+                O feriado será salvo, mas não afetará ninguém até alguém receber essa praça.
+              </AlertDescription>
+            </Alert>
           )}
         </div>
 
         {/* Lista */}
         {isLoading ? (
-          <div role="status" aria-label="Carregando" className="flex items-center justify-center gap-2 p-12 text-sm text-muted-foreground">
+          <div role="status" aria-label="Carregando" className="g-corpo flex items-center justify-center gap-2 p-12 text-muted-foreground">
             <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" />
             Carregando…
           </div>
@@ -268,17 +262,17 @@ export default function FeriadosManager() {
             tamanho="compacto"
             icone={<CalendarDays />}
             titulo={`Nenhum feriado em ${ano}`}
-            descricao="Sem cadastro, o mês conta todos os dias de segunda a sexta."
+            descricao="Sem cadastro, o mês conta todos os dias de segunda a sexta — e a projeção fica otimista onde há ponto facultativo. Use o formulário acima para incluir o primeiro."
           />
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted">
-                  <TableHead className="w-[130px] pl-6">Data</TableHead>
+                  <TableHead className="w-[130px] pl-4 sm:pl-6">Data</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="w-[190px]">Abrangência</TableHead>
-                  <TableHead className="w-[120px] pr-6 text-right">Ações</TableHead>
+                  <TableHead className="w-[120px] pr-4 text-right sm:pr-6">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -286,15 +280,15 @@ export default function FeriadosManager() {
                   const fds = ehFimDeSemana(f.data);
                   return (
                     <TableRow key={f.id} className={fds ? 'opacity-60' : undefined}>
-                      <TableCell className="pl-6 text-sm tabular-nums">
+                      <TableCell className="g-corpo pl-4 tabular-nums sm:pl-6">
                         {new Date(`${f.data}T12:00:00`).toLocaleDateString('pt-BR', {
                           day: '2-digit', month: '2-digit', weekday: 'short',
                         })}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="g-corpo">
                         {f.descricao}
                         {fds && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="g-meta ml-2 text-muted-foreground">
                             fim de semana — não afeta o cálculo
                           </span>
                         )}
@@ -304,7 +298,7 @@ export default function FeriadosManager() {
                           {rotuloAbrangencia(f)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="pr-6 text-right">
+                      <TableCell className="pr-4 text-right sm:pr-6">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm" variant="ghost"
@@ -330,7 +324,7 @@ export default function FeriadosManager() {
             </Table>
           </div>
         )}
-      </CardContent>
+      </div>
 
       <AlertDialog open={!!confirmarExclusao} onOpenChange={(o) => !o && setConfirmarExclusao(null)}>
         <AlertDialogContent>
@@ -356,6 +350,6 @@ export default function FeriadosManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </SecaoGestao>
   );
 }

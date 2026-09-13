@@ -2,7 +2,8 @@ import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from './AppSidebar';
-import TrilhaDoTopo from './TrilhaDoTopo';
+import TrilhaDoTopo, { type DegrauDaTrilha } from './TrilhaDoTopo';
+import { ProvedorDeTrilha } from './contexto-trilha';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
@@ -44,7 +45,21 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
  * lupa no sistema, e ela mora na coluna, abaixo da marca. É o mesmo diálogo
  * do Ctrl+K, chamado de outro lugar — não um segundo índice.
  */
-const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
+interface AppLayoutProps {
+  children: ReactNode;
+  /**
+   * Degraus que o registro de rota não conhece — o identificador do registro
+   * aberto, e o caminho até ele quando a rota não é item de menu.
+   *
+   * Existe porque `/processo/:id` e outras telas de detalhe não estão em
+   * `paginas.ts`: `trilhaDaRota` devolve vazio para elas, e a faixa ficava sem
+   * trilha nenhuma justamente nas telas em que o caminho de volta mais importa.
+   * Quem conhece o número do processo é a página, não o roteador.
+   */
+  trilhaExtra?: DegrauDaTrilha[];
+}
+
+const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, trilhaExtra }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -101,6 +116,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         schema: 'public',
         table: 'notificacoes',
         filter: `user_id=eq.${user.id}`,
+        // A carga do realtime é a linha bruta da tabela, montada pelo servidor
+        // e sem tipo em tempo de compilação — o que este bloco lê dela está
+        // guardado pelas checagens logo abaixo, não pelo tipo.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }, async (payload: any) => {
         const { count } = await supabase
           .from('notificacoes')
@@ -133,6 +152,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   };
 
   return (
+    <ProvedorDeTrilha>
     <div className="min-h-screen bg-background flex">
       {/* Coluna de navegação — 240px, recolhível, navy nos dois temas.
           Fixa a partir de lg; abaixo disso vira a gaveta logo adiante. */}
@@ -170,7 +190,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             ali é a raiz, e voltar não leva a lugar que faça sentido. */}
         {location.pathname !== '/dashboard' && <BotaoVoltar somenteIcone />}
 
-        <TrilhaDoTopo className="min-w-0 flex-1" />
+        <TrilhaDoTopo extra={trilhaExtra} className="min-w-0 flex-1" />
 
         {/* Ações e identidade, à direita. A busca não está aqui: ela é única e
             mora na coluna, abaixo da marca — duas lupas para o mesmo gesto foi
@@ -308,6 +328,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       <MeuPerfilModal open={perfilModalOpen} onOpenChange={setPerfilModalOpen} />
       </div>
     </div>
+    </ProvedorDeTrilha>
   );
 });
 

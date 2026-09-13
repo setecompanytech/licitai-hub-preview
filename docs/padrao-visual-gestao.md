@@ -85,9 +85,14 @@ vivas significam dois formulários com os mesmos ids.
 ### `ListaDeCampos` · `BlocoDoPainel`
 O miolo do painel: `<dl>` de rótulo/valor, número à direita.
 
-### `SeloSituacao` · `ValorIndisponivel` · `AvisoDeContexto`
+### `SeloSituacao` · `ValorIndisponivel` · `AvisoDeContexto` · `AvisoDeFalha`
 Status em **texto + ícone + cor** — nunca só cor. Tons: `neutro`, `ativo`,
 `sucesso`, `atencao`, `critico`, `indisponivel`.
+
+`AvisoDeFalha` é o bloco de erro de carga: mensagem **real** do banco mais o
+retry, empilhando no celular. Use-o em vez de montar um `Alert` com botão ao
+lado — sete telas montaram o seu, e as sete quebravam igual em 390px, com o
+texto encolhendo a uma palavra por linha enquanto o botão não cedia um pixel.
 
 ### `TextoExpansivel`
 Descrição longa truncada com botão real de expansão (`aria-expanded`), não

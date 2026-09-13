@@ -134,7 +134,10 @@ export default function AppSidebar({ aoNavegar, permiteRecolher = true }: AppSid
               onClick={() => setRecolhida((v) => !v)}
               aria-label={recolhida ? 'Expandir navegação' : 'Recolher navegação'}
               aria-expanded={!recolhida}
-              className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              // 36px de alvo: o ícone tem 16, e `p-1.5` deixava o botão em 24 —
+              // abaixo do que um dedo acerta, e este é um controle que se usa
+              // com a tela em uso, não uma vez por sessão.
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             >
               {recolhida ? (
                 <PanelLeftOpen className="h-4 w-4" />

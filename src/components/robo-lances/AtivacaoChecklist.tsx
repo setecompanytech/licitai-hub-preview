@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2, Circle, AlertTriangle, Server, Key, Shield,
-  FileCheck, Rocket, Loader2, Award, RefreshCw, Send,
+  FileCheck, Rocket, Loader2, Award, RefreshCw, Send, Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -15,8 +15,35 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+/**
+ * ─── OS TRÊS EIXOS, E POR QUE ELES NÃO PODEM VIR NA MESMA LISTA ────────────
+ *
+ * Até 13/09/2026 os sete itens desciam numa lista corrida, e a leitura
+ * misturava perguntas que têm respostas INDEPENDENTES entre si:
+ *
+ *   "o portal responde?"  ≠  "minhas credenciais valem?"  ≠  "o robô está pronto?"
+ *
+ * Verde num eixo não implica verde no outro, e o caso concreto que obrigou a
+ * separação é justamente o mais comum: portal no ar, agente de pé e certificado
+ * ausente. Na lista corrida isso lia como "quase pronto, falta uma linha" —
+ * quando na verdade a disputa não sai do lugar, porque sem certificado o robô
+ * não passa da tela de login.
+ *
+ * A separação é só de apresentação: os mesmos sete itens, com os mesmos `id`,
+ * o mesmo cálculo de status e o mesmo progresso geral.
+ */
+type EixoId = 'conexao' | 'autenticacao' | 'prontidao';
+
+const EIXOS: Array<{ id: EixoId; titulo: string; pergunta: string; icone: typeof Server }> = [
+  { id: 'conexao', titulo: 'Conexão', pergunta: 'O portal responde?', icone: Globe },
+  { id: 'autenticacao', titulo: 'Autenticação', pergunta: 'Minhas credenciais valem?', icone: Key },
+  { id: 'prontidao', titulo: 'Prontidão do robô', pergunta: 'O robô está pronto para operar?', icone: Server },
+];
+
 type CheckItem = {
   id: string;
+  /** A qual pergunta este item responde. Ver `EIXOS`. */
+  eixo: EixoId;
   label: string;
   descricao: string;
   status: 'pendente' | 'ok' | 'erro' | 'verificando';
@@ -27,7 +54,15 @@ type CheckItem = {
   rodape?: string;
 };
 
-export default function AtivacaoChecklist() {
+/**
+ * @param somenteLeitura Esconde os botões de ação do checklist (instalar
+ *   certificado, gerar link, testar freio). O painel passou a aparecer também
+ *   na coluna da direita da aba Disputar, que é visível a operador e
+ *   visualizador — e essas ações são de administrador. Esconder o botão não é
+ *   a trava (a trava é a RLS e a edge function); é não oferecer a quem não
+ *   pode, que é o que a tela deve fazer.
+ */
+export default function AtivacaoChecklist({ somenteLeitura = false }: { somenteLeitura?: boolean } = {}) {
   const { user } = useAuth();
   const { empresaAtiva } = useEmpresa();
   const [items, setItems] = useState<CheckItem[]>([]);
@@ -118,8 +153,8 @@ export default function AtivacaoChecklist() {
       if (error) throw error;
       toast.success('Novo link de upload enviado para seu e-mail.');
       await verificarStatus();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao gerar link');
+    } catch (err) {
+      toast.error((err as Error).message || 'Erro ao gerar link');
     } finally {
       setReenviando(false);
       setShowReenvio(false);
@@ -133,7 +168,7 @@ export default function AtivacaoChecklist() {
       // Mark the token's cert_file_path as null and used_at as null to allow re-upload
       const { error } = await supabase
         .from('cert_upload_tokens')
-        .update({ cert_file_path: null, used_at: null } as any)
+        .update({ cert_file_path: null, used_at: null } as never)
         .eq('id', certTokenId);
 
       if (error) throw error;
@@ -141,8 +176,8 @@ export default function AtivacaoChecklist() {
       setCertTokenId(null);
       setShowInvalidar(false);
       await verificarStatus();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao invalidar certificado');
+    } catch (err) {
+      toast.error((err as Error).message || 'Erro ao invalidar certificado');
     } finally {
       setInvalidando(false);
     }
@@ -165,6 +200,7 @@ export default function AtivacaoChecklist() {
 
     newItems.push({
       id: 'agente',
+      eixo: 'prontidao',
       label: 'Agente Externo Configurado',
       descricao: agenteAtivo
         ? `Conectado: ${agenteAtivo.url_base} (v${agenteAtivo.versao_agente || '?'})`
@@ -200,6 +236,7 @@ export default function AtivacaoChecklist() {
       // O agente nunca empurrou heartbeat; agora PUXAMOS o sinal de vida.
       newItems.push({
         id: 'heartbeat',
+        eixo: 'prontidao',
         label: 'Sinal de vida (healthcheck)',
         descricao: agenteVivo?.online
           ? `Respondeu agora — ${new Date().toLocaleTimeString('pt-BR')}${agenteVivo.versao ? ` · v${agenteVivo.versao}` : ''}`
@@ -223,6 +260,7 @@ export default function AtivacaoChecklist() {
       const ks = (agenteVivo as { kill_switch?: { ok?: boolean; detalhe?: string | null; testado_em?: string } | null } | undefined)?.kill_switch;
       newItems.push({
         id: 'kill_switch',
+        eixo: 'prontidao',
         label: 'Freio de emergência verificado',
         descricao: ks?.ok
           ? `Parada de emergência confirmada pelo agente${ks.testado_em ? ` em ${new Date(ks.testado_em).toLocaleString('pt-BR')}` : ''}`
@@ -247,6 +285,7 @@ export default function AtivacaoChecklist() {
       const ram = capacidadeViva?.ram_total_mb ?? agenteAtivo.ram_mb;
       newItems.push({
         id: 'capacidade',
+        eixo: 'prontidao',
         label: 'Slots Disponíveis',
         descricao: `${slotsLivres} de ${slotsTotais} slots livres | ${ram || '?'}MB RAM`,
         status: slotsLivres > 0 ? 'ok' : 'erro',
@@ -293,6 +332,7 @@ export default function AtivacaoChecklist() {
 
       newItems.push({
         id: 'certificado',
+        eixo: 'autenticacao',
         label: 'Certificado Digital',
         descricao: certNoAgente
           ? `Instalado no robô e pronto para ser apresentado aos portais${titulares.length ? ` — ${titulares.join(', ')}` : ''}`
@@ -332,6 +372,7 @@ export default function AtivacaoChecklist() {
     const temCredencial = !errCredenciais && !!credenciais && credenciais.length > 0;
     newItems.push({
       id: 'credenciais',
+      eixo: 'autenticacao',
       label: 'Credenciais de Portal',
       descricao: errCredenciais
         ? `Não foi possível consultar as credenciais: ${errCredenciais.message}`
@@ -351,10 +392,15 @@ export default function AtivacaoChecklist() {
     const portaisOk = healthchecks?.length || 0;
     newItems.push({
       id: 'portais',
-      label: 'Portais Operacionais',
+      eixo: 'conexao',
+      // "Operacionais" afirmava mais do que foi medido — a função só faz
+      // HEAD/GET na URL e lê o status HTTP. É a mesma correção de rótulo que
+      // `PortalHealthcheck` já carrega; aqui ela faltava, e as duas telas
+      // passam a dizer a mesma coisa sobre a mesma medição.
+      label: 'Portais respondendo',
       descricao: portaisOk > 0
-        ? `${portaisOk} portal(is) verificado(s) e operacional(is)`
-        : 'Execute o healthcheck para verificar a disponibilidade dos portais',
+        ? `${portaisOk} portal(is) responderam ao último healthcheck`
+        : 'Execute o healthcheck para verificar se os endereços dos portais respondem',
       status: portaisOk > 0 ? 'ok' : 'pendente',
       icon: FileCheck,
     });
@@ -365,6 +411,10 @@ export default function AtivacaoChecklist() {
 
   useEffect(() => {
     verificarStatus();
+    // `verificarStatus` é recriada a cada render e faz seis consultas; incluí-la
+    // aqui transformaria o checklist num laço de rede. A verificação depende de
+    // quem está logado e de qual empresa está ativa — só disso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, empresaAtiva]);
 
   const okCount = items.filter(i => i.status === 'ok').length;
@@ -421,42 +471,74 @@ export default function AtivacaoChecklist() {
 
         <Progress value={progress} className="h-2" aria-label={`${okCount} de ${total} etapas concluídas`} />
 
-        <div className="space-y-2">
-          {items.map(item => {
-            const Icon = item.icon;
+        {/* Um bloco por eixo. Grupo sem item nenhum não desenha cabeçalho —
+            os itens de prontidão só existem com agente configurado, e um
+            título sozinho sugeriria que algo deveria estar ali e sumiu. */}
+        <div className="space-y-5">
+          {EIXOS.map((eixo) => {
+            const doEixo = items.filter((i) => i.eixo === eixo.id);
+            if (doEixo.length === 0) return null;
+            const IconeEixo = eixo.icone;
             return (
-              <div
-                key={item.id}
-                className={`flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border p-4 ${
-                  item.status === 'ok'
-                    ? 'border-success-line bg-success-tint'
-                    : item.status === 'erro'
-                    ? 'border-destructive-line bg-destructive-tint'
-                    : 'border-border bg-card'
-                }`}
-              >
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <span title={statusTexto(item.status)}>{statusIcon(item.status)}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <p className="text-sm font-semibold">{item.label}</p>
-                      <span className="sr-only">— {statusTexto(item.status)}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{item.descricao}</p>
-                    {item.rodape && (
-                      <p className="text-xs text-muted-foreground mt-2 border-l-2 border-border pl-2">
-                        {item.rodape}
-                      </p>
-                    )}
-                  </div>
+              <section key={eixo.id} className="space-y-2" aria-label={eixo.titulo}>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-border pb-1.5">
+                  <h4 className="g-titulo-secao flex items-center gap-2 text-foreground">
+                    <IconeEixo className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                    {eixo.titulo}
+                  </h4>
+                  <span className="g-meta text-muted-foreground">{eixo.pergunta}</span>
                 </div>
-                {item.acao && (
-                  <Button size="sm" variant="outline" className="shrink-0 self-start" onClick={item.acao}>
-                    {item.acaoLabel || 'Configurar'}
-                  </Button>
+
+                {/* O aviso mora no eixo de conexão porque é AQUI que a confusão
+                    nasce: com prontidão e autenticação logo abaixo, um verde em
+                    "portais respondendo" tende a ser lido como "a automação foi
+                    validada". Ela não foi — e só uma sessão de verdade valida. */}
+                {eixo.id === 'conexao' && (
+                  <p className="g-meta text-muted-foreground">
+                    <strong className="text-foreground">Portal respondendo não significa automação validada.</strong>{' '}
+                    O healthcheck confere se o endereço responde. Se o robô consegue fazer login,
+                    achar a sala da disputa e enviar lance só se sabe rodando uma sessão de verdade.
+                  </p>
                 )}
-              </div>
+
+                {doEixo.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex flex-col sm:flex-row sm:items-start gap-3 rounded-lg border p-4 ${
+                        item.status === 'ok'
+                          ? 'border-success-line bg-success-tint'
+                          : item.status === 'erro'
+                          ? 'border-destructive-line bg-destructive-tint'
+                          : 'border-border bg-card'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <span title={statusTexto(item.status)}>{statusIcon(item.status)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                            <p className="text-sm font-semibold">{item.label}</p>
+                            <span className="sr-only">— {statusTexto(item.status)}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-0.5">{item.descricao}</p>
+                          {item.rodape && (
+                            <p className="text-xs text-muted-foreground mt-2 border-l-2 border-border pl-2">
+                              {item.rodape}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {item.acao && !somenteLeitura && (
+                        <Button size="sm" variant="outline" className="shrink-0 self-start" onClick={item.acao}>
+                          {item.acaoLabel || 'Configurar'}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
             );
           })}
         </div>

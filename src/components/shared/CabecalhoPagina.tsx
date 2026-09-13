@@ -1,8 +1,8 @@
-import { Fragment, createElement, type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { createElement, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { padraoDaRota, trilhaDaRota } from '@/lib/navegacao/paginas';
+import { padraoDaRota } from '@/lib/navegacao/paginas';
+import { useRegistrarTrilha } from '@/components/layout/contexto-trilha';
 
 /**
  * CabecalhoPagina — o topo padrão de toda tela interna (identidade 12/09).
@@ -40,6 +40,18 @@ interface CabecalhoPaginaProps {
   filtros?: ReactNode;
   /** Ícone do módulo, discreto, antes do título. */
   icone?: ReactNode;
+  /**
+   * Densidade de sistema — a escala do módulo Gestão (26/34 no título, 14/20
+   * na descrição), fixada pelo comando de 13/09.
+   *
+   * É uma prop e não o padrão porque as duas escalas são deliberadas e servem
+   * a leituras diferentes: a de leitura (28/36 e 16/24) subiu em 10/09 porque
+   * o dono do produto achou a anterior "pequena e difícil"; a de sistema desce
+   * de novo porque tabela de dez colunas, painel lateral e indicadores na mesma
+   * dobra não cabem naquela. Mudar o padrão aqui mexeria nas 56 telas que usam
+   * este cabeçalho, incluindo as que a reclamação original nomeava.
+   */
+  denso?: boolean;
   /** Conteúdo livre entre o título e os filtros (chips, contadores, tabs). */
   children?: ReactNode;
   className?: string;
@@ -53,6 +65,7 @@ export default function CabecalhoPagina({
   trilha,
   filtros,
   icone,
+  denso = false,
   children,
   className,
 }: CabecalhoPaginaProps) {
@@ -63,53 +76,51 @@ export default function CabecalhoPagina({
 
   const tituloFinal = titulo ?? padrao?.titulo ?? '';
   const descricaoFinal = descricao ?? padrao?.descricao;
-  const trilhaFinal = trilha ?? (padrao ? trilhaDaRota(rota ?? pathname) : undefined);
   const iconeFinal = icone ?? (padrao ? createElement(padrao.icone) : undefined);
+
+  // A trilha sobe para a faixa branca em vez de ser desenhada aqui (13/09).
+  // Renderizá-la nos dois lugares dava DUAS trilhas por tela, uma sobre a
+  // outra, dizendo a mesma coisa — a navegação duplicada que o comando de
+  // reestruturação proíbe. A faixa resolve sozinha as telas que são item de
+  // menu; o que ela não sabe é o degrau final das telas de detalhe, e é isso
+  // que este registro entrega.
+  useRegistrarTrilha(trilha);
 
   return (
     <header className={cn('mb-6 flex flex-col gap-4', className)}>
-      {trilhaFinal && trilhaFinal.length > 0 && (
-        <nav aria-label="Você está em" className="text-xs leading-4 text-muted-foreground">
-          <ol className="flex flex-wrap items-center gap-1">
-            {trilhaFinal.map((item, i) => {
-              const ultimo = i === trilhaFinal.length - 1;
-              return (
-                <Fragment key={`${item.rotulo}-${i}`}>
-                  <li>
-                    {item.para && !ultimo ? (
-                      <Link to={item.para} className="hover:text-foreground transition-colors">
-                        {item.rotulo}
-                      </Link>
-                    ) : (
-                      <span aria-current={ultimo ? 'page' : undefined} className={ultimo ? 'text-foreground font-medium' : undefined}>
-                        {item.rotulo}
-                      </span>
-                    )}
-                  </li>
-                  {!ultimo && (
-                    <li aria-hidden="true">
-                      <ChevronRight className="w-3 h-3" />
-                    </li>
-                  )}
-                </Fragment>
-              );
-            })}
-          </ol>
-        </nav>
-      )}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-3 text-[1.75rem] leading-9 font-bold text-foreground">
+          <h1
+            className={cn(
+              'flex items-center gap-3 font-bold text-foreground',
+              denso ? 'g-titulo-pagina' : 'text-[1.75rem] leading-9',
+            )}
+          >
             {iconeFinal && (
-              <span aria-hidden="true" className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary [&>svg]:h-5 [&>svg]:w-5">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'inline-flex flex-shrink-0 items-center justify-center bg-primary-tint text-primary',
+                  denso
+                    ? 'h-9 w-9 rounded-[var(--g-raio)] [&>svg]:h-[18px] [&>svg]:w-[18px]'
+                    : 'h-10 w-10 rounded-xl [&>svg]:h-5 [&>svg]:w-5',
+                )}
+              >
                 {iconeFinal}
               </span>
             )}
             <span className="min-w-0">{tituloFinal}</span>
           </h1>
           {descricaoFinal && (
-            <p className="mt-1 max-w-3xl text-base leading-6 text-muted-foreground">{descricaoFinal}</p>
+            <p
+              className={cn(
+                'mt-1 max-w-3xl text-muted-foreground',
+                denso ? 'g-corpo' : 'text-base leading-6',
+              )}
+            >
+              {descricaoFinal}
+            </p>
           )}
         </div>
         {acoes && (

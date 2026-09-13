@@ -50,10 +50,18 @@ export default function FaixaIndicadores({
   return (
     <div
       className={cn(
-        // auto-fit com mínimo em min(200px,100%): três, quatro ou seis
-        // indicadores se acomodam sem ponto de quebra declarado, e no celular
-        // caem para uma ou duas colunas sozinhos, como pede a seção MOBILE.
-        'grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))] [&>*]:min-w-0',
+        // auto-fit com mínimo em min(160px,100%): a grade se acomoda sem
+        // nenhum ponto de quebra declarado, e o número vem de medir as duas
+        // pontas, não de gosto.
+        //
+        // Em cima: 1440px menos a coluna de 240 e o respiro deixam ~1.200px.
+        // Com mínimo de 200 cabiam cinco, e o sexto indicador descia sozinho
+        // para a segunda linha — a órfã que denuncia grade mal medida.
+        // Embaixo: 390px menos 32 de respiro deixam 358, e duas colunas de 176
+        // mais o vão pediam 364. Faltavam seis pixels para a seção MOBILE
+        // ("indicadores em uma ou duas colunas") valer, e a tela empilhava seis
+        // cartões antes de mostrar a tabela.
+        'grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr))] [&>*]:min-w-0',
         className,
       )}
     >
@@ -78,7 +86,11 @@ export default function FaixaIndicadores({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--g-raio)]',
+                  // Some no celular: com dois cartões por linha em 390px, os
+                  // 48px que o ícone e o vão custam são a diferença entre ler
+                  // "Taxa de sucesso" e ler "Taxa de suce…". O ícone repete o
+                  // que o rótulo já diz; o rótulo, não.
+                  'hidden h-9 w-9 shrink-0 items-center justify-center rounded-[var(--g-raio)] sm:flex',
                   TOM[item.tom ?? 'neutro'],
                 )}
               >
@@ -87,15 +99,25 @@ export default function FaixaIndicadores({
             )}
             <span className="min-w-0 flex-1">
               <span className="g-meta block truncate text-muted-foreground">{item.rotulo}</span>
-              <span className="block truncate text-xl font-bold leading-7 tabular-nums text-foreground">
-                {item.valor === null ? (
-                  <ValorIndisponivel razao={item.razaoIndisponivel} />
-                ) : (
-                  item.valor
-                )}
-              </span>
+              {/* Valor ausente: o travessão fica na linha do número e a RAZÃO
+                  desce para a linha de baixo. Lado a lado, "Nenhum processo
+                  decidido" era cortado no meio pelo `truncate` do valor — e
+                  razão cortada não explica nada, que é o oposto do motivo de
+                  ela existir. */}
+              {item.valor === null ? (
+                <>
+                  <span className="block text-xl font-bold leading-7 text-muted-foreground">—</span>
+                  <span className="g-meta line-clamp-2 block text-warning-ink">
+                    {item.razaoIndisponivel ?? 'Apuração a validar'}
+                  </span>
+                </>
+              ) : (
+                <span className="block truncate text-xl font-bold leading-7 tabular-nums text-foreground">
+                  {item.valor}
+                </span>
+              )}
               {item.detalhe && (
-                <span className="g-meta block truncate text-muted-foreground">{item.detalhe}</span>
+                <span className="g-meta line-clamp-2 block text-muted-foreground">{item.detalhe}</span>
               )}
             </span>
           </Elemento>

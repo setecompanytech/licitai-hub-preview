@@ -1,11 +1,14 @@
-import SkeletonPagina from '@/components/shared/SkeletonPagina';
-import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import { SkeletonCorpo } from '@/components/shared/SkeletonPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import BotaoVoltar from '@/components/layout/BotaoVoltar';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import AppLayout from '@/components/layout/AppLayout';
+import TelaGestao, { SecaoGestao } from '@/components/gestao/TelaGestao';
+import AbasGestao from '@/components/gestao/AbasGestao';
+import SeloSituacao, { type TomSituacao } from '@/components/gestao/SeloSituacao';
+import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import DesfechoDaDisputa from '@/components/workspace/DesfechoDaDisputa';
 import ContratoDoProcesso from '@/components/workspace/ContratoDoProcesso';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   FolderOpen, FileText, Calculator, Sparkles, Scale, Briefcase,
   ClipboardList, ExternalLink, Building2, Calendar, DollarSign, MapPin, Loader2, Archive,
-  TrendingUp, Clock, Package, AlertTriangle, RefreshCw, Crosshair,
+  TrendingUp, Clock, Package, AlertTriangle, RefreshCw, Crosshair, Globe,
 } from 'lucide-react';
 import HistoricoProcesso from '@/components/workspace/HistoricoProcesso';
 import ItensEditalPrecificacao from '@/components/workspace/ItensEditalPrecificacao';
@@ -33,6 +36,7 @@ import AureliaPrecificacaoChat from '@/components/precificacao/AureliaPrecificac
 import { normalizarStatus } from '@/lib/licitacao/status';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
+import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 
 interface Licitacao {
   id: string; numero: string | null; orgao: string | null; objeto: string | null;
@@ -69,14 +73,43 @@ type RascunhoPlanilha = {
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+/** Um item da lista de itens da contratação. A forma varia porque o PNCP
+ *  responde `numeroItem`/`descricaoItem` ao vivo e `numero`/`descricao` quando
+ *  o item vem materializado em `licitacao_itens` — as duas grafias convivem
+ *  aqui em vez de num `any` que engoliria um campo renomeado em silêncio. */
+type ItemPncpLive = {
+  numero?: number; numeroItem?: number;
+  descricao?: string; descricaoItem?: string;
+  quantidade?: number; quantidadeItens?: number;
+  unidade_medida?: string; unidadeMedida?: string;
+  valor_unitario_estimado?: number; valorUnitarioEstimado?: number; valorUnitario?: number;
+  valor_total?: number; valorTotal?: number; valorTotalEstimado?: number;
+  marca?: string | null; marcaFabricante?: string | null;
+};
+
+/** As sete abas do dossiê, na ordem do comando. */
+const ABAS_DO_DOSSIE = [
+  { valor: 'visao', rotulo: 'Visão Geral' },
+  { valor: 'documentos', rotulo: 'Documentos' },
+  { valor: 'anexos', rotulo: 'Anexos' },
+  { valor: 'precificacao', rotulo: 'Precificação' },
+  { valor: 'proposta', rotulo: 'Proposta' },
+  { valor: 'modulos', rotulo: 'Módulos' },
+  { valor: 'historico', rotulo: 'Histórico' },
+] as const;
+
 /** Trilha da pasta: /processo/:id não é item de menu, então o caminho até ela
  *  é montado aqui — mas os degraus vêm do registro da tela que a contém
  *  (/kanban), e não escritos à mão: renomear o módulo em `paginas.ts` renomeia
  *  a trilha da pasta junto. O último degrau é a identidade do processo, e por
- *  isso "Gestão de licitações" ganha o link que o registro não dá a ele. */
-const TRILHA_BASE = trilhaDaRota('/kanban').map((item, i, todos) =>
-  i === todos.length - 1 ? { ...item, para: '/kanban' } : item,
-);
+ *  isso "Gestão de licitações" ganha o link que o registro não dá a ele.
+ *
+ *  `slice(1)` derruba o "Painel": na faixa superior ele é redundante com a
+ *  marca da coluna, que já leva ao painel — a mesma regra que `TrilhaDoTopo`
+ *  aplica aos degraus vindos do registro. */
+const TRILHA_BASE = trilhaDaRota('/kanban')
+  .map((item, i, todos) => (i === todos.length - 1 ? { ...item, para: '/kanban' } : item))
+  .slice(1);
 
 /** Campo da ficha do processo: rótulo em cima, valor embaixo. Substitui as
  *  linhas separadas por "|" — que não embrulhavam em tela estreita e pintavam
@@ -84,38 +117,31 @@ const TRILHA_BASE = trilhaDaRota('/kanban').map((item, i, todos) =>
 function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-sm text-muted-foreground">{rotulo}</dt>
-      <dd className="mt-1 text-base text-foreground">{children}</dd>
+      <dt className="g-meta text-muted-foreground">{rotulo}</dt>
+      <dd className="g-corpo mt-1 text-foreground">{children}</dd>
     </div>
   );
 }
 
-/** Cor do selo de status no cabeçalho — só apresentação; o texto continua o
- *  status bruto do processo. */
-const varianteStatus = (status: string): 'success' | 'danger' | 'muted' | 'info' => {
+/** Tom do selo de situação no cabeçalho — só apresentação; o texto continua o
+ *  status bruto do processo, e a cor é reforço (SeloSituacao leva ícone junto). */
+const tomDoStatus = (status: string): TomSituacao => {
   const n = normalizarStatus(status);
-  if (n === 'Vencida' || n === 'Homologada') return 'success';
-  if (n === 'Perdida') return 'danger';
-  if (n === 'Arquivada') return 'muted';
-  return 'info';
+  if (n === 'Vencida' || n === 'Homologada') return 'sucesso';
+  if (n === 'Perdida') return 'critico';
+  if (n === 'Arquivada') return 'neutro';
+  return 'ativo';
 };
 
 export default function ProcessoWorkspace() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const ABAS_VALIDAS = ['visao', 'documentos', 'anexos', 'precificacao', 'proposta', 'modulos', 'historico'];
-  const abaPedida = searchParams.get('aba') || '';
-  const abaInicial = ABAS_VALIDAS.includes(abaPedida) ? abaPedida : 'visao';
-  const [aba, setAba] = useState(abaInicial);
-
-  // A aba também muda por URL depois da montagem (links entre pastas e abas
-  // do próprio processo) — sem isto, ?aba= só valia no primeiro carregamento.
-  useEffect(() => {
-    if (abaInicial !== aba) setAba(abaInicial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abaInicial]);
+  /* A aba mora em `?aba=` — antes ela era LIDA da URL mas nunca ESCRITA nela:
+     clicar numa aba não mudava o endereço, o voltar do navegador não devolvia
+     a aba e o F5 jogava todo mundo de volta na Visão Geral. O hook fecha o
+     ciclo de leitura e escrita, e é o mesmo que o Kanban usa. */
+  const [aba, definirAba] = useAbaNaUrl('visao');
   // Contagem dos arquivos do PNCP (Edital em tela) — soma no chip da pasta Edital
   const [pncpArquivosCount, setPncpArquivosCount] = useState<number | null>(null);
   // O processo tem coordenadas PNCP? Decide quem materializa os itens: o
@@ -124,15 +150,25 @@ export default function ProcessoWorkspace() {
   const materializouRef = useRef(false);
   const [lic, setLic] = useState<Licitacao | null>(null);
   const [loading, setLoading] = useState(true);
+  /* Falhar ao carregar e não existir são coisas diferentes: antes o `error` da
+     consulta era descartado e a queda do banco caía no mesmo "Processo não
+     encontrado", mandando a pessoa procurar no Kanban um processo que está lá.
+     Guardado aqui, o erro vira uma tela própria, com "Tentar novamente". */
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const [cargaNonce, setCargaNonce] = useState(0);
   const [exportando, setExportando] = useState(false);
   const { anexos, documentos } = useProcessoWorkspace(id || null);
   const [precItems, setPrecItems] = useState<PrecificacaoItem[]>([]);
   const [rascunhoPlanilha, setRascunhoPlanilha] = useState<RascunhoPlanilha | null>(null);
   const [loadingPrec, setLoadingPrec] = useState(false);
 
-  // Dados complementares do PNCP
-  const [pncpDetalhe, setPncpDetalhe] = useState<any>(null);
-  const [pncpItens, setPncpItens] = useState<any[]>([]);
+  // Dados complementares do PNCP. O detalhe é JSON de terceiro — a forma muda
+  // por versão da API e por campo opcional do órgão —, então o mapa de chaves
+  // fica aberto de propósito: o que este arquivo promete é o objeto `espelho`
+  // logo abaixo, montado campo a campo, e não a resposta crua do portal.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pncpDetalhe, setPncpDetalhe] = useState<Record<string, any> | null>(null);
+  const [pncpItens, setPncpItens] = useState<ItemPncpLive[]>([]);
   // Fallback do espelho de itens: licitacao_itens são os MESMOS itens do PNCP,
   // materializados pela preparação automática — camada cache do padrão nº 4
   // (consulta ao vivo como complemento). Sem eles a tabela sumia sempre que o
@@ -140,7 +176,6 @@ export default function ProcessoWorkspace() {
   const [itensMaterializados, setItensMaterializados] = useState<Array<{
     numero: number; descricao: string; quantidade: number; unidade: string; valor_unitario: number;
   }>>([]);
-  const [pncpArquivos, setPncpArquivos] = useState<any[]>([]);
   const [pncpCarregando, setPncpCarregando] = useState(false);
   // Falha no espelho PNCP era invisível: o card simplesmente não aparecia.
   const [pncpErro, setPncpErro] = useState(false);
@@ -166,11 +201,19 @@ export default function ProcessoWorkspace() {
 
   useEffect(() => {
     if (!id || !user) return;
+    setLoading(true);
+    setErroCarga(null);
     supabase.from('licitacoes')
       .select('id, numero, orgao, objeto, modalidade, status, valor_estimado, data_encerramento, uf, municipio, data_abertura, portal, url_edital, observacoes, resultado, valor_adjudicado, data_homologacao, vencedor, numero_controle_pncp, cnpj_orgao, ano_compra, sequencial_compra')
       .eq('id', id).maybeSingle()  // sem user_id: a linha do painel abre processos de colegas (RLS protege)
-      .then(({ data }) => { setLic(data as Licitacao); setLoading(false); });
-  }, [id, user]);
+      .then(({ data, error }) => {
+        // `error` aqui é falha de transporte/permissão — não "linha ausente",
+        // que o maybeSingle devolve como data null e error null.
+        if (error) setErroCarga(error.message || 'Falha ao consultar o processo');
+        else setLic(data as Licitacao);
+        setLoading(false);
+      });
+  }, [id, user, cargaNonce]);
 
   useEffect(() => {
     if (!lic) return;
@@ -229,7 +272,7 @@ export default function ProcessoWorkspace() {
       .then(({ data, error }: { data?: Record<string, unknown> | null; error?: unknown }) => {
         if (error || !data?.success) { setPncpErro(true); return; }
         setPncpDetalhe(data);
-        setPncpItens(Array.isArray(data.itens) ? (data.itens as unknown[]) : []);
+        setPncpItens(Array.isArray(data.itens) ? (data.itens as ItemPncpLive[]) : []);
       })
       .catch(() => setPncpErro(true))
       .finally(() => setPncpCarregando(false));
@@ -243,18 +286,7 @@ export default function ProcessoWorkspace() {
       .eq('licitacao_id', lic.id)
       .order('numero')
       .then(({ data }) => setItensMaterializados((data as typeof itensMaterializados) || []));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lic?.id]);
-
-  type ItemPncpLive = {
-    numero?: number; numeroItem?: number;
-    descricao?: string; descricaoItem?: string;
-    quantidade?: number; quantidadeItens?: number;
-    unidade_medida?: string; unidadeMedida?: string;
-    valor_unitario_estimado?: number; valorUnitarioEstimado?: number; valorUnitario?: number;
-    valor_total?: number; valorTotal?: number;
-    marca?: string | null; marcaFabricante?: string | null;
-  };
 
   // A INVERSÃO da preparação automática: quando o espelho traz os itens ao
   // vivo do PNCP e licitacao_itens está vazia, materializa DAQUI — dado já
@@ -264,7 +296,7 @@ export default function ProcessoWorkspace() {
     if (materializouRef.current || !user || !lic?.id) return;
     if (!pncpItens.length || itensMaterializados.length > 0) return;
     materializouRef.current = true;
-    const rows = (pncpItens as ItemPncpLive[])
+    const rows = pncpItens
       .map((item, i) => {
         const qtd = Number(item.quantidade ?? item.quantidadeItens ?? 1) || 1;
         const vUnit = Number(item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario ?? 0) || 0;
@@ -294,10 +326,9 @@ export default function ProcessoWorkspace() {
           unidade: r.unidade, valor_unitario: r.valor_unitario,
         })));
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pncpItens, itensMaterializados.length, user, lic?.id]);
 
-  const loadPrecificacao = async () => {
+  const loadPrecificacao = useCallback(async () => {
     if (!id || !user) return;
     setLoadingPrec(true);
     const [catRes, rascRes] = await Promise.all([
@@ -313,14 +344,16 @@ export default function ProcessoWorkspace() {
     setPrecItems((catRes.data as PrecificacaoItem[]) || []);
     setRascunhoPlanilha(rascRes.data as RascunhoPlanilha | null);
     setLoadingPrec(false);
-  };
+  }, [id, user]);
 
-  // Abrir direto em ?aba=precificacao não passa por onValueChange, então a
-  // carga precisa ser disparada aqui — senão a aba abre vazia.
+  /* O efeito acoplado: virar para Precificação dispara a carga. Agora ele
+     observa a ABA e não só a aba inicial — com a aba morando na URL, os quatro
+     caminhos que levam a ela (clique na fila, link `?aba=precificacao`, o
+     "Ver na Precificação" do desfecho e o atalho da pasta vazia em Anexos)
+     passam pelo mesmo ponto. Antes, o clique carregava e o link não. */
   useEffect(() => {
-    if (abaInicial === 'precificacao' && id && user) loadPrecificacao();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abaInicial, id, user]);
+    if (aba === 'precificacao') loadPrecificacao();
+  }, [aba, loadPrecificacao]);
 
   // Espelho de ITENS — mesma prioridade do espelho de campos: ao vivo > materializado.
   const itensEspelho: ItemPncpLive[] = pncpItens.length > 0
@@ -334,7 +367,7 @@ export default function ProcessoWorkspace() {
       }));
 
   // Espelho PNCP mesclado — prioridade: consulta ao vivo > cache local > processo.
-  const det = pncpDetalhe as Record<string, any> | null;
+  const det = pncpDetalhe;
   const cc = pncpCache;
   // "Hora de parede": o PNCP envia horário de Brasília SEM fuso; o banco
   // armazena como UTC e o new Date() desconta 3h de novo — todo horário de
@@ -367,108 +400,162 @@ export default function ProcessoWorkspace() {
   };
   const temEspelho = Object.values(espelho).some((v) => v !== null && v !== undefined && v !== '');
 
-  /* Esta tela desenha a própria moldura (não passa pelo AppLayout), então na
-     espera não sobrava nada: `h-screen` em branco com um ponto girando. O
-     esqueleto com moldura devolve a barra navy e a coluna lateral enquanto o
-     processo carrega. */
-  if (loading) return <SkeletonPagina />;
+  /* A tela passou a usar o AppLayout (13/09): a moldura, a trilha e o respiro
+     vêm de lá, e o esqueleto da espera é só o CORPO — repetir a barra aqui
+     dentro daria duas barras. */
+  if (loading) {
+    return (
+      <AppLayout trilhaExtra={TRILHA_BASE}>
+        <SkeletonCorpo />
+      </AppLayout>
+    );
+  }
+
+  /* Não conseguimos carregar ≠ não existe. O primeiro é nosso problema e se
+     resolve tentando de novo; o segundo é endereço morto e se resolve voltando
+     à lista. Mandar quem caiu no primeiro procurar na lista é mandar procurar
+     um processo que está lá. */
+  if (erroCarga) {
+    return (
+      <AppLayout trilhaExtra={TRILHA_BASE}>
+        <TelaGestao titulo="Não conseguimos carregar este processo">
+          <EstadoVazio
+            icone={<AlertTriangle />}
+            titulo="Falha ao carregar o processo"
+            descricao={`O processo pode existir — foi a consulta que não voltou. ${erroCarga}`}
+            acao={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => setCargaNonce((n) => n + 1)}>
+                  <RefreshCw className="w-4 h-4" aria-hidden="true" /> Tentar novamente
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/kanban')}>
+                  Voltar à Gestão de licitações
+                </Button>
+              </div>
+            }
+          />
+        </TelaGestao>
+      </AppLayout>
+    );
+  }
+
   if (!lic) return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-6">
-        <div className="mb-2">
-          <BotaoVoltar somenteIcone padrao="/kanban" />
-        </div>
-        <CabecalhoPagina
-          icone={<FolderOpen />}
-          titulo="Processo não encontrado"
-          descricao="O processo pode ter sido excluído ou o endereço está incompleto"
-          trilha={TRILHA_BASE}
-        />
+    <AppLayout trilhaExtra={TRILHA_BASE}>
+      <TelaGestao
+        titulo="Processo não encontrado"
+        descricao="O processo pode ter sido excluído ou o endereço está incompleto"
+      >
         <EstadoVazio
           icone={<FolderOpen />}
           titulo="Nada para abrir neste endereço"
           descricao="Volte à gestão de licitações e escolha o processo na coluna em que ele está."
           acao={<Button onClick={() => navigate('/kanban')}>Voltar à Gestão de licitações</Button>}
         />
-      </div>
-    </div>
+      </TelaGestao>
+    </AppLayout>
   );
 
   const identidade = identidadeDoProcesso({ numero: lic.numero, modalidade: lic.modalidade });
-  const temMeta = !!(lic.orgao || lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null);
+  const temContexto = !!(lic.orgao || lic.modalidade || lic.uf || lic.data_encerramento || lic.valor_estimado != null || lic.portal);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-6">
-        {/* Mesmo Voltar do resto do sistema. Ter um botão próprio aqui,
-            saltando para uma origem fixa, era o que fazia o percurso girar:
-            o salto entrava na pilha como avanço, e o Voltar da tela
-            seguinte trazia de volta para a pasta. */}
-        <div className="mb-2">
-          <BotaoVoltar somenteIcone padrao="/kanban" />
-        </div>
-
-        {/* Cabeçalho da pasta — /processo/:id não é item de menu, então título,
-            descrição e trilha vêm à mão; a identidade é a mesma do Kanban. */}
-        <CabecalhoPagina
-          icone={<FolderOpen />}
-          titulo={identidade}
-          descricao={lic.objeto ? <span className="line-clamp-3">{objetoLegivel(lic.objeto)}</span> : undefined}
-          trilha={[...TRILHA_BASE, { rotulo: identidade }]}
-          acoes={
+    <AppLayout trilhaExtra={[...TRILHA_BASE, { rotulo: identidade }]}>
+      {/* Cabeçalho COMPACTO: identificador, situação e origem. O objeto não
+          entra aqui — ele tem sete linhas em edital de serviço e empurrava as
+          abas para fora da primeira tela; mora no Resumo, com expansão. */}
+      <TelaGestao
+        titulo={identidade}
+        selos={
+          <>
+            {lic.status && (
+              <SeloSituacao tom={tomDoStatus(lic.status)}>{lic.status}</SeloSituacao>
+            )}
+            {/* SRP é o que diz se o desfecho vira ATA ou contrato direto —
+                identidade do processo, por isso fica ao lado da situação. */}
+            {espelho.srp === true && (
+              <SeloSituacao tom="neutro" icone={Archive} explicacao="Sistema de Registro de Preços — o resultado vira ATA.">
+                SRP · registro de preços
+              </SeloSituacao>
+            )}
+            {lic.vencedor && <SeloSituacao tom="sucesso">Empresa vencedora</SeloSituacao>}
+          </>
+        }
+        contexto={
+          temContexto ? (
             <>
-              {lic.status && <Badge variant={varianteStatus(lic.status)}>{lic.status}</Badge>}
-              <Button variant="outline" onClick={handleExportarZip} disabled={exportando}>
-                {exportando
-                  ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                  : <Archive className="w-4 h-4" aria-hidden="true" />}
-                {exportando ? 'Compactando...' : 'Exportar ZIP'}
-              </Button>
-            </>
-          }
-        >
-          {temMeta && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-              {lic.modalidade && (
-                <span className="inline-flex items-center gap-1">
-                  <Building2 className="w-4 h-4" aria-hidden="true" /> {lic.modalidade}
+              {lic.orgao && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <Building2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{lic.orgao}</span>
                 </span>
               )}
-              {lic.uf && (
+              {lic.modalidade && <span className="truncate">{lic.modalidade}</span>}
+              {(lic.municipio || lic.uf) && (
                 <span className="inline-flex items-center gap-1">
-                  <MapPin className="w-4 h-4" aria-hidden="true" /> {lic.municipio}/{lic.uf}
+                  <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf}
                 </span>
               )}
               {lic.data_encerramento && (
                 <span className="inline-flex items-center gap-1">
-                  <Calendar className="w-4 h-4" aria-hidden="true" /> Encerra: {dataSo(lic.data_encerramento)}
+                  <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" /> Encerra {dataSo(lic.data_encerramento)}
                 </span>
               )}
               {lic.valor_estimado != null && (
                 <span className="inline-flex items-center gap-1 tabular-nums">
-                  <DollarSign className="w-4 h-4" aria-hidden="true" /> R$ {Number(lic.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <DollarSign className="w-4 h-4 shrink-0" aria-hidden="true" /> {fmt(lic.valor_estimado)}
                 </span>
               )}
-            </div>
-          )}
-        </CabecalhoPagina>
-
-        {/* `?aba=` deixa o painel abrir direto na aba certa — é o que faz o
-            ícone de Precificação da linha levar o processo junto, em vez de
-            despejar o usuário numa tela em branco. */}
-        <Tabs value={aba} className="w-full" onValueChange={v => { setAba(v); if (v === 'precificacao') loadPrecificacao(); }}>
-          <TabsList className="mb-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7">
-            <TabsTrigger value="visao">Visão Geral</TabsTrigger>
-            <TabsTrigger value="documentos">Documentos</TabsTrigger>
-            <TabsTrigger value="anexos">Anexos</TabsTrigger>
-            <TabsTrigger value="precificacao">Precificação</TabsTrigger>
-            <TabsTrigger value="proposta">Proposta</TabsTrigger>
-            <TabsTrigger value="modulos">Módulos</TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-          </TabsList>
-
-          {/* Visão Geral */}
-          <TabsContent value="visao" className="space-y-4">
+              {/* A ORIGEM do processo: de onde o edital veio. Com link quando o
+                  portal deu endereço — o caminho de volta à fonte oficial. */}
+              {lic.portal && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <Globe className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {lic.url_edital ? (
+                    <a
+                      href={lic.url_edital}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-primary hover:underline"
+                    >
+                      {lic.portal}
+                    </a>
+                  ) : (
+                    <span className="truncate">{lic.portal}</span>
+                  )}
+                </span>
+              )}
+            </>
+          ) : undefined
+        }
+        acoesSecundarias={
+          <Button variant="outline" className="g-controle" onClick={handleExportarZip} disabled={exportando}>
+            {exportando
+              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              : <Archive className="w-4 h-4" aria-hidden="true" />}
+            {exportando ? 'Compactando...' : 'Exportar ZIP'}
+          </Button>
+        }
+        abas={
+          /* A contagem é o dado real das duas coleções já carregadas — não um
+             número decorativo: mostra se a pasta tem o que a habilitação pede
+             antes de a pessoa abrir a aba. */
+          <AbasGestao
+            abas={ABAS_DO_DOSSIE.map((a) =>
+              a.valor === 'documentos'
+                ? { ...a, contagem: documentos.length }
+                : a.valor === 'anexos'
+                  ? { ...a, contagem: anexos.length }
+                  : { ...a },
+            )}
+            valor={aba}
+            aoMudar={definirAba}
+          />
+        }
+      >
+        {/* Visão Geral */}
+        {aba === 'visao' && (
+          <div className="flex flex-col gap-4">
             {/* O desfecho abre a Visão Geral: encerrada a disputa, é a primeira
                 coisa que a pessoa precisa resolver. Só aparece quando há
                 desfecho — antes disso não há o que tratar. */}
@@ -479,98 +566,114 @@ export default function ProcessoWorkspace() {
               modalidade={lic.modalidade ?? null}
               valorEstimado={lic.valor_estimado ?? null}
               status={lic.status}
-              irParaAba={(a) => { setAba(a); if (a === 'precificacao') loadPrecificacao(); }}
+              irParaAba={definirAba}
               aoMudarStatus={(novo) => setLic(atual => (atual ? { ...atual, status: novo } : atual))}
             />
             {/* O contrato que nasceu daqui — só aparece quando existe elo. */}
             <ContratoDoProcesso licitacaoId={lic.id} />
-            <Card className="p-6 space-y-6">
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Campo rotulo="Local">
-                  {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}
-                </Campo>
-                <Campo rotulo="Órgão">{lic.orgao || '—'}</Campo>
-                <Campo rotulo="Status">{lic.status || '—'}</Campo>
-                <Campo rotulo="Modalidade">{lic.modalidade || '—'}</Campo>
-                <Campo rotulo="Valor estimado">
-                  <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span>
-                </Campo>
-                {lic.data_abertura && <Campo rotulo="Abertura">{dataHora(lic.data_abertura)}</Campo>}
-                {lic.data_encerramento && <Campo rotulo="Encerramento">{dataHora(lic.data_encerramento)}</Campo>}
-                {lic.portal && (
-                  <Campo rotulo="Portal">
-                    {lic.url_edital ? (
-                      <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                        {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                      </a>
-                    ) : (
-                      lic.portal
-                    )}
-                  </Campo>
-                )}
-                {lic.resultado && (
-                  <Campo rotulo="Resultado">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
-                      {/* O ponto verde dizia "vencemos" só pela cor, com o texto
-                          escondido no title. Selo com texto: a cor é reforço. */}
-                      {lic.vencedor && <Badge variant="success">Empresa vencedora</Badge>}
-                    </div>
-                  </Campo>
-                )}
-                {lic.valor_adjudicado != null && (
-                  <Campo rotulo="Valor adjudicado">
-                    <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span>
-                  </Campo>
-                )}
-                {lic.data_homologacao && (
-                  <Campo rotulo="Homologação">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</Campo>
-                )}
-              </dl>
 
-              {temEspelho && (
-                <div className="border-t border-border pt-6">
-                  <h2 className="mb-4 text-lg font-semibold">Espelho do PNCP</h2>
-                  <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {espelho.unidadeCompradora && (
-                      <Campo rotulo="Unidade compradora">{espelho.unidadeCompradora}</Campo>
-                    )}
-                    {espelho.amparoLegal && <Campo rotulo="Amparo legal">{espelho.amparoLegal}</Campo>}
-                    {espelho.tipo && <Campo rotulo="Tipo">{espelho.tipo}</Campo>}
-                    {espelho.modoDisputa && <Campo rotulo="Modo de disputa">{espelho.modoDisputa}</Campo>}
-                    {espelho.srp != null && (
-                      <Campo rotulo="Registro de preço">{espelho.srp ? 'Sim' : 'Não'}</Campo>
-                    )}
-                    <Campo rotulo="Fonte orçamentária">{espelho.fonteOrcamentaria || 'Não informada'}</Campo>
-                    {espelho.divulgacaoPncp && (
-                      <Campo rotulo="Divulgação no PNCP">{dataSo(espelho.divulgacaoPncp)}</Campo>
-                    )}
-                    {espelho.situacao && <Campo rotulo="Situação">{espelho.situacao}</Campo>}
-                    {espelho.inicioPropostas && (
-                      <Campo rotulo="Início das propostas">{dataHora(espelho.inicioPropostas)}</Campo>
-                    )}
-                    {espelho.fimPropostas && (
-                      <Campo rotulo="Fim das propostas">{dataHora(espelho.fimPropostas)}</Campo>
-                    )}
-                    {espelho.idPncp && (
-                      <Campo rotulo="Id contratação PNCP">
-                        <span className="tabular-nums">{espelho.idPncp}</span>
-                      </Campo>
-                    )}
-                    {espelho.fonte && <Campo rotulo="Fonte">{espelho.fonte}</Campo>}
-                  </dl>
+            <SecaoGestao titulo="Resumo">
+              <Card className="p-6 space-y-6">
+                {/* O objeto, que saiu do cabeçalho, chega aqui inteiro — em
+                    três linhas, com botão real de expansão. */}
+                <div>
+                  <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Objeto</h3>
+                  {lic.objeto
+                    ? <TextoExpansivel texto={objetoLegivel(lic.objeto)} linhas={3} />
+                    : <p className="g-corpo text-muted-foreground">—</p>}
                 </div>
-              )}
 
-              <div className="border-t border-border pt-6">
-                <h2 className="text-lg font-semibold">Objeto</h2>
-                <p className="mt-2 text-base leading-relaxed text-foreground">{lic.objeto || '—'}</p>
-              </div>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <Campo rotulo="Local">
+                    {lic.municipio && lic.uf ? `${lic.municipio}/${lic.uf}` : lic.municipio || lic.uf || '—'}
+                  </Campo>
+                  <Campo rotulo="Órgão">{lic.orgao || '—'}</Campo>
+                  <Campo rotulo="Status">{lic.status || '—'}</Campo>
+                  <Campo rotulo="Modalidade">{lic.modalidade || '—'}</Campo>
+                  <Campo rotulo="Valor estimado">
+                    <span className="tabular-nums">{lic.valor_estimado != null ? fmt(lic.valor_estimado) : '—'}</span>
+                  </Campo>
+                  {lic.data_abertura && <Campo rotulo="Abertura">{dataHora(lic.data_abertura)}</Campo>}
+                  {lic.data_encerramento && <Campo rotulo="Encerramento">{dataHora(lic.data_encerramento)}</Campo>}
+                  {lic.portal && (
+                    <Campo rotulo="Portal">
+                      {lic.url_edital ? (
+                        <a href={lic.url_edital} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                          {lic.portal} <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        lic.portal
+                      )}
+                    </Campo>
+                  )}
+                  {lic.resultado && (
+                    <Campo rotulo="Resultado">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={lic.vencedor ? 'font-semibold text-success-ink' : undefined}>{lic.resultado}</span>
+                        {/* O ponto verde dizia "vencemos" só pela cor, com o texto
+                            escondido no title. Selo com texto: a cor é reforço. */}
+                        {lic.vencedor && <Badge variant="success">Empresa vencedora</Badge>}
+                      </div>
+                    </Campo>
+                  )}
+                  {lic.valor_adjudicado != null && (
+                    <Campo rotulo="Valor adjudicado">
+                      <span className="tabular-nums">{fmt(lic.valor_adjudicado)}</span>
+                    </Campo>
+                  )}
+                  {lic.data_homologacao && (
+                    <Campo rotulo="Homologação">{new Date(lic.data_homologacao).toLocaleDateString('pt-BR')}</Campo>
+                  )}
+                </dl>
 
-              {lic.observacoes && (
-                <p className="border-t border-border pt-6 text-base text-muted-foreground">{lic.observacoes}</p>
-              )}
-            </Card>
+                {temEspelho && (
+                  <div className="border-t border-border pt-6">
+                    <h3 className="g-titulo-secao mb-4">Espelho do PNCP</h3>
+                    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {espelho.unidadeCompradora && (
+                        <Campo rotulo="Unidade compradora">{espelho.unidadeCompradora}</Campo>
+                      )}
+                      {espelho.amparoLegal && <Campo rotulo="Amparo legal">{espelho.amparoLegal}</Campo>}
+                      {espelho.tipo && <Campo rotulo="Tipo">{espelho.tipo}</Campo>}
+                      {espelho.modoDisputa && <Campo rotulo="Modo de disputa">{espelho.modoDisputa}</Campo>}
+                      {espelho.srp != null && (
+                        <Campo rotulo="Registro de preço">{espelho.srp ? 'Sim' : 'Não'}</Campo>
+                      )}
+                      <Campo rotulo="Fonte orçamentária">{espelho.fonteOrcamentaria || 'Não informada'}</Campo>
+                      {espelho.divulgacaoPncp && (
+                        <Campo rotulo="Divulgação no PNCP">{dataSo(espelho.divulgacaoPncp)}</Campo>
+                      )}
+                      {espelho.situacao && <Campo rotulo="Situação">{espelho.situacao}</Campo>}
+                      {espelho.inicioPropostas && (
+                        <Campo rotulo="Início das propostas">{dataHora(espelho.inicioPropostas)}</Campo>
+                      )}
+                      {espelho.fimPropostas && (
+                        <Campo rotulo="Fim das propostas">{dataHora(espelho.fimPropostas)}</Campo>
+                      )}
+                      {espelho.idPncp && (
+                        <Campo rotulo="Id contratação PNCP">
+                          <span className="tabular-nums">{espelho.idPncp}</span>
+                        </Campo>
+                      )}
+                      {espelho.fonte && <Campo rotulo="Fonte">{espelho.fonte}</Campo>}
+                    </dl>
+                  </div>
+                )}
+
+                {lic.observacoes && (
+                  <div className="border-t border-border pt-6">
+                    <h3 className="g-meta mb-1 uppercase tracking-wide text-muted-foreground">Observações</h3>
+                    <TextoExpansivel
+                      texto={lic.observacoes}
+                      linhas={3}
+                      className="text-muted-foreground"
+                      rotuloAbrir="Ver observações completas"
+                      rotuloFechar="Recolher observações"
+                    />
+                  </div>
+                )}
+              </Card>
+            </SecaoGestao>
 
             {/* ── Dados completos do PNCP ── */}
             {pncpErro && !pncpDetalhe && !pncpCarregando && !temEspelho && (
@@ -589,151 +692,126 @@ export default function ProcessoWorkspace() {
               </Alert>
             )}
 
-            {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0 || pncpArquivos.length > 0) && (
-              <Card className="p-6">
-                {pncpCarregando && !itensEspelho.length ? (
-                  <div role="status" aria-busy="true" className="space-y-3">
-                    <span className="sr-only">Carregando dados completos do PNCP…</span>
-                    <Skeleton className="h-5 w-64" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <h2 className="text-lg font-semibold">Complementos do PNCP — itens e arquivos</h2>
-
-                    {/* Informação complementar */}
-                    {pncpDetalhe?.informacao_complementar && (
-                      <div className="pt-3 border-t border-border">
-                        <h3 className="mb-1 text-base font-semibold">Informação complementar</h3>
-                        <p className="text-base text-foreground leading-relaxed">{pncpDetalhe.informacao_complementar}</p>
-                      </div>
-                    )}
-
-                    {/* Ausência não pode ser silêncio: sem este bloco, a seção
-                        de itens simplesmente não existia e ninguém sabia se era
-                        instabilidade, contratação sem itens ou extração pendente. */}
-                    {!pncpCarregando && itensEspelho.length === 0 && (
-                      <div className="pt-3 border-t border-border">
-                        <h3 className="mb-1 text-base font-semibold">Itens</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Nenhum item veio do PNCP nesta consulta — pode ser instabilidade do portal
-                          ou contratação sem itens publicados.{' '}
-                          <Button
-                            type="button"
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0 text-sm"
-                            onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
-                          >
-                            Consultar novamente
-                          </Button>
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Itens da contratação — espelho fiel da aba Itens do PNCP:
-                        mesmos rótulos de coluna, descrição integral, cabeçalho em
-                        negrito como no portal. */}
-                    {itensEspelho.length > 0 && (
-                      <div className="pt-3 border-t border-border">
-                        <h3 className="mb-2 text-base font-semibold">
-                          Itens ({itensEspelho.length})
-                        </h3>
-                        <div className="overflow-x-auto rounded-md border border-border">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-muted border-b border-border">
-                                <th className="text-left px-3 py-2 text-sm font-semibold w-16">Número</th>
-                                <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-28">Quantidade</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-36">Valor unitário estimado</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-36">Valor total estimado</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {itensEspelho.map((item: any, i: number) => {
-                                const qtd = item.quantidade ?? item.quantidadeItens;
-                                const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
-                                const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
-                                  ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
-                                return (
-                                  <tr key={item.numero ?? item.numeroItem ?? i} className="hover:bg-muted/50 transition-colors">
-                                    <td className="px-3 py-2 text-muted-foreground tabular-nums">{item.numero ?? item.numeroItem ?? i + 1}</td>
-                                    <td className="px-3 py-2 text-foreground">
-                                      {item.descricao || item.descricaoItem || '—'}
-                                      {(item.unidade_medida || item.unidadeMedida) && (
-                                        <Badge variant="muted" className="ml-2">
-                                          {item.unidade_medida || item.unidadeMedida}
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
-                                    <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap tabular-nums">{vUnit != null ? fmt(vUnit) : '—'}</td>
-                                    <td className="px-3 py-2 text-right font-medium text-success-ink whitespace-nowrap tabular-nums">{vTotal != null ? fmt(vTotal) : '—'}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+            {/* A condição perdeu `pncpArquivos.length > 0`: aquele estado nunca
+                era preenchido (o setter não tinha chamador), então a parcela
+                era sempre falsa e o bloco "Arquivos (N)" que dependia dela
+                nunca chegou à tela. Os arquivos do PNCP vivem no EditalViewer,
+                na aba Anexos → pasta Edital, que é onde a Fase 1 os colocou. */}
+            {((pncpCarregando && !temEspelho) || pncpDetalhe || itensEspelho.length > 0) && (
+              <SecaoGestao titulo="Complementos do PNCP — itens">
+                <Card className="p-6">
+                  {pncpCarregando && !itensEspelho.length ? (
+                    <div role="status" aria-busy="true" className="space-y-3">
+                      <span className="sr-only">Carregando dados completos do PNCP…</span>
+                      <Skeleton className="h-5 w-64" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Informação complementar */}
+                      {pncpDetalhe?.informacao_complementar && (
+                        <div>
+                          <h3 className="g-titulo-secao mb-1">Informação complementar</h3>
+                          <TextoExpansivel texto={String(pncpDetalhe.informacao_complementar)} linhas={4} />
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Arquivos */}
-                    {pncpArquivos.length > 0 && (
-                      <div className="pt-3 border-t border-border">
-                        <h3 className="mb-2 text-base font-semibold">
-                          Arquivos ({pncpArquivos.length})
-                        </h3>
-                        <div className="space-y-2">
-                          {pncpArquivos.map((arq: any, i: number) => (
-                            <div key={arq.sequencialDocumento ?? i}
-                              className="flex items-center justify-between gap-3 rounded-md border border-border p-3 transition-colors hover:bg-muted/50">
-                              <div className="flex min-w-0 items-center gap-2">
-                                <FileText className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium">{arq.titulo || arq.nomeArquivo || `Arquivo ${i + 1}`}</p>
-                                  {arq.dataPublicacao && (
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(arq.dataPublicacao).toLocaleDateString('pt-BR')}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              {arq.url && (
-                                <Button asChild size="sm" variant="ghost" className="shrink-0">
-                                  <a href={arq.url} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="w-4 h-4" aria-hidden="true" /> Abrir
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
-                          ))}
+                      {/* Ausência não pode ser silêncio: sem este bloco, a seção
+                          de itens simplesmente não existia e ninguém sabia se era
+                          instabilidade, contratação sem itens ou extração pendente. */}
+                      {!pncpCarregando && itensEspelho.length === 0 && (
+                        <div className="border-t border-border pt-3 first:border-0 first:pt-0">
+                          <h3 className="g-titulo-secao mb-1">Itens</h3>
+                          <p className="g-corpo text-muted-foreground">
+                            Nenhum item veio do PNCP nesta consulta — pode ser instabilidade do portal
+                            ou contratação sem itens publicados.{' '}
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-sm"
+                              onClick={() => { pncpFetchedRef.current = false; setPncpNonce((n) => n + 1); }}
+                            >
+                              Consultar novamente
+                            </Button>
+                          </p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
+                      )}
+
+                      {/* Itens da contratação — espelho fiel da aba Itens do PNCP:
+                          mesmos rótulos de coluna, descrição integral, cabeçalho em
+                          negrito como no portal. Aqui a descrição NÃO é truncada de
+                          propósito: é a cópia do que o portal publicou. */}
+                      {itensEspelho.length > 0 && (
+                        <div className="border-t border-border pt-3 first:border-0 first:pt-0">
+                          <h3 className="g-titulo-secao mb-2">
+                            Itens ({itensEspelho.length})
+                          </h3>
+                          <div className="overflow-x-auto rounded-[var(--g-raio)] border border-border">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b border-border bg-muted">
+                                  <th className="g-meta w-16 px-3 py-2 text-left font-semibold">Número</th>
+                                  <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
+                                  <th className="g-meta w-28 px-3 py-2 text-right font-semibold">Quantidade</th>
+                                  <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor unitário estimado</th>
+                                  <th className="g-meta w-36 px-3 py-2 text-right font-semibold">Valor total estimado</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {itensEspelho.map((item, i) => {
+                                  const qtd = item.quantidade ?? item.quantidadeItens;
+                                  const vUnit = item.valor_unitario_estimado ?? item.valorUnitarioEstimado ?? item.valorUnitario;
+                                  const vTotal = item.valor_total ?? item.valorTotal ?? item.valorTotalEstimado
+                                    ?? (vUnit != null && qtd != null ? vUnit * qtd : null);
+                                  return (
+                                    <tr key={item.numero ?? item.numeroItem ?? i} className="transition-colors hover:bg-muted/50">
+                                      <td className="g-corpo px-3 py-2 tabular-nums text-muted-foreground">{item.numero ?? item.numeroItem ?? i + 1}</td>
+                                      <td className="g-corpo px-3 py-2 text-foreground">
+                                        {item.descricao || item.descricaoItem || '—'}
+                                        {(item.unidade_medida || item.unidadeMedida) && (
+                                          <Badge variant="muted" className="ml-2">
+                                            {item.unidade_medida || item.unidadeMedida}
+                                          </Badge>
+                                        )}
+                                      </td>
+                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums">{qtd?.toLocaleString('pt-BR') ?? '—'}</td>
+                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">{vUnit != null ? fmt(vUnit) : '—'}</td>
+                                      <td className="g-corpo whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-success-ink">{vTotal != null ? fmt(vTotal) : '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </SecaoGestao>
             )}
 
             <EditalOriginalCard
               licitacaoId={lic.id}
               urlEdital={lic.url_edital ?? null}
-              onVerItens={() => { setAba('precificacao'); loadPrecificacao(); }}
+              onVerItens={() => definirAba('precificacao')}
               itensProntos={itensMaterializados.length}
               pncpDisponivel={temFontePncp}
             />
             {/* O Edital em tela mora em Anexos → pasta Edital (Fase 1 do
                 prontuário integrado): a Visão Geral é a ficha, e os arquivos
                 do processo — inclusive os oficiais do PNCP — vivem juntos. */}
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Documentos editáveis */}
-          <TabsContent value="documentos" className="space-y-4">
+        {/* Documentos editáveis */}
+        {aba === 'documentos' && (
+          <div className="flex flex-col gap-4">
             {/* Fase 3: o checklist de habilitação abre a aba — exigências do
-                edital casadas com o cofre da empresa, com validade e aceite. */}
+                edital casadas com o cofre da empresa, com validade e aceite.
+                A distinção IA × conferido vive dentro dele e não muda aqui. */}
             <HabilitacaoChecklist licitacaoId={lic.id} />
             <DocumentosManager
               licitacaoId={lic.id}
@@ -742,59 +820,66 @@ export default function ProcessoWorkspace() {
               objeto={lic.objeto}
               cidade={lic.municipio}
             />
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Anexos */}
-          <TabsContent value="anexos">
-            <AnexosManager
-              pncpEditalCount={pncpArquivosCount ?? undefined}
-              licitacaoId={lic.id}
-              editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} onArquivosPncp={setPncpArquivosCount} />}
-            />
-          </TabsContent>
+        {/* Anexos */}
+        {aba === 'anexos' && (
+          <AnexosManager
+            pncpEditalCount={pncpArquivosCount ?? undefined}
+            licitacaoId={lic.id}
+            editalViewer={<EditalViewer licitacaoId={lic.id} urlEdital={lic.url_edital ?? undefined} onArquivosPncp={setPncpArquivosCount} />}
+          />
+        )}
 
-          {/* Precificação */}
-          <TabsContent value="precificacao">
-            <Tabs defaultValue="prec-historico" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="prec-historico" className="gap-2">
-                  <Calculator className="w-4 h-4" aria-hidden="true" /> Precificação
-                </TabsTrigger>
-                <TabsTrigger value="prec-aurelia" className="gap-2">
-                  <Sparkles className="w-4 h-4" aria-hidden="true" /> Nova Precificação
-                </TabsTrigger>
-              </TabsList>
+        {/* Precificação */}
+        {aba === 'precificacao' && (
+          <Tabs defaultValue="prec-historico" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="prec-historico" className="gap-2">
+                <Calculator className="w-4 h-4" aria-hidden="true" /> Precificação
+              </TabsTrigger>
+              <TabsTrigger value="prec-aurelia" className="gap-2">
+                <Sparkles className="w-4 h-4" aria-hidden="true" /> Nova Precificação
+              </TabsTrigger>
+            </TabsList>
 
-              {/* sub-aba: conteúdo original */}
-              <TabsContent value="prec-historico" className="space-y-4">
-                {/* Fase 2: precificação in-context — os itens do edital ganham
-                    preço aqui e vão para o catálogo, de onde a Proposta importa. */}
-                <ItensEditalPrecificacao
-                  licitacaoId={lic.id}
-                  onSaved={loadPrecificacao}
-                  onIrParaProposta={() => setAba('proposta')}
-                  objetoProcesso={lic.objeto ?? ''}
-                  pncpCoords={(() => {
-                    const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
-                    if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
-                    if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
-                      return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
-                    const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
-                    if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
-                    return null;
-                  })()}
-                />
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Histórico de Precificação</h2>
-                    <p className="text-sm text-muted-foreground">Planilha de custos e itens precificados para este processo</p>
-                  </div>
-                  <Button asChild>
+            {/* sub-aba: conteúdo original */}
+            <TabsContent value="prec-historico" className="space-y-4">
+              {/* Fase 2: precificação in-context — os itens do edital ganham
+                  preço aqui e vão para o catálogo, de onde a Proposta importa.
+                  As cotações, as fontes e a aplicação EXPLÍCITA do preço
+                  ("Usar mediana PNCP", "Usar menor", "Usar médio") são deste
+                  componente: sugestão nunca entra sozinha na planilha. */}
+              <ItensEditalPrecificacao
+                licitacaoId={lic.id}
+                onSaved={loadPrecificacao}
+                onIrParaProposta={() => definirAba('proposta')}
+                objetoProcesso={lic.objeto ?? ''}
+                pncpCoords={(() => {
+                  const m = (lic.url_edital || '').match(/editais\/(\d{14})\/(\d{4})\/(\d+)/);
+                  if (m) return { cnpj: m[1], ano: m[2], seq: m[3] };
+                  if (lic.cnpj_orgao && lic.ano_compra && lic.sequencial_compra)
+                    return { cnpj: lic.cnpj_orgao, ano: lic.ano_compra, seq: lic.sequencial_compra };
+                  const n = (lic.numero_controle_pncp || '').match(/(\d{14})-\d+-(\d+)\/(\d{4})/);
+                  if (n) return { cnpj: n[1], ano: n[3], seq: String(Number(n[2])) };
+                  return null;
+                })()}
+              />
+
+              <SecaoGestao
+                titulo="Histórico de Precificação"
+                acoes={
+                  <Button asChild className="g-controle">
                     <Link to={`/precificacao?lid=${lic.id}`}>
                       <Calculator className="w-4 h-4" aria-hidden="true" /> Abrir Precificação
                     </Link>
                   </Button>
-                </div>
+                }
+              >
+                <p className="g-corpo -mt-1 text-muted-foreground">
+                  Planilha de custos e itens precificados para este processo
+                </p>
 
                 {loadingPrec ? (
                   <div role="status" aria-busy="true" className="space-y-3">
@@ -812,40 +897,47 @@ export default function ProcessoWorkspace() {
                       return (
                         <Card className="p-6">
                           <div className="flex items-start gap-4">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--g-raio)] bg-primary-tint text-primary">
                               <TrendingUp className="w-5 h-5" aria-hidden="true" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h3 className="text-lg font-semibold">Planilha de Custos</h3>
-                              <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <h3 className="g-titulo-secao">Planilha de Custos</h3>
+                              <div className="g-meta mt-1 flex flex-wrap gap-3 text-muted-foreground">
                                 <span className="inline-flex items-center gap-1"><Package className="w-4 h-4" aria-hidden="true" /> {itens.length} {itens.length === 1 ? 'item' : 'itens'} preenchidos</span>
                                 {total > 0 && <span className="inline-flex items-center gap-1"><DollarSign className="w-4 h-4" aria-hidden="true" /> Total: <strong className="text-foreground tabular-nums">{fmt(total)}</strong></span>}
                                 <span className="inline-flex items-center gap-1"><Clock className="w-4 h-4" aria-hidden="true" /> Atualizado em {updated.toLocaleDateString('pt-BR')} às {updated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                               {itens.length > 0 && (
-                                <div className="mt-3 overflow-x-auto rounded-md border border-border">
-                                  <table className="w-full text-sm">
+                                <div className="mt-3 overflow-x-auto rounded-[var(--g-raio)] border border-border">
+                                  <table className="w-full">
                                     <thead className="bg-muted">
                                       <tr>
-                                        <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
-                                        <th className="text-right px-3 py-2 text-sm font-semibold w-16">Qtde</th>
-                                        <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Vl. Unit.</th>
-                                        <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Total</th>
+                                        <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
+                                        <th className="g-meta w-16 px-3 py-2 text-right font-semibold">Qtde</th>
+                                        <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Vl. Unit.</th>
+                                        <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Total</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                       {itens.slice(0, 10).map((it, i) => (
                                         <tr key={i} className="hover:bg-muted/50">
-                                          <td className="px-3 py-2 truncate max-w-[200px]">{it.descricao}</td>
-                                          <td className="px-3 py-2 text-right tabular-nums">{it.quantidade}</td>
-                                          <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
-                                          <td className="px-3 py-2 text-right font-medium whitespace-nowrap tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
+                                          {/* `truncate` escondia a descrição do
+                                              item sem dizer que havia mais — e
+                                              item de edital é distinguido justo
+                                              pelo fim do texto ("..., 500ml").
+                                              Expansão com botão de verdade. */}
+                                          <td className="max-w-[320px] px-3 py-2 align-top">
+                                            <TextoExpansivel texto={it.descricao} linhas={2} />
+                                          </td>
+                                          <td className="g-corpo px-3 py-2 text-right align-top tabular-nums">{it.quantidade}</td>
+                                          <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums">{it.valorUnitario ? fmt(it.valorUnitario) : '—'}</td>
+                                          <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top font-medium tabular-nums">{it.valorTotal ? fmt(it.valorTotal) : '—'}</td>
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
                                   {itens.length > 10 && (
-                                    <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                                    <p className="g-meta border-t border-border px-3 py-2 text-muted-foreground">
                                       + {itens.length - 10} itens adicionais — abra a Precificação para ver todos
                                     </p>
                                   )}
@@ -875,30 +967,32 @@ export default function ProcessoWorkspace() {
                     {/* Itens do catálogo */}
                     {precItems.length > 0 && (
                       <div>
-                        <h3 className="mb-2 text-lg font-semibold">Itens precificados no catálogo ({precItems.length})</h3>
-                        <div className="overflow-x-auto rounded-md border border-border">
-                          <table className="w-full text-sm">
+                        <h3 className="g-titulo-secao mb-2">Itens precificados no catálogo ({precItems.length})</h3>
+                        <div className="overflow-x-auto rounded-[var(--g-raio)] border border-border">
+                          <table className="w-full">
                             <thead className="bg-muted">
                               <tr>
-                                <th className="text-left px-3 py-2 text-sm font-semibold">Descrição</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Custo</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-28 whitespace-nowrap">Preço</th>
-                                <th className="text-right px-3 py-2 text-sm font-semibold w-20 whitespace-nowrap">Margem</th>
+                                <th className="g-meta px-3 py-2 text-left font-semibold">Descrição</th>
+                                <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Custo</th>
+                                <th className="g-meta w-28 whitespace-nowrap px-3 py-2 text-right font-semibold">Preço</th>
+                                <th className="g-meta w-20 whitespace-nowrap px-3 py-2 text-right font-semibold">Margem</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                               {precItems.slice(0, 15).map(it => (
                                 <tr key={it.id} className="hover:bg-muted/50">
-                                  <td className="px-3 py-2 truncate max-w-[220px]">{it.descricao}</td>
-                                  <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap tabular-nums">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
-                                  <td className="px-3 py-2 text-right font-medium whitespace-nowrap tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
-                                  <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
+                                  <td className="max-w-[360px] px-3 py-2 align-top">
+                                    <TextoExpansivel texto={it.descricao} linhas={2} />
+                                  </td>
+                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums text-muted-foreground">{it.custo_unitario ? fmt(it.custo_unitario) : '—'}</td>
+                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top font-medium tabular-nums">{it.preco_unitario ? fmt(it.preco_unitario) : '—'}</td>
+                                  <td className="g-corpo whitespace-nowrap px-3 py-2 text-right align-top tabular-nums">{it.margem_lucro != null ? `${it.margem_lucro}%` : '—'}</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                           {precItems.length > 15 && (
-                            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                            <p className="g-meta border-t border-border px-3 py-2 text-muted-foreground">
                               + {precItems.length - 15} itens adicionais
                             </p>
                           )}
@@ -907,49 +1001,55 @@ export default function ProcessoWorkspace() {
                     )}
                   </>
                 )}
-              </TabsContent>
+              </SecaoGestao>
+            </TabsContent>
 
-              {/* sub-aba: AURÉLIA conversacional */}
-              <TabsContent value="prec-aurelia">
-                <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
-                  <AureliaPrecificacaoChat />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
+            {/* sub-aba: AURÉLIA conversacional */}
+            <TabsContent value="prec-aurelia">
+              <div className="overflow-hidden rounded-[var(--g-raio)] border border-border bg-card shadow-sm" style={{ height: 'calc(100vh - 280px)', minHeight: 480 }}>
+                <AureliaPrecificacaoChat />
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
 
-          {/* Proposta — Fase 2: trabalhada dentro do processo */}
-          <TabsContent value="proposta">
-            {/* O MESMO formato do módulo Proposta Comercial, embutido no
-                prontuário (wizard completo: edital, empresa, representante,
-                planilha, declarações, layout, preview) — mesmo rascunho, sem
-                sair do processo. */}
-            <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
-          </TabsContent>
+        {/* Proposta — Fase 2: trabalhada dentro do processo */}
+        {aba === 'proposta' && (
+          /* O MESMO formato do módulo Proposta Comercial, embutido no
+             prontuário (wizard completo de 8 passos: edital, empresa,
+             representante, planilha, declarações, layout, preview) — mesmo
+             rascunho, sem sair do processo. A identidade do documento gerado é
+             a da empresa PROPONENTE, e isso é regra de negócio do gerador:
+             não se decide aqui. */
+          <PropostaTecnica embedded licitacaoIdEmbed={lic.id} />
+        )}
 
-          {/* Módulos */}
-          <TabsContent value="modulos">
+        {/* Módulos */}
+        {aba === 'modulos' && (
+          <SecaoGestao titulo="Abrir em módulos completos">
             <Card className="p-6">
-              <h2 className="mb-4 text-lg font-semibold">Abrir em módulos completos</h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {ATALHOS.map(a => (
-                  <Button key={a.label} variant="outline" className="justify-start gap-2" asChild>
+                  <Button key={a.label} variant="outline" className="g-controle h-auto justify-start gap-2 py-2 text-left" asChild>
+                    {/* `?lid=` leva o processo junto: o módulo abre já
+                        apontado para ele, em vez de numa tela em branco. */}
                     <Link to={`${a.path}${a.path.includes('?') ? '&' : '?'}lid=${lic.id}`}>
-                      <a.icon className="w-4 h-4" aria-hidden="true" /> {a.label}
+                      <a.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0">
+                        <span className="g-corpo block font-medium">{a.label}</span>
+                        <span className="g-meta block text-muted-foreground">{a.descricao}</span>
+                      </span>
                     </Link>
                   </Button>
                 ))}
               </div>
             </Card>
-          </TabsContent>
+          </SecaoGestao>
+        )}
 
-          {/* Histórico */}
-          <TabsContent value="historico">
-            <HistoricoProcesso licitacaoId={lic.id} />
-          </TabsContent>
-
-        </Tabs>
-      </div>
-    </div>
+        {/* Histórico */}
+        {aba === 'historico' && <HistoricoProcesso licitacaoId={lic.id} />}
+      </TelaGestao>
+    </AppLayout>
   );
 }

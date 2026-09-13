@@ -41,7 +41,26 @@ interface MembroInfo {
 export function useMembroPermissoes() {
   const { user } = useAuth();
   const { empresaAtiva, empresas, loading: empresaLoading } = useEmpresa();
-  const { isAdmin: isGlobalAdmin, loading: roleLoading } = useUserRole();
+  /**
+   * ATENÇÃO ao que se lê daqui (corrigido em 13/09/2026).
+   *
+   * `useUserRole().isAdmin` diz "admin de QUALQUER natureza": verdadeiro tanto
+   * para o operador do SaaS quanto para quem administra UMA empresa qualquer —
+   * e a consulta que o alimenta não filtra pela empresa ativa. Este hook o
+   * consumia sob o nome `isGlobalAdmin`, e o nome enganava duas decisões:
+   *
+   *  - o menu do operador (`/admin/*`) reaparecia para administrador de
+   *    empresa, desfazendo a separação pedida no mesmo dia (a rota resistia,
+   *    porque o `AdminGuard` usa `isSystemAdmin`, mas o menu anunciava);
+   *  - quem administra a empresa A ganhava poderes de administrador DENTRO da
+   *    empresa B, onde é só operador — `canAccessRoute` e `temPermissao`
+   *    liberavam tudo, e `isFinanceiro`/`isComercial`/`isLogistica` ficavam
+   *    verdadeiros. O RLS barrava os dados; a interface oferecia as portas.
+   *
+   * Agora são dois nomes que não se confundem: `ehOperadorDoSaaS` (só
+   * `user_roles`) e a admin-da-empresa-ATIVA, que já existia logo abaixo.
+   */
+  const { isSystemAdmin: ehOperadorDoSaaS, loading: roleLoading } = useUserRole();
   const [membro, setMembro] = useState<MembroInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +136,7 @@ export function useMembroPermissoes() {
 
   const temPermissao = (modulo: ModuloSistema): boolean => {
     // Admin global ou ADMIN da empresa ignora bloqueios de módulo.
-    if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
+    if (ehOperadorDoSaaS || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
     if (!membro) return false;
     // Permissão explícita
     if (membro.permissoes.includes(modulo)) return true;
@@ -134,8 +153,8 @@ export function useMembroPermissoes() {
   const canAccessRoute = (path: string): boolean => {
     // O painel do operador do SaaS não se abre para assinante nenhum — nem
     // para o administrador da empresa, que passa por todo o resto.
-    if (ehRotaDoOperador(path)) return isGlobalAdmin;
-    if (isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
+    if (ehRotaDoOperador(path)) return ehOperadorDoSaaS;
+    if (ehOperadorDoSaaS || membro?.isEmpresaAdmin || isEmpresaAdminFromContext) return true;
     // Administração da empresa é do administrador — setor não abre essa porta.
     if (ehRotaAdministrativa(path)) return false;
     if (!membro) return false;
@@ -143,7 +162,7 @@ export function useMembroPermissoes() {
     return isSectorAllowedForRoute(membro.setor, path);
   };
 
-  const isAnyAdmin = isGlobalAdmin || membro?.isEmpresaAdmin || isEmpresaAdminFromContext;
+  const isAnyAdmin = ehOperadorDoSaaS || membro?.isEmpresaAdmin || isEmpresaAdminFromContext;
   const isFinanceiro = isAnyAdmin || membro?.setor === 'financeiro';
   const isComercial = isAnyAdmin || membro?.setor === 'comercial';
   const isLogistica = isAnyAdmin || membro?.setor === 'logistica';

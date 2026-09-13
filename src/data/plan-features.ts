@@ -33,6 +33,15 @@ export const routeMinPlan: Record<string, PlanSlug> = {
 
   // Básico+
   '/gestao-compras': 'basico',
+  /* `/produtos` entrega o MESMO cadastro que vive na aba Produtos de
+     `/gestao-compras` — desde 13/09 é literalmente o mesmo componente. Sem
+     esta linha ela era o contorno do portão: quem não tinha plano batia em
+     `/gestao-compras` e alcançava o cadastro inteiro digitando `/produtos`.
+     Passou despercebido porque a rota é órfã — não está em `menu.ts`,
+     `paginas.ts` nem `route-permissions.ts`, e só se chega a ela pela URL.
+     Mesmo plano da porta da frente; duas portas para a mesma sala não podem
+     ter fechaduras diferentes. */
+  '/produtos': 'basico',
 
   // Enterprise only
   '/precificacao': 'enterprise',

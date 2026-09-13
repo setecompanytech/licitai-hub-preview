@@ -4,79 +4,62 @@ import { Link, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
-import { normalizarStatus as normalizeStatus, STATUS_DECIDIDOS } from '@/lib/licitacao/status';
+import { normalizarStatus as normalizeStatus, type StatusProcesso } from '@/lib/licitacao/status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { identidadeDoProcesso, objetoLegivel } from '@/lib/licitacao/identidade-do-processo';
-import { MapPin, Calendar, GripVertical, Pencil, LayoutDashboard, ListChecks, History, ChevronRight, Search } from 'lucide-react';
+import { MapPin, LayoutDashboard, Search, RefreshCw, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { useLarguraMinima } from '@/hooks/useLarguraMinima';
 import { useLicitacaoIntegration } from '@/hooks/useLicitacaoIntegration';
 import EditLicitacaoDialog from '@/components/kanban/EditLicitacaoDialog';
+import CartaoProcesso from '@/components/kanban/CartaoProcesso';
+import {
+  COLUNAS,
+  colunaDe,
+  formatarValor,
+  type ProcessoDoQuadro,
+} from '@/components/kanban/colunas';
 import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/RegistrarPerdaDialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import AbasGestao from '@/components/gestao/AbasGestao';
 import CompromissosResumo from '@/components/gestao/CompromissosResumo';
 import HistoricoExtracoes from '@/components/gestao/HistoricoExtracoes';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
-type LicitacaoKanban = {
-  id: string;
-  numero: string;
-  orgao: string;
-  objeto: string;
-  status: string;
-  modalidade: string | null;
-  valor_estimado: number | null;
-  uf: string | null;
-  municipio: string | null;
-  data_encerramento: string | null;
-  arquivado_em: string | null;
-};
 
 /**
- * Em qual coluna o card aparece. `arquivado_em` vence o status: um processo
- * homologado e arquivado mostra-se em Arquivada e continua homologado por baixo
- * — que é exatamente o que a gravação antiga destruía.
+ * Colunas, `colunaDe` e as pendências do cartão moram em
+ * `@/components/kanban/colunas` — esta tela redeclarava os oito status num array
+ * local, a quarta cópia do vocabulário que o princípio 1 do CLAUDE.md proíbe.
  */
-const colunaDe = (lic: { status: string; arquivado_em: string | null }): string =>
-  lic.arquivado_em ? 'Arquivada' : normalizeStatus(lic.status);
 
-type Column = {
-  id: string;
-  title: string;
-  description: string;
-  /**
-   * Cor do estado em classes de token (identidade 12/09): a barra superior da
-   * coluna, o ponto ao lado do título e a lavagem leve do fundo. Antes a cor
-   * entrava por `style` inline — cor escrita à mão dentro do .tsx.
-   */
-  cor: { topo: string; ponto: string; lavagem: string };
-};
+/**
+ * Largura a partir da qual o QUADRO inteiro aparece. Abaixo dela a pessoa
+ * escolhe uma etapa por vez: oito colunas numa tela de 360px seriam oito tiras
+ * de 40px, e o padrão visual é explícito — "Kanban por etapa selecionada", e
+ * "nenhuma rolagem horizontal na página inteira".
+ *
+ * A decisão é em JS, não em `hidden md:flex`, porque as duas árvores não podem
+ * coexistir: o cartão em foco (`?focus=`) leva um `ref` único e as colunas se
+ * registram em `columnRefs` para o arrasto encontrar o destino — duas cópias
+ * vivas fariam a segunda sobrescrever a primeira.
+ */
+const LARGURA_QUADRO_COMPLETO = 768;
 
-const columns: Column[] = [
-  { id: 'Monitorando', title: 'Monitorando', description: 'Editais sendo acompanhados', cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' } },
-  { id: 'Em Análise', title: 'Analisando', description: 'Análise de viabilidade', cor: { topo: 'border-t-warning', ponto: 'bg-warning', lavagem: 'bg-warning/5' } },
-  { id: 'Proposta Enviada', title: 'Proposta', description: 'Proposta elaborada e enviada', cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' } },
-  // `--accent` e `--primary` são o mesmo verde nos dois temas: a coluna fica
-  // idêntica à de antes, agora pelo token de ação em vez do de hover.
-  { id: 'Em Disputa', title: 'Em Disputa', description: 'Disputa/pregão em andamento', cor: { topo: 'border-t-primary', ponto: 'bg-primary', lavagem: 'bg-primary/5' } },
-  { id: 'Vencida', title: 'Vencida', description: 'Licitação arrematada', cor: { topo: 'border-t-success', ponto: 'bg-success', lavagem: 'bg-success/5' } },
-  // Azul deixou de ser cor de estado no sistema: Homologada usa o token neutro.
-  { id: 'Homologada', title: 'Homologada', description: 'Resultado homologado', cor: { topo: 'border-t-info', ponto: 'bg-info', lavagem: 'bg-info/5' } },
-  { id: 'Perdida', title: 'Perdida', description: 'Não arrematada', cor: { topo: 'border-t-destructive', ponto: 'bg-destructive', lavagem: 'bg-destructive/5' } },
-  { id: 'Arquivada', title: 'Arquivada', description: 'Processos encerrados', cor: { topo: 'border-t-muted-foreground', ponto: 'bg-muted-foreground', lavagem: 'bg-muted/60' } },
-];
-
-// A normalização mora em @/lib/licitacao/status — este arquivo tinha a sua
-// própria cópia, uma das três listas divergentes que faziam o arquivamento
-// automático nunca encontrar nada.
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
+/** Piso de largura de coluna fixado pelo comando: abaixo disto o cartão ilegível. */
+const LARGURA_MINIMA_COLUNA = 'min-w-[260px]';
 
 type DragState = { id: string; offsetX: number; offsetY: number } | null;
 /** Ponteiro apertado num card, ainda sem saber se é clique ou arrasto. */
@@ -111,13 +94,23 @@ export default function KanbanPage() {
     }, { replace: true });
   };
   const focoRef = useRef<HTMLDivElement | null>(null);
-  const [items, setItems] = useState<LicitacaoKanban[]>([]);
+  const [items, setItems] = useState<ProcessoDoQuadro[]>([]);
   const [loading, setLoading] = useState(true);
+  /**
+   * Mensagem real do banco quando a carga falha. Até 13/09/2026 a consulta
+   * desestruturava só `{ data }` e jogava o `error` fora: uma falha de RLS, de
+   * rede ou de coluna virava `data === null`, `items === []` e um quadro vazio
+   * indistinguível de uma empresa sem processos. É a falha silenciosa que o
+   * princípio 3 do CLAUDE.md proíbe — agora deixa rastro e oferece retry.
+   */
+  const [erro, setErro] = useState<string | null>(null);
   const qc = useQueryClient();
-  const [editItem, setEditItem] = useState<LicitacaoKanban | null>(null);
+  const [editItem, setEditItem] = useState<ProcessoDoQuadro | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [perdaAlvo, setPerdaAlvo] = useState<PerdaAlvo | null>(null);
   const [salvandoPerda, setSalvandoPerda] = useState(false);
+  /** Nome de quem responde por cada processo, por `operador_id`. */
+  const [responsaveis, setResponsaveis] = useState<Record<string, string>>({});
 
   // Drag state — refs para leitura síncrona nos event handlers
   const dragStateRef = useRef<DragState>(null);
@@ -126,7 +119,7 @@ export default function KanbanPage() {
   // dispara ao soltar um card arrastado não pode abrir/recolher o card.
   const arrastouRef = useRef(false);
   const overColRef = useRef<string | null>(null);
-  const itemsRef = useRef<LicitacaoKanban[]>([]);
+  const itemsRef = useRef<ProcessoDoQuadro[]>([]);
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Estado React apenas para re-render visual
@@ -139,40 +132,42 @@ export default function KanbanPage() {
   // Colunas sem nenhum processo ficam recolhidas por padrão: são oito ao todo,
   // e em notebook comum elas não cabem abertas.
   const [mostrarVazias, setMostrarVazias] = useState(false);
-  /* Filtro do board, como a `kb-barra` do protótipo. Vale a pena porque a
-     coluna rola horizontalmente: com trinta processos, achar um exige varrer
-     o board com o olho. Filtra o que já está em memória — sem consulta nova. */
+  /* Filtro do board. Vale a pena porque o quadro rola horizontalmente: com
+     trinta processos, achar um exige varrer o board com o olho. Filtra o que já
+     está em memória — sem consulta nova. */
   const [filtro, setFiltro] = useState('');
+
+  // Tela estreita: uma etapa por vez, escolhida num seletor.
+  const quadroCompleto = useLarguraMinima(LARGURA_QUADRO_COMPLETO);
+  const [etapaFoco, setEtapaFoco] = useState<StatusProcesso>('Monitorando');
 
   useEffect(() => { itemsRef.current = items; }, [items]);
 
-  // Quantas colunas estão sem processo — define se o atalho de expandir aparece.
-  const vazias = columns.filter(
-    (c) => !items.some((i) => colunaDe(i) === c.id),
-  ).length;
-
-  const handleEdit = (lic: LicitacaoKanban) => { setEditItem(lic); setEditOpen(true); };
+  const handleEdit = (lic: ProcessoDoQuadro) => { setEditItem(lic); setEditOpen(true); };
   /**
-   * Cards abertos. O padrão é RECOLHIDO em duas linhas — identidade + valor,
-   * órgão + data: toda a informação de triagem em ~55px. Clique em qualquer
-   * ponto do card abre o quadro completo (objeto inteiro, local, ações);
-   * outro clique recolhe. Até 10/09/2026 só a linha da identidade alternava e
-   * o resto do card era só arrasto — quem clicava no órgão via o card-fantasma
-   * piscar e nada abrir.
-   * Ideia do dono do produto, com um aperfeiçoamento: valor e data são
-   * critérios de VARREDURA ("qual vale a pena? qual vence antes?") — em vez
-   * de escondê-los no recolhido, as duas linhas usam as pontas direitas.
+   * Cards abertos. O padrão é RECOLHIDO — processo + valor, órgão + prazo,
+   * responsável + pendências: toda a informação de triagem em três linhas
+   * curtas. Clique em qualquer ponto do card abre o quadro completo (objeto
+   * inteiro, local, ações); outro clique recolhe.
    */
   const [cardsAbertos, setCardsAbertos] = useState<Set<string>>(new Set());
-  const alternarCard = (id: string) => setCardsAbertos(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-  const handleSaved = (updated: LicitacaoKanban) => setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+  const alternarCard = (id: string) => {
+    // O `click` que o navegador dispara ao soltar um card arrastado chega aqui
+    // como um clique comum — esta é a guarda que impede o arrasto de também
+    // abrir/recolher o cartão que acabou de mudar de coluna.
+    if (arrastouRef.current) { arrastouRef.current = false; return; }
+    setCardsAbertos(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  /** Merge, não substituição: o diálogo devolve só os campos que edita. */
+  const handleSaved = (updated: { id: string } & Partial<ProcessoDoQuadro>) =>
+    setItems(prev => prev.map(i => i.id === updated.id ? { ...i, ...updated } : i));
   const handleDeleted = (id: string) => setItems(prev => prev.filter(i => i.id !== id));
 
-  // Move card (usado pelo drag e pelo dropdown)
+  // Move card (usado pelo drag, pelo dropdown do card e pelo seletor do celular)
   const moverCard = useCallback(async (id: string, toColId: string) => {
     const item = itemsRef.current.find(i => i.id === id);
     if (!item || colunaDe(item) === toColId) return;
@@ -308,37 +303,83 @@ export default function KanbanPage() {
     };
   }, [armando, isDragging, moverCard]);
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     if (!user) return;
-    const loadData = async () => {
-      // Semente da última visita: o quadro pinta na hora com o que já se viu,
-      // e a consulta fresca corrige em silêncio logo atrás. O spinner só
-      // existe na primeira carga a frio — era ele o "delay" de toda visita.
-      const chaveSemente = ['kanban-semente', empresaAtiva?.id ?? user.id];
-      const semente = qc.getQueryData<LicitacaoKanban[]>(chaveSemente);
-      if (semente && semente.length > 0) { setItems(semente); setLoading(false); }
-      // Quadro da equipe: escopo por empresa, não por usuário. O RLS já limita
-      // às empresas das quais a pessoa é membro.
-      let q = supabase
-        .from('licitacoes')
-        .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento, arquivado_em');
-      if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
-      const { data } = await q.order('created_at', { ascending: false });
-      const mapeados = (data || []).map(item => ({ ...item, status: normalizeStatus(item.status) }));
-      setItems(mapeados);
-      qc.setQueryData(chaveSemente, mapeados);
+    setErro(null);
+    // Semente da última visita: o quadro pinta na hora com o que já se viu,
+    // e a consulta fresca corrige em silêncio logo atrás. O spinner só
+    // existe na primeira carga a frio — era ele o "delay" de toda visita.
+    const chaveSemente = ['kanban-semente', empresaAtiva?.id ?? user.id];
+    const semente = qc.getQueryData<ProcessoDoQuadro[]>(chaveSemente);
+    if (semente && semente.length > 0) { setItems(semente); setLoading(false); }
+    // Quadro da equipe: escopo por empresa, não por usuário. O RLS já limita
+    // às empresas das quais a pessoa é membro.
+    let q = supabase
+      .from('licitacoes')
+      // `operador_id` entrou aqui porque o cartão passou a mostrar RESPONSÁVEL:
+      // a coluna já existia (Onda 3), só nunca tinha sido lida por esta tela.
+      .select('id, numero, orgao, objeto, status, modalidade, valor_estimado, uf, municipio, data_encerramento, arquivado_em, operador_id');
+    if (empresaAtiva) q = q.eq('empresa_id', empresaAtiva.id);
+    const { data, error } = await q.order('created_at', { ascending: false });
+    if (error) {
+      console.error('[kanban] carga do quadro', error);
+      setErro(error.message || 'A consulta ao banco não retornou os processos.');
       setLoading(false);
-    };
-    loadData();
-
-    return undefined;
+      return;
+    }
+    const mapeados = (data || []).map(item => ({ ...item, status: normalizeStatus(item.status) })) as ProcessoDoQuadro[];
+    setItems(mapeados);
+    qc.setQueryData(chaveSemente, mapeados);
+    setLoading(false);
   }, [user, empresaAtiva, qc]);
+
+  useEffect(() => { void carregar(); }, [carregar]);
+
+  /**
+   * Nome de quem responde pelos processos em tela.
+   *
+   * Vai numa consulta separada porque `licitacoes` não tem FK declarada para
+   * `profiles` — o join embutido do PostgREST não existe aqui. A chave é
+   * `user_id` (o `id` da tabela é PK própria), como no resto do app.
+   *
+   * Falhar aqui não inventa pendência: "Sem responsável" olha `operador_id`,
+   * que vem da consulta principal. Sem o nome, o cartão só deixa de exibi-lo.
+   */
+  const chaveOperadores = useMemo(
+    () => [...new Set(items.map((i) => i.operador_id).filter(Boolean) as string[])].sort().join(','),
+    [items],
+  );
+  useEffect(() => {
+    const ids = chaveOperadores ? chaveOperadores.split(',') : [];
+    if (ids.length === 0) return;
+    let cancelado = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, nome_completo, username')
+        .in('user_id', ids);
+      if (cancelado) return;
+      if (error) { console.warn('[kanban] nomes dos responsáveis', error); return; }
+      setResponsaveis(Object.fromEntries(
+        (data || []).map((p) => [p.user_id, p.nome_completo || p.username || 'Colaborador']),
+      ));
+    })();
+    return () => { cancelado = true; };
+  }, [chaveOperadores]);
 
   // Rola até o card destacado assim que ele existe no DOM.
   useEffect(() => {
     if (!focoId || loading) return;
     focoRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
   }, [focoId, loading, items.length]);
+
+  // Em tela estreita só uma etapa está montada: sem isto, o `?focus=` de um
+  // processo em Disputa não acharia o cartão porque a etapa em foco é outra.
+  useEffect(() => {
+    if (!focoId) return;
+    const alvo = items.find((i) => i.id === focoId);
+    if (alvo) setEtapaFoco(colunaDe(alvo));
+  }, [focoId, items]);
 
   useEffect(() => {
     if (!user) return;
@@ -351,9 +392,9 @@ export default function KanbanPage() {
         ? { event: '*', schema: 'public', table: 'licitacoes', filter: `empresa_id=eq.${empresaAtiva.id}` }
         : { event: '*', schema: 'public', table: 'licitacoes' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setItems(prev => [{ ...(payload.new as LicitacaoKanban), status: normalizeStatus((payload.new as LicitacaoKanban).status) }, ...prev]);
+          setItems(prev => [{ ...(payload.new as ProcessoDoQuadro), status: normalizeStatus((payload.new as ProcessoDoQuadro).status) }, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as LicitacaoKanban;
+          const updated = payload.new as ProcessoDoQuadro;
           setItems(prev => prev.map(i => i.id === updated.id ? { ...updated, status: normalizeStatus(updated.status) } : i));
         } else if (payload.eventType === 'DELETE') {
           setItems(prev => prev.filter(i => i.id !== (payload.old as { id: string }).id));
@@ -379,9 +420,37 @@ export default function KanbanPage() {
     );
   }, [items, filtro]);
 
+  /** Processos por etapa — serve às colunas e à contagem do seletor do celular. */
+  const porEtapa = useMemo(() => {
+    const mapa = new Map<StatusProcesso, ProcessoDoQuadro[]>(COLUNAS.map((c) => [c.id, []]));
+    for (const item of itensFiltrados) mapa.get(colunaDe(item))?.push(item);
+    return mapa;
+  }, [itensFiltrados]);
+
+  // Quantas colunas estão sem processo — define se o atalho de expandir aparece.
+  const vazias = COLUNAS.filter((c) => (porEtapa.get(c.id)?.length ?? 0) === 0).length;
+
   // Ghost card (segue o cursor durante o drag)
   const draggedItem = draggedId ? items.find(i => i.id === draggedId) : null;
   const ds = dragStateRef.current;
+
+  /** O cartão, montado igual nas duas larguras — quadro e etapa única. */
+  const renderCartao = (lic: ProcessoDoQuadro) => (
+    <CartaoProcesso
+      key={lic.id}
+      ref={lic.id === focoId ? focoRef : undefined}
+      lic={lic}
+      aberto={cardsAbertos.has(lic.id)}
+      arrastando={draggedId === lic.id}
+      focado={lic.id === focoId}
+      responsavel={lic.operador_id ? responsaveis[lic.operador_id] ?? null : null}
+      podeArrastar={quadroCompleto}
+      onPointerDown={(e) => { if (quadroCompleto) handlePointerDown(e, lic.id); }}
+      onAlternar={() => alternarCard(lic.id)}
+      onEditar={() => handleEdit(lic)}
+      onMover={(destino) => moverCard(lic.id, destino)}
+    />
+  );
 
   return (
     <AppLayout>
@@ -393,33 +462,61 @@ export default function KanbanPage() {
             pela rota atual — a tela não repete o que já está padronizado. Os
             contadores, que antes moravam dentro da descrição, viraram a linha
             de apoio abaixo dela. */}
-        <CabecalhoPagina>
+        <CabecalhoPagina denso>
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="g-corpo text-muted-foreground">
               <span className="font-medium text-foreground tabular-nums">{items.length}</span> processos
               {' · '}
-              <span className="font-medium text-foreground tabular-nums">{formatCurrency(totalValor)}</span> estimados
+              <span className="font-medium text-foreground tabular-nums">{formatarValor(totalValor)}</span> estimados
             </p>
-            <TabsList>
-              <TabsTrigger value="kanban" className="gap-2">
-                <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden="true" /> Kanban
-              </TabsTrigger>
-              <TabsTrigger value="compromissos" className="gap-2">
-                <ListChecks className="h-4 w-4 shrink-0" aria-hidden="true" /> Compromissos
-              </TabsTrigger>
-              <TabsTrigger value="historico" className="gap-2">
-                <History className="h-4 w-4 shrink-0" aria-hidden="true" /> Histórico de extrações
-              </TabsTrigger>
-            </TabsList>
+            {/* `AbasGestao` e não `TabsList`: as abas do módulo são sublinhadas,
+                com a ativa em verde. A pílula do shadcn é outra linguagem, e
+                duas linguagens de aba no mesmo módulo fazem a pessoa achar que
+                está em outro lugar do sistema. Os ícones saem junto — nenhuma
+                outra tela de Gestão os tem na fila de abas. */}
+            <AbasGestao
+              abas={[
+                { valor: 'kanban', rotulo: 'Kanban' },
+                { valor: 'compromissos', rotulo: 'Compromissos' },
+                { valor: 'historico', rotulo: 'Histórico de extrações' },
+              ]}
+              valor={abaAtiva}
+              aoMudar={mudarAba}
+            />
           </div>
         </CabecalhoPagina>
 
-        <TabsContent value="kanban">
+        <TabsContent value="kanban" className="space-y-4">
+          {/* Princípio 3: a carga que falha deixa rastro e oferece retry. Fica
+              acima do quadro porque, havendo semente da última visita, o que se
+              vê abaixo é antigo — e a pessoa precisa saber disso. */}
+          {erro && (
+            <Alert variant="destructive">
+              <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+              <AlertTitle>Não foi possível carregar o quadro</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>{erro}</p>
+                {items.length > 0 && (
+                  <p>O quadro abaixo é o da última visita e pode estar desatualizado.</p>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setLoading(items.length === 0); void carregar(); }}
+                >
+                  <RefreshCw aria-hidden="true" />
+                  Tentar novamente
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {loading ? (
-            <div className="flex gap-2 overflow-x-auto pb-4" role="status" aria-live="polite">
+            <div className="flex gap-3 overflow-x-auto pb-4" role="status" aria-live="polite">
               <span className="sr-only">Carregando processos…</span>
-              {columns.slice(0, 4).map((c) => (
-                <div key={c.id} className="flex-1 min-w-48 space-y-2 rounded-lg border border-border bg-card p-3">
+              {COLUNAS.slice(0, 4).map((c) => (
+                <div key={c.id} className={cn('g-cartao flex-1 space-y-2 p-3', LARGURA_MINIMA_COLUNA)}>
                   <Skeleton className="h-5 w-24" />
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-16 w-full" />
@@ -428,32 +525,37 @@ export default function KanbanPage() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card shadow-sm">
-              <EstadoVazio
-                icone={<LayoutDashboard />}
-                titulo="Nenhum processo no Kanban"
-                descricao={
-                  <>
-                    Vá até o <strong>Monitoramento de Editais</strong> → aba <strong>Licitações</strong> e clique em <strong>"Iniciar"</strong> para converter um edital em processo gerenciado.
-                  </>
-                }
-                acao={
-                  <Button asChild variant="outline">
-                    <Link to="/monitoramento-editais">Ir para o Monitoramento</Link>
-                  </Button>
-                }
-              />
-            </div>
+            // Com erro na tela, "nenhum processo" seria uma afirmação falsa
+            // sobre a empresa: o que se sabe é que a consulta não respondeu.
+            erro ? null : (
+              <div className="g-cartao">
+                <EstadoVazio
+                  icone={<LayoutDashboard />}
+                  titulo="Nenhum processo no Kanban"
+                  descricao={
+                    <>
+                      Vá até o <strong>Monitoramento de Editais</strong> → aba <strong>Licitações</strong> e clique em <strong>"Iniciar"</strong> para converter um edital em processo gerenciado.
+                    </>
+                  }
+                  acao={
+                    <Button asChild variant="outline">
+                      <Link to="/monitoramento-editais">Ir para o Monitoramento</Link>
+                    </Button>
+                  }
+                />
+              </div>
+            )
           ) : (
             <>
-            {/* REBRAND — a `kb-barra` do protótipo: controle de colunas vazias à
-                esquerda, filtro à direita.
-                Os botões "Compartilhar", "Gerar .xlsx" e "Imprimir" do desenho
-                NÃO vieram: no protótipo eles não fazem nada, e botão que não
-                faz nada num board de processo é pior que botão ausente. */}
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Barra do quadro: controle de colunas vazias à esquerda, filtro à
+                direita. Os botões "Compartilhar", "Gerar .xlsx" e "Imprimir" do
+                desenho NÃO vieram: no protótipo eles não fazem nada, e botão que
+                não faz nada num board de processo é pior que botão ausente. */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-3">
-                {vazias > 0 && (
+                {/* Recolher vazias só existe onde há oito colunas ao mesmo
+                    tempo; no celular o seletor já mostra uma etapa por vez. */}
+                {quadroCompleto && vazias > 0 && (
                   <Button type="button" variant="ghost" onClick={() => setMostrarVazias(v => !v)}>
                     {mostrarVazias
                       ? 'Recolher colunas vazias'
@@ -461,7 +563,7 @@ export default function KanbanPage() {
                   </Button>
                 )}
                 {filtro && (
-                  <span className="text-sm text-muted-foreground tabular-nums">
+                  <span className="g-corpo text-muted-foreground tabular-nums">
                     {itensFiltrados.length} de {items.length} processos
                   </span>
                 )}
@@ -474,223 +576,150 @@ export default function KanbanPage() {
                   onChange={(e) => setFiltro(e.target.value)}
                   placeholder="Filtrar no board..."
                   aria-label="Filtrar processos no board"
-                  className="pl-9"
+                  className="g-controle pl-9"
                 />
               </div>
             </div>
-            <div className={cn('flex gap-2 overflow-x-auto pb-4', isDragging && 'select-none')}>
-              {columns.map((col) => {
-                const colItems = itensFiltrados.filter((i) => colunaDe(i) === col.id);
-                const isOver = overColId === col.id;
-                // Enquanto se arrasta, tudo abre: esconder o destino seria pior
-                // que ocupar espaço.
-                const recolhida = !mostrarVazias && !isDragging && colItems.length === 0;
-                return (
-                  <div
-                    key={col.id}
-                    ref={(el) => { columnRefs.current[col.id] = el; }}
-                    onClick={() => recolhida && setMostrarVazias(true)}
-                    title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
-                    // A cor de cada estado saía num pontinho de 10px — o
-                    // financeiro veste a coluna inteira, e a paridade foi
-                    // pedida. Barra superior na cor + lavagem leve: identidade
-                    // sem gritar sobre os cards.
-                    className={cn(
-                      'rounded-lg border border-border border-t-4 transition-all',
-                      col.cor.topo,
-                      col.cor.lavagem,
-                      // Coluna vazia vira uma faixa estreita em vez de ocupar a
-                      // largura de uma cheia. São oito colunas: em notebook de
-                      // 1.366px elas nunca caberiam abertas, e a última saía
-                      // cortada. Recolher as vazias devolve o espaço a quem tem
-                      // trabalho — e elas continuam recebendo cartão arrastado.
-                      recolhida
-                        ? 'w-12 flex-shrink-0 p-2 cursor-pointer hover:bg-muted'
-                        : 'flex-1 min-w-48 p-3',
-                      isOver && isDragging && 'ring-2 ring-ring bg-primary-tint'
-                    )}
-                  >
-                    {recolhida ? (
-                      <div className="flex flex-col items-center gap-2 py-1">
-                        <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
-                        <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground [writing-mode:vertical-rl]">
-                          {col.title}
-                        </span>
-                        <span className="text-xs text-muted-foreground tabular-nums">0</span>
-                      </div>
-                    ) : (
-                    <>
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
-                      <h3 className="text-sm font-semibold leading-tight">{col.title}</h3>
-                      <Badge variant="muted" className="ml-auto tabular-nums">{colItems.length}</Badge>
-                    </div>
-                    <p className="mb-3 text-xs text-muted-foreground line-clamp-2">{col.description}</p>
 
-                    <div className="min-h-32 space-y-2">
-                      {colItems.length === 0 && (
-                        <div className={cn(
-                          'rounded-lg border-2 border-dashed border-border py-8 text-center transition-colors',
-                          isOver && isDragging && 'border-primary/40 bg-primary-tint'
-                        )}>
-                          <p className="text-xs text-muted-foreground">
-                            {isOver && isDragging ? 'Solte aqui' : 'Vazio'}
-                          </p>
-                        </div>
+            {quadroCompleto ? (
+              /* O QUADRO. `overflow-x-auto` aqui e `min-w-[260px]` em cada
+                 coluna: a rolagem horizontal é LOCAL, e as oito colunas param
+                 de se espremer para caber na janela. Em notebook de 1.366px
+                 cabem cinco por vez e as outras três estão a um arrasto de
+                 distância — melhor que oito tiras de 150px onde nem o número do
+                 processo cabe. */
+              <div
+                className={cn('flex gap-3 overflow-x-auto pb-4', isDragging && 'select-none')}
+                role="list"
+                aria-label="Etapas do processo"
+              >
+                {COLUNAS.map((col) => {
+                  const colItems = porEtapa.get(col.id) ?? [];
+                  const isOver = overColId === col.id;
+                  // Enquanto se arrasta, tudo abre: esconder o destino seria pior
+                  // que ocupar espaço.
+                  const recolhida = !mostrarVazias && !isDragging && colItems.length === 0;
+                  return (
+                    <div
+                      key={col.id}
+                      role="listitem"
+                      ref={(el) => { columnRefs.current[col.id] = el; }}
+                      onClick={() => recolhida && setMostrarVazias(true)}
+                      title={recolhida ? `${col.title} — vazia. Clique para expandir.` : undefined}
+                      // A cor de cada estado saía num pontinho de 10px — o
+                      // financeiro veste a coluna inteira, e a paridade foi
+                      // pedida. Barra superior na cor + lavagem leve: identidade
+                      // sem gritar sobre os cards.
+                      className={cn(
+                        'rounded-[var(--g-raio)] border border-border border-t-4 transition-[background-color,box-shadow]',
+                        col.cor.topo,
+                        col.cor.lavagem,
+                        // Coluna vazia vira uma faixa estreita em vez de ocupar a
+                        // largura de uma cheia. Recolher as vazias devolve o
+                        // espaço a quem tem trabalho — e elas continuam recebendo
+                        // cartão arrastado.
+                        recolhida
+                          ? 'w-12 flex-shrink-0 p-2 cursor-pointer hover:bg-muted'
+                          : cn('flex-1 p-3', LARGURA_MINIMA_COLUNA),
+                        isOver && isDragging && 'ring-2 ring-ring bg-primary-tint'
                       )}
-                      {colItems.map((lic) => {
-                        const aberto = cardsAbertos.has(lic.id);
-                        const dataCurta = lic.data_encerramento
-                          ? new Date(lic.data_encerramento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-                          : null;
-                        return (
-                        <div
-                          key={lic.id}
-                          ref={lic.id === focoId ? focoRef : undefined}
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={aberto}
-                          className={cn(
-                            'rounded-lg border border-border bg-card p-3 shadow-sm transition-[box-shadow,opacity] hover:shadow-md select-none touch-none',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                            draggedId === lic.id ? 'opacity-30 cursor-grabbing' : 'cursor-pointer',
-                            aberto && 'border-primary/40',
-                            lic.id === focoId && 'ring-2 ring-ring border-primary/50'
-                          )}
-                          onPointerDown={(e) => handlePointerDown(e, lic.id)}
-                          /* Três gestos no mesmo card, sem conflito:
-                             - clique (em qualquer ponto) abre/recolhe;
-                             - duplo clique abre o processo — `detail > 1`
-                               deixa o segundo clique passar em branco, senão
-                               ele desfaria o primeiro e o card piscaria;
-                             - arrasto move, e o `click` que o navegador
-                               dispara ao soltar é ignorado por `arrastouRef`.
-                             Botões e itens de menu (que o React faz borbulhar
-                             mesmo de dentro de portal) não alternam o card. */
-                          onClick={(e) => {
-                            if (arrastouRef.current) { arrastouRef.current = false; return; }
-                            if (e.detail > 1) return;
-                            if ((e.target as HTMLElement).closest('button, a, input, [role="menuitem"], [role="menu"]')) return;
-                            alternarCard(lic.id);
-                          }}
-                          onDoubleClick={(e) => {
-                            if ((e.target as HTMLElement).closest('button, a, input, [role="menuitem"], [role="menu"]')) return;
-                            handleEdit(lic);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.target !== e.currentTarget) return;
-                            if (e.key === 'Enter') { e.preventDefault(); handleEdit(lic); }
-                            if (e.key === ' ') { e.preventDefault(); alternarCard(lic.id); }
-                          }}
-                          title={aberto ? 'Clique para recolher · duplo clique abre o processo' : 'Clique para ver mais · duplo clique abre o processo'}
-                        >
-                          <div className="flex items-start gap-2">
-                            <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground/40" aria-hidden="true" />
-                            <div className="min-w-0 flex-1">
-                              {/* Linha 1 — identidade à esquerda, VALOR à direita.
-                                  O valor fica nos dois estados: é critério de
-                                  varredura, não detalhe. */}
-                              <div className="flex min-w-0 items-center justify-between gap-2">
-                                <span className="truncate text-sm font-semibold tabular-nums"
-                                  title={lic.modalidade ?? undefined}>
-                                  {identidadeDoProcesso(lic)}
-                                </span>
-                                {lic.valor_estimado ? (
-                                  <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(lic.valor_estimado)}</span>
-                                ) : null}
-                              </div>
-
-                              {/* Linha 2 — órgão à esquerda, DATA à direita. */}
-                              <div className="flex min-w-0 items-center justify-between gap-2">
-                                <p className="truncate text-xs text-muted-foreground" title={lic.orgao ?? undefined}>
-                                  {lic.orgao || '—'}
-                                </p>
-                                {!aberto && dataCurta && (
-                                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{dataCurta}</span>
-                                )}
-                              </div>
-
-                              {aberto && (
-                                <>
-                                  {/* Aberto, o objeto vem INTEIRO — o card
-                                      já está expandido; clamp aqui seria
-                                      esconder de quem acabou de pedir. */}
-                                  <p className="mt-2 text-sm font-medium [overflow-wrap:anywhere]">
-                                    {objetoLegivel(lic.objeto)}
-                                  </p>
-                                  {lic.arquivado_em && STATUS_DECIDIDOS.includes(normalizeStatus(lic.status) as never) && (
-                                    <span className="mt-1 inline-block text-xs text-muted-foreground">
-                                      desfecho: <span className="font-medium text-foreground">{normalizeStatus(lic.status)}</span>
-                                    </span>
-                                  )}
-                                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                    {lic.municipio && lic.uf && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" aria-hidden="true" />
-                                        {lic.municipio}/{lic.uf}
-                                      </span>
-                                    )}
-                                    {lic.data_encerramento && (
-                                      <span className="flex items-center gap-1">
-                                        <Calendar className="h-4 w-4" aria-hidden="true" />
-                                        {new Date(lic.data_encerramento).toLocaleDateString('pt-BR')}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Ações do card aberto. Eram dois ícones a 40%
-                                      de opacidade no canto — ninguém achava.
-                                      O menu "Mover" é a alternativa acessível ao
-                                      arrasto: fica sempre. */}
-                                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onPointerDown={(e) => e.stopPropagation()}
-                                      onClick={(e) => { e.stopPropagation(); handleEdit(lic); }}
-                                    >
-                                      <Pencil aria-hidden="true" />
-                                      Abrir processo
-                                    </Button>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-muted-foreground"
-                                          onPointerDown={(e) => e.stopPropagation()}
-                                          onClick={(e) => e.stopPropagation()}
-                                          title="Mover para outra etapa"
-                                        >
-                                          Mover
-                                          <ChevronRight aria-hidden="true" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="start" className="w-44">
-                                        {columns.filter(c => c.id !== colunaDe(lic)).map(c => (
-                                          <DropdownMenuItem key={c.id} onClick={() => moverCard(lic.id, c.id)}>
-                                            <span className={cn('mr-2 h-2 w-2 shrink-0 rounded-full', c.cor.ponto)} aria-hidden="true" />
-                                            {c.title}
-                                          </DropdownMenuItem>
-                                        ))}
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
+                    >
+                      {recolhida ? (
+                        <div className="flex flex-col items-center gap-2 py-1">
+                          <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
+                          <span className="whitespace-nowrap g-meta font-semibold text-muted-foreground [writing-mode:vertical-rl]">
+                            {col.title}
+                          </span>
+                          <span className="g-meta text-muted-foreground tabular-nums">0</span>
                         </div>
-                        );
-                      })}
+                      ) : (
+                      <>
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className={cn('h-2.5 w-2.5 flex-shrink-0 rounded-full', col.cor.ponto)} aria-hidden="true" />
+                        <h3 className="text-sm font-semibold leading-tight">{col.title}</h3>
+                        <Badge variant="muted" className="ml-auto tabular-nums">{colItems.length}</Badge>
+                      </div>
+                      <p className="mb-3 g-meta text-muted-foreground line-clamp-2">{col.description}</p>
+
+                      <div className="min-h-32 space-y-2">
+                        {colItems.length === 0 && (
+                          <div className={cn(
+                            'rounded-[var(--g-raio)] border-2 border-dashed border-border py-8 text-center transition-colors',
+                            isOver && isDragging && 'border-primary/40 bg-primary-tint'
+                          )}>
+                            <p className="g-meta text-muted-foreground">
+                              {isOver && isDragging ? 'Solte aqui' : 'Vazio'}
+                            </p>
+                          </div>
+                        )}
+                        {colItems.map(renderCartao)}
+                      </div>
+                      </>
+                      )}
                     </div>
-                    </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* CELULAR — uma etapa por vez. O quadro inteiro numa tela de
+                 360px vira miniatura ilegível, e o padrão visual proíbe rolagem
+                 horizontal na página. O seletor traz a contagem de cada etapa
+                 para a escolha não ser às cegas. */
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="kanban-etapa" className="g-meta font-medium text-muted-foreground">
+                    Etapa
+                  </label>
+                  <Select
+                    value={etapaFoco}
+                    onValueChange={(v) => setEtapaFoco(v as StatusProcesso)}
+                  >
+                    <SelectTrigger id="kanban-etapa" aria-label="Etapa" className="g-controle">
+                      <SelectValue>
+                        {COLUNAS.find((c) => c.id === etapaFoco)?.title} ({porEtapa.get(etapaFoco)?.length ?? 0})
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COLUNAS.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="flex items-center gap-2">
+                            <span className={cn('h-2 w-2 shrink-0 rounded-full', c.cor.ponto)} aria-hidden="true" />
+                            {c.title}
+                            <span className="text-muted-foreground tabular-nums">
+                              ({porEtapa.get(c.id)?.length ?? 0})
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <p className="g-meta text-muted-foreground">
+                  {COLUNAS.find((c) => c.id === etapaFoco)?.description}
+                </p>
+
+                <div className="space-y-2">
+                  {(porEtapa.get(etapaFoco)?.length ?? 0) === 0 ? (
+                    <div className="g-cartao">
+                      <EstadoVazio
+                        tamanho="compacto"
+                        titulo="Nenhum processo nesta etapa"
+                        descricao="Escolha outra etapa no seletor acima."
+                      />
+                    </div>
+                  ) : (
+                    porEtapa.get(etapaFoco)?.map(renderCartao)
+                  )}
+                </div>
+
+                {/* Sem arrasto aqui: a alternativa é o menu "Mover" do cartão
+                    aberto, e o Select de Status dentro de "Abrir processo". */}
+                <p className="g-meta text-muted-foreground">
+                  Para mudar um processo de etapa, toque no cartão e use <strong>Mover</strong>.
+                </p>
+              </div>
+            )}
             </>
           )}
         </TabsContent>
@@ -705,16 +734,16 @@ export default function KanbanPage() {
           className="pointer-events-none fixed z-[9999] w-60 rotate-1 opacity-95"
           style={{ left: ghostPos.x - ds.offsetX, top: ghostPos.y - ds.offsetY }}
         >
-          <div className="rounded-lg border-2 border-primary/60 bg-card p-3 shadow-md">
+          <div className="rounded-[var(--g-raio)] border-2 border-primary/60 bg-card p-3 shadow-md">
             <p className="truncate text-sm font-semibold tabular-nums">{identidadeDoProcesso(draggedItem)}</p>
             <p className="mt-0.5 text-sm font-medium line-clamp-1 [overflow-wrap:anywhere]">{objetoLegivel(draggedItem.objeto)}</p>
             {draggedItem.municipio && draggedItem.uf && (
-              <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+              <p className="mt-2 flex items-center gap-1 g-meta text-muted-foreground">
                 <MapPin className="h-4 w-4" aria-hidden="true" />{draggedItem.municipio}/{draggedItem.uf}
               </p>
             )}
             {draggedItem.valor_estimado && (
-              <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{formatCurrency(draggedItem.valor_estimado)}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{formatarValor(draggedItem.valor_estimado)}</p>
             )}
           </div>
         </div>

@@ -101,26 +101,32 @@ export default function HistoricoExtracoes() {
           .eq('user_id', user.id),
       ]);
 
+      // As três consultas vêm de tabelas diferentes e só interessa por qual
+      // processo cada linha responde — daí o vínculo mínimo em vez de `any`.
+      type LinhaVinculada = { licitacao_id: string | null; descricao?: string | null };
+      const porProcesso = (linhas: LinhaVinculada[] | null) =>
+        (linhas || []).filter((r): r is LinhaVinculada & { licitacao_id: string } => Boolean(r.licitacao_id));
+
       const itensMap = new Map<string, { count: number; primeira?: string }>();
-      (itensRes.data || []).forEach((r: any) => {
+      porProcesso(itensRes.data).forEach((r) => {
         const cur = itensMap.get(r.licitacao_id) || { count: 0 };
         cur.count++;
-        if (!cur.primeira) cur.primeira = r.descricao;
+        if (!cur.primeira) cur.primeira = r.descricao ?? undefined;
         itensMap.set(r.licitacao_id, cur);
       });
 
       const precCount = new Map<string, number>();
-      (precRes.data || []).forEach((r: any) => {
+      porProcesso(precRes.data).forEach((r) => {
         precCount.set(r.licitacao_id, (precCount.get(r.licitacao_id) || 0) + 1);
       });
 
       const compCount = new Map<string, number>();
-      (compRes.data || []).forEach((r: any) => {
+      porProcesso(compRes.data).forEach((r) => {
         compCount.set(r.licitacao_id, (compCount.get(r.licitacao_id) || 0) + 1);
       });
 
       const result: ProcessoComItens[] = licitacoes
-        .map((l: any) => {
+        .map((l) => {
           const itens = itensMap.get(l.id) || { count: 0 };
           const total_itens = itens.count;
           const total_precificados = precCount.get(l.id) || 0;
@@ -169,11 +175,11 @@ export default function HistoricoExtracoes() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <h2 className="g-titulo-secao flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             Histórico de extrações por processo
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 g-corpo text-muted-foreground">
             Auditoria centralizada de itens extraídos pelo Robô, Precificação e Proposta. Limpe processos com dados incorretos.
           </p>
         </div>
@@ -185,7 +191,7 @@ export default function HistoricoExtracoes() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por número, órgão ou objeto..."
               aria-label="Buscar por número, órgão ou objeto"
-              className="pl-9"
+              className="g-controle pl-9"
             />
           </div>
           <Button
@@ -237,7 +243,7 @@ export default function HistoricoExtracoes() {
                 <div className="flex w-full flex-wrap items-start justify-between gap-3 pr-2">
                   <div className="min-w-0 flex-1 text-left">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-muted-foreground tabular-nums">{p.numero || '—'}</span>
+                      <span className="g-meta text-muted-foreground tabular-nums">{p.numero || '—'}</span>
                       {p.possivel_inconsistencia && (
                         <Badge variant="danger" className="gap-1">
                           <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Possível incoerência
@@ -245,8 +251,8 @@ export default function HistoricoExtracoes() {
                       )}
                       <Badge variant="muted">{p.status}</Badge>
                     </div>
-                    <p className="mt-1 text-sm font-medium line-clamp-1">{p.objeto || '(sem objeto)'}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{p.orgao}</p>
+                    <p className="mt-1 g-corpo font-medium line-clamp-1">{p.objeto || '(sem objeto)'}</p>
+                    <p className="mt-0.5 g-meta text-muted-foreground line-clamp-1">{p.orgao}</p>
                   </div>
                   <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                     {p.total_itens > 0 && <Badge variant="outline" className="tabular-nums">Edital: {p.total_itens}</Badge>}
@@ -271,7 +277,7 @@ export default function HistoricoExtracoes() {
                         O <strong>objeto</strong> da licitação não compartilha palavras-chave com a primeira descrição extraída.
                         Considere limpar e reextrair.
                       </p>
-                      <p className="mt-2 text-xs">
+                      <p className="mt-2 g-meta">
                         <strong>Objeto:</strong> {p.objeto?.slice(0, 160)}<br />
                         <strong>1º item:</strong> {p.primeira_descricao?.slice(0, 160)}
                       </p>
@@ -279,7 +285,7 @@ export default function HistoricoExtracoes() {
                   </Alert>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="g-meta flex items-center gap-2 text-muted-foreground">
                     <FileText className="h-4 w-4" aria-hidden="true" />
                     {p.total_geral} registro(s) somando todas as fontes deste processo.
                   </div>

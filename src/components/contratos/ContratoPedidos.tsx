@@ -3,6 +3,7 @@ import { avaliarCabimento, fraseDoLimite } from '@/lib/contratos/cabimento';
 import { auditarPedidos } from '@/lib/contratos/auditoria-de-pedidos';
 import { limiteDeEntrega } from '@/lib/contratos/prazo-de-entrega';
 import { normalizarNumeroEmpenho, tipoDeEmpenho, ROTULO_DO_EMPENHO, empenhoCancelado } from '@/lib/contratos/empenho';
+import { STATUS_QUE_RESERVAM } from '@/lib/estoque/reserva';
 import {
   oQueODocumentoCria, especieComOrigem, atribuirCotas,
   ROTULO_DA_COTA, ROTULO_DA_ORIGEM_DA_COTA,
@@ -46,6 +47,13 @@ import {
 import GerarPreNotaDialog from './GerarPreNotaDialog';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { MoneyInput } from '@/components/ui/money-input';
+import AbasGestao from '@/components/gestao/AbasGestao';
+import BarraFiltros from '@/components/gestao/BarraFiltros';
+import AreaComPainel from '@/components/gestao/AreaComPainel';
+import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
+import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
+import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
+import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -83,6 +91,19 @@ type Pedido = {
   status: string; nota_fiscal: string | null; observacoes: string | null;
   nf_quitada: boolean; data_quitacao: string | null;
   pedido_id?: string | null;
+  /**
+   * Colunas que vieram de migration colada à mão e que o `types.ts` gerado
+   * ainda não conhece — por isso os inserts daqui passam por `as any`. Elas
+   * EXISTEM no banco e chegam no `select('*')`; declará-las opcionais é o que
+   * permite o painel do pedido mostrar de qual empenho a entrega sai, em que
+   * cota, e qual documento a autorizou, em vez de recortar o tipo linha a
+   * linha com cast inline.
+   */
+  numero_empenho?: string | null;
+  empenho_id?: string | null;
+  cota?: string | null;
+  origem_aditivo_id?: string | null;
+  arquivo_ordem_id?: string | null;
 };
 type NotaFiscalSync = {
   id: string; numero_nf: string | null; tipo: string; status: string | null;
@@ -287,7 +308,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { isFinanceiro, isAdmin } = useMembroPermissoes();
   const podeVerCustos = isFinanceiro || isAdmin;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [empenhosAbertos, setEmpenhosAbertos] = useState(true);
+  /**
+   * Subaba da aba Pedidos: o que CONSOME (pedidos/ordens) e o que AUTORIZA
+   * (empenhos). Empilhados na mesma rolagem, um escondia o outro — e foi a
+   * lista de empenhos invisível que levou ao cadastro em duplicidade do
+   * 2026NE003716.
+   */
+  const [subAba, setSubAba] = useState<'pedidos' | 'empenhos'>('pedidos');
+  /** Busca e filtro locais, sobre o que já está carregado. */
+  const [buscaPedido, setBuscaPedido] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('__todos__');
+  /** Pedido aberto no painel lateral — detalhe sem tirar a pessoa da lista. */
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null);
+  /**
+   * Identificação do contrato para o painel do pedido. Vem das MESMAS colunas
+   * do `select` que a aba já fazia — nenhuma consulta nova; só duas colunas a
+   * mais, ambas de uso corrente no resto do módulo.
+   */
+  const [contratoInfo, setContratoInfo] = useState<{
+    numero_contrato: string | null; orgao_contratante: string | null;
+  } | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<AditivoRef[]>([]);
@@ -658,7 +698,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento, saldo_remanescente, valor_global').eq('id', contratoId).single(),
+      // `numero_contrato` e `orgao_contratante` entram aqui para o painel do
+      // pedido dizer DE QUE contrato e DE QUE órgão ele é — a referência pede
+      // os dois. São colunas antigas e de uso corrente (o cabeçalho do
+      // relatório do Dashboard já as lê), então não repetem o risco da consulta
+      // de prazos abaixo, que é separada justamente por depender de migration
+      // colada à mão.
+      supabase.from('contratos').select('ata_srp_id, tipo_documento, forma_execucao, art95_fundamento, saldo_remanescente, valor_global, numero_contrato, orgao_contratante').eq('id', contratoId).single(),
     ]);
     const pedidosData = (pedidosRes.data as any[]) || [];
     setPedidos(pedidosData);
@@ -678,6 +724,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setAditivos((aditivosRes.data as any[]) || []);
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
     setSaldoDoContrato(Number((contratoRes.data as any)?.saldo_remanescente ?? 0));
+    setContratoInfo({
+      numero_contrato: (contratoRes.data as any)?.numero_contrato ?? null,
+      orgao_contratante: (contratoRes.data as any)?.orgao_contratante ?? null,
+    });
 
     // Empenhos e o saldo de cada cota. Consulta separada e tolerante: as
     // tabelas vêm de migration colada à mão, e sem elas a checagem apenas não
@@ -1111,7 +1161,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         const { data } = await supabase.from('contrato_pedidos')
           .select('contrato_item_id, quantidade')
           .in('contrato_item_id', linhasCi.map(x => x.id))
-          .in('status', ['pendente', 'parcial']);
+          .in('status', [...STATUS_QUE_RESERVAM]);
         reservas = (data as typeof reservas) || [];
       }
       if (!vivo) return;
@@ -1777,71 +1827,1079 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     quantidadePedidos: pedidos.filter((p) => p.status !== 'cancelado').length,
   });
 
+
+  // ── Busca e filtro locais ────────────────────────────────────────────────
+  // Filtram o que JÁ está carregado; nenhuma consulta nova. Um contrato de
+  // fornecimento contínuo chega a centenas de pedidos, e achar "OF-114" rolando
+  // a tabela era o que fazia esta aba parecer interminável.
+  const termoPedido = buscaPedido.trim().toLowerCase();
+  const pedidosFiltrados = pedidos.filter((p) => {
+    if (filtroStatus !== '__todos__' && p.status !== filtroStatus) return false;
+    if (!termoPedido) return true;
+    return p.numero_pedido.toLowerCase().includes(termoPedido)
+      || (p.descricao ?? '').toLowerCase().includes(termoPedido)
+      || (p.nota_fiscal ?? '').toLowerCase().includes(termoPedido)
+      || (p.numero_empenho ?? '').toLowerCase().includes(termoPedido);
+  });
+  const filtrosDePedido = (termoPedido ? 1 : 0) + (filtroStatus !== '__todos__' ? 1 : 0);
+
+  const pedidoAberto = pedidos.find((p) => p.id === pedidoSelecionado) ?? null;
+
+  /** Status em texto + ícone + cor — nunca só cor. */
+  const tomDoStatus = (s: string): 'atencao' | 'sucesso' | 'ativo' | 'critico' =>
+    s === 'entregue' ? 'sucesso' : s === 'cancelado' ? 'critico' : s === 'parcial' ? 'ativo' : 'atencao';
+
+  /**
+   * Os empenhos do contrato, desenhados uma vez e usados em DOIS lugares.
+   *
+   * A referência pede as duas presenças, e cada uma responde a uma pergunta
+   * diferente: na subaba "Empenhos" é o assunto; na subaba "Pedidos" é o
+   * contexto — "o que autoriza estes pedidos, e quanto ainda resta neles". Uma
+   * função só evita o defeito clássico de duas cópias que divergem na primeira
+   * regra que mudar.
+   */
+  const listaDeEmpenhos = (
+    <div className="flex flex-col gap-2">
+      {empenhosDoContrato.map(e => {
+        const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
+        return (
+          <div key={e.id} className={`rounded-[var(--g-raio)] border p-2.5 ${
+            e.cancelado ? 'border-destructive-line bg-destructive-tint' : ''
+          }`}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className={`g-corpo font-medium tabular-nums ${
+                  e.cancelado ? 'line-through text-muted-foreground' : ''
+                }`}>{e.numero}</span>
+                <Badge variant="outline" className="g-meta">
+                  {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
+                </Badge>
+                {/* O painel é o que se olha. Sem isto o empenho cancelado
+                    aparece igual a um vivo, com "1 de 1 disponíveis", e
+                    quem lançar entrega sobre ele produz despesa sem
+                    cobertura sem nenhum sinal na tela. */}
+                {e.cancelado && (
+                  <SeloSituacao tom="critico" icone={Ban}>Cancelado</SeloSituacao>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {/* A vida do empenho: original, reforços, anulações. O
+                    estimativo nasce pequeno e é reforçado — sem isto,
+                    aumentá-lo exigiria sobrescrever o valor e apagar que
+                    houve reforço. */}
+                <Button size="sm" variant="ghost" className="h-7 g-meta"
+                  onClick={() => setMovimentando({
+                    id: e.id, numero: e.numero, tipo: e.tipo, contratoId,
+                  })}>
+                  <TrendingUp className="w-3 h-3 mr-1" /> Reforço / anulação
+                </Button>
+                {e.arquivo_id ? (
+                  <Button size="sm" variant="ghost" className="h-7 g-meta"
+                    onClick={() => abrirDocumentoDoEmpenho(e.arquivo_id!)}>
+                    <Eye className="w-3 h-3 mr-1" /> Ver documento
+                  </Button>
+                ) : (
+                  // Empenho sem PDF é autorização que não se prova. Dizer
+                  // qual está sem documento é o que permite ir buscá-lo.
+                  <span className="g-meta text-warning-ink">
+                    sem documento anexado
+                  </span>
+                )}
+              </div>
+            </div>
+            {e.cancelado ? (
+              // A quantidade continua lá porque anulação é ato de VALOR e
+              // não mexe em quantidade. Mostrá-la aqui faria o empenho
+              // parecer disponível — o que vale dizer é que ele não
+              // autoriza mais nada.
+              <p className="g-meta text-destructive-ink mt-1.5">
+                Anulado por inteiro. Não autoriza mais nenhuma entrega — entregar sob empenho
+                cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-4 flex-wrap mt-1.5">
+                  {cotas.map(cota => (
+                    <span key={cota.cota} className="g-meta text-muted-foreground">
+                      {cota.cota === 'reservada' ? 'Cota reservada' : 'Cota principal'}:{' '}
+                      {cota.reforcado ? (
+                        // Empenho com reforço mede-se em DINHEIRO: reforço é
+                        // ato de valor, e a quantidade da nota original fica
+                        // obsoleta no primeiro. "−395 de 2.802" acusava
+                        // déficit num empenho com R$ 63 mil positivos.
+                        <>
+                          <b className="text-foreground tabular-nums">
+                            {cota.saldo_valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </b>{' '}
+                          disponíveis (com reforços — a régua é o valor)
+                        </>
+                      ) : (
+                        <>
+                          <b className="text-foreground tabular-nums">
+                            {cota.saldo_qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                          </b>{' '}
+                          de {cota.qtd_empenhada.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} disponíveis
+                        </>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                {/* O valor total vigente (original + reforços − anulações),
+                    abaixo das cotas — a mesma régua da RPC. Sem valor
+                    registrado, nada é inventado. */}
+                {(cotas[0]?.valor_vigente ?? 0) > 0 && (
+                  <p className="g-meta text-muted-foreground mt-1">
+                    Valor:{' '}
+                    <b className="text-foreground tabular-nums">
+                      {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </b>
+                    {cotas[0].reforcado && ' (com reforços)'}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  /**
+   * O painel do pedido selecionado.
+   *
+   * Traz para um lugar só o que a linha da tabela não comporta sem virar um
+   * muro: de que contrato e de que órgão o pedido é, qual empenho o autoriza,
+   * o que o estoque tem reservado para ele, e as três ações do contexto. Cada
+   * campo sem dado apurado sai como indisponível, não como zero.
+   */
+  const itemDoPedido = pedidoAberto?.contrato_item_id
+    ? itens.find(i => i.id === pedidoAberto.contrato_item_id) ?? null
+    : null;
+  const empenhoDoPedido = pedidoAberto?.empenho_id
+    ? empenhosDoContrato.find(e => e.id === pedidoAberto.empenho_id) ?? null
+    : null;
+  const reservaDoPedido = pedidoAberto ? estoqueDoItem(pedidoAberto.contrato_item_id) : null;
+
+  const painelDoPedido = pedidoAberto ? (
+    <div className="flex flex-col gap-4">
+      <BlocoDoPainel
+        titulo={`Pedido ${pedidoAberto.numero_pedido}`}
+        acao={<SeloSituacao tom={tomDoStatus(pedidoAberto.status)}>{(statusCfg[pedidoAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>}
+      >
+        {pedidoAberto.descricao
+          ? <p className="g-corpo whitespace-pre-wrap leading-relaxed">{pedidoAberto.descricao}</p>
+          : <p className="g-corpo text-muted-foreground">Sem descrição registrada.</p>}
+      </BlocoDoPainel>
+
+      <BlocoDoPainel titulo="Origem">
+        <ListaDeCampos
+          campos={[
+            {
+              rotulo: 'Contrato',
+              valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" />,
+            },
+            {
+              rotulo: 'Órgão',
+              largo: true,
+              valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" />,
+            },
+            {
+              rotulo: 'Origem do item',
+              valor: itemDoPedido
+                ? getOrigemLabel(itemDoPedido, aditivos)
+                : <ValorIndisponivel razao="Pedido sem item vinculado" />,
+            },
+            {
+              rotulo: 'Empenho de origem',
+              valor: empenhoDoPedido
+                ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="tabular-nums">{empenhoDoPedido.numero}</span>
+                    {empenhoDoPedido.cancelado && <SeloSituacao tom="critico" icone={Ban}>Cancelado</SeloSituacao>}
+                  </span>
+                )
+                : pedidoAberto.numero_empenho
+                  // Pedido antigo guarda o número solto, sem o vínculo
+                  // `empenho_id` — dizer isso é o que permite corrigi-lo na
+                  // edição, em vez de parecer pedido sem empenho nenhum.
+                  ? <span className="tabular-nums" title="Número digitado, sem vínculo ao empenho registrado">{pedidoAberto.numero_empenho}</span>
+                  : <ValorIndisponivel razao="Sem empenho vinculado" />,
+            },
+            {
+              rotulo: 'Situação da reserva',
+              largo: true,
+              valor: reservaDoPedido
+                ? (
+                  <span className={reservaDoPedido.disponivel < 0 ? 'text-warning-ink' : undefined}>
+                    {reservaDoPedido.disponivel.toLocaleString('pt-BR')} disponível
+                    {' · '}{reservaDoPedido.fisico.toLocaleString('pt-BR')} físico
+                    {' − '}{reservaDoPedido.reservado.toLocaleString('pt-BR')} reservado
+                  </span>
+                )
+                : <ValorIndisponivel razao="Item sem produto no estoque" />,
+            },
+          ]}
+        />
+      </BlocoDoPainel>
+
+      <BlocoDoPainel titulo="Item, quantidade e valores">
+        <ListaDeCampos
+          campos={[
+            {
+              rotulo: 'Item do contrato',
+              largo: true,
+              valor: itemDoPedido
+                ? <span title={itemDoPedido.descricao}>{itemDoPedido.descricao}</span>
+                : <ValorIndisponivel razao="Não vinculado" />,
+            },
+            {
+              rotulo: 'Quantidade',
+              numerico: true,
+              valor: pedidoAberto.quantidade == null
+                ? <ValorIndisponivel razao="Não informada" />
+                : `${Number(pedidoAberto.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${itemDoPedido?.unidade ? ` ${itemDoPedido.unidade}` : ''}`,
+            },
+            {
+              rotulo: 'Valor unitário',
+              numerico: true,
+              valor: pedidoAberto.valor_unitario == null
+                ? <ValorIndisponivel razao="Não informado" />
+                : fmt(Number(pedidoAberto.valor_unitario)),
+            },
+            { rotulo: 'Valor total', numerico: true, valor: fmt(Number(pedidoAberto.valor_total) || 0) },
+            { rotulo: 'Cota', valor: pedidoAberto.cota ? (ROTULO_DA_COTA[pedidoAberto.cota as 'principal'] ?? pedidoAberto.cota) : <ValorIndisponivel razao="Sem divisão de cota" /> },
+            { rotulo: 'Nota fiscal', valor: pedidoAberto.nota_fiscal ? (formatarNumeroNfe(pedidoAberto.nota_fiscal) ?? pedidoAberto.nota_fiscal) : <ValorIndisponivel razao="Ainda não faturado" /> },
+          ]}
+        />
+      </BlocoDoPainel>
+
+      <BlocoDoPainel titulo="Prazo">
+        <ListaDeCampos
+          campos={[
+            { rotulo: 'Data do pedido', valor: pedidoAberto.data_pedido ? new Date(pedidoAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
+            { rotulo: 'Entrega prevista', valor: pedidoAberto.data_entrega ? new Date(pedidoAberto.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
+          ]}
+        />
+        <AvisoDePrazoDeEntrega
+          contrato={prazos}
+          dataDoPedido={pedidoAberto.data_pedido}
+          dataDeEntrega={pedidoAberto.status === 'entregue' ? pedidoAberto.data_entrega : null}
+        />
+      </BlocoDoPainel>
+
+      {pedidoAberto.observacoes && (
+        <BlocoDoPainel titulo="Observações">
+          <p className="g-meta whitespace-pre-wrap">{pedidoAberto.observacoes}</p>
+        </BlocoDoPainel>
+      )}
+
+      <BlocoDoPainel titulo="Ações">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog}
+              title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
+              <Upload className="w-3.5 h-3.5 mr-1.5" /> Registrar ordem/empenho
+            </Button>
+            <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)}
+              disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+              <Receipt className="w-3.5 h-3.5 mr-1.5" /> Gerar pré-NF
+            </Button>
+            <Button size="sm" variant="outline" className="g-controle"
+              title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
+              onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
+              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Criar no Kanban
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Kit vale antes e depois da quitação: o órgão pede a segunda via,
+                e a fila do financeiro só mostra o que ainda não foi baixado. */}
+            <KitFaturamento
+              pedido={{
+                id: pedidoAberto.id,
+                numero_pedido: pedidoAberto.numero_pedido,
+                valor_total: pedidoAberto.valor_total,
+                nota_fiscal: pedidoAberto.nota_fiscal,
+                contrato_id: contratoId,
+              }}
+            />
+            {!pedidoAberto.nf_quitada && pedidoAberto.status === 'entregue' && (isFinanceiro || isAdmin) && (
+              <Button size="sm" variant="outline"
+                className="g-controle text-success-ink border-success-line hover:bg-success-tint"
+                onClick={() => openNfDialog(pedidoAberto)}
+                title="Registrar pagamento da NF-e e gerar bonificação">
+                <DollarSign className="w-3.5 h-3.5 mr-1.5" /> Quitar NF
+              </Button>
+            )}
+            {(isFinanceiro || isAdmin) && (
+              /* Pedido retroativo — cadastrado depois de o recebimento já estar
+                 no Financeiro. Vincular em vez de gerar evita contar a receita
+                 duas vezes. */
+              <Button size="sm" variant="outline" className="g-controle"
+                title="Vincular a lançamento existente no Financeiro"
+                onClick={() => setVinculando({
+                  id: pedidoAberto.id,
+                  numero_pedido: pedidoAberto.numero_pedido,
+                  valor_total: Number(pedidoAberto.valor_total) || 0,
+                  data_pedido: pedidoAberto.data_pedido,
+                  nota_fiscal: pedidoAberto.nota_fiscal ?? null,
+                })}>
+                <Link2 className="w-3.5 h-3.5 mr-1.5" /> Vincular lançamento
+              </Button>
+            )}
+            {!pedidoAberto.nf_quitada && (
+              <Button size="sm" variant="outline" className="g-controle"
+                onClick={() => openEditDialog(pedidoAberto)}
+                title={(isFinanceiro || isAdmin) ? 'Editar pedido' : 'Ver detalhes'}>
+                <Pencil className="w-3.5 h-3.5 mr-1.5" /> {(isFinanceiro || isAdmin) ? 'Editar' : 'Ver detalhes'}
+              </Button>
+            )}
+            {/* Todo membro exclui — o precedente das publicações (02/09): a
+                exclusão EXIGE motivo e grava snapshot em pedidos_exclusoes para
+                o Admin; o RLS é por membro desde 22/06. */}
+            {!pedidoAberto.nf_quitada && (
+              <Button size="sm" variant="outline" className="g-controle text-destructive-ink"
+                title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
+                onClick={() => openDeleteDialog(pedidoAberto.id, pedidoAberto.numero_pedido)}>
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
+              </Button>
+            )}
+          </div>
+        </div>
+      </BlocoDoPainel>
+    </div>
+  ) : null;
+
+  // ── A auditoria dos lançamentos: o alerta que fica ────────────────────────
+  // Política definida em 01/09 sobre o caso real: uma NF-e com VU errado
+  // (22,50 num contrato de 22,55) seguiu "sem intervenção humana" e a entrega
+  // entrou DUAS vezes — R$ 33.750 de consumo fantasma que só a conferência
+  // contra o Portal pegou. Não se barra (erro humano é exceção legítima);
+  // ALERTA-SE, persistentemente, com o IMPACTO em reais. Derivado a cada render
+  // — quando os dados são corrigidos, o aviso morre sozinho.
+  const suspeitasDeLancamento = auditarPedidos(
+    pedidos.map(p => ({
+      id: p.id, numero_pedido: p.numero_pedido,
+      quantidade: p.quantidade, valor_unitario: p.valor_unitario,
+      valor_total: p.valor_total, data_pedido: p.data_pedido,
+      contrato_item_id: p.contrato_item_id, status: p.status,
+    })),
+    itens.length === 1 ? itens[0].valor_unitario : null,
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="flex min-w-0 flex-col gap-4">
       {avisoExecucao && (
-        <div className="flex items-start gap-3 rounded-lg border border-warning-line bg-warning-tint px-4 py-3">
-          <AlertTriangle className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">{avisoExecucao}</p>
+        <AvisoDeContexto titulo="Forma de execução declarada não bate com o uso">
+          {avisoExecucao}
+        </AvisoDeContexto>
+      )}
+
+      {/* Os números que o cabeçalho antigo carregava em texto corrido
+          ("N pedidos | Total: R$ …"), agora em tira baixa e com a base de cada
+          um declarada — regra 2 do comando. */}
+      <FaixaIndicadores
+        itens={[
+          {
+            rotulo: 'Pedidos lançados',
+            valor: pedidos.length,
+            detalhe: 'todos os registros da aba, inclusive cancelados',
+            icone: ShoppingCart,
+            tom: 'neutro',
+          },
+          {
+            rotulo: 'Valor dos pedidos',
+            // Zero com pedidos lançados é fato; sem nenhum pedido não há
+            // total apurado — e R$ 0,00 ali afirmaria execução parada num
+            // contrato que talvez só não tenha sido lançado ainda.
+            valor: pedidos.length > 0 ? fmt(totalPedidos) : null,
+            razaoIndisponivel: 'Nenhum pedido lançado',
+            detalhe: 'soma dos pedidos com situação diferente de cancelado',
+            icone: DollarSign,
+            tom: 'ok',
+          },
+          {
+            rotulo: 'Empenhos registrados',
+            valor: empenhosDoContrato.length,
+            detalhe: 'autorizam as entregas — consulte na subaba Empenhos',
+            icone: FileText,
+            tom: empenhosDoContrato.some(e => e.cancelado) ? 'aviso' : 'neutro',
+          },
+        ]}
+      />
+
+      {/* ── Subabas ──────────────────────────────────────────────────────────
+          Pedido e empenho são coisas diferentes — um consome, o outro autoriza
+          — e conviviam empilhados na mesma rolagem. Separados, cada assunto
+          tem a tela inteira, e a subaba mostra de cara quantos há de cada. */}
+      <AbasGestao
+        abas={[
+          { valor: 'pedidos', rotulo: 'Pedidos / Ordens', contagem: pedidos.length },
+          { valor: 'empenhos', rotulo: 'Empenhos', contagem: empenhosDoContrato.length },
+        ]}
+        valor={subAba}
+        aoMudar={(v) => setSubAba(v as 'pedidos' | 'empenhos')}
+      />
+
+      {subAba === 'pedidos' ? (
+        <>
+          <BarraFiltros
+            busca={buscaPedido}
+            aoBuscar={setBuscaPedido}
+            placeholderBusca="Buscar por nº do pedido, descrição, NF ou empenho..."
+            filtrosAplicados={filtrosDePedido}
+            aoLimpar={() => { setBuscaPedido(''); setFiltroStatus('__todos__'); }}
+            acao={
+              <>
+                <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+                  <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
+                </Button>
+                {/* Este SAI da tela: leva ao Kanban comercial. O nome "Novo Pedido"
+                    era idêntico ao do botão ao lado, que cria aqui mesmo — e os dois
+                    fazem coisas diferentes. */}
+                <Button size="sm" variant="outline" className="g-controle"
+                  title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
+                  onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
+                  <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Criar no Kanban
+                </Button>
+                {/* Não é tela legada: é a ÚNICA forma de cadastrar pedido direto
+                    no contrato — o botão ao lado navega para Gestão de Compras e
+                    cria pelo Kanban. Quem lança pedido retroativo, de contrato que
+                    já estava em andamento antes da adesão ao sistema, passa por
+                    aqui. */}
+                <Button size="sm" className="g-controle gap-1" onClick={openNewDialog}
+                  title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
+                  <Upload className="w-3.5 h-3.5" /> Registrar Ordem/Empenho
+                </Button>
+              </>
+            }
+          >
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger className="g-controle w-auto min-w-[170px] rounded-[var(--g-raio)]" aria-label="Filtrar por situação">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__todos__">Situação: todas</SelectItem>
+                {Object.entries(statusCfg).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </BarraFiltros>
+
+          {suspeitasDeLancamento.length > 0 && (
+            <Card className="g-cartao border-warning-line bg-warning-tint p-4">
+              <SecaoRecolhivel
+                id={`pedidos-auditoria-${contratoId}`}
+                classNameTitulo="g-titulo-secao text-warning-ink"
+                classNameIcone="text-warning-ink"
+                icone={<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" aria-hidden="true" />}
+                titulo={<>Auditoria dos lançamentos — {suspeitasDeLancamento.length} ponto(s) a revisar</>}
+              >
+                <div className="mt-2 space-y-2">
+                  {suspeitasDeLancamento.map((sp, i) => (
+                    <div key={i} className="g-meta">
+                      <p className="text-foreground">{sp.frase}</p>
+                      <p className="text-muted-foreground mt-0.5">{sp.providencia}</p>
+                    </div>
+                  ))}
+                </div>
+              </SecaoRecolhivel>
+            </Card>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : pedidos.length === 0 ? (
+            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
+              {empenhosDoContrato.length > 0
+                ? 'Nenhum pedido registrado ainda — o empenho acima autoriza, e cada entrega lançada aqui consome dele.'
+                : 'Nenhum pedido registrado'}
+            </Card>
+          ) : (
+            <AreaComPainel
+              painel={painelDoPedido}
+              tituloPainel="Detalhe do pedido"
+              aoFechar={() => setPedidoSelecionado(null)}
+            >
+              {pedidosFiltrados.length === 0 ? (
+                <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
+                  Nenhum pedido corresponde aos filtros aplicados.
+                </Card>
+              ) : (
+              <div className="rounded-[var(--g-raio)] border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="g-corpo whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
+                        <div className="flex items-center gap-1">
+                          Pedido
+                          {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground" />}
+                        </div>
+                      </TableHead>
+                      <TableHead className="g-corpo whitespace-nowrap">Item</TableHead>
+                      <TableHead className="g-corpo text-right whitespace-nowrap">Quantidade</TableHead>
+                      <TableHead className="g-corpo text-center whitespace-nowrap">Prazo</TableHead>
+                      <TableHead className="g-corpo text-center whitespace-nowrap">Situação</TableHead>
+                      <TableHead className="g-corpo whitespace-nowrap">NF-e</TableHead>
+                      <TableHead className="g-corpo text-center whitespace-nowrap"
+                        title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
+                        Etapa operacional
+                      </TableHead>
+                      {/* Fixa à direita. As colunas cresceram quando a fonte subiu
+                          para 14px e empurraram as ações para fora da area visivel —
+                          e o macOS esconde a barra de rolagem, entao os botoes
+                          simplesmente sumiam. Acao de linha nao pode depender de
+                          alguem descobrir que a tabela rola. */}
+                      <TableHead className="g-corpo sticky right-0 bg-background z-10 w-px">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const sorted = sortOrder
+                        ? [...pedidosFiltrados].sort((a, b) => {
+                            const cmp = a.numero_pedido.localeCompare(b.numero_pedido, 'pt-BR', { numeric: true });
+                            return sortOrder === 'asc' ? cmp : -cmp;
+                          })
+                        : pedidosFiltrados;
+                      return sorted.map(p => {
+                      const cfg = statusCfg[p.status] || statusCfg.pendente;
+                      const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
+                      const selecionado = pedidoSelecionado === p.id;
+                      return (
+                        <TableRow
+                          key={p.id}
+                          data-state={selecionado ? 'selected' : undefined}
+                          className={selecionado ? 'border-l-2 border-l-primary' : undefined}
+                        >
+                          <TableCell className="g-corpo font-mono font-medium whitespace-nowrap">
+                            {p.nf_quitada ? (
+                              <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
+                            ) : (
+                              <button
+                                className="hover:underline text-primary cursor-pointer"
+                                onClick={() => abrirOrdem(p)}
+                                title={(p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id
+                                  ? 'Abrir a Ordem/Empenho que autorizou este pedido'
+                                  : 'Abrir detalhes do pedido'}
+                              >
+                                {p.numero_pedido}
+                              </button>
+                            )}
+                            {p.numero_empenho && (
+                              <div className="g-meta font-sans text-muted-foreground" title="Empenho que autoriza este pedido">
+                                emp. {p.numero_empenho}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="g-corpo min-w-[16rem] max-w-[22rem]">
+                            {/* ── Quebrar em duas linhas, não cortar na primeira ────
+                                Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
+                                exatamente no número, que é a parte que identifica o
+                                pedido. Duas linhas mostram a descrição inteira na
+                                maioria dos casos; o clique continua abrindo o texto
+                                completo, agora no painel ao lado. */}
+                            {p.descricao ? (
+                              <button
+                                type="button"
+                                className="block w-full text-left hover:underline cursor-pointer line-clamp-2 leading-snug"
+                                title="Abrir o detalhe do pedido no painel"
+                                onClick={() => setPedidoSelecionado(p.id)}
+                              >
+                                {p.descricao}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:underline"
+                                title="Abrir o detalhe do pedido no painel"
+                                onClick={() => setPedidoSelecionado(p.id)}
+                              >
+                                sem descrição
+                              </button>
+                            )}
+                          </TableCell>
+                          {/* Quantidade e valor no mesmo bloco: são duas leituras do
+                              mesmo fato, e separá-las custava uma coluna que empurrava
+                              as ações para fora da tela. */}
+                          <TableCell className="g-corpo text-right whitespace-nowrap tabular-nums">
+                            <div>{p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
+                            <div className="g-meta font-medium text-muted-foreground">{fmt(p.valor_total)}</div>
+                          </TableCell>
+                          {/* Sem `whitespace-nowrap` na célula inteira: o aviso de
+                              prazo — "Prazo vencido há 113 dia(s) — limite era
+                              10/05/2026" — travava a coluna nessa largura e empurrava
+                              a NF-e para baixo da coluna fixa de ações. A DATA
+                              continua numa linha só; o aviso quebra. */}
+                          <TableCell className="g-corpo text-center min-w-[9rem] max-w-[11rem]">
+                            <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+                            {/* O prazo que começou a correr quando este pedido foi
+                                lançado. `dataDeEntrega` só é passada quando o STATUS
+                                diz que houve entrega: `data_entrega` guarda a data
+                                PREVISTA, e tratá-la como realizada fazia a linha
+                                afirmar "Entregue com 286 dias de atraso" para um
+                                pedido que nunca saiu. */}
+                            <AvisoDePrazoDeEntrega
+                              compacto
+                              contrato={prazos}
+                              dataDoPedido={p.data_pedido}
+                              dataDeEntrega={p.status === 'entregue' ? p.data_entrega : null}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center whitespace-nowrap">
+                            <SeloSituacao tom={tomDoStatus(p.status)}>{cfg.label}</SeloSituacao>
+                          </TableCell>
+                          <TableCell className="g-corpo">
+                            <div className="space-y-1">
+                              {/* ── A coluna da NOTA: número, estado e o documento ──
+                                  Aqui é onde a nota vive. O número identifica; a
+                                  quitação é estado DELA, não do pedido — e estava na
+                                  coluna de ações, sem cabeçalho, parecendo um botão.
+                                  Clicável só quando há arquivo: número sem link diz
+                                  qual nota é e que falta anexá-la, que é mais do que
+                                  um traço diz.
+
+                                  O vínculo (pedido → lançamento → documento) vem
+                                  antes do casamento por texto: ele acha a nota mesmo
+                                  quando `nota_fiscal` do pedido ficou vazio. */}
+                              {notaDoPedido?.[p.id] && (() => {
+                                const nd = notaDoPedido[p.id];
+                                const rotulo = (
+                                  <>
+                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
+                                  </>
+                                );
+                                // A quitação em linha própria (08/09): dentro do selo,
+                                // número e estado disputavam a mesma linha e a leitura
+                                // vinha espremida.
+                                const quitada = p.nf_quitada && p.data_quitacao && (
+                                  <p className="g-meta text-success-ink">
+                                    Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                  </p>
+                                );
+                                if (!nd.storage_path) {
+                                  return (
+                                    <>
+                                      <Badge variant="outline" className="g-meta block w-fit text-foreground"
+                                        title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
+                                        {rotulo}
+                                        <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                      </Badge>
+                                      {quitada}
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <button type="button" className="block w-fit"
+                                      onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
+                                      title={`Abrir ${nd.arquivo_nome} em nova aba`}>
+                                      <Badge variant="outline"
+                                        className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
+                                        {rotulo}
+                                        <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                      </Badge>
+                                    </button>
+                                    {quitada}
+                                  </>
+                                );
+                              })()}
+                              {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
+                                // O número da nota é o elo entre o pedido e o
+                                // documento arquivado no Financeiro: o pedido não
+                                // guarda lancamento_id. Havendo arquivo, o selo vira
+                                // botão e abre o DANFE — ver o pedido e não alcançar
+                                // a nota que o comprova é o passo que faltava.
+                                const doc = chaveDoNumero(p.nota_fiscal)
+                                  .map((k) => docsPorNumero?.[k]).find(Boolean);
+                                const conteudo = (
+                                  <>
+                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    {/* Formato do DANFE. O campo é texto livre e
+                                        recebe "125", "NF 000000125" e "125/2026" —
+                                        três grafias da mesma nota, que sem
+                                        normalizar viram três linhas diferentes. */}
+                                    {formatarNumeroNfe(p.nota_fiscal) ?? p.nota_fiscal}
+                                  </>
+                                );
+                                const quitada = p.nf_quitada && p.data_quitacao && (
+                                  <p className="g-meta text-success-ink">
+                                    Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                  </p>
+                                );
+                                if (!doc) {
+                                  // Número sem arquivo é indistinguível de link
+                                  // quebrado: o selo fica igual, só não clica. Dizer
+                                  // qual dos dois é — e onde se resolve — evita a
+                                  // conclusão de que o sistema perdeu a nota.
+                                  return (
+                                    <>
+                                      <Badge variant="outline" className="g-meta block w-fit text-foreground"
+                                        title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
+                                        {conteudo}
+                                        <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
+                                      </Badge>
+                                      {quitada}
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
+                                      title={`Abrir ${doc.arquivo_nome} em nova aba`}
+                                      className="block w-fit"
+                                    >
+                                      <Badge variant="outline"
+                                        className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
+                                        {conteudo}
+                                        <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
+                                      </Badge>
+                                    </button>
+                                    {quitada}
+                                  </>
+                                );
+                              })()}
+                              {linkedNfs.map(nf => {
+                                // Dois donos do mesmo número: `contrato_pedidos.nota_fiscal`
+                                // é digitado, `notas_fiscais.numero_nf` é o documento
+                                // emitido. Quando divergem, a tela precisa dizer —
+                                // senão fica igual ao saldo com duas fórmulas: dois
+                                // números convivendo e ninguém sabendo qual vale.
+                                const diverge =
+                                  !!p.nota_fiscal && !!nf.numero_nf &&
+                                  numeroNfeComoInteiro(p.nota_fiscal) !== null &&
+                                  numeroNfeComoInteiro(p.nota_fiscal) !== numeroNfeComoInteiro(nf.numero_nf);
+                                return (
+                                  <Badge key={nf.id} variant="outline" className={`g-meta block w-fit ${
+                                    diverge ? 'border-warning-line text-warning-ink' :
+                                    nf.status === 'autorizada' ? 'border-success-line text-success-ink' :
+                                    nf.status === 'rejeitada' ? 'border-destructive-line text-destructive-ink' :
+                                    'border-muted-foreground/30 text-muted-foreground'
+                                  }`}
+                                  title={diverge
+                                    ? `A nota emitida (${formatarNumeroNfe(nf.numero_nf)}) não é a mesma que foi digitada no pedido (${formatarNumeroNfe(p.nota_fiscal)}).`
+                                    : undefined}>
+                                    <FileText className="w-3 h-3 mr-1 inline" />
+                                    {formatarNumeroNfe(nf.numero_nf) ?? 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
+                                    {diverge && ' • diverge do pedido'}
+                                  </Badge>
+                                );
+                              })}
+                              {!notaDoPedido?.[p.id] && !p.nota_fiscal && linkedNfs.length === 0 && (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center whitespace-nowrap">
+                            {p.pedido_id ? (
+                              updatingKanban[p.pedido_id] ? (
+                                <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
+                              ) : (
+                                <Select
+                                  value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
+                                  onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
+                                >
+                                  <SelectTrigger className={`h-7 g-meta border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(kanbanCfg).map(([key, cfgK]) => (
+                                      <SelectItem key={key} value={key} className="g-meta">{cfgK.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )
+                            ) : (
+                              <span className="text-muted-foreground/40 g-meta">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="sticky right-0 bg-background z-10 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
+                            <div className="flex items-center gap-1">
+                              {/* Kit vale antes e depois da quitação: o órgão pede a
+                                  segunda via, e a fila do financeiro só mostra o que
+                                  ainda não foi baixado. */}
+                              <KitFaturamento
+                                pedido={{
+                                  id: p.id,
+                                  numero_pedido: p.numero_pedido,
+                                  valor_total: p.valor_total,
+                                  nota_fiscal: p.nota_fiscal,
+                                  contrato_id: contratoId,
+                                }}
+                              />
+                              {/* Só a AÇÃO fica aqui. O ESTADO "quitada" mudou para a
+                                  coluna NF-e, junto da nota a que ele se refere. */}
+                              {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
+                                <Button
+                                  size="sm" variant="outline"
+                                  className="h-7 px-2 g-meta text-success-ink border-success-line hover:bg-success-tint"
+                                  onClick={() => openNfDialog(p)}
+                                  title="Registrar pagamento da NF-e e gerar bonificação"
+                                >
+                                  <DollarSign className="w-3 h-3 mr-1" /> Quitar NF
+                                </Button>
+                              )}
+                              {(isFinanceiro || isAdmin) && (
+                                /* Pedido retroativo — cadastrado depois de o
+                                   recebimento já estar no Financeiro. Vincular em vez
+                                   de gerar evita contar a receita duas vezes. */
+                                <Button
+                                  size="icon" variant="ghost" className="h-7 w-7"
+                                  title="Vincular a lançamento existente no Financeiro"
+                                  onClick={() => setVinculando({
+                                    id: p.id,
+                                    numero_pedido: p.numero_pedido,
+                                    valor_total: Number(p.valor_total) || 0,
+                                    data_pedido: p.data_pedido,
+                                    nota_fiscal: p.nota_fiscal ?? null,
+                                  })}
+                                >
+                                  <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                              )}
+                              {/* Todo membro exclui — o precedente das publicações
+                                  (02/09): a exclusão EXIGE motivo e grava snapshot em
+                                  pedidos_exclusoes para o Admin; o RLS é por membro
+                                  desde 22/06. Esconder do colaborador só o obrigava a
+                                  pedir a um admin o que a auditoria já cobre. */}
+                              {!p.nf_quitada && (
+                                <Button
+                                  size="icon" variant="ghost" className="h-7 w-7"
+                                  title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
+                                  onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
+                                </Button>
+                              )}
+                              {(isFinanceiro || isAdmin) && !p.nf_quitada && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
+                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                              )}
+                              {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Ver detalhes">
+                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
+                    })()}
+                  </TableBody>
+                </Table>
+              </div>
+              )}
+            </AreaComPainel>
+          )}
+
+          {/* ── Os empenhos, como contexto da tabela ──────────────────────────
+              Faltava esta lista, e a falta tinha consequência: o 2026NE003716
+              estava registrado, a aba mostrava "0 pedidos | R$ 0,00", e a única
+              leitura possível era a de que nada havia sido registrado. Daí a
+              segunda tentativa de cadastrar o mesmo empenho.
+
+              Nasce RECOLHIDA agora que os empenhos ganharam subaba própria: o
+              título já informa quantos há, que era o dado que faltava, e quem
+              quiser o saldo de cada um abre — ou vai para a subaba. A escolha
+              fica lembrada por quem a fez. */}
+          {empenhosDoContrato.length > 0 && (
+            <Card className="g-cartao p-4">
+              <SecaoRecolhivel
+                id={`pedidos-empenhos-${contratoId}`}
+                recolhidaPorPadrao
+                classNameTitulo="g-titulo-secao text-foreground"
+                icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                titulo={<>Empenhos registrados ({empenhosDoContrato.length}) — autorizam os pedidos acima</>}
+              >
+                <div className="mt-2">{listaDeEmpenhos}</div>
+              </SecaoRecolhivel>
+            </Card>
+          )}
+
+          {nfsSync.length > 0 && (
+            <Card className="g-cartao p-4">
+              <SecaoRecolhivel
+                id={`pedidos-nfs-sync-${contratoId}`}
+                recolhidaPorPadrao
+                classNameTitulo="g-titulo-secao text-foreground"
+                icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                titulo={<>Notas fiscais sincronizadas do Financeiro ({nfsSync.length})</>}
+              >
+                <div className="mt-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                    <div className="text-center p-2 rounded bg-muted/50">
+                      <p className="g-meta text-muted-foreground">NFs Saída</p>
+                      <p className="g-corpo font-bold tabular-nums">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
+                      <p className="g-meta text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-muted/50">
+                      <p className="g-meta text-muted-foreground">NFs Entrada</p>
+                      <p className="g-corpo font-bold tabular-nums">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
+                      <p className="g-meta text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-muted/50">
+                      <p className="g-meta text-muted-foreground">Autorizadas</p>
+                      <p className="g-corpo font-bold text-success-ink tabular-nums">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-muted/50">
+                      <p className="g-meta text-muted-foreground">Pendentes</p>
+                      <p className="g-corpo font-bold text-warning-ink tabular-nums">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
+                    </div>
+                  </div>
+                  <p className="g-meta text-muted-foreground italic">
+                    As notas fiscais são emitidas e controladas pelo setor Financeiro. Acesse o módulo Financeiro para emitir ou editar NFs.
+                  </p>
+                </div>
+              </SecaoRecolhivel>
+            </Card>
+          )}
+
+          {preNotas.length > 0 && (
+            <Card className="g-cartao p-4">
+              <SecaoRecolhivel
+                id={`pedidos-pre-notas-${contratoId}`}
+                recolhidaPorPadrao
+                classNameTitulo="g-titulo-secao text-foreground"
+                icone={<Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                titulo={<>Pré-notas fiscais solicitadas ({preNotas.length})</>}
+              >
+                <div className="mt-3 space-y-2">
+                  {preNotas.map((pn: any) => {
+                    const statusMap: Record<string, { label: string; tom: 'atencao' | 'neutro' | 'sucesso' | 'critico' }> = {
+                      pendente: { label: 'Pendente', tom: 'atencao' },
+                      em_revisao: { label: 'Em Revisão', tom: 'neutro' },
+                      aprovada: { label: 'Aprovada', tom: 'sucesso' },
+                      rejeitada: { label: 'Rejeitada', tom: 'critico' },
+                      devolvida: { label: 'Devolvida', tom: 'atencao' },
+                    };
+                    const st = statusMap[pn.status] || statusMap.pendente;
+                    return (
+                      <div key={pn.id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border bg-muted/30 g-meta">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <SeloSituacao tom={st.tom}>{st.label}</SeloSituacao>
+                          <span>{pn.natureza_operacao}</span>
+                          <span className="font-medium whitespace-nowrap tabular-nums">{fmt(pn.valor_total)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
+                          {pn.motivo_devolucao && (
+                            <Badge variant="outline" className="g-meta text-warning-ink" title={pn.motivo_devolucao}>
+                              <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
+                            </Badge>
+                          )}
+                          {pn.motivo_rejeicao && (
+                            <Badge variant="outline" className="g-meta text-destructive-ink" title={pn.motivo_rejeicao}>
+                              <XCircle className="w-3 h-3 mr-1" /> Rejeitada
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SecaoRecolhivel>
+            </Card>
+          )}
+        </>
+      ) : (
+        /* ── Subaba Empenhos ──────────────────────────────────────────────── */
+        <div className="flex flex-col gap-3">
+          <p className="g-corpo text-muted-foreground">
+            Empenho <strong>autoriza</strong>; não consome. O saldo de item e de contrato só é
+            abatido quando a entrega é lançada contra ele, na subaba Pedidos / Ordens.
+          </p>
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : empenhosDoContrato.length === 0 ? (
+            <Card className="g-cartao p-8 text-center g-corpo text-muted-foreground">
+              Nenhum empenho registrado. Use “Registrar Ordem/Empenho” na subaba Pedidos / Ordens
+              para anexar a nota de empenho.
+            </Card>
+          ) : (
+            <Card className="g-cartao p-4">{listaDeEmpenhos}</Card>
+          )}
         </div>
       )}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4 text-muted-foreground" /> Pedidos / Ordens de Fornecimento
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {pedidos.length} pedidos | Total: {fmt(totalPedidos)}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
-            <Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Pré-NF
-          </Button>
-          {/* Este SAI da tela: leva ao Kanban comercial. O nome "Novo Pedido"
-              era idêntico ao do botão ao lado, que cria aqui mesmo — e os dois
-              fazem coisas diferentes. */}
-          <Button size="sm" variant="outline"
-            title="Abrir Gestão de Compras para criar o pedido pelo funil comercial"
-            onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-            <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Criar no Kanban
-          </Button>
-          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
-          <DialogTrigger asChild>
-            {/* Não é tela legada: é a ÚNICA forma de cadastrar pedido direto
-                no contrato — o botão azul ao lado navega para Gestão de
-                Compras e cria pelo Kanban. Quem lança pedido retroativo, de
-                contrato que já estava em andamento antes da adesão ao sistema,
-                passa por aqui. O rótulo "Legada" dizia o contrário e convidava
-                a remover o que não dá para remover. */}
-            {/* O caminho principal de quem administra o contrato: chegou a
-                Ordem de Fornecimento ou a nota de empenho, anexa aqui, o
-                sistema lê os itens e abate saldo e quantidade. */}
-            <Button size="sm" onClick={openNewDialog} className="gap-1"
-              title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
-              <Upload className="w-3.5 h-3.5" /> Registrar Ordem/Empenho
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-muted-foreground" /> Registrar Pedido
-              </DialogTitle>
-            </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="upload" className="flex-1 text-xs">
-                  <Upload className="w-3.5 h-3.5 mr-1" /> Importar Documento
-                </TabsTrigger>
-                <TabsTrigger value="manual" className="flex-1 text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Inclusão Manual
-                </TabsTrigger>
-              </TabsList>
+      {/* ── Registrar Pedido ─────────────────────────────────────────────────
+          As duas portas continuam onde estavam: "Importar Documento" lê o PDF e
+          "Inclusão Manual" digita. O diálogo passou a ser controlado pelo
+          estado, porque o gatilho migrou para a barra de filtros. */}
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) resetForm(); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-muted-foreground" /> Registrar Pedido
+            </DialogTitle>
+          </DialogHeader>
 
-              <TabsContent value="upload" className="space-y-4 mt-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full">
+              <TabsTrigger value="upload" className="flex-1 g-meta">
+                <Upload className="w-3.5 h-3.5 mr-1" /> Importar Documento
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 g-meta">
+                <Plus className="w-3.5 h-3.5 mr-1" /> Inclusão Manual
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-4 mt-3">
+              <div>
+                <Label className="g-meta">Tipo de Documento</Label>
+                <Select value={form.tipo_documento} onValueChange={v => setForm(f => ({ ...f, tipo_documento: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {tiposDocumento.map(td => (
+                      <SelectItem key={td.value} value={td.value}>{td.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="g-corpo font-medium">Faça upload do documento PDF</p>
+                <p className="g-meta text-muted-foreground mt-1">OF, Nota de Empenho, PRD ou documento similar</p>
+                <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+                <Button variant="outline" className="mt-3" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processando...</> : <><Upload className="w-4 h-4 mr-1" /> Selecionar PDF</>}
+                </Button>
+              </div>
+
+              {uploading && (
+                <div className="p-3 rounded-lg bg-muted/50 border text-center">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-muted-foreground" />
+                  <p className="g-meta text-muted-foreground">Extraindo dados com IA...</p>
+                </div>
+              )}
+
+              <div className="p-3 rounded-lg bg-muted/30 border g-meta text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Documentos suportados:</p>
+                <p>Ordem de Fornecimento (OF), Nota de Empenho (Global, Ordinário, Estimativo), PRD</p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="manual" className="space-y-3 mt-3">
+              {extractedData && (
+                <div className="p-3 rounded-lg bg-success-tint border border-success-line">
+                  <p className="g-meta font-medium flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
+                    Dados extraídos — revise e corrija se necessário
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Tipo de Documento</Label>
+                  <Label className="g-meta">N.o Documento *</Label>
+                  <Input value={form.numero_pedido} onChange={e => setForm(f => ({ ...f, numero_pedido: e.target.value }))} placeholder="OF-001, NE-2025/001" />
+                </div>
+                <div>
+                  <Label className="g-meta">Tipo de Documento</Label>
                   <Select value={form.tipo_documento} onValueChange={v => setForm(f => ({ ...f, tipo_documento: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1851,995 +2909,368 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm font-medium">Faça upload do documento PDF</p>
-                  <p className="text-xs text-muted-foreground mt-1">OF, Nota de Empenho, PRD ou documento similar</p>
-                  <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-                  <Button variant="outline" className="mt-3" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                    {uploading ? <><Loader2 className="w-4 h-4 animate-spin mr-1" /> Processando...</> : <><Upload className="w-4 h-4 mr-1" /> Selecionar PDF</>}
-                  </Button>
+                <div>
+                  <Label className="g-meta">Data do Pedido</Label>
+                  <Input type="date" value={form.data_pedido} onChange={e => setForm(f => ({ ...f, data_pedido: e.target.value }))} />
                 </div>
-
-                {uploading && (
-                  <div className="p-3 rounded-lg bg-muted/50 border text-center">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">Extraindo dados com IA...</p>
-                  </div>
-                )}
-
-                <div className="p-3 rounded-lg bg-muted/30 border text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Documentos suportados:</p>
-                  <p>Ordem de Fornecimento (OF), Nota de Empenho (Global, Ordinário, Estimativo), PRD</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="manual" className="space-y-3 mt-3">
-                {extractedData && (
-                  <div className="p-3 rounded-lg bg-success-tint border border-success-line">
-                    <p className="text-xs font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-success-ink" />
-                      Dados extraídos — revise e corrija se necessário
+                <div>
+                  <Label className="g-meta">Data de Entrega (prevista)</Label>
+                  <Input type="date" value={form.data_entrega} onChange={e => setForm(f => ({ ...f, data_entrega: e.target.value }))} />
+                  {/* De onde a data veio. Derivado e digitado se parecem na
+                      tela, e quem confere precisa saber em qual está apoiado
+                      — o mesmo motivo do cartão de procedência do DRE. */}
+                  {prazos?.prazo_entrega_dias && form.data_pedido && (
+                    <p className="g-meta text-muted-foreground mt-1">
+                      {form.data_entrega === limiteDerivado(form.data_pedido)
+                        ? `Derivado da cláusula: ${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'} da data do pedido.`
+                        : `A cláusula do contrato daria ${limiteDerivado(form.data_pedido)
+                            ? new Date(limiteDerivado(form.data_pedido) + 'T12:00:00').toLocaleDateString('pt-BR')
+                            : '—'} (${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'}).`}
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
+                <div>
+                  <Label className="g-meta">Status</Label>
+                  <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="entregue">Entregue</SelectItem>
+                      <SelectItem value="parcial">Parcial</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="g-meta">Nota Fiscal</Label>
+                  <Input value={form.nota_fiscal} onChange={e => setForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">N.o Documento *</Label>
-                    <Input value={form.numero_pedido} onChange={e => setForm(f => ({ ...f, numero_pedido: e.target.value }))} placeholder="OF-001, NE-2025/001" />
+              {/* O que este documento vai fazer, dito ANTES de salvar.
+                  Empenhar não é entregar: enquanto a nota criava pedidos, o
+                  saldo caía no instante em que o dinheiro era reservado. */}
+              {extractedData && documentoCria === 'empenho' && (
+                  <div className="p-3 rounded-lg border border-border bg-muted space-y-2">
+                    <p className="g-meta font-semibold text-foreground">
+                      Nota de empenho — <b>autoriza</b>, não consome
+                    </p>
+                    <p className="g-meta text-muted-foreground">
+                      Vai ser registrada como empenho do contrato. Nenhum saldo de item ou de
+                      contrato é abatido: isso acontece quando as entregas forem lançadas contra
+                      ela.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label className="g-meta">Número do empenho</Label>
+                        <Input
+                          value={form.numero_empenho}
+                          onChange={e => setForm(f => ({ ...f, numero_empenho: e.target.value }))}
+                          placeholder="2026NE003716"
+                          className="h-8 g-meta"
+                        />
+                      </div>
+                      <div>
+                        <Label className="g-meta">Espécie</Label>
+                        <Select value={form.tipo_empenho} onValueChange={v => setForm(f => ({ ...f, tipo_empenho: v }))}>
+                          <SelectTrigger className="h-8 g-meta"><SelectValue placeholder="Escolha a espécie" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ordinario" className="g-meta">{ROTULO_DO_EMPENHO.ordinario}</SelectItem>
+                            <SelectItem value="global" className="g-meta">{ROTULO_DO_EMPENHO.global}</SelectItem>
+                            <SelectItem value="estimativo" className="g-meta">{ROTULO_DO_EMPENHO.estimativo}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {/* Lida do documento é fato; escolhida à mão é
+                            declaração. O mesmo excesso é irregularidade num
+                            ordinário e rotina num estimativo. */}
+                        <p className="g-meta text-muted-foreground mt-1">
+                          {tipoDeEmpenho(extractedData?.especie_empenho)
+                            ? 'Lida do documento.'
+                            : 'Não veio rotulada no documento — a escolha fica registrada como manual.'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
+              )}
+
+              {/* De qual empenho a entrega sai. Sem isto o pedido não abate
+                  nada, e o saldo do empenho fica parado enquanto o material
+                  some do estoque. */}
+              {documentoCria === 'pedido' && empenhosDoContrato.length > 0 && (
                   <div>
-                    <Label className="text-xs">Tipo de Documento</Label>
-                    <Select value={form.tipo_documento} onValueChange={v => setForm(f => ({ ...f, tipo_documento: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Label className="g-meta">Empenho que autoriza este pedido</Label>
+                    <Select
+                      value={form.empenho_id || '__sem__'}
+                      onValueChange={v => setForm(f => ({ ...f, empenho_id: v === '__sem__' ? '' : v }))}
+                    >
+                      <SelectTrigger className="h-8 g-meta"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {tiposDocumento.map(td => (
-                          <SelectItem key={td.value} value={td.value}>{td.label}</SelectItem>
+                        <SelectItem value="__sem__" className="g-meta">Sem empenho registrado</SelectItem>
+                        {empenhosDoContrato.map(e => (
+                          <SelectItem key={e.id} value={e.id} className="g-meta">
+                            {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
+                            {/* Continua na lista: há caso legítimo de lançar
+                                entrega anterior ao cancelamento. Mas sai
+                                marcado, para ninguém escolhê-lo sem ver. */}
+                            {e.cancelado
+                              ? ' · CANCELADO'
+                              : ` · saldo ${e.saldo.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label className="text-xs">Data do Pedido</Label>
-                    <Input type="date" value={form.data_pedido} onChange={e => setForm(f => ({ ...f, data_pedido: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Data de Entrega (prevista)</Label>
-                    <Input type="date" value={form.data_entrega} onChange={e => setForm(f => ({ ...f, data_entrega: e.target.value }))} />
-                    {/* De onde a data veio. Derivado e digitado se parecem na
-                        tela, e quem confere precisa saber em qual está apoiado
-                        — o mesmo motivo do cartão de procedência do DRE. */}
-                    {prazos?.prazo_entrega_dias && form.data_pedido && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {form.data_entrega === limiteDerivado(form.data_pedido)
-                          ? `Derivado da cláusula: ${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'} da data do pedido.`
-                          : `A cláusula do contrato daria ${limiteDerivado(form.data_pedido)
-                              ? new Date(limiteDerivado(form.data_pedido) + 'T12:00:00').toLocaleDateString('pt-BR')
-                              : '—'} (${prazos.prazo_entrega_dias} dias ${prazos.prazo_entrega_unidade === 'uteis' ? 'úteis' : 'corridos'}).`}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-xs">Status</Label>
-                    <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendente">Pendente</SelectItem>
-                        <SelectItem value="entregue">Entregue</SelectItem>
-                        <SelectItem value="parcial">Parcial</SelectItem>
-                        <SelectItem value="cancelado">Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Nota Fiscal</Label>
-                    <Input value={form.nota_fiscal} onChange={e => setForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
-                  </div>
-                </div>
+              )}
 
-                {/* O que este documento vai fazer, dito ANTES de salvar.
-                    Empenhar não é entregar: enquanto a nota criava pedidos, o
-                    saldo caía no instante em que o dinheiro era reservado. */}
-                {extractedData && documentoCria === 'empenho' && (
-                    <div className="p-3 rounded-lg border border-border bg-muted space-y-2">
-                      <p className="text-xs font-semibold text-foreground">
-                        Nota de empenho — <b>autoriza</b>, não consome
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Vai ser registrada como empenho do contrato. Nenhum saldo de item ou de
-                        contrato é abatido: isso acontece quando as entregas forem lançadas contra
-                        ela.
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div>
-                          <Label className="text-xs">Número do empenho</Label>
-                          <Input
-                            value={form.numero_empenho}
-                            onChange={e => setForm(f => ({ ...f, numero_empenho: e.target.value }))}
-                            placeholder="2026NE003716"
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Espécie</Label>
-                          <Select value={form.tipo_empenho} onValueChange={v => setForm(f => ({ ...f, tipo_empenho: v }))}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha a espécie" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ordinario" className="text-xs">{ROTULO_DO_EMPENHO.ordinario}</SelectItem>
-                              <SelectItem value="global" className="text-xs">{ROTULO_DO_EMPENHO.global}</SelectItem>
-                              <SelectItem value="estimativo" className="text-xs">{ROTULO_DO_EMPENHO.estimativo}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {/* Lida do documento é fato; escolhida à mão é
-                              declaração. O mesmo excesso é irregularidade num
-                              ordinário e rotina num estimativo. */}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {tipoDeEmpenho(extractedData?.especie_empenho)
-                              ? 'Lida do documento.'
-                              : 'Não veio rotulada no documento — a escolha fica registrada como manual.'}
-                          </p>
-                        </div>
+              {extractedItens.length > 0 ? (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="g-meta font-semibold mb-2">
+                      {documentoCria === 'empenho' ? 'Linhas do empenho' : 'Itens Extraídos'} ({extractedItens.length})
+                    </p>
+                    <div className="space-y-2 max-h-[35vh] overflow-y-auto pr-1">
+                      {extractedItens.map((ei, idx) => (
+                        <Card key={ei.key} className="p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="g-meta font-semibold text-muted-foreground">Item {idx + 1}</span>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExtractedItem(ei.key)}>
+                              <Trash2 className="w-3 h-3 text-destructive-ink" />
+                            </Button>
+                          </div>
+                          <div>
+                            <Label className="g-meta">Descrição</Label>
+                            <Input value={ei.descricao} onChange={e => updateExtractedItem(ei.key, 'descricao', e.target.value)} className="h-8 g-meta" />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="g-meta">Item do Contrato</Label>
+                              <Select value={ei.contrato_item_id} onValueChange={v => {
+                                const item = itens.find(i => i.id === v);
+                                updateExtractedItem(ei.key, 'contrato_item_id', v);
+                                if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
+                              }}>
+                                <SelectTrigger className="h-8 g-meta"><SelectValue placeholder="Vincular item" /></SelectTrigger>
+                                {/* Descrição de item de merenda tem 400+ caracteres, e o
+                                    Radix COPIA o conteúdo da opção para dentro do gatilho:
+                                    o line-clamp-2 (caixa -webkit aninhada) furava o recorte
+                                    do trigger e o texto atravessava o formulário (09/09).
+                                    Uma linha truncada se comporta igual nos dois lugares;
+                                    a descrição completa fica no title e na ficha do item. */}
+                                <SelectContent className="max-w-[min(560px,90vw)]">
+                                  {itens.map(i => (
+                                    <SelectItem key={i.id} value={i.id} className="g-meta">
+                                      <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                        <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                        {i.descricao}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="g-meta">Quantidade</Label>
+                              <Input type="number" value={ei.quantidade} onChange={e => updateExtractedItem(ei.key, 'quantidade', e.target.value)} className="h-8 g-meta" />
+                            </div>
+                            <div>
+                              <Label className="g-meta">Valor Unit. (R$)</Label>
+                              <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 g-meta" />
+                            </div>
+                          </div>
+                          {/* A cota fica no nível da LINHA porque é aí que ela
+                              vive: a principal e a reservada são divisões do
+                              mesmo item (LC 123/2006, art. 48, III) e esgotam
+                              separadas. */}
+                          <div>
+                            <Label className="g-meta">Cota</Label>
+                            <Select
+                              value={ei.cota || '__sem__'}
+                              onValueChange={v => {
+                                updateExtractedItem(ei.key, 'cota', v === '__sem__' ? '' : v);
+                                updateExtractedItem(ei.key, 'cota_origem', 'documento');
+                              }}
+                            >
+                              <SelectTrigger className="h-8 g-meta"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__sem__" className="g-meta">Sem divisão de cota</SelectItem>
+                                <SelectItem value="principal" className="g-meta">{ROTULO_DA_COTA.principal}</SelectItem>
+                                <SelectItem value="reservada" className="g-meta">{ROTULO_DA_COTA.reservada}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {/* Deduzida é para conferir; lida é para confiar.
+                                Não dizer qual das duas é apresentar palpite
+                                com a mesma cara de fato. */}
+                            {ei.cota_origem === 'proporcao' && (
+                              <p className="g-meta text-warning-ink mt-1">
+                                {ROTULO_DA_ORIGEM_DA_COTA.proporcao}
+                              </p>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted/50 border flex justify-between items-center">
+                    <span className="g-meta font-medium">{extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens válidos</span>
+                    <span className="g-corpo font-bold text-foreground">Total: {fmt(totalExtracted)}</span>
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label className="g-meta">Observações</Label>
+                    <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
+                  </div>
+
+                  {/* Empenho não gera cobrança: não há entrega para faturar.
+                      O título nasce quando a OF for lançada contra ele. */}
+                  {documentoCria === 'pedido' && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                      <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                      <Label htmlFor="ger-cr-batch" className="g-meta cursor-pointer">
+                        <DollarSign className="w-3 h-3 inline mr-1" />
+                        Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
+                      </Label>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveBatch} disabled={saving}>
+                      {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                      {documentoCria === 'empenho'
+                        ? `Registrar empenho (${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} linhas)`
+                        : `Registrar ${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens`}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Separator />
+                  {ataSrpId && itensAta.length > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border">
+                      <span className="g-meta text-muted-foreground shrink-0">Fonte dos valores:</span>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant={fonteItens === 'contrato' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className="h-7 g-meta"
+                          onClick={() => { setFonteItens('contrato'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
+                        >
+                          Contrato
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={fonteItens === 'ata' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className="h-7 g-meta"
+                          onClick={() => { setFonteItens('ata'); setOrigemFilter('__todos__'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
+                        >
+                          ATA pai
+                        </Button>
                       </div>
                     </div>
-                )}
-
-                {/* De qual empenho a entrega sai. Sem isto o pedido não abate
-                    nada, e o saldo do empenho fica parado enquanto o material
-                    some do estoque. */}
-                {documentoCria === 'pedido' && empenhosDoContrato.length > 0 && (
+                  )}
+                  {fonteItens === 'contrato' && (
                     <div>
-                      <Label className="text-xs">Empenho que autoriza este pedido</Label>
-                      <Select
-                        value={form.empenho_id || '__sem__'}
-                        onValueChange={v => setForm(f => ({ ...f, empenho_id: v === '__sem__' ? '' : v }))}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <Label className="g-meta">Origem do Pedido</Label>
+                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
+                        <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__sem__" className="text-xs">Sem empenho registrado</SelectItem>
-                          {empenhosDoContrato.map(e => (
-                            <SelectItem key={e.id} value={e.id} className="text-xs">
-                              {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
-                              {/* Continua na lista: há caso legítimo de lançar
-                                  entrega anterior ao cancelamento. Mas sai
-                                  marcado, para ninguém escolhê-lo sem ver. */}
-                              {e.cancelado
-                                ? ' · CANCELADO'
-                                : ` · saldo ${e.saldo.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`}
-                            </SelectItem>
+                          <SelectItem value="__todos__">Todos os Itens</SelectItem>
+                          <SelectItem value="__contrato__">Contrato Original</SelectItem>
+                          {aditivos.map((a, idx) => (
+                            <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                )}
-
-                {extractedItens.length > 0 ? (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-semibold mb-2">
-                        {documentoCria === 'empenho' ? 'Linhas do empenho' : 'Itens Extraídos'} ({extractedItens.length})
-                      </p>
-                      <div className="space-y-2 max-h-[35vh] overflow-y-auto pr-1">
-                        {extractedItens.map((ei, idx) => (
-                          <Card key={ei.key} className="p-3 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</span>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExtractedItem(ei.key)}>
-                                <Trash2 className="w-3 h-3 text-destructive-ink" />
-                              </Button>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Descrição</Label>
-                              <Input value={ei.descricao} onChange={e => updateExtractedItem(ei.key, 'descricao', e.target.value)} className="h-8 text-xs" />
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <Label className="text-xs">Item do Contrato</Label>
-                                <Select value={ei.contrato_item_id} onValueChange={v => {
-                                  const item = itens.find(i => i.id === v);
-                                  updateExtractedItem(ei.key, 'contrato_item_id', v);
-                                  if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
-                                }}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular item" /></SelectTrigger>
-                                  {/* Descrição de item de merenda tem 400+ caracteres, e o
-                                      Radix COPIA o conteúdo da opção para dentro do gatilho:
-                                      o line-clamp-2 (caixa -webkit aninhada) furava o recorte
-                                      do trigger e o texto atravessava o formulário (09/09).
-                                      Uma linha truncada se comporta igual nos dois lugares;
-                                      a descrição completa fica no title e na ficha do item. */}
-                                  <SelectContent className="max-w-[min(560px,90vw)]">
-                                    {itens.map(i => (
-                                      <SelectItem key={i.id} value={i.id} className="text-xs">
-                                        <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                          {i.descricao}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label className="text-xs">Quantidade</Label>
-                                <Input type="number" value={ei.quantidade} onChange={e => updateExtractedItem(ei.key, 'quantidade', e.target.value)} className="h-8 text-xs" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Valor Unit. (R$)</Label>
-                                <MoneyInput value={Number(ei.valor_unitario) || 0} onValueChange={v => updateExtractedItem(ei.key, 'valor_unitario', String(v))} className="h-8 text-xs" />
-                              </div>
-                            </div>
-                            {/* A cota fica no nível da LINHA porque é aí que ela
-                                vive: a principal e a reservada são divisões do
-                                mesmo item (LC 123/2006, art. 48, III) e esgotam
-                                separadas. */}
-                            <div>
-                              <Label className="text-xs">Cota</Label>
-                              <Select
-                                value={ei.cota || '__sem__'}
-                                onValueChange={v => {
-                                  updateExtractedItem(ei.key, 'cota', v === '__sem__' ? '' : v);
-                                  updateExtractedItem(ei.key, 'cota_origem', 'documento');
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__sem__" className="text-xs">Sem divisão de cota</SelectItem>
-                                  <SelectItem value="principal" className="text-xs">{ROTULO_DA_COTA.principal}</SelectItem>
-                                  <SelectItem value="reservada" className="text-xs">{ROTULO_DA_COTA.reservada}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {/* Deduzida é para conferir; lida é para confiar.
-                                  Não dizer qual das duas é apresentar palpite
-                                  com a mesma cara de fato. */}
-                              {ei.cota_origem === 'proporcao' && (
-                                <p className="text-xs text-warning-ink mt-1">
-                                  {ROTULO_DA_ORIGEM_DA_COTA.proporcao}
-                                </p>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-muted/50 border flex justify-between items-center">
-                      <span className="text-xs font-medium">{extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens válidos</span>
-                      <span className="text-sm font-bold text-foreground">Total: {fmt(totalExtracted)}</span>
-                    </div>
-
-                    <div className="col-span-2">
-                      <Label className="text-xs">Observações</Label>
-                      <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
-                    </div>
-
-                    {/* Empenho não gera cobrança: não há entrega para faturar.
-                        O título nasce quando a OF for lançada contra ele. */}
-                    {documentoCria === 'pedido' && (
-                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
-                        <Checkbox id="ger-cr-batch" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
-                        <Label htmlFor="ger-cr-batch" className="text-xs cursor-pointer">
-                          <DollarSign className="w-3 h-3 inline mr-1" />
-                          Gerar <b>contas a receber</b> (uma por item) no Financeiro vinculadas a este contrato
-                        </Label>
-                      </div>
-                    )}
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                      <Button onClick={handleSaveBatch} disabled={saving}>
-                        {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                        {documentoCria === 'empenho'
-                          ? `Registrar empenho (${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} linhas)`
-                          : `Registrar ${extractedItens.filter(ei => ei.descricao && (parseFloat(ei.quantidade) || 0) > 0).length} itens`}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Separator />
-                    {ataSrpId && itensAta.length > 0 && (
-                      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border">
-                        <span className="text-xs text-muted-foreground shrink-0">Fonte dos valores:</span>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant={fonteItens === 'contrato' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => { setFonteItens('contrato'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
-                          >
-                            Contrato
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={fonteItens === 'ata' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => { setFonteItens('ata'); setOrigemFilter('__todos__'); setAtaItemSelecionado(''); setForm(f => ({ ...f, contrato_item_id: '' })); }}
-                          >
-                            ATA pai
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {fonteItens === 'contrato' && (
-                      <div>
-                        <Label className="text-xs">Origem do Pedido</Label>
-                        <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
-                          <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__todos__">Todos os Itens</SelectItem>
-                            <SelectItem value="__contrato__">Contrato Original</SelectItem>
-                            {aditivos.map((a, idx) => (
-                              <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-xs">{fonteItens === 'ata' ? 'Item da ATA (Fonte)' : 'Item do Contrato'}</Label>
-                      {fonteItens === 'ata' ? (
-                        <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
-                          <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
-                          <SelectContent className="max-w-[min(560px,90vw)]">
-                            {itensAta.map(i => (
-                              <SelectItem key={i.id} value={i.id}>
-                                <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
-                          <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
-                          <SelectContent className="max-w-[min(560px,90vw)]">
-                            {itensFiltrados.map(i => (
-                              <SelectItem key={i.id} value={i.id}>
-                                <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                  <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
-                                  {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
-                                </span>
-                              </SelectItem>
-                            ))}
-                            {itensFiltrados.length === 0 && (
-                              <div className="py-2 text-center text-xs text-muted-foreground">Nenhum item para esta origem</div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      {(() => {
-                        // Fase C: a régua do estoque mora ao lado do item.
-                        const e = estoqueDoItem(form.contrato_item_id);
-                        if (!e) return null;
-                        const qtd = parseFloat(form.quantidade) || 0;
-                        const falta = qtd > 0 && qtd > e.disponivel;
-                        return (
-                          <p className={`text-xs mt-1 ${falta ? 'text-warning-ink' : 'text-muted-foreground'}`}>
-                            Estoque: {e.fisico.toLocaleString('pt-BR')} físico · {e.reservado.toLocaleString('pt-BR')} reservado ·{' '}
-                            <b>{e.disponivel.toLocaleString('pt-BR')} disponível</b>
-                            {falta ? ' — quantidade acima do disponível' : ''}
-                          </p>
-                        );
-                      })()}
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Descrição</Label>
-                      <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Quantidade</Label>
-                        <Input type="number" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Valor Unitário (R$)</Label>
-                        <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} />
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Observações</Label>
-                      <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
-                      <Checkbox id="ger-cr-single" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
-                      <Label htmlFor="ger-cr-single" className="text-xs cursor-pointer">
-                        <DollarSign className="w-3 h-3 inline mr-1" />
-                        Gerar <b>conta a receber</b> automaticamente no Financeiro vinculada a este contrato
-                      </Label>
-                    </div>
-                    <div className="flex justify-end gap-2 mt-2">
-                      <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                      <Button onClick={handleSaveSingle} disabled={saving}>
-                        {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Registrar
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-        </div>
-      </div>
-
-      {/* ── A auditoria dos lançamentos: o alerta que fica ────────────────
-          Política definida em 01/09 sobre o caso real: uma NF-e com VU errado
-          (22,50 num contrato de 22,55) seguiu "sem intervenção humana" e a
-          entrega entrou DUAS vezes — R$ 33.750 de consumo fantasma que só a
-          conferência contra o Portal pegou. Não se barra (erro humano é
-          exceção legítima); ALERTA-SE, persistentemente, com o IMPACTO em
-          reais. Derivado a cada render — quando os dados são corrigidos, o
-          aviso morre sozinho. */}
-      {(() => {
-        const suspeitas = auditarPedidos(
-          pedidos.map(p => ({
-            id: p.id, numero_pedido: p.numero_pedido,
-            quantidade: p.quantidade, valor_unitario: p.valor_unitario,
-            valor_total: p.valor_total, data_pedido: p.data_pedido,
-            contrato_item_id: p.contrato_item_id, status: p.status,
-          })),
-          itens.length === 1 ? itens[0].valor_unitario : null,
-        );
-        if (suspeitas.length === 0) return null;
-        return (
-          <Card className="p-4 mb-3 border-warning-line bg-warning-tint">
-            <h4 className="text-lg font-semibold text-warning-ink mb-2">
-              Auditoria dos lançamentos — {suspeitas.length} ponto(s) a revisar
-            </h4>
-            <div className="space-y-2">
-              {suspeitas.map((sp, i) => (
-                <div key={i} className="text-xs">
-                  <p className="text-foreground">{sp.frase}</p>
-                  <p className="text-muted-foreground mt-0.5">{sp.providencia}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-        );
-      })()}
-
-      {/* ── Os empenhos do contrato ───────────────────────────────────────
-          Faltava esta lista, e a falta tinha consequência: o 2026NE003716
-          estava registrado, a aba mostrava "0 pedidos | R$ 0,00", e a única
-          leitura possível era a de que nada havia sido registrado. Daí a
-          segunda tentativa de cadastrar o mesmo empenho.
-          Empenho não é pedido, então não entra na tabela de pedidos — mas
-          precisa estar à vista, com o que já autoriza e o que dele resta. */}
-      {empenhosDoContrato.length > 0 && (
-        <Card className="p-4 mb-3">
-          {/* O cabeçalho inteiro recolhe/expande (08/09): contrato com vários
-              empenhos empurrava a tabela de pedidos para fora da primeira
-              dobra. Nasce aberto — o painel é o que se olha. */}
-          <button type="button" className="w-full flex items-center justify-between gap-2 text-left"
-            onClick={() => setEmpenhosAbertos((v) => !v)}
-            title={empenhosAbertos ? 'Recolher os empenhos' : 'Expandir os empenhos'}>
-            <h4 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              Empenhos registrados ({empenhosDoContrato.length})
-            </h4>
-            <span className="flex items-center gap-2 text-xs text-muted-foreground">
-              autorizam os pedidos abaixo
-              {empenhosAbertos
-                ? <ChevronUp className="w-4 h-4 shrink-0" />
-                : <ChevronDown className="w-4 h-4 shrink-0" />}
-            </span>
-          </button>
-          {empenhosAbertos && (
-          <div className="space-y-2 mt-2">
-            {empenhosDoContrato.map(e => {
-              const cotas = saldosDeEmpenho.filter(s => s.empenho_id === e.id);
-              return (
-                <div key={e.id} className={`rounded-md border p-2.5 ${
-                  e.cancelado ? 'border-destructive-line bg-destructive-tint' : ''
-                }`}>
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium tabular-nums ${
-                        e.cancelado ? 'line-through text-muted-foreground' : ''
-                      }`}>{e.numero}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}
-                      </Badge>
-                      {/* O painel é o que se olha. Sem isto o empenho cancelado
-                          aparece igual a um vivo, com "1 de 1 disponíveis", e
-                          quem lançar entrega sobre ele produz despesa sem
-                          cobertura sem nenhum sinal na tela. */}
-                      {e.cancelado && (
-                        <Badge className="text-xs bg-destructive-tint text-destructive-ink border border-destructive-line">
-                          <Ban className="w-3 h-3 mr-1 inline" /> Cancelado
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                    {/* A vida do empenho: original, reforços, anulações. O
-                        estimativo nasce pequeno e é reforçado — sem isto,
-                        aumentá-lo exigiria sobrescrever o valor e apagar que
-                        houve reforço. */}
-                    <Button size="sm" variant="ghost" className="h-7 text-xs"
-                      onClick={() => setMovimentando({
-                        id: e.id, numero: e.numero, tipo: e.tipo, contratoId,
-                      })}>
-                      <TrendingUp className="w-3 h-3 mr-1" /> Reforço / anulação
-                    </Button>
-                    {e.arquivo_id ? (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs"
-                        onClick={() => abrirDocumentoDoEmpenho(e.arquivo_id!)}>
-                        <Eye className="w-3 h-3 mr-1" /> Ver documento
-                      </Button>
+                  )}
+                  <div>
+                    <Label className="g-meta">{fonteItens === 'ata' ? 'Item da ATA (Fonte)' : 'Item do Contrato'}</Label>
+                    {fonteItens === 'ata' ? (
+                      <Select value={ataItemSelecionado} onValueChange={handleItemChangeAta}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar item da ATA" /></SelectTrigger>
+                        <SelectContent className="max-w-[min(560px,90vw)]">
+                          {itensAta.map(i => (
+                            <SelectItem key={i.id} value={i.id}>
+                              <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      // Empenho sem PDF é autorização que não se prova. Dizer
-                      // qual está sem documento é o que permite ir buscá-lo.
-                      <span className="text-xs text-warning-ink">
-                        sem documento anexado
-                      </span>
+                      <Select value={form.contrato_item_id} onValueChange={handleItemChange}>
+                        <SelectTrigger><SelectValue placeholder="Selecionar item" /></SelectTrigger>
+                        <SelectContent className="max-w-[min(560px,90vw)]">
+                          {itensFiltrados.map(i => (
+                            <SelectItem key={i.id} value={i.id}>
+                              <span className="block max-w-[500px] truncate" title={i.descricao}>
+                                <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
+                              </span>
+                            </SelectItem>
+                          ))}
+                          {itensFiltrados.length === 0 && (
+                            <div className="py-2 text-center g-meta text-muted-foreground">Nenhum item para esta origem</div>
+                          )}
+                        </SelectContent>
+                      </Select>
                     )}
+                    {(() => {
+                      // Fase C: a régua do estoque mora ao lado do item.
+                      const e = estoqueDoItem(form.contrato_item_id);
+                      if (!e) return null;
+                      const qtd = parseFloat(form.quantidade) || 0;
+                      const falta = qtd > 0 && qtd > e.disponivel;
+                      return (
+                        <p className={`g-meta mt-1 ${falta ? 'text-warning-ink' : 'text-muted-foreground'}`}>
+                          Estoque: {e.fisico.toLocaleString('pt-BR')} físico · {e.reservado.toLocaleString('pt-BR')} reservado ·{' '}
+                          <b>{e.disponivel.toLocaleString('pt-BR')} disponível</b>
+                          {falta ? ' — quantidade acima do disponível' : ''}
+                        </p>
+                      );
+                    })()}
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="g-meta">Descrição</Label>
+                    <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="g-meta">Quantidade</Label>
+                      <Input type="number" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="g-meta">Valor Unitário (R$)</Label>
+                      <MoneyInput value={Number(form.valor_unitario) || 0} onValueChange={v => setForm(f => ({ ...f, valor_unitario: String(v) }))} />
                     </div>
                   </div>
-                  {e.cancelado ? (
-                    // A quantidade continua lá porque anulação é ato de VALOR e
-                    // não mexe em quantidade. Mostrá-la aqui faria o empenho
-                    // parecer disponível — o que vale dizer é que ele não
-                    // autoriza mais nada.
-                    <p className="text-xs text-destructive-ink mt-1.5">
-                      Anulado por inteiro. Não autoriza mais nenhuma entrega — entregar sob empenho
-                      cancelado é despesa sem cobertura (Lei 4.320/64, art. 60).
-                    </p>
-                  ) : (
-                  <>
-                  <div className="flex gap-4 flex-wrap mt-1.5">
-                    {cotas.map(c => (
-                      <span key={c.cota} className="text-xs text-muted-foreground">
-                        {c.cota === 'reservada' ? 'Cota reservada' : 'Cota principal'}:{' '}
-                        {c.reforcado ? (
-                          // Empenho com reforço mede-se em DINHEIRO: reforço é
-                          // ato de valor, e a quantidade da nota original fica
-                          // obsoleta no primeiro. "−395 de 2.802" acusava
-                          // déficit num empenho com R$ 63 mil positivos.
-                          <>
-                            <b className="text-foreground tabular-nums">
-                              {c.saldo_valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </b>{' '}
-                            disponíveis (com reforços — a régua é o valor)
-                          </>
-                        ) : (
-                          <>
-                            <b className="text-foreground tabular-nums">
-                              {c.saldo_qtd.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                            </b>{' '}
-                            de {c.qtd_empenhada.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} disponíveis
-                          </>
-                        )}
-                      </span>
-                    ))}
+                  <div className="col-span-2">
+                    <Label className="g-meta">Observações</Label>
+                    <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
-                  {/* O valor total vigente (original + reforços − anulações),
-                      abaixo das cotas — a mesma régua da RPC. Sem valor
-                      registrado, nada é inventado. */}
-                  {(cotas[0]?.valor_vigente ?? 0) > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Valor:{' '}
-                      <b className="text-foreground tabular-nums">
-                        {Number(cotas[0].valor_vigente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </b>
-                      {cotas[0].reforcado && ' (com reforços)'}
-                    </p>
-                  )}
-                  </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          )}
-        </Card>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-      ) : pedidos.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground text-sm">
-          {empenhosDoContrato.length > 0
-            ? 'Nenhum pedido registrado ainda — o empenho acima autoriza, e cada entrega lançada aqui consome dele.'
-            : 'Nenhum pedido registrado'}
-        </Card>
-      ) : (
-        <>
-        <div className="rounded-lg border overflow-x-auto">
-          <Table>
-             <TableHeader>
-              <TableRow>
-                <TableHead className="text-sm whitespace-nowrap cursor-pointer select-none" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}>
-                  <div className="flex items-center gap-1">
-                    N.º Pedido
-                    {sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUpDown className="w-3 h-3 text-muted-foreground" />}
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                    <Checkbox id="ger-cr-single" checked={gerarContaReceber} onCheckedChange={(v) => setGerarContaReceber(!!v)} />
+                    <Label htmlFor="ger-cr-single" className="g-meta cursor-pointer">
+                      <DollarSign className="w-3 h-3 inline mr-1" />
+                      Gerar <b>conta a receber</b> automaticamente no Financeiro vinculada a este contrato
+                    </Label>
                   </div>
-                </TableHead>
-                <TableHead className="text-sm whitespace-nowrap">Descrição</TableHead>
-                <TableHead className="text-sm text-right whitespace-nowrap">Qtd</TableHead>
-                <TableHead className="text-sm text-right whitespace-nowrap">Vlr Total</TableHead>
-                <TableHead className="text-sm text-center whitespace-nowrap">Data</TableHead>
-                <TableHead className="text-sm text-center whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-sm whitespace-nowrap">NF-e Financeiro</TableHead>
-                <TableHead className="text-sm text-center whitespace-nowrap"
-                  title="Em que etapa o pedido está no quadro de operação: aguardando faturamento, separar estoque, faturar, faturado, em entrega. Só os pedidos criados pelo Kanban têm esta etapa.">
-                  Etapa no Kanban
-                </TableHead>
-                {/* Fixa à direita. As colunas cresceram quando a fonte subiu
-                    para 14px e empurraram as ações para fora da area visivel —
-                    e o macOS esconde a barra de rolagem, entao os botoes
-                    simplesmente sumiam. Acao de linha nao pode depender de
-                    alguem descobrir que a tabela rola. */}
-                <TableHead className="text-sm sticky right-0 bg-background z-10 w-px" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(() => {
-                const sorted = sortOrder
-                  ? [...pedidos].sort((a, b) => {
-                      const cmp = a.numero_pedido.localeCompare(b.numero_pedido, 'pt-BR', { numeric: true });
-                      return sortOrder === 'asc' ? cmp : -cmp;
-                    })
-                  : pedidos;
-                return sorted.map(p => {
-                const cfg = statusCfg[p.status] || statusCfg.pendente;
-                const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
-                return (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-sm font-mono font-medium whitespace-nowrap">
-                      {p.nf_quitada ? (
-                        <span className="text-muted-foreground" title="NF quitada — edição bloqueada">{p.numero_pedido}</span>
-                      ) : (
-                        <button
-                          className="hover:underline text-primary cursor-pointer"
-                          onClick={() => abrirOrdem(p)}
-                          title={(p as { arquivo_ordem_id?: string | null }).arquivo_ordem_id
-                            ? 'Abrir a Ordem/Empenho que autorizou este pedido'
-                            : 'Abrir detalhes do pedido'}
-                        >
-                          {p.numero_pedido}
-                        </button>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm min-w-[16rem] max-w-[22rem]">
-                      {/* ── Quebrar em duas linhas, não cortar na primeira ────
-                          Em 200px cabia "FORN. NFE N° 000.00…" — o corte caía
-                          exatamente no número, que é a parte que identifica o
-                          pedido. Duas linhas mostram a descrição inteira na
-                          maioria dos casos; o clique continua abrindo o texto
-                          completo para os poucos que passam disso. */}
-                      {p.descricao ? (
-                        <button
-                          type="button"
-                          className="block w-full text-left hover:underline cursor-pointer line-clamp-2 leading-snug"
-                          title="Ver descrição completa"
-                          onClick={() => setLendo(p)}
-                        >
-                          {p.descricao}
-                        </button>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
-                      {p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-sm text-right font-medium whitespace-nowrap">{fmt(p.valor_total)}</TableCell>
-                    {/* Sem `whitespace-nowrap` na célula inteira: o aviso de
-                        prazo — "Prazo vencido há 113 dia(s) — limite era
-                        10/05/2026" — travava a coluna nessa largura e empurrava
-                        a NF-e para baixo da coluna fixa de ações. A DATA
-                        continua numa linha só; o aviso quebra. */}
-                    {/* min-w: sem ela, a largura desta coluna é o que sobra
-                        das vizinhas (a pílula da NF-e com "• Quitada" alarga a
-                        própria coluna), e o aviso de prazo era espremido até
-                        quebrar no meio da palavra. */}
-                    <TableCell className="text-sm text-center min-w-[9rem] max-w-[11rem]">
-                      <div className="whitespace-nowrap">{p.data_pedido ? new Date(p.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
-                      {/* O prazo que começou a correr quando este pedido foi
-                          lançado. Antes a coluna mostrava a data e parava aí.
-
-                          `dataDeEntrega` só é passada quando o STATUS diz que
-                          houve entrega. `data_entrega` guarda a data PREVISTA
-                          — a própria extração a descreve assim — e tratá-la
-                          como realizada fazia a linha afirmar "Entregue com
-                          286 dias de atraso" para um pedido que nunca saiu,
-                          usando a data de fim do empenho lida do documento.
-                          Quem sabe se entregou é o status; a data prevista só
-                          diz para quando era. */}
-                      <AvisoDePrazoDeEntrega
-                        compacto
-                        contrato={prazos}
-                        dataDoPedido={p.data_pedido}
-                        dataDeEntrega={p.status === 'entregue' ? p.data_entrega : null}
-                      />
-                    </TableCell>
-                    <TableCell className="text-center whitespace-nowrap">
-                      <Badge className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <div className="space-y-1">
-                        {/* ── A coluna da NOTA: número, estado e o documento ──
-                            Aqui é onde a nota vive. O número identifica; a
-                            quitação é estado DELA, não do pedido — e estava na
-                            coluna de ações, sem cabeçalho, parecendo um botão.
-                            Clicável só quando há arquivo: número sem link diz
-                            qual nota é e que falta anexá-la, que é mais do que
-                            um traço diz.
-
-                            O vínculo (pedido → lançamento → documento) vem
-                            antes do casamento por texto: ele acha a nota mesmo
-                            quando `nota_fiscal` do pedido ficou vazio. */}
-                        {notaDoPedido?.[p.id] && (() => {
-                          const nd = notaDoPedido[p.id];
-                          const rotulo = (
-                            <>
-                              <FileText className="w-3 h-3 mr-1 inline" />
-                              {formatarNumeroNfe(nd.numero) ?? nd.numero ?? 'sem número'}
-                            </>
-                          );
-                          // A quitação em linha própria (08/09): dentro do selo,
-                          // número e estado disputavam a mesma linha e a leitura
-                          // vinha espremida.
-                          const quitada = p.nf_quitada && p.data_quitacao && (
-                            <p className="text-xs text-success-ink">
-                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
-                            </p>
-                          );
-                          if (!nd.storage_path) {
-                            return (
-                              <>
-                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                  title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
-                                  {rotulo}
-                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                                </Badge>
-                                {quitada}
-                              </>
-                            );
-                          }
-                          return (
-                            <>
-                              <button type="button" className="block w-fit"
-                                onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
-                                title={`Abrir ${nd.arquivo_nome} em nova aba`}>
-                                <Badge variant="outline"
-                                  className="text-xs text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
-                                  {rotulo}
-                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                                </Badge>
-                              </button>
-                              {quitada}
-                            </>
-                          );
-                        })()}
-                        {!notaDoPedido?.[p.id] && p.nota_fiscal && (() => {
-                          // O número da nota é o elo entre o pedido e o
-                          // documento arquivado no Financeiro: o pedido não
-                          // guarda lancamento_id. Havendo arquivo, o selo vira
-                          // botão e abre o DANFE — ver o pedido e não alcançar
-                          // a nota que o comprova é o passo que faltava.
-                          const doc = chaveDoNumero(p.nota_fiscal)
-                            .map((k) => docsPorNumero?.[k]).find(Boolean);
-                          const conteudo = (
-                            <>
-                              <FileText className="w-3 h-3 mr-1 inline" />
-                              {/* Formato do DANFE. O campo é texto livre e
-                                  recebe "125", "NF 000000125" e "125/2026" —
-                                  três grafias da mesma nota, que sem
-                                  normalizar viram três linhas diferentes. */}
-                              {formatarNumeroNfe(p.nota_fiscal) ?? p.nota_fiscal}
-                            </>
-                          );
-                          const quitada = p.nf_quitada && p.data_quitacao && (
-                            <p className="text-xs text-success-ink">
-                              Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
-                            </p>
-                          );
-                          if (!doc) {
-                            // Número sem arquivo é indistinguível de link
-                            // quebrado: o selo fica igual, só não clica. Dizer
-                            // qual dos dois é — e onde se resolve — evita a
-                            // conclusão de que o sistema perdeu a nota.
-                            return (
-                              <>
-                                <Badge variant="outline" className="text-xs block w-fit text-foreground"
-                                  title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
-                                  {conteudo}
-                                  <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
-                                </Badge>
-                                {quitada}
-                              </>
-                            );
-                          }
-                          return (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => abrirDocumentoDoFinanceiro(doc.storage_path, doc.arquivo_nome)}
-                                title={`Abrir ${doc.arquivo_nome} em nova aba`}
-                                className="block w-fit"
-                              >
-                                <Badge variant="outline"
-                                  className="text-xs text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
-                                  {conteudo}
-                                  <ExternalLink className="w-3 h-3 ml-1 inline text-primary" />
-                                </Badge>
-                              </button>
-                              {quitada}
-                            </>
-                          );
-                        })()}
-                        {linkedNfs.map(nf => {
-                          // Dois donos do mesmo número: `contrato_pedidos.nota_fiscal`
-                          // é digitado, `notas_fiscais.numero_nf` é o documento
-                          // emitido. Quando divergem, a tela precisa dizer —
-                          // senão fica igual ao saldo com duas fórmulas: dois
-                          // números convivendo e ninguém sabendo qual vale.
-                          const diverge =
-                            !!p.nota_fiscal && !!nf.numero_nf &&
-                            numeroNfeComoInteiro(p.nota_fiscal) !== null &&
-                            numeroNfeComoInteiro(p.nota_fiscal) !== numeroNfeComoInteiro(nf.numero_nf);
-                          return (
-                            <Badge key={nf.id} variant="outline" className={`text-xs block w-fit ${
-                              diverge ? 'border-warning-line text-warning-ink' :
-                              nf.status === 'autorizada' ? 'border-success-line text-success-ink' :
-                              nf.status === 'rejeitada' ? 'border-destructive-line text-destructive-ink' :
-                              'border-muted-foreground/30 text-muted-foreground'
-                            }`}
-                            title={diverge
-                              ? `A nota emitida (${formatarNumeroNfe(nf.numero_nf)}) não é a mesma que foi digitada no pedido (${formatarNumeroNfe(p.nota_fiscal)}).`
-                              : undefined}>
-                              <FileText className="w-3 h-3 mr-1 inline" />
-                              {formatarNumeroNfe(nf.numero_nf) ?? 'Rascunho'} • {nf.tipo === 'saida' ? 'Saída' : 'Entrada'} {nf.valor_total ? `• ${fmt(nf.valor_total)}` : ''}
-                              {diverge && ' • diverge do pedido'}
-                            </Badge>
-                          );
-                        })}
-                        {!notaDoPedido?.[p.id] && !p.nota_fiscal && linkedNfs.length === 0 && (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center whitespace-nowrap">
-                      {p.pedido_id ? (
-                        updatingKanban[p.pedido_id] ? (
-                          <Loader2 className="w-3 h-3 animate-spin mx-auto text-muted-foreground" />
-                        ) : (
-                          <Select
-                            value={kanbanStatuses[p.pedido_id] ?? 'pedido'}
-                            onValueChange={(val) => updateKanbanStatus(p.pedido_id!, val)}
-                          >
-                            <SelectTrigger className={`h-6 text-xs border px-2 py-0 w-fit mx-auto ${kanbanCfg[kanbanStatuses[p.pedido_id] ?? 'pedido']?.color ?? 'bg-muted/50 text-muted-foreground'}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(kanbanCfg).map(([key, cfg]) => (
-                                <SelectItem key={key} value={key} className="text-xs">{cfg.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )
-                      ) : (
-                        <span className="text-muted-foreground/40 text-xs">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="sticky right-0 bg-background z-10 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
-                      <div className="flex items-center gap-1">
-                        {/* Kit vale antes e depois da quitação: o órgão pede a
-                            segunda via, e a fila do financeiro só mostra o que
-                            ainda não foi baixado. */}
-                        <KitFaturamento
-                          pedido={{
-                            id: p.id,
-                            numero_pedido: p.numero_pedido,
-                            valor_total: p.valor_total,
-                            nota_fiscal: p.nota_fiscal,
-                            contrato_id: contratoId,
-                          }}
-                        />
-                        {/* Só a AÇÃO fica aqui. O ESTADO "quitada" mudou para a
-                            coluna NF-e, junto da nota a que ele se refere: o
-                            mesmo lugar mostrando um selo verde às vezes e um
-                            botão outras é o que fazia "NF Quitada" parecer
-                            coluna sem cabeçalho. */}
-                        {!p.nf_quitada && p.status === 'entregue' && (isFinanceiro || isAdmin) && (
-                          <Button
-                            size="sm" variant="outline"
-                            className="h-7 px-2 text-xs text-success-ink border-success-line hover:bg-success-tint"
-                            onClick={() => openNfDialog(p)}
-                            title="Registrar pagamento da NF-e e gerar bonificação"
-                          >
-                            <DollarSign className="w-3 h-3 mr-1" /> Quitar NF
-                          </Button>
-                        )}
-                        {(isFinanceiro || isAdmin) && (
-                          /* Pedido retroativo — cadastrado depois de o
-                             recebimento já estar no Financeiro. Vincular em vez
-                             de gerar evita contar a receita duas vezes. */
-                          <Button
-                            size="icon" variant="ghost" className="h-7 w-7"
-                            title="Vincular a lançamento existente no Financeiro"
-                            onClick={() => setVinculando({
-                              id: p.id,
-                              numero_pedido: p.numero_pedido,
-                              valor_total: Number(p.valor_total) || 0,
-                              data_pedido: p.data_pedido,
-                              nota_fiscal: p.nota_fiscal ?? null,
-                            })}
-                          >
-                            <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        )}
-                        {/* Todo membro exclui — o precedente das publicações
-                            (02/09): a exclusão EXIGE motivo e grava snapshot em
-                            pedidos_exclusoes para o Admin; o RLS é por membro
-                            desde 22/06. Esconder do colaborador só o obrigava a
-                            pedir a um admin o que a auditoria já cobre. */}
-                        {!p.nf_quitada && (
-                          <Button
-                            size="icon" variant="ghost" className="h-7 w-7"
-                            title="Excluir pedido (motivo obrigatório — fica no histórico do Admin)"
-                            onClick={() => openDeleteDialog(p.id, p.numero_pedido)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive-ink" />
-                          </Button>
-                        )}
-                        {(isFinanceiro || isAdmin) && !p.nf_quitada && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Editar pedido">
-                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        )}
-                        {!(isFinanceiro || isAdmin) && !p.nf_quitada && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditDialog(p)} title="Ver detalhes">
-                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              });
-              })()}
-            </TableBody>
-          </Table>
-        </div>
-
-        {nfsSync.length > 0 && (
-          <Card className="p-4 mt-4">
-            <h4 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              Notas Fiscais Sincronizadas do Financeiro
-              <Badge variant="outline" className="text-xs">{nfsSync.length} NFs</Badge>
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-              <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-xs text-muted-foreground">NFs Saída</p>
-                <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'saida').length}</p>
-                <p className="text-xs text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'saida').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
-              </div>
-              <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-xs text-muted-foreground">NFs Entrada</p>
-                <p className="text-sm font-bold">{nfsSync.filter(n => n.tipo === 'entrada').length}</p>
-                <p className="text-xs text-muted-foreground">{fmt(nfsSync.filter(n => n.tipo === 'entrada').reduce((s, n) => s + (n.valor_total || 0), 0))}</p>
-              </div>
-              <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-xs text-muted-foreground">Autorizadas</p>
-                <p className="text-sm font-bold text-success-ink">{nfsSync.filter(n => n.status === 'autorizada').length}</p>
-              </div>
-              <div className="text-center p-2 rounded bg-muted/50">
-                <p className="text-xs text-muted-foreground">Pendentes</p>
-                <p className="text-sm font-bold text-warning-ink">{nfsSync.filter(n => n.status !== 'autorizada' && n.status !== 'cancelada').length}</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground italic">
-              As notas fiscais são emitidas e controladas pelo setor Financeiro. Acesse o módulo Financeiro para emitir ou editar NFs.
-            </p>
-          </Card>
-        )}
-        </>
-      )}
+                  <div className="flex justify-end gap-2 mt-2">
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveSingle} disabled={saving}>
+                      {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Registrar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
       {/* NF Quitada — Diálogo do Financeiro */}
       <Dialog open={!!nfDialog} onOpenChange={v => { if (!v) setNfDialog(null); }}>
@@ -2852,7 +3283,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </DialogHeader>
           {nfDialog && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 border text-xs space-y-1">
+              <div className="p-3 rounded-lg bg-muted/50 border g-meta space-y-1">
                 <p><strong>Pedido:</strong> {nfDialog.numero_pedido}</p>
                 <p><strong>Valor do Pedido:</strong> {fmt(nfDialog.valor_total)}</p>
                 {nfDialog.descricao && <p><strong>Descrição:</strong> {nfDialog.descricao}</p>}
@@ -2878,8 +3309,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
 
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="text-xs text-muted-foreground">
-                  Ao registrar o pagamento, o sistema calculará automaticamente a bonificação do vendedor 
+                <p className="g-meta text-muted-foreground">
+                  Ao registrar o pagamento, o sistema calculará automaticamente a bonificação do vendedor
                   responsável pelo contrato com base na configuração de bonificação vigente.
                 </p>
               </div>
@@ -2897,51 +3328,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         </DialogContent>
       </Dialog>
 
-      {/* Pré-Notas Fiscais */}
-      {preNotas.length > 0 && (
-        <Card className="p-4">
-          <h4 className="text-lg font-semibold flex items-center gap-2 mb-3">
-            <Receipt className="w-4 h-4 text-muted-foreground" />
-            Pré-Notas Fiscais Solicitadas
-            <Badge variant="outline" className="text-xs">{preNotas.length}</Badge>
-          </h4>
-          <div className="space-y-2">
-            {preNotas.map((pn: any) => {
-              const statusMap: Record<string, { label: string; color: string }> = {
-                pendente: { label: 'Pendente', color: 'bg-warning-tint text-warning-ink' },
-                em_revisao: { label: 'Em Revisão', color: 'bg-muted text-foreground' },
-                aprovada: { label: 'Aprovada', color: 'bg-success-tint text-success-ink' },
-                rejeitada: { label: 'Rejeitada', color: 'bg-destructive-tint text-destructive-ink' },
-                devolvida: { label: 'Devolvida', color: 'bg-warning-tint text-warning-ink' },
-              };
-              const st = statusMap[pn.status] || statusMap.pendente;
-              return (
-                <div key={pn.id} className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border bg-muted/30 text-xs">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
-                    <span>{pn.natureza_operacao}</span>
-                    <span className="font-medium whitespace-nowrap">{fmt(pn.valor_total)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{new Date(pn.created_at).toLocaleDateString('pt-BR')}</span>
-                    {pn.motivo_devolucao && (
-                      <Badge variant="outline" className="text-xs text-warning-ink" title={pn.motivo_devolucao}>
-                        <AlertTriangle className="w-3 h-3 mr-1" /> Devolvida
-                      </Badge>
-                    )}
-                    {pn.motivo_rejeicao && (
-                      <Badge variant="outline" className="text-xs text-destructive-ink" title={pn.motivo_rejeicao}>
-                        <XCircle className="w-3 h-3 mr-1" /> Rejeitada
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
       {/* Delete Audit Dialog */}
       <Dialog open={!!deleteDialog} onOpenChange={v => { if (!v && !deleting) { setDeleteDialog(null); setDeleteReason(''); } }}>
         <DialogContent className="sm:max-w-md">
@@ -2952,21 +3338,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </DialogHeader>
           {deleteDialog && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-destructive-tint border border-destructive-line text-xs space-y-1">
+              <div className="p-3 rounded-lg bg-destructive-tint border border-destructive-line g-meta space-y-1">
                 <p className="font-medium text-destructive-ink">Atenção: esta ação não pode ser desfeita.</p>
                 <p className="text-muted-foreground">Pedido: <strong className="text-foreground">{deleteDialog.numero}</strong></p>
               </div>
               <div>
-                <Label className="text-xs">Motivo da exclusão *</Label>
+                <Label className="g-meta">Motivo da exclusão *</Label>
                 <Textarea
                   value={deleteReason}
                   onChange={e => setDeleteReason(e.target.value)}
                   placeholder="Informe o motivo da exclusão..."
-                  className="mt-1.5 text-xs"
+                  className="mt-1.5 g-meta"
                   rows={3}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="g-meta text-muted-foreground">
                 Registrado por: <strong>{user?.email}</strong>
               </p>
               <div className="flex gap-2 justify-end">
@@ -3009,11 +3395,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">N.o Documento</Label>
+                <Label className="g-meta">N.o Documento</Label>
                 <Input value={editForm.numero_pedido} onChange={e => setEditForm(f => ({ ...f, numero_pedido: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Status</Label>
+                <Label className="g-meta">Status</Label>
                 <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -3025,12 +3411,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
             </div>
             <div>
-              <Label className="text-xs">Descrição</Label>
+              <Label className="g-meta">Descrição</Label>
               <Input value={editForm.descricao} onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))} />
             </div>
             {itens.length > 0 && (
               <div>
-                <Label className="text-xs">Item do Contrato</Label>
+                <Label className="g-meta">Item do Contrato</Label>
                 <Select value={editForm.contrato_item_id} onValueChange={v => {
                   const item = itens.find(i => i.id === v);
                   setEditForm(f => ({ ...f, contrato_item_id: v, valor_unitario: item ? String(item.valor_unitario) : f.valor_unitario }));
@@ -3040,7 +3426,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     {itens.map(i => (
                       <SelectItem key={i.id} value={i.id}>
                         <span className="block max-w-[500px] truncate" title={i.descricao}>
-                          <span className="text-muted-foreground text-xs mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                          <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
                           {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
                         </span>
                       </SelectItem>
@@ -3051,11 +3437,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Quantidade</Label>
+                <Label className="g-meta">Quantidade</Label>
                 <Input type="number" value={editForm.quantidade} onChange={e => setEditForm(f => ({ ...f, quantidade: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Valor Unitário</Label>
+                <Label className="g-meta">Valor Unitário</Label>
                 <MoneyInput value={Number(editForm.valor_unitario) || 0} onValueChange={v => setEditForm(f => ({ ...f, valor_unitario: String(v) }))} />
               </div>
             </div>
@@ -3065,11 +3451,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 empenho_id; aqui a edição resolve os dois lados: escolher o
                 empenho já anexado e reenviar o PDF da ordem. */}
             <div className="rounded-lg border border-border p-3 space-y-2.5">
-              <p className="text-xs font-semibold">Empenho / Ordem de fornecimento</p>
+              <p className="g-meta font-semibold">Empenho / Ordem de fornecimento</p>
               <div>
-                <Label className="text-xs">Empenho que autoriza (já anexados ao contrato)</Label>
+                <Label className="g-meta">Empenho que autoriza (já anexados ao contrato)</Label>
                 <Select value={editForm.empenho_id || 'nenhum'} onValueChange={v => setEditForm(f => ({ ...f, empenho_id: v === 'nenhum' ? '' : v }))}>
-                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 h-8 g-meta"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nenhum">— Sem vínculo —</SelectItem>
                     {empenhosDoContrato.map(e => (
@@ -3077,20 +3463,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="g-meta text-muted-foreground mt-1">
                   É deste empenho que a cota consome — e é ele que o kit de faturamento pré-seleciona.
                 </p>
               </div>
               <div>
-                <Label className="text-xs">Reenviar o PDF da Ordem/Empenho</Label>
+                <Label className="g-meta">Reenviar o PDF da Ordem/Empenho</Label>
                 <Input
                   type="file"
                   accept="application/pdf"
-                  className="mt-1 h-8 text-xs"
+                  className="mt-1 h-8 g-meta"
                   disabled={reenviandoOrdem}
                   onChange={e => { const f = e.target.files?.[0]; if (f) void reenviarOrdem(f); e.target.value = ''; }}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="g-meta text-muted-foreground mt-1">
                   {reenviandoOrdem
                     ? 'Enviando…'
                     : 'Atualiza o documento que o dossiê aponta; o anterior permanece no histórico de arquivos.'}
@@ -3113,7 +3499,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const estoura = saldo > 0 && total - anterior > saldo;
               if (q <= 0 || u <= 0) return null;
               return (
-                <div className={`rounded-lg border p-2.5 text-xs ${estoura ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-muted/30'}`}>
+                <div className={`rounded-lg border p-2.5 g-meta ${estoura ? 'border-destructive-line bg-destructive-tint' : 'border-border bg-muted/30'}`}>
                   <p className={estoura ? 'text-destructive-ink font-medium' : 'text-muted-foreground'}>
                     {q} × {fmt(u)} = <strong>{fmt(total)}</strong>
                   </p>
@@ -3128,20 +3514,20 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             })()}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Data do Pedido</Label>
+                <Label className="g-meta">Data do Pedido</Label>
                 <Input type="date" value={editForm.data_pedido} onChange={e => setEditForm(f => ({ ...f, data_pedido: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs">Data de Entrega</Label>
+                <Label className="g-meta">Data de Entrega</Label>
                 <Input type="date" value={editForm.data_entrega} onChange={e => setEditForm(f => ({ ...f, data_entrega: e.target.value }))} />
               </div>
             </div>
             <div>
-              <Label className="text-xs">Nota Fiscal</Label>
+              <Label className="g-meta">Nota Fiscal</Label>
               <Input value={editForm.nota_fiscal} onChange={e => setEditForm(f => ({ ...f, nota_fiscal: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-xs">Observações</Label>
+              <Label className="g-meta">Observações</Label>
               <Textarea value={editForm.observacoes} onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -3153,26 +3539,29 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </DialogContent>
       </Dialog>
+
       {/* Leitura, não edição: quem clica na descrição quer LER o que foi
           pedido. Abrir o formulário de edição para isso põe campo gravável
-          na frente de quem só queria conferir. */}
+          na frente de quem só queria conferir. Hoje a leitura mora no painel
+          lateral; este diálogo continua atendendo quem chega pela lista de
+          descrições longas. */}
       <Dialog open={!!lendo} onOpenChange={(o) => !o && setLendo(null)}>
         <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Pedido {lendo?.numero_pedido}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 g-corpo">
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Descrição</p>
+              <p className="g-meta text-muted-foreground mb-1">Descrição</p>
               <p className="whitespace-pre-wrap">{lendo?.descricao || '—'}</p>
             </div>
             {lendo?.observacoes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                <p className="g-meta text-muted-foreground mb-1">Observações</p>
                 <p className="whitespace-pre-wrap">{lendo.observacoes}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t g-meta">
               <div>
                 <span className="text-muted-foreground">Quantidade</span>
                 <p className="font-medium">{lendo?.quantidade ?? '—'}</p>

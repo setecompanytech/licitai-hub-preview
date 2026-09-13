@@ -13,6 +13,8 @@ import { Loader2, Target } from 'lucide-react';
 import { useSalvarMeta, type Meta } from '@/hooks/useMetasComercial';
 import { MoneyInput } from '@/components/ui/money-input';
 import { BASES_META, type BaseMeta } from '@/lib/metas/painel';
+import { APURACAO, AVISO_CRITERIOS_DISTINTOS } from '@/lib/metas/apuracao';
+import { LinhaApuracao } from './comuns';
 
 const NOMES_MES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -92,58 +94,80 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
               travou: contratos em dia com quitação zerada é ter fechado e não
               entregado, e o painel mostrava isso como meta batida. */}
           <div className="rounded-lg border border-border p-4 space-y-4">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="g-corpo font-semibold text-foreground">
               Metas do mês
             </p>
+            {/* Quem escreve o alvo precisa saber por qual DATA ele será
+                cobrado: as três pontas caem em meses diferentes, e um contrato
+                assinado em 31/03 vira faturamento de abril. */}
+            <p className="g-meta text-muted-foreground">{AVISO_CRITERIOS_DISTINTOS}</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="meta-contratos" className="mb-1 block text-sm text-muted-foreground">
+                <Label htmlFor="meta-contratos" className="g-meta mb-1 block text-muted-foreground">
                   1 · Contratos a ganhar
                 </Label>
                 <Input
                   id="meta-contratos"
                   type="number" min={0} placeholder="—"
+                  className="g-controle"
                   value={contratos}
                   onChange={(e) => setContratos(e.target.value)}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">valor assinado</p>
+                <LinhaApuracao
+                  className="mt-1"
+                  curto={`quantidade · ${APURACAO.ganhos.curto}`}
+                  explicacao={APURACAO.ganhos.explicacao}
+                />
               </div>
               <div>
-                <Label htmlFor="meta-participacoes" className="mb-1 block text-sm text-muted-foreground">
+                <Label htmlFor="meta-participacoes" className="g-meta mb-1 block text-muted-foreground">
                   Participações
                 </Label>
                 <Input
                   id="meta-participacoes"
                   type="number" min={0} placeholder="—"
+                  className="g-controle"
                   value={participacoes}
                   onChange={(e) => setParticipacoes(e.target.value)}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">propostas a enviar</p>
+                <LinhaApuracao
+                  className="mt-1"
+                  curto={`propostas · ${APURACAO.participados.curto}`}
+                  explicacao={APURACAO.participados.explicacao}
+                />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="meta-faturamento" className="mb-1 block text-sm text-muted-foreground">
+              <Label htmlFor="meta-faturamento" className="g-meta mb-1 block text-muted-foreground">
                 2 · Faturamento (R$)
               </Label>
-              <MoneyInput id="meta-faturamento" autoFocus value={faturamento} onValueChange={setFaturamento} />
-              <p className="mt-1 text-xs text-muted-foreground">a nota saiu</p>
+              <MoneyInput id="meta-faturamento" autoFocus className="g-controle" value={faturamento} onValueChange={setFaturamento} />
+              <LinhaApuracao
+                className="mt-1"
+                curto={`a nota saiu · ${APURACAO.pedidos_faturados.curto}`}
+                explicacao={APURACAO.pedidos_faturados.explicacao}
+              />
             </div>
 
             <div>
-              <Label htmlFor="meta-quitacao" className="mb-1 block text-sm text-muted-foreground">
+              <Label htmlFor="meta-quitacao" className="g-meta mb-1 block text-muted-foreground">
                 3 · NF-e quitada (R$)
               </Label>
-              <MoneyInput id="meta-quitacao" value={quitacao} onValueChange={setQuitacao} />
-              <p className="mt-1 text-xs text-muted-foreground">o dinheiro entrou</p>
+              <MoneyInput id="meta-quitacao" className="g-controle" value={quitacao} onValueChange={setQuitacao} />
+              <LinhaApuracao
+                className="mt-1"
+                curto={`o dinheiro entrou · ${APURACAO.nfe_quitadas.curto}`}
+                explicacao={APURACAO.nfe_quitadas.explicacao}
+              />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="meta-principal" className="mb-1 block text-sm text-muted-foreground">Meta principal</Label>
+            <Label htmlFor="meta-principal" className="g-meta mb-1 block text-muted-foreground">Meta principal</Label>
             <Select value={base} onValueChange={(v) => setBase(v as BaseMeta)}>
-              <SelectTrigger id="meta-principal"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="meta-principal" className="g-controle"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="faturamento">{BASES_META.faturamento.label}</SelectItem>
                 <SelectItem value="nf_quitada">{BASES_META.nf_quitada.label}</SelectItem>
@@ -152,19 +176,29 @@ export default function DefinirMetaDialog({ aberto, onFechar, colaborador, ano, 
             </Select>
             {/* Uma só manda no alarme, senão o painel grita três vezes pelo
                 mesmo mês e a pessoa aprende a ignorar os três. */}
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="g-meta mt-1 text-muted-foreground">
               É esta que dispara o alerta de risco e a projeção de fechamento.
               As outras duas continuam medidas e exibidas.
             </p>
+            {/* A projeção monetária do painel é sempre construída sobre o
+                faturamento. Escolher outra principal sem escrever faturamento
+                deixa o painel sem alvo em reais — e ele passa a declarar isso
+                em vez de mostrar "Falta R$ 0,00 · Meta batida". */}
+            {base !== 'faturamento' && faturamento <= 0 && (
+              <p className="g-meta mt-1 text-warning-ink">
+                Sem meta de faturamento, o painel não projeta valores em reais — só acompanha
+                a ponta escolhida como principal.
+              </p>
+            )}
             {valorDaPrincipal <= 0 && (
-              <p className="mt-1 text-xs text-warning-ink">
+              <p className="g-meta mt-1 text-warning-ink">
                 A meta principal precisa ter valor — sem ele o painel alertaria sobre zero.
               </p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="meta-observacao" className="mb-1 block text-sm text-muted-foreground">Observação (opcional)</Label>
+            <Label htmlFor="meta-observacao" className="g-meta mb-1 block text-muted-foreground">Observação (opcional)</Label>
             <Textarea
               id="meta-observacao"
               rows={2}

@@ -7,6 +7,7 @@ import {
   CircleDot,
   Clock,
   HelpCircle,
+  RotateCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -107,6 +108,55 @@ export function ValorIndisponivel({
   );
 }
 
+/**
+ * A falha de carga, com a mensagem real e o caminho de volta.
+ *
+ * Existe porque a correção de 13/09 — que tirou o `error` descartado de sete
+ * telas — produziu sete variações do mesmo bloco, e todas quebravam igual no
+ * celular: mensagem e botão na mesma linha, o texto encolhendo até uma palavra
+ * por linha enquanto o botão não cedia um pixel.
+ *
+ * Duas regras que o princípio 3 do CLAUDE.md exige e que é fácil perder:
+ * mostrar a mensagem REAL do banco (não "erro ao carregar"), e oferecer o
+ * retry no mesmo lugar. Quem lê "No suitable key or wrong key type" pode
+ * procurar ajuda; quem lê "verifique sua conexão" vai reiniciar o roteador.
+ */
+export function AvisoDeFalha({
+  children,
+  aoTentarNovamente,
+  rotulo = 'Tentar novamente',
+  className,
+}: {
+  children: ReactNode;
+  aoTentarNovamente?: () => void;
+  rotulo?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      role="alert"
+      className={cn(
+        'flex flex-col items-start gap-3 rounded-[var(--g-raio)] border border-destructive-line bg-destructive-tint px-4 py-3',
+        'sm:flex-row sm:items-center',
+        className,
+      )}
+    >
+      <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0 text-destructive-ink" />
+      <p className="g-corpo min-w-0 flex-1 text-destructive-ink">{children}</p>
+      {aoTentarNovamente && (
+        <button
+          type="button"
+          onClick={aoTentarNovamente}
+          className="g-corpo g-controle inline-flex shrink-0 items-center gap-1.5 rounded-[var(--g-raio)] border border-destructive-line bg-card px-3 font-medium text-destructive-ink transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:w-full max-sm:justify-center"
+        >
+          <RotateCw aria-hidden="true" className="h-4 w-4" />
+          {rotulo}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Alerta curto de linha, para pendência que precisa de ação no contexto. */
 export function AvisoDeContexto({
   titulo,
@@ -123,7 +173,9 @@ export function AvisoDeContexto({
     <div
       role="status"
       className={cn(
-        'flex flex-wrap items-center gap-3 rounded-[var(--g-raio)] border border-warning-line bg-warning-tint px-4 py-3',
+        // Empilha no celular: com o botão ao lado, a mensagem ficava com uma
+        // palavra por linha e o aviso virava uma coluna de texto.
+        'flex flex-col items-start gap-3 rounded-[var(--g-raio)] border border-warning-line bg-warning-tint px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center',
         className,
       )}
     >
@@ -132,7 +184,7 @@ export function AvisoDeContexto({
         <p className="g-corpo font-semibold text-warning-ink">{titulo}</p>
         {children && <p className="g-corpo text-warning-ink/90">{children}</p>}
       </div>
-      {acao && <div className="shrink-0">{acao}</div>}
+      {acao && <div className="shrink-0 max-sm:w-full [&>*]:max-sm:w-full">{acao}</div>}
     </div>
   );
 }

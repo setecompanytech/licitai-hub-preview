@@ -145,6 +145,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import EstadoVazio from '@/components/shared/EstadoVazio';
+import TabelaGestao, { type ColunaGestao } from '@/components/gestao/TabelaGestao';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarDays } from 'lucide-react';
@@ -158,7 +159,7 @@ import { buscarCfop, formatarCfop } from '@/data/cfop';
 import {
   Plus, Search, MoreVertical, ShoppingCart, ShoppingBag, Pencil, Trash2,
   Loader2, X, Save, Printer, Copy, Check, Zap, Paperclip, Download,
-  History, RefreshCw, User, LayoutGrid, List,
+  History, User, LayoutGrid, List,
   ChevronsUpDown, Filter, Link2,
 } from 'lucide-react';
 
@@ -219,6 +220,20 @@ type ItemForm = {
 };
 
 // ── Constants ──────────────────────────────────────────────────────────────
+// As cinco colunas do QUADRO DE PEDIDOS — e "quadro" é a palavra certa.
+//
+// Este quadro acompanha ATENDIMENTO E ENTREGA de pedidos de compra e venda:
+// o pedido entra, o estoque é separado, fatura-se, e a mercadoria sai. Ele é
+// coisa distinta do Kanban de licitações (`/kanban`), que acompanha o PROCESSO
+// licitatório — outro objeto, outras etapas, outra tela. Chamar os dois de
+// "kanban" na interface fazia a pessoa procurar o processo aqui dentro, então
+// a palavra sumiu de tudo que aparece na tela. Nas variáveis de estado
+// (`view`, `viewMode`) os valores antigos continuam, de propósito: são os dois
+// eixos que a tela já tinha e renomeá-los é risco sem retorno visível.
+//
+// `cancelado` existe em STATUS_MSG e em STATUS_BADGE, mas NÃO é coluna: um
+// pedido cancelado sai do fluxo, não vira uma sexta pilha para percorrer.
+//
 // Cada etapa tem cor própria (09/09): o quadro era cinza-sobre-cinza e as
 // colunas de largura fixa deixavam um vão morto à direita — parecia
 // transparente. A cor da etapa pinta a barra do topo, o cabeçalho e a
@@ -226,7 +241,7 @@ type ItemForm = {
 // Identidade 12/09: chips nas famílias tint/ink (nada de alfa composto na
 // mão). Faturar e Entrega dividiam o mesmo verde depois que `accent` virou
 // `primary`; Entrega passa ao navy para o fluxo continuar legível de relance.
-const KANBAN_STATUS: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
+const COLUNAS_QUADRO: { key: Pedido['status']; label: string; barra: string; texto: string; chip: string; borda: string }[] = [
   { key: 'pedido',          label: 'Pedidos',         barra: 'bg-info',    texto: 'text-foreground',       chip: 'bg-muted text-foreground',                  borda: 'border-l-info' },
   { key: 'separar_estoque', label: 'Separar Estoque', barra: 'bg-warning', texto: 'text-warning-ink',      chip: 'bg-warning-tint text-warning-ink',          borda: 'border-l-warning' },
   { key: 'faturar',         label: 'Faturar',         barra: 'bg-primary', texto: 'text-primary',          chip: 'bg-primary-tint text-primary',              borda: 'border-l-primary' },
@@ -316,7 +331,7 @@ function DatePickerBtn({ value, onChange, placeholder }: {
             onChange(d ? d.toISOString().slice(0, 10) : '');
             setOpen(false);
           }}
-          locale={{ localize: { day: n => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][n], month: n => ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][n] } } as any}
+          locale={{ localize: { day: n => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][n], month: n => ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][n] } } as unknown as React.ComponentProps<typeof Calendar>['locale']}
           initialFocus
         />
       </PopoverContent>
@@ -531,15 +546,20 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
   // a lista fixa vira só o fallback de quem ainda não cadastrou nada.
   const [condicoesCadastro, setCondicoesCadastro] = useState<string[]>([]);
   const [cadastroCondicoesAberto, setCadastroCondicoesAberto] = useState(false);
+  // `as never` na tabela porque `financeiro_condicoes_pagamento` não está no
+  // types.ts gerado; o resultado é estreitado na leitura, não com `any`.
   const carregarCondicoes = () => {
     if (!empresaAtiva) return;
-    (supabase.from('financeiro_condicoes_pagamento' as never) as any)
-      .select('descricao')
-      .eq('empresa_id', empresaAtiva.id)
-      .eq('ativo', true)
-      .order('codigo')
-      .then(({ data }: { data: Array<{ descricao: string }> | null }) =>
-        setCondicoesCadastro([...new Set((data || []).map(d => d.descricao))]));
+    void (async () => {
+      const { data } = await supabase
+        .from('financeiro_condicoes_pagamento' as never)
+        .select('descricao')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('ativo', true)
+        .order('codigo');
+      const linhas = (data ?? []) as unknown as Array<{ descricao: string }>;
+      setCondicoesCadastro([...new Set(linhas.map(d => d.descricao))]);
+    })();
   };
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -678,7 +698,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
       .eq('empresa_id', empresaAtiva!.id)
       .order('numero', { ascending: false })
       .limit(1);
-    return (((data as any[])?.[0]?.numero) ?? 0) + 1;
+    return (((data as Array<{ numero: number }> | null)?.[0]?.numero) ?? 0) + 1;
   }
 
   function openNovo(tipo: 'venda' | 'compra') {
@@ -831,7 +851,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
     if (error) {
       setSaving(false);
       console.error('Erro ao salvar pedido:', error);
-      toast.error(`Erro ao salvar pedido: ${(error as any)?.message ?? 'verifique o console'}`);
+      toast.error(`Erro ao salvar pedido: ${(error as { message?: string } | null)?.message ?? 'verifique o console'}`);
       return;
     }
 
@@ -867,7 +887,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
             descricao: cpDescricao,
             valor_total: valorTotal,
             valor_unitario: valorTotal,
-          }).eq('id', (existing as any).id);
+          }).eq('id', (existing as { id: string }).id);
         } else {
           await supabase.from('contrato_pedidos').insert({
             contrato_id: form.contrato_id,
@@ -879,7 +899,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
             valor_unitario: valorTotal,
             valor_total: valorTotal,
             status: 'pendente',
-          } as any);
+          } as never);
         }
       } else if (editingId) {
         // Vínculo removido manualmente: limpa o registro em contrato_pedidos
@@ -1057,7 +1077,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
     const items = (data ?? []).filter(f => f.name !== '.emptyFolderPlaceholder');
     const urls = items.map(f => {
       const { data: urlData } = supabase.storage.from('pedidos-anexos').getPublicUrl(`${path}/${f.name}`);
-      return { name: f.name, size: (f as any).metadata?.size ?? 0, url: urlData.publicUrl };
+      return { name: f.name, size: (f as { metadata?: { size?: number } }).metadata?.size ?? 0, url: urlData.publicUrl };
     });
     setAnexosList(urls);
     setAnexosLoading(false);
@@ -1131,8 +1151,8 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
   // Punho para o botão "Novo pedido" do CabecalhoPagina (setTipoOpen é estável).
   useImperativeHandle(ref, () => ({ novoPedido: () => setTipoOpen(true) }), []);
 
-  const kanbanCols = useMemo(() =>
-    KANBAN_STATUS.map(col => ({
+  const colunasDoQuadro = useMemo(() =>
+    COLUNAS_QUADRO.map(col => ({
       ...col,
       items: filteredPedidos.filter(p => p.status === col.key),
     })), [filteredPedidos]
@@ -1221,7 +1241,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                     .select('id, nome, tipo')
                     .eq('empresa_id', empresaAtiva.id)
                     .order('nome');
-                  setFaturadoContas((contas ?? []) as any[]);
+                  setFaturadoContas((contas ?? []) as Array<{ id: string; nome: string; tipo: string }>);
                 }
                 setFaturadoContaId('');
                 setFaturadoParcelas('1');
@@ -1323,7 +1343,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                     created_by: user?.id ?? null,
                   };
                 });
-                const { error } = await supabase.from('financeiro_lancamentos' as never).insert(inserts as any);
+                const { error } = await supabase.from('financeiro_lancamentos' as never).insert(inserts as never);
                 if (error) {
                   toast.error('Erro ao gerar conta a receber: ' + error.message);
                 } else {
@@ -1502,10 +1522,73 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
     </Dialog>
   );
 
-  // ── KANBAN VIEW ─────────────────────────────────────────────────────────
+  // ── LISTA / QUADRO ──────────────────────────────────────────────────────
+  // `view === 'kanban'` é o eixo "estou na lista de pedidos, não no
+  // formulário". O valor do estado não mudou (é um dos dois eixos que a tela
+  // já tinha); só a palavra que chega à pessoa mudou, para "Quadro".
   if (view === 'kanban') {
+    const noQuadro = viewMode === 'kanban';
+
+    // As colunas da LISTA. Mesma informação dos cartões do quadro — número,
+    // tipo, quem, etapa, previsão e valor — só que enfileirada e comparável.
+    const colunasDaLista: ColunaGestao<Pedido>[] = [
+      {
+        chave: 'numero', titulo: 'Nº', largura: '90px', prioridade: 'sempre',
+        render: p => <span className="font-medium tabular-nums">#{p.numero}</span>,
+      },
+      {
+        chave: 'tipo', titulo: 'Tipo', largura: '150px', prioridade: 'sempre',
+        render: p => (
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge variant="info">{p.tipo === 'venda' ? 'Venda' : 'Compra'}</Badge>
+            {p.contrato_id && <Badge variant="muted">Contrato</Badge>}
+          </div>
+        ),
+      },
+      {
+        chave: 'pessoa', titulo: 'Cliente / Fornecedor', prioridade: 'sempre',
+        render: p => {
+          const nome = getPessoaNome(p.pessoa_id);
+          return nome ? <span className="font-medium">{nome}</span> : <span className="text-muted-foreground">—</span>;
+        },
+      },
+      {
+        chave: 'status', titulo: 'Etapa', largura: '170px', prioridade: 'sempre',
+        render: p => <Badge variant={STATUS_BADGE[p.status] ?? 'info'}>{STATUS_MSG[p.status]}</Badge>,
+      },
+      {
+        chave: 'previsao', titulo: 'Previsão', largura: '160px', prioridade: 'desktop',
+        render: p => {
+          const isHoje = p.previsao_faturamento === todayISO();
+          return (
+            <span className={isHoje ? 'font-medium text-warning-ink' : 'text-muted-foreground'}>
+              {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
+              {isHoje && <span className="g-meta ml-1">• hoje</span>}
+            </span>
+          );
+        },
+      },
+      {
+        chave: 'valor', titulo: 'Valor total', alinhamento: 'direita', largura: '150px', prioridade: 'sempre',
+        render: p => <span className="font-semibold">R$ {fmtM(p.valor_total)}</span>,
+      },
+      {
+        chave: 'acoes', titulo: 'Ações', alinhamento: 'direita', largura: '110px', prioridade: 'sempre',
+        render: p => (
+          <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+            <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Editar pedido ${p.numero}`} onClick={() => openEdit(p)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Excluir pedido ${p.numero}`} onClick={() => handleDelete(p.id)}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          </div>
+        ),
+      },
+    ];
+
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {TypeDialog}
         {NfeAlertDialog}
         {FaturadoContaDialog}
@@ -1513,16 +1596,16 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
         {HistoricoDialog}
         {DeleteConfirmDialog}
 
-        {/* Search bar */}
+        {/* Busca + alternância Lista/Quadro */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full sm:w-72">
+          <div className="relative min-w-0 flex-1 basis-64">
             <Label htmlFor="pedidos-busca" className="sr-only">Pesquisar pedidos</Label>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="pedidos-busca"
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Digite o que deseja pesquisar"
-              className="pl-9 pr-10"
+              placeholder="Buscar por número do pedido ou por cliente/fornecedor…"
+              className="g-controle rounded-[var(--g-raio)] pl-9 pr-10"
             />
             {search && (
               <Button type="button" variant="ghost" size="sm" aria-label="Limpar busca"
@@ -1532,39 +1615,50 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
               </Button>
             )}
           </div>
-          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => setSearch('')}>
-            Exibindo tudo
-          </Button>
 
-          {/* View mode toggle */}
-          <div role="group" aria-label="Modo de visualização" className="flex items-center gap-1 rounded-md border border-input p-1">
+          {/* A alternância mostra o RÓTULO, não só o ícone: dois quadradinhos
+              cinza não dizem qual é qual, e "quadro" é justamente a palavra
+              que precisa aparecer para separar esta tela do Kanban de
+              licitações. `aria-pressed` continua contando o estado a quem lê
+              a tela por leitor de tela. */}
+          <div role="group" aria-label="Modo de visualização dos pedidos" className="flex items-center gap-1 rounded-[var(--g-raio)] border border-input p-1">
             <Button
               type="button" size="sm" variant={viewMode === 'list' ? 'default' : 'ghost'}
-              className="h-8 w-8 px-0"
+              className="h-8"
               aria-pressed={viewMode === 'list'}
-              aria-label="Visualizar como lista"
-              title="Visualizar como lista"
+              title="Ver os pedidos em lista"
               onClick={() => setViewMode('list')}
             >
-              <List className="w-4 h-4" />
+              <List className="w-4 h-4" aria-hidden="true" /> Lista
             </Button>
             <Button
               type="button" size="sm" variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-              className="h-8 w-8 px-0"
+              className="h-8"
               aria-pressed={viewMode === 'kanban'}
-              aria-label="Visualizar como kanban"
-              title="Visualizar como kanban"
+              title="Ver os pedidos no quadro de atendimento e entrega"
               onClick={() => setViewMode('kanban')}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-4 h-4" aria-hidden="true" /> Quadro
             </Button>
           </div>
           {/* "Novo pedido" não se repete aqui: é a ação principal declarada
               para /gestao-compras e mora no CabecalhoPagina da página. */}
         </div>
 
+        {/* O que o quadro é — e o que ele NÃO é. Sem esta linha, "quadro com
+            colunas" no mesmo sistema que tem um Kanban de processos leva a
+            pessoa a procurar a licitação aqui dentro. */}
+        {noQuadro && (
+          <p className="g-corpo text-muted-foreground">
+            <strong className="text-foreground">Quadro de pedidos</strong> — acompanha atendimento e
+            entrega, do pedido até a saída da mercadoria. É diferente do{' '}
+            <strong className="text-foreground">Kanban de licitações</strong>, que acompanha o processo
+            licitatório em outra tela.
+          </p>
+        )}
+
         {/* Filtros + Somatório */}
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--g-raio)] border border-border bg-card px-4 py-3">
           {/* Filtro tipo */}
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -1617,90 +1711,42 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
             {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-64 rounded-lg" />)}
           </div>
         ) : viewMode === 'list' ? (
-          /* ── LIST VIEW ── */
-          <div className="rounded-lg border border-border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card border-b border-border z-10">
-                <tr>
-                  {['Nº', 'Tipo', 'Cliente / Fornecedor', 'Status', 'Previsão', 'Valor Total', ''].map(h => (
-                    <th key={h} className={`py-3 px-3 text-left text-sm font-semibold ${h === 'Valor Total' ? 'text-right' : ''}`}>
-                      {h ? (
-                        <span className={`inline-flex items-center gap-1 ${h === 'Valor Total' ? 'justify-end' : ''}`}>
-                          {h} <ChevronsUpDown className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-                        </span>
-                      ) : (
-                        <span className="sr-only">Ações</span>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredPedidos.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-0">
-                      <EstadoVazio
-                        icone={<ShoppingCart />}
-                        titulo="Nenhum pedido encontrado"
-                        descricao="Ajuste a busca e os filtros, ou crie o primeiro pedido."
-                        acao={<Button onClick={() => setTipoOpen(true)}><Plus className="w-4 h-4" /> Novo pedido</Button>}
-                      />
-                    </td>
-                  </tr>
-                ) : filteredPedidos.map(p => {
-                  const pessoaNome = getPessoaNome(p.pessoa_id);
-                  const isHoje = p.previsao_faturamento === todayISO();
-                  return (
-                    <tr key={p.id}
-                      className="cursor-pointer hover:bg-muted transition-colors"
-                      onDoubleClick={() => openEdit(p)}
-                    >
-                      <td className="py-2 px-3 font-medium tabular-nums">#{p.numero}</td>
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="info">
-                            {p.tipo === 'venda' ? 'Venda' : 'Compra'}
-                          </Badge>
-                          {p.contrato_id && (
-                            <Badge variant="muted">
-                              Contrato
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 px-3 font-medium">{pessoaNome ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="py-2 px-3">
-                        <Badge variant={STATUS_BADGE[p.status] ?? 'info'}>
-                          {STATUS_MSG[p.status]}
-                        </Badge>
-                      </td>
-                      <td className={`py-2 px-3 ${isHoje ? 'text-warning-ink font-medium' : 'text-muted-foreground'}`}>
-                        {p.previsao_faturamento ? fmtDateBR(p.previsao_faturamento) : '—'}
-                        {isHoje && <span className="ml-1 text-xs">• hoje</span>}
-                      </td>
-                      <td className="py-2 px-3 text-right tabular-nums font-semibold">R$ {fmtM(p.valor_total)}</td>
-                      <td className="py-2 px-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Editar pedido ${p.numero}`} onClick={() => openEdit(p)}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="w-9 px-0" aria-label={`Excluir pedido ${p.numero}`} onClick={() => handleDelete(p.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="border-t border-border px-4 py-2 bg-muted text-xs text-muted-foreground">
-              {filteredPedidos.length === 0 ? 'Nenhum registro' : `${filteredPedidos.length} pedido${filteredPedidos.length !== 1 ? 's' : ''}`}
-            </div>
-          </div>
+          /* ── LISTA ──
+             A mesma coleção de pedidos do quadro, com as mesmas regras de
+             filtro: `filteredPedidos` alimenta os dois, então alternar não
+             muda o conjunto, só a forma de olhar para ele. */
+          <TabelaGestao
+            descricao="Pedidos de compra e venda"
+            colunas={colunasDaLista}
+            itens={filteredPedidos}
+            chaveDoItem={p => p.id}
+            aoSelecionar={p => openEdit(p)}
+            vazio={
+              <EstadoVazio
+                icone={<ShoppingCart />}
+                titulo="Nenhum pedido encontrado"
+                descricao="Ajuste a busca e os filtros, ou crie o primeiro pedido."
+                acao={<Button onClick={() => setTipoOpen(true)}><Plus className="w-4 h-4" /> Novo pedido</Button>}
+              />
+            }
+            rodape={
+              <span className="tabular-nums">
+                {filteredPedidos.length === 0
+                  ? 'Nenhum registro'
+                  : `${filteredPedidos.length} pedido${filteredPedidos.length !== 1 ? 's' : ''}`}
+              </span>
+            }
+          />
         ) : (
-          /* ── KANBAN VIEW ── */
-          <div className="flex gap-3 overflow-x-auto pb-2 relative" style={{ minHeight: 'calc(100vh - 300px)' }}>
+          /* ── QUADRO ──
+             Colunas de no mínimo 260px com rolagem horizontal LOCAL: o padrão
+             proíbe comprimir coluna para caber, e a rolagem fica presa a este
+             contêiner — a página inteira nunca rola de lado. */
+          <div
+            role="group"
+            aria-label="Quadro de pedidos: atendimento e entrega"
+            className="relative flex gap-3 overflow-x-auto pb-2 min-h-[calc(100vh-320px)]"
+          >
             {/* Ghost card shown while dragging */}
             {draggingId && ghostPos && (() => {
               const dp = pedidos.find(x => x.id === draggingId);
@@ -1716,17 +1762,18 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
               ) : null;
             })()}
 
-            {kanbanCols.map((col, colIdx) => (
+            {colunasDoQuadro.map((col, colIdx) => (
               <div key={col.key}
                 data-col={col.key}
-                className={`flex flex-col flex-1 min-w-[220px] rounded-lg border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-primary-tint border-primary' : 'bg-card border-border shadow-sm'}`}
+                className={`flex flex-col flex-1 min-w-[260px] rounded-[var(--g-raio)] border overflow-hidden transition-colors ${draggingId && dragOverCol === col.key ? 'bg-primary-tint border-primary' : 'bg-card border-border shadow-sm'}`}
               >
                 {/* Barra de cor da etapa + cabeçalho */}
                 <div className={`h-1.5 ${col.barra}`} aria-hidden="true" />
                 <div className="flex items-center justify-between px-3 py-3 border-b border-border bg-muted">
-                  <span className={`font-bold text-sm ${col.texto}`}>{col.label}</span>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full tabular-nums ${col.chip}`}>
+                  <h3 className={`g-corpo font-bold ${col.texto}`}>{col.label}</h3>
+                  <span className={`g-meta font-semibold px-2 py-1 rounded-full tabular-nums ${col.chip}`}>
                     {col.items.length}
+                    <span className="sr-only"> pedido(s) em {col.label}</span>
                   </span>
                 </div>
 
@@ -1795,7 +1842,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                             >
                               <Pencil className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Editar
                             </Button>
-                            {KANBAN_STATUS.filter(s => s.key !== p.status).map(s => (
+                            {COLUNAS_QUADRO.filter(s => s.key !== p.status).map(s => (
                               <Button key={s.key} type="button" variant="ghost" size="sm" className="w-full justify-start font-normal"
                                 onClick={async () => {
                                   setKanbanMenu(null);
@@ -1818,24 +1865,20 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
                   })}
                 </div>
 
-                {/* Column footer */}
+                {/* Rodapé da coluna.
+                    Aqui moravam "Faturar Todos" e "Comunicar com a SEFAZ":
+                    dois botões sem `onClick`, sem função por trás e sem
+                    integração com a SEFAZ em lugar nenhum do sistema. Botão
+                    que não faz nada é pior que botão ausente — quem clica
+                    acredita ter faturado. Sobrou o único que sempre funcionou.
+                    Faturamento em lote volta quando existir de verdade; hoje
+                    se fatura pelo cartão ou pelo formulário do pedido. */}
                 <div className="p-2 border-t border-border">
-                  {colIdx === 0 && (
+                  {colIdx === 0 ? (
                     <Button type="button" size="sm" className="w-full" onClick={() => setTipoOpen(true)}>
                       <Plus className="w-4 h-4" /> Novo Pedido
                     </Button>
-                  )}
-                  {colIdx === 2 && (
-                    <Button type="button" size="sm" variant="outline" className="w-full">
-                      <Zap className="w-4 h-4" /> Faturar Todos
-                    </Button>
-                  )}
-                  {colIdx === 3 && (
-                    <Button type="button" size="sm" variant="outline" className="w-full">
-                      <RefreshCw className="w-4 h-4" /> Comunicar com a SEFAZ
-                    </Button>
-                  )}
-                  {colIdx !== 0 && colIdx !== 2 && colIdx !== 3 && (
+                  ) : (
                     <div className="h-9" aria-hidden="true" />
                   )}
                 </div>
@@ -1912,7 +1955,7 @@ const PedidosOmie = forwardRef<PedidosOmieRef>(function PedidosOmie(_props, ref)
             <span className="text-muted-foreground" aria-hidden="true">→</span>
             <span className="text-muted-foreground whitespace-nowrap">Mover para:</span>
             <div className="flex flex-wrap items-center gap-1">
-              {KANBAN_STATUS.filter(s => s.key !== editingStatus).map(s => (
+              {COLUNAS_QUADRO.filter(s => s.key !== editingStatus).map(s => (
                 <Button
                   key={s.key}
                   type="button"

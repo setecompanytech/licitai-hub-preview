@@ -122,6 +122,9 @@ export default function PropostaLivePreview(props: LivePreviewProps) {
     // é interface e segue os tokens; o miolo é papel.
     // └───────────────────────────────────────────────────────────────────────┘
     <div
+      // A proposta é do assinante, não nossa: sem esta marca, o carimbo
+      // anticópia do `security-guard` ia junto para o campo do portal.
+      data-conteudo-do-cliente
       className="relative overflow-hidden rounded-lg border border-border shadow-sm transition-all duration-300"
       style={{
         fontFamily: `'${fontFamily}', Arial, Helvetica, sans-serif`,

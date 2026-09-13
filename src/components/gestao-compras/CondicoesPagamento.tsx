@@ -68,6 +68,28 @@ const numBr = (s: string) => parseFloat(String(s).replace(/\./g, '').replace(','
  * percentuais DEVEM fechar 100% (a tela avisa em vermelho; o banco tem a
  * CONSTRAINT), juro diário e acréscimo. O seletor do pedido bebe daqui.
  */
+/**
+ * O construtor de consulta do supabase-js reduzido ao que ESTA tela usa.
+ *
+ * `financeiro_condicoes_pagamento` ainda não entrou no `types.ts` gerado, então
+ * o genérico não resolve e o encadeamento não compila sozinho. A saída que
+ * estava aqui era `as any`, que desliga a checagem do encadeamento INTEIRO —
+ * inclusive a do payload que vai para o banco. Declarar a forma exata devolve
+ * a checagem de tudo que não depende do tipo da tabela.
+ */
+type ResultadoSupabase = { data: unknown; error: { message: string } | null };
+type ConsultaCondicoes = {
+  select: (colunas: string) => {
+    eq: (coluna: string, valor: string) => {
+      order: (coluna: string) => PromiseLike<ResultadoSupabase>;
+    };
+  };
+  update: (payload: Record<string, unknown>) => {
+    eq: (coluna: string, valor: string) => PromiseLike<ResultadoSupabase>;
+  };
+  insert: (payload: Record<string, unknown> | Record<string, unknown>[]) => PromiseLike<ResultadoSupabase>;
+};
+
 export default function CondicoesPagamento({
   aberto,
   aoFechar,
@@ -88,7 +110,7 @@ export default function CondicoesPagamento({
   const carregar = async () => {
     if (!empresaAtiva?.id) return;
     setCarregando(true);
-    const { data } = await (supabase.from('financeiro_condicoes_pagamento' as never) as any)
+    const { data } = await (supabase.from('financeiro_condicoes_pagamento' as never) as unknown as ConsultaCondicoes)
       .select('*')
       .eq('empresa_id', empresaAtiva.id)
       .order('codigo');
@@ -158,11 +180,11 @@ export default function CondicoesPagamento({
     };
     let error;
     if (form.id) {
-      ({ error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as any)
+      ({ error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as unknown as ConsultaCondicoes)
         .update(payload).eq('id', form.id));
     } else {
       const codigo = (linhas.reduce((m, l) => Math.max(m, l.codigo), 0) || 0) + 1;
-      ({ error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as any)
+      ({ error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as unknown as ConsultaCondicoes)
         .insert({ ...payload, codigo }));
     }
     setSalvando(false);
@@ -188,7 +210,7 @@ export default function CondicoesPagamento({
       parcelas: s.parcelas,
     }));
     if (inserts.length === 0) { toast.info('As condições padrão já existem.'); setSalvando(false); return; }
-    const { error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as any).insert(inserts);
+    const { error } = await (supabase.from('financeiro_condicoes_pagamento' as never) as unknown as ConsultaCondicoes).insert(inserts);
     setSalvando(false);
     if (error) { toast.error('Não foi possível criar as condições padrão', { description: error.message }); return; }
     toast.success(`${inserts.length} condição(ões) padrão criada(s) — edite ou complemente à vontade.`);
@@ -223,7 +245,7 @@ export default function CondicoesPagamento({
               )}
             </div>
 
-            <div className="rounded-md border border-border overflow-x-auto">
+            <div className="rounded-[var(--g-raio)] border border-border overflow-x-auto">
               {carregando ? (
                 <div role="status" aria-busy="true" className="space-y-2 p-4">
                   <span className="sr-only">Carregando</span>
@@ -255,13 +277,13 @@ export default function CondicoesPagamento({
                       const ok = Math.abs(total - 100) <= 0.01;
                       return (
                         <TableRow key={l.id} className="cursor-pointer" onClick={() => abrirEdicao(l)}>
-                          <TableCell className="text-sm tabular-nums">{l.codigo}</TableCell>
-                          <TableCell className="text-sm font-medium">{l.descricao}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{l.forma_pagamento || '—'}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="g-corpo tabular-nums">{l.codigo}</TableCell>
+                          <TableCell className="g-corpo font-medium">{l.descricao}</TableCell>
+                          <TableCell className="g-corpo text-muted-foreground">{l.forma_pagamento || '—'}</TableCell>
+                          <TableCell className="g-corpo text-muted-foreground">
                             {l.parcelas.map(p => `${p.dias}d`).join(' / ')}
                           </TableCell>
-                          <TableCell className={`text-sm text-right tabular-nums ${ok ? '' : 'text-destructive-ink font-semibold'}`}>
+                          <TableCell className={`g-corpo text-right tabular-nums ${ok ? '' : 'text-destructive-ink font-semibold'}`}>
                             {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell><Pencil className="w-4 h-4 text-muted-foreground" aria-hidden="true" /></TableCell>
@@ -346,25 +368,25 @@ export default function CondicoesPagamento({
             </div>
 
             {/* Parcelas — dias e percentuais editáveis; a soma tem de fechar 100 */}
-            <div className="rounded-md border border-border p-4 space-y-3">
-              <p className="text-sm font-semibold">Parcelas (dias × percentual)</p>
+            <div className="rounded-[var(--g-raio)] border border-border p-4 space-y-3">
+              <p className="g-corpo font-semibold">Parcelas (dias × percentual)</p>
               {form.parcelas.map((p, i) => (
                 <div key={i} className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor={`parcela-dias-${i}`} className="text-xs text-muted-foreground">Parcela {i + 1} — dias</Label>
+                    <Label htmlFor={`parcela-dias-${i}`} className="g-meta text-muted-foreground">Parcela {i + 1} — dias</Label>
                     <Input id={`parcela-dias-${i}`} type="number" min={0} value={p.dias}
                       onChange={e => setForm(f => ({ ...f, parcelas: f.parcelas.map((x, j) => j === i ? { ...x, dias: parseInt(e.target.value) || 0 } : x) }))}
                       className="mt-1 tabular-nums" />
                   </div>
                   <div>
-                    <Label htmlFor={`parcela-pct-${i}`} className="text-xs text-muted-foreground">Percentual (%)</Label>
+                    <Label htmlFor={`parcela-pct-${i}`} className="g-meta text-muted-foreground">Percentual (%)</Label>
                     <Input id={`parcela-pct-${i}`} type="number" min={0} max={100} step="0.01" value={p.percentual}
                       onChange={e => setForm(f => ({ ...f, parcelas: f.parcelas.map((x, j) => j === i ? { ...x, percentual: parseFloat(e.target.value) || 0 } : x) }))}
                       className="mt-1 tabular-nums" />
                   </div>
                 </div>
               ))}
-              <p className={`text-sm tabular-nums ${fecha100 ? 'text-muted-foreground' : 'text-destructive-ink font-semibold'}`}>
+              <p className={`g-corpo tabular-nums ${fecha100 ? 'text-muted-foreground' : 'text-destructive-ink font-semibold'}`}>
                 Total do percentual: {totalPercentual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%
                 {!fecha100 && ' — Condição de Pagamento incompleta, não atingiu 100%'}
               </p>

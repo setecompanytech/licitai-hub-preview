@@ -69,6 +69,21 @@ type Props = {
   /** Cor do ícone, para acompanhar a gravidade do aviso. */
   classNameIcone?: string;
   icone?: ReactNode;
+  /**
+   * Recolher é gesto de TELA — no papel a seção tem de sair inteira.
+   *
+   * O Dashboard do contrato imprime um "Relatório de Execução Contratual" que
+   * vai parar dentro de processo administrativo. Se recolher a seção a
+   * desmontasse, quem recolheu "Evolução mensal" para enxergar melhor passaria
+   * a entregar ao órgão um relatório sem a evolução mensal — e sem nada na
+   * tela avisando que o papel saiu incompleto.
+   *
+   * Com esta opção o conteúdo continua montado e apenas some da tela
+   * (`.so-impresso`), voltando na impressão. Fica opt-in porque para aviso de
+   * tela pura — o painel de pendências — desmontar é o certo: é o que devolve
+   * o espaço de verdade.
+   */
+  manterNoPapel?: boolean;
 };
 
 export default function SecaoRecolhivel({
@@ -80,6 +95,7 @@ export default function SecaoRecolhivel({
   classNameTitulo,
   classNameIcone,
   icone,
+  manterNoPapel = false,
 }: Props) {
   const [aberta, setAberta] = useState(() => !lerRecolhida(id, recolhidaPorPadrao));
 
@@ -113,7 +129,11 @@ export default function SecaoRecolhivel({
             <span className="min-w-0 flex-1">{titulo}</span>
             <IconeRecolher aberto={aberta} className={cn('h-4 w-4 shrink-0', classNameIcone)} />
           </button>
-          {aberta && <div className="animate-fade-in">{children}</div>}
+          {aberta ? (
+            <div className="animate-fade-in">{children}</div>
+          ) : (
+            manterNoPapel && <div className="so-impresso">{children}</div>
+          )}
         </div>
       </div>
     </div>

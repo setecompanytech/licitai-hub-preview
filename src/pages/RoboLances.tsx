@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AbasGestao from '@/components/gestao/AbasGestao';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -22,11 +23,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Bot, Plus, Play, Pause, Settings, Globe, Clock, TrendingDown,
-  AlertTriangle, CheckCircle2, RefreshCw, Trash2, Edit2,
+  AlertTriangle, Trash2, Edit2,
   Eye, ChevronDown, Search, MessageSquare, ListChecks, Info,
   Building2, Hash, CalendarDays, FileText, Shield, MoreVertical,
-  Zap, Target, ArrowDown, Send, Trophy, XCircle, History, ShieldCheck,
-  Monitor,
+  Zap, Target, ArrowDown, Trophy, XCircle, History,
 } from 'lucide-react';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
 import ConfigurarLanceDialog, { type LanceConfig, type DisputeItem } from '@/components/robo-lances/ConfigurarLanceDialog';
@@ -39,19 +39,20 @@ import ExportarResultados from '@/components/robo-lances/ExportarResultados';
 import NivelAutomacaoSelector, { type NivelAutomacao } from '@/components/robo-lances/NivelAutomacaoSelector';
 import AceiteTermosDialog from '@/components/robo-lances/AceiteTermosDialog';
 import PainelRisco from '@/components/robo-lances/PainelRisco';
-import KillSwitchButton from '@/components/robo-lances/KillSwitchButton';
 import AuditTrailViewer from '@/components/robo-lances/AuditTrailViewer';
 import AutorizacaoLanceDialog from '@/components/robo-lances/AutorizacaoLanceDialog';
 import DisputaRealtimePanel from '@/components/robo-lances/DisputaRealtimePanel';
 import PortalHealthcheck from '@/components/robo-lances/PortalHealthcheck';
 import EstrategiaIAPanel from '@/components/robo-lances/EstrategiaIAPanel';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
+import PainelDeControle from '@/components/robo-lances/PainelDeControle';
 import VncWebViewer from '@/components/robo-lances/VncWebViewer';
 import SessoesDoRobo from '@/components/robo-lances/SessoesDoRobo';
 import ConferenciaDosItens from '@/components/robo-lances/ConferenciaDosItens';
 import PedidoDoRobo from '@/components/robo-lances/PedidoDoRobo';
 import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
 import AcessoManualPortal from '@/components/robo-lances/AcessoManualPortal';
+import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import { idDoPortal, nomeDoPortal, agenteOpera } from '@/lib/robo/portais';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
@@ -61,6 +62,24 @@ import RegistrarPerdaDialog, { type PerdaAlvo } from '@/components/metas/Registr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * Uma linha do log de operações da disputa.
+ *
+ * ─── ESTA ABA ESTEVE VAZIA DESDE QUE NASCEU ────────────────────────────────
+ *
+ * `operations` era um `useState([])` sem nenhum `setOperations` em lugar
+ * algum do arquivo: o array nunca saía de vazio, e a aba mostrava "Nenhuma
+ * operação registrada" para sempre — inclusive depois de o robô ter entrado
+ * no portal e dado lances. Aba que não tem como deixar de estar vazia é
+ * funcionalidade inacessível, que o padrão visual proíbe.
+ *
+ * A fonte real já existia e não estava ligada a nada nesta tela: as sessões
+ * do agente (`sessoes_lance_real`, filtradas por `lance_config_id`) e os
+ * lances de cada uma (`lances_historico`). Elas foram preferidas à remoção
+ * da aba porque respondem a uma pergunta que a Auditoria não responde: a
+ * trilha de auditoria registra o que ALGUÉM autorizou; isto registra o que o
+ * robô EXECUTOU no portal.
+ */
 type Operation = {
   id: string;
   timestamp: Date;
@@ -128,7 +147,29 @@ export default function RoboLances() {
   });
   const [aceiteTermosOpen, setAceiteTermosOpen] = useState(false);
   const [aceiteId, setAceiteId] = useState<string | null>(null);
+  /**
+   * ─── TRAVA DE SEGURANÇA QUE NÃO TRAVAVA (corrigido em 13/09/2026) ────────
+   *
+   * `limiteFinanceiro` era declarado com `useState(0)` e NUNCA teve setter.
+   * O número que a pessoa digita no `AceiteTermosDialog` era gravado em
+   * `robo_aceite_termos.limite_financeiro` e ficava lá: a página jamais o lia
+   * de volta. Resultado: `AutorizacaoLanceDialog` recebia `0` em toda
+   * autorização, e a checagem `excedeLimite` daquele diálogo é
+   *
+   *     estrategia.valorInicial > limiteFinanceiro && limiteFinanceiro > 0
+   *
+   * — ou seja, com zero ela é sempre falsa. O bloco que deveria impedir
+   * autorizar uma estratégia acima do teto ficava desligado, e o rodapé verde
+   * "Dentro do limite financeiro" nem aparecia (também condicionado a > 0),
+   * então nada na tela denunciava a ausência.
+   *
+   * Agora o aceite VIGENTE (o mais recente, não revogado) é lido de volta e o
+   * valor real atravessa. `limiteCarregado` existe para a coluna da direita
+   * não afirmar "sem limite" enquanto a consulta ainda está no ar — ausência
+   * de resposta não é ausência de limite.
+   */
   const [limiteFinanceiro, setLimiteFinanceiro] = useState(0);
+  const [limiteCarregado, setLimiteCarregado] = useState(false);
   const [autorizacaoOpen, setAutorizacaoOpen] = useState(false);
   const [estrategiaAutorizada, setEstrategiaAutorizada] = useState(false);
   const { isAdmin, podeOperar } = usePapelEmpresa();
@@ -196,7 +237,6 @@ export default function RoboLances() {
       }
       setLances(((data || []) as unknown as Record<string, unknown>[]).map(linhaParaLance));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, empresaAtiva?.id, processoId]);
 
   const handleNivelChange = async (novoNivel: NivelAutomacao) => {
@@ -236,8 +276,53 @@ export default function RoboLances() {
     }
   };
 
+  /**
+   * Lê o limite financeiro do aceite vigente.
+   *
+   * "Vigente" = o mais recente COM `revogado_em` nulo. Aceite revogado não
+   * autoriza gasto nenhum, e herdar o teto de um aceite cancelado seria
+   * ressuscitar uma permissão que alguém retirou de propósito.
+   *
+   * A RLS da tabela é `auth.uid() = user_id`, então o filtro por usuário aqui
+   * é para a consulta ser explícita, não para substituir a trava do banco.
+   */
+  const carregarLimiteFinanceiro = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('robo_aceite_termos' as never)
+      .select('limite_financeiro')
+      .eq('user_id', user.id)
+      .is('revogado_em', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      // Falha silenciosa aqui é perigosa: sem o limite, a trava do diálogo de
+      // autorização volta a ficar desligada. A pessoa precisa saber disso.
+      console.error('[robo-lances] carregar limite financeiro', error.message);
+      toast.error(
+        `Não foi possível ler o limite financeiro do aceite: ${error.message}. ` +
+        'A conferência de teto na autorização fica indisponível até a leitura funcionar.',
+        { duration: 12000 },
+      );
+      setLimiteCarregado(true);
+      return;
+    }
+
+    const linha = (data as unknown as Array<{ limite_financeiro: number | null }> | null)?.[0];
+    setLimiteFinanceiro(Number(linha?.limite_financeiro) || 0);
+    setLimiteCarregado(true);
+  }, [user]);
+
+  useEffect(() => {
+    carregarLimiteFinanceiro();
+  }, [carregarLimiteFinanceiro]);
+
   const handleAceite = (id: string) => {
     setAceiteId(id);
+    // O aceite acabou de gravar um limite novo — relê agora, senão a tela
+    // continuaria com o teto anterior (ou com zero) até o próximo F5.
+    carregarLimiteFinanceiro();
     toast.success(`Nível ${nivelAutomacao} ativado com sucesso!`);
   };
 
@@ -272,10 +357,140 @@ export default function RoboLances() {
 
   const disputeItems = useMemo(
     () => selectedLance?.itens ?? [],
-    [selectedLance?.id, selectedLance?.itens]
+    [selectedLance?.itens]
   );
 
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [operacoesCarregando, setOperacoesCarregando] = useState(false);
+
+  /**
+   * Monta a linha do tempo do que o robô fez NESTA disputa.
+   *
+   * Duas leituras, nesta ordem obrigatória: as sessões desta configuração de
+   * lance e, só então, os lances daquelas sessões — `lances_historico` não
+   * tem `lance_config_id`, o vínculo é pelo `sessao_id`. Sem sessão, não há o
+   * que perguntar, e a segunda consulta é pulada.
+   */
+  useEffect(() => {
+    if (!selectedId) {
+      setOperations([]);
+      return;
+    }
+    let cancelado = false;
+    setOperacoesCarregando(true);
+
+    (async () => {
+      const { data: sessoes, error: erroSessoes } = await supabase
+        .from('sessoes_lance_real')
+        .select('id, status, resultado, erro, portal_nome, rodada_atual, valor_atual, created_at, updated_at')
+        .eq('lance_config_id', selectedId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (cancelado) return;
+      if (erroSessoes) {
+        // Lista vazia sem explicação é indistinguível de "o robô nunca rodou".
+        console.error('[robo-lances] carregar operações', erroSessoes.message);
+        toast.error(`Não foi possível carregar as operações: ${erroSessoes.message}`, { duration: 12000 });
+        setOperations([]);
+        setOperacoesCarregando(false);
+        return;
+      }
+
+      const linhasSessao = (sessoes || []) as Array<{
+        id: string; status: string; resultado: string | null; erro: string | null;
+        portal_nome: string; rodada_atual: number | null; valor_atual: number | null;
+        created_at: string; updated_at: string;
+      }>;
+
+      const eventos: Operation[] = linhasSessao.map((s) => ({
+        id: `sessao-${s.id}`,
+        timestamp: new Date(s.created_at),
+        acao: 'Sessão no agente',
+        // `erro` preenchido é a única leitura segura de falha: `status` varia
+        // por portal e `resultado` só existe depois do encerramento.
+        resultado: s.erro ? 'erro' : s.resultado ? 'sucesso' : 'info',
+        detalhes: [
+          s.portal_nome,
+          `situação: ${s.status}`,
+          s.rodada_atual ? `rodada ${s.rodada_atual}` : null,
+          s.resultado ? `resultado: ${s.resultado}` : null,
+          s.erro,
+        ].filter(Boolean).join(' · '),
+      }));
+
+      if (linhasSessao.length > 0) {
+        const { data: lances, error: erroLances } = await supabase
+          .from('lances_historico')
+          .select('id, valor, rodada, tipo, origem, timestamp_lance, sessao_id')
+          .in('sessao_id', linhasSessao.map((s) => s.id))
+          .order('timestamp_lance', { ascending: false })
+          .limit(100);
+
+        if (cancelado) return;
+        if (erroLances) {
+          console.error('[robo-lances] carregar lances da sessão', erroLances.message);
+          toast.error(`Não foi possível carregar os lances: ${erroLances.message}`, { duration: 12000 });
+        } else {
+          for (const l of (lances || []) as Array<{
+            id: string; valor: number; rodada: number; tipo: string;
+            origem: string; timestamp_lance: string;
+          }>) {
+            eventos.push({
+              id: `lance-${l.id}`,
+              timestamp: new Date(l.timestamp_lance),
+              acao: l.tipo === 'concorrente' ? 'Lance de concorrente' : 'Lance enviado',
+              resultado: l.tipo === 'concorrente' ? 'info' : 'sucesso',
+              detalhes: `${formatCurrency(Number(l.valor) || 0)} · rodada ${l.rodada} · origem ${l.origem}`,
+            });
+          }
+        }
+      }
+
+      eventos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      setOperations(eventos);
+      setOperacoesCarregando(false);
+    })();
+
+    return () => { cancelado = true; };
+  }, [selectedId]);
+
+  /**
+   * Dados do processo vinculado, para o modal "Detalhes da licitação".
+   *
+   * O modal trazia Empresa, CNPJ, Órgão e UASG escritos à mão como `'—'`:
+   * quatro campos que nunca mostraram nada e que davam a impressão de que o
+   * sistema não tinha o dado. Empresa e CNPJ ele sempre teve (a empresa
+   * ativa), UASG viaja na própria disputa, e o órgão está na licitação
+   * vinculada — só ninguém ia buscar.
+   *
+   * A leitura só acontece com o modal aberto: é informação de consulta
+   * eventual, e puxá-la a cada seleção de disputa seria uma consulta por
+   * clique para uma tela que quase nunca se abre.
+   */
+  const [orgaoDoProcesso, setOrgaoDoProcesso] = useState<string | null>(null);
+  const [orgaoCarregando, setOrgaoCarregando] = useState(false);
+
+  useEffect(() => {
+    if (!detailsOpen || !selectedLance?.licitacaoId) {
+      setOrgaoDoProcesso(null);
+      return;
+    }
+    let cancelado = false;
+    setOrgaoCarregando(true);
+    supabase
+      .from('licitacoes')
+      .select('orgao')
+      .eq('id', selectedLance.licitacaoId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelado) return;
+        if (error) console.error('[robo-lances] carregar órgão da licitação', error.message);
+        setOrgaoDoProcesso((data as { orgao?: string | null } | null)?.orgao || null);
+        setOrgaoCarregando(false);
+      });
+    return () => { cancelado = true; };
+  }, [detailsOpen, selectedLance?.licitacaoId]);
 
   /* ── Post dispute result to mural ── */
   const postResultToMural = async (lance: LanceConfig, resultado: 'venceu' | 'perdeu', valorFinal?: number) => {
@@ -761,6 +976,80 @@ export default function RoboLances() {
     <span className={seloNivelClasse} title={seloNivelExplica}>{seloNivelConteudo}</span>
   );
 
+  /**
+   * O menu "Ações" da disputa selecionada.
+   *
+   * Mora numa variável porque quem o DESENHA agora é a coluna da direita
+   * (`PainelDeControle`), mas quem tem os handlers é esta página. Passar o
+   * menu pronto evita repassar seis funções uma a uma — e evita que o painel
+   * precise saber o que é encerrar, remover ou pausar uma disputa.
+   */
+  const menuDeAcoes = selectedLance ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="w-full justify-center">
+          <Settings className="w-4 h-4" aria-hidden="true" /> Ações <ChevronDown className="w-4 h-4" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
+          <Info className="w-4 h-4 mr-2" aria-hidden="true" /> Detalhes da licitação
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleToggleStatus(selectedLance.id)}>
+          {selectedLance.status === 'aguardando' ? (
+            <><Play className="w-4 h-4 mr-2" aria-hidden="true" /> Iniciar disputa</>
+          ) : (
+            <><Pause className="w-4 h-4 mr-2" aria-hidden="true" /> Pausar disputa</>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-success-ink focus:text-success-ink"
+          onClick={() => handleEndDispute('venceu')}
+        >
+          <Trophy className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Venceu
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => handleEndDispute('perdeu')}
+        >
+          <XCircle className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Perdeu
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={() => handleDelete(selectedLance.id)}
+        >
+          <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" /> Remover disputa
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  /**
+   * "Editar parâmetros" saiu do menu e virou gatilho de verdade.
+   *
+   * Era um `<DropdownMenuItem>` SEM `onClick`: clicar nele fechava o menu e
+   * não acontecia nada. Pior, a capacidade já existia — `ConfigurarLanceDialog`
+   * aceita `editingLance` desde sempre e nenhuma tela passava esse prop. Era
+   * função existente inacessível por trás de um botão sem destino, as duas
+   * coisas que o padrão visual proíbe na mesma linha.
+   *
+   * Fora do menu porque um `Dialog` dentro de um item de menu desmonta junto
+   * com o menu ao fechar, e o diálogo nunca chega a abrir.
+   */
+  const gatilhoEditar = selectedLance && podeOperar ? (
+    <ConfigurarLanceDialog
+      key={selectedLance.id}
+      processoAtivoId={processoId}
+      editingLance={selectedLance}
+      onSave={handleSaveLance}
+      trigger={
+        <Button variant="outline" className="w-full justify-center">
+          <Edit2 className="w-4 h-4" aria-hidden="true" /> Editar parâmetros
+        </Button>
+      }
+    />
+  ) : null;
+
   return (
     <AppLayout>
       {/* Declara a pasta de origem e devolve o caminho de volta. Sem px-4: o
@@ -793,6 +1082,7 @@ export default function RoboLances() {
             interessa naquele instante. Portais é cadastro — se faz uma vez,
             não a cada disputa. */}
         <CabecalhoPagina
+          denso
           acoes={
             <>
               <ExportarResultados lances={lances} />
@@ -811,38 +1101,61 @@ export default function RoboLances() {
           }
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <TabsList>
-              <TabsTrigger value="disputar">
-                <Zap className="w-4 h-4 mr-1.5" aria-hidden="true" /> Disputar
-              </TabsTrigger>
-              {isAdmin && (
-                <>
-                  <TabsTrigger value="agente">
-                    <Shield className="w-4 h-4 mr-1.5" aria-hidden="true" /> Agente
-                  </TabsTrigger>
-                  <TabsTrigger value="portais">
-                    <Globe className="w-4 h-4 mr-1.5" aria-hidden="true" /> Portais
-                  </TabsTrigger>
-                  <TabsTrigger value="configuracoes">
-                    <Settings className="w-4 h-4 mr-1.5" aria-hidden="true" /> Configurações
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
+            {/* `AbasGestao` e não `TabsList`: o módulo inteiro usa aba
+                sublinhada com a ativa em verde, e a pílula do shadcn é outra
+                linguagem. As três abas de administrador continuam saindo da
+                fila quando o papel não é admin — a lista é montada antes. */}
+            <AbasGestao
+              abas={[
+                { valor: 'disputar', rotulo: 'Disputar' },
+                ...(isAdmin
+                  ? [
+                      { valor: 'agente', rotulo: 'Agente' },
+                      { valor: 'portais', rotulo: 'Portais' },
+                      { valor: 'configuracoes', rotulo: 'Configurações' },
+                    ]
+                  : []),
+              ]}
+              valor={activeMainTab}
+              aoMudar={setActiveMainTab}
+              className="min-w-0 flex-1"
+            />
             {seloNivel}
           </div>
         </CabecalhoPagina>
 
         {/* ── DISPUTAR TAB ── */}
+        {/* ── AS TRÊS COLUNAS ──────────────────────────────────────────────
+            Composição exigida pela referência aprovada e por
+            `docs/padrao-visual-gestao.md`: sessões à esquerda, sessão
+            selecionada no centro, checklist e ações à direita.
+
+            Antes eram duas — lista e um centro que acumulava identidade da
+            disputa, botões, tabela, risco e painel de abas na mesma pilha. Com
+            tudo empilhado, o estado do robô, o estado do portal e o dinheiro
+            autorizado se liam como um bloco só.
+
+            Uma árvore única, não duas: a quebra para uma coluna abaixo de
+            1280px é do CSS grid. Duplicar a árvore com `hidden xl:block`
+            renderizaria os mesmos ids de campo duas vezes.
+
+            `items-start` para as colunas não esticarem à altura da mais alta —
+            o painel da direita costuma ser o mais alto, e sem isso a lista da
+            esquerda ganhava um vazio do tamanho do checklist. */}
         <TabsContent
           value="disputar"
-          className="m-0 flex flex-col md:flex-row overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+          className="m-0 grid grid-cols-1 items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_var(--g-painel)]"
         >
-          {/* LEFT SIDEBAR – lista de disputas. No celular vira a faixa de cima,
-              com a lista limitada em altura; no desktop, coluna à esquerda. */}
-          <aside className="w-full md:w-72 md:shrink-0 border-b md:border-b-0 md:border-r border-border flex flex-col">
+          {/* ── COLUNA 1 · SESSÕES ─────────────────────────────────────────
+              Abaixo de 1280px vira a faixa de cima, com a lista limitada em
+              altura para não empurrar a sessão selecionada para fora da tela. */}
+          <aside
+            data-coluna="sessoes"
+            aria-label="Sessões do robô"
+            className="g-cartao flex min-w-0 flex-col overflow-hidden"
+          >
             <div className="p-4 border-b border-border space-y-3">
-              <h2 className="text-lg font-semibold text-foreground">Disputas adicionadas</h2>
+              <h2 className="g-titulo-secao text-foreground">Sessões</h2>
               {/* O gatilho de criar subiu para o cabeçalho, como ação principal
                   da tela ("Nova sessão", pelo registro). Aqui havia um SEGUNDO
                   gatilho do MESMO diálogo, com outro rótulo — dois nomes para a
@@ -868,7 +1181,7 @@ export default function RoboLances() {
                 />
               </div>
             </div>
-            <div className="max-h-80 overflow-y-auto md:max-h-none md:flex-1">
+            <div className="max-h-80 overflow-y-auto xl:max-h-[calc(100vh-20rem)]">
               <div className="p-2 space-y-1">
                 {filteredLances.length === 0 && (
                   <EstadoVazio
@@ -925,8 +1238,15 @@ export default function RoboLances() {
             </div>
           </aside>
 
-          {/* MAIN CONTENT */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          {/* ── COLUNA 2 · SESSÃO SELECIONADA ──────────────────────────────
+              Só o que descreve a disputa em si: identidade, conferência dos
+              itens, tabela, risco e eventos. As decisões sobre ela (enviar,
+              parar, autorizar) migraram para a coluna da direita. */}
+          <section
+            data-coluna="sessao-selecionada"
+            aria-label="Sessão selecionada"
+            className="g-cartao flex min-w-0 flex-col overflow-hidden"
+          >
             {/* Simultaneous disputes summary bar */}
             <DisputasResumo lances={lances} onSelect={alternarSelecao} selectedId={selectedId} />
 
@@ -975,128 +1295,16 @@ export default function RoboLances() {
                       N{nivelAutomacao} — {nivelAutomacao === 1 ? 'Assistente' : nivelAutomacao === 2 ? 'Semi' : 'Auto'}
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    {/* O FREIO NÃO DEPENDE DO NÍVEL DE AUTOMAÇÃO — mas
-                        depende de haver o que frear.
-                        Ele ficava escondido atrás de `nivelAutomacao >= 2`, sob
-                        a premissa de que N1 é assistente e não age sozinho.
-                        Isso deixou de valer quando o botão "Enviar ao robô" foi
-                        construído: em N1 ele dispara uma sessão real, que loga
-                        na conta do cliente e abre um navegador no portal.
-                        Em 09/09/2026 uma sessão travada teve que ser encerrada
-                        por `curl` na VPS, porque a tela não oferecia parada.
-                        Quem consegue disparar tem que conseguir parar. */}
-                    {sessaoVivaDesta && (
-                      <KillSwitchButton
-                        sessaoId={sessaoVivaDesta.sessao_id}
-                        licitacaoId={selectedLance.licitacaoId}
-                        onParada={handleParadaEmergencial}
-                        disabled={paradaEmergencial}
-                      />
-                    )}
-
-                    {/* Level 2: Authorize strategy button */}
-                    {nivelAutomacao === 2 && !estrategiaAutorizada && selectedLance.status === 'aguardando' && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setAutorizacaoOpen(true)}
-                      >
-                        <ShieldCheck className="w-4 h-4" aria-hidden="true" /> Autorizar Estratégia
-                      </Button>
-                    )}
-                    {estrategiaAutorizada && (
-                      <Badge variant="success" className="gap-1">
-                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Estratégia Autorizada
-                      </Badge>
-                    )}
-
-                    {/* O botão que faltava. Fica FORA do menu "Ações" porque é
-                        a única coisa nesta tela que move o robô de verdade —
-                        escondê-lo atrás de um menu era parte do motivo de
-                        ninguém notar que ele não existia.
-
-                        Só o operador vê: quem tem papel de visualizador
-                        acompanha a disputa, não dispara sessão. */}
-                    {podeOperar && (
-                      <>
-                        <Button
-                          onClick={handleEnviarAoRobo}
-                          disabled={enviandoAoRobo}
-                          title="Abre a sessão no agente: entra no portal, navega até a disputa e lê a tela. Não envia lance — o envio segue travado até o portal ser liberado."
-                        >
-                          {enviandoAoRobo
-                            ? <><RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> Enviando…</>
-                            : <><Send className="w-4 h-4" aria-hidden="true" /> Enviar ao robô</>}
-                        </Button>
-
-                        {/* O ATALHO PRECISA VIR ANTES DO ENVIO.
-                            Uma sessão que falha dura ~13 segundos, medidos. Quem
-                            clica em enviar e só depois procura onde assistir
-                            chega quando já acabou — e o que sobra é um spinner
-                            que termina em nada, sem dizer para onde ir.
-
-                            Quando acende (`destacarAssistir`), o botão vira a
-                            ação verde e pulsa pelo `pulse-glow` — que anima só
-                            o box-shadow, sem piscar o texto. */}
-                        <Button
-                          variant={destacarAssistir ? 'default' : 'ghost'}
-                          onClick={() => {
-                            setDestacarAssistir(false);
-                            irParaTelaRemota();
-                          }}
-                          className={destacarAssistir ? 'animate-pulse-glow' : 'text-muted-foreground hover:text-foreground'}
-                          title="Abre a tela remota já conectada. A sessão pode durar poucos segundos — deixá-la aberta antes de enviar é o jeito de acompanhar desde o início."
-                        >
-                          <Monitor className="w-4 h-4" aria-hidden="true" />
-                          {destacarAssistir ? 'Assista agora — o robô está entrando' : 'Assistir ao vivo'}
-                        </Button>
-                      </>
-                    )}
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                          <Settings className="w-4 h-4" aria-hidden="true" /> Ações <ChevronDown className="w-4 h-4" aria-hidden="true" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
-                          <Info className="w-4 h-4 mr-2" aria-hidden="true" /> Detalhes da licitação
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(selectedLance.id)}>
-                          {selectedLance.status === 'aguardando' ? (
-                            <><Play className="w-4 h-4 mr-2" aria-hidden="true" /> Iniciar disputa</>
-                          ) : (
-                            <><Pause className="w-4 h-4 mr-2" aria-hidden="true" /> Pausar disputa</>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit2 className="w-4 h-4 mr-2" aria-hidden="true" /> Editar parâmetros
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-success-ink focus:text-success-ink"
-                          onClick={() => handleEndDispute('venceu')}
-                        >
-                          <Trophy className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Venceu
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleEndDispute('perdeu')}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" aria-hidden="true" /> Encerrar como Perdeu
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDelete(selectedLance.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" /> Remover disputa
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <div className="relative w-full sm:w-48">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                      <Input placeholder="Buscar item..." aria-label="Buscar item" className="pl-9" />
-                    </div>
+                  {/* O que sobrou aqui é o que IDENTIFICA a disputa. Freio,
+                      envio, tela remota, autorização e o menu "Ações" foram
+                      para a coluna da direita: eram decisões sobre a sessão
+                      espremidas na mesma linha que o nome dela, e a leitura
+                      misturava "o que é isto" com "o que faço com isto".
+                      Nenhum comportamento mudou — mesmos papéis, mesmos
+                      diálogos, mesmos avisos. */}
+                  <div className="relative w-full sm:w-48 shrink-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                    <Input placeholder="Buscar item..." aria-label="Buscar item" className="pl-9" />
                   </div>
                 </div>
 
@@ -1211,7 +1419,14 @@ export default function RoboLances() {
                   <PainelRisco lance={selectedLance} nivel={nivelAutomacao} />
                 </div>
 
-                {/* ── Bottom Panel: Mural + Simulação + Operações + Auditoria ──
+                {/* ── EIXO 6 · EVENTOS — "o que já aconteceu?" ──────────────
+                    O sexto eixo do comando. Fica no centro, e não na coluna da
+                    direita, porque é o único que precisa de largura: mural,
+                    simulação, operações e auditoria são leitura demorada, não
+                    resposta de relance. O rótulo da seção nomeia o eixo, para
+                    que ele não se confunda com o estado da sessão (que diz o
+                    que está acontecendo AGORA, e mora à direita).
+
                     Abas de ui aninhadas nas abas principais: o Radix isola os
                     dois contextos, e cada painel só monta quando ativo — o
                     mesmo que o `bottomTab === …` fazia à mão. */}
@@ -1220,7 +1435,8 @@ export default function RoboLances() {
                     value={bottomTab}
                     onValueChange={(v) => setBottomTab(v as 'mural' | 'operacoes' | 'simulacao' | 'auditoria')}
                   >
-                    <div className="px-4 pt-4">
+                    <div className="px-4 pt-4 space-y-2">
+                      <h3 className="g-titulo-secao text-foreground">Eventos</h3>
                       <TabsList>
                         <TabsTrigger value="mural">
                           <MessageSquare className="w-4 h-4 mr-1.5" aria-hidden="true" /> Mural
@@ -1268,12 +1484,19 @@ export default function RoboLances() {
                       <AuditTrailViewer sessaoId={undefined} />
                     </TabsContent>
 
+                    {/* Ligada a `sessoes_lance_real` + `lances_historico` —
+                        ver o comentário do tipo `Operation`. Antes o array
+                        nunca era preenchido e o estado vazio era permanente. */}
                     <TabsContent value="operacoes" className="m-0 p-4 space-y-2 max-h-64 overflow-y-auto">
-                      {operations.length === 0 ? (
+                      {operacoesCarregando ? (
+                        <p className="text-sm text-muted-foreground" role="status">
+                          Consultando as sessões e os lances desta disputa…
+                        </p>
+                      ) : operations.length === 0 ? (
                         <EstadoVazio
                           icone={<ListChecks />}
-                          titulo="Nenhuma operação registrada"
-                          descricao="Inicie uma disputa para ver o log de operações."
+                          titulo="O robô ainda não operou nesta disputa"
+                          descricao='Use "Enviar ao robô" para abrir uma sessão. Cada sessão e cada lance aparecem aqui.'
                           tamanho="compacto"
                         />
                       ) : (
@@ -1301,7 +1524,52 @@ export default function RoboLances() {
                 </div>
               </>
             )}
-          </div>
+          </section>
+
+          {/* ── COLUNA 3 · CHECKLIST E AÇÕES ───────────────────────────────
+              Os seis eixos que antes se misturavam. Três deles moram dentro do
+              checklist, que os agrupa com os mesmos nomes (conexão,
+              autenticação, prontidão); os outros três — limites, estado da
+              sessão e eventos — são blocos do painel.
+
+              Sem disputa selecionada, só os eixos que independem dela: se o
+              portal responde, se as credenciais valem e se o robô está de pé
+              são perguntas da empresa, não da sessão. Limites e estado da
+              sessão não têm o que dizer, e inventar um "R$ 0,00" ou um "sem
+              robô de pé" ali seria afirmar sobre uma disputa que não existe. */}
+          <aside
+            data-coluna="controle"
+            aria-label="Checklist e ações"
+            className="flex min-w-0 flex-col gap-4"
+          >
+            {selectedLance ? (
+              <PainelDeControle
+                lance={selectedLance}
+                nivel={nivelAutomacao}
+                podeOperar={podeOperar}
+                isAdmin={isAdmin}
+                limiteFinanceiro={limiteFinanceiro}
+                limiteCarregado={limiteCarregado}
+                sessaoViva={sessaoVivaDesta}
+                desfechos={estadoDoRobo?.desfechos || []}
+                paradaEmergencial={paradaEmergencial}
+                enviandoAoRobo={enviandoAoRobo}
+                destacarAssistir={destacarAssistir}
+                estrategiaAutorizada={estrategiaAutorizada}
+                onEnviarAoRobo={handleEnviarAoRobo}
+                onAssistir={() => {
+                  setDestacarAssistir(false);
+                  irParaTelaRemota();
+                }}
+                onAutorizarEstrategia={() => setAutorizacaoOpen(true)}
+                onParadaEmergencial={handleParadaEmergencial}
+                onVerEventos={() => setBottomTab('auditoria')}
+                acoes={<>{gatilhoEditar}{menuDeAcoes}</>}
+              />
+            ) : (
+              <AtivacaoChecklist somenteLeitura={!isAdmin} />
+            )}
+          </aside>
         </TabsContent>
 
         {/* ── PORTAIS TAB ── */}
@@ -1334,7 +1602,13 @@ export default function RoboLances() {
               e é justamente aí que a tentação de instalar o .pfx aparece. */}
           <AcessoManualPortal />
           <SessoesDoRobo />
-          <AtivacaoChecklist />
+          {/* O Checklist de Ativação saiu daqui e passou a viver na coluna da
+              direita da aba Disputar, onde a composição aprovada o pede — e
+              onde ele é consultado de verdade: a pergunta "o robô está pronto?"
+              se faz na hora de disputar, não numa aba de infraestrutura. Não
+              ficou nos dois lugares de propósito; o padrão visual proíbe
+              navegação duplicada, e dois painéis iguais em abas diferentes
+              convidam a acreditar que são coisas diferentes. */}
           <AgenteExternoConfig />
           <PortalHealthcheck />
           </>)}
@@ -1418,15 +1692,50 @@ export default function RoboLances() {
           </DialogHeader>
           {selectedLance && (
             <div className="divide-y divide-border">
+              {/* Nenhum travessão mudo: ou o dado real, ou `ValorIndisponivel`
+                  com a razão de ele não estar aqui. Quatro destas linhas eram
+                  `'—'` fixo no código — Empresa, CNPJ, Órgão e UASG —, e o
+                  travessão sem explicação é indistinguível de um dado que o
+                  sistema perdeu. */}
               {[
-                { icon: Building2, label: 'Empresa', value: '—' },
-                { icon: Hash, label: 'CNPJ', value: '—' },
+                {
+                  icon: Building2, label: 'Empresa',
+                  value: empresaAtiva?.razao_social
+                    ?? <ValorIndisponivel razao="Nenhuma empresa ativa selecionada" />,
+                },
+                {
+                  icon: Hash, label: 'CNPJ',
+                  value: empresaAtiva?.cnpj
+                    ?? <ValorIndisponivel razao="Nenhuma empresa ativa selecionada" />,
+                },
                 { icon: Globe, label: 'Portal', value: selectedLance.portal },
                 { icon: Hash, label: 'Licitação', value: selectedLance.edital },
-                { icon: Building2, label: 'Órgão', value: '—' },
-                { icon: Hash, label: 'UASG', value: '—' },
-                { icon: CalendarDays, label: 'Data de abertura', value: selectedLance.horario || 'Não definido' },
-                { icon: FileText, label: 'Sistema de Registro de Preços', value: 'Não' },
+                {
+                  icon: Building2, label: 'Órgão',
+                  value: orgaoCarregando
+                    ? <ValorIndisponivel razao="Consultando o processo vinculado" />
+                    : orgaoDoProcesso
+                    ?? <ValorIndisponivel
+                        razao={selectedLance.licitacaoId
+                          ? 'O processo vinculado não registra o órgão'
+                          : 'Disputa sem processo do Kanban vinculado'}
+                      />,
+                },
+                {
+                  icon: Hash, label: 'UASG',
+                  // Viaja na própria disputa desde que o Compras.gov passou a
+                  // exigir a UASG para desambiguar número de compra repetido.
+                  value: selectedLance.uasg
+                    ?? <ValorIndisponivel razao="UASG não informada no cadastro da disputa" />,
+                },
+                { icon: CalendarDays, label: 'Data de abertura', value: selectedLance.horario || <ValorIndisponivel razao="Horário da sessão não cadastrado" /> },
+                {
+                  icon: FileText, label: 'Sistema de Registro de Preços',
+                  // Dizia "Não" para toda licitação. O sistema não guarda essa
+                  // informação em lugar nenhum — afirmar "Não" é inventar um
+                  // dado sobre o edital, e SRP muda a leitura do resultado.
+                  value: <ValorIndisponivel razao="Não apurado — o cadastro não registra SRP" />,
+                },
                 { icon: TrendingDown, label: 'Valor de Referência', value: formatCurrency(selectedLance.valorReferencia) },
                 { icon: Target, label: 'Valor Inicial (1º Lance)', value: formatCurrency(selectedLance.valorInicial) },
                 { icon: AlertTriangle, label: 'Valor Mínimo (Piso)', value: formatCurrency(selectedLance.valorMinimo) },

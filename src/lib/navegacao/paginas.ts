@@ -136,7 +136,13 @@ export const paginasPadrao: PaginaPadrao[] = [
   {
     rota: '/calendario', grupo: 'Gestão de Processos', titulo: 'Calendário', icone: CalendarDays,
     descricao: 'Sessões, entregas e vencimentos no mês',
-    acao: 'Novo compromisso', padrao: 'calendario',
+    // Sem `acao`: o Calendário não cria nada. Ele mostra prazo de processo e
+    // validade de documento, que nascem em outras telas — cadastro de tarefa
+    // genérica não existe no sistema, e compromisso é de /meus-compromissos.
+    // A linha `acao: 'Novo compromisso'` que estava aqui descrevia um botão que
+    // a tela nunca teve; deixá-la no registro é convite para alguém implementar
+    // depois o botão fictício que o padrão visual proíbe.
+    padrao: 'calendario',
   },
   {
     rota: '/workflow-ia', grupo: 'Gestão de Processos', titulo: 'Workflow IA', icone: Workflow,

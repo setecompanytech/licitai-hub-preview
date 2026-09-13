@@ -9,15 +9,16 @@ import CalendarioLicitacoes from '@/components/calendario/CalendarioLicitacoes';
  * pela própria rota. A ação da tela é sincronizar a agenda (Google/Outlook/ICS)
  * e fica junto do calendário, dentro de `CalendarioLicitacoes`.
  *
- * Pendência fora deste lote: o registro ainda declara `acao: 'Novo
- * compromisso'` para `/calendario`, ação que não existe aqui — criar
- * compromisso é de `/meus-compromissos`. A linha tem que sair de `paginas.ts`.
+ * A pendência do `acao: 'Novo compromisso'` no registro foi fechada em 13/09:
+ * a linha saiu de `paginas.ts`. A tela não cria compromisso — isso é de
+ * `/meus-compromissos` —, e um registro que anuncia ação inexistente é o
+ * rascunho de um botão fictício.
  */
 export default function Calendario() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <CabecalhoPagina />
+        <CabecalhoPagina denso />
         <CalendarioLicitacoes />
       </div>
     </AppLayout>

@@ -207,7 +207,8 @@ const App = () => (
               <Route path="/relatorio-contabil" element={<ProtectedPages><RelatorioContabil /></ProtectedPages>} />
               <Route path="/gestao-contratos" element={<PlanPages><GestaoContratos /></PlanPages>} />
               <Route path="/gestao-compras"   element={<PlanPages><GestaoCompras /></PlanPages>} />
-              <Route path="/produtos"         element={<ProtectedPages><Produtos /></ProtectedPages>} />
+              {/* PlanPages e não ProtectedPages: mesma sala de `/gestao-compras`, mesma fechadura. Ver o comentário em plan-features.ts. */}
+              <Route path="/produtos"         element={<PlanPages><Produtos /></PlanPages>} />
               <Route path="/financeiro" element={<ProtectedPages><Financeiro /></ProtectedPages>} />
               {/* Subtela no caminho: /financeiro/demonstracoes. Links com
                   ?view= continuam válidos — a própria tela os traduz. */}
