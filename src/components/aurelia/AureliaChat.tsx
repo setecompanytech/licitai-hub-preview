@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, Minimize2 } from 'lucide-react';
+import { X, Send, Loader2, Plus, MessageSquare, History, Archive, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useFabArrastavel } from '@/hooks/useFabArrastavel';
 import roboAvatar from '@/assets/brand/icon-robo-avatar.png';
+import { useAureliaHistorico } from '@/hooks/useAureliaHistorico';
 
 export default function AureliaChat() {
   const [open, setOpen] = useState(false);
@@ -22,6 +23,15 @@ export default function AureliaChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const fab = useFabArrastavel();
+
+  /* Histórico (13/09/2026). A conversa vivia em `useState` e sumia no F5:
+     quem pedia análise de um edital, saía para conferir o documento e voltava,
+     encontrava a tela em branco e refazia a pergunta — outro gasto de IA, e
+     outra resposta, que raramente sai igual à primeira. */
+  const [aba, setAba] = useState<'chat' | 'historico'>('chat');
+  const [conversaId, setConversaId] = useState<string | null>(null);
+  const [ampliado, setAmpliado] = useState(false);
+  const historico = useAureliaHistorico();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +62,24 @@ export default function AureliaChat() {
     setIsLoading(true);
     setActiveTool(null);
 
+    // A conversa só nasce quando alguém fala. Criá-la ao abrir o painel
+    // encheria o histórico de linhas vazias de quem abriu e desistiu.
+    let idDaConversa = conversaId;
+    if (!idDaConversa) {
+      idDaConversa = await historico.abrirConversa(location.pathname);
+      setConversaId(idDaConversa);
+    }
+    // `ordem` é a posição na conversa que está na tela. A saudação inicial
+    // conta: ela é a primeira fala e precisa voltar igual ao reabrir.
+    const ordemDaPergunta = updatedMessages.length - 1;
+    if (idDaConversa) {
+      // Grava ANTES de perguntar. Se a resposta falhar ou a pessoa fechar a
+      // aba no meio, a pergunta sobrevive — e é ela que custou o raciocínio.
+      void historico.gravarMensagem(idDaConversa, 'user', text, ordemDaPergunta);
+    }
+
     let assistantContent = '';
+    let ferramentaUsada: string | undefined;
 
     await streamAIChat({
       messages: updatedMessages,
@@ -61,6 +88,7 @@ export default function AureliaChat() {
       onToolEvent: (evt: ToolEvent) => {
         if (evt.type === 'running') {
           setActiveTool({ name: evt.name, args: evt.args });
+          ferramentaUsada = evt.name;
         } else if (evt.type === 'done') {
           setActiveTool(null);
         }
@@ -75,7 +103,18 @@ export default function AureliaChat() {
           return [...prev, { role: 'assistant', content: assistantContent }];
         });
       },
-      onDone: () => { setIsLoading(false); setActiveTool(null); },
+      onDone: () => {
+        setIsLoading(false);
+        setActiveTool(null);
+        if (idDaConversa && assistantContent.trim()) {
+          void historico.gravarMensagem(
+            idDaConversa, 'assistant', assistantContent, ordemDaPergunta + 1, ferramentaUsada,
+          );
+        }
+        // Recarrega a lista para a conversa nova aparecer com o título que o
+        // gatilho acabou de dar a ela.
+        void historico.carregarConversas();
+      },
       onError: (err) => {
         const msg = (err === 'Invalid token' || err === 'Unauthorized')
           ? 'Sua sessão expirou. Recarregue a página (F5) e tente novamente.'
@@ -87,11 +126,30 @@ export default function AureliaChat() {
     });
   };
 
+  /**
+   * Conversa NOVA — a anterior fica guardada.
+   *
+   * Antes isto era um `setMessages` que apagava a conversa em curso e não
+   * abria nada: "novo" significava "perdi o que estava aqui", que é o oposto
+   * do que a palavra promete em qualquer outro lugar do sistema.
+   */
   const handleNewChat = () => {
+    setConversaId(null);
+    setAba('chat');
     setMessages([{
       role: 'assistant',
       content: 'Nova consulta iniciada. Como posso ajudar?'
     }]);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  /** Reabre uma conversa do histórico, inteira, na ordem em que aconteceu. */
+  const abrirDoHistorico = async (id: string) => {
+    const falas = await historico.carregarMensagens(id);
+    if (!falas) return;
+    setConversaId(id);
+    setMessages(falas);
+    setAba('chat');
   };
 
   return (
@@ -143,7 +201,12 @@ export default function AureliaChat() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow-md border border-border bg-card flex flex-col"
+            className={cn(
+              'fixed bottom-4 z-50 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow-md border border-border bg-card flex flex-col',
+              // Ampliar existe porque análise de edital vem longa: em 380px a
+              // resposta cabe em vinte linhas de três palavras.
+              ampliado ? 'w-[720px] h-[calc(100vh-2rem)]' : 'w-[380px] h-[520px]',
+            )}
             // Abre do mesmo lado em que o botão está encostado.
             // Só a posição vive em `style`: cor e raio saem de token, para
             // acompanhar o tema e aparecer nos greps de conferência.
@@ -168,8 +231,20 @@ export default function AureliaChat() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Nova consulta" aria-label="Nova consulta">
-                  <Minimize2 className="w-4 h-4" />
+                {/* O ícone era `Minimize2` — desenho de "encolher" para a ação
+                    de começar do zero. `Plus` é o que a ação faz. */}
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Nova conversa" aria-label="Nova conversa">
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost" size="icon"
+                  onClick={() => setAmpliado((v) => !v)}
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  title={ampliado ? 'Reduzir' : 'Ampliar'}
+                  aria-label={ampliado ? 'Reduzir a janela' : 'Ampliar a janela'}
+                  aria-pressed={ampliado}
+                >
+                  {ampliado ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Fechar chat">
                   <X className="w-4 h-4" />
@@ -177,8 +252,121 @@ export default function AureliaChat() {
               </div>
             </div>
 
+            {/* Abas — a conversa de agora e as anteriores.
+                Ficam abaixo da identificação e não ao lado dos botões porque
+                trocar de aba é navegação dentro do painel; fechar e ampliar são
+                ações sobre o painel. Misturar as duas naturezas na mesma fila
+                faz clicar em "Histórico" parecer que vai fechar alguma coisa. */}
+            <div
+              role="tablist"
+              aria-label="Conversas da AURÉLIA"
+              className="flex shrink-0 border-b border-border bg-card"
+            >
+              {([
+                { id: 'chat' as const, rotulo: 'Chat', icone: MessageSquare },
+                { id: 'historico' as const, rotulo: 'Histórico', icone: History },
+              ]).map((t) => (
+                <button
+                  key={t.id}
+                  role="tab"
+                  aria-selected={aba === t.id}
+                  onClick={() => {
+                    setAba(t.id);
+                    if (t.id === 'historico') void historico.carregarConversas();
+                  }}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                    aba === t.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <t.icone className="h-4 w-4" aria-hidden="true" />
+                  {t.rotulo}
+                  {t.id === 'historico' && historico.conversas.length > 0 && (
+                    <span className="tabular-nums opacity-70">({historico.conversas.length})</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Histórico — as conversas anteriores */}
+            {aba === 'historico' && (
+              <div className="flex-1 overflow-y-auto bg-background p-3">
+                {historico.erro && (
+                  <div role="alert" className="mb-3 rounded-lg border border-destructive-line bg-destructive-tint px-3 py-2 text-xs text-destructive-ink">
+                    {historico.erro}
+                    <button
+                      type="button"
+                      onClick={() => void historico.carregarConversas()}
+                      className="ml-2 font-semibold underline underline-offset-2"
+                    >
+                      Tentar novamente
+                    </button>
+                  </div>
+                )}
+
+                {historico.carregando && (
+                  <p role="status" className="flex items-center gap-2 px-1 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando conversas…
+                  </p>
+                )}
+
+                {!historico.carregando && historico.conversas.length === 0 && !historico.erro && (
+                  <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                    <History className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                    <p className="text-sm font-medium text-foreground">Nenhuma conversa guardada</p>
+                    <p className="text-xs text-muted-foreground">
+                      O que você perguntar à AURÉLIA fica aqui, e pode ser reaberto depois.
+                    </p>
+                  </div>
+                )}
+
+                <ul className="flex flex-col gap-1.5">
+                  {historico.conversas.map((c) => (
+                    <li key={c.id} className="group flex items-start gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void abrirDoHistorico(c.id)}
+                        className={cn(
+                          'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
+                          c.id === conversaId
+                            ? 'border-primary bg-primary-tint'
+                            : 'border-border bg-card hover:border-primary/40',
+                        )}
+                      >
+                        <span className="block truncate text-sm font-medium text-foreground">
+                          {/* Sem título, a conversa existe mas ninguém falou
+                              nela ainda — dizer "Sem título" seria confundir
+                              ausência de nome com ausência de assunto. */}
+                          {c.titulo ?? 'Conversa sem perguntas'}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {new Date(c.ultima_mensagem_em).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                          })}
+                          {' · '}
+                          <span className="tabular-nums">{c.total_mensagens}</span>{' '}
+                          {c.total_mensagens === 1 ? 'mensagem' : 'mensagens'}
+                        </span>
+                      </button>
+                      <Button
+                        variant="ghost" size="icon"
+                        onClick={() => void historico.arquivarConversa(c.id)}
+                        className="mt-1 h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                        title="Arquivar conversa"
+                        aria-label={`Arquivar a conversa ${c.titulo ?? 'sem título'}`}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
+            <div className={cn('flex-1 overflow-y-auto p-3 space-y-3 bg-background', aba !== 'chat' && 'hidden')}>
               {messages.map((msg, i) => (
                 <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                   <div className={cn(
@@ -218,7 +406,7 @@ export default function AureliaChat() {
             </div>
 
             {/* Input */}
-            <div className="p-3 border-t border-border bg-card">
+            <div className={cn('p-3 border-t border-border bg-card', aba !== 'chat' && 'hidden')}>
               <div className="flex gap-2">
                 <label htmlFor="aurelia-chat-input" className="sr-only">Pergunta para a AURÉLIA</label>
                 <Input

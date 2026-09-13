@@ -13249,3 +13249,40 @@ rastreabilidade nota → item → produto → saldo.
 
 Regra de domínio em `docs/nfe-entrada-e-produtos.md`; classificação do crédito
 em `src/lib/fiscal/credito-icms.ts`.
+
+
+---
+
+## 2026-09-13 — Histórico de conversas da AURÉLIA
+
+Arquivo: `supabase/migrations/20260913000002_aurelia_historico.sql`
+
+**O que resolve.** A conversa vivia em `useState`: fechar o painel guardava,
+recarregar a página apagava. Quem pedia análise de um edital, saía para
+conferir o documento e voltava, encontrava a tela em branco — e refazia a
+pergunta, com outro gasto de IA e outra resposta. O "Nova consulta" era um
+`setMessages` que apagava o que havia sem abrir nada.
+
+**`aurelia_conversas`** — `titulo` (primeira pergunta aparada, que é o que a
+pessoa reconhece na lista), `rota_origem`, `ultima_mensagem_em`,
+`total_mensagens`, `arquivada_em`. PESSOAL por `user_id`, como
+`processos_interesse`: colega da mesma empresa não lê conversa alheia.
+`empresa_id` é contexto e aceita nulo — dúvida de lei não precisa de empresa.
+
+**`aurelia_mensagens`** — `papel` (CHECK em user/assistant), `conteudo`,
+`ordem` e `ferramenta`. `UNIQUE (conversa_id, ordem)`: a resposta é gravada
+uma vez no fim do streaming, mas retry ou reconexão repetiriam a posição — o
+upsert corrige em vez de duplicar a fala. `ordem` é explícita e não derivada de
+`created_at` porque pergunta e início de resposta caem no mesmo milissegundo, e
+conversa fora de ordem é pior que conversa perdida.
+
+**Gatilho `aurelia_resumir_conversa`** mantém contagem, data da última fala e
+título. Fica no banco por dois motivos: a resposta chega em streaming e o front
+grava no fim (fechar a aba no meio deixaria a contagem errada para sempre), e
+contagem calculada em dois lugares diverge — aqui ela decide a ordem da lista,
+então divergir põe a conversa de ontem na frente da de agora. O título nasce da
+primeira pergunta e não muda depois: renomear a cada mensagem faria a lista
+dançar sob os olhos de quem procura nela.
+
+RLS `FOR ALL USING (auth.uid() = user_id) WITH CHECK (...)` nas duas tabelas.
+Gatilho de `updated_at` em `aurelia_conversas`.
