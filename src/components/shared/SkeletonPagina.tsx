@@ -1,4 +1,4 @@
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
+import BrandLogo from '@/components/shared/BrandLogo';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
@@ -66,48 +66,50 @@ export default function SkeletonPagina({
   }
 
   return (
-    <div role="status" aria-busy="true" className="min-h-screen bg-background flex flex-col">
+    <div role="status" aria-busy="true" className="min-h-screen bg-background flex items-start">
       <span className="sr-only">Carregando</span>
 
-      {/* Barra do topo — as mesmas medidas do AppLayout (h-14 / sm:h-16,
-          `bg-navy`), para a barra verdadeira substituir esta sem deslocar um
-          pixel do que está abaixo. Se a altura do cabeçalho mudar lá, muda aqui
-          e no `top-` da AppSidebar: os três andam juntos. */}
+      {/* Coluna lateral navy — 248px e marca de 72px, como a real; some no
+          mobile, como a real. As medidas andam junto com AppLayout/AppSidebar:
+          esqueleto de outro tamanho faz a moldura "corrigir" ao montar. */}
       <div
         aria-hidden="true"
-        className="sticky top-0 z-40 h-14 sm:h-16 bg-navy border-b border-navy-hover flex items-center gap-3 px-3 sm:px-5 lg:px-7"
+        className="hidden md:flex w-[248px] shrink-0 flex-col bg-sidebar border-r border-sidebar-border sticky top-0 h-screen"
       >
-        <PraefectusLogo size="md" variant="light" />
-        {/* A mesma ordem do cabeçalho de verdade — sino, sol, engrenagem,
-            divisória, empresa, avatar. Esqueleto que troca as peças de lugar
-            faz a barra real "corrigir" a posição ao montar, e o olho lê isso
-            como defeito. */}
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="w-8 h-8 rounded-lg bg-white/10" />
-          <div className="hidden sm:block w-8 h-8 rounded-lg bg-white/10" />
-          <div className="hidden sm:block w-8 h-8 rounded-lg bg-white/10" />
-          <span className="hidden lg:block w-px h-6 bg-white/15 mx-1.5" />
-          <div className="hidden lg:block w-[168px] h-9 rounded-lg bg-white/10" />
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 ring-1 ring-white/20" />
+        <div className="flex items-center h-[72px] px-4 border-b border-sidebar-border">
+          <BrandLogo variant="dark" className="w-[150px]" />
         </div>
-      </div>
-
-      <div className="flex flex-1 min-h-0">
-        {/* Coluna lateral — 264px, como a real. Some no mobile, como a real. */}
-        <div
-          aria-hidden="true"
-          className="hidden md:flex w-[264px] shrink-0 flex-col gap-1 border-r border-border bg-card p-3"
-        >
-          <Skeleton className="h-9 w-full rounded-lg mb-2" />
+        <div className="flex flex-col gap-1 p-3">
+          <div className="h-9 w-full rounded-lg bg-sidebar-accent/60 mb-2" />
           {Array.from({ length: 9 }, (_, i) => (
             <div key={i} className="flex items-center gap-2.5 px-2 py-2">
-              <Skeleton className="h-4 w-4 rounded" />
-              <Skeleton className="h-3 rounded" style={{ width: `${52 + ((i * 13) % 34)}%` }} />
+              <div className="h-4 w-4 rounded bg-sidebar-accent" />
+              <div className="h-3 rounded bg-sidebar-accent" style={{ width: `${52 + ((i * 13) % 34)}%` }} />
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="flex-1 min-w-0 max-w-[1440px] mx-auto px-3 py-3 sm:p-6">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        {/* Barra do topo branca — a mesma ordem do cabeçalho de verdade: lupa,
+            sino, sol, engrenagem, divisória, empresa, avatar. */}
+        <div
+          aria-hidden="true"
+          className="sticky top-0 z-30 h-16 md:h-[72px] bg-card border-b border-border flex items-center gap-3 px-4 md:px-8"
+        >
+          <BrandLogo className="w-[150px] md:hidden" />
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="w-8 h-8 rounded-lg bg-muted" />
+            <div className="w-8 h-8 rounded-lg bg-muted" />
+            <div className="hidden sm:block w-8 h-8 rounded-lg bg-muted" />
+            <div className="hidden sm:block w-8 h-8 rounded-lg bg-muted" />
+            <span className="hidden lg:block w-px h-6 bg-border mx-1.5" />
+            <div className="hidden lg:block w-[168px] h-9 rounded-lg bg-muted" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-muted ring-1 ring-border" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 p-4 md:p-8">
           <SkeletonCorpo cartoes={cartoes} />
         </div>
       </div>

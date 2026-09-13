@@ -5,15 +5,8 @@ import { TRIO_VALOR, FUNCIONALIDADES, PONTOS_IA, ETAPAS } from './dados';
 /** Trio de proposta de valor logo abaixo do hero. */
 export function TrioValor() {
   return (
-    <section className="lp-section lp-section--alt" aria-labelledby="trio-titulo">
+    <section className="lp-trio-hero" aria-label="O que a plataforma faz">
       <div className="lp-container">
-        <div className="lp-sec-head lp-sec-head--center">
-          <span className="lp-tag">Por que Praefectus</span>
-          <h2 id="trio-titulo" className="lp-h2">
-            Menos abas abertas, mais licitações <span className="lp-destaque">ganhas</span>
-          </h2>
-          <p className="lp-lead">Tudo que o licitante precisa em uma plataforma integrada — do monitoramento à entrega do contrato.</p>
-        </div>
         <div className="lp-trio">
           {TRIO_VALOR.map((item) => (
             <article key={item.titulo} className="lp-card">

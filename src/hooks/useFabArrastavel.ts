@@ -57,7 +57,10 @@ function carregar(): PosicaoFab {
 
 /** x em px correspondente ao lado onde o botão está encostado. */
 function xDoLado(lado: LadoFab): number {
-  return lado === 'esquerda' ? MARGEM : Math.max(MARGEM, window.innerWidth - TAMANHO - MARGEM);
+  // À esquerda, no desktop, a sidebar navy ocupa até 248px: o botão navy
+  // sumiria sobre ela. Encosta depois da barra.
+  const esquerda = window.innerWidth >= 768 ? 248 + MARGEM : MARGEM;
+  return lado === 'esquerda' ? esquerda : Math.max(MARGEM, window.innerWidth - TAMANHO - MARGEM);
 }
 
 export function useFabArrastavel() {

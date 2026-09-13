@@ -22,7 +22,7 @@ export default function EmpresaSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm font-medium max-w-[280px]">
+        <button className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm font-medium text-foreground max-w-[280px]">
           <Building2 className="w-4 h-4 text-accent flex-shrink-0" />
           <span className="truncate">{label}</span>
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />

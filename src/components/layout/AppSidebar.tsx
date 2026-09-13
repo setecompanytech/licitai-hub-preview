@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 import { navGroups, type NavGroup } from '@/lib/navegacao/menu';
+import { useTemMouse } from '@/hooks/useTemMouse';
+import BrandLogo from '@/components/shared/BrandLogo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -21,10 +23,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *
  * Agora a barra tem dois estados e o menor deles ainda navega:
  *
- *  - **trilho** (56px): só ícones, rótulo no tooltip, e o botão de expandir no
+ *  - **trilho** (72px): só ícones, rótulo no tooltip, e o botão de expandir no
  *    topo. Grupo com várias páginas abre um flyout à direita com elas — sem
  *    isso o trilho só serviria para os grupos de um destino só.
- *  - **coluna** (264px): busca, grupos em sanfona, rótulos. Como sempre foi.
+ *  - **coluna** (248px): busca, grupos em sanfona, rótulos. Como sempre foi.
  *
  * O botão que alterna mora AQUI, no topo da própria barra, nos dois estados.
  * A barra do topo perdeu o hambúrguer: quem controla a barra lateral é a
@@ -55,7 +57,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  *  - item ativo: fundo tingido, texto na cor de ação e marcador na borda esquerda.
  */
 interface Props {
-  /** true = coluna de 264px com rótulos; false = trilho de 56px só com ícones. */
+  /** true = coluna de 248px com rótulos; false = trilho de 72px só com ícones. */
   aberta?: boolean;
   /** Alterna entre trilho e coluna. Chamado pelos botões no topo da barra. */
   onAlternar?: () => void;
@@ -158,7 +160,7 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
           onMouseEnter={mostrarTrilho}
           onFocus={mostrarTrilho}
           onClick={mostrarTrilho}
-          className="nao-imprime hidden md:block fixed left-0 top-16 bottom-0 w-2.5 z-30 group cursor-pointer outline-none"
+          className="nao-imprime hidden md:block fixed left-0 top-0 bottom-0 w-2.5 z-40 group cursor-pointer outline-none"
         >
           <span
             aria-hidden="true"
@@ -170,7 +172,7 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
       {/* A coluna aparece a partir de 768px. O protótipo a esconde abaixo de
           900px, mas ali ela some junto com o logo e a busca; aqui a barra do
           topo já carrega esses dois, então ela cabe mais cedo. Abaixo disso,
-          264px comeriam um terço da tela e a gaveta do topo é o caminho.
+          248px comeriam um terço da tela e a gaveta do topo é o caminho.
 
           Em fluxo (coluna, ou trilho sem mouse), a largura anima e o
           `overflow-hidden` recorta: cada estado desenha o seu conteúdo com
@@ -193,21 +195,31 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
           if (autoEsconde && !e.currentTarget.contains(e.relatedTarget as Node | null)) esconderComAtraso();
         }}
         className={cn(
-          'nao-imprime hidden md:flex flex-shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border z-30 overflow-hidden ease-out',
+          'nao-imprime hidden md:flex flex-shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border z-40 overflow-hidden ease-out',
           autoEsconde
             ? cn(
-                'fixed left-0 top-16 bottom-0 w-14 transition-transform duration-200',
+                'fixed left-0 top-0 bottom-0 w-[72px] transition-transform duration-200',
                 trilhoVisivel ? 'translate-x-0 shadow-lg' : '-translate-x-full',
               )
             : cn(
-                'sticky top-16 h-[calc(100vh-4rem)] transition-[width] duration-200',
-                aberta ? 'w-[264px]' : 'w-14',
+                'sticky top-0 h-screen transition-[width] duration-200',
+                aberta ? 'w-[248px]' : 'w-[72px]',
               ),
         )}
       >
       {aberta ? (
-        <div className="flex flex-col w-[264px] h-full">
-          <div className="flex items-center gap-1.5 pl-4 pr-2 pt-4 pb-2.5">
+        <div className="flex flex-col w-[248px] h-full">
+          {/* A marca mora aqui no desktop (versão para fundo escuro), na mesma
+              altura da barra branca ao lado — as duas linhas se alinham. */}
+          <div className="flex items-center justify-between h-[72px] px-4 border-b border-sidebar-border shrink-0">
+            <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex items-center">
+              <BrandLogo variant="dark" className="w-[150px]" />
+            </Link>
+            <BotaoComDica rotulo="Recolher menu" onClick={onAlternar}>
+              <PanelLeftClose className="w-5 h-5" aria-hidden="true" />
+            </BotaoComDica>
+          </div>
+          <div className="flex items-center gap-1.5 px-4 pt-3 pb-2.5">
             <div className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-lg border border-sidebar-border focus-within:border-sidebar-ring transition-colors">
               <Search className="w-4 h-4 text-sidebar-foreground/60 flex-shrink-0" aria-hidden="true" />
               <input
@@ -219,9 +231,6 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
                 className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50"
               />
             </div>
-            <BotaoComDica rotulo="Recolher menu" onClick={onAlternar}>
-              <PanelLeftClose className="w-5 h-5" aria-hidden="true" />
-            </BotaoComDica>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 pb-6 scrollbar-thin">
@@ -315,7 +324,14 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
           </nav>
         </div>
       ) : (
-        <div className="flex flex-col items-center w-14 h-full pt-3 pb-4">
+        <div className="flex flex-col items-center w-[72px] h-full pb-4">
+          <Link
+            to="/dashboard"
+            aria-label="Praefectus — página inicial"
+            className="flex items-center justify-center h-[72px] w-full border-b border-sidebar-border shrink-0 mb-3"
+          >
+            <BrandLogo variant="dark" mode="symbol" width={32} />
+          </Link>
           <BotaoComDica rotulo="Expandir menu" onClick={onAlternar}>
             <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
           </BotaoComDica>
@@ -329,11 +345,11 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
             <Search className="w-5 h-5" aria-hidden="true" />
           </BotaoComDica>
 
-          <div className="w-7 h-px bg-border my-2" aria-hidden="true" />
+          <div className="w-7 h-px bg-sidebar-border my-2" aria-hidden="true" />
 
           {/* A busca por texto não existe no trilho: sem rótulo não há o que
               filtrar. A lupa acima expande a coluna e já foca o campo. */}
-          <nav className="flex-1 w-full flex flex-col items-center gap-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-2">
+          <nav className="flex-1 w-full flex flex-col items-center gap-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-4">
             {grupos.map((grupo) => {
               const Icone = grupo.icone ?? grupo.items[0].icon;
               const temAtivo = grupo.items.some((it) => ehAtivo(it.path));
@@ -374,27 +390,6 @@ export default function AppSidebar({ aberta = true, onAlternar }: Props) {
 }
 
 /**
- * Há um mouse de verdade? `hover: hover` sozinho mente em alguns Android;
- * junto com `pointer: fine` separa mouse/trackpad de dedo/caneta.
- */
-function useTemMouse() {
-  const consulta = '(hover: hover) and (pointer: fine)';
-  const [tem, setTem] = useState(() =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia(consulta).matches
-      : false,
-  );
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia(consulta);
-    const aoMudar = (e: MediaQueryListEvent) => setTem(e.matches);
-    mq.addEventListener('change', aoMudar);
-    return () => mq.removeEventListener('change', aoMudar);
-  }, []);
-  return tem;
-}
-
-/**
  * Botão quadrado do trilho, com o rótulo no tooltip à direita.
  *
  * O `aria-label` carrega o mesmo texto do tooltip: leitor de tela não faz
@@ -423,7 +418,7 @@ function BotaoComDica({
           className={cn(
             'relative flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors',
             ativo
-              ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-2')
+              ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-4')
               : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
           )}
           {...resto}
@@ -479,7 +474,7 @@ function GrupoNoTrilho({
               className={cn(
                 'relative flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors',
                 temAtivo
-                  ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-2')
+                  ? cn('bg-sidebar-accent text-sidebar-accent-foreground', MARCADOR_ATIVO, 'before:-left-4')
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/60',
                 flyoutAberto && !temAtivo && 'bg-sidebar-accent/60',
               )}

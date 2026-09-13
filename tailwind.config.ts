@@ -72,6 +72,7 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           tint: "hsl(var(--primary-tint))",
+          hover: "hsl(var(--primary-hover))",
         },
         // Navy da marca, em três passos. É a cor predominante do rebrand:
         // header, splash e véu do login são todos ela.

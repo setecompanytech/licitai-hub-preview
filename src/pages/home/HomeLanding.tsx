@@ -8,6 +8,7 @@ import FloatingChat from '@/components/chat/FloatingChat';
 import { storeUtmParams } from '@/lib/tracking';
 import { GRUPOS_FUNCIONALIDADES, FOOTER_COLUNAS } from './dados';
 import { TrioValor, GridFuncionalidades, FaixaIA, Processo } from './SecoesConteudo';
+import HeroIlustracao from './HeroIlustracao';
 import { Numeros, Depoimentos, Faq } from './SecoesInterativas';
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -91,7 +92,8 @@ function Header() {
         </nav>
 
         <div className="lp-header__cta">
-          <Link to="/auth" className="lp-btn lp-btn--solid">Entrar</Link>
+          <Link to="/auth" className="lp-btn lp-btn--ghost lp-header__entrar">Entrar</Link>
+          <Link to="/contato" className="lp-btn lp-btn--solid lp-header__demo">Ver demonstração</Link>
           <button
             type="button"
             className="lp-menu-btn"
@@ -111,6 +113,9 @@ function Header() {
           <a href="#processo" onClick={() => setMenuAberto(false)}>Como funciona</a>
           <a href="#faq" onClick={() => setMenuAberto(false)}>FAQ</a>
           <Link to="/sobre" onClick={() => setMenuAberto(false)}>Sobre</Link>
+          <Link to="/solucoes" onClick={() => setMenuAberto(false)}>Soluções</Link>
+          <Link to="/auth" onClick={() => setMenuAberto(false)}>Entrar</Link>
+          <Link to="/contato" onClick={() => setMenuAberto(false)}>Ver demonstração</Link>
         </nav>
       )}
     </header>
@@ -118,96 +123,6 @@ function Header() {
 }
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
-
-/**
- * Mockup do Kanban em CSS puro dentro de moldura de browser.
- * 0 KB de imagem, nítido em qualquer densidade e sem layout shift
- * (o aspect-ratio reserva a área antes da pintura).
- */
-function MockupKanban() {
-  const colunas: { nome: string; qtd: number; cards: { chip?: 'disputa' | 'ok' | 'neutro'; chipTexto?: string; valor: string }[] }[] = [
-    {
-      nome: 'Proposta Enviada',
-      qtd: 4,
-      cards: [
-        { valor: 'R$ 300.000' },
-        { chip: 'neutro', chipTexto: 'PNCP', valor: 'R$ 92.400' },
-      ],
-    },
-    {
-      nome: 'Em Disputa',
-      qtd: 2,
-      cards: [
-        { chip: 'disputa', chipTexto: 'ROBÔ ATIVO', valor: 'R$ 148.700' },
-        { valor: 'R$ 61.000' },
-      ],
-    },
-    {
-      nome: 'Vencida',
-      qtd: 3,
-      cards: [
-        { chip: 'ok', chipTexto: 'HOMOLOGADA', valor: 'R$ 512.300' },
-        { valor: 'R$ 87.150' },
-      ],
-    },
-  ];
-
-  return (
-    <div className="lp-browser" role="img" aria-label="Ilustração do Kanban de licitações do Praefectus, com processos em Proposta Enviada, Em Disputa e Vencida">
-      <div className="lp-browser__bar" aria-hidden="true">
-        <span className="lp-browser__dots"><span /><span /><span /></span>
-        <span className="lp-browser__url">app.praefectus.com.br/kanban</span>
-      </div>
-      <div className="lp-browser__body" aria-hidden="true">
-        {colunas.map((col) => (
-          <div key={col.nome} className="lp-kb-col">
-            <span className="lp-kb-col__head">
-              {col.nome} <em>{col.qtd}</em>
-            </span>
-            {col.cards.map((card, i) => (
-              <div key={i} className="lp-kb-card">
-                <span className="lp-kb-card__linha" />
-                <span className="lp-kb-card__linha lp-kb-card__linha--curta" />
-                <span className="lp-kb-card__meta">
-                  <span className="lp-kb-card__valor">{card.valor}</span>
-                  {card.chipTexto && (
-                    <span className={`lp-kb-chip${card.chip === 'ok' ? ' lp-kb-chip--ok' : card.chip === 'neutro' ? ' lp-kb-chip--neutro' : ''}`}>
-                      {card.chipTexto}
-                    </span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BandaPortais() {
-  const portais = [
-    'PNCP', 'ComprasNet', 'BLL', 'Licitações-e', 'BEMLICITA',
-    'Portal de Minas', 'TCE-PR', 'e-Licitações RS', 'BNC', 'ISS.net'
-  ];
-  return (
-    <div className="lp-banda" aria-label="Portais monitorados pelo Praefectus">
-      <div className="lp-container">
-        <div className="lp-banda__inner">
-          <span className="lp-banda__label">13 portais monitorados</span>
-          <div className="lp-banda__portais">
-            {portais.map(p => (
-              <span key={p} className="lp-portal-chip">
-                <span aria-hidden="true" />
-                {p}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Hero() {
   return (
@@ -219,7 +134,8 @@ function Hero() {
           <div className="lp-hero__col">
             <p className="lp-eyebrow">Gestão pública, mais oportunidades</p>
             <h1 id="hero-titulo" className="lp-h1">
-              Sua próxima oportunidade{' '}
+              Sua próxima<br />
+              oportunidade<br />
               <span className="lp-destaque">começa aqui.</span>
             </h1>
             <p className="lp-lead" style={{ maxWidth: '48ch' }}>
@@ -235,12 +151,9 @@ function Hero() {
               </Link>
             </div>
           </div>
-          <div className="lp-browser-wrap">
-            <MockupKanban />
-          </div>
+          <HeroIlustracao />
         </div>
       </section>
-      <BandaPortais />
     </>
   );
 }

@@ -1,15 +1,14 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
 import BrandLogo from '@/components/shared/BrandLogo';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppTopNav from './AppTopNav';
 import AppSidebar from './AppSidebar';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Search, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette, Zap, Download } from 'lucide-react';
+import { Bell, Search, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
-import AlertaBadge from '@/components/alertas/AlertaBadge';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import AureliaChat from '@/components/aurelia/AureliaChat';
 import GlobalSearch from '@/components/search/GlobalSearch';
@@ -23,6 +22,7 @@ import MeuPerfilModal from '@/components/perfil/MeuPerfilModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAvatarUrl } from '@/hooks/useAvatarPerfil';
+import { useTemMouse } from '@/hooks/useTemMouse';
 
 const profileMenuItems = [
   { label: 'Dados da Empresa', icon: Building2, path: '/configuracoes', hash: '#empresa' },
@@ -35,15 +35,15 @@ const profileMenuItems = [
 ];
 
 /**
- * @param amplo  Solta o limite de 1.440px para telas que precisam de largura.
- *
- * O quadro do Kanban tem sete colunas; em 1.440px elas não cabem e a última
- * saía cortada, sem barra de rolagem à vista. Espremer as colunas resolveria a
- * conta e pioraria a leitura dos cartões — em tela larga havia 500px de sobra
- * fora do limite, que é o que este modo aproveita.
+ * Moldura de toda tela interna (identidade 12/09): sidebar navy de altura
+ * total à esquerda (248px; trilho de 72px), barra branca de 72px SÓ sobre o
+ * conteúdo, e o conteúdo em #F5F7FA com 32px de respiro — sem teto de
+ * largura, para tabela e Kanban usarem a tela toda (o antigo `amplo` saiu:
+ * era a exceção que virou regra).
  */
-const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: boolean }>(function AppLayout({ children, amplo = false }, _ref) {
+const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
+  const temMouse = useTemMouse();
   const [profileOpen, setProfileOpen] = useState(false);
   /* A escolha entre trilho e coluna fica gravada no navegador: quem trabalha
      com o trilho não quer reabrir a coluna a cada tela. `try` porque navegador
@@ -132,23 +132,31 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top header bar */}
-      {/* LICITA360 — barra do topo CLARA sobre a sidebar escura; a marca vive
-          aqui (a sidebar começa abaixo dela), na versão principal navy+verde. */}
-      <header className="nao-imprime sticky top-0 z-40 h-14 sm:h-16 bg-card border-b border-border flex items-center px-3 sm:px-5 lg:px-7 gap-1.5 sm:gap-3">
+    <div className="min-h-screen bg-background flex items-start">
+      <AppSidebar aberta={menuAberto} onAlternar={() => setMenuAberto((o) => !o)} />
+
+      {/* Coluna do conteúdo: barra do topo + main. O `min-w-0` é obrigatório —
+          sem ele uma tabela com overflow-x empurra a largura da página. */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+      {/* Barra do topo CLARA, só sobre o conteúdo (a sidebar navy é irmã, de
+          altura total, e carrega a marca no desktop). z-30 fica ABAIXO do
+          trilho auto-escondido (z-40), que precisa passar por cima dela. */}
+      <header className="nao-imprime sticky top-0 z-30 h-16 md:h-[72px] bg-card border-b border-border flex items-center px-4 md:px-8 gap-2 sm:gap-3">
         {/* O hambúrguer que ficava aqui saiu em 10/09/2026: quem alterna a
             barra lateral é o botão no topo da própria barra (ver AppSidebar).
             Abaixo de 768px a gaveta do AppTopNav continua com o seu botão. */}
 
-        {/* Logo */}
-        <button
-          onClick={() => navigate('/dashboard')}
-          aria-label="Praefectus — página inicial"
-          className="flex items-center flex-shrink-0"
-        >
-          <BrandLogo className="w-[150px] md:w-[200px]" />
-        </button>
+        {/* Marca: no celular vive aqui (a sidebar some); no desktop vive na
+            sidebar — e quando o trilho se esconde (mouse + menu recolhido), o
+            símbolo fica aqui para a marca não sumir da tela. */}
+        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex items-center flex-shrink-0 md:hidden">
+          <BrandLogo className="w-[150px]" />
+        </Link>
+        {!menuAberto && temMouse && (
+          <Link to="/dashboard" aria-label="Praefectus — página inicial" className="hidden md:flex items-center flex-shrink-0">
+            <BrandLogo mode="symbol" width={36} />
+          </Link>
+        )}
 
         {/* REBRAND — a partir de `lg` quem navega é a barra lateral, como no
             protótipo. O menu horizontal continua vivo abaixo desse ponto: ele
@@ -175,8 +183,6 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
             quarto de uma fileira de cinco botões, e a pessoa procura ação onde
             só há informação. */}
         <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
-          {/* Sobre o navy, os controles do topo são claros — eles não seguem a
-              superfície do tema, seguem a barra. */}
           <button
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
@@ -285,12 +291,8 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         </div>
       </header>
 
-      {/* Corpo: barra lateral fixa + conteúdo, como no protótipo */}
-      <div className="flex items-start">
-        <AppSidebar aberta={menuAberto} onAlternar={() => setMenuAberto((o) => !o)} />
-
-        {/* Main content */}
-        <main className={`flex-1 min-w-0 ${amplo ? 'max-w-[1920px]' : 'max-w-[1440px]'} mx-auto px-3 py-3 sm:p-6`}>
+        {/* Conteúdo: 16px no celular, 32px no desktop; sem teto de largura. */}
+        <main className="flex-1 min-w-0 p-4 md:p-8">
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">
@@ -300,7 +302,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode; amplo?: bool
         {/* O canto dos lembretes: convocação de pregoeiro (urgente, em cima) e
             vencimento de certidão dividem a MESMA pilha — dois `fixed` no mesmo
             ponto se sobrepunham. O contêiner não captura clique quando vazio. */}
-        <div className="pointer-events-none fixed right-5 top-[76px] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
+        <div className="pointer-events-none fixed right-5 top-[84px] z-40 flex w-[min(316px,calc(100vw-2.5rem))] flex-col gap-2.5 [&>*]:pointer-events-auto">
           <LembreteDeConvocacao />
           <LembreteDeVencimento />
         </div>

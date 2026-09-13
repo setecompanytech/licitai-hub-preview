@@ -380,9 +380,13 @@ Mexeu numa, confira as outras duas — não há erro de compilação para avisar
 
 | | Onde |
 | --- | --- |
-| Altura do cabeçalho (`h-14 sm:h-16`) | `AppLayout.tsx` |
-| Onde a lateral gruda (`top-16` / `h-[calc(100vh-4rem)]`) | `AppSidebar.tsx` |
-| A moldura do esqueleto (mesma altura, **e a mesma ordem das peças**) | `SkeletonPagina.tsx` |
+| Altura da barra do topo (`h-16 md:h-[72px]`, só sobre o conteúdo) | `AppLayout.tsx` |
+| A lateral de altura total (`sticky top-0 h-screen`, 248px / trilho 72px, marca de 72px no topo) | `AppSidebar.tsx` |
+| A moldura do esqueleto (mesmas medidas, **e a mesma ordem das peças**) | `SkeletonPagina.tsx` |
+
+> Desde 12/09/2026 a sidebar é irmã da coluna de conteúdo (não começa mais
+> abaixo da barra): a marca vive nela no desktop e na barra branca só no
+> celular. O trilho auto-escondido é `z-40`, acima da barra (`z-30`).
 
 ### As outras regras rígidas
 
@@ -941,8 +945,8 @@ Resolve o limite e o enquadramento sem embarcar um editor de recorte.
 
 O cabeçalho subiu de 48/56px para 56/64px e a esfera do avatar de 28/32px para
 36/40px, com anel — sobre o navy, círculo sem contorno encosta no fundo e some.
-**As três medidas andam juntas**: `AppLayout`, o `top-` da `AppSidebar` e a
-moldura do `SkeletonPagina`.
+**As três medidas andam juntas**: `AppLayout`, a altura total da `AppSidebar`
+(`top-0 / h-screen`, desde 12/09) e a moldura do `SkeletonPagina`.
 
 **Por que o grupo "Painel" deixou de existir.** Ele abria para mostrar
 *Dashboard* e *Analytics* — e "Painel" e "Dashboard" são a mesma palavra em dois

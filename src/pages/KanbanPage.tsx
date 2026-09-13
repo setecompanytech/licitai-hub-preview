@@ -373,7 +373,7 @@ export default function KanbanPage() {
   const ds = dragStateRef.current;
 
   return (
-    <AppLayout amplo>
+    <AppLayout>
       <div className="mb-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Licitações</h1>
         <p className="text-base text-muted-foreground mt-1">

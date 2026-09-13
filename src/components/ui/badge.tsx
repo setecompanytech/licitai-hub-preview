@@ -12,6 +12,14 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        // Famílias semânticas em tinta suave (identidade 12/09): fundo `*-tint`,
+        // texto `*-ink`, contorno `*-line`. Status sempre com TEXTO — a cor é
+        // reforço, nunca a única pista.
+        success: "border-success-line bg-success-tint text-success-ink",
+        warning: "border-warning-line bg-warning-tint text-warning-ink",
+        danger: "border-destructive-line bg-destructive-tint text-destructive-ink",
+        info: "border-border bg-muted text-foreground",
+        muted: "border-transparent bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {

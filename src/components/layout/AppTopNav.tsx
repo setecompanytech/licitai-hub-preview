@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import PraefectusLogo from '@/components/shared/PraefectusLogo';
-import { useLocation, useNavigate } from 'react-router-dom';
+import BrandLogo from '@/components/shared/BrandLogo';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -216,21 +216,21 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
 
       {/* Mobile drawer */}
       <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
-        <SheetContent side="left" className="p-0 w-[280px] bg-card">
-          <div className="flex items-center justify-between px-4 h-14 border-b border-border">
-            <div className="flex items-center gap-2">
-              <PraefectusLogo size="md" />
-            </div>
+        <SheetContent side="left" className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border [&>button]:text-sidebar-foreground">
+          <div className="flex items-center justify-between px-4 h-16 border-b border-sidebar-border shrink-0">
+            <Link to="/dashboard" aria-label="Praefectus — página inicial" onClick={() => setMobileDrawerOpen(false)} className="flex items-center">
+              <BrandLogo variant="dark" className="w-[150px]" />
+            </Link>
           </div>
 
-          <nav className="flex-1 py-3 px-3 overflow-y-auto max-h-[calc(100vh-120px)]">
+          <nav className="flex-1 min-h-0 py-3 px-3 overflow-y-auto">
             {filteredNavGroups.map((group) => {
               const isOpen = mobileOpenGroups[group.title] !== false;
               return (
                 <div key={group.title} className="mb-1">
                   <button
                     onClick={() => setMobileOpenGroups(prev => ({ ...prev, [group.title]: !isOpen }))}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
                   >
                     <span>{group.title}</span>
                     <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', !isOpen && '-rotate-90')} />
@@ -245,7 +245,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                             onClick={() => handleNav(item.path)}
                             className={cn(
                               'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all',
-                              isActive ? 'bg-accent/10 text-accent' : 'text-foreground hover:bg-muted/50 hover:text-foreground'
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/60'
                             )}
                           >
                             <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -259,32 +259,12 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
               );
             })}
 
-            {isAdmin && (
-              <div className="mb-1 mt-2 pt-2 border-t border-border">
-                <p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-accent/70">Admin</p>
-                <div className="space-y-0.5">
-                  {adminItems.map((item) => (
-                    <button
-                      key={item.path}
-                      onClick={() => handleNav(item.path)}
-                      className={cn(
-                        'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all',
-                        location.pathname === item.path ? 'bg-accent/10 text-accent' : 'text-foreground hover:bg-muted/50'
-                      )}
-                    >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </nav>
 
-          <div className="p-3 border-t border-border">
+          <div className="p-3 border-t border-sidebar-border">
             <button
               onClick={async () => { await signOut(); navigate('/'); setMobileDrawerOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/5 transition-all"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-all"
             >
               <LogOut className="w-4 h-4 flex-shrink-0" />
               <span>Sair da conta</span>
