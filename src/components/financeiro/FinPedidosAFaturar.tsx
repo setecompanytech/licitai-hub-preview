@@ -155,18 +155,26 @@ export default function FinPedidosAFaturar() {
         if (ci?.descricao) descricaoItem = ci.descricao;
         if (ci?.produto_id) {
           const { data: p } = await supabase.from('produtos')
-            .select('codigo, descricao, unidade, ncm, cfop, cst_icms, csosn, p_icms, p_pis, p_cofins, origem_mercadoria')
+            .select('codigo, descricao, unidade, ncm, cest, origem_mercadoria')
             .eq('id', ci.produto_id).maybeSingle();
           if (p) {
+            // Só a FICHA DA MERCADORIA atravessa para a saída. CFOP, CST/CSOSN
+            // e alíquotas ficaram de fora de propósito, e não é economia de
+            // digitação: são dados da operação de quem VENDEU para nós.
+            //
+            // O CFOP era o pior: `produtos.cfop` vinha gravado com o código da
+            // nota de ENTRADA, então o emissor abria pré-preenchido com 1.102
+            // numa venda que precisa de 5.102 — rejeição 733 da SEFAZ para
+            // quem não conferisse. Deixar o campo vazio faz o emissor aplicar o
+            // padrão de saída dele, que é o comportamento correto.
+            //
+            // CST/CSOSN e alíquotas dependem do NOSSO regime e da operação:
+            // comprar de um Simples não torna a nossa venda Simples.
             fiscal = {
               codigo: (p as any).codigo || '',
               ncm: (p as any).ncm || '',
-              cfop: (p as any).cfop || '',
+              cest: (p as any).cest || '',
               unidade: (p as any).unidade || ci.unidade || 'UN',
-              cst_csosn: (p as any).csosn || (p as any).cst_icms || '',
-              aliq_icms: Number((p as any).p_icms) || 0,
-              aliq_pis: Number((p as any).p_pis) || 0,
-              aliq_cofins: Number((p as any).p_cofins) || 0,
               origem: (p as any).origem_mercadoria || '0',
             };
             if ((p as any).descricao) descricaoItem = (p as any).descricao;

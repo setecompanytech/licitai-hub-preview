@@ -15,6 +15,19 @@ export interface NFeItemData {
   v_desc: number;
   cst_icms: string;
   csosn: string;
+  /**
+   * Origem da mercadoria — `prod > ICMS > * > orig` (0 nacional, 1 importado
+   * direto, 2 importado do mercado interno, …, 8).
+   *
+   * É o primeiro dígito do CST/CSOSN e, ao contrário do resto deles, ATRAVESSA
+   * a operação: quem compra um produto importado revende um produto importado.
+   * A saída precisa dele (`FinPedidosAFaturar` monta `origem` a partir de
+   * `produtos.origem_mercadoria`), e até 13/09 ele simplesmente não era lido
+   * daqui — a coluna existia e só se preenchia à mão, então toda venda de
+   * produto importado saía declarada como nacional, que é fato inverídico na
+   * nota.
+   */
+  orig: string;
   cst_pis: string;
   cst_cofins: string;
   p_icms: number;
@@ -164,6 +177,10 @@ export function parseNFeXML(xmlString: string): NFeData {
       v_desc: parseFloat(det.querySelector('prod vDesc')?.textContent || '0'),
       cst_icms: det.querySelector('ICMS CST')?.textContent ?? '',
       csosn: det.querySelector('CSOSN')?.textContent ?? '',
+      // `orig` vive dentro do grupo de tributação escolhido (ICMS00, ICMS60,
+      // ICMSSN102…), que muda conforme o regime do emitente. Buscar por
+      // `ICMS orig` alcança qualquer um deles sem enumerar os vinte grupos.
+      orig: det.querySelector('ICMS orig')?.textContent ?? '',
       cst_pis: det.querySelector('PIS CST')?.textContent ?? '07',
       cst_cofins: det.querySelector('COFINS CST')?.textContent ?? '07',
       p_icms: parseFloat(det.querySelector('pICMS')?.textContent || '0'),

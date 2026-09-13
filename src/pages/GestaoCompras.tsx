@@ -27,6 +27,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
 import { STATUS_QUE_RESERVAM } from '@/lib/estoque/reserva';
+import { fichaDaMercadoria, completarFicha, type FichaDaMercadoria } from '@/lib/fiscal/entrada-para-saida';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
@@ -706,15 +707,35 @@ export default function GestaoCompras() {
   };
 
   // ── Entrega → estoque ─────────────────────────────────────────
+  /**
+   * Cria o produto quando a pessoa escolheu "novo", com a FICHA DA MERCADORIA.
+   *
+   * O que entra aqui é só o que atravessa a operação: NCM, CEST, código de
+   * barras, origem da mercadoria e unidade. O que descreve a operação DO
+   * FORNECEDOR — CFOP, CST/CSOSN e alíquotas — não entra, e a razão está em
+   * `src/lib/fiscal/entrada-para-saida.ts`: até 13/09 o CFOP da entrada era
+   * gravado na ficha e relido pela emissão de saída, de modo que uma compra
+   * com 1.102 virava uma venda com 1.102 — código que a SEFAZ rejeita (733),
+   * porque saída começa com 5 ou 6.
+   *
+   * O `codigo` também deixou de vir do `c_prod` da nota: aquele é o código do
+   * item no sistema do fornecedor, e usá-lo aqui quebrava a numeração `PRD%`
+   * do app e colidia entre fornecedores que usem o mesmo código para coisas
+   * diferentes.
+   */
   const criarProdutoSeNovo = async (
     produtoId: string, nome: string, unidade: string,
-    fiscal?: { ncm?: string; cfop?: string; cst_icms?: string; csosn?: string; cst_pis?: string; cst_cofins?: string; p_icms?: number; p_pis?: number; p_cofins?: number; codigo?: string; }
+    ficha?: FichaDaMercadoria,
   ): Promise<string | null> => {
     if (produtoId !== '__new__') return produtoId;
     if (!empresaAtiva || !nome.trim()) return null;
     const { data, error } = await supabase.from('produtos').insert({
-      empresa_id: empresaAtiva.id, descricao: nome.trim(), unidade: unidade || 'UN', ativo: true,
-      ...(fiscal || {}),
+      empresa_id: empresaAtiva.id,
+      descricao: nome.trim(),
+      unidade: ficha?.unidade || unidade || 'UN',
+      ativo: true,
+      codigo: await generateNextCodigo(),
+      ...(ficha || {}),
     } as any).select('id').single();
     if (error || !data) { toast.error('Erro ao criar produto', { description: error?.message }); return null; }
     return (data as any).id;
@@ -902,19 +923,34 @@ export default function GestaoCompras() {
       const toCreate = nfeItemMaps.filter(m => m.incluir && m.produtoId);
       const rows: any[] = [];
       for (const m of toCreate) {
-        const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com, {
-          ncm: m.item.ncm || undefined,
-          cfop: m.item.cfop || undefined,
-          cst_icms: m.item.cst_icms || undefined,
-          csosn: m.item.csosn || undefined,
-          cst_pis: m.item.cst_pis || undefined,
-          cst_cofins: m.item.cst_cofins || undefined,
-          p_icms: m.item.p_icms || undefined,
-          p_pis: m.item.p_pis || undefined,
-          p_cofins: m.item.p_cofins || undefined,
-          codigo: m.item.c_prod || undefined,
-        });
+        const ficha = fichaDaMercadoria(m.item);
+        const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com, ficha);
         if (!pid) continue;
+
+        // Produto que já existe também aprende com a nota — mas só onde tem
+        // lacuna. Até 13/09 ele não aprendia NADA (só o custo médio), então
+        // NCM, CEST, código de barras e origem ficavam em branco para sempre
+        // se ninguém os digitasse, e a emissão de saída herdava esse vazio.
+        // Preencher lacuna é diferente de sobrescrever: quem digitou o NCM à
+        // mão conferiu numa tabela, e a nota do fornecedor não é autoridade
+        // maior que essa conferência.
+        if (m.produtoId !== '__new__') {
+          const atual = produtos.find((p) => p.id === pid) as Record<string, unknown> | undefined;
+          const lacunas = atual ? completarFicha(atual, ficha) : null;
+          if (lacunas) {
+            const { error: erroFicha } = await supabase
+              .from('produtos')
+              .update(lacunas as never)
+              .eq('id', pid);
+            if (erroFicha) {
+              // Não aborta o lançamento: o estoque e a nota importam mais que
+              // o complemento do cadastro. Mas não some em silêncio.
+              toast.warning('Cadastro do produto não foi complementado', {
+                description: erroFicha.message,
+              });
+            }
+          }
+        }
         rows.push({ empresa_id: empresaAtiva.id, produto_id: pid, nfe_id: (nfeRow as any).id, pedido_id: nfeForm.pedido_id || null, tipo: 'entrada', origem: 'nfe', quantidade: Math.abs(m.item.q_com), preco_unitario: m.item.v_un_com || null, created_by: user.id });
       }
       if (rows.length) {
