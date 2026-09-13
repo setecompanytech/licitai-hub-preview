@@ -1,7 +1,8 @@
-import { Fragment, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, createElement, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { padraoDaRota, trilhaDaRota } from '@/lib/navegacao/paginas';
 
 /**
  * CabecalhoPagina — o topo padrão de toda tela interna (identidade 12/09).
@@ -23,7 +24,14 @@ export interface TrilhaItem {
 }
 
 interface CabecalhoPaginaProps {
-  titulo: ReactNode;
+  /**
+   * Rota do menu. Com ela, título, descrição, ícone e trilha vêm do registro
+   * `lib/navegacao/paginas.ts` — a tela não repete o que já está padronizado.
+   * Omitida, o componente usa só o que for passado à mão (telas de detalhe,
+   * que não são item de menu). Qualquer prop explícita vence o registro.
+   */
+  rota?: string;
+  titulo?: ReactNode;
   descricao?: ReactNode;
   /** Botões da ação principal (e secundárias), alinhados à direita. */
   acoes?: ReactNode;
@@ -38,6 +46,7 @@ interface CabecalhoPaginaProps {
 }
 
 export default function CabecalhoPagina({
+  rota,
   titulo,
   descricao,
   acoes,
@@ -47,13 +56,23 @@ export default function CabecalhoPagina({
   children,
   className,
 }: CabecalhoPaginaProps) {
+  // Sem `rota`, cai no caminho da própria URL: a tela de um item de menu não
+  // precisa se identificar duas vezes.
+  const { pathname } = useLocation();
+  const padrao = padraoDaRota(rota ?? pathname);
+
+  const tituloFinal = titulo ?? padrao?.titulo ?? '';
+  const descricaoFinal = descricao ?? padrao?.descricao;
+  const trilhaFinal = trilha ?? (padrao ? trilhaDaRota(rota ?? pathname) : undefined);
+  const iconeFinal = icone ?? (padrao ? createElement(padrao.icone) : undefined);
+
   return (
     <header className={cn('mb-6 flex flex-col gap-4', className)}>
-      {trilha && trilha.length > 0 && (
+      {trilhaFinal && trilhaFinal.length > 0 && (
         <nav aria-label="Você está em" className="text-xs leading-4 text-muted-foreground">
           <ol className="flex flex-wrap items-center gap-1">
-            {trilha.map((item, i) => {
-              const ultimo = i === trilha.length - 1;
+            {trilhaFinal.map((item, i) => {
+              const ultimo = i === trilhaFinal.length - 1;
               return (
                 <Fragment key={`${item.rotulo}-${i}`}>
                   <li>
@@ -82,15 +101,15 @@ export default function CabecalhoPagina({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-3 text-[1.75rem] leading-9 font-bold text-foreground">
-            {icone && (
+            {iconeFinal && (
               <span aria-hidden="true" className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary [&>svg]:h-5 [&>svg]:w-5">
-                {icone}
+                {iconeFinal}
               </span>
             )}
-            <span className="min-w-0">{titulo}</span>
+            <span className="min-w-0">{tituloFinal}</span>
           </h1>
-          {descricao && (
-            <p className="mt-1 max-w-3xl text-base leading-6 text-muted-foreground">{descricao}</p>
+          {descricaoFinal && (
+            <p className="mt-1 max-w-3xl text-base leading-6 text-muted-foreground">{descricaoFinal}</p>
           )}
         </div>
         {acoes && (
