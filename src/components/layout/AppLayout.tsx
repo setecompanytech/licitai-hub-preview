@@ -1,12 +1,13 @@
 import { ReactNode, useState, useEffect, forwardRef, useRef } from 'react';
-import BrandLogo from '@/components/shared/BrandLogo';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import AppTopNav from './AppTopNav';
+import AppSidebar from './AppSidebar';
+import TrilhaDoTopo from './TrilhaDoTopo';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Bell, Menu, User, LogOut } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import AureliaChat from '@/components/aurelia/AureliaChat';
@@ -26,21 +27,26 @@ import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
 
 
 /**
- * Moldura de toda tela interna.
+ * Moldura de toda tela interna — duas faixas com papéis distintos.
  *
- * Desde 13/09/2026 a navegação vive no CENTRO da faixa superior, a pedido do
- * dono do produto — a coluna da esquerda saiu. A faixa herdou os tokens
- * `sidebar-*` (navy nos dois temas): a massa escura da identidade mudou de
- * lugar, não desapareceu. Marca à esquerda, navegação no meio, ações à
- * direita; o conteúdo ocupa a largura inteira, com 32px de respiro.
+ * COLUNA à esquerda (navy, 240px, recolhível): "para onde eu vou".
+ * FAIXA no topo (branca, 64px): "onde eu estou e com qual identidade" —
+ * trilha à esquerda; empresa, notificações e perfil à direita.
  *
- * A busca por módulo que existia dentro da coluna saiu junto: quem procura
- * qualquer coisa no sistema usa a lupa da direita (Ctrl+K), que já achava
- * páginas, ações, módulos do Financeiro e a identidade visual. Duas lupas
- * para o mesmo gesto era a duplicidade que este movimento resolveu.
+ * Histórico, porque a alternância confunde quem chega: na manhã de 13/09 a
+ * navegação foi para o centro do topo a pedido do dono do produto, e a coluna
+ * foi removida. À tarde, o comando de reestruturação do módulo Gestão chegou
+ * com 22 referências aprovadas — todas com a coluna — e o requisito escrito
+ * de uma sidebar navy de 240px recolhível com topbar branca de 64px. O pedido
+ * mais recente vale.
+ *
+ * O que o movimento anterior tinha resolvido continua resolvido: existe UMA
+ * lupa no sistema, e ela mora na coluna, abaixo da marca. É o mesmo diálogo
+ * do Ctrl+K, chamado de outro lugar — não um segundo índice.
  */
 const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function AppLayout({ children }, _ref) {
   const [notifOpen, setNotifOpen] = useState(false);
+  const [gavetaAberta, setGavetaAberta] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [perfilModalOpen, setPerfilModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -127,47 +133,57 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Faixa da navegação: navy nos dois temas (tokens sidebar-*), marca à
-          esquerda, navegação centrada, ações à direita. */}
-      <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-5 md:px-8 xl:px-12 2xl:px-16">
-        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex shrink-0 items-center">
-          <BrandLogo variant="dark" className="w-[164px] lg:w-[200px]" />
-        </Link>
+    <div className="min-h-screen bg-background flex">
+      {/* Coluna de navegação — 240px, recolhível, navy nos dois temas.
+          Fixa a partir de lg; abaixo disso vira a gaveta logo adiante. */}
+      <div className="nao-imprime sticky top-0 hidden h-screen shrink-0 border-r border-sidebar-border lg:block">
+        <AppSidebar />
+      </div>
 
-        {/* min-w-0 para a fila de grupos poder encolher antes de empurrar as
-            ações da direita para fora da tela. */}
-        <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden">
-          <AppTopNav />
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Faixa superior BRANCA de 64px: trilha à esquerda; empresa,
+          notificações e perfil à direita. É a divisão de papéis das
+          referências de 13/09 — a coluna responde "para onde eu vou", a faixa
+          responde "onde eu estou e com qual identidade". */}
+      <header className="nao-imprime sticky top-0 z-40 flex h-[var(--g-topo)] shrink-0 items-center gap-3 border-b border-border bg-card px-4 md:px-6">
+        {/* Gaveta — a mesma coluna, abaixo de lg. */}
+        <Sheet open={gavetaAberta} onOpenChange={setGavetaAberta}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Abrir navegação"
+              className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[280px] border-sidebar-border bg-sidebar p-0">
+            <SheetTitle className="sr-only">Navegação principal</SheetTitle>
+            <AppSidebar aoNavegar={() => setGavetaAberta(false)} permiteRecolher={false} />
+          </SheetContent>
+        </Sheet>
 
-        {/* Right: Tools
-            A ordem é do EFÊMERO para o PERMANENTE, da esquerda para a direita:
+        {/* Voltar e trilha respondem a coisas diferentes e por isso convivem:
+            a trilha sobe a hierarquia (Gestão › Contratos), o botão desfaz o
+            último passo, que muitas vezes veio de outro ramo — do Kanban para
+            o dossiê, do dossiê para a precificação. No Painel ele não aparece:
+            ali é a raiz, e voltar não leva a lugar que faça sentido. */}
+        {location.pathname !== '/dashboard' && <BotaoVoltar somenteIcone />}
 
-              sino → sol → engrenagem │ empresa │ avatar
+        <TrilhaDoTopo className="min-w-0 flex-1" />
 
-            O sino muda sozinho, várias vezes por dia — é o que se olha com mais
-            frequência e o que precisa de menos mira. O sol muda quando a luz da
-            sala muda. A engrenagem, raramente. Depois de uma divisória vêm os
-            dois campos de IDENTIDADE — em qual empresa estou e quem sou eu —,
-            que não são ações: são contexto, e ficam junto do avatar porque
-            respondem à mesma pergunta.
-
-            A divisória não é enfeite: sem ela, o seletor de empresa vira o
-            quarto de uma fileira de cinco botões, e a pessoa procura ação onde
-            só há informação. */}
+        {/* Ações e identidade, à direita. A busca não está aqui: ela é única e
+            mora na coluna, abaixo da marca — duas lupas para o mesmo gesto foi
+            a duplicidade que o dono do produto mandou remover. */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
-          <button
-            className="p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
-            onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
-            title="Pesquisa geral (Ctrl+K)"
-            aria-label="Pesquisa geral"
-          >
-            <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-          </button>
+          <div className="hidden lg:block">
+            <EmpresaSelector />
+          </div>
+
+          <span aria-hidden="true" className="hidden lg:block mx-1.5 h-6 w-px bg-border" />
 
           <button
-            className="relative p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
+            className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             onClick={() => setNotifOpen(!notifOpen)}
             title="Notificações"
           >
@@ -183,24 +199,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             <ThemeToggle />
           </div>
 
-          {/* A engrenagem solta saiu em 13/09: com a navegação no topo, o
-              grupo "Configuração" já abre Configurações, e o menu do avatar
-              leva direto a cada seção dela. Eram três portas para a mesma
-              tela; ficaram as duas que dizem para ONDE vão. */}
-
-          <span
-            aria-hidden="true"
-            className="hidden lg:block w-px h-6 bg-sidebar-border mx-1.5"
-          />
-
-          <div className="hidden lg:block">
-            <EmpresaSelector />
-          </div>
-
           {/* Avatar dropdown */}
           <div className="relative" ref={profileRef}>
             <button
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-border flex items-center justify-center text-xs sm:text-sm font-bold hover:ring-2 hover:ring-sidebar-ring transition-all cursor-pointer overflow-hidden shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-muted text-foreground ring-1 ring-border flex items-center justify-center text-xs sm:text-sm font-bold hover:ring-2 hover:ring-ring transition-all cursor-pointer overflow-hidden shrink-0"
               onClick={() => setProfileOpen(o => !o)}
               title="Minha conta"
             >
@@ -269,12 +271,11 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         </div>
       </header>
 
-      {/* Respiro lateral que cresce com a tela — 20px no celular, 32 no
-          desktop, 48 a partir de 1280 e 64 a partir de 1536. A mesma régua
-          do cabeçalho acima, para a marca e o título da tela ficarem na
-          mesma vertical. Sem teto de largura: tabela e Kanban continuam
-          usando a tela inteira em monitor grande. */}
-      <main className="flex-1 min-w-0 px-5 py-5 md:px-8 md:py-8 xl:px-12 2xl:px-16">
+      {/* Área principal: fundo #F5F7FA e 24px de respiro, como manda o comando
+          de 13/09; 16px no celular. O conteúdo usa a largura disponível — sem
+          teto, para tabela de dez colunas e Kanban continuarem inteiros em
+          monitor grande. */}
+      <main className="min-w-0 flex-1 bg-background p-4 md:p-6">
         {/* Banner de manutenção e aviso de vencimento são da sessão, não do
             documento: no papel viram ruído com data de validade. */}
         <div className="nao-imprime">
@@ -291,10 +292,6 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
         {/* Uma vez aqui, vale para as 56 telas que usam este layout. */}
         {/* Carimbo invisível, para conferir o que está publicado. */}
         <span data-versao={VERSAO_APP} className="hidden" />
-        {/* O Painel é a RAIZ da navegação: voltar a partir dele não leva a
-            lugar que faça sentido — o botão ali era um convite sem destino.
-            Nas demais telas, continua sendo o caminho de volta. */}
-        {location.pathname !== '/dashboard' && <BotaoVoltar />}
         {children}
       </main>
 
@@ -309,6 +306,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       <AureliaChat />
       <GlobalSearch />
       <MeuPerfilModal open={perfilModalOpen} onOpenChange={setPerfilModalOpen} />
+      </div>
     </div>
   );
 });

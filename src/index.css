@@ -1047,3 +1047,92 @@
 @media (prefers-reduced-motion: reduce) {
   .esteira-indices-faixa { animation: none; }
 }
+
+/* ── Densidade do módulo Gestão ────────────────────────────────────────────
+   O comando de 13/09 fixa uma escala própria para Gestão: título de página
+   26/34 em 700, seção 18/26 em 600, corpo e controles 14/20, metadado 12/16.
+
+   Ela NÃO pode virar a escala global. A escala do app subiu em 10/09 porque o
+   dono achou a anterior "pequena e difícil" de ler nas telas de leitura; o
+   Gestão pede o contrário — tabela de dez colunas, painel lateral e KPI na
+   mesma dobra só cabem em densidade de sistema. As duas convivem porque estas
+   classes só valem onde forem escritas, e nenhum outro módulo as escreve.
+
+   Por que classe e não `fontSize` do Tailwind: mudar `text-sm` mudaria o app
+   inteiro. Aqui o nome diz o papel (`g-corpo`), não o tamanho — trocar o
+   número depois não exige varrer as telas atrás de `text-[14px]`.
+
+   Medidas do comando, em token, para não se repetirem tela a tela.
+   ========================================================================== */
+:root {
+  --g-raio: 8px;              /* raio predominante do módulo */
+  --g-controle: 40px;         /* altura de input e botão (piso da faixa 40–44) */
+  --g-linha: 44px;            /* altura mínima de linha de tabela e alvo de toque */
+  --g-painel: 384px;          /* painel lateral, meio da faixa 360–420 */
+  --g-barra-lateral: 240px;   /* coluna de navegação */
+  --g-barra-lateral-fechada: 68px;
+  --g-topo: 64px;             /* faixa superior branca */
+}
+
+@layer components {
+  .g-titulo-pagina {
+    font-family: Manrope, Inter, system-ui, sans-serif;
+    font-size: 1.625rem;   /* 26px */
+    line-height: 2.125rem; /* 34px */
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .g-titulo-secao {
+    font-family: Manrope, Inter, system-ui, sans-serif;
+    font-size: 1.125rem;   /* 18px */
+    line-height: 1.625rem; /* 26px */
+    font-weight: 600;
+  }
+
+  .g-corpo {
+    font-size: 0.875rem;   /* 14px */
+    line-height: 1.25rem;  /* 20px */
+  }
+
+  .g-meta {
+    font-size: 0.75rem;    /* 12px */
+    line-height: 1rem;     /* 16px */
+  }
+
+  /* Superfície padrão: branca, borda fina, raio 8, sombra discreta. */
+  .g-cartao {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--g-raio);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Alvo de toque e densidade dos controles do módulo. O piso de 16px no
+     celular é regra do comando e também evita o zoom automático do iOS ao
+     focar um campo — abaixo disso o Safari amplia a página sozinho. */
+  .g-controle {
+    min-height: var(--g-controle);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  @media (max-width: 767px) {
+    .g-controle,
+    .g-corpo input,
+    .g-cartao input,
+    .g-cartao textarea,
+    .g-cartao select {
+      font-size: 1rem;     /* 16px — piso do comando para entrada no celular */
+      min-height: var(--g-linha);
+    }
+  }
+}
+
+/* Título de página no celular: ~22px, como manda a seção MOBILE. */
+@media (max-width: 767px) {
+  .g-titulo-pagina {
+    font-size: 1.375rem;   /* 22px */
+    line-height: 1.875rem; /* 30px */
+  }
+}
