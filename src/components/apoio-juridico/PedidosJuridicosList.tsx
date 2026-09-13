@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -24,16 +26,17 @@ import {
   type JuridicoPedido, type JuridicoPedidoStatus, type JuridicoPedidoVersao, type JuridicoPedidoEvento,
 } from '@/hooks/useJuridicoPedidos';
 
-const STATUS_CORES: Record<JuridicoPedidoStatus, string> = {
-  rascunho: 'bg-muted text-muted-foreground border-border',
-  em_revisao: 'bg-warning/10 text-warning border-warning/30',
-  gerado: 'bg-info/10 text-info border-info/30',
-  assinado: 'bg-info/10 text-info border-info/30',
-  protocolado: 'bg-info/10 text-info border-info/30',
-  em_analise: 'bg-warning/10 text-warning border-warning/30',
-  deferido: 'bg-success/10 text-success border-success/30',
-  indeferido: 'bg-destructive/10 text-destructive border-destructive/30',
-  parcialmente_deferido: 'bg-warning/10 text-warning border-warning/30',
+// Status sempre com texto (STATUS_LABELS); a cor é reforço via família semântica.
+const STATUS_VARIANTE: Record<JuridicoPedidoStatus, 'muted' | 'warning' | 'info' | 'success' | 'danger'> = {
+  rascunho: 'muted',
+  em_revisao: 'warning',
+  gerado: 'info',
+  assinado: 'info',
+  protocolado: 'info',
+  em_analise: 'warning',
+  deferido: 'success',
+  indeferido: 'danger',
+  parcialmente_deferido: 'warning',
 };
 
 interface Props {
@@ -110,18 +113,20 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
 
   if (loading) {
     return (
-      <div className="space-y-2">
-        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted/30 rounded-lg animate-pulse" />)}
+      <div className="space-y-2" role="status" aria-label="Carregando pedidos">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-md" />)}
       </div>
     );
   }
 
   if (pedidos.length === 0) {
     return (
-      <div className="text-center py-10 border border-dashed border-border/50 rounded-xl">
-        <FileText className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
-        <p className="text-sm text-muted-foreground">Nenhum pedido jurídico criado ainda.</p>
-        <p className="text-xs text-muted-foreground mt-1">Use o gerador acima para criar um pedido de Reajuste, Repactuação ou Revisão.</p>
+      <div className="flex flex-col items-center text-center py-10 gap-3 rounded-lg border border-dashed border-border">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-tint text-primary">
+          <FileText className="w-6 h-6" aria-hidden="true" />
+        </span>
+        <p className="text-base font-semibold">Nenhum pedido jurídico criado ainda</p>
+        <p className="text-sm text-muted-foreground max-w-md">Use o gerador acima para criar um pedido de Reajuste, Repactuação ou Revisão.</p>
       </div>
     );
   }
@@ -131,79 +136,79 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
       {pedidos.map(p => (
         <div
           key={p.id}
-          className="bg-card border border-border/50 rounded-lg p-3 hover:border-accent/40 transition-colors"
+          className="rounded-md border border-border bg-card p-3 hover:border-primary/40 transition-colors"
         >
           <div className="flex items-center gap-3 flex-wrap">
-            <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
-              <Hash className="w-3 h-3" /> {p.numero_formatado || `${p.tipo}-${p.sequencial}`}
+            <Badge variant="info" className="gap-1 whitespace-nowrap tabular-nums">
+              <Hash className="w-3 h-3" aria-hidden="true" /> {p.numero_formatado || `${p.tipo}-${p.sequencial}`}
             </Badge>
-            <Badge className={`text-xs border whitespace-nowrap ${STATUS_CORES[p.status]}`}>
+            <Badge variant={STATUS_VARIANTE[p.status]} className="whitespace-nowrap">
               {STATUS_LABELS[p.status]}
             </Badge>
-            <Badge variant="secondary" className="text-xs whitespace-nowrap">
+            <Badge variant="muted" className="whitespace-nowrap">
               {TIPO_LABELS[p.tipo]}
             </Badge>
-            <span className="text-xs text-muted-foreground truncate flex-1 min-w-[120px]">
+            <span className="text-sm text-muted-foreground truncate flex-1 min-w-[120px]">
               {p.orgao_contratante || 'Órgão não informado'}
               {p.contrato_numero && ` · CT ${p.contrato_numero}`}
               {p.ata_numero && ` · ATA ${p.ata_numero}`}
             </span>
-            <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
-              <History className="w-3 h-3" /> v{p.versoes_count || 0}
+            <Badge variant="info" className="gap-1 whitespace-nowrap tabular-nums">
+              <History className="w-3 h-3" aria-hidden="true" /> v{p.versoes_count || 0}
             </Badge>
             <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
                 disabled={!podeMarcarRascunho(p)}
                 title={podeMarcarRascunho(p) ? 'Voltar para Rascunho' : 'Indisponível para este status'}
                 onClick={() => acaoRascunho(p)}
               >
-                <FileEdit className="w-3 h-3 mr-1" /> Rascunho
+                <FileEdit aria-hidden="true" /> Rascunho
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-info hover:bg-info/10 disabled:text-muted-foreground"
+                className="text-primary hover:text-primary hover:bg-primary-tint disabled:text-muted-foreground"
                 disabled={!podeEnviar(p)}
                 title={podeEnviar(p) ? 'Registrar protocolo / envio ao órgão' : 'Gere uma versão e avance o status para enviar'}
                 onClick={() => acaoEnviar(p)}
               >
-                <Send className="w-3 h-3 mr-1" /> Enviar
+                <Send aria-hidden="true" /> Enviar
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-success hover:bg-success/10 disabled:text-muted-foreground"
+                className="text-success hover:text-success hover:bg-success-tint disabled:text-muted-foreground"
                 disabled={!podeRegistrarResultado(p)}
                 title={podeRegistrarResultado(p) ? 'Registrar deferimento' : 'Disponível após protocolo'}
                 onClick={() => acaoResultado(p, 'deferido')}
               >
-                <CheckCircle2 className="w-3 h-3 mr-1" /> Deferido
+                <CheckCircle2 aria-hidden="true" /> Deferido
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-destructive hover:bg-destructive/10 disabled:text-muted-foreground"
+                className="text-destructive hover:text-destructive hover:bg-destructive-tint disabled:text-muted-foreground"
                 disabled={!podeRegistrarResultado(p)}
                 title={podeRegistrarResultado(p) ? 'Registrar indeferimento' : 'Disponível após protocolo'}
                 onClick={() => acaoResultado(p, 'indeferido')}
               >
-                <XCircle className="w-3 h-3 mr-1" /> Indeferido
+                <XCircle aria-hidden="true" /> Indeferido
               </Button>
               <Button
                 size="sm" variant="ghost"
-                className="h-7 px-2 text-warning hover:bg-warning/10 disabled:text-muted-foreground"
+                className="text-warning hover:text-warning hover:bg-warning-tint disabled:text-muted-foreground"
                 disabled={!podeRegistrarResultado(p)}
                 title={podeRegistrarResultado(p) ? 'Deferimento parcial' : 'Disponível após protocolo'}
                 onClick={() => acaoResultado(p, 'parcialmente_deferido')}
               >
-                <ShieldAlert className="w-3 h-3 mr-1" /> Parcial
+                <ShieldAlert aria-hidden="true" /> Parcial
               </Button>
 
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setDetalhe(p)}>
-                <Eye className="w-3 h-3 mr-1" /> Abrir
+              <Button size="sm" variant="ghost" onClick={() => setDetalhe(p)}>
+                <Eye aria-hidden="true" /> Abrir
               </Button>
               {onSelecionar && (
-                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onSelecionar(p)}>
-                  Continuar <ArrowRight className="w-3 h-3 ml-1" />
+                <Button size="sm" variant="outline" onClick={() => onSelecionar(p)}>
+                  Continuar <ArrowRight aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -218,21 +223,21 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 flex-wrap">
-                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  <Hash className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   {detalhe.numero_formatado}
-                  <Badge className={`text-xs border ${STATUS_CORES[detalhe.status]}`}>
+                  <Badge variant={STATUS_VARIANTE[detalhe.status]}>
                     {STATUS_LABELS[detalhe.status]}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs">{TIPO_LABELS[detalhe.tipo]}</Badge>
+                  <Badge variant="muted">{TIPO_LABELS[detalhe.tipo]}</Badge>
                 </DialogTitle>
-                <DialogDescription className="text-xs">
+                <DialogDescription className="text-sm">
                   {detalhe.orgao_contratante || 'Sem órgão'} · Criado em {new Date(detalhe.created_at).toLocaleString('pt-BR')}
                 </DialogDescription>
               </DialogHeader>
 
               {/* Ações rápidas de status */}
-              <div className="flex flex-wrap gap-2 items-center bg-muted/30 rounded-lg p-3">
-                <span className="text-xs text-muted-foreground">Avançar status:</span>
+              <div className="flex flex-wrap gap-2 items-center rounded-md border border-border bg-muted/50 p-3">
+                <Label htmlFor="pedido-status" className="text-sm text-muted-foreground">Avançar status:</Label>
                 <Select
                   value={detalhe.status}
                   onValueChange={async (v) => {
@@ -244,15 +249,15 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                     setDetalhe({ ...detalhe, status: v as JuridicoPedidoStatus });
                   }}
                 >
-                  <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="pedido-status" className="w-full sm:w-[220px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(Object.keys(STATUS_LABELS) as JuridicoPedidoStatus[]).map(s => (
-                      <SelectItem key={s} value={s} className="text-xs">{STATUS_LABELS[s]}</SelectItem>
+                      <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {detalhe.numero_protocolo && (
-                  <Badge variant="outline" className="text-xs gap-1 whitespace-nowrap">
+                  <Badge variant="info" className="gap-1 whitespace-nowrap tabular-nums">
                     Protocolo: {detalhe.numero_protocolo}
                     {detalhe.data_protocolo && ` (${new Date(detalhe.data_protocolo).toLocaleDateString('pt-BR')})`}
                   </Badge>
@@ -260,37 +265,39 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 <div className="flex-1" />
                 <Button
                   size="sm" variant="ghost"
-                  className="h-7 text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive hover:bg-destructive-tint"
                   onClick={async () => {
                     if (!confirm(`Excluir o pedido ${detalhe.numero_formatado}? Esta ação não pode ser desfeita.`)) return;
                     const ok = await excluirPedido(detalhe.id);
                     if (ok) setDetalhe(null);
                   }}
                 >
-                  <Trash2 className="w-3 h-3 mr-1" /> Excluir
+                  <Trash2 aria-hidden="true" /> Excluir
                 </Button>
               </div>
 
               <Tabs defaultValue="documento" className="space-y-3">
-                <TabsList>
-                  <TabsTrigger value="documento" className="text-xs gap-1">
-                    <FileText className="w-3 h-3" /> Documento (v{versaoSel?.versao ?? 0})
+                <TabsList className="flex-wrap h-auto gap-1">
+                  <TabsTrigger value="documento" className="gap-1">
+                    <FileText className="w-4 h-4" aria-hidden="true" /> Documento (v{versaoSel?.versao ?? 0})
                   </TabsTrigger>
-                  <TabsTrigger value="versoes" className="text-xs gap-1">
-                    <History className="w-3 h-3" /> Versões ({versoes.length})
+                  <TabsTrigger value="versoes" className="gap-1">
+                    <History className="w-4 h-4" aria-hidden="true" /> Versões ({versoes.length})
                   </TabsTrigger>
-                  <TabsTrigger value="historico" className="text-xs gap-1">
-                    <Clock className="w-3 h-3" /> Histórico ({historico.length})
+                  <TabsTrigger value="historico" className="gap-1">
+                    <Clock className="w-4 h-4" aria-hidden="true" /> Histórico ({historico.length})
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="documento">
                   {loadingDetail ? (
-                    <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                    <div className="py-8 flex justify-center" role="status" aria-label="Carregando documento">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                    </div>
                   ) : versaoSel ? (
-                    <div className="bg-card border border-border/50 rounded-lg p-5">
+                    <div className="rounded-lg border border-border bg-card p-6">
                       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="info" className="tabular-nums">
                           v{versaoSel.versao} · {new Date(versaoSel.gerado_em).toLocaleString('pt-BR')}
                         </Badge>
                       </div>
@@ -306,31 +313,36 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 </TabsContent>
 
                 <TabsContent value="versoes" className="space-y-2">
+                  {/* Linha selecionável de versão: Button outline "esticado"
+                      (h-auto, texto à esquerda) — o foco visível vem da ui. */}
                   {versoes.map(v => (
-                    <div
+                    <Button
+                      type="button"
                       key={v.id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        versaoSel?.id === v.id ? 'border-accent bg-accent/5' : 'border-border/50 hover:border-accent/30'
+                      variant="outline"
+                      aria-pressed={versaoSel?.id === v.id}
+                      className={`h-auto w-full flex-col items-start justify-start gap-1 whitespace-normal p-3 text-left font-normal ${
+                        versaoSel?.id === v.id ? 'border-primary bg-primary-tint' : 'border-border bg-card'
                       }`}
                       onClick={() => setVersaoSel(v)}
                     >
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">v{v.versao}</Badge>
+                      <div className="flex w-full flex-wrap items-center gap-2">
+                        <Badge variant="info" className="tabular-nums">v{v.versao}</Badge>
                         <span className="text-xs text-muted-foreground">
                           {new Date(v.gerado_em).toLocaleString('pt-BR')}
                         </span>
-                        {v.modelo_ia && <Badge variant="secondary" className="text-xs">{v.modelo_ia}</Badge>}
+                        {v.modelo_ia && <Badge variant="muted">{v.modelo_ia}</Badge>}
                       </div>
-                      {v.resumo_alteracao && <p className="text-xs mt-1">{v.resumo_alteracao}</p>}
-                    </div>
+                      {v.resumo_alteracao && <p className="text-sm">{v.resumo_alteracao}</p>}
+                    </Button>
                   ))}
                 </TabsContent>
 
                 <TabsContent value="historico" className="space-y-2">
                   {historico.map(h => (
-                    <div key={h.id} className="p-3 border border-border/50 rounded-lg">
+                    <div key={h.id} className="p-3 border border-border rounded-md">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{h.evento}</Badge>
+                        <Badge variant="info">{h.evento}</Badge>
                         <span className="text-xs text-muted-foreground">
                           {new Date(h.criado_em).toLocaleString('pt-BR')}
                         </span>
@@ -340,7 +352,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                           </span>
                         )}
                       </div>
-                      {h.descricao && <p className="text-xs mt-1">{h.descricao}</p>}
+                      {h.descricao && <p className="text-sm mt-1">{h.descricao}</p>}
                     </div>
                   ))}
                 </TabsContent>
@@ -361,14 +373,14 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 : 'Informe os dados do protocolo no órgão.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs">Número do protocolo</label>
-              <Input value={protocoloNum} onChange={e => setProtocoloNum(e.target.value)} placeholder="Ex.: 2026.04.00.123456-7" />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="protocolo-num">Número do protocolo</Label>
+              <Input id="protocolo-num" value={protocoloNum} onChange={e => setProtocoloNum(e.target.value)} placeholder="Ex.: 2026.04.00.123456-7" />
             </div>
-            <div>
-              <label className="text-xs">Data do protocolo</label>
-              <Input type="date" value={protocoloData} onChange={e => setProtocoloData(e.target.value)} />
+            <div className="space-y-2">
+              <Label htmlFor="protocolo-data">Data do protocolo</Label>
+              <Input id="protocolo-data" type="date" value={protocoloData} onChange={e => setProtocoloData(e.target.value)} />
             </div>
             <Button
               className="w-full"
@@ -395,7 +407,7 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 setProtocoloOpen(false); setProtocoloNum(''); setProtocoloData(''); setAcaoAlvo(null);
               }}
             >
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Confirmar protocolo
+              <CheckCircle2 aria-hidden="true" /> Confirmar protocolo
             </Button>
           </div>
         </DialogContent>
@@ -406,9 +418,9 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {retornoTipo === 'deferido' && <CheckCircle2 className="w-4 h-4 text-success" />}
-              {retornoTipo === 'indeferido' && <XCircle className="w-4 h-4 text-destructive" />}
-              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-warning" />}
+              {retornoTipo === 'deferido' && <CheckCircle2 className="w-4 h-4 text-success" aria-hidden="true" />}
+              {retornoTipo === 'indeferido' && <XCircle className="w-4 h-4 text-destructive" aria-hidden="true" />}
+              {retornoTipo === 'parcialmente_deferido' && <AlertCircle className="w-4 h-4 text-warning" aria-hidden="true" />}
               Resultado do órgão
             </DialogTitle>
             <DialogDescription>
@@ -417,12 +429,16 @@ export default function PedidosJuridicosList({ onSelecionar }: Props) {
                 : `${STATUS_LABELS[retornoTipo]} — descreva a decisão para histórico.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              value={retornoTexto} onChange={e => setRetornoTexto(e.target.value)}
-              placeholder="Cole o resumo da decisão, número do despacho, percentual deferido, etc."
-              className="min-h-[100px]"
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="retorno-texto">Descrição da decisão</Label>
+              <Textarea
+                id="retorno-texto"
+                value={retornoTexto} onChange={e => setRetornoTexto(e.target.value)}
+                placeholder="Cole o resumo da decisão, número do despacho, percentual deferido, etc."
+                className="min-h-[100px]"
+              />
+            </div>
             <Button
               className="w-full"
               disabled={retornoTexto.trim().length < 10}

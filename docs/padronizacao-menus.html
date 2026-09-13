@@ -1,0 +1,1395 @@
+<title>Padronização dos Menus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --navy:#102A43; --verde:#087F5B; --verde-hover:#066649; --tint:#EAF7F1;
+    --bg:#F5F7FA; --sup:#FFFFFF; --txt:#102A43; --txt2:#526477; --bd:#DCE3EB;
+    --sombra:0 1px 3px rgba(16,42,67,.07),0 1px 2px rgba(16,42,67,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:400 16px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:Manrope,Inter,sans-serif;margin:0;letter-spacing:-.02em}
+  a{color:inherit}
+  .env{max-width:1200px;margin-inline:auto;padding:0 24px}
+  header.topo-pag{background:var(--sup);border-bottom:1px solid var(--bd);padding:40px 0 32px}
+  header.topo-pag .marca-svg{display:block;margin-bottom:24px}
+  h1{font-size:40px;line-height:48px;font-weight:800}
+  .sub{margin:12px 0 0;max-width:62ch;color:var(--txt2);font-size:17px;line-height:26px}
+  .resumo{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .resumo span{border:1px solid var(--bd);background:var(--bg);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600}
+  .resumo b{color:var(--verde)}
+  nav.indice{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  nav.indice a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;border:1px solid var(--bd);background:var(--sup);
+    border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;transition:.15s}
+  nav.indice a:hover{border-color:var(--verde);color:var(--verde)}
+  nav.indice b{background:var(--tint);color:var(--verde);border-radius:6px;padding:1px 6px;font-size:11px}
+  .regra{margin:32px 0 0;border:1px solid var(--bd);background:var(--sup);border-radius:16px;padding:24px}
+  .regra h2{font-size:18px;line-height:26px;font-weight:700;margin-bottom:12px}
+  .regra ol{margin:0;padding-left:20px;color:var(--txt2);font-size:15px;line-height:26px}
+  .regra ol b{color:var(--txt)}
+  .grupo{padding:40px 0 8px}
+  .grupo h2{font-size:22px;line-height:30px;font-weight:700;display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .cont{font-family:Inter;font-size:12px;font-weight:600;letter-spacing:0;color:var(--verde);background:var(--tint);border-radius:999px;padding:4px 10px}
+  .telas{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
+  figure.tela{margin:0}
+  .quadro{display:flex;background:var(--bg);border:1px solid var(--bd);border-radius:16px;overflow:hidden;box-shadow:var(--sombra);aspect-ratio:16/10}
+  .side{width:29%;background:var(--navy);padding:9px 8px;display:flex;flex-direction:column;gap:5px;min-width:0}
+  .marca{display:block;padding:3px 4px 8px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:3px}
+  .sgrupo{font:700 6.5px/1 Manrope;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);padding:4px}
+  .sitem{display:flex;align-items:center;gap:5px;padding:4px 5px;border-radius:5px;font:500 7.5px/1.2 Inter;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden}
+  .sitem svg{width:8px;height:8px;flex:0 0 8px;color:currentColor}
+  .sitem i{display:block}
+  .sitem i:empty,.sitem em{display:block;background:rgba(255,255,255,.18);border-radius:2px}
+  .sitem i:empty{width:8px;height:8px}
+  .sitem em{height:4px;width:62%}
+  .sitem.is-on{background:rgba(255,255,255,.14);color:#fff;font-weight:700;position:relative}
+  .sitem.is-on::before{content:"";position:absolute;left:-5px;top:4px;bottom:4px;width:2px;border-radius:2px;background:#3ECF93}
+  .corpo{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topo{height:13%;background:var(--sup);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:6px;padding:0 10px}
+  .tf{flex:1}
+  .ticons{display:flex;gap:7px;color:#8A9BAE}
+  .ticons svg{width:9px;height:9px}
+  .tav{width:12px;height:12px;border-radius:50%;background:var(--navy)}
+  .conteudo{flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden}
+  .trilha{font-size:6px;color:#8A9BAE;letter-spacing:.02em}
+  .trilha b{color:#C3CEDA;margin:0 1px}
+  .trilha em{font-style:normal;color:var(--txt);font-weight:600}
+  .cab{display:flex;align-items:flex-start;gap:6px}
+  .cab .ic{width:17px;height:17px;flex:0 0 17px;border-radius:5px;background:var(--tint);color:var(--verde);display:flex;align-items:center;justify-content:center}
+  .cab .ic svg{width:10px;height:10px}
+  .cab .tx{flex:1;min-width:0}
+  .cab h3{font-size:11px;line-height:14px;font-weight:700}
+  .cab p{margin:2px 0 0;font-size:6.5px;line-height:9px;color:var(--txt2)}
+  .acao{flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;background:var(--verde);color:#fff;border-radius:4px;padding:4px 7px;font:600 6.5px/1 Inter;white-space:nowrap}
+  .acao svg{width:6.5px;height:6.5px}
+  .acao-vazia{flex:0 0 auto;font:600 6px/1 Inter;color:#A9B6C4;border:1px dashed var(--bd);border-radius:4px;padding:4px 6px;text-transform:uppercase;letter-spacing:.06em}
+  .abas{display:flex;gap:3px;background:#EDF1F6;border-radius:5px;padding:2px;width:fit-content;max-width:100%;overflow:hidden}
+  .aba{font:600 6px/1 Inter;color:var(--txt2);padding:4px 6px;border-radius:4px;white-space:nowrap}
+  .aba.is-on{background:var(--sup);color:var(--txt);box-shadow:0 1px 2px rgba(16,42,67,.12)}
+  .l{display:block;height:3px;border-radius:2px;background:#DDE4EC}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .kpi{background:var(--sup);border:1px solid var(--bd);border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:4px}
+  .kpi-r{display:block;height:3px;width:64%;border-radius:2px;background:#DDE4EC}
+  .kpi b{font:700 11px/1 Manrope;color:var(--txt)}
+  .duo{display:grid;grid-template-columns:1.35fr 1fr;gap:5px;flex:1;min-height:0}
+  .bloco{background:var(--sup);border:1px solid var(--bd);border-radius:6px;padding:7px;display:flex;flex-direction:column;gap:5px;min-height:0;overflow:hidden}
+  .bloco.alto{flex:1}
+  .bt{display:block;height:4px;width:38%;border-radius:2px;background:#CFD9E4}
+  .barras{flex:1;display:flex;align-items:flex-end;gap:4px}
+  .barras i{flex:1;background:linear-gradient(180deg,#1FA97C,#087F5B);border-radius:2px 2px 0 0;display:block}
+  .it{display:flex;align-items:center;gap:4px}
+  .it i{width:5px;height:5px;border-radius:50%;background:var(--verde);flex:0 0 5px;display:block}
+  .it .l{flex:1}
+  .grade3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .grade2{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+  .mini,.cartao{background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:6px;display:flex;flex-direction:column;gap:3px}
+  .cartoes .cartao{background:var(--sup)}
+  .ci{width:12px;height:12px;border-radius:50%;background:var(--tint);display:block;margin-bottom:2px}
+  .filtros{display:flex;gap:4px}
+  .f{height:12px;width:44px;border-radius:4px;border:1px solid var(--bd);background:var(--sup);display:block}
+  .f.busca{flex:1;width:auto}
+  .tabela{padding:0;overflow:hidden}
+  .tr{display:grid;grid-template-columns:1.6fr 1.3fr .8fr .8fr .7fr;gap:6px;align-items:center;padding:6px 7px;border-bottom:1px solid #EFF3F7}
+  .tr:last-child{border-bottom:0}
+  .tr.th{background:#F7F9FC;font:600 6px/1 Inter;color:var(--txt2)}
+  .tr.th span{white-space:nowrap}
+  .tr .num{font:600 6.5px/1 Inter;text-align:right;color:var(--txt)}
+  .kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;flex:1;min-height:0}
+  .col{background:#EDF1F6;border-radius:6px;padding:5px;display:flex;flex-direction:column;gap:4px;min-height:0}
+  .ct{display:block;height:4px;width:70%;border-radius:2px;background:#C6D2DF}
+  .chip{background:var(--sup);border:1px solid var(--bd);border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:3px}
+  .cal{flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:3px}
+  .dia{border:1px solid #EFF3F7;border-radius:3px;display:block}
+  .dia.tem{background:var(--tint);border-color:#BFE6D6}
+  .campo{display:flex;flex-direction:column;gap:3px}
+  .rot{display:block;height:3px;width:40%;border-radius:2px;background:#CFD9E4}
+  .inp{display:block;height:12px;border-radius:4px;border:1px solid var(--bd);background:var(--bg)}
+  .rodape-form{display:flex;justify-content:flex-end;gap:5px;margin-top:auto}
+  .btn-sec{width:34px;height:13px;border-radius:4px;border:1px solid var(--bd);background:var(--sup);display:block}
+  .btn-pri{width:44px;height:13px;border-radius:4px;background:var(--verde);display:block}
+  .conversa{gap:6px}
+  .msg{max-width:72%;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:3px}
+  .msg.ele{background:var(--bg);border:1px solid var(--bd)}
+  .msg.eu{background:var(--tint);border:1px solid #C9E9DB;margin-left:auto}
+  .compor{display:flex;gap:4px;margin-top:auto}
+  .compor .inp{flex:1}
+  figcaption{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px}
+  figcaption code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--txt2);background:var(--sup);border:1px solid var(--bd);border-radius:5px;padding:2px 7px}
+  .pad{font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--verde)}
+  footer{margin-top:48px;background:var(--navy);color:rgba(255,255,255,.72);padding:28px 0}
+  footer .env{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:13px}
+  @media (max-width:640px){h1{font-size:30px;line-height:38px}.telas{grid-template-columns:1fr}}
+</style>
+
+<header class="topo-pag">
+  <div class="env">
+    <svg class="marca-svg" viewBox="0 12 372 58" width="200" role="img" aria-label="Praefectus">
+      <path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#102A43"/>
+      <path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/>
+      <rect x="34" y="52" width="12" height="12" rx="2.5" fill="#087F5B"/>
+      <text x="110" y="62" font-family="Manrope,Inter,sans-serif" font-weight="800" font-size="46" letter-spacing="-0.9" fill="#102A43" textLength="252" lengthAdjust="spacingAndGlyphs">praefectus</text>
+    </svg>
+    <h1>Padronização dos menus</h1>
+    <p class="sub">Como cada função do menu se apresenta na identidade nova: a mesma moldura,
+      o mesmo cabeçalho e um padrão de conteúdo declarado por tela. Cada miniatura abaixo é
+      a projeção da tela — não uma captura do sistema atual.</p>
+    <div class="resumo">
+      <span><b>45</b> funções do menu</span>
+      <span><b>9</b> grupos</span>
+      <span>8 padrões de conteúdo</span>
+      <span>fonte: <b>src/lib/navegacao/paginas.ts</b></span>
+    </div>
+    <nav class="indice"><a href="#grupo-Inteligência">Inteligência<b>6</b></a><a href="#grupo-Monitoramento">Monitoramento<b>4</b></a><a href="#grupo-Gestão de Processos">Gestão de Processos<b>10</b></a><a href="#grupo-Jurídico & Contábil">Jurídico &amp; Contábil<b>5</b></a><a href="#grupo-Financeiro">Financeiro<b>1</b></a><a href="#grupo-Comunicação">Comunicação<b>1</b></a><a href="#grupo-Ferramentas">Ferramentas<b>5</b></a><a href="#grupo-Configuração">Configuração<b>6</b></a><a href="#grupo-Admin">Admin<b>7</b></a></nav>
+    <div class="regra">
+      <h2>A régua que toda tela segue</h2>
+      <ol>
+        <li><b>Trilha</b> — Painel › grupo do menu › tela, em 12/16</li>
+        <li><b>Ícone</b> do módulo num ladrilho verde-claro, o mesmo do menu lateral</li>
+        <li><b>Título</b> 28/36 em Manrope navy, um por tela (nunca dois h1)</li>
+        <li><b>Descrição</b> de uma linha, 16/24, dizendo o que a tela faz — sem promessa e sem número sem fonte</li>
+        <li><b>Ação principal</b> em verde à direita; tela de leitura declara que não tem ação</li>
+        <li><b>Conteúdo</b> conforme o padrão declarado: painel, abas, tabela, cartões, formulário, kanban, calendário ou conversa</li>
+      </ol>
+    </div>
+  </div>
+</header>
+
+<main class="env"><section class="grupo" id="grupo-Inteligência">
+        <h2>Inteligência<span class="cont">6 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-dashboard">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Painel</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Painel</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
+              <span class="tx"><h3>Painel</h3><p>O dia da sua empresa: oportunidades, prazos e resultados num relance</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Relatório PDF</span>
+            </header>
+            <div class="kpis"><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div></div>
+        <div class="duo"><div class="bloco graf"><span class="bt"></span><span class="barras"><i style="height:38%"></i><i style="height:62%"></i><i style="height:45%"></i><i style="height:78%"></i><i style="height:55%"></i><i style="height:88%"></i></span></div>
+        <div class="bloco"><span class="bt"></span><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/dashboard</code>
+        <span class="pad">painel</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-analytics">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on">Analytics</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Analytics</em></nav>
+            <header class="cab">
+              <span class="ic"></span>
+              <span class="tx"><h3>Analytics</h3><p>Desempenho da operação por período, órgão e responsável</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="kpis"><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div></div>
+        <div class="duo"><div class="bloco graf"><span class="bt"></span><span class="barras"><i style="height:38%"></i><i style="height:62%"></i><i style="height:45%"></i><i style="height:78%"></i><i style="height:55%"></i><i style="height:88%"></i></span></div>
+        <div class="bloco"><span class="bt"></span><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/analytics</code>
+        <span class="pad">painel</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-precificacao">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Precificação</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Precificação</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="tx"><h3>Precificação</h3><p>Do item do edital ao preço final, com custos, tributos e margem</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova composição</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Itens do edital</span><span class="aba">Marketplaces</span><span class="aba">Preços gov</span><span class="aba">Cotações</span><span class="aba">Calculadora</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/precificacao</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-proposta-tecnica">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on">Proposta comercial</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Proposta comercial</em></nav>
+            <header class="cab">
+              <span class="ic"></span>
+              <span class="tx"><h3>Proposta comercial</h3><p>Monte a proposta com a planilha de preços e gere o documento de envio</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova proposta</span>
+            </header>
+            <div class="bloco"><span class="bt"></span><div class="grade2"><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div></div>
+        <div class="rodape-form"><span class="btn-sec"></span><span class="btn-pri"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/proposta-tecnica</code>
+        <span class="pad">formulario</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-analise-mercado">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Análise de mercado</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Análise de mercado</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+              <span class="tx"><h3>Análise de mercado</h3><p>Preços praticados e contratos publicados por órgão e região</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Panorama</span><span class="aba">Preços</span><span class="aba">Maiores contratos</span><span class="aba">Consultas</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/analise-mercado</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-concorrentes">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Inteligência</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Concorrentes</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Inteligência <b>›</b> <em>Concorrentes</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="tx"><h3>Concorrentes</h3><p>Consulte CNPJ, idoneidade, certidões e documentos de quem disputa com você</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova consulta</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Análise de documentos</span><span class="aba">Consulta CNPJ</span><span class="aba">Idoneidade</span><span class="aba">Sintegra</span><span class="aba">Certidões</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/concorrentes</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Monitoramento">
+        <h2>Monitoramento<span class="cont">4 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-monitoramento-editais">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Monitoramento</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>Editais e licitações</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Monitoramento <b>›</b> <em>Editais e licitações</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span>
+              <span class="tx"><h3>Editais e licitações</h3><p>Busque editais publicados e traga para o seu fluxo os que interessam</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Buscar editais</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/monitoramento-editais</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-avisos">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Monitoramento</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Central de avisos</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Monitoramento <b>›</b> <em>Central de avisos</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+              <span class="tx"><h3>Central de avisos</h3><p>Tudo que o sistema detectou e precisa da sua atenção</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Todos</span><span class="aba">Não lidos</span><span class="aba">Urgentes</span><span class="aba">Arquivados</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/avisos</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-boletins">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Monitoramento</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Boletins diários</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Monitoramento <b>›</b> <em>Boletins diários</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+              <span class="tx"><h3>Boletins diários</h3><p>O resumo do dia por e-mail e o histórico do que já foi enviado</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Enviar agora</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Boletins</span><span class="aba">Configuração</span><span class="aba">Histórico</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/boletins</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-monitoramento-chat">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Monitoramento</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat e mural</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Monitoramento <b>›</b> <em>Chat e mural</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <span class="tx"><h3>Chat e mural</h3><p>Mensagens do processo e o mural da equipe no mesmo lugar</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Processo</span><span class="aba">Chat</span><span class="aba">Mural</span></div><div class="bloco alto conversa"><div class="msg ele"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg eu"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg ele"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg eu"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="compor"><span class="inp"></span><span class="btn-pri"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/monitoramento-chat</code>
+        <span class="pad">conversa</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Gestão de Processos">
+        <h2>Gestão de Processos<span class="cont">10 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-licitacoes-estrategicas">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Licitações estratégicas</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Licitações estratégicas</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="tx"><h3>Licitações estratégicas</h3><p>As disputas que merecem prioridade, com a saúde fiscal de quem compra</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Oportunidades</span><span class="aba">CAPAG</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/licitacoes-estrategicas</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-meus-compromissos">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>Meus compromissos</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Meus compromissos</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>
+              <span class="tx"><h3>Meus compromissos</h3><p>O que é seu para fazer, por processo e por prazo</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Ativos</span><span class="aba">Removidos</span></div><div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/meus-compromissos</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-calendario">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>Calendário</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Calendário</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>
+              <span class="tx"><h3>Calendário</h3><p>Sessões, entregas e vencimentos no mês</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Novo compromisso</span>
+            </header>
+            <div class="bloco"><span class="bt"></span><div class="cal"><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia tem"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span><span class="dia"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/calendario</code>
+        <span class="pad">calendario</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-workflow-ia">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg>Workflow IA</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Workflow IA</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg></span>
+              <span class="tx"><h3>Workflow IA</h3><p>A esteira que leva o edital da leitura à proposta pronta</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Iniciar esteira</span>
+            </header>
+            <div class="bloco"><span class="bt"></span><div class="grade2"><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div></div>
+        <div class="rodape-form"><span class="btn-sec"></span><span class="btn-pri"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/workflow-ia</code>
+        <span class="pad">formulario</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-kanban">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5v11"/><path d="M12 5v6"/><path d="M18 5v14"/></svg>Gestão de licitações</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Gestão de licitações</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5v11"/><path d="M12 5v6"/><path d="M18 5v14"/></svg></span>
+              <span class="tx"><h3>Gestão de licitações</h3><p>Cada processo na sua etapa, do edital ao desfecho</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Kanban</span><span class="aba">Compromissos</span><span class="aba">Histórico de extrações</span></div><div class="kanban"><div class="col"><span class="ct"></span><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div></div><div class="col"><span class="ct"></span><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div></div><div class="col"><span class="ct"></span><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div></div><div class="col"><span class="ct"></span><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div></div><div class="col"><span class="ct"></span><div class="chip"><span class="l" style="width:70%"></span><span class="l" style="width:45%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/kanban</code>
+        <span class="pad">kanban</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-robo-lances">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>Robô de lances</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Robô de lances</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg></span>
+              <span class="tx"><h3>Robô de lances</h3><p>Acompanhe a disputa e deixe o robô lançar dentro do limite que você definir</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova sessão</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Disputar</span><span class="aba">Agente</span><span class="aba">Portais</span><span class="aba">Configurações</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/robo-lances</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-historico-licitacoes">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Histórico e desempenho</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Histórico e desempenho</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg></span>
+              <span class="tx"><h3>Histórico e desempenho</h3><p>O que já foi disputado, com resultado e valor</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Registrar licitação</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/historico-licitacoes</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-metas-comercial">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>Metas do comercial</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Metas do comercial</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+              <span class="tx"><h3>Metas do comercial</h3><p>Meta por pessoa, ritmo necessário e projeção de fechamento</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Painel</span><span class="aba">Equipe</span><span class="aba">Relatórios</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/metas-comercial</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-gestao-contratos">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Gestão de contratos</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Gestão de contratos</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+              <span class="tx"><h3>Gestão de contratos</h3><p>Saldo, vigência, aditivos e entregas de cada contrato assinado</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Novo contrato</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/gestao-contratos</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-gestao-compras">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Gestão de Processos</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg>Compras, pedidos e estoque</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Gestão de Processos <b>›</b> <em>Compras, pedidos e estoque</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></span>
+              <span class="tx"><h3>Compras, pedidos e estoque</h3><p>Pedidos de venda, produtos, fornecedores e o estoque que os atende</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Novo pedido</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Pedidos</span><span class="aba">Produtos</span><span class="aba">Fornecedores</span><span class="aba">Estoque</span><span class="aba">NF-e</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/gestao-compras</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Jurídico & Contábil">
+        <h2>Jurídico &amp; Contábil<span class="cont">5 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-documentos">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Jurídico &amp; Contábil</span>
+          <span class="sitem is-on">Documentos</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Jurídico &amp; Contábil <b>›</b> <em>Documentos</em></nav>
+            <header class="cab">
+              <span class="ic"></span>
+              <span class="tx"><h3>Documentos</h3><p>Certidões e atestados com validade vigiada e montagem da pasta de habilitação</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Enviar documento</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Documentos</span><span class="aba">Unir arquivos</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/documentos</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-assessoria-cadastral">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Jurídico &amp; Contábil</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></svg>Assessoria cadastral</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Jurídico &amp; Contábil <b>›</b> <em>Assessoria cadastral</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></svg></span>
+              <span class="tx"><h3>Assessoria cadastral</h3><p>Situação dos seus cadastros nos portais e o que falta em cada um</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Cadastros</span><span class="aba">Documentos</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/assessoria-cadastral</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-apoio-juridico">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Jurídico &amp; Contábil</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>Apoio jurídico</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Jurídico &amp; Contábil <b>›</b> <em>Apoio jurídico</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span>
+              <span class="tx"><h3>Apoio jurídico</h3><p>Impugnações, recursos e reequilíbrio a partir dos modelos e da sua base</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Redigir peça</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Modelos</span><span class="aba">Reequilíbrio</span><span class="aba">Gerador com base</span><span class="aba">Base jurídica</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/apoio-juridico</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-apoio-contabil">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Jurídico &amp; Contábil</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>Apoio contábil</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Jurídico &amp; Contábil <b>›</b> <em>Apoio contábil</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>
+              <span class="tx"><h3>Apoio contábil</h3><p>Balanço, índices de habilitação e pareceres a partir dos seus demonstrativos</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova análise</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Modelos</span><span class="aba">Análise de balanço</span><span class="aba">Gerador</span><span class="aba">Legislação</span><span class="aba">Base contábil</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/apoio-contabil</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-indices-repactuacao">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Jurídico &amp; Contábil</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Índices e repactuação</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Jurídico &amp; Contábil <b>›</b> <em>Índices e repactuação</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+              <span class="tx"><h3>Índices e repactuação</h3><p>IPCA, INPC, IGP-M e CCTs para calcular reajuste e repactuação</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Índices</span><span class="aba">CCTs</span><span class="aba">Simulador</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/indices-repactuacao</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Financeiro">
+        <h2>Financeiro<span class="cont">1 tela</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-financeiro">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Financeiro</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Financeiro <b>›</b> <em>Financeiro</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="tx"><h3>Financeiro</h3><p>Saldo, contas, notas e apuração — o dinheiro do edital ao recebimento</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Novo lançamento</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/financeiro</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Comunicação">
+        <h2>Comunicação<span class="cont">1 tela</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-whatsapp-crm">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Comunicação</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>WhatsApp CRM</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Comunicação <b>›</b> <em>WhatsApp CRM</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <span class="tx"><h3>WhatsApp CRM</h3><p>Conversas, funil e disparos com os contatos da sua operação</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Caixa de entrada</span><span class="aba">Funil</span><span class="aba">Roteamento</span><span class="aba">Disparos</span><span class="aba">Modelos</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/whatsapp-crm</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Ferramentas">
+        <h2>Ferramentas<span class="cont">5 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-assistente">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Ferramentas</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>Assistente IA</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Ferramentas <b>›</b> <em>Assistente IA</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
+              <span class="tx"><h3>Assistente IA</h3><p>Pergunte sobre editais, contratos e regras — a Aurélia responde com o seu contexto</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="bloco alto conversa"><div class="msg ele"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg eu"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg ele"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="msg eu"><span class="l" style="width:100%"></span><span class="l" style="width:60%"></span></div><div class="compor"><span class="inp"></span><span class="btn-pri"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/assistente</code>
+        <span class="pad">conversa</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-api-integracao">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Ferramentas</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>API e integração</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Ferramentas <b>›</b> <em>API e integração</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg></span>
+              <span class="tx"><h3>API e integração</h3><p>Chaves, endpoints e exemplos para conectar outros sistemas</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/api-integracao</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-tutorial">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Ferramentas</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>Tutorial</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Ferramentas <b>›</b> <em>Tutorial</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span>
+              <span class="tx"><h3>Tutorial</h3><p>O caminho de uso da plataforma, passo a passo</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/tutorial</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-blog">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Ferramentas</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/></svg>Blog</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Ferramentas <b>›</b> <em>Blog</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/></svg></span>
+              <span class="tx"><h3>Blog</h3><p>Artigos sobre licitação, jurisprudência e prática de mercado</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/blog</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-ebook">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Ferramentas</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>E-books</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Ferramentas <b>›</b> <em>E-books</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span>
+              <span class="tx"><h3>E-books</h3><p>Materiais para baixar e estudar offline</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/ebook</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Configuração">
+        <h2>Configuração<span class="cont">6 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-empresas">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>Empresas</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Empresas</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+              <span class="tx"><h3>Empresas</h3><p>As empresas que você opera e os certificados de cada uma</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova empresa</span>
+            </header>
+            <div class="grade3 cartoes"><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div><div class="cartao"><span class="ci"></span><span class="l" style="width:60%"></span><span class="l" style="width:90%"></span><span class="l" style="width:45%"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/empresas</code>
+        <span class="pad">cartoes</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-equipe">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Equipe</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Equipe</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="tx"><h3>Equipe</h3><p>Quem tem acesso, o que cada um faz e como é remunerado</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Convidar pessoa</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Membros</span><span class="aba">Tarefas</span><span class="aba">Comissões</span><span class="aba">Relatório</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/equipe</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-configuracoes-alertas">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Preferências de alertas</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Preferências de alertas</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+              <span class="tx"><h3>Preferências de alertas</h3><p>O que você quer ser avisado, por qual canal e com que antecedência</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Segmentos</span><span class="aba">Empresa</span><span class="aba">Canais</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/configuracoes/alertas</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-definir-metas">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>Definir metas</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Definir metas</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></span>
+              <span class="tx"><h3>Definir metas</h3><p>Alvo por pessoa e período, e as regras que medem o alcance</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova meta</span>
+            </header>
+            <div class="bloco"><span class="bt"></span><div class="grade2"><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div><div class="campo"><span class="rot"></span><span class="inp"></span></div></div>
+        <div class="rodape-form"><span class="btn-sec"></span><span class="btn-pri"></span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/definir-metas</code>
+        <span class="pad">formulario</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-configuracoes">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg>Configurações</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Configurações</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="tx"><h3>Configurações</h3><p>Dados da empresa, plano, regime tributário, timbrado e segurança</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Geral</span><span class="aba">Plano</span><span class="aba">Regime</span><span class="aba">Timbrado</span><span class="aba">Segurança</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/configuracoes</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-suporte">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Configuração</span>
+          <span class="sitem is-on">Suporte</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Configuração <b>›</b> <em>Suporte</em></nav>
+            <header class="cab">
+              <span class="ic"></span>
+              <span class="tx"><h3>Suporte</h3><p>Fale com a equipe e acompanhe seus chamados</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Abrir chamado</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Chat</span><span class="aba">Chamados</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/suporte</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure></div>
+      </section><section class="grupo" id="grupo-Admin">
+        <h2>Admin<span class="cont">7 telas</span></h2>
+        <div class="telas">
+    <figure class="tela" id="tela-admin-templates">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/></svg>Templates de IA</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Templates de IA</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/></svg></span>
+              <span class="tx"><h3>Templates de IA</h3><p>Prompts e modelos que alimentam os geradores do produto</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Novo template</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/templates</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-financeiro">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro da plataforma</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Financeiro da plataforma</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <span class="tx"><h3>Financeiro da plataforma</h3><p>Assinaturas dos clientes e os chamados ligados a cobrança</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Assinaturas</span><span class="aba">Chamados</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/financeiro</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-fontes-fabricantes">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Fontes e fabricantes</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Fontes e fabricantes</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+              <span class="tx"><h3>Fontes e fabricantes</h3><p>Catálogo de fontes de preço e fabricantes usados na precificação</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Nova fonte</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/fontes-fabricantes</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-marketing">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Marketing</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Marketing</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+              <span class="tx"><h3>Marketing</h3><p>Origem dos cadastros, campanhas e distribuição geográfica</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="abas"><span class="aba is-on">Evolução</span><span class="aba">Fontes</span><span class="aba">Campanhas</span><span class="aba">Geográfico</span><span class="aba">Leads</span></div><div class="bloco alto"><span class="bt"></span>
+        <div class="grade3"><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div><div class="mini"><span class="l" style="width:55%"></span><span class="l" style="width:85%"></span><span class="l" style="width:40%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/marketing</code>
+        <span class="pad">abas</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-distribuicao">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.854 2.147-10.94 10.939"/></svg>Distribuição</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Distribuição</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.854 2.147-10.94 10.939"/></svg></span>
+              <span class="tx"><h3>Distribuição</h3><p>O que o sistema enviou, para quem e com qual desfecho</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/distribuicao</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-auditoria">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/></svg>Auditoria</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Auditoria</em></nav>
+            <header class="cab">
+              <span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/></svg></span>
+              <span class="tx"><h3>Auditoria</h3><p>Trilha de quem fez o quê, com exportação para conferência</p></span>
+              <span class="acao"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Exportar PDF</span>
+            </header>
+            <div class="filtros"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f busca"></span></div>
+        <div class="bloco tabela"><div class="tr th"><span>Identificação</span><span>Órgão</span><span>Prazo</span><span>Situação</span><span>Valor</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div><div class="tr"><span><span class="l" style="width:80%"></span></span><span><span class="l" style="width:90%"></span></span><span><span class="l" style="width:60%"></span></span><span><span class="l" style="width:"></span></span><span class="num">—</span></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/auditoria</code>
+        <span class="pad">tabela</span>
+      </figcaption>
+    </figure>
+    <figure class="tela" id="tela-admin-metricas-saas">
+      <div class="quadro">
+        <aside class="side">
+          <span class="marca"><svg viewBox="0 12 94 58" width="74" aria-hidden="true"><path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#fff"/><path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/><rect x="34" y="52" width="12" height="12" rx="2.5" fill="#fff"/></svg></span>
+          <span class="sgrupo">Admin</span>
+          <span class="sitem is-on">Métricas SaaS</span>
+          <span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span><span class="sitem"><i></i><em></em></span>
+        </aside>
+        <div class="corpo">
+          <div class="topo"><span class="tf"></span><span class="ticons"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg></span><span class="tav"></span></div>
+          <div class="conteudo">
+            <nav class="trilha">Painel <b>›</b> Admin <b>›</b> <em>Métricas SaaS</em></nav>
+            <header class="cab">
+              <span class="ic"></span>
+              <span class="tx"><h3>Métricas SaaS</h3><p>Assinantes, receita recorrente e retenção da plataforma</p></span>
+              <span class="acao-vazia">leitura</span>
+            </header>
+            <div class="kpis"><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div><div class="kpi"><span class="kpi-r"></span><b>—</b></div></div>
+        <div class="duo"><div class="bloco graf"><span class="bt"></span><span class="barras"><i style="height:38%"></i><i style="height:62%"></i><i style="height:45%"></i><i style="height:78%"></i><i style="height:55%"></i><i style="height:88%"></i></span></div>
+        <div class="bloco"><span class="bt"></span><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div><div class="it"><i></i><span class="l" style="width:70%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <code>/admin/metricas-saas</code>
+        <span class="pad">painel</span>
+      </figcaption>
+    </figure></div>
+      </section></main>
+
+<footer><div class="env"><span>Praefectus — identidade 12/09/2026</span><span>docs/padronizacao-menus.html</span></div></footer>
+
