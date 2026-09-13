@@ -31,11 +31,47 @@ import IndicadoresGerenciais from '@/components/configuracoes/IndicadoresGerenci
 import { UFS_BRASIL, normalizeUfs } from '@/constants/ufsBrasil';
 
 
+/**
+ * Onde cada âncora do menu da conta cai.
+ *
+ * Até 13/09 só `#plano` era tratado: os outros seis itens do menu do avatar
+ * levavam para cá e a tela abria em "Geral", sem rolar para nada — a pessoa
+ * clicava em "Segurança" e via os dados da empresa. As seções sempre
+ * existiram; faltava a âncora e o mapa.
+ */
+const ABA_DA_ANCORA: Record<string, string> = {
+  '#plano': 'plano',
+  '#regime': 'regime',
+  '#timbrado': 'timbrado',
+  '#seguranca': 'seguranca',
+  // Estas são seções DENTRO da aba Geral: a aba é a mesma, muda o destino
+  // da rolagem.
+  '#empresa': 'geral',
+  '#representante': 'geral',
+  '#notificacoes': 'geral',
+  '#monitoramento': 'geral',
+  '#lgpd': 'geral',
+};
+
 export default function Configuracoes() {
   const { empresaAtiva, reloadEmpresas } = useEmpresa();
   const location = useLocation();
   const { isAdmin } = useUserRole();
-  const defaultTab = location.hash === '#plano' ? 'plano' : 'geral';
+  const [aba, setAba] = useState(() => ABA_DA_ANCORA[location.hash] ?? 'geral');
+
+  // A âncora muda sem remontar a tela (o menu do avatar navega de dentro do
+  // app), então a aba e a rolagem precisam reagir a ela.
+  useEffect(() => {
+    const alvo = location.hash.slice(1);
+    if (!alvo) return;
+    setAba(ABA_DA_ANCORA[location.hash] ?? 'geral');
+    // Dois quadros: um para a aba trocar, outro para o conteúdo existir.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document.getElementById(alvo)?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
+      ),
+    );
+  }, [location.hash]);
 
   // Empresa fields
   const [cnpjInput, setCnpjInput] = useState('');
@@ -363,7 +399,7 @@ export default function Configuracoes() {
       {/* mx-auto: o max-w prendia a largura em 1024px sem centralizar, e o
           conteúdo encostava à esquerda com a sobra toda do lado direito. */}
       <div className="mx-auto max-w-5xl">
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs value={aba} onValueChange={setAba} className="w-full">
           {/* Item de menu: título, descrição, ícone e trilha vêm do registro
               `lib/navegacao/paginas.ts` — a tela não os repete. */}
           <CabecalhoPagina>
@@ -421,7 +457,7 @@ export default function Configuracoes() {
             <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Dados da Empresa</h2>
+                <h2 id="empresa" className="scroll-mt-24 text-lg font-semibold text-foreground">Dados da Empresa</h2>
               </div>
               <div className="grid gap-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -541,7 +577,7 @@ export default function Configuracoes() {
             <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Dados do Representante Legal</h2>
+                <h2 id="representante" className="scroll-mt-24 text-lg font-semibold text-foreground">Dados do Representante Legal</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
@@ -606,7 +642,7 @@ export default function Configuracoes() {
             <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Bell className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
+                <h2 id="notificacoes" className="scroll-mt-24 text-lg font-semibold text-foreground">Notificações</h2>
               </div>
               <div className="space-y-4">
                 {([
@@ -634,7 +670,7 @@ export default function Configuracoes() {
             <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Portais Monitorados</h2>
+                <h2 id="monitoramento" className="scroll-mt-24 text-lg font-semibold text-foreground">Portais Monitorados</h2>
               </div>
               <div className="space-y-3">
                 {([
@@ -742,7 +778,7 @@ export default function Configuracoes() {
             <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-2 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 className="text-lg font-semibold text-foreground">Privacidade &amp; Dados (LGPD)</h2>
+                <h2 id="lgpd" className="scroll-mt-24 text-lg font-semibold text-foreground">Privacidade &amp; Dados (LGPD)</h2>
               </div>
               <p className="mb-4 text-sm text-muted-foreground">
                 Exporte todos os seus dados em formato JSON. Conforme a LGPD, você tem direito à portabilidade dos seus dados a qualquer momento.

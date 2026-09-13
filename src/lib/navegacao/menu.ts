@@ -42,7 +42,6 @@ import {
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
-  Palette,
   Target,
   TrendingUp,
   User,
@@ -103,7 +102,9 @@ export interface ItemDaConta {
 
 export const menuDaConta: ItemDaConta[] = [
   { icon: Shield, label: 'Segurança', path: '/configuracoes', hash: '#seguranca', secao: 'Conta' },
-  { icon: Palette, label: 'Aparência', path: '/configuracoes', hash: '#aparencia', secao: 'Conta' },
+  /* "Aparência" saiu em 13/09: apontava para #aparencia, que não existe em
+     Configurações — quem troca claro/escuro é o botão de sol/lua da barra,
+     ali ao lado. Item que promete tela inexistente é pior que item ausente. */
 
   { icon: Building2, label: 'Dados da empresa', path: '/configuracoes', hash: '#empresa', secao: 'Empresa' },
   { icon: User, label: 'Representante legal', path: '/configuracoes', hash: '#representante', secao: 'Empresa' },

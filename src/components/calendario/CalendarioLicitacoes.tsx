@@ -318,18 +318,25 @@ export default function CalendarioLicitacoes() {
      acompanha o tema sozinha. `modifiersClassNames` é a API equivalente do
      react-day-picker — mesmos quatro modificadores, mesma leitura.
 
-     A prioridade é dada por ESPECIFICIDADE, não pela ordem em que o Tailwind
-     emite as utilities: `[&&]` repete a classe no seletor (0,2,0) e `[&&&]`
-     repete três vezes (0,3,0). Sem isso a tinta do marcador empata em 0,1,0
-     com `day_selected`/`day_today` de `ui/calendar.tsx` (`bg-primary` +
-     `text-primary-foreground`) e o desempate vira ordem do arquivo: o fundo
-     resolvia para a tinta clara e o número continuava BRANCO — o dia
-     selecionado com licitação ficava ilegível, e ele é o caminho comum,
-     porque a tela abre com hoje já selecionado.
+     A prioridade é dada por ESPECIFICIDADE, nunca pela ordem em que o Tailwind
+     emite as utilities: `[&&]` repete a classe no seletor (0,2,0), `[&&&]`
+     três vezes (0,3,0) e `[&&&&]` quatro (0,4,0) — conferido no CSS compilado
+     deste projeto. O que precisa ser vencido em `ui/calendar.tsx`:
 
-     Ordem entre os marcadores, agora explícita em vez de acidental:
-       urgente (0,3,0) > licitação (0,2,0)  — vermelho não pode ser encoberto
-       documento (0,2,0) > backup (0,1,0)   — vencimento na frente do backup
+       day_selected  bg-primary / text-primary-foreground        (0,1,0)
+                     hover: e focus: das mesmas duas             (0,2,0)
+       day (ghost)   hover:bg-muted / hover:text-foreground      (0,2,0)
+       day_today     bg-accent / text-accent-foreground          (0,1,0)
+
+     Por isso o marcador de licitação fica em 0,3,0: em 0,2,0 ele empatava com
+     os estados de `hover`/`focus` do dia selecionado e o desempate virava a
+     ordem do arquivo — fundo claro com número BRANCO, ilegível, justamente no
+     caminho comum (a tela abre com hoje já selecionado e a pessoa clica nos
+     dias que têm evento).
+
+     Ordem entre os marcadores, explícita:
+       urgente (0,4,0) > licitação (0,3,0)  — vermelho não pode ser encoberto
+       documento (0,3,0) > backup (0,2,0)   — vencimento na frente do backup
      O `rounded-full` também precisa do reforço: solto, ele perde para o
      `rounded-md` do botão de dia e o marcador saía quadrado, ao contrário
      das bolinhas da legenda.
@@ -338,10 +345,10 @@ export default function CalendarioLicitacoes() {
      para não invadir o dia vizinho), que não disputa com a tinta. */
   const anelSelecionado = 'aria-selected:ring-2 aria-selected:ring-inset aria-selected:ring-ring';
   const modifiersClassNames = {
-    licitacao: `[&&]:rounded-full [&&]:bg-primary-tint [&&]:text-primary font-semibold ${anelSelecionado}`,
-    documento: `[&&]:rounded-full [&&]:border-2 [&&]:border-warning ${anelSelecionado}`,
-    urgente: `[&&&]:rounded-full [&&&]:bg-destructive-tint [&&&]:text-destructive-ink font-semibold ${anelSelecionado}`,
-    backup: `[&]:rounded-full [&]:border-2 [&]:border-info ${anelSelecionado}`,
+    licitacao: `[&&&]:rounded-full [&&&]:bg-primary-tint [&&&]:text-primary font-semibold ${anelSelecionado}`,
+    documento: `[&&&]:rounded-full [&&&]:border-2 [&&&]:border-warning ${anelSelecionado}`,
+    urgente: `[&&&&]:rounded-full [&&&&]:bg-destructive-tint [&&&&]:text-destructive-ink font-semibold ${anelSelecionado}`,
+    backup: `[&&]:rounded-full [&&]:border-2 [&&]:border-info ${anelSelecionado}`,
   };
 
   const formatCurrency = (v: number) =>
@@ -627,11 +634,11 @@ export default function CalendarioLicitacoes() {
                         </span>
                         <span className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
                           {isUrgent && (
-                            <Badge variant="danger">
+                            <span className={badgeVariants({ variant: 'danger' })}>
                               {diffDias === 0 ? 'Hoje' : `Em ${diffDias}d`}
-                            </Badge>
+                            </span>
                           )}
-                          <Badge variant="muted">{l.modalidade}</Badge>
+                          <span className={badgeVariants({ variant: 'muted' })}>{l.modalidade}</span>
                         </span>
                       </button>
                     );

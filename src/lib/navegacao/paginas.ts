@@ -179,7 +179,11 @@ export const paginasPadrao: PaginaPadrao[] = [
   {
     rota: '/documentos', grupo: 'Jurídico & Contábil', titulo: 'Documentos', icone: Shield,
     descricao: 'Certidões e atestados com validade vigiada e montagem da pasta de habilitação',
-    acao: 'Enviar documento', padrao: 'abas', abas: ['Documentos', 'Unir arquivos'],
+    /* Sem ação principal de propósito (achado da revisão de 13/09): o envio é
+       POR VAGA do checklist — cada linha tem o seu "Enviar"/"Substituir", e o
+       campo de arquivo só sabe o destino porque a linha clicada o registrou.
+       Um botão no topo teria de adivinhar a vaga. */
+    padrao: 'abas', abas: ['Documentos', 'Unir arquivos'],
   },
   {
     rota: '/assessoria-cadastral', grupo: 'Jurídico & Contábil', titulo: 'Assessoria cadastral', icone: ClipboardCheck,

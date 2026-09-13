@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
+// `Badge` renderiza uma <div>; dentro de um <button> só cabe conteúdo de frase,
+// então os selos que vivem na linha clicável usam `badgeVariants` num <span> —
+// mesma pele, HTML conforme. Fora de botão, o componente.
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import {
   Bell, Clock, FileWarning, TrendingDown, AlertTriangle,
-  CheckCircle2, X, Loader2
+  CheckCircle2, CheckCheck, X, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +50,16 @@ const severityBorder: Record<string, string> = {
   critical: 'border-l-destructive',
   warning: 'border-l-warning',
   info: 'border-l-border',
+};
+
+/** Tinta do selo de tipo. A gravidade é função pura do tipo
+ *  (`severityFromTipo`), então o selo escreve o tipo e a tinta vem da
+ *  gravidade: um único selo, com TEXTO, no lugar de duas pistas que eram só
+ *  cor (a barra da esquerda e a cor do ícone). */
+const severityBadge: Record<string, 'danger' | 'warning' | 'muted'> = {
+  critical: 'danger',
+  warning: 'warning',
+  info: 'muted',
 };
 
 export default function NotificationCenter({
@@ -117,18 +130,31 @@ export default function NotificationCenter({
     // superior — só a pele mudou: cartão `bg-card`, canto `rounded-lg` e
     // sombra no teto da identidade (`shadow-md`).
     <div className="fixed top-[80px] right-2 sm:right-4 z-50 w-[calc(100vw-1rem)] sm:w-[420px] bg-card border border-border rounded-lg shadow-md animate-in slide-in-from-top-2 fade-in duration-200">
-      {/* Header */}
+      {/* Cabeçalho. A gaveta tem ~359px num aparelho de 375px
+          (`w-[calc(100vw-1rem)]`), então o lado esquerdo encolhe (`min-w-0` +
+          `truncate` no título) e o rótulo de "marcar todas" só aparece a partir
+          de `sm:` — exatamente onde a gaveta passa a ter 420px. Abaixo disso o
+          controle é só o ícone, com o nome no `aria-label`/`title`. */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Bell className="w-4 h-4 text-primary" aria-hidden="true" />
-          <h2 className="text-sm font-semibold">Notificações</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <Bell className="w-4 h-4 flex-shrink-0 text-primary" aria-hidden="true" />
+          <h2 className="truncate text-sm font-semibold">Notificações</h2>
           {unreadCount > 0 && (
-            <Badge variant="danger">{unreadCount} não lidas</Badge>
+            <Badge variant="danger" className="flex-shrink-0">
+              {unreadCount} não lida{unreadCount > 1 ? 's' : ''}
+            </Badge>
           )}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
-          <Button size="sm" variant="ghost" onClick={markAllRead}>
-            Marcar todas como lidas
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={markAllRead}
+            aria-label="Marcar todas como lidas"
+            title="Marcar todas como lidas"
+          >
+            <CheckCheck aria-hidden="true" />
+            <span className="hidden sm:inline">Marcar todas</span>
           </Button>
           <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar notificações" className="h-9 w-9">
             <X className="w-4 h-4" aria-hidden="true" />
@@ -198,8 +224,11 @@ export default function NotificationCenter({
                         <span className={cn('text-sm font-medium', notif.read && 'text-muted-foreground')}>
                           {notif.title}
                         </span>
+                        <span className={badgeVariants({ variant: severityBadge[notif.severity] })}>
+                          {cfg.label}
+                        </span>
                         {!notif.read && (
-                          <Badge variant="info">Nova</Badge>
+                          <span className={badgeVariants({ variant: 'info' })}>Nova</span>
                         )}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground line-clamp-2">{notif.message}</span>
@@ -217,9 +246,21 @@ export default function NotificationCenter({
         )}
       </ScrollArea>
 
-      {/* Footer */}
+      {/* Rodapé. O destino é a Central de avisos (`/avisos` no registro de
+          `lib/navegacao/paginas.ts`), que é exatamente "tudo que o sistema
+          detectou" — a gaveta mostra só os 50 mais recentes. `onNavigate` já
+          fecha a gaveta em quem a usa hoje; o `onClose()` explícito mantém a
+          promessa mesmo para outro chamador. */}
       <div className="px-4 py-2 border-t border-border text-center">
-        <Button size="sm" variant="ghost" className="text-muted-foreground">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={() => {
+            onClose();
+            onNavigate('/avisos');
+          }}
+        >
           Ver todas as notificações
         </Button>
       </div>

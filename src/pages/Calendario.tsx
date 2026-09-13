@@ -6,14 +6,12 @@ import CalendarioLicitacoes from '@/components/calendario/CalendarioLicitacoes';
  * Calendário (identidade 12/09).
  *
  * Título, descrição, ícone e trilha vêm do registro `lib/navegacao/paginas.ts`
- * pela própria rota — a tela não repete o que já está padronizado.
+ * pela própria rota. A ação da tela é sincronizar a agenda (Google/Outlook/ICS)
+ * e fica junto do calendário, dentro de `CalendarioLicitacoes`.
  *
- * O registro declara a ação principal "Novo compromisso", que esta tela NÃO
- * tem: aqui não existe criação de compromisso (isso vive em
- * `/meus-compromissos`). Inventar o botão seria colocar na régua um controle
- * sem função, então o cabeçalho fica sem ação e a divergência foi reportada.
- * A ação real da tela — sincronizar a agenda com Google/Outlook/ICS — segue
- * junto do calendário que ela exporta, dentro de `CalendarioLicitacoes`.
+ * Pendência fora deste lote: o registro ainda declara `acao: 'Novo
+ * compromisso'` para `/calendario`, ação que não existe aqui — criar
+ * compromisso é de `/meus-compromissos`. A linha tem que sair de `paginas.ts`.
  */
 export default function Calendario() {
   return (
