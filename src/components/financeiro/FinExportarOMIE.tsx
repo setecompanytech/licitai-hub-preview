@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FileSpreadsheet, Download, Loader2, Filter, Sparkles } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
@@ -232,9 +233,9 @@ export default function FinExportarOMIE() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Exportar para padrão OMIE (.xlsx)
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Exportar para padrão OMIE (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={(v) => { setEntidade(v as Entidade); setPreviewCount(null); }}>
               <TabsList>
@@ -247,32 +248,34 @@ export default function FinExportarOMIE() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
-            <p className="font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
-              Compatível com reimportação no OMIE — mesmas colunas e formatação aceitas pela plataforma.
-            </p>
-            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>CNPJ/CPF formatados com máscara, datas em ISO, valores com vírgula decimal</li>
-              <li>Pessoas exportadas com endereço, dados bancários, IE/IM, CNAE e tags</li>
-              <li>Lançamentos incluem parcela, juros, multa, desconto e status</li>
-            </ul>
-          </div>
+          <Alert variant="info">
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            <AlertDescription className="space-y-2">
+              <p className="font-semibold">
+                Compatível com reimportação no OMIE — mesmas colunas e formatação aceitas pela plataforma.
+              </p>
+              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                <li>CNPJ/CPF formatados com máscara, datas em ISO, valores com vírgula decimal</li>
+                <li>Pessoas exportadas com endereço, dados bancários, IE/IM, CNAE e tags</li>
+                <li>Lançamentos incluem parcela, juros, multa, desconto e status</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
 
           {isLanc && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">De</Label>
-                <Input type="date" value={dataInicio} onChange={(e) => { setDataInicio(e.target.value); setPreviewCount(null); }} />
+                <Label htmlFor="fin-exportar-de" className="text-sm">De</Label>
+                <Input id="fin-exportar-de" type="date" value={dataInicio} onChange={(e) => { setDataInicio(e.target.value); setPreviewCount(null); }} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Até</Label>
-                <Input type="date" value={dataFim} onChange={(e) => { setDataFim(e.target.value); setPreviewCount(null); }} />
+                <Label htmlFor="fin-exportar-ate" className="text-sm">Até</Label>
+                <Input id="fin-exportar-ate" type="date" value={dataFim} onChange={(e) => { setDataFim(e.target.value); setPreviewCount(null); }} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Status</Label>
+                <Label htmlFor="fin-exportar-status" className="text-sm">Status</Label>
                 <Select value={status} onValueChange={(v) => { setStatus(v as Status); setPreviewCount(null); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="fin-exportar-status"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="previsto">Previsto</SelectItem>
@@ -286,17 +289,17 @@ export default function FinExportarOMIE() {
             </div>
           )}
 
-          <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/30">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={contarRegistros} disabled={exporting}>
-                <Filter className="w-3.5 h-3.5 mr-1.5" /> Contar registros
+                <Filter className="w-4 h-4" aria-hidden="true" /> Contar registros
               </Button>
               {previewCount !== null && (
-                <Badge variant="secondary">{previewCount} registro(s) encontrado(s)</Badge>
+                <Badge variant="info">{previewCount} registro(s) encontrado(s)</Badge>
               )}
             </div>
             <Button onClick={exportar} disabled={exporting}>
-              {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Download className="w-4 h-4" aria-hidden="true" />}
               Exportar para OMIE
             </Button>
           </div>

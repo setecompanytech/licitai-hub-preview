@@ -9,16 +9,19 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { DataDaBaixaDialog } from "./DataDaBaixaDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   Loader2,
   Plus,
   Search,
   Pencil,
   ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -52,14 +55,33 @@ type LancamentoRow = Lancamento & {
 
 type SortKey = "data_vencimento" | "descricao" | "pessoa" | "valor" | "status";
 
-const STATUS_LABEL: Record<string, { label: string; cor: string; icone: typeof Clock }> = {
-  previsto:   { label: "Em aberto", cor: "bg-info/10 text-info border-info/30",                 icone: FileText },
-  vence_7d:   { label: "Vence 7d",  cor: "bg-warning/10 text-warning border-warning/30",        icone: Clock },
-  em_atraso:  { label: "Vencido",   cor: "bg-destructive/10 text-destructive border-destructive/30", icone: AlertCircle },
-  realizado:  { label: "Pago",      cor: "bg-success/10 text-success border-success/30",        icone: CheckCircle2 },
-  conciliado: { label: "Conciliado",cor: "bg-success/10 text-success border-success/30",        icone: CheckCircle2 },
-  cancelado:  { label: "Cancelado", cor: "bg-muted text-muted-foreground border-border",        icone: FileText },
+type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
+
+/**
+ * Situação em tinta (identidade 12/09): a cor sai das variantes semânticas do
+ * Badge (`*-tint` / `*-ink` / `*-line`), não de alfa composto na mão — e o
+ * texto continua sendo a pista principal.
+ */
+const STATUS_LABEL: Record<string, { label: string; variante: VarianteBadge; icone: typeof Clock }> = {
+  previsto:   { label: "Em aberto",  variante: "info",    icone: FileText },
+  vence_7d:   { label: "Vence 7d",   variante: "warning", icone: Clock },
+  em_atraso:  { label: "Vencido",    variante: "danger",  icone: AlertCircle },
+  realizado:  { label: "Pago",       variante: "success", icone: CheckCircle2 },
+  conciliado: { label: "Conciliado", variante: "success", icone: CheckCircle2 },
+  cancelado:  { label: "Cancelado",  variante: "muted",   icone: FileText },
 };
+
+/**
+ * Indicador de ordenação: a coluna ATIVA mostra a direção; as demais, a seta
+ * neutra esmaecida. Todas mostravam o mesmo ícone, e nem a coluna ordenada nem
+ * o sentido apareciam na tela.
+ */
+function IconeOrdem({ ativa, dir }: { ativa: boolean; dir: "asc" | "desc" }) {
+  if (!ativa) return <ArrowUpDown className="w-3 h-3 opacity-30" aria-hidden="true" />;
+  return dir === "asc"
+    ? <ChevronUp className="w-3 h-3" aria-hidden="true" />
+    : <ChevronDown className="w-3 h-3" aria-hidden="true" />;
+}
 
 export default function FinTabelaLancamentos({ tipo }: Props) {
   const [busca, setBusca] = useState("");
@@ -143,6 +165,10 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
     else { setSortKey(k); setSortDir("asc"); }
   };
 
+  /** aria-sort da coluna: só a ativa anuncia a direção ao leitor de tela. */
+  const ariaOrdem = (k: SortKey): "ascending" | "descending" | "none" =>
+    sortKey !== k ? "none" : sortDir === "asc" ? "ascending" : "descending";
+
   /** A baixa pergunta a data do pagamento — a do extrato, não a do clique. */
   const [baixaPendente, setBaixaPendente] = useState<string | null>(null);
   const marcarPago = (l: LancamentoRow) => setBaixaPendente(l.id);
@@ -219,94 +245,99 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div role="status" className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Carregando lançamentos</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Cabeçalho */}
-      <Card>
-        <CardContent className="pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex gap-6 shrink-0">
-            <div>
-              <p className="text-xs text-muted-foreground">Total em aberto</p>
-              <p className="text-xl font-bold tabular-nums whitespace-nowrap">
-                {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total pago</p>
-              <p className="text-xl font-bold tabular-nums text-success whitespace-nowrap">
-                {totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Lançamentos</p>
-              <p className="text-xl font-bold tabular-nums">{filtrados.length}</p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Totais */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-muted-foreground">Total em aberto</p>
+            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-foreground">
+              {totalAberto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-muted-foreground">Total pago</p>
+            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-success-ink">
+              {totalPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-muted-foreground">Lançamentos</p>
+            <p className="mt-1 text-[2rem] font-bold leading-10 tabular-nums text-foreground">{filtrados.length}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar descrição, doc ou pessoa…"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 w-64"
-              />
-            </div>
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos status</SelectItem>
-                <SelectItem value="previsto">Em aberto</SelectItem>
-                <SelectItem value="vence_7d">Vence em 7 dias</SelectItem>
-                <SelectItem value="em_atraso">Vencido</SelectItem>
-                <SelectItem value="realizado">Pago</SelectItem>
-                <SelectItem value="conciliado">Conciliado</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-              <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                {membros.map((m) => (
-                  <SelectItem key={m.user_id} value={m.user_id}>
-                    {m.nome_completo || m.email || m.user_id.slice(0, 8)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" disabled={filtrados.length === 0}>
-                  <Download className="w-4 h-4 mr-1" />
-                  Exportar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={exportarCSV}>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Exportar CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarPDF}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Exportar PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" onClick={abrirNovo}>
-              <Plus className="w-4 h-4 mr-1" />
-              Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
+      {/* Filtros e ações */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            aria-label="Buscar por descrição, documento ou pessoa"
+            placeholder="Buscar descrição, doc ou pessoa…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+          <SelectTrigger className="w-[190px]" aria-label="Filtrar por situação"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos status</SelectItem>
+            <SelectItem value="previsto">Em aberto</SelectItem>
+            <SelectItem value="vence_7d">Vence em 7 dias</SelectItem>
+            <SelectItem value="em_atraso">Vencido</SelectItem>
+            <SelectItem value="realizado">Pago</SelectItem>
+            <SelectItem value="conciliado">Conciliado</SelectItem>
+            <SelectItem value="cancelado">Cancelado</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
+          <SelectTrigger className="w-[220px]" aria-label="Filtrar por responsável"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os responsáveis</SelectItem>
+            {membros.map((m) => (
+              <SelectItem key={m.user_id} value={m.user_id}>
+                {m.nome_completo || m.email || m.user_id.slice(0, 8)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={filtrados.length === 0}>
+              <Download className="w-4 h-4" aria-hidden="true" />
+              Exportar
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportarCSV}>
+              <FileSpreadsheet className="mr-2 w-4 h-4" aria-hidden="true" />
+              Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportarPDF}>
+              <FileText className="mr-2 w-4 h-4" aria-hidden="true" />
+              Exportar PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button onClick={abrirNovo}>
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
+        </Button>
+      </div>
 
       {/* Tabela */}
       <Card>
@@ -314,32 +345,32 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <button onClick={() => toggleSort("data_vencimento")} className="inline-flex items-center gap-1 hover:text-foreground">
-                    Vencimento <ArrowUpDown className="w-3 h-3" />
+                <TableHead aria-sort={ariaOrdem("data_vencimento")}>
+                  <button type="button" onClick={() => toggleSort("data_vencimento")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                    Vencimento <IconeOrdem ativa={sortKey === "data_vencimento"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead>
-                  <button onClick={() => toggleSort("descricao")} className="inline-flex items-center gap-1 hover:text-foreground">
-                    Descrição <ArrowUpDown className="w-3 h-3" />
+                <TableHead aria-sort={ariaOrdem("descricao")}>
+                  <button type="button" onClick={() => toggleSort("descricao")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                    Descrição <IconeOrdem ativa={sortKey === "descricao"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead>
-                  <button onClick={() => toggleSort("pessoa")} className="inline-flex items-center gap-1 hover:text-foreground">
-                    {tipo === "a_pagar" ? "Fornecedor" : "Cliente"} <ArrowUpDown className="w-3 h-3" />
+                <TableHead aria-sort={ariaOrdem("pessoa")}>
+                  <button type="button" onClick={() => toggleSort("pessoa")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                    {tipo === "a_pagar" ? "Fornecedor" : "Cliente"} <IconeOrdem ativa={sortKey === "pessoa"} dir={sortDir} />
                   </button>
                 </TableHead>
                 <TableHead className="whitespace-nowrap">Documento</TableHead>
                 <TableHead>Parcela</TableHead>
                 <TableHead className="whitespace-nowrap">Responsável</TableHead>
-                <TableHead>
-                  <button onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 hover:text-foreground">
-                    Status <ArrowUpDown className="w-3 h-3" />
+                <TableHead aria-sort={ariaOrdem("status")}>
+                  <button type="button" onClick={() => toggleSort("status")} className="inline-flex items-center gap-1 transition-colors hover:text-primary">
+                    Status <IconeOrdem ativa={sortKey === "status"} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="text-right">
-                  <button onClick={() => toggleSort("valor")} className="inline-flex items-center gap-1 hover:text-foreground ml-auto">
-                    Valor <ArrowUpDown className="w-3 h-3" />
+                <TableHead className="text-right" aria-sort={ariaOrdem("valor")}>
+                  <button type="button" onClick={() => toggleSort("valor")} className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-primary">
+                    Valor <IconeOrdem ativa={sortKey === "valor"} dir={sortDir} />
                   </button>
                 </TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -347,9 +378,19 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
             </TableHeader>
             <TableBody>
               {filtrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
-                    Nenhum lançamento encontrado
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="p-0">
+                    <EstadoVazio
+                      icone={<FileText />}
+                      titulo="Nenhum lançamento encontrado"
+                      descricao="Ajuste a busca e os filtros acima, ou registre um novo lançamento."
+                      acao={
+                        <Button onClick={abrirNovo}>
+                          <Plus className="w-4 h-4" aria-hidden="true" />
+                          Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -362,13 +403,20 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                   const venc = dataRefVenc(l);
                   const vendedor = nomeVendedor((l as any).vendedor_responsavel_id);
                   const podePagar = !["realizado", "conciliado", "cancelado"].includes(l.status);
+                  const rotuloVinculo = tipo === "a_pagar"
+                    ? (l.contrato_id
+                        ? "Despesa atribuída a um contrato — clique para trocar"
+                        : "Atribuir esta despesa a um contrato")
+                    : (l.contrato_pedido_id
+                        ? "Vinculado a um pedido — clique para trocar"
+                        : "Vincular a um contrato/pedido em Gestão");
                   return (
                     <TableRow key={l.id}>
                       <TableCell className="tabular-nums whitespace-nowrap">
                         {format(parseISO(venc), "dd/MM/yyyy", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="max-w-xs">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
                           <p className="font-medium line-clamp-1" title={l.descricao}>{l.descricao}</p>
                           {/* O documento que originou o lançamento, ao lado dele.
                               Pasta de arquivos que não aponta para os lançamentos
@@ -388,16 +436,22 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           {/* Nota guardada e nenhum pedido: é a população que
                               nasce do preenchimento manual e fica invisível
                               para a Gestão. A pendência aparece — e leva
-                              direto ao elo. */}
+                              direto ao elo. O selo É o botão: o estilo vem de
+                              `badgeVariants`, e não de um Badge aninhado —
+                              Badge renderiza uma div, e button só aceita
+                              conteúdo de frase. */}
                           {tipo === "a_receber" && !l.contrato_pedido_id && !!docsPorLancamento?.[l.id] && (
-                            <Badge
-                              variant="outline"
-                              className="bg-warning/10 text-warning border-warning/30 cursor-pointer shrink-0 text-[10px] px-1.5"
+                            <button
+                              type="button"
+                              className={cn(
+                                badgeVariants({ variant: "warning" }),
+                                "shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                              )}
                               title="Tem nota guardada, mas não está ligado a nenhum contrato — não consome saldo nem aparece no faturamento da Gestão. Clique para vincular."
                               onClick={() => setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null })}
                             >
                               sem vínculo
-                            </Badge>
+                            </button>
                           )}
                         </div>
                         {l.categoria?.nome && (
@@ -407,7 +461,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       <TableCell className="max-w-[200px] truncate" title={l.pessoa?.nome ?? undefined}>
                         {l.pessoa?.nome ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-sm">
                         {l.numero_documento ? (
                           <>
                             {l.numero_documento}
@@ -417,17 +471,17 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                       </TableCell>
                       <TableCell>
                         {total > 1 ? (
-                          <Badge variant="secondary" className="text-xs gap-1">
-                            <Layers className="w-3 h-3" />{num}/{total}
+                          <Badge variant="muted" className="gap-1">
+                            <Layers className="w-3 h-3" aria-hidden="true" />{num}/{total}
                           </Badge>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                        ) : <span className="text-sm text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="text-xs max-w-[140px] truncate" title={vendedor ?? undefined}>
+                      <TableCell className="max-w-[140px] truncate text-sm" title={vendedor ?? undefined}>
                         {vendedor ?? <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`text-xs gap-1 ${meta.cor}`}>
-                          <Icone className="w-3 h-3" />{meta.label}
+                        <Badge variant={meta.variante} className="gap-1">
+                          <Icone className="w-3 h-3" aria-hidden="true" />{meta.label}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">
@@ -439,7 +493,6 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-xs"
                               onClick={() => marcarPago(l)}
                               disabled={upsert.isPending}
                             >
@@ -460,27 +513,23 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className={cn("h-7 w-7",
+                            className={cn("h-9 w-9",
                               (tipo === "a_pagar" ? l.contrato_id : l.contrato_pedido_id) && "text-primary")}
                             onClick={() => setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null })}
-                            title={tipo === "a_pagar"
-                              ? (l.contrato_id
-                                  ? "Despesa atribuída a um contrato — clique para trocar"
-                                  : "Atribuir esta despesa a um contrato")
-                              : (l.contrato_pedido_id
-                                  ? "Vinculado a um pedido — clique para trocar"
-                                  : "Vincular a um contrato/pedido em Gestão")}
+                            title={rotuloVinculo}
+                            aria-label={rotuloVinculo}
                           >
-                            <Link2 className="w-3.5 h-3.5" />
+                            <Link2 />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-7 w-7"
+                            className="h-9 w-9"
                             onClick={() => abrirEditar(l)}
                             title="Editar"
+                            aria-label={`Editar ${l.descricao}`}
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Pencil />
                           </Button>
                         </div>
                       </TableCell>

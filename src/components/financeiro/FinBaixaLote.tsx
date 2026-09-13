@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatBRL } from "@/lib/financeiro/formatters";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { CheckCheck, Loader2, Search } from "lucide-react";
 import { useContas, useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,27 +100,25 @@ export default function FinBaixaLote() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* A tela já se identifica no cabeçalho da subtela; aqui fica só a
+          escolha da carteira que vai ser baixada. */}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Tabs value={tipo} onValueChange={(v) => { setTipo(v as Tipo); setSelecionados(new Set()); }}>
+          <TabsList>
+            <TabsTrigger value="a_pagar">Contas a Pagar</TabsTrigger>
+            <TabsTrigger value="a_receber">Contas a Receber</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CheckCheck className="w-5 h-5 text-muted-foreground" /> Baixa em lote
-            </CardTitle>
-            <Tabs value={tipo} onValueChange={(v) => { setTipo(v as Tipo); setSelecionados(new Set()); }}>
-              <TabsList>
-                <TabsTrigger value="a_pagar">Contas a Pagar</TabsTrigger>
-                <TabsTrigger value="a_receber">Contas a Receber</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5 md:col-span-1">
-              <Label>Conta para liquidação</Label>
+        <CardContent className="space-y-6 p-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="fin-baixa-conta">Conta para liquidação</Label>
               <Select value={contaPadrao} onValueChange={setContaPadrao}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger id="fin-baixa-conta"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {contas.filter((c) => c.ativa).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
@@ -125,73 +126,118 @@ export default function FinBaixaLote() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Data do pagamento</Label>
-              <Input type="date" value={dataPadrao} onChange={(e) => setDataPadrao(e.target.value)} />
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-2">
+              <Label htmlFor="fin-baixa-data">Data do pagamento</Label>
+              <Input
+                id="fin-baixa-data"
+                type="date"
+                value={dataPadrao}
+                onChange={(e) => setDataPadrao(e.target.value)}
+                aria-describedby="fin-baixa-data-ajuda"
+              />
+              <p id="fin-baixa-data-ajuda" className="text-xs text-muted-foreground">
                 A do extrato — o dia em que o dinheiro de fato saiu. Com outra
                 data, os lançamentos contam no mês errado.
               </p>
             </div>
-            <div className="space-y-1.5">
-              <Label>Buscar</Label>
+            <div className="space-y-2">
+              <Label htmlFor="fin-baixa-busca">Buscar</Label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Filtrar descrição..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+                <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input id="fin-baixa-busca" className="pl-9" placeholder="Filtrar descrição..." value={busca} onChange={(e) => setBusca(e.target.value)} />
               </div>
             </div>
           </div>
 
-          <div className="rounded-md border">
-            <div className="flex items-center gap-3 p-3 border-b bg-muted/30 text-xs font-medium">
-              <Checkbox
-                checked={filtrados.length > 0 && selecionados.size === filtrados.length}
-                onCheckedChange={toggleAll}
-              />
-              <span className="flex-1">Descrição</span>
-              <span className="w-24 text-right">Vencimento</span>
-              <span className="w-32 text-right">Valor</span>
-            </div>
-            <div className="max-h-[400px] overflow-y-auto">
-              {isLoading ? (
-                <div className="p-8 text-center text-sm text-muted-foreground"><Loader2 className="w-4 h-4 mx-auto animate-spin" /></div>
-              ) : filtrados.length === 0 ? (
-                <div className="p-8 text-center text-sm text-muted-foreground">Nenhum lançamento pendente encontrado.</div>
-              ) : (
-                filtrados.map((l) => {
-                  const checked = selecionados.has(l.id);
-                  const atrasado = l.status === "em_atraso";
-                  return (
-                    <div key={l.id} className="flex items-center gap-3 p-3 border-b hover:bg-muted/20 text-sm">
-                      <Checkbox checked={checked} onCheckedChange={() => toggle(l.id)} />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate" title={l.descricao}>{l.descricao}</p>
-                        {atrasado && <Badge variant="destructive" className="text-xs mt-0.5">Em atraso</Badge>}
-                      </div>
-                      <span className="w-24 text-right text-xs text-muted-foreground">
-                        {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
-                      </span>
-                      <span className="w-32 text-right font-medium tabular-nums whitespace-nowrap">
-                        R$ {Number(l.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          {/* A altura máxima vai no scroller da própria Table (o div que
+              ui/table.tsx cria): dois contêineres de rolagem aninhados
+              deixariam o `sticky` preso ao de dentro, que nunca rola — e o
+              "selecionar todos" sumiria ao rolar, justamente na tela cujo
+              gesto principal é selecionar em lote. */}
+          <div className="rounded-lg border border-border [&>div]:max-h-[400px]">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-muted">
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={filtrados.length > 0 && selecionados.size === filtrados.length}
+                      onCheckedChange={toggleAll}
+                      aria-label="Selecionar todos os lançamentos listados"
+                    />
+                  </TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="w-[140px] text-right">Vencimento</TableHead>
+                  <TableHead className="w-[170px] text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                      <Loader2 className="mx-auto w-5 h-5 animate-spin" aria-hidden="true" />
+                      <span className="sr-only">Carregando lançamentos</span>
+                    </TableCell>
+                  </TableRow>
+                ) : filtrados.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="p-0">
+                      <EstadoVazio
+                        tamanho="compacto"
+                        icone={<CheckCheck />}
+                        titulo="Nenhum lançamento pendente"
+                        descricao="Não há nada em aberto nesta carteira com o filtro atual."
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtrados.map((l) => {
+                    const checked = selecionados.has(l.id);
+                    const atrasado = l.status === "em_atraso";
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="py-3">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggle(l.id)}
+                            aria-label={`Selecionar ${l.descricao}`}
+                          />
+                        </TableCell>
+                        {/* O teto de largura mora na CÉLULA: sem ele o
+                            `truncate` (que traz `whitespace-nowrap`) faria a
+                            coluna crescer até caber a descrição inteira, e a
+                            tabela ganharia rolagem horizontal no lugar das
+                            reticências. */}
+                        <TableCell className="max-w-[320px] py-3">
+                          <p className="truncate text-sm" title={l.descricao}>{l.descricao}</p>
+                          {atrasado && <Badge variant="danger" className="mt-1">Em atraso</Badge>}
+                        </TableCell>
+                        <TableCell className="py-3 text-right text-sm tabular-nums text-muted-foreground" nowrap>
+                          {l.data_vencimento ? format(new Date(l.data_vencimento + "T00:00:00"), "dd/MM/yyyy") : "—"}
+                        </TableCell>
+                        <TableCell className="py-3 text-right text-sm font-medium tabular-nums" nowrap>
+                          {formatBRL(Number(l.valor))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/30">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted p-4">
             <div className="text-sm">
               <span className="text-muted-foreground">Selecionados:</span>{" "}
               <span className="font-semibold">{selecionados.size}</span>
               <span className="text-muted-foreground"> · Total:</span>{" "}
               <span className="font-semibold tabular-nums">
-                R$ {totalSelecionado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                {formatBRL(totalSelecionado)}
               </span>
             </div>
             <Button onClick={handleBaixar} disabled={!contaPadrao || selecionados.size === 0 || saving}>
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCheck className="w-4 h-4 mr-2" />}
+              {saving
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <CheckCheck className="w-4 h-4" aria-hidden="true" />}
               Baixar {selecionados.size} lançamento(s)
             </Button>
           </div>

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { hojeLocal } from "@/lib/financeiro/data-local";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRightLeft, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, ArrowRightLeft, Loader2 } from "lucide-react";
 import { useContas, useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -75,19 +76,19 @@ export default function FinTransferencia() {
     <div className="max-w-3xl mx-auto space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <ArrowRightLeft className="w-5 h-5 text-muted-foreground" /> Transferência entre contas
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <CardDescription>
             Movimente saldo entre contas correntes. O sistema registra automaticamente uma única operação tipo "transferência" que afeta as duas contas — sem dupla contagem no DRE.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Conta de origem</Label>
+            <div className="space-y-2">
+              <Label htmlFor="transf-origem">Conta de origem</Label>
               <Select value={origem} onValueChange={setOrigem} disabled={isLoading}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger id="transf-origem"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {contasAtivas.map((c) => (
                     <SelectItem key={c.id} value={c.id} disabled={c.id === destino}>
@@ -98,14 +99,14 @@ export default function FinTransferencia() {
               </Select>
               {contaOrigem && (
                 <p className="text-xs text-muted-foreground">
-                  Saldo atual: <span className="font-medium text-foreground">R$ {Number(contaOrigem.saldo_atual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  Saldo atual: <span className="font-medium text-foreground tabular-nums">R$ {Number(contaOrigem.saldo_atual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Conta de destino</Label>
+            <div className="space-y-2">
+              <Label htmlFor="transf-destino">Conta de destino</Label>
               <Select value={destino} onValueChange={setDestino} disabled={isLoading}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger id="transf-destino"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {contasAtivas.map((c) => (
                     <SelectItem key={c.id} value={c.id} disabled={c.id === origem}>
@@ -116,41 +117,44 @@ export default function FinTransferencia() {
               </Select>
               {contaDestino && (
                 <p className="text-xs text-muted-foreground">
-                  Saldo atual: <span className="font-medium text-foreground">R$ {Number(contaDestino.saldo_atual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  Saldo atual: <span className="font-medium text-foreground tabular-nums">R$ {Number(contaDestino.saldo_atual).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </p>
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
+            <div className="space-y-2">
+              <Label htmlFor="transf-valor">Valor (R$)</Label>
+              <Input id="transf-valor" type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" className="tabular-nums" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Data</Label>
-              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <div className="space-y-2">
+              <Label htmlFor="transf-data">Data</Label>
+              <Input id="transf-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Descrição</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+          <div className="space-y-2">
+            <Label htmlFor="transf-descricao">Descrição</Label>
+            <Input id="transf-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Observações (opcional)</Label>
-            <Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} />
+          <div className="space-y-2">
+            <Label htmlFor="transf-obs">Observações (opcional)</Label>
+            <Textarea id="transf-obs" value={obs} onChange={(e) => setObs(e.target.value)} rows={2} />
           </div>
 
           {contaOrigem && valorNum > Number(contaOrigem.saldo_atual) && (
-            <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-xs">
-              ⚠️ Atenção: o valor informado é maior que o saldo atual da conta de origem. A transferência ficará permitida, mas a conta ficará negativa.
-            </div>
+            <Alert variant="warning">
+              <AlertTriangle className="w-4 h-4" />
+              <AlertDescription>
+                Atenção: o valor informado é maior que o saldo atual da conta de origem. A transferência ficará permitida, mas a conta ficará negativa.
+              </AlertDescription>
+            </Alert>
           )}
 
           <Button className="w-full" onClick={handleSubmit} disabled={!podeSalvar || saving}>
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRightLeft className="w-4 h-4 mr-2" />}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
             Registrar transferência
           </Button>
         </CardContent>

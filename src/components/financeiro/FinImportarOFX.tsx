@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
   Sparkles,
   Pencil,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import {
   useContas,
@@ -245,6 +247,15 @@ export default function FinImportarOFX() {
     [categorias]
   );
 
+  // O que de fato entra: a importação processa só o que não está desmarcado
+  // (linha de saldo do extrato já chega assim). O rótulo do botão conta este
+  // mesmo conjunto — marcar três linhas como excluídas e, logo abaixo,
+  // prometer importar o total bruto é a tela discordando de si mesma.
+  const ativos = useMemo(
+    () => movimentos.filter((m) => !m._ignorar),
+    [movimentos]
+  );
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -374,7 +385,6 @@ export default function FinImportarOFX() {
     }
     setImportando(true);
     try {
-      const ativos = movimentos.filter((m) => !m._ignorar);
       const conciliacoes = ativos.filter((m) => m._sugestao);
       /**
        * Marcar conciliado sem registrar a conciliação é criar marca sem fato.
@@ -471,11 +481,13 @@ export default function FinImportarOFX() {
 
   return (
     <Card>
+      {/* Sem título no cartão: o h1 desta subtela já diz "Importar Extrato OFX"
+          — Financeiro.tsx resolve o cabeçalho pelo catálogo HUB_ITEMS. Repetir o
+          mesmo nome logo abaixo, em corpo menor e em outra grafia, era o mesmo
+          rótulo empilhado duas vezes, discordando de si mesmo. Fica só a
+          instrução de uso, que o h1 não dá. */}
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Upload className="w-5 h-5 text-muted-foreground" /> Importar Extrato OFX
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Faça upload do arquivo .ofx do seu banco. O sistema detecta as
           transações, sugere conciliação automática e extrai categoria, tipo de
           documento, favorecido e número de documento — você pode revisar cada
@@ -483,13 +495,13 @@ export default function FinImportarOFX() {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-[12px] font-medium text-foreground">
+            <Label htmlFor="ofx-conta" className="text-sm font-medium text-foreground">
               Conta de destino
             </Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger className="h-[52px] py-0 pl-2 pr-3 [&>span]:line-clamp-none">
+              <SelectTrigger id="ofx-conta" className="h-14 py-0 pl-2 pr-3 [&>span]:line-clamp-none">
                 {(() => {
                   const sel = contas.find((c) => c.id === contaId);
                   if (!sel)
@@ -499,21 +511,21 @@ export default function FinImportarOFX() {
                   const b = findBanco(sel.banco_nome ?? "");
                   const nomeExibido = b?.nome ?? sel.banco_nome ?? sel.nome;
                   return (
-                    <div className="flex items-center gap-2.5 text-left w-full min-w-0">
-                      <div className="shrink-0 w-9 h-9 rounded-[6px] bg-background border border-border/70 flex items-center justify-center overflow-hidden">
+                    <div className="flex w-full min-w-0 items-center gap-3 text-left">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
                         <BancoLogo
                           codigo={b?.codigo}
                           nome={nomeExibido}
                           size={28}
                         />
                       </div>
-                      <div className="min-w-0 flex-1 flex flex-col justify-center">
-                        <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
+                      <div className="flex min-w-0 flex-1 flex-col justify-center">
+                        <div className="truncate text-sm font-semibold text-foreground">
                           {nomeExibido}
                         </div>
-                        <div className="text-xs font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
+                        <div className="truncate text-xs font-normal tabular-nums text-muted-foreground">
                           {sel.agencia ? `Ag. ${sel.agencia}` : "Ag. —"}
-                          <span className="mx-1.5 opacity-50">•</span>
+                          <span className="mx-1.5" aria-hidden="true">•</span>
                           {sel.conta ? `C/C ${sel.conta}` : "C/C —"}
                         </div>
                       </div>
@@ -521,7 +533,7 @@ export default function FinImportarOFX() {
                   );
                 })()}
               </SelectTrigger>
-              <SelectContent className="max-h-[320px] p-1">
+              <SelectContent className="max-h-80 p-1">
                 {contas
                   .filter((c) => c.ativa)
                   .map((c) => {
@@ -531,23 +543,23 @@ export default function FinImportarOFX() {
                       <SelectItem
                         key={c.id}
                         value={c.id}
-                        className="h-[48px] py-0 pl-2 pr-2 rounded-[6px] focus:bg-accent/60 [&>span:first-child]:hidden [&>span:last-child]:w-full"
+                        className="h-12 rounded-md px-2 py-0 focus:bg-muted [&>span:first-child]:hidden [&>span:last-child]:w-full"
                       >
-                        <div className="flex items-center gap-2.5 w-full min-w-0">
-                          <div className="shrink-0 w-9 h-9 rounded-[6px] bg-background border border-border/70 flex items-center justify-center overflow-hidden">
+                        <div className="flex w-full min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
                             <BancoLogo
                               codigo={b?.codigo}
                               nome={nomeExibido}
                               size={28}
                             />
                           </div>
-                          <div className="min-w-0 flex-1 flex flex-col justify-center">
-                            <div className="text-[13px] font-semibold leading-[1.15] truncate text-foreground">
+                          <div className="flex min-w-0 flex-1 flex-col justify-center">
+                            <div className="truncate text-sm font-semibold text-foreground">
                               {nomeExibido}
                             </div>
-                            <div className="text-xs font-normal text-muted-foreground leading-[1.3] truncate tabular-nums mt-[2px]">
+                            <div className="truncate text-xs font-normal tabular-nums text-muted-foreground">
                               {c.agencia ? `Ag. ${c.agencia}` : "Ag. —"}
-                              <span className="mx-1.5 opacity-50">•</span>
+                              <span className="mx-1.5" aria-hidden="true">•</span>
                               {c.conta ? `C/C ${c.conta}` : "C/C —"}
                             </div>
                           </div>
@@ -563,42 +575,53 @@ export default function FinImportarOFX() {
               const erros = validarConta(sel);
               if (erros.length === 0) return null;
               return (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive space-y-0.5">
-                  <div className="font-medium">Cadastro da conta incompleto:</div>
-                  <ul className="list-disc list-inside">
-                    {erros.map((e, i) => (
-                      <li key={i}>{e}</li>
-                    ))}
-                  </ul>
-                  <div className="text-muted-foreground">
-                    Atualize em Financeiro › Contas antes de importar.
-                  </div>
-                </div>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                  <AlertTitle>Cadastro da conta incompleto</AlertTitle>
+                  <AlertDescription className="space-y-1">
+                    <ul className="list-inside list-disc">
+                      {erros.map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                    <p>Atualize em Financeiro › Contas antes de importar.</p>
+                  </AlertDescription>
+                </Alert>
               );
             })()}
           </div>
           <div className="space-y-1.5">
-            <Label>Arquivo .ofx</Label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".ofx"
-              onChange={handleFile}
-              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-            />
+            <label
+              htmlFor="ofx-arquivo"
+              className="flex h-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-6 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+            >
+              <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <span className="text-base font-semibold text-foreground">Arquivo .ofx</span>
+              <span className="text-sm text-muted-foreground">
+                Clique aqui para selecionar o extrato baixado do seu banco
+              </span>
+              <input
+                id="ofx-arquivo"
+                ref={fileRef}
+                type="file"
+                accept=".ofx"
+                onChange={handleFile}
+                className="sr-only"
+              />
+            </label>
           </div>
         </div>
 
         {analisando && (
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 animate-pulse text-muted-foreground" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
             Analisando transações e sugerindo conciliações...
           </div>
         )}
 
         {movimentos.length > 0 && (
           <>
-            <div className="rounded-md border max-h-[450px] overflow-y-auto">
+            <div className="max-h-[450px] divide-y divide-border overflow-y-auto rounded-lg border border-border">
               {movimentos.map((m, i) => {
                 const cat = categorias.find(
                   (c) => c.id === m._detalhes.categoria_id
@@ -607,49 +630,46 @@ export default function FinImportarOFX() {
                 return (
                   <div
                     key={i}
-                    className="flex items-center gap-3 p-2.5 border-b text-sm hover:bg-accent/30 transition-colors"
+                    className="flex flex-wrap items-center gap-3 p-3 text-sm transition-colors hover:bg-muted"
                   >
                     {m.valor > 0 ? (
-                      <ArrowDownCircle className="w-4 h-4 text-success shrink-0" />
+                      <ArrowDownCircle className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
                     ) : (
-                      <ArrowUpCircle className="w-4 h-4 text-destructive shrink-0" />
+                      <ArrowUpCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
                     )}
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate" title={m.memo}>{m.memo}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs text-muted-foreground tabular-nums">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base" title={m.memo}>{m.memo}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="text-xs tabular-nums text-muted-foreground">
                           {format(
                             new Date(m.data + "T00:00:00"),
                             "dd/MM/yyyy"
                           )}
                         </span>
+                        {m._ignorar && (
+                          <Badge variant="muted">Linha de saldo — não será importada</Badge>
+                        )}
                         {m._sugestao && (
-                          <Badge variant="secondary" className="text-xs">
-                            ✨ Conciliar: {m._sugestao.descricao.slice(0, 40)}
+                          <Badge variant="info" className="gap-1">
+                            <Sparkles className="h-3 w-3" aria-hidden="true" />
+                            Conciliar: {m._sugestao.descricao.slice(0, 40)}
                           </Badge>
                         )}
                         {!m._sugestao && cat && (
-                          <Badge variant="outline" className="text-xs">
-                            {cat.nome}
-                          </Badge>
+                          <Badge variant="muted">{cat.nome}</Badge>
                         )}
                         {!m._sugestao && pes && (
-                          <Badge variant="outline" className="text-xs">
-                            {pes.nome}
-                          </Badge>
+                          <Badge variant="muted">{pes.nome}</Badge>
                         )}
                         {m._editado && !m._sugestao && (
-                          <Badge
-                            variant="default"
-                            className="text-xs gap-1"
-                          >
-                            <CheckCircle2 className="w-2.5 h-2.5" /> editado
+                          <Badge variant="success" className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> editado
                           </Badge>
                         )}
                       </div>
                     </div>
                     <span
-                      className={`tabular-nums font-medium ${
+                      className={`font-medium tabular-nums ${
                         m.valor > 0 ? "text-success" : "text-destructive"
                       }`}
                     >
@@ -663,10 +683,10 @@ export default function FinImportarOFX() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs gap-1 shrink-0"
+                        className="shrink-0"
                         onClick={() => setEditIdx(i)}
                       >
-                        <Pencil className="w-3 h-3" />
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
                         Detalhes
                       </Button>
                     )}
@@ -680,11 +700,11 @@ export default function FinImportarOFX() {
               className="w-full"
             >
               {importando ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Upload className="w-4 h-4 mr-2" />
+                <Upload className="h-4 w-4" aria-hidden="true" />
               )}
-              Confirmar importação ({movimentos.length} movimento(s))
+              Confirmar importação ({ativos.length} movimento(s))
             </Button>
           </>
         )}
@@ -696,24 +716,24 @@ export default function FinImportarOFX() {
         >
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-base">
-                Novo Lançamento de Conta Corrente
+              <DialogTitle>
+                Novo lançamento de conta corrente
               </DialogTitle>
-              <DialogDescription className="text-xs">
+              <DialogDescription className="text-sm">
                 Os campos foram preenchidos automaticamente a partir do extrato
                 OFX. Edite o que for necessário antes de confirmar a importação.
               </DialogDescription>
             </DialogHeader>
 
             {movimentoEdit && editIdx !== null && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* Cabeçalho com banco + data + valor */}
-                <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_1fr_1fr] gap-3 items-center p-3 rounded-md border bg-muted/30">
+                <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-muted p-4">
                   {(() => {
                     const sel = contas.find((c) => c.id === contaId);
                     const b = findBanco(sel?.banco_nome ?? "");
                     return (
-                      <div className="w-12 h-12 rounded-md bg-background border flex items-center justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-background">
                         <BancoLogo
                           codigo={b?.codigo}
                           nome={b?.nome ?? sel?.banco_nome ?? "—"}
@@ -722,21 +742,21 @@ export default function FinImportarOFX() {
                       </div>
                     );
                   })()}
-                  <div>
-                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
-                      Conta Corrente
+                  <div className="min-w-0">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Conta corrente
                     </div>
-                    <div className="text-[13px] font-semibold truncate">
+                    <div className="truncate text-sm font-semibold text-foreground">
                       {contas.find((c) => c.id === contaId)?.banco_nome ??
                         contas.find((c) => c.id === contaId)?.nome ??
                         "—"}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
-                      Data do Movimento
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Data do movimento
                     </div>
-                    <div className="text-[13px] font-medium tabular-nums">
+                    <div className="text-sm font-medium tabular-nums text-foreground">
                       {format(
                         new Date(movimentoEdit.data + "T00:00:00"),
                         "dd/MM/yyyy"
@@ -744,14 +764,14 @@ export default function FinImportarOFX() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-muted-foreground tracking-wide">
-                      Valor do Lançamento
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Valor do lançamento
                     </div>
                     <div
-                      className={`text-[13px] font-semibold tabular-nums ${
+                      className={`text-sm font-semibold tabular-nums ${
                         movimentoEdit.valor > 0
-                          ? "text-success"
-                          : "text-destructive"
+                          ? "text-success-ink"
+                          : "text-destructive-ink"
                       }`}
                     >
                       R${" "}
@@ -763,10 +783,10 @@ export default function FinImportarOFX() {
                 </div>
 
                 {/* Linha 1: Categoria + Tipo doc + Número doc */}
-                <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[12px]">
-                      Categoria <span className="text-destructive">*</span>
+                    <Label htmlFor="ofx-categoria" className="text-sm">
+                      Categoria <span className="text-destructive-ink" aria-hidden="true">*</span>
                     </Label>
                     <Select
                       value={movimentoEdit._detalhes.categoria_id ?? ""}
@@ -776,19 +796,15 @@ export default function FinImportarOFX() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-9 text-[13px]">
+                      <SelectTrigger id="ofx-categoria">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
-                      <SelectContent className="max-h-[280px]">
+                      <SelectContent className="max-h-72">
                         {(movimentoEdit.valor > 0
                           ? categoriasReceita
                           : categoriasDespesa
                         ).map((c) => (
-                          <SelectItem
-                            key={c.id}
-                            value={c.id}
-                            className="text-[13px]"
-                          >
+                          <SelectItem key={c.id} value={c.id}>
                             {c.nome}
                           </SelectItem>
                         ))}
@@ -796,7 +812,7 @@ export default function FinImportarOFX() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[12px]">Tipo de Documento</Label>
+                    <Label htmlFor="ofx-tipo-doc" className="text-sm">Tipo de documento</Label>
                     <Select
                       value={movimentoEdit._detalhes.tipo_documento}
                       onValueChange={(v) =>
@@ -805,16 +821,12 @@ export default function FinImportarOFX() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-9 text-[13px]">
+                      <SelectTrigger id="ofx-tipo-doc">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {TIPO_DOCUMENTO_OPTIONS.map((t) => (
-                          <SelectItem
-                            key={t.value}
-                            value={t.value}
-                            className="text-[13px]"
-                          >
+                          <SelectItem key={t.value} value={t.value}>
                             {t.label}
                           </SelectItem>
                         ))}
@@ -822,24 +834,25 @@ export default function FinImportarOFX() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[12px]">Número do Documento</Label>
+                    <Label htmlFor="ofx-numero-doc" className="text-sm">Número do documento</Label>
                     <Input
+                      id="ofx-numero-doc"
                       value={movimentoEdit._detalhes.numero_documento}
                       onChange={(e) =>
                         atualizarDetalhe(editIdx, {
                           numero_documento: e.target.value,
                         })
                       }
-                      className="h-9 text-[13px] tabular-nums"
+                      className="tabular-nums"
                       placeholder="Ex.: 20260423004"
                     />
                   </div>
                 </div>
 
                 {/* Linha 2: Favorecido (Pessoa) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-[12px]">Favorecido / Cliente</Label>
+                    <Label htmlFor="ofx-favorecido" className="text-sm">Favorecido / cliente</Label>
                     <Select
                       value={movimentoEdit._detalhes.pessoa_id ?? "_none_"}
                       onValueChange={(v) =>
@@ -848,7 +861,7 @@ export default function FinImportarOFX() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-9 text-[13px]">
+                      <SelectTrigger id="ofx-favorecido">
                         <SelectValue
                           placeholder={
                             movimentoEdit._detalhes.favorecido_texto ||
@@ -856,16 +869,12 @@ export default function FinImportarOFX() {
                           }
                         />
                       </SelectTrigger>
-                      <SelectContent className="max-h-[280px]">
-                        <SelectItem value="_none_" className="text-[13px]">
+                      <SelectContent className="max-h-72">
+                        <SelectItem value="_none_">
                           — Não vincular pessoa —
                         </SelectItem>
                         {pessoas.map((p) => (
-                          <SelectItem
-                            key={p.id}
-                            value={p.id}
-                            className="text-[13px]"
-                          >
+                          <SelectItem key={p.id} value={p.id}>
                             {p.nome}
                           </SelectItem>
                         ))}
@@ -873,7 +882,7 @@ export default function FinImportarOFX() {
                     </Select>
                     {movimentoEdit._detalhes.favorecido_texto &&
                       !movimentoEdit._detalhes.pessoa_id && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                           Detectado no extrato:{" "}
                           <span className="font-medium text-foreground">
                             {movimentoEdit._detalhes.favorecido_texto}
@@ -885,8 +894,9 @@ export default function FinImportarOFX() {
 
                 {/* Observações */}
                 <div className="space-y-1.5">
-                  <Label className="text-[12px]">Observações</Label>
+                  <Label htmlFor="ofx-observacoes" className="text-sm">Observações</Label>
                   <Textarea
+                    id="ofx-observacoes"
                     value={movimentoEdit._detalhes.observacoes}
                     onChange={(e) =>
                       atualizarDetalhe(editIdx, {
@@ -894,7 +904,7 @@ export default function FinImportarOFX() {
                       })
                     }
                     rows={3}
-                    className="text-[13px] resize-none"
+                    className="resize-none text-sm"
                   />
                 </div>
               </div>
@@ -905,7 +915,7 @@ export default function FinImportarOFX() {
                 Cancelar
               </Button>
               <Button onClick={() => setEditIdx(null)}>
-                <CheckCircle2 className="w-4 h-4 mr-1.5" /> Salvar e Fechar
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Salvar e fechar
               </Button>
             </DialogFooter>
           </DialogContent>

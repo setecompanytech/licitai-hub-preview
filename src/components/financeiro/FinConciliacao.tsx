@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -71,8 +72,6 @@ import {
   FileCheck2,
   Search,
   CheckCircle2,
-  TrendingUp,
-  TrendingDown,
   BarChart3,
   Plus,
   ArrowLeft,
@@ -80,8 +79,6 @@ import {
   Ban,
   ChevronDown,
   RotateCcw,
-  ArrowUp,
-  ArrowDown,
   Clock,
   XCircle,
   Wallet,
@@ -95,6 +92,7 @@ import { formatBRL, formatDate, statusLabel } from "@/lib/financeiro/formatters"
 import { Input } from "@/components/ui/input";
 import { parseCsvExtrato, csvParaOfx } from "@/lib/financeiro/csvToOfx";
 import { toast } from "sonner";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import FinRelatorioConciliacao from "./FinRelatorioConciliacao";
 import LancamentoDialog from "./LancamentoDialog";
 import SeloDoContrato from "./SeloDoContrato";
@@ -720,12 +718,12 @@ export default function FinConciliacao() {
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
     <Tabs defaultValue="conciliar" className="space-y-4">
-      <TabsList className="h-9">
-        <TabsTrigger value="conciliar" className="text-xs px-3">
-          <Link2 className="w-3.5 h-3.5 mr-1.5" />Conciliação
+      <TabsList>
+        <TabsTrigger value="conciliar">
+          <Link2 className="w-4 h-4 mr-2" />Conciliação
         </TabsTrigger>
-        <TabsTrigger value="relatorio" className="text-xs px-3">
-          <BarChart3 className="w-3.5 h-3.5 mr-1.5" />Relatório por período
+        <TabsTrigger value="relatorio">
+          <BarChart3 className="w-4 h-4 mr-2" />Relatório por período
         </TabsTrigger>
       </TabsList>
 
@@ -737,12 +735,12 @@ export default function FinConciliacao() {
           <>
             {/* ── Importar ── */}
             <Card>
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="text-xs text-muted-foreground mb-1 block">Conta bancária</label>
+              <CardContent className="p-6">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex-1 min-w-[200px] space-y-2">
+                    <Label htmlFor="conciliacao-conta">Conta bancária</Label>
                     <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
-                      <SelectTrigger className="h-9">
+                      <SelectTrigger id="conciliacao-conta">
                         <SelectValue placeholder="Selecione uma conta" />
                       </SelectTrigger>
                       <SelectContent>
@@ -755,34 +753,30 @@ export default function FinConciliacao() {
                     </Select>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-auto flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2 ml-auto">
                     <input ref={fileRef} type="file" accept=".ofx,.OFX" className="hidden" onChange={onFile} />
                     <input ref={csvRef} type="file" accept=".csv,.CSV,text/csv" className="hidden" onChange={onCsvFile} />
 
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="h-9"
                       onClick={() => fileRef.current?.click()}
                       disabled={importar.isPending || !contaSelecionada}
                     >
                       {importar.isPending
-                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Upload className="w-4 h-4" />}
                       Importar OFX
                     </Button>
 
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="h-9"
                       onClick={() => csvRef.current?.click()}
                       disabled={importar.isPending || !contaSelecionada}
                       title="CSV com colunas: data, descricao, valor (opcional documento)"
                     >
                       {importar.isPending
-                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Upload className="w-4 h-4" />}
                       Importar CSV
                     </Button>
                   </div>
@@ -792,23 +786,25 @@ export default function FinConciliacao() {
 
             {/* ── Extratos para conciliar ── */}
             <Card>
-              <CardHeader className="py-3 px-5 border-b">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <FileCheck2 className="w-4 h-4 text-muted-foreground" />
+              <CardHeader className="py-4 px-6 border-b border-border">
+                <CardTitle className="flex flex-wrap items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-muted-foreground" />
                   Extratos importados
-                  <Badge variant="outline" className="text-xs">{extratos?.length ?? 0}</Badge>
-                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  <Badge variant="muted">{extratos?.length ?? 0}</Badge>
+                  <span className="ml-auto text-sm font-normal text-muted-foreground">
                     Clique em um extrato para conciliar
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {(extratos?.length ?? 0) === 0 ? (
-                  <div className="py-14 text-center text-muted-foreground text-sm">
-                    Nenhum extrato importado. Selecione a conta e importe um arquivo OFX ou CSV.
-                  </div>
+                  <EstadoVazio
+                    icone={<FileCheck2 />}
+                    titulo="Nenhum extrato importado"
+                    descricao="Selecione a conta acima e importe um arquivo OFX ou CSV para começar a conciliar"
+                  />
                 ) : (
-                  <div className="divide-y">
+                  <div className="divide-y divide-border">
                     {(extratos ?? []).map((ex) => {
                       const r = resumoExtratos?.get(ex.id);
                       const total = r?.total ?? ex.total_movimentos ?? 0;
@@ -825,14 +821,14 @@ export default function FinConciliacao() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirExtrato(ex); }
                           }}
-                          className="flex flex-wrap items-center gap-4 px-5 py-3 cursor-pointer hover:bg-muted/40 transition-colors focus:outline-none focus-visible:bg-muted/40"
+                          className="flex flex-wrap items-center gap-4 px-6 py-4 cursor-pointer hover:bg-muted transition-colors focus:outline-none focus-visible:bg-muted"
                         >
                           <div className="min-w-[220px] flex-1">
                             <div className="flex items-center gap-2">
                               <FileCheck2 className={`w-4 h-4 shrink-0 ${concluido ? "text-success" : "text-muted-foreground"}`} />
-                              <span className="text-sm font-medium truncate">{ex.arquivo_nome}</span>
+                              <span className="text-base font-medium truncate">{ex.arquivo_nome}</span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-0.5 pl-6">
+                            <div className="text-sm text-muted-foreground mt-1 pl-6">
                               {ex.conta?.nome ?? "—"} ·{" "}
                               {ex.data_inicio ? formatDate(ex.data_inicio) : "?"} → {ex.data_fim ? formatDate(ex.data_fim) : "?"}
                             </div>
@@ -843,13 +839,20 @@ export default function FinConciliacao() {
                               <span className="text-muted-foreground tabular-nums">
                                 {conciliados}/{total}
                               </span>
-                              <span className={`tabular-nums ${concluido ? "text-success" : "text-muted-foreground"}`}>
+                              <span className={`tabular-nums ${concluido ? "text-success-ink" : "text-muted-foreground"}`}>
                                 {pct}%
                               </span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-1.5 rounded-full bg-muted overflow-hidden"
+                              role="progressbar"
+                              aria-valuenow={pct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-label={`${conciliados} de ${total} movimentos conciliados`}
+                            >
                               <div
-                                className={`h-full rounded-full transition-all ${concluido ? "bg-success" : "bg-muted-foreground"}`}
+                                className={`h-full rounded-full transition-all ${concluido ? "bg-success" : "bg-primary"}`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
@@ -857,12 +860,12 @@ export default function FinConciliacao() {
 
                           <div className="w-[130px] text-right">
                             {concluido ? (
-                              <Badge variant="outline" className="text-xs border-success/40 text-success">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />Conciliado
+                              <Badge variant="success" className="gap-1">
+                                <CheckCircle2 className="h-3 w-3" />Conciliado
                               </Badge>
                             ) : (
                               <>
-                                <div className="text-sm font-semibold tabular-nums text-warning">
+                                <div className="text-sm font-semibold tabular-nums text-warning-ink">
                                   {pendentes} pendente{pendentes === 1 ? "" : "s"}
                                 </div>
                                 {!!r?.valor_pendente && (
@@ -874,37 +877,37 @@ export default function FinConciliacao() {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Button
                               size="sm"
-                              className="h-7 text-xs"
                               onClick={() => abrirExtrato(ex)}
                             >
-                              <Link2 className="w-3 h-3 mr-1" />Conciliar
+                              <Link2 className="w-4 h-4" />Conciliar
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 px-2 text-xs text-muted-foreground"
+                              aria-label={`Reprocessar extrato ${ex.arquivo_nome}`}
                               onClick={() => iniciarReprocesso(ex.id, ex.conta_id, ex.arquivo_nome)}
                               disabled={reprocessando === ex.id}
                               title="Reprocessar extrato com parser atualizado"
                             >
                               {reprocessando === ex.id
-                                ? <Loader2 className="w-3 h-3 animate-spin" />
-                                : <RotateCcw className="w-3 h-3" />}
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <RotateCcw className="w-4 h-4" />}
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 px-2 text-xs text-destructive/70 hover:text-destructive"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Apagar extrato ${ex.arquivo_nome}`}
                               onClick={() => setConfirmApagarExtrato({ extrato_id: ex.id, arquivo_nome: ex.arquivo_nome, total_movimentos: ex.total_movimentos ?? 0 })}
                               disabled={apagandoExtrato === ex.id}
                               title="Apagar extrato e seus movimentos"
                             >
                               {apagandoExtrato === ex.id
-                                ? <Loader2 className="w-3 h-3 animate-spin" />
-                                : <Trash2 className="w-3 h-3" />}
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />}
                             </Button>
                           </div>
                         </div>
@@ -922,30 +925,30 @@ export default function FinConciliacao() {
           <>
         {/* ── Controles ── */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-end gap-3">
+          <CardContent className="p-6">
+            <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[220px]">
-                <Button variant="ghost" size="sm" className="h-7 -ml-2 text-xs text-muted-foreground" onClick={voltarParaLista}>
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />Todos os extratos
+                <Button variant="ghost" size="sm" className="-ml-3 text-muted-foreground" onClick={voltarParaLista}>
+                  <ArrowLeft className="w-4 h-4" />Todos os extratos
                 </Button>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-2">
                   <FileCheck2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-semibold truncate">{extratoAtivo?.arquivo_nome ?? "Extrato"}</span>
+                  <span className="text-lg font-semibold truncate">{extratoAtivo?.arquivo_nome ?? "Extrato"}</span>
                 </div>
-                <div className="text-xs text-muted-foreground pl-6">
+                <div className="text-sm text-muted-foreground pl-6">
                   {extratoAtivo?.conta?.nome ?? "—"} ·{" "}
                   {extratoAtivo?.data_inicio ? formatDate(extratoAtivo.data_inicio) : "?"} →{" "}
                   {extratoAtivo?.data_fim ? formatDate(extratoAtivo.data_fim) : "?"}
                 </div>
               </div>
 
-              <div className="min-w-[150px]">
-                <label className="text-xs text-muted-foreground mb-1 block">Exibindo</label>
+              <div className="min-w-[150px] space-y-2">
+                <Label htmlFor="conciliacao-exibindo">Exibindo</Label>
                 <Select
                   value={filtroConciliado}
                   onValueChange={(v) => setFiltroConciliado(v as typeof filtroConciliado)}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger id="conciliacao-exibindo">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -957,10 +960,8 @@ export default function FinConciliacao() {
                 </Select>
               </div>
 
-              <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <Button
-                  size="sm"
-                  className="h-9"
                   onClick={() =>
                     conciliarAuto.mutate({
                       conta_id: contaSelecionada || undefined,
@@ -971,22 +972,20 @@ export default function FinConciliacao() {
                   disabled={conciliarAuto.isPending}
                 >
                   {conciliarAuto.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Sparkles className="w-4 h-4" />}
                   Auto-conciliar (≥ 90)
                 </Button>
 
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="h-9 border-primary/40 text-primary hover:bg-primary/10"
                   onClick={classificarTodas}
                   disabled={classificandoTodas || !contaSelecionada || (movimentos ?? []).filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
                   title="Classifica todos os movimentos pendentes com IA de uma vez"
                 >
                   {classificandoTodas
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Sparkles className="w-4 h-4" />}
                   Classificar todas com IA
                 </Button>
               </div>
@@ -1005,89 +1004,96 @@ export default function FinConciliacao() {
           const entradasPendentes = movsPendentes.filter((m: any) => Number(m.valor) >= 0).reduce((s: number, m: any) => s + Number(m.valor), 0);
           const saidasPendentes = movsPendentes.filter((m: any) => Number(m.valor) < 0).reduce((s: number, m: any) => s + Math.abs(Number(m.valor)), 0);
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* 1. Saldo extrato */}
-              <div className="rounded-lg border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo extrato</span>
-                  <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+              <div className="rounded-lg border border-border bg-card p-6 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saldo extrato</span>
+                  <Wallet className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${saldoExtrato >= 0 ? "text-success" : "text-destructive"}`}>
+                <span className={`block text-[2rem] leading-10 font-bold tabular-nums ${saldoExtrato >= 0 ? "text-success-ink" : "text-destructive-ink"}`}>
                   {formatBRL(saldoExtrato)}
                 </span>
-                <div className="text-xs text-muted-foreground">
-                  <span className="text-success">+{formatBRL(resumoMovimentos.entradas)}</span>
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  <span className="text-success-ink">+{formatBRL(resumoMovimentos.entradas)}</span>
                   {" / "}
-                  <span className="text-destructive">-{formatBRL(resumoMovimentos.saidas)}</span>
+                  <span className="text-destructive-ink">-{formatBRL(resumoMovimentos.saidas)}</span>
                 </div>
               </div>
 
               {/* 2. Saldo sistema */}
-              <div className="rounded-lg border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Saldo sistema</span>
-                  <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
+              <div className="rounded-lg border border-border bg-card p-6 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saldo sistema</span>
+                  <BarChart3 className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${saldoSistema >= 0 ? "text-foreground" : "text-destructive"}`}>
+                <span className={`block text-[2rem] leading-10 font-bold tabular-nums ${saldoSistema >= 0 ? "text-foreground" : "text-destructive-ink"}`}>
                   {formatBRL(saldoSistema)}
                 </span>
                 <div className="text-xs text-muted-foreground">Lançamentos da conta</div>
               </div>
 
               {/* 3. Diferença */}
-              <div className={`rounded-lg border p-3 space-y-1 ${emEquilibrio ? "bg-success/10 border-success/30" : "bg-warning/10 border-warning/30"}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Diferença</span>
+              <div className={`rounded-lg border p-6 space-y-2 shadow-sm ${emEquilibrio ? "border-success-line bg-success-tint" : "border-warning-line bg-warning-tint"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`text-xs font-semibold uppercase tracking-wide ${emEquilibrio ? "text-success-ink" : "text-warning-ink"}`}>Diferença</span>
                   {emEquilibrio
-                    ? <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                    : <XCircle className="w-3.5 h-3.5 text-warning" />}
+                    ? <CheckCircle2 className="w-4 h-4 text-success-ink" />
+                    : <XCircle className="w-4 h-4 text-warning-ink" />}
                 </div>
-                <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${emEquilibrio ? "text-success" : "text-warning"}`}>
+                <span className={`block text-[2rem] leading-10 font-bold tabular-nums ${emEquilibrio ? "text-success-ink" : "text-warning-ink"}`}>
                   {emEquilibrio ? "Em dia" : formatBRL(Math.abs(diferenca))}
                 </span>
-                <div className="text-xs text-muted-foreground">{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
+                <div className={`text-xs ${emEquilibrio ? "text-success-ink" : "text-warning-ink"}`}>{emEquilibrio ? "Extrato e sistema batem" : diferenca > 0 ? "Extrato maior" : "Sistema maior"}</div>
               </div>
 
               {/* 4. Conciliados / progresso */}
-              <div className="rounded-lg border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Conciliados</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+              <div className="rounded-lg border border-border bg-card p-6 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conciliados</span>
+                  <CheckCircle2 className="w-4 h-4 text-success" />
                 </div>
-                <span className="text-base font-semibold tabular-nums whitespace-nowrap">
+                <span className="block text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                   {resumoGeral.conciliados}
-                  <span className="text-sm text-muted-foreground font-normal"> / {resumoGeral.total}</span>
+                  <span className="text-base font-normal text-muted-foreground"> / {resumoGeral.total}</span>
                 </span>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-1.5 rounded-full bg-muted overflow-hidden"
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${resumoGeral.conciliados} de ${resumoGeral.total} movimentos conciliados`}
+                >
                   <div className="h-full rounded-full bg-success transition-all" style={{ width: `${pct}%` }} />
                 </div>
               </div>
 
               {/* 5. Pendentes */}
-              <div className="rounded-lg border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Pendentes</span>
-                  <Clock className="w-3.5 h-3.5 text-warning" />
+              <div className="rounded-lg border border-border bg-card p-6 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pendentes</span>
+                  <Clock className="w-4 h-4 text-warning-ink" />
                 </div>
-                <span className="text-base font-semibold tabular-nums whitespace-nowrap text-warning">
+                <span className="block text-[2rem] leading-10 font-bold tabular-nums text-warning-ink">
                   {resumoGeral.pendentes}
                 </span>
                 <div className="text-xs text-muted-foreground">{resumoGeral.ignorados} ignorado(s)</div>
               </div>
 
               {/* 6. Valor pendente de conciliar */}
-              <div className="rounded-lg border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">A conciliar</span>
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <div className="rounded-lg border border-border bg-card p-6 space-y-2 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">A conciliar</span>
+                  <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <span className="text-base font-semibold tabular-nums whitespace-nowrap text-foreground">
+                <span className="block text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                   {formatBRL(valorPendente)}
                 </span>
-                <div className="text-xs text-muted-foreground">
-                  <span className="text-success">+{formatBRL(entradasPendentes)}</span>
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  <span className="text-success-ink">+{formatBRL(entradasPendentes)}</span>
                   {" / "}
-                  <span className="text-destructive">-{formatBRL(saidasPendentes)}</span>
+                  <span className="text-destructive-ink">-{formatBRL(saidasPendentes)}</span>
                 </div>
               </div>
             </div>
@@ -1096,13 +1102,13 @@ export default function FinConciliacao() {
 
         {/* ── Sugestões ── */}
         <Card>
-          <CardHeader className="py-3 px-5 border-b">
-            <div className="flex flex-wrap items-center gap-3">
+          <CardHeader className="py-4 px-6 border-b border-border">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-muted-foreground" />
-                <CardTitle className="text-sm font-semibold">Sugestões de conciliação</CardTitle>
+                <Sparkles className="w-5 h-5 text-muted-foreground" />
+                <CardTitle>Sugestões de conciliação</CardTitle>
                 {sugestoes.length > 0 && (
-                  <Badge variant="secondary" className="tabular-nums text-xs px-2">
+                  <Badge variant="muted" className="tabular-nums">
                     {sugestoes.length}
                   </Badge>
                 )}
@@ -1110,14 +1116,15 @@ export default function FinConciliacao() {
 
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <div className="flex items-center gap-2 min-w-[210px]">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">Score mín.</span>
+                  <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">Score mín.</span>
                   <Slider
+                    aria-label="Score mínimo das sugestões"
                     value={[scoreMinimo]}
                     onValueChange={([v]) => setScoreMinimo(v)}
                     min={50} max={100} step={5}
                     className="flex-1"
                   />
-                  <span className="text-xs font-mono font-semibold w-6 text-right">{scoreMinimo}</span>
+                  <span className="w-7 text-right text-sm font-semibold tabular-nums">{scoreMinimo}</span>
                 </div>
 
                 <Button
@@ -1127,8 +1134,8 @@ export default function FinConciliacao() {
                   disabled={conciliarAuto.isPending}
                 >
                   {conciliarAuto.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <Search className="w-3.5 h-3.5 mr-1" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Search className="w-4 h-4" />}
                   Buscar
                 </Button>
 
@@ -1140,8 +1147,8 @@ export default function FinConciliacao() {
                   title="Usa IA para encontrar matches em casos ambíguos"
                 >
                   {conciliarAuto.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <Sparkles className="w-3.5 h-3.5 mr-1 text-muted-foreground" />}
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Sparkles className="w-4 h-4" />}
                   Sugerir com IA
                 </Button>
 
@@ -1152,11 +1159,11 @@ export default function FinConciliacao() {
                       onClick={aplicarSelecionadas}
                       disabled={selecionadas.size === 0}
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      <CheckCircle2 className="w-4 h-4" />
                       Aplicar ({selecionadas.size})
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={aplicarTodasAlta}>
-                      <Sparkles className="w-3.5 h-3.5 mr-1" />
+                    <Button variant="outline" size="sm" onClick={aplicarTodasAlta}>
+                      <Sparkles className="w-4 h-4" />
                       Aprovar ≥ 90
                     </Button>
                   </>
@@ -1167,21 +1174,23 @@ export default function FinConciliacao() {
 
           <CardContent className="p-0">
             {sugestoes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center px-6 gap-2">
-                <Search className="w-8 h-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">
-                  Clique em <strong>Buscar</strong> para encontrar correspondências entre movimentos do extrato e lançamentos, sem aplicar alterações.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Use <strong>Auto-conciliar</strong> para aplicar automaticamente todos os matches com score ≥ 90.
-                </p>
-              </div>
+              <EstadoVazio
+                icone={<Search />}
+                titulo="Nenhuma sugestão buscada ainda"
+                descricao={
+                  <>
+                    Clique em <strong>Buscar</strong> para encontrar correspondências entre movimentos do extrato e
+                    lançamentos, sem aplicar alterações. Use <strong>Auto-conciliar</strong> para aplicar de uma vez
+                    todos os matches com score ≥ 90.
+                  </>
+                }
+              />
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="text-xs bg-muted/30">
-                      <TableHead className="w-[44px] pl-5">
+                    <TableRow className="bg-muted">
+                      <TableHead className="w-[44px] pl-6">
                         <Checkbox
                           checked={selecionadas.size === sugestoes.length && sugestoes.length > 0}
                           onCheckedChange={(v) => toggleTodas(!!v)}
@@ -1192,7 +1201,7 @@ export default function FinConciliacao() {
                       <TableHead>Movimento (extrato)</TableHead>
                       <TableHead>Lançamento previsto</TableHead>
                       <TableHead className="w-[160px]">Compatibilidade</TableHead>
-                      <TableHead className="text-right w-[100px] pr-5">Ação</TableHead>
+                      <TableHead className="text-right w-[100px] pr-6">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1201,10 +1210,11 @@ export default function FinConciliacao() {
                       const lanc = lancMap.get(s.lancamento_id);
                       const checked = selecionadas.has(s.movimento_id);
                       return (
-                        <TableRow key={s.movimento_id + s.lancamento_id} className="text-sm hover:bg-muted/30">
-                          <TableCell className="pl-5">
+                        <TableRow key={s.movimento_id + s.lancamento_id} className="text-sm">
+                          <TableCell className="pl-6">
                             <Checkbox
                               checked={checked}
+                              aria-label="Selecionar sugestão"
                               onCheckedChange={(v) => {
                                 setSelecionadas((curr) => {
                                   const next = new Set(curr);
@@ -1222,9 +1232,9 @@ export default function FinConciliacao() {
                             {mov ? (
                               <div>
                                 <div className="font-medium truncate max-w-[220px]" title={mov.descricao}>{mov.descricao}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
+                                <div className="text-xs text-muted-foreground mt-1">
                                   {formatDate(mov.data_movimento)} ·{" "}
-                                  <span className={Number(mov.valor) >= 0 ? "text-success" : "text-destructive"}>
+                                  <span className={`tabular-nums ${Number(mov.valor) >= 0 ? "text-success-ink" : "text-destructive-ink"}`}>
                                     {formatBRL(Number(mov.valor))}
                                   </span>
                                 </div>
@@ -1235,7 +1245,7 @@ export default function FinConciliacao() {
                             {lanc ? (
                               <div>
                                 <div className="font-medium truncate max-w-[220px]" title={lanc.descricao}>{lanc.descricao}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
+                                <div className="text-xs text-muted-foreground tabular-nums mt-1">
                                   {lanc.data_vencimento ? `Venc.: ${formatDate(lanc.data_vencimento)}` : "—"} · {formatBRL(Number(lanc.valor))}
                                 </div>
                                 {/* Conciliar aqui marca uma entrega como paga
@@ -1254,7 +1264,7 @@ export default function FinConciliacao() {
                             <div className="space-y-1">
                               <MotivosBadges motivos={s.motivos} />
                               {s.justificativa_ia && (
-                                <p className="text-xs italic text-muted-foreground max-w-[240px] leading-snug">
+                                <p className="text-xs italic text-muted-foreground max-w-[15rem]">
                                   "{s.justificativa_ia}"
                                 </p>
                               )}
@@ -1264,7 +1274,6 @@ export default function FinConciliacao() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-xs"
                               onClick={() =>
                                 conciliarManual.mutate(
                                   { movimento_id: s.movimento_id, lancamento_id: s.lancamento_id },
@@ -1277,7 +1286,7 @@ export default function FinConciliacao() {
                                 )
                               }
                             >
-                              <Link2 className="w-3 h-3 mr-1" />
+                              <Link2 />
                               Vincular
                             </Button>
                           </TableCell>
@@ -1420,11 +1429,21 @@ export default function FinConciliacao() {
         </AlertDialog>
 
         {/* ── Extrato bancário — layout padrão de mercado ── */}
+        {/* As duas colunas (extrato × sistema) são lidas lado a lado: em tela
+            estreita elas rolam juntas dentro do cartão, sem espremer a linha
+            nem empurrar a página inteira para o lado. */}
         {extratoAberto && (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          {/* Cabeçalho split e linhas rolam juntos, no mesmo eixo. O
+              "carregando" e o estado vazio ficam FORA da faixa de 52rem
+              (logo abaixo, no fecho do cartão): dentro dela um extrato sem
+              movimentos nasceria com barra de rolagem e o texto centralizado
+              cairia fora do campo de visão em tela estreita. */}
+          <div className="overflow-x-auto">
+          <div className="min-w-[52rem]">
           {/* Cabeçalho split */}
-          <div className="grid grid-cols-[1fr_auto_1fr] bg-muted/30 border-b">
-            <div className="px-5 py-2.5 flex items-center gap-3">
+          <div className="grid grid-cols-[1fr_auto_1fr] bg-muted border-b border-border">
+            <div className="px-4 py-3 flex items-center gap-3">
               <Checkbox
                 checked={
                   movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length > 0 &&
@@ -1437,53 +1456,38 @@ export default function FinConciliacao() {
                 aria-label="Selecionar todos"
                 disabled={movimentosFiltrados.filter((m: any) => !m.conciliado && !m.ignorado).length === 0}
               />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Extrato bancário</span>
+              <span className="text-sm font-semibold text-foreground">Extrato bancário</span>
             </div>
             <div className="w-px bg-border" />
-            <div className="px-5 py-2.5 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lançamento do sistema</span>
+            <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-foreground">Lançamento do sistema</span>
               {movsSelecionados.size > 0 && (
                 <Button
                   size="sm"
-                  className="h-7 text-xs"
                   onClick={efetivarSelecionados}
                   disabled={upsertLancamento.isPending || conciliarManual.isPending}
                 >
                   {(upsertLancamento.isPending || conciliarManual.isPending)
-                    ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    : <CheckCircle2 className="w-3 h-3 mr-1.5" />}
+                    ? <Loader2 className="animate-spin" />
+                    : <CheckCircle2 />}
                   Efetivar ({movsSelecionados.size})
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Estado vazio / loading */}
-          {loadingMov && (
-            <div className="py-14 text-center text-muted-foreground text-sm">
-              <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando movimentos…
-            </div>
-          )}
-          {!loadingMov && movimentosFiltrados.length === 0 && (
-            <div className="py-14 text-center text-muted-foreground text-sm">
-              {contaSelecionada
-                ? "Nenhum movimento. Importe um arquivo OFX ou CSV para começar."
-                : "Selecione uma conta bancária para visualizar os movimentos."}
-            </div>
-          )}
-
           {/* Grupos por data */}
           {!loadingMov && movimentosAgrupados.map((group) => (
             <div key={group.date}>
               {/* Separador de data */}
-              <div className="flex items-center gap-3 px-5 py-1.5 bg-muted/20 border-b border-t text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 px-4 py-2 bg-muted border-y border-border text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground">{formatDate(group.date)}</span>
-                <div className="flex-1 h-px bg-border/60" />
+                <div className="flex-1 h-px bg-border" />
                 {group.creditos > 0 && (
-                  <span className="text-success tabular-nums">+{formatBRL(group.creditos)}</span>
+                  <span className="text-success-ink tabular-nums">+{formatBRL(group.creditos)}</span>
                 )}
                 {group.debitos > 0 && (
-                  <span className="text-destructive tabular-nums">-{formatBRL(group.debitos)}</span>
+                  <span className="text-destructive-ink tabular-nums">-{formatBRL(group.debitos)}</span>
                 )}
                 <span className="text-muted-foreground">{group.movimentos.length} mov.</span>
               </div>
@@ -1516,7 +1520,7 @@ export default function FinConciliacao() {
                 const borderColor = m.conciliado
                   ? "border-l-success"
                   : m.ignorado
-                  ? "border-l-muted-foreground/20"
+                  ? "border-l-border"
                   : acaoTransf !== "nenhum"
                   ? "border-l-info"
                   : movSugs.length > 0
@@ -1526,7 +1530,7 @@ export default function FinConciliacao() {
                 return (
                   <div
                     key={m.id}
-                    className={`grid grid-cols-[1fr_auto_1fr] border-b border-l-2 hover:bg-muted/10 transition-colors ${borderColor} ${m.ignorado ? "opacity-50" : ""}`}
+                    className={`grid grid-cols-[1fr_auto_1fr] border-b border-border border-l-2 hover:bg-muted transition-colors ${borderColor} ${m.ignorado ? "opacity-60" : ""}`}
                   >
                     {/* ESQUERDA: Extrato */}
                     <div className="flex items-start gap-3 px-4 py-3">
@@ -1536,7 +1540,8 @@ export default function FinConciliacao() {
                           onCheckedChange={(v) => {
                             setMovsSelecionados((curr) => {
                               const next = new Set(curr);
-                              v ? next.add(m.id) : next.delete(m.id);
+                              if (v) next.add(m.id);
+                              else next.delete(m.id);
                               return next;
                             });
                           }}
@@ -1549,14 +1554,14 @@ export default function FinConciliacao() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium truncate">{m.descricao}</span>
-                          <span className={`text-sm font-semibold tabular-nums shrink-0 ${isCredito ? "text-success" : "text-destructive"}`}>
+                          <span className={`text-sm font-semibold tabular-nums shrink-0 ${isCredito ? "text-success-ink" : "text-destructive-ink"}`}>
                             {isCredito ? "+" : ""}{formatBRL(Number(m.valor))}
                           </span>
                         </div>
                         {m.descricao_extra && (
                           <div className="text-xs text-muted-foreground truncate">{m.descricao_extra}</div>
                         )}
-                        <div className="text-xs text-muted-foreground mt-0.5">{m.conta?.nome ?? "—"}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{m.conta?.nome ?? "—"}</div>
 
                         {/* Transferência entre contas próprias.
                             Fica do lado do EXTRATO, não do sistema, porque a
@@ -1566,21 +1571,21 @@ export default function FinConciliacao() {
                             despesa que nunca existiram — e depois ninguém
                             desfaz, porque o saldo fecha. */}
                         {acaoTransf === "casar" && paresTransf[0] && (
-                          <div className="mt-2 rounded-md border border-info/40 bg-info/5 px-2.5 py-2">
-                            <p className="text-xs font-medium text-info flex items-center gap-1.5">
-                              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                          <div className="mt-2 rounded-md border border-border bg-muted p-3">
+                            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <ArrowRightLeft className="w-4 h-4 shrink-0" />
                               Transferência entre contas próprias
                             </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-1">
                               Casa com <strong className="text-foreground">{paresTransf[0].contrapartida.descricao || "lançamento"}</strong>
                               {" "}({paresTransf[0].motivos.join(" · ")}).
                             </p>
-                            <p className="text-[11px] text-muted-foreground mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               Isto não é receita nem despesa: é o mesmo dinheiro mudando de conta.
                             </p>
                             <Button
                               size="sm" variant="outline"
-                              className="h-7 text-xs mt-1.5 border-info/40 text-info hover:bg-info/10"
+                              className="mt-2"
                               disabled={casarTransferencia.isPending}
                               onClick={() =>
                                 casarTransferencia.mutate({
@@ -1597,12 +1602,12 @@ export default function FinConciliacao() {
                           </div>
                         )}
                         {acaoTransf === "criar_par" && (
-                          <div className="mt-2 rounded-md border border-warning/40 bg-warning/5 px-2.5 py-2">
-                            <p className="text-xs font-medium text-warning flex items-center gap-1.5">
-                              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                          <div className="mt-2 rounded-md border border-warning-line bg-warning-tint p-3">
+                            <p className="text-sm font-semibold text-warning-ink flex items-center gap-2">
+                              <ArrowRightLeft className="w-4 h-4 shrink-0" />
                               Parece transferência, e falta a outra ponta
                             </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                            <p className="text-xs text-warning-ink mt-1">
                               A descrição indica movimentação entre contas próprias, mas nenhuma conta
                               da empresa registra o valor no sentido oposto — provavelmente o extrato
                               da outra conta ainda não foi importado.
@@ -1610,27 +1615,26 @@ export default function FinConciliacao() {
                             {/* Sem esta escolha sobrariam dois caminhos ruins:
                                 lançar como despesa (inventando um custo) ou
                                 deixar o movimento pendente para sempre. */}
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Select
                                 value={contrapartidaEscolhida[m.id] ?? ""}
                                 onValueChange={(v) =>
                                   setContrapartidaEscolhida((c) => ({ ...c, [m.id]: v }))
                                 }
                               >
-                                <SelectTrigger className="h-7 text-xs w-[210px]">
+                                <SelectTrigger className="w-full sm:w-56" aria-label={Number(m.valor) >= 0 ? "Conta de origem da transferência" : "Conta de destino da transferência"}>
                                   <SelectValue placeholder={Number(m.valor) >= 0 ? "Saiu de qual conta?" : "Entrou em qual conta?"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {(contas ?? [])
                                     .filter((c: { id: string }) => c.id !== m.conta_id)
                                     .map((c: { id: string; nome: string }) => (
-                                      <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                                     ))}
                                 </SelectContent>
                               </Select>
                               <Button
                                 size="sm" variant="outline"
-                                className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
                                 disabled={!contrapartidaEscolhida[m.id] || criarTransferencia.isPending}
                                 onClick={() =>
                                   criarTransferencia.mutate({
@@ -1652,7 +1656,7 @@ export default function FinConciliacao() {
                     </div>
 
                     {/* DIVISOR VERTICAL */}
-                    <div className="w-px bg-border/70 my-2" />
+                    <div className="w-px bg-border my-2" />
 
                     {/* DIREITA: Sistema */}
                     <div className="flex items-center gap-2 px-4 py-3 min-w-0">
@@ -1676,27 +1680,27 @@ export default function FinConciliacao() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-xs text-muted-foreground shrink-0"
+                            className="text-muted-foreground shrink-0"
                             onClick={() => desfazer.mutate({ movimento_id: m.id, lancamento_id: m.lancamento_id! })}
                           >
-                            <Unlink className="w-3 h-3 mr-1" />Desfazer
+                            <Unlink />Desfazer
                           </Button>
                         </>
                       ) : m.ignorado ? (
                         <>
                           <Ban className="w-4 h-4 text-muted-foreground shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs text-muted-foreground italic">
+                            <Badge variant="muted" truncate>
                               {m.ignorado_motivo || "Ignorado"}
-                            </span>
+                            </Badge>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-xs text-muted-foreground shrink-0"
+                            className="text-muted-foreground shrink-0"
                             onClick={() => ignorarMov.mutate({ id: m.id, ignorar: false, mov: { valor: m.valor, descricao: m.descricao, data_movimento: m.data_movimento, conta_id: m.conta_id, lancamento_id: m.lancamento_id } })}
                           >
-                            <RotateCcw className="w-3 h-3 mr-1" />Restaurar
+                            <RotateCcw />Restaurar
                           </Button>
                         </>
                       ) : (
@@ -1704,42 +1708,45 @@ export default function FinConciliacao() {
                           {/* Card de sugestão IA se já classificou */}
                           {aiClassifs[m.id] ? (
                             <div className="flex-1 min-w-0">
-                              <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
+                              <div className="rounded-md border border-border bg-muted p-3 space-y-2">
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-xs font-semibold text-foreground">Sugestão IA</span>
-                                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded tabular-nums">{aiClassifs[m.id].confianca}%</span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-muted-foreground shrink-0" />
+                                    <span className="text-sm font-semibold text-foreground">Sugestão IA</span>
+                                    <Badge variant="muted" className="tabular-nums">{aiClassifs[m.id].confianca}%</Badge>
                                   </div>
-                                  <button
-                                    className="text-muted-foreground hover:text-muted-foreground"
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="Descartar sugestão da IA"
+                                    className="shrink-0 px-2 text-muted-foreground"
                                     onClick={() => setAiClassifs((p) => { const n = { ...p }; delete n[m.id]; return n; })}
                                   >
-                                    <XCircle className="w-3.5 h-3.5" />
-                                  </button>
+                                    <XCircle />
+                                  </Button>
                                 </div>
-                                <div className="text-xs space-y-0.5">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <Badge variant="outline" className="text-xs px-1.5 h-4">
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="info">
                                       {aiClassifs[m.id].tipo === "a_pagar" ? "Conta a Pagar" : aiClassifs[m.id].tipo === "a_receber" ? "Conta a Receber" : "Movimentação"}
                                     </Badge>
                                     {aiClassifs[m.id].categoria_nome && (
-                                      <Badge variant="outline" className="text-xs px-1.5 h-4 text-muted-foreground">
+                                      <Badge variant="muted">
                                         {aiClassifs[m.id].categoria_nome}
                                       </Badge>
                                     )}
                                     {aiClassifs[m.id].pessoa_nome && (
-                                      <Badge variant="outline" className="text-xs px-1.5 h-4 text-muted-foreground">
+                                      <Badge variant="muted">
                                         {aiClassifs[m.id].pessoa_nome}
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-muted-foreground italic text-xs leading-snug">{aiClassifs[m.id].justificativa}</p>
+                                  <p className="text-xs italic text-muted-foreground">{aiClassifs[m.id].justificativa}</p>
                                 </div>
-                                <div className="flex gap-1.5">
+                                <div className="flex flex-wrap gap-2">
                                   <Button
                                     size="sm"
-                                    className="h-6 text-xs px-2 flex-1"
+                                    className="flex-1"
                                     onClick={() => {
                                       const ai = aiClassifs[m.id];
                                       setNovoLanc({
@@ -1756,12 +1763,12 @@ export default function FinConciliacao() {
                                       });
                                     }}
                                   >
-                                    <Plus className="w-3 h-3 mr-1" />Criar com IA
+                                    <Plus />Criar com IA
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button size="sm" variant="outline" className="h-6 text-xs px-1.5">
-                                        <ChevronDown className="w-3 h-3" />
+                                      <Button size="sm" variant="outline" className="px-2" aria-label="Outras formas de tratar este movimento">
+                                        <ChevronDown />
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-56">
@@ -1784,31 +1791,31 @@ export default function FinConciliacao() {
                           ) : (
                           <>
                           {movSugs.length > 0 && (
-                            <Badge variant="outline" className="text-xs border-border/60 text-foreground shrink-0">
-                              <Sparkles className="w-3 h-3 mr-1" />{movSugs.length} sugestão
+                            <Badge variant="info" className="gap-1 shrink-0">
+                              <Sparkles className="h-3 w-3" />{movSugs.length} sugestão
                             </Badge>
                           )}
                           {/* Botão Analisar com IA */}
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-xs text-primary hover:bg-primary/10 shrink-0"
+                            className="text-primary hover:bg-primary-tint shrink-0"
                             onClick={() => classificarLancamento(m)}
                             disabled={classificandoIA[m.id]}
                           >
                             {classificandoIA[m.id]
-                              ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                              : <Sparkles className="w-3 h-3 mr-1" />}
+                              ? <Loader2 className="animate-spin" />
+                              : <Sparkles />}
                             {classificandoIA[m.id] ? "Analisando…" : "IA"}
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline" className="h-7 text-xs ml-auto">
-                                <Link2 className="w-3 h-3 mr-1" />Tratar<ChevronDown className="w-3 h-3 ml-1" />
+                              <Button size="sm" variant="outline" className="ml-auto">
+                                <Link2 />Tratar<ChevronDown />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-60 max-h-[60vh] overflow-y-auto">
-                              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                              <DropdownMenuLabel className="text-xs tabular-nums text-muted-foreground">
                                 {isCredito ? "+" : ""}{formatBRL(Number(m.valor))} · {formatDate(m.data_movimento)}
                               </DropdownMenuLabel>
                               <DropdownMenuSeparator />
@@ -1886,6 +1893,26 @@ export default function FinConciliacao() {
               })}
             </div>
           ))}
+          </div>
+          </div>
+
+          {/* Estado vazio / loading — herdam a largura real do cartão */}
+          {loadingMov && (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground" role="status">
+              <Loader2 className="w-4 h-4 animate-spin" />Carregando movimentos…
+            </div>
+          )}
+          {!loadingMov && movimentosFiltrados.length === 0 && (
+            <EstadoVazio
+              icone={<FileCheck2 />}
+              titulo={contaSelecionada ? "Nenhum movimento nesta visão" : "Nenhuma conta selecionada"}
+              descricao={
+                contaSelecionada
+                  ? "Importe um arquivo OFX ou CSV, ou troque o filtro de exibição, para ver movimentos aqui"
+                  : "Selecione uma conta bancária para visualizar os movimentos"
+              }
+            />
+          )}
         </div>
         )}
 
@@ -1930,63 +1957,43 @@ export default function FinConciliacao() {
 
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  tone: "default" | "success" | "warning" | "danger" | "muted";
-}) {
-  const cls = {
-    default: "text-foreground",
-    success: "text-success",
-    warning: "text-warning",
-    danger: "text-destructive",
-    muted: "text-muted-foreground",
-  }[tone];
-  return (
-    <div className="rounded-lg border bg-card p-3 flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{label}</span>
-        <Icon className={`w-3.5 h-3.5 ${cls}`} />
-      </div>
-      <span className={`text-base font-semibold tabular-nums whitespace-nowrap ${cls}`}>{value}</span>
-    </div>
-  );
-}
-
 function ScoreBadge({ score, metodo }: { score: number; metodo?: string }) {
+  // Quatro degraus, um por faixa do rótulo. "Alta" (>= 90) e "Boa" (75-89) têm
+  // que se distinguir de relance: é entre elas que o operador decide entre o
+  // botão "Aprovar >= 90" e a conferência à mão. O degrau da "Boa" usa o token
+  // `success-line` (verde mais fraco nos dois temas) no lugar do antigo
+  // `bg-success/60` — mesmo efeito, sem compor alfa na mão.
   const barColor =
     score >= 90
       ? "bg-success"
       : score >= 75
-      ? "bg-success/60"
+      ? "bg-success-line"
       : score >= 60
       ? "bg-warning"
       : "bg-destructive";
   const label = score >= 90 ? "Alta" : score >= 75 ? "Boa" : score >= 60 ? "Média" : "Baixa";
   return (
-    <div className="w-[64px] space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold tabular-nums">{score}</span>
+    <div className="w-16 space-y-1">
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-sm font-semibold tabular-nums">{score}</span>
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+      <div
+        className="h-1.5 rounded-full bg-muted overflow-hidden"
+        role="progressbar"
+        aria-valuenow={score}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Compatibilidade ${label.toLowerCase()}: ${score} de 100`}
+      >
         <div
           className={`h-full rounded-full ${barColor} transition-all`}
           style={{ width: `${score}%` }}
         />
       </div>
       {metodo === "ia" && (
-        <Badge
-          variant="outline"
-          className="text-xs px-1 py-0 h-3.5 border-border/60 text-muted-foreground gap-0.5 mt-0.5"
-        >
-          <Sparkles className="w-2 h-2" /> IA
+        <Badge variant="muted" className="gap-1">
+          <Sparkles className="h-3 w-3" /> IA
         </Badge>
       )}
     </div>
@@ -2001,22 +2008,22 @@ function MotivosBadges({ motivos }: { motivos: Record<string, unknown> }) {
   return (
     <div className="flex flex-wrap gap-1">
       {valor && (
-        <Badge variant="outline" className="text-xs border-success/50 text-success">
+        <Badge variant="success">
           Valor exato
         </Badge>
       )}
       {dias >= 0 && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="muted" className="tabular-nums">
           {dias === 0 ? "Mesma data" : `±${dias}d`}
         </Badge>
       )}
       {sim > 0 && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="muted" className="tabular-nums">
           Texto {Math.round(sim * 100)}%
         </Badge>
       )}
       {mesmaConta && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="muted">
           Mesma conta
         </Badge>
       )}
@@ -2093,16 +2100,16 @@ function DialogVincularManual({
   };
 
   const renderItem = (l: (typeof elegiveis)[number], destaque = false) => (
-    <div key={l.id} className="flex items-stretch gap-1 mb-1.5">
+    <div key={l.id} className="flex items-stretch gap-2 mb-2">
       <button
         onClick={() => onConfirm(l.id)}
-        className="flex-1 text-left border rounded-md p-2.5 hover:bg-accent transition-colors min-w-0"
+        className="flex-1 min-w-0 rounded-md border border-border bg-card p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm ${destaque ? "font-semibold" : ""} truncate`}>{l.descricao}</span>
-          <span className="text-sm font-mono whitespace-nowrap tabular-nums shrink-0">{formatBRL(Number(l.valor))}</span>
+          <span className="text-sm whitespace-nowrap tabular-nums shrink-0">{formatBRL(Number(l.valor))}</span>
         </div>
-        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
           <span>{statusLabel[l.status] ?? l.status}</span>
           <span>·</span>
           <span>
@@ -2112,13 +2119,16 @@ function DialogVincularManual({
           </span>
         </div>
       </button>
-      <button
+      <Button
+        variant="outline"
+        size="icon"
         onClick={() => setEditando(l as Record<string, unknown>)}
-        className="shrink-0 w-8 border rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        className="h-auto shrink-0 text-muted-foreground"
+        aria-label={`Editar lançamento ${l.descricao ?? ""}`}
         title="Editar lançamento"
       >
-        <Pencil className="w-3.5 h-3.5" />
-      </button>
+        <Pencil />
+      </Button>
     </div>
   );
 
@@ -2131,60 +2141,69 @@ function DialogVincularManual({
           </DialogHeader>
 
           {/* ── Filtros ── */}
-          <div className="space-y-2 border rounded-md p-3 bg-muted/30">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Filter className="w-3 h-3" />
+          <div className="space-y-3 rounded-md border border-border bg-muted p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Filter className="w-4 h-4" />
               Filtros
               {temFiltro && (
-                <button
-                  className="ml-auto text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-muted-foreground"
                   onClick={limparFiltros}
                 >
                   Limpar filtros
-                </button>
+                </Button>
               )}
             </div>
-            <Input
-              placeholder="Buscar por descrição..."
-              value={filtroTexto}
-              onChange={(e) => setFiltroTexto(e.target.value)}
-              className="h-8 text-xs"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="vincular-busca">Buscar por descrição</Label>
+              <Input
+                id="vincular-busca"
+                placeholder="Buscar por descrição..."
+                value={filtroTexto}
+                onChange={(e) => setFiltroTexto(e.target.value)}
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Input
                 type="number"
                 placeholder="Valor mínimo"
+                aria-label="Valor mínimo"
                 value={filtroValorMin}
                 onChange={(e) => setFiltroValorMin(e.target.value)}
-                className="h-8 text-xs flex-1 min-w-[100px]"
+                className="flex-1 min-w-[100px] tabular-nums"
               />
               <Input
                 type="number"
                 placeholder="Valor máximo"
+                aria-label="Valor máximo"
                 value={filtroValorMax}
                 onChange={(e) => setFiltroValorMax(e.target.value)}
-                className="h-8 text-xs flex-1 min-w-[100px]"
+                className="flex-1 min-w-[100px] tabular-nums"
               />
-              <div className="flex items-center gap-1 flex-1 min-w-[160px]">
-                <span className="text-xs text-muted-foreground whitespace-nowrap">De</span>
+              <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                <Label htmlFor="vincular-data-de" className="whitespace-nowrap">De</Label>
                 <Input
+                  id="vincular-data-de"
                   type="date"
                   value={filtroDataDe}
                   onChange={(e) => setFiltroDataDe(e.target.value)}
-                  className="h-8 text-xs flex-1"
+                  className="flex-1"
                 />
               </div>
-              <div className="flex items-center gap-1 flex-1 min-w-[160px]">
-                <span className="text-xs text-muted-foreground whitespace-nowrap">até</span>
+              <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                <Label htmlFor="vincular-data-ate" className="whitespace-nowrap">até</Label>
                 <Input
+                  id="vincular-data-ate"
                   type="date"
                   value={filtroDataAte}
                   onChange={(e) => setFiltroDataAte(e.target.value)}
-                  className="h-8 text-xs flex-1"
+                  className="flex-1"
                 />
               </div>
               <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
+                <SelectTrigger className="flex-1 min-w-[130px]" aria-label="Status do lançamento">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2201,36 +2220,38 @@ function DialogVincularManual({
           <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
             {sugeridos.length > 0 && (
               <div>
-                <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
                   Sugestões (valor próximo)
-                </div>
+                </h3>
                 {sugeridos.map((l) => renderItem(l, true))}
               </div>
             )}
             {outros.length > 0 && (
               <div>
-                <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
                   {sugeridos.length > 0 ? "Outros lançamentos" : `Lançamentos ${info.natureza === "receita" ? "a receber" : "a pagar"}`}
                   {" "}({outros.length})
-                </div>
+                </h3>
                 {outros.map((l) => renderItem(l))}
               </div>
             )}
             {filtrados.length === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-8 space-y-2">
-                {temFiltro ? (
-                  <p>Nenhum lançamento encontrado com esses filtros.</p>
-                ) : (
-                  <>
-                    <p>Nenhum lançamento disponível para vincular.</p>
-                    <p className="text-xs">
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<Search />}
+                titulo={temFiltro ? "Nenhum lançamento com esses filtros" : "Nenhum lançamento disponível para vincular"}
+                descricao={
+                  temFiltro ? (
+                    "Limpe os filtros ou amplie a faixa de valor e data para ver outros lançamentos"
+                  ) : (
+                    <>
                       Crie primeiro um lançamento em <strong>Lançamentos → Novo lançamento</strong>{" "}
                       ({info.natureza === "receita" ? "a receber" : "a pagar"}) com valor de{" "}
                       <strong>{formatBRL(info.valor)}</strong> e tente vincular novamente.
-                    </p>
-                  </>
-                )}
-              </div>
+                    </>
+                  )
+                }
+              />
             )}
           </div>
         </DialogContent>

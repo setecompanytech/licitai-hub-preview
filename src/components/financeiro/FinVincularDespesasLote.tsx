@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { toast } from 'sonner';
@@ -166,25 +167,25 @@ export default function FinVincularDespesasLote({
     <Dialog open={aberto} onOpenChange={(v) => !v && onFechar()}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2">
-            <Link2 className="w-4 h-4" /> Vincular despesas em lote
+          <DialogTitle className="flex items-center gap-2">
+            <Link2 className="w-5 h-5" aria-hidden="true" /> Vincular despesas em lote
           </DialogTitle>
+          <DialogDescription>
+            Despesas de Contas a Pagar ainda sem contrato (movimentação fica de fora).
+            Ao vincular, entram no custo do contrato e saem da base do rateio — reversível
+            lançamento a lançamento.
+          </DialogDescription>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground">
-          Despesas de Contas a Pagar ainda sem contrato (movimentação fica de fora).
-          Ao vincular, entram no custo do contrato e saem da base do rateio — reversível
-          lançamento a lançamento.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input value={busca} onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por descrição, fornecedor ou categoria…" className="pl-8 h-9 text-sm" />
+              aria-label="Buscar despesa por descrição, fornecedor ou categoria"
+              placeholder="Buscar por descrição, fornecedor ou categoria…" className="pl-9" />
           </div>
           <Select value={categoriaFiltro} onValueChange={setCategoriaFiltro}>
-            <SelectTrigger className="h-9 text-sm sm:w-[260px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="sm:w-[260px]" aria-label="Filtrar por categoria"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as categorias</SelectItem>
               {categorias.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -192,47 +193,55 @@ export default function FinVincularDespesasLote({
           </Select>
         </div>
 
-        <div className="rounded-lg border overflow-auto flex-1 min-h-[200px]">
+        <div className="min-h-[200px] flex-1 overflow-auto rounded-lg border border-border">
           {carregando ? (
-            <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Carregando despesas</span>
+            </div>
           ) : filtradas.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              {despesas.length === 0 ? 'Nenhuma despesa sem vínculo — tudo já aponta um contrato.' : 'Nada encontrado com esse filtro.'}
-            </p>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Link2 />}
+              titulo={despesas.length === 0 ? 'Tudo já aponta um contrato' : 'Nada encontrado'}
+              descricao={despesas.length === 0
+                ? 'Nenhuma despesa sem vínculo nesta empresa.'
+                : 'Nenhuma despesa corresponde à busca ou à categoria escolhida.'}
+            />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8">
+                  <TableHead className="w-10">
                     <Checkbox checked={todasFiltradasMarcadas} onCheckedChange={alternarTodas}
                       aria-label="Selecionar todas as filtradas" />
                   </TableHead>
-                  <TableHead className="text-xs whitespace-nowrap">Vencimento</TableHead>
-                  <TableHead className="text-xs">Descrição</TableHead>
-                  <TableHead className="text-xs">Categoria</TableHead>
-                  <TableHead className="text-xs whitespace-nowrap">Situação</TableHead>
-                  <TableHead className="text-xs text-right whitespace-nowrap">Valor</TableHead>
+                  <TableHead className="whitespace-nowrap">Vencimento</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="whitespace-nowrap">Situação</TableHead>
+                  <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtradas.map(d => (
                   <TableRow key={d.id} className="cursor-pointer" onClick={() => alternar(d.id)}>
-                    <TableCell onClick={e => e.stopPropagation()}>
+                    <TableCell className="py-3" onClick={e => e.stopPropagation()}>
                       <Checkbox checked={selecionadas.has(d.id)} onCheckedChange={() => alternar(d.id)}
-                        aria-label="Selecionar despesa" />
+                        aria-label={`Selecionar ${d.descricao || 'despesa'}`} />
                     </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap tabular-nums">{fmtDate(d.data_vencimento || d.data_competencia)}</TableCell>
-                    <TableCell className="text-xs max-w-[240px]">
+                    <TableCell className="py-3 text-sm tabular-nums" nowrap>{fmtDate(d.data_vencimento || d.data_competencia)}</TableCell>
+                    <TableCell className="max-w-[240px] py-3 text-sm">
                       <span className="block truncate" title={d.descricao || undefined}>{d.descricao || '—'}</span>
-                      {d.pessoa?.nome && <span className="block truncate text-[11px] text-muted-foreground">{d.pessoa.nome}</span>}
+                      {d.pessoa?.nome && <span className="block truncate text-xs text-muted-foreground">{d.pessoa.nome}</span>}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[180px]"><span className="block truncate">{d.categoria?.nome || 'Sem categoria'}</span></TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">
-                      <Badge variant="outline" className="text-xs font-normal">
+                    <TableCell className="max-w-[180px] py-3 text-sm"><span className="block truncate">{d.categoria?.nome || 'Sem categoria'}</span></TableCell>
+                    <TableCell className="py-3" nowrap>
+                      <Badge variant={d.status === 'realizado' || d.status === 'conciliado' ? 'success' : 'info'}>
                         {d.status === 'realizado' || d.status === 'conciliado' ? 'Pago' : 'Em aberto'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums font-medium">{fmt(d.valor)}</TableCell>
+                    <TableCell className="py-3 text-right text-sm font-medium tabular-nums" nowrap>{fmt(d.valor)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -240,11 +249,11 @@ export default function FinVincularDespesasLote({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-1">
-          <div className="flex-1 max-w-sm">
-            <Label className="text-xs">Contrato de destino</Label>
+        <div className="flex flex-col justify-between gap-3 pt-1 sm:flex-row sm:items-end">
+          <div className="flex-1 max-w-sm space-y-2">
+            <Label htmlFor="fin-vincular-contrato">Contrato de destino</Label>
             <Select value={contratoDestino} onValueChange={setContratoDestino}>
-              <SelectTrigger className="h-9 text-sm mt-1"><SelectValue placeholder="Escolher contrato…" /></SelectTrigger>
+              <SelectTrigger id="fin-vincular-contrato"><SelectValue placeholder="Escolher contrato…" /></SelectTrigger>
               <SelectContent>
                 {contratos.map(c => {
                   const vigente = !c.data_fim || c.data_fim >= hoje;
@@ -257,14 +266,16 @@ export default function FinVincularDespesasLote({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="text-right">
               <p className="text-xs text-muted-foreground">{selecionadas.size} selecionada{selecionadas.size === 1 ? '' : 's'}</p>
-              <p className="text-sm font-semibold tabular-nums">{fmt(totalSelecionado)}</p>
+              <p className="text-base font-semibold tabular-nums">{fmt(totalSelecionado)}</p>
             </div>
             <Button variant="outline" onClick={onFechar}>Cancelar</Button>
             <Button onClick={vincular} disabled={salvando || selecionadas.size === 0 || !contratoDestino}>
-              {salvando ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Link2 className="w-4 h-4 mr-1" />}
+              {salvando
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <Link2 className="w-4 h-4" aria-hidden="true" />}
               Vincular
             </Button>
           </div>

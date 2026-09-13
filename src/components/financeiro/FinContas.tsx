@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertCircle, RefreshCw, Landmark } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -317,86 +318,105 @@ export default function FinContas() {
   });
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col md:flex-row md:items-end gap-3">
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Filtrar por banco</Label>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end">
+        <div className="flex-1 min-w-0 space-y-2">
+          <Label htmlFor="contas-filtro-banco">Filtrar por banco</Label>
           <BancoSelectorLogos
+            id="contas-filtro-banco"
             value={filtroBanco}
             onChange={setFiltroBanco}
             allowAll
             placeholder="Todos os bancos"
           />
         </div>
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Buscar</Label>
+        <div className="flex-1 min-w-0 space-y-2">
+          <Label htmlFor="contas-busca">Buscar</Label>
           <Input
+            id="contas-busca"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Nome, agência ou número da conta…"
           />
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setConfirmSync(true)}
-          disabled={sincronizando || candidatasSync === 0}
-          className="shrink-0"
-          title={
-            candidatasSync === 0
-              ? "Todos os saldos já estão sincronizados"
-              : `${candidatasSync} conta(s) com saldo dessincronizado`
-          }
-        >
-          <RefreshCw className={cn("w-4 h-4 mr-1", sincronizando && "animate-spin")} />
-          {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
-          {candidatasSync > 0 && !sincronizando && (
-            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-foreground/10 text-foreground text-xs font-semibold px-1.5 min-w-[18px] h-[18px] tabular-nums">
-              {candidatasSync}
-            </span>
-          )}
-        </Button>
-        <Button onClick={() => openDialog(null)} className="shrink-0">
-          <Plus className="w-4 h-4 mr-1" /> Nova conta
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setConfirmSync(true)}
+            disabled={sincronizando || candidatasSync === 0}
+            className="shrink-0"
+            title={
+              candidatasSync === 0
+                ? "Todos os saldos já estão sincronizados"
+                : `${candidatasSync} conta(s) com saldo dessincronizado`
+            }
+          >
+            <RefreshCw className={cn("w-4 h-4", sincronizando && "animate-spin")} />
+            {sincronizando ? "Sincronizando…" : "Sincronizar saldos"}
+            {candidatasSync > 0 && !sincronizando && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground tabular-nums">
+                {candidatasSync}
+              </span>
+            )}
+          </Button>
+          <Button onClick={() => openDialog(null)} className="shrink-0">
+            <Plus className="w-4 h-4" /> Nova conta
+          </Button>
+        </div>
       </div>
 
       <Card>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-muted text-sm font-semibold text-foreground">
               <tr>
-                <th className="text-left px-3 py-2 w-10"></th>
-                <th className="text-left px-3 py-2">Nome</th>
-                <th className="text-left px-3 py-2">Tipo</th>
-                <th className="text-left px-3 py-2">Banco</th>
-                <th className="text-left px-3 py-2">Ag./Conta</th>
-                <th className="text-right px-3 py-2">Saldo atual</th>
-                <th className="px-3 py-2 w-24" />
+                <th className="w-12 px-4 py-3 text-left"><span className="sr-only">Banco</span></th>
+                <th className="px-4 py-3 text-left">Nome</th>
+                <th className="px-4 py-3 text-left">Tipo</th>
+                <th className="px-4 py-3 text-left">Banco</th>
+                <th className="px-4 py-3 text-left">Ag./Conta</th>
+                <th className="px-4 py-3 text-right">Saldo atual</th>
+                <th className="w-24 px-4 py-3 text-right"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={7} className="p-2"><Skeleton className="h-8 w-full" /></td></tr>
+                <tr><td colSpan={7} className="p-3"><Skeleton className="h-8 w-full" /></td></tr>
               ) : contasFiltradas.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {contas.length === 0 ? "Nenhuma conta cadastrada." : "Nenhuma conta corresponde aos filtros."}
+                <tr><td colSpan={7}>
+                  <EstadoVazio
+                    icone={<Landmark />}
+                    titulo={contas.length === 0 ? "Nenhuma conta cadastrada" : "Nenhuma conta corresponde aos filtros"}
+                    descricao={
+                      contas.length === 0
+                        ? "Cadastre a primeira conta para acompanhar saldo, extrato e conciliação"
+                        : "Ajuste o banco ou a busca para ver outras contas"
+                    }
+                    acao={
+                      contas.length === 0 ? (
+                        <Button onClick={() => openDialog(null)}>
+                          <Plus className="w-4 h-4" /> Nova conta
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 </td></tr>
               ) : (
                 contasFiltradas.map((c) => {
                   const b = findBanco(c.banco_nome ?? "");
                   return (
-                    <tr key={c.id} className="border-t hover:bg-muted/30">
-                      <td className="px-3 py-2">
+                    <tr key={c.id} className="border-t border-border hover:bg-muted">
+                      <td className="px-4 py-3">
                         <BancoLogo codigo={b?.codigo} nome={c.banco_nome} size={32} />
                       </td>
-                      <td className="px-3 py-2 font-medium whitespace-nowrap">{c.nome}</td>
-                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{TIPOS.find((t) => t.value === c.tipo)?.label ?? c.tipo}</td>
-                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{c.banco_nome ?? "—"}</td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">{c.agencia || c.conta ? `${c.agencia ?? "—"} / ${c.conta ?? "—"}` : "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatBRL(Number(c.saldo_atual ?? 0))}</td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
-                        <Button size="icon" variant="ghost" onClick={() => openDialog(c)}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => setConfirmDel(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">{c.nome}</td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{TIPOS.find((t) => t.value === c.tipo)?.label ?? c.tipo}</td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{c.banco_nome ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">{c.agencia || c.conta ? `${c.agencia ?? "—"} / ${c.conta ?? "—"}` : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">{formatBRL(Number(c.saldo_atual ?? 0))}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <Button size="icon" variant="ghost" aria-label={`Editar conta ${c.nome}`} onClick={() => openDialog(c)}><Pencil className="w-4 h-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label={`Excluir conta ${c.nome}`} onClick={() => setConfirmDel(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </td>
                     </tr>
                   );
@@ -409,73 +429,82 @@ export default function FinContas() {
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
             <DialogTitle>{editing?.id ? "Editar conta" : "Nova conta corrente"}</DialogTitle>
           </DialogHeader>
 
           {/* Cabeçalho fixo: tipo, instituição, nome, agência, conta */}
           <div className="px-6 pt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Tipo de Conta Corrente *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="conta-tipo">Tipo de Conta Corrente *</Label>
               <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="conta-tipo"><SelectValue /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   {TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Instituição</Label>
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="conta-instituicao">Instituição</Label>
               <BancoSelectorLogos
+                id="conta-instituicao"
                 value={banco}
                 onChange={(v) => { setBanco(v); if (erros.banco) setErros((p) => ({ ...p, banco: undefined })); }}
                 placeholder="Selecione o banco…"
+                aria-invalid={!!erros.banco}
+                aria-describedby={erros.banco ? "conta-instituicao-erro" : undefined}
                 className={cn(erros.banco && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.banco && (
-                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
+                <p id="conta-instituicao-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.banco}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Nome da Conta *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="conta-nome">Nome da Conta *</Label>
               <Input
+                id="conta-nome"
                 value={nome}
                 onChange={(e) => { setNome(e.target.value); if (erros.nome) setErros((p) => ({ ...p, nome: undefined })); }}
                 placeholder="Ex.: Itaú PJ Principal"
                 aria-invalid={!!erros.nome}
+                aria-describedby={erros.nome ? "conta-nome-erro" : undefined}
                 className={cn(erros.nome && "border-destructive focus-visible:ring-destructive")}
                 maxLength={80}
               />
               {erros.nome && (
-                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
+                <p id="conta-nome-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.nome}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Agência</Label>
+            <div className="space-y-2">
+              <Label htmlFor="conta-agencia">Agência</Label>
               <Input
+                id="conta-agencia"
                 value={agencia}
                 onChange={(e) => { setAgencia(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 7)); if (erros.agencia) setErros((p) => ({ ...p, agencia: undefined })); }}
                 placeholder="1234 ou 1234-5"
                 aria-invalid={!!erros.agencia}
+                aria-describedby={erros.agencia ? "conta-agencia-erro" : undefined}
                 inputMode="text"
                 className={cn("tabular-nums", erros.agencia && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.agencia && (
-                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.agencia}</p>
+                <p id="conta-agencia-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.agencia}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Conta Corrente (com dígito)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="conta-numero">Conta Corrente (com dígito)</Label>
               <Input
+                id="conta-numero"
                 value={conta}
                 onChange={(e) => { setConta(e.target.value.replace(/[^\dxX-]/g, "").slice(0, 14)); if (erros.conta) setErros((p) => ({ ...p, conta: undefined })); }}
                 placeholder="12345-6"
                 aria-invalid={!!erros.conta}
+                aria-describedby={erros.conta ? "conta-numero-erro" : undefined}
                 inputMode="text"
                 className={cn("tabular-nums", erros.conta && "border-destructive focus-visible:ring-destructive")}
               />
               {erros.conta && (
-                <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
+                <p id="conta-numero-erro" role="alert" className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" />{erros.conta}</p>
               )}
             </div>
           </div>
@@ -490,9 +519,10 @@ export default function FinContas() {
             <ScrollArea className="max-h-[42vh] mt-3 pr-3">
               <TabsContent value="outras" className="space-y-3 mt-0">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Saldo Inicial</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-saldo-inicial">Saldo Inicial</Label>
                     <MoneyInput
+                      id="conta-saldo-inicial"
                       value={saldoInicial}
                       onValueChange={(v) => {
                         setSaldoInicial(v);
@@ -500,31 +530,35 @@ export default function FinContas() {
                         if (erros.saldoInicial) setErros((p) => ({ ...p, saldoInicial: undefined }));
                       }}
                       allowNegative
+                      aria-invalid={!!erros.saldoInicial}
+                      aria-describedby={erros.saldoInicial ? "conta-saldo-inicial-erro" : undefined}
                       className={cn(erros.saldoInicial && "border-destructive focus-visible:ring-destructive")}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Data do Saldo Inicial</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-data-saldo">Data do Saldo Inicial</Label>
                     <Input
+                      id="conta-data-saldo"
                       type="date"
                       value={dataSaldoInicial}
                       onChange={(e) => setDataSaldoInicial(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Limite de Crédito</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-limite-credito">Limite de Crédito</Label>
                     <MoneyInput
+                      id="conta-limite-credito"
                       value={limiteCredito}
                       onValueChange={setLimiteCredito}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Conta Vinculada</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-vinculada">Conta Vinculada</Label>
                     <Select
                       value={contaVinculadaId || "__none__"}
                       onValueChange={(v) => setContaVinculadaId(v === "__none__" ? "" : v)}
                     >
-                      <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                      <SelectTrigger id="conta-vinculada"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         <SelectItem value="__none__">Nenhuma</SelectItem>
                         {contas.filter((c) => c.id !== editing?.id).map((c) => (
@@ -535,19 +569,24 @@ export default function FinContas() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-md border bg-muted/30 p-3">
-                  <Switch checked={naoConsiderar} onCheckedChange={setNaoConsiderar} />
-                  <span className="text-sm leading-tight">
+                <div className="flex items-start gap-3 rounded-md border border-border bg-muted p-4">
+                  <Switch
+                    id="conta-nao-considerar"
+                    checked={naoConsiderar}
+                    onCheckedChange={setNaoConsiderar}
+                  />
+                  <Label htmlFor="conta-nao-considerar" className="font-normal leading-5">
                     Não considerar esta conta no “Resumo”, “Fluxo de Caixa” e “Orçamento de Caixa”
-                    <span className="block text-xs text-muted-foreground mt-0.5">
+                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
                       Use para contas auxiliares (caixinha, garantias, etc.) que não devem entrar nas projeções financeiras.
                     </span>
-                  </span>
+                  </Label>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Observação</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="conta-observacao">Observação</Label>
                   <Textarea
+                    id="conta-observacao"
                     value={observacao}
                     onChange={(e) => setObservacao(e.target.value)}
                     rows={3}
@@ -556,7 +595,7 @@ export default function FinContas() {
                 </div>
 
                 {erros.saldoInicial && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
+                  <p id="conta-saldo-inicial-erro" role="alert" className="text-xs text-destructive flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />{erros.saldoInicial}
                   </p>
                 )}
@@ -564,63 +603,66 @@ export default function FinContas() {
 
               <TabsContent value="agencia" className="space-y-3 mt-0">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Gerente da Conta</Label>
-                    <Input value={gerenteNome} onChange={(e) => setGerenteNome(e.target.value)} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="conta-gerente-nome">Gerente da Conta</Label>
+                    <Input id="conta-gerente-nome" value={gerenteNome} onChange={(e) => setGerenteNome(e.target.value)} />
                   </div>
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">E-mail</Label>
-                    <Input type="email" value={gerenteEmail} onChange={(e) => setGerenteEmail(e.target.value)} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="conta-gerente-email">E-mail</Label>
+                    <Input id="conta-gerente-email" type="email" value={gerenteEmail} onChange={(e) => setGerenteEmail(e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">DDD</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-gerente-ddd">DDD</Label>
                     <Input
+                      id="conta-gerente-ddd"
                       value={gerenteDdd}
                       onChange={(e) => setGerenteDdd(e.target.value.replace(/\D/g, "").slice(0, 2))}
                       className="tabular-nums"
                     />
                   </div>
-                  <div className="md:col-span-3 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                  <div className="md:col-span-3 space-y-2">
+                    <Label htmlFor="conta-gerente-telefone">Telefone</Label>
                     <Input
+                      id="conta-gerente-telefone"
                       value={gerenteTelefone}
                       onChange={(e) => setGerenteTelefone(e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
                       className="tabular-nums"
                     />
                   </div>
-                  <div className="md:col-span-3 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Endereço</Label>
-                    <Input value={endLogradouro} onChange={(e) => setEndLogradouro(e.target.value)} />
+                  <div className="md:col-span-3 space-y-2">
+                    <Label htmlFor="conta-endereco">Endereço</Label>
+                    <Input id="conta-endereco" value={endLogradouro} onChange={(e) => setEndLogradouro(e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Número</Label>
-                    <Input value={endNumero} onChange={(e) => setEndNumero(e.target.value)} />
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-endereco-numero">Número</Label>
+                    <Input id="conta-endereco-numero" value={endNumero} onChange={(e) => setEndNumero(e.target.value)} />
                   </div>
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Bairro</Label>
-                    <Input value={endBairro} onChange={(e) => setEndBairro(e.target.value)} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="conta-endereco-bairro">Bairro</Label>
+                    <Input id="conta-endereco-bairro" value={endBairro} onChange={(e) => setEndBairro(e.target.value)} />
                   </div>
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Complemento</Label>
-                    <Input value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="conta-endereco-complemento">Complemento</Label>
+                    <Input id="conta-endereco-complemento" value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Estado</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-endereco-estado">Estado</Label>
                     <Select value={endEstado || "__none__"} onValueChange={(v) => setEndEstado(v === "__none__" ? "" : v)}>
-                      <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectTrigger id="conta-endereco-estado"><SelectValue placeholder="UF" /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         <SelectItem value="__none__">—</SelectItem>
                         {UFS_BRASIL.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Cidade</Label>
-                    <Input value={endCidade} onChange={(e) => setEndCidade(e.target.value)} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="conta-endereco-cidade">Cidade</Label>
+                    <Input id="conta-endereco-cidade" value={endCidade} onChange={(e) => setEndCidade(e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">CEP</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="conta-endereco-cep">CEP</Label>
                     <Input
+                      id="conta-endereco-cep"
                       value={endCep}
                       onChange={(e) => setEndCep(e.target.value.replace(/[^\d-]/g, "").slice(0, 9))}
                       placeholder="00000-000"
@@ -632,7 +674,7 @@ export default function FinContas() {
             </ScrollArea>
           </Tabs>
 
-          <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+          <DialogFooter className="px-6 py-4 border-t border-border bg-muted">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={upsert.isPending || !nome.trim()}>Salvar</Button>
           </DialogFooter>

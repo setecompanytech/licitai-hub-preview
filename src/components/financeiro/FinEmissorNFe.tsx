@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   FileText, Plus, Trash2, Send, AlertCircle, Loader2, ExternalLink, Search,
   CheckCircle2, Building2, User, Truck, Calculator, ShieldCheck, FileDown, Info, RefreshCw, Package,
@@ -113,9 +114,16 @@ type NfeVinculada = {
   pedido_id: string | null;
 };
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  rascunho: "secondary", processando: "default", autorizada: "default",
-  rejeitada: "destructive", cancelada: "destructive", denegada: "destructive",
+/** Status da NF-e → família semântica. A cor reforça; o texto nunca sai. */
+const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {
+  rascunho: "muted", processando: "warning", autorizada: "success",
+  rejeitada: "danger", cancelada: "danger", denegada: "danger",
+};
+
+/** Rótulo curto do status, para caber no Badge da tabela. */
+const STATUS_TEXTO: Record<string, string> = {
+  rascunho: "Rascunho", processando: "Processando", autorizada: "Autorizada",
+  rejeitada: "Rejeitada", cancelada: "Cancelada", denegada: "Denegada",
 };
 
 const itemVazio = (): ItemNFe => ({
@@ -442,6 +450,14 @@ export default function FinEmissorNFe() {
     if (empresaAtiva && !empresaAtiva.inscricao_estadual && modelo !== "nfse") avisos.push("Emitente sem Inscrição Estadual cadastrada.");
     if (!destinatario.nome) erros.push("Destinatário sem nome/razão social.");
     if (!destinatario.documento) erros.push("Destinatário sem CPF/CNPJ.");
+    else {
+      // Mesmo rigor já aplicado ao transportador: sem 11/14 dígitos o payload
+      // sai sem `cpf` nem `cnpj` (ver emitir()) e a SEFAZ rejeita.
+      const docDest = destinatario.documento.replace(/\D/g, "");
+      if (docDest.length !== 11 && docDest.length !== 14) {
+        erros.push("CPF/CNPJ do destinatário inválido — 11 dígitos para CPF ou 14 para CNPJ.");
+      }
+    }
     if (modelo !== "nfse") {
       if (!destinatario.uf) avisos.push("UF do destinatário não informada.");
       if (itens.some(i => !i.descricao)) erros.push("Existem itens sem descrição.");
@@ -602,116 +618,131 @@ export default function FinEmissorNFe() {
     }
   };
 
+  // Espelhos das validações acima, para mostrar o erro JUNTO ao campo (a lista
+  // bloqueante do passo 7 continua sendo a fonte — aqui só se aponta onde dói).
+  const refNFeInvalida =
+    finalidade === "4" && fiscais.refNFe.length > 0 && fiscais.refNFe.replace(/\D/g, "").length !== 44;
+  const numeroManualInvalido = (() => {
+    if (!fiscais.numero_manual) return false;
+    const n = Number(fiscais.numero_manual);
+    return !Number.isInteger(n) || n <= 0 || n > 999999999;
+  })();
+  const documentoDestInvalido = (() => {
+    const d = destinatario.documento.replace(/\D/g, "");
+    return d.length > 0 && d.length !== 11 && d.length !== 14;
+  })();
+  const justificativaContingenciaFalta =
+    modelo !== "nfse" && fiscais.tpEmis !== "1" && infoComplementares.trim().length < 15;
+
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="faturas">
-            <Package className="w-4 h-4 mr-1.5" />Faturas de pedido
+          <TabsTrigger value="faturas" className="gap-2">
+            <Package className="h-4 w-4" />Faturas de pedido
             {pedidosFatura.filter(p => p.status === 'faturar').length > 0 && (
-              <Badge className="ml-1.5 h-4 px-1 text-xs bg-warning text-warning-foreground border-0">
+              <Badge variant="warning">
                 {pedidosFatura.filter(p => p.status === 'faturar').length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="emissao"><Send className="w-4 h-4 mr-1.5" />Nova emissão</TabsTrigger>
-          <TabsTrigger value="emitidas"><FileText className="w-4 h-4 mr-1.5" />Notas emitidas</TabsTrigger>
-          <TabsTrigger value="guia"><Info className="w-4 h-4 mr-1.5" />Passo a passo (SEBRAE)</TabsTrigger>
+          <TabsTrigger value="emissao" className="gap-2"><Send className="h-4 w-4" />Nova emissão</TabsTrigger>
+          <TabsTrigger value="emitidas" className="gap-2"><FileText className="h-4 w-4" />Notas emitidas</TabsTrigger>
+          <TabsTrigger value="guia" className="gap-2"><Info className="h-4 w-4" />Passo a passo (SEBRAE)</TabsTrigger>
         </TabsList>
 
         {/* ============ FATURAS DE PEDIDO ============ */}
         <TabsContent value="faturas">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2"><Package className="w-5 h-5" />Faturas de Pedido</CardTitle>
-                  <CardDescription>Pedidos que aguardam emissão de NF-e (A Faturar) ou que já foram faturados. Clique em "Pré-preencher" para iniciar a emissão.</CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Faturas de pedido</CardTitle>
+                  <CardDescription>Pedidos que aguardam emissão de NF-e (A Faturar) ou que já foram faturados.</CardDescription>
                 </div>
-                <Button size="sm" variant="outline" onClick={carregarPedidosFatura} disabled={loadingPedidos}>
-                  {loadingPedidos ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                <Button size="sm" variant="outline" onClick={carregarPedidosFatura} disabled={loadingPedidos}
+                  aria-label="Atualizar a lista de pedidos a faturar">
+                  {loadingPedidos ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Atualizar
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {loadingPedidos ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : pedidosFatura.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
-                  <Package className="w-10 h-10 text-muted-foreground/20" />
-                  <p className="text-sm text-muted-foreground">Nenhum pedido aguardando faturamento</p>
-                  <p className="text-xs text-muted-foreground">Pedidos aparecem aqui ao mover para "A Faturar" ou "Faturado" no Kanban de Gestão de Compras.</p>
-                </div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Package />}
+                  titulo="Nenhum pedido aguardando faturamento"
+                  descricao={'Pedidos aparecem aqui ao mover para "A Faturar" ou "Faturado" no Kanban de Gestão de Compras.'}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nº</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Cliente / Fornecedor</TableHead>
-                        <TableHead>Valor Total</TableHead>
-                        <TableHead>Status Pedido</TableHead>
-                        <TableHead>NF-e Vinculada</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Ações</TableHead>
+                        <TableHead className="whitespace-nowrap">Nº</TableHead>
+                        <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                        <TableHead>Cliente / fornecedor</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Valor total</TableHead>
+                        <TableHead className="whitespace-nowrap">Status do pedido</TableHead>
+                        <TableHead className="whitespace-nowrap">NF-e vinculada</TableHead>
+                        <TableHead className="whitespace-nowrap">Data</TableHead>
+                        <TableHead className="whitespace-nowrap">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {pedidosFatura.map(p => (
                         <TableRow key={p.id}>
-                          <TableCell className="font-semibold">#{p.numero}</TableCell>
+                          <TableCell className="font-semibold tabular-nums">#{p.numero}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">{p.tipo === 'venda' ? 'Venda' : 'Compra'}</Badge>
+                            <Badge variant="muted">{p.tipo === 'venda' ? 'Venda' : 'Compra'}</Badge>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm font-medium">{p.pessoa_nome || <span className="text-muted-foreground">—</span>}</div>
                             {p.pessoa_doc && <div className="text-xs text-muted-foreground">{p.pessoa_doc}</div>}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap text-right tabular-nums">
                             {(p.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant={p.status === 'faturado' ? 'default' : 'secondary'}
-                              className={p.status === 'faturar' ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}
-                            >
-                              {p.status === 'faturado' ? 'Faturado' : 'A Faturar'}
+                            <Badge variant={p.status === 'faturado' ? 'success' : 'warning'}>
+                              {p.status === 'faturado' ? 'Faturado' : 'A faturar'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {p.nfe_numero ? (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="text-xs font-medium">NF-e #{p.nfe_numero}</span>
-                                <Badge variant={STATUS_VARIANT[p.nfe_status || ''] || 'outline'} className="text-xs w-fit">
-                                  {p.nfe_status || '—'}
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="text-sm font-medium">NF-e #{p.nfe_numero}</span>
+                                <Badge variant={STATUS_VARIANT[p.nfe_status || ''] || 'muted'}>
+                                  {STATUS_TEXTO[p.nfe_status || ''] || p.nfe_status || '—'}
                                 </Badge>
                                 {p.nfe_chave && (
-                                  <span className="text-xs text-muted-foreground font-mono">{p.nfe_chave.slice(0, 8)}…{p.nfe_chave.slice(-4)}</span>
+                                  <span className="font-mono text-xs text-muted-foreground">{p.nfe_chave.slice(0, 8)}…{p.nfe_chave.slice(-4)}</span>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">Não emitida</span>
+                              <span className="text-sm text-muted-foreground">Não emitida</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                             {new Date(p.created_at).toLocaleDateString('pt-BR')}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1 flex-wrap">
+                            <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs"
                                 onClick={() => navigate(`/gestao-compras?pedido=${p.id}`)}
                               >
-                                <ExternalLink className="w-3 h-3 mr-1" /> Detalhar Pedido
+                                <ExternalLink className="h-4 w-4" /> Detalhar pedido
                               </Button>
                               {p.nfe_id && (
-                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setActiveTab('emitidas')}>
-                                  <FileText className="w-3 h-3 mr-1" /> Ver NF-e
+                                <Button size="sm" variant="ghost" onClick={() => setActiveTab('emitidas')}>
+                                  <FileText className="h-4 w-4" /> Ver NF-e
                                 </Button>
                               )}
                             </div>
@@ -728,26 +759,26 @@ export default function FinEmissorNFe() {
 
         {/* ============ EMISSAO ============ */}
         <TabsContent value="emissao" className="space-y-4">
-          <Alert>
-            <AlertCircle className="w-4 h-4" />
+          <Alert variant="info">
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>Configuração necessária</AlertTitle>
             <AlertDescription>
-              A transmissão à SEFAZ depende do secret <code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e de um certificado A1 cadastrado.
-              Use <code className="bg-muted px-1 rounded">FOCUS_NFE_AMBIENTE=homologacao</code> para testes.
+              A transmissão à SEFAZ depende do secret <code className="rounded bg-muted px-1">FOCUS_NFE_API_TOKEN</code> e de um certificado A1 cadastrado.
+              Use <code className="rounded bg-muted px-1">FOCUS_NFE_AMBIENTE=homologacao</code> para testes.
             </AlertDescription>
           </Alert>
 
           {/* 1. Natureza */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />1. Natureza da operação (CFOP)</CardTitle>
+              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />1. Natureza da operação (CFOP)</CardTitle>
               <CardDescription>Defina o tipo fiscal (venda, remessa, devolução, exportação).</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <Label>Modelo</Label>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="nfe-modelo">Modelo</Label>
                 <Select value={modelo} onValueChange={v => setModelo(v as any)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="nfe-modelo"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nfe">NF-e — Mercadoria (mod 55)</SelectItem>
                     <SelectItem value="nfce">NFC-e — Consumidor (mod 65)</SelectItem>
@@ -755,30 +786,30 @@ export default function FinEmissorNFe() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="md:col-span-2">
-                <Label>Natureza da operação</Label>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="nfe-natureza">Natureza da operação</Label>
                 <Select value={naturezaOp} onValueChange={setNaturezaOp}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="nfe-natureza"><SelectValue /></SelectTrigger>
                   <SelectContent>{NATUREZAS_OPERACAO.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Série</Label>
-                <Input type="number" min={1} value={serie} onChange={e => setSerie(Number(e.target.value))} />
+              <div className="space-y-1.5">
+                <Label htmlFor="nfe-serie">Série</Label>
+                <Input id="nfe-serie" type="number" min={1} value={serie} onChange={e => setSerie(Number(e.target.value))} />
               </div>
               {modelo !== "nfse" && (
                 <>
-                  <div>
-                    <Label>Finalidade</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nfe-finalidade">Finalidade</Label>
                     <Select value={finalidade} onValueChange={setFinalidade}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="nfe-finalidade"><SelectValue /></SelectTrigger>
                       <SelectContent>{FINALIDADES_NFE.map(f => <SelectItem key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Presença do comprador</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nfe-presenca">Presença do comprador</Label>
                     <Select value={presenca} onValueChange={setPresenca}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="nfe-presenca"><SelectValue /></SelectTrigger>
                       <SelectContent>{PRESENCA_COMPRADOR.map(p => <SelectItem key={p.codigo} value={p.codigo}>{p.codigo} — {p.descricao}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
@@ -791,49 +822,49 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5" />1.5 Identificação fiscal (SEFAZ 4.00)</CardTitle>
+                <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />1.5 Identificação fiscal (SEFAZ 4.00)</CardTitle>
                 <CardDescription>
                   Campos obrigatórios do schema NF-e: tipo de operação, destino, consumidor final, contingência e referências.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div>
-                    <Label>Tipo de operação (tpNF)</Label>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fiscal-tpnf">Tipo de operação (tpNF)</Label>
                     <Select value={fiscais.tpNF} onValueChange={v => setFiscais({ ...fiscais, tpNF: v as "0" | "1" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="fiscal-tpnf"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">1 — Saída</SelectItem>
                         <SelectItem value="0">0 — Entrada (devolução de fornecedor)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Consumidor final (indFinal)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fiscal-indfinal">Consumidor final (indFinal)</Label>
                     <Select value={fiscais.indFinal} onValueChange={v => setFiscais({ ...fiscais, indFinal: v as "0" | "1" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="fiscal-indfinal"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="0">0 — Operação normal</SelectItem>
                         <SelectItem value="1">1 — Consumidor final</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Destino (idDest) — auto</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fiscal-iddest">Destino (idDest) — auto</Label>
                     <Select value={fiscais.idDest} onValueChange={v => setFiscais({ ...fiscais, idDest: v as "1" | "2" | "3" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="fiscal-iddest" aria-describedby="fiscal-iddest-ajuda"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">1 — Operação interna</SelectItem>
                         <SelectItem value="2">2 — Interestadual</SelectItem>
                         <SelectItem value="3">3 — Exterior</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1">Calculado automaticamente pela UF emitente × destinatário.</p>
+                    <p id="fiscal-iddest-ajuda" className="text-xs text-muted-foreground">Calculado automaticamente pela UF emitente × destinatário.</p>
                   </div>
-                  <div>
-                    <Label>Tipo de emissão (tpEmis)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fiscal-tpemis">Tipo de emissão (tpEmis)</Label>
                     <Select value={fiscais.tpEmis} onValueChange={v => setFiscais({ ...fiscais, tpEmis: v as FiscaisExtras["tpEmis"] })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="fiscal-tpemis"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">1 — Normal</SelectItem>
                         <SelectItem value="2">2 — Contingência FS-IA</SelectItem>
@@ -849,51 +880,73 @@ export default function FinEmissorNFe() {
 
                 {/* Referência NF-e (Devolução) */}
                 {finalidade === "4" && (
-                  <div className="rounded-md border p-3 bg-muted/30 space-y-2">
-                    <Label className="text-xs font-semibold uppercase">NF-e referenciada (devolução)</Label>
+                  <div className="space-y-1.5 rounded-md border border-border bg-muted p-4">
+                    <Label htmlFor="fiscal-refnfe">NF-e referenciada (devolução)</Label>
                     <Input
+                      id="fiscal-refnfe"
                       value={fiscais.refNFe}
                       onChange={e => setFiscais({ ...fiscais, refNFe: e.target.value.replace(/\D/g, "").slice(0, 44) })}
                       placeholder="44 dígitos da chave de acesso da NF-e original"
                       className="font-mono"
                       maxLength={44}
+                      aria-invalid={refNFeInvalida || undefined}
+                      aria-describedby={refNFeInvalida ? "fiscal-refnfe-erro" : "fiscal-refnfe-ajuda"}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Obrigatório (Rejeição 539). Cole a chave da NF-e original que está sendo devolvida.
-                    </p>
+                    {refNFeInvalida ? (
+                      <p id="fiscal-refnfe-erro" className="text-xs text-destructive-ink">
+                        Chave incompleta — {fiscais.refNFe.replace(/\D/g, "").length} de 44 dígitos (Rejeição 539).
+                      </p>
+                    ) : (
+                      <p id="fiscal-refnfe-ajuda" className="text-xs text-muted-foreground">
+                        Obrigatório (Rejeição 539). Cole a chave da NF-e original que está sendo devolvida.
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {/* Numeração manual (Sprint 3) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <Label>Número manual da NF-e (opcional)</Label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fiscal-numero-manual">Número manual da NF-e (opcional)</Label>
                     <Input
+                      id="fiscal-numero-manual"
                       type="number"
                       min={1}
                       value={fiscais.numero_manual}
                       onChange={e => setFiscais({ ...fiscais, numero_manual: e.target.value })}
                       placeholder="Deixe vazio para autonumeração"
+                      aria-invalid={numeroManualInvalido || undefined}
+                      aria-describedby={numeroManualInvalido ? "fiscal-numero-manual-erro" : "fiscal-numero-manual-ajuda"}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Use para migrar de outro emissor mantendo a sequência.</p>
+                    {numeroManualInvalido ? (
+                      <p id="fiscal-numero-manual-erro" className="text-xs text-destructive-ink">
+                        Número inválido — informe um inteiro de 1 a 999.999.999.
+                      </p>
+                    ) : (
+                      <p id="fiscal-numero-manual-ajuda" className="text-xs text-muted-foreground">Use para migrar de outro emissor mantendo a sequência.</p>
+                    )}
                   </div>
                 </div>
 
                 {/* CNPJs autorizados (autXML) — Sprint 3 */}
-                <div className="rounded-md border p-3 space-y-2">
-                  <Label className="text-xs font-semibold uppercase">CNPJs autorizados a baixar XML (autXML)</Label>
-                  <p className="text-xs text-muted-foreground">
+                <div className="space-y-3 rounded-md border border-border p-4">
+                  <Label htmlFor="fiscal-autxml">CNPJs autorizados a baixar XML (autXML)</Label>
+                  <p id="fiscal-autxml-ajuda" className="text-xs text-muted-foreground">
                     Até 10 CNPJs (ex.: contador, transportadora). Aparecem no XML autorizado pela SEFAZ.
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Input
+                      id="fiscal-autxml"
                       value={autXmlInput}
                       onChange={e => setAutXmlInput(e.target.value)}
                       placeholder="00.000.000/0000-00"
+                      className="max-w-xs"
+                      aria-describedby="fiscal-autxml-ajuda"
                     />
                     <Button
                       type="button"
                       variant="outline"
+                      aria-label="Adicionar CNPJ autorizado a baixar o XML"
                       onClick={() => {
                         const limpo = autXmlInput.replace(/\D/g, "");
                         if (limpo.length !== 14) { toast.error("CNPJ inválido"); return; }
@@ -903,33 +956,39 @@ export default function FinEmissorNFe() {
                         setAutXmlInput("");
                       }}
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="h-4 w-4" /> Adicionar
                     </Button>
                   </div>
                   {fiscais.autXML.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {fiscais.autXML.map((c, i) => (
-                        <Badge key={i} variant="secondary" className="gap-1">
-                          {c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
-                          <button
-                            type="button"
-                            onClick={() => setFiscais({ ...fiscais, autXML: fiscais.autXML.filter((_, idx) => idx !== i) })}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
+                    <div className="flex flex-wrap gap-2">
+                      {fiscais.autXML.map((c, i) => {
+                        const formatado = c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                        return (
+                          <Badge key={i} variant="muted" className="gap-2">
+                            {formatado}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Remover o CNPJ autorizado ${formatado}`}
+                              onClick={() => setFiscais({ ...fiscais, autXML: fiscais.autXML.filter((_, idx) => idx !== i) })}
+                              className="-mr-1 h-5 w-5 shrink-0 hover:bg-transparent hover:text-destructive-ink [&_svg]:size-3"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </Badge>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Alerta contingência */}
                 {fiscais.tpEmis !== "1" && (
-                  <Alert>
+                  <Alert variant="warning">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Modo contingência ativo</AlertTitle>
-                    <AlertDescription className="text-xs">
+                    <AlertDescription>
                       Use somente quando a SEFAZ de origem estiver indisponível. Justifique nas informações complementares (mín. 15 caracteres).
                       Após o restabelecimento, transmita as notas em até 168h.
                     </AlertDescription>
@@ -942,22 +1001,27 @@ export default function FinEmissorNFe() {
           {/* 2. Emitente */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Building2 className="w-5 h-5" />2. Dados do emitente</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" />2. Dados do emitente</CardTitle>
               <CardDescription>Carregados automaticamente da empresa ativa. Edite no menu Configurações se necessário.</CardDescription>
             </CardHeader>
             <CardContent>
               {empresaAtiva ? (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-                  <div><Label className="text-xs text-muted-foreground">Razão social</Label><div className="font-medium">{empresaAtiva.razao_social}</div></div>
-                  <div><Label className="text-xs text-muted-foreground">CNPJ</Label><div className="font-medium">{empresaAtiva.cnpj}</div></div>
-                  <div><Label className="text-xs text-muted-foreground">IE</Label><div className="font-medium">{empresaAtiva.inscricao_estadual || <span className="text-destructive">não cadastrada</span>}</div></div>
-                  <div><Label className="text-xs text-muted-foreground">Regime</Label><div className="font-medium uppercase">{empresaAtiva.regime_tributario || "—"}</div></div>
-                  <div className="md:col-span-2"><Label className="text-xs text-muted-foreground">Endereço</Label><div className="font-medium">{empresaAtiva.endereco || "—"}</div></div>
-                  <div><Label className="text-xs text-muted-foreground">Município/UF</Label><div className="font-medium">{empresaAtiva.municipio || "—"}/{empresaAtiva.uf || "—"}</div></div>
-                  <div><Label className="text-xs text-muted-foreground">CEP</Label><div className="font-medium">{empresaAtiva.cep || "—"}</div></div>
-                </div>
+                <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-4">
+                  <div><dt className="text-xs text-muted-foreground">Razão social</dt><dd className="font-medium">{empresaAtiva.razao_social}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">CNPJ</dt><dd className="font-medium">{empresaAtiva.cnpj}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">IE</dt><dd className="font-medium">{empresaAtiva.inscricao_estadual || <span className="text-destructive-ink">não cadastrada</span>}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Regime</dt><dd className="font-medium uppercase">{empresaAtiva.regime_tributario || "—"}</dd></div>
+                  <div className="md:col-span-2"><dt className="text-xs text-muted-foreground">Endereço</dt><dd className="font-medium">{empresaAtiva.endereco || "—"}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Município/UF</dt><dd className="font-medium">{empresaAtiva.municipio || "—"}/{empresaAtiva.uf || "—"}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">CEP</dt><dd className="font-medium">{empresaAtiva.cep || "—"}</dd></div>
+                </dl>
               ) : (
-                <div className="text-sm text-muted-foreground">Nenhuma empresa ativa selecionada.</div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Building2 />}
+                  titulo="Nenhuma empresa ativa selecionada"
+                  descricao="Escolha a empresa emitente no seletor do topo para carregar CNPJ, IE e endereço."
+                />
               )}
             </CardContent>
           </Card>
@@ -965,25 +1029,38 @@ export default function FinEmissorNFe() {
           {/* 3. Destinatário */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><User className="w-5 h-5" />3. Destinatário</CardTitle>
+              <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />3. Destinatário</CardTitle>
               <CardDescription>Digite o CNPJ e clique em Buscar para preencher automaticamente via Receita Federal.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-3">
-                  <Label>CPF / CNPJ</Label>
-                  <div className="flex gap-1">
-                    <Input value={destinatario.documento} onChange={e => setDestinatario({ ...destinatario, documento: e.target.value })} placeholder="00.000.000/0000-00" />
-                    <Button type="button" variant="outline" size="icon" onClick={buscarDestinatario} disabled={buscandoCNPJ}>
-                      {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                <div className="space-y-1.5 md:col-span-3">
+                  <Label htmlFor="dest-documento">CPF / CNPJ</Label>
+                  <div className="flex gap-2">
+                    <Input id="dest-documento" value={destinatario.documento}
+                      onChange={e => setDestinatario({ ...destinatario, documento: e.target.value })}
+                      placeholder="00.000.000/0000-00"
+                      aria-invalid={documentoDestInvalido || undefined}
+                      aria-describedby={documentoDestInvalido ? "dest-documento-erro" : undefined} />
+                    <Button type="button" variant="outline" size="icon" onClick={buscarDestinatario} disabled={buscandoCNPJ}
+                      aria-label="Buscar dados do destinatário pelo CNPJ">
+                      {buscandoCNPJ ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                     </Button>
                   </div>
+                  {documentoDestInvalido && (
+                    <p id="dest-documento-erro" className="text-xs text-destructive-ink">
+                      Documento inválido — 11 dígitos para CPF ou 14 para CNPJ.
+                    </p>
+                  )}
                 </div>
-                <div className="md:col-span-5"><Label>Nome / Razão social</Label><Input value={destinatario.nome} onChange={e => setDestinatario({ ...destinatario, nome: e.target.value })} /></div>
-                <div className="md:col-span-2">
-                  <Label>Indicador IE</Label>
+                <div className="space-y-1.5 md:col-span-5">
+                  <Label htmlFor="dest-nome">Nome / Razão social</Label>
+                  <Input id="dest-nome" value={destinatario.nome} onChange={e => setDestinatario({ ...destinatario, nome: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="dest-indicador-ie">Indicador IE</Label>
                   <Select value={destinatario.indicador_ie} onValueChange={v => setDestinatario({ ...destinatario, indicador_ie: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="dest-indicador-ie"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1 — Contribuinte ICMS</SelectItem>
                       <SelectItem value="2">2 — Isento</SelectItem>
@@ -991,18 +1068,48 @@ export default function FinEmissorNFe() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="md:col-span-2"><Label>Inscrição Estadual</Label><Input value={destinatario.ie} onChange={e => setDestinatario({ ...destinatario, ie: e.target.value })} disabled={destinatario.indicador_ie !== "1"} /></div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="dest-ie">Inscrição Estadual</Label>
+                  <Input id="dest-ie" value={destinatario.ie} onChange={e => setDestinatario({ ...destinatario, ie: e.target.value })} disabled={destinatario.indicador_ie !== "1"} />
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-5"><Label>Logradouro</Label><Input value={destinatario.logradouro} onChange={e => setDestinatario({ ...destinatario, logradouro: e.target.value })} /></div>
-                <div className="md:col-span-1"><Label>Número</Label><Input value={destinatario.numero} onChange={e => setDestinatario({ ...destinatario, numero: e.target.value })} /></div>
-                <div className="md:col-span-2"><Label>Complemento</Label><Input value={destinatario.complemento} onChange={e => setDestinatario({ ...destinatario, complemento: e.target.value })} /></div>
-                <div className="md:col-span-2"><Label>Bairro</Label><Input value={destinatario.bairro} onChange={e => setDestinatario({ ...destinatario, bairro: e.target.value })} /></div>
-                <div className="md:col-span-2"><Label>CEP</Label><Input value={destinatario.cep} onChange={e => setDestinatario({ ...destinatario, cep: e.target.value })} /></div>
-                <div className="md:col-span-4"><Label>Município</Label><Input value={destinatario.municipio} onChange={e => setDestinatario({ ...destinatario, municipio: e.target.value })} /></div>
-                <div className="md:col-span-1"><Label>UF</Label><Input maxLength={2} value={destinatario.uf} onChange={e => setDestinatario({ ...destinatario, uf: e.target.value.toUpperCase() })} /></div>
-                <div className="md:col-span-3"><Label>Telefone</Label><Input value={destinatario.telefone} onChange={e => setDestinatario({ ...destinatario, telefone: e.target.value })} /></div>
-                <div className="md:col-span-4"><Label>E-mail</Label><Input type="email" value={destinatario.email} onChange={e => setDestinatario({ ...destinatario, email: e.target.value })} /></div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                <div className="space-y-1.5 md:col-span-5">
+                  <Label htmlFor="dest-logradouro">Logradouro</Label>
+                  <Input id="dest-logradouro" value={destinatario.logradouro} onChange={e => setDestinatario({ ...destinatario, logradouro: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-1">
+                  <Label htmlFor="dest-numero">Número</Label>
+                  <Input id="dest-numero" value={destinatario.numero} onChange={e => setDestinatario({ ...destinatario, numero: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="dest-complemento">Complemento</Label>
+                  <Input id="dest-complemento" value={destinatario.complemento} onChange={e => setDestinatario({ ...destinatario, complemento: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="dest-bairro">Bairro</Label>
+                  <Input id="dest-bairro" value={destinatario.bairro} onChange={e => setDestinatario({ ...destinatario, bairro: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="dest-cep">CEP</Label>
+                  <Input id="dest-cep" value={destinatario.cep} onChange={e => setDestinatario({ ...destinatario, cep: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-4">
+                  <Label htmlFor="dest-municipio">Município</Label>
+                  <Input id="dest-municipio" value={destinatario.municipio} onChange={e => setDestinatario({ ...destinatario, municipio: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-1">
+                  <Label htmlFor="dest-uf">UF</Label>
+                  <Input id="dest-uf" maxLength={2} value={destinatario.uf} onChange={e => setDestinatario({ ...destinatario, uf: e.target.value.toUpperCase() })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-3">
+                  <Label htmlFor="dest-telefone">Telefone</Label>
+                  <Input id="dest-telefone" value={destinatario.telefone} onChange={e => setDestinatario({ ...destinatario, telefone: e.target.value })} />
+                </div>
+                <div className="space-y-1.5 md:col-span-4">
+                  <Label htmlFor="dest-email">E-mail</Label>
+                  <Input id="dest-email" type="email" value={destinatario.email} onChange={e => setDestinatario({ ...destinatario, email: e.target.value })} />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1011,41 +1118,70 @@ export default function FinEmissorNFe() {
           {modelo === "nfse" ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />4. Serviço prestado</CardTitle>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />4. Serviço prestado</CardTitle>
                 <CardDescription>Descrição completa, código municipal e valor.</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="md:col-span-2"><Label>Descrição do serviço</Label><Textarea rows={3} value={serviceDescricao} onChange={e => setServiceDescricao(e.target.value)} /></div>
-                <div className="space-y-3">
-                  <div><Label>Código municipal (LC 116/03)</Label><Input value={serviceCodigo} onChange={e => setServiceCodigo(e.target.value)} placeholder="Ex: 1.05" /></div>
-                  <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={serviceValor} onChange={e => setServiceValor(Number(e.target.value))} /></div>
+              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="servico-descricao">Descrição do serviço</Label>
+                  <Textarea id="servico-descricao" rows={3} value={serviceDescricao} onChange={e => setServiceDescricao(e.target.value)} />
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="servico-codigo">Código municipal (LC 116/03)</Label>
+                    <Input id="servico-codigo" value={serviceCodigo} onChange={e => setServiceCodigo(e.target.value)} placeholder="Ex: 1.05" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="servico-valor">Valor (R$)</Label>
+                    <Input id="servico-valor" type="number" step="0.01" value={serviceValor} onChange={e => setServiceValor(Number(e.target.value))} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />4. Produtos / Serviços</CardTitle>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />4. Produtos / serviços</CardTitle>
                     <CardDescription>NCM (8 dígitos), CFOP, unidade, quantidade e valor.</CardDescription>
                   </div>
-                  <Button size="sm" variant="outline" onClick={adicionarItem}><Plus className="w-4 h-4 mr-1" />Adicionar item</Button>
+                  <Button size="sm" variant="outline" onClick={adicionarItem}><Plus className="h-4 w-4" />Adicionar item</Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {itens.map((it, idx) => (
-                  <div key={idx} className="border rounded-lg p-3 space-y-3 bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">Item {idx + 1}</Badge>
-                      <Button size="icon" variant="ghost" onClick={() => removerItem(idx)} disabled={itens.length === 1}><Trash2 className="w-4 h-4" /></Button>
+              <CardContent className="space-y-4">
+                {itens.map((it, idx) => {
+                  const ncmInvalido = it.ncm.length > 0 && it.ncm.length !== 8;
+                  return (
+                  <div key={idx} className="space-y-4 rounded-lg border border-border bg-muted p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant="muted">Item {idx + 1}</Badge>
+                      <Button size="icon" variant="ghost" onClick={() => removerItem(idx)} disabled={itens.length === 1}
+                        aria-label={`Remover o item ${idx + 1}`}><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-12 md:col-span-2"><Label className="text-xs">Código</Label><Input value={it.codigo} onChange={e => atualizarItem(idx, "codigo", e.target.value)} placeholder="PRD0001" /></div>
-                      <div className="col-span-12 md:col-span-6"><Label className="text-xs">Descrição</Label><Input value={it.descricao} onChange={e => atualizarItem(idx, "descricao", e.target.value)} /></div>
-                      <div className="col-span-6 md:col-span-2"><Label className="text-xs">NCM</Label><Input maxLength={8} value={it.ncm} onChange={e => atualizarItem(idx, "ncm", e.target.value.replace(/\D/g, ""))} placeholder="00000000" /></div>
-                      <div className="col-span-12 md:col-span-4">
-                        <Label className="text-xs">CFOP</Label>
+                    <div className="grid grid-cols-12 gap-3">
+                      <div className="col-span-12 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-codigo`}>Código</Label>
+                        <Input id={`item-${idx}-codigo`} value={it.codigo} onChange={e => atualizarItem(idx, "codigo", e.target.value)} placeholder="PRD0001" />
+                      </div>
+                      <div className="col-span-12 space-y-1.5 md:col-span-6">
+                        <Label htmlFor={`item-${idx}-descricao`}>Descrição</Label>
+                        <Input id={`item-${idx}-descricao`} value={it.descricao} onChange={e => atualizarItem(idx, "descricao", e.target.value)} />
+                      </div>
+                      <div className="col-span-6 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-ncm`}>NCM</Label>
+                        <Input id={`item-${idx}-ncm`} maxLength={8} value={it.ncm}
+                          onChange={e => atualizarItem(idx, "ncm", e.target.value.replace(/\D/g, ""))} placeholder="00000000"
+                          aria-invalid={ncmInvalido || undefined}
+                          aria-describedby={ncmInvalido ? `item-${idx}-ncm-erro` : undefined} />
+                        {ncmInvalido && (
+                          <p id={`item-${idx}-ncm-erro`} className="text-xs text-destructive-ink">NCM deve ter 8 dígitos.</p>
+                        )}
+                      </div>
+                      <div className="col-span-12 space-y-1.5 md:col-span-4">
+                        {/* CFOPSelect é um combobox próprio (fora deste lote): o
+                            rótulo fica visível, sem htmlFor apontando para nada. */}
+                        <Label>CFOP</Label>
                         <CFOPSelect
                           value={it.cfop}
                           onChange={(v) => atualizarItem(idx, "cfop", v)}
@@ -1060,48 +1196,67 @@ export default function FinEmissorNFe() {
                           finalidade={finalidade}
                         />
                       </div>
-                      <div className="col-span-4 md:col-span-2">
-                        <Label className="text-xs">Unidade</Label>
+                      <div className="col-span-4 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-unidade`}>Unidade</Label>
                         <Select value={it.unidade} onValueChange={v => atualizarItem(idx, "unidade", v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger id={`item-${idx}-unidade`}><SelectValue /></SelectTrigger>
                           <SelectContent>{UNIDADES_COMERCIAIS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-4 md:col-span-2"><Label className="text-xs">Quantidade</Label><Input type="number" step="0.01" value={it.quantidade} onChange={e => atualizarItem(idx, "quantidade", Number(e.target.value))} /></div>
-                      <div className="col-span-4 md:col-span-2"><Label className="text-xs">Valor unitário</Label><Input type="number" step="0.01" value={it.valor_unitario} onChange={e => atualizarItem(idx, "valor_unitario", Number(e.target.value))} /></div>
-                      <div className="col-span-12 md:col-span-6 flex items-end justify-end">
+                      <div className="col-span-4 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-quantidade`}>Quantidade</Label>
+                        <Input id={`item-${idx}-quantidade`} type="number" step="0.01" value={it.quantidade} onChange={e => atualizarItem(idx, "quantidade", Number(e.target.value))} />
+                      </div>
+                      <div className="col-span-4 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-valor`}>Valor unitário</Label>
+                        <Input id={`item-${idx}-valor`} type="number" step="0.01" value={it.valor_unitario} onChange={e => atualizarItem(idx, "valor_unitario", Number(e.target.value))} />
+                      </div>
+                      <div className="col-span-12 flex items-end justify-end md:col-span-6">
                         <div className="text-sm">
                           <span className="text-muted-foreground">Subtotal: </span>
-                          <span className="font-semibold">{((it.quantidade || 0) * (it.valor_unitario || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                          <span className="font-semibold tabular-nums">{((it.quantidade || 0) * (it.valor_unitario || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                         </div>
                       </div>
                     </div>
                     <Separator />
                     {/* Bloco fiscal */}
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-6 md:col-span-3">
-                        <Label className="text-xs flex items-center gap-1"><Calculator className="w-3 h-3" />Origem</Label>
+                    <div className="grid grid-cols-12 gap-3">
+                      <div className="col-span-6 space-y-1.5 md:col-span-3">
+                        <Label htmlFor={`item-${idx}-origem`} className="flex items-center gap-1"><Calculator className="h-3 w-3" />Origem</Label>
                         <Select value={it.origem} onValueChange={v => atualizarItem(idx, "origem", v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger id={`item-${idx}-origem`}><SelectValue /></SelectTrigger>
                           <SelectContent className="max-h-72">{ORIGEM_MERCADORIA.map(o => <SelectItem key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-6 md:col-span-3">
-                        <Label className="text-xs">{empresaAtiva?.regime_tributario === "simples" ? "CSOSN" : "CST ICMS"}</Label>
+                      <div className="col-span-6 space-y-1.5 md:col-span-3">
+                        <Label htmlFor={`item-${idx}-cst`}>{empresaAtiva?.regime_tributario === "simples" ? "CSOSN" : "CST ICMS"}</Label>
                         <Select value={it.cst_csosn} onValueChange={v => atualizarItem(idx, "cst_csosn", v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger id={`item-${idx}-cst`}><SelectValue /></SelectTrigger>
                           <SelectContent className="max-h-72">
                             {(empresaAtiva?.regime_tributario === "simples" ? CSOSN_OPCOES : CST_ICMS_OPCOES).map(c => <SelectItem key={c.codigo} value={c.codigo}>{c.codigo} — {c.descricao}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% ICMS</Label><Input type="number" step="0.01" value={it.aliq_icms} onChange={e => atualizarItem(idx, "aliq_icms", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% IPI</Label><Input type="number" step="0.01" value={it.aliq_ipi} onChange={e => atualizarItem(idx, "aliq_ipi", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% PIS</Label><Input type="number" step="0.01" value={it.aliq_pis} onChange={e => atualizarItem(idx, "aliq_pis", Number(e.target.value))} /></div>
-                      <div className="col-span-3 md:col-span-2"><Label className="text-xs">% COFINS</Label><Input type="number" step="0.01" value={it.aliq_cofins} onChange={e => atualizarItem(idx, "aliq_cofins", Number(e.target.value))} /></div>
+                      <div className="col-span-6 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-icms`}>% ICMS</Label>
+                        <Input id={`item-${idx}-icms`} type="number" step="0.01" value={it.aliq_icms} onChange={e => atualizarItem(idx, "aliq_icms", Number(e.target.value))} />
+                      </div>
+                      <div className="col-span-6 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-ipi`}>% IPI</Label>
+                        <Input id={`item-${idx}-ipi`} type="number" step="0.01" value={it.aliq_ipi} onChange={e => atualizarItem(idx, "aliq_ipi", Number(e.target.value))} />
+                      </div>
+                      <div className="col-span-6 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-pis`}>% PIS</Label>
+                        <Input id={`item-${idx}-pis`} type="number" step="0.01" value={it.aliq_pis} onChange={e => atualizarItem(idx, "aliq_pis", Number(e.target.value))} />
+                      </div>
+                      <div className="col-span-6 space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`item-${idx}-cofins`}>% COFINS</Label>
+                        <Input id={`item-${idx}-cofins`} type="number" step="0.01" value={it.aliq_cofins} onChange={e => atualizarItem(idx, "aliq_cofins", Number(e.target.value))} />
+                      </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
@@ -1110,53 +1265,96 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5" />5. Transporte</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5" />5. Transporte</CardTitle>
                 <CardDescription>Modalidade de frete e dados do transportador (se houver).</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 {/* Modalidade */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                  <div className="md:col-span-12">
-                    <Label>Modalidade do frete</Label>
-                    <Select value={transporte.modalidade_frete} onValueChange={v => setTransporte({ ...transporte, modalidade_frete: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{FRETE_MODALIDADES.map(f => <SelectItem key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="transp-modalidade">Modalidade do frete</Label>
+                  <Select value={transporte.modalidade_frete} onValueChange={v => setTransporte({ ...transporte, modalidade_frete: v })}>
+                    <SelectTrigger id="transp-modalidade"><SelectValue /></SelectTrigger>
+                    <SelectContent>{FRETE_MODALIDADES.map(f => <SelectItem key={f.codigo} value={f.codigo}>{f.codigo} — {f.descricao}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
 
                 {/* Transportador */}
                 {transporte.modalidade_frete !== "9" && (
-                  <div className="space-y-3 rounded-md border p-3 bg-muted/30">
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Dados do transportador</div>
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                      <div className="md:col-span-6"><Label>Razão social / Nome</Label><Input value={transporte.transportador_nome} onChange={e => setTransporte({ ...transporte, transportador_nome: e.target.value })} /></div>
-                      <div className="md:col-span-3"><Label>CNPJ/CPF</Label><Input value={transporte.transportador_doc} onChange={e => setTransporte({ ...transporte, transportador_doc: e.target.value })} placeholder="00.000.000/0000-00" /></div>
-                      <div className="md:col-span-3"><Label>Inscrição Estadual</Label><Input value={transporte.transportador_ie} onChange={e => setTransporte({ ...transporte, transportador_ie: e.target.value })} placeholder="ISENTO ou nº" /></div>
-                      <div className="md:col-span-6"><Label>Endereço completo</Label><Input value={transporte.transportador_endereco} onChange={e => setTransporte({ ...transporte, transportador_endereco: e.target.value })} placeholder="Rua, nº, bairro" /></div>
-                      <div className="md:col-span-4"><Label>Município</Label><Input value={transporte.transportador_municipio} onChange={e => setTransporte({ ...transporte, transportador_municipio: e.target.value })} /></div>
-                      <div className="md:col-span-2"><Label>UF</Label><Input maxLength={2} value={transporte.transportador_uf} onChange={e => setTransporte({ ...transporte, transportador_uf: e.target.value.toUpperCase() })} /></div>
+                  <div className="space-y-4 rounded-md border border-border bg-muted p-4">
+                    <h3 className="text-lg font-semibold text-foreground">Dados do transportador</h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                      <div className="space-y-1.5 md:col-span-6">
+                        <Label htmlFor="transp-nome">Razão social / Nome</Label>
+                        <Input id="transp-nome" value={transporte.transportador_nome} onChange={e => setTransporte({ ...transporte, transportador_nome: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-3">
+                        <Label htmlFor="transp-doc">CNPJ/CPF</Label>
+                        <Input id="transp-doc" value={transporte.transportador_doc} onChange={e => setTransporte({ ...transporte, transportador_doc: e.target.value })} placeholder="00.000.000/0000-00" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-3">
+                        <Label htmlFor="transp-ie">Inscrição Estadual</Label>
+                        <Input id="transp-ie" value={transporte.transportador_ie} onChange={e => setTransporte({ ...transporte, transportador_ie: e.target.value })} placeholder="ISENTO ou nº" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-6">
+                        <Label htmlFor="transp-endereco">Endereço completo</Label>
+                        <Input id="transp-endereco" value={transporte.transportador_endereco} onChange={e => setTransporte({ ...transporte, transportador_endereco: e.target.value })} placeholder="Rua, nº, bairro" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-4">
+                        <Label htmlFor="transp-municipio">Município</Label>
+                        <Input id="transp-municipio" value={transporte.transportador_municipio} onChange={e => setTransporte({ ...transporte, transportador_municipio: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label htmlFor="transp-uf">UF</Label>
+                        <Input id="transp-uf" maxLength={2} value={transporte.transportador_uf} onChange={e => setTransporte({ ...transporte, transportador_uf: e.target.value.toUpperCase() })} />
+                      </div>
                     </div>
 
-                    <div className="text-xs font-semibold uppercase text-muted-foreground pt-1">Veículo</div>
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                      <div className="md:col-span-3"><Label>Placa</Label><Input value={transporte.placa_veiculo} onChange={e => setTransporte({ ...transporte, placa_veiculo: e.target.value.toUpperCase() })} placeholder="ABC1D23" /></div>
-                      <div className="md:col-span-2"><Label>UF da placa</Label><Input maxLength={2} value={transporte.uf_veiculo} onChange={e => setTransporte({ ...transporte, uf_veiculo: e.target.value.toUpperCase() })} /></div>
-                      <div className="md:col-span-3"><Label>RNTRC / ANTT</Label><Input value={transporte.rntrc_antt} onChange={e => setTransporte({ ...transporte, rntrc_antt: e.target.value })} placeholder="Registro ANTT" /></div>
+                    <h3 className="text-lg font-semibold text-foreground">Veículo</h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                      <div className="space-y-1.5 md:col-span-3">
+                        <Label htmlFor="transp-placa">Placa</Label>
+                        <Input id="transp-placa" value={transporte.placa_veiculo} onChange={e => setTransporte({ ...transporte, placa_veiculo: e.target.value.toUpperCase() })} placeholder="ABC1D23" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label htmlFor="transp-uf-placa">UF da placa</Label>
+                        <Input id="transp-uf-placa" maxLength={2} value={transporte.uf_veiculo} onChange={e => setTransporte({ ...transporte, uf_veiculo: e.target.value.toUpperCase() })} />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-3">
+                        <Label htmlFor="transp-rntrc">RNTRC / ANTT</Label>
+                        <Input id="transp-rntrc" value={transporte.rntrc_antt} onChange={e => setTransporte({ ...transporte, rntrc_antt: e.target.value })} placeholder="Registro ANTT" />
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Volumes */}
-                <div className="space-y-2 rounded-md border p-3 bg-muted/30">
-                  <div className="text-xs font-semibold uppercase text-muted-foreground">Volumes transportados</div>
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                    <div className="md:col-span-2"><Label>Quantidade</Label><Input value={transporte.qtd_volumes} onChange={e => setTransporte({ ...transporte, qtd_volumes: e.target.value })} placeholder="Ex: 5" /></div>
-                    <div className="md:col-span-3"><Label>Espécie</Label><Input value={transporte.especie} onChange={e => setTransporte({ ...transporte, especie: e.target.value })} placeholder="Caixa, Pallet, Volume..." /></div>
-                    <div className="md:col-span-3"><Label>Marca</Label><Input value={transporte.marca_volumes} onChange={e => setTransporte({ ...transporte, marca_volumes: e.target.value })} placeholder="Marca da embalagem" /></div>
-                    <div className="md:col-span-4"><Label>Numeração</Label><Input value={transporte.numeracao_volumes} onChange={e => setTransporte({ ...transporte, numeracao_volumes: e.target.value })} placeholder="Ex: 001-005" /></div>
-                    <div className="md:col-span-3"><Label>Peso bruto (kg)</Label><Input type="number" step="0.001" value={transporte.peso_bruto} onChange={e => setTransporte({ ...transporte, peso_bruto: e.target.value })} placeholder="Ex: 12.500" /></div>
-                    <div className="md:col-span-3"><Label>Peso líquido (kg)</Label><Input type="number" step="0.001" value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} placeholder="Ex: 12.000" /></div>
+                <div className="space-y-4 rounded-md border border-border bg-muted p-4">
+                  <h3 className="text-lg font-semibold text-foreground">Volumes transportados</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="vol-quantidade">Quantidade</Label>
+                      <Input id="vol-quantidade" value={transporte.qtd_volumes} onChange={e => setTransporte({ ...transporte, qtd_volumes: e.target.value })} placeholder="Ex: 5" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <Label htmlFor="vol-especie">Espécie</Label>
+                      <Input id="vol-especie" value={transporte.especie} onChange={e => setTransporte({ ...transporte, especie: e.target.value })} placeholder="Caixa, Pallet, Volume..." />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <Label htmlFor="vol-marca">Marca</Label>
+                      <Input id="vol-marca" value={transporte.marca_volumes} onChange={e => setTransporte({ ...transporte, marca_volumes: e.target.value })} placeholder="Marca da embalagem" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-4">
+                      <Label htmlFor="vol-numeracao">Numeração</Label>
+                      <Input id="vol-numeracao" value={transporte.numeracao_volumes} onChange={e => setTransporte({ ...transporte, numeracao_volumes: e.target.value })} placeholder="Ex: 001-005" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <Label htmlFor="vol-peso-bruto">Peso bruto (kg)</Label>
+                      <Input id="vol-peso-bruto" type="number" step="0.001" value={transporte.peso_bruto} onChange={e => setTransporte({ ...transporte, peso_bruto: e.target.value })} placeholder="Ex: 12.500" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <Label htmlFor="vol-peso-liquido">Peso líquido (kg)</Label>
+                      <Input id="vol-peso-liquido" type="number" step="0.001" value={transporte.peso_liquido} onChange={e => setTransporte({ ...transporte, peso_liquido: e.target.value })} placeholder="Ex: 12.000" />
+                    </div>
                   </div>
                 </div>
 
@@ -1166,19 +1364,19 @@ export default function FinEmissorNFe() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Dados de transporte obrigatórios</AlertTitle>
                     <AlertDescription>
-                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
                         {transporteValidacao.erros.map((e, i) => <li key={i}>{e}</li>)}
                       </ul>
-                      <p className="text-xs mt-2 opacity-80">A emissão será bloqueada até que estes campos sejam preenchidos.</p>
+                      <p className="mt-2 text-xs">A emissão será bloqueada até que estes campos sejam preenchidos.</p>
                     </AlertDescription>
                   </Alert>
                 )}
                 {transporteValidacao.erros.length === 0 && transporteValidacao.avisos.length > 0 && (
-                  <Alert>
+                  <Alert variant="warning">
                     <Info className="h-4 w-4" />
                     <AlertTitle>Atenção ao bloco de transporte</AlertTitle>
                     <AlertDescription>
-                      <ul className="list-disc pl-5 text-sm space-y-0.5 mt-1">
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
                         {transporteValidacao.avisos.map((a, i) => <li key={i}>{a}</li>)}
                       </ul>
                     </AlertDescription>
@@ -1192,19 +1390,42 @@ export default function FinEmissorNFe() {
           {modelo !== "nfse" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Calculator className="w-5 h-5" />6. Totais e informações complementares</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />6. Totais e informações complementares</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <div><Label className="text-xs">Total produtos</Label><Input readOnly value={totalProdutos.toFixed(2)} className="bg-muted" /></div>
-                  <div><Label className="text-xs">Frete (R$)</Label><Input type="number" step="0.01" value={valorFrete} onChange={e => setValorFrete(Number(e.target.value))} /></div>
-                  <div><Label className="text-xs">Seguro (R$)</Label><Input type="number" step="0.01" value={valorSeguro} onChange={e => setValorSeguro(Number(e.target.value))} /></div>
-                  <div><Label className="text-xs">Desconto (R$)</Label><Input type="number" step="0.01" value={desconto} onChange={e => setDesconto(Number(e.target.value))} /></div>
-                  <div><Label className="text-xs">Outras despesas (R$)</Label><Input type="number" step="0.01" value={outrasDespesas} onChange={e => setOutrasDespesas(Number(e.target.value))} /></div>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tot-produtos">Total produtos</Label>
+                    <Input id="tot-produtos" readOnly value={totalProdutos.toFixed(2)} className="bg-muted tabular-nums" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tot-frete">Frete (R$)</Label>
+                    <Input id="tot-frete" type="number" step="0.01" value={valorFrete} onChange={e => setValorFrete(Number(e.target.value))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tot-seguro">Seguro (R$)</Label>
+                    <Input id="tot-seguro" type="number" step="0.01" value={valorSeguro} onChange={e => setValorSeguro(Number(e.target.value))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tot-desconto">Desconto (R$)</Label>
+                    <Input id="tot-desconto" type="number" step="0.01" value={desconto} onChange={e => setDesconto(Number(e.target.value))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tot-outras">Outras despesas (R$)</Label>
+                    <Input id="tot-outras" type="number" step="0.01" value={outrasDespesas} onChange={e => setOutrasDespesas(Number(e.target.value))} />
+                  </div>
                 </div>
-                <div>
-                  <Label>Informações complementares</Label>
-                  <Textarea rows={3} value={infoComplementares} onChange={e => setInfoComplementares(e.target.value)} placeholder="Ex: NF-e ref. ao Empenho nº 001202/2026 — Contrato nº 0772/2024. Banco BANPARÁ Ag.0053 C/C 917650-0." />
+                <div className="space-y-1.5">
+                  <Label htmlFor="info-complementares">Informações complementares</Label>
+                  <Textarea id="info-complementares" rows={3} value={infoComplementares} onChange={e => setInfoComplementares(e.target.value)}
+                    placeholder="Ex: NF-e ref. ao Empenho nº 001202/2026 — Contrato nº 0772/2024. Banco BANPARÁ Ag.0053 C/C 917650-0."
+                    aria-invalid={justificativaContingenciaFalta || undefined}
+                    aria-describedby={justificativaContingenciaFalta ? "info-complementares-erro" : undefined} />
+                  {justificativaContingenciaFalta && (
+                    <p id="info-complementares-erro" className="text-xs text-destructive-ink">
+                      Emissão em contingência exige justificativa aqui — mínimo de 15 caracteres.
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1213,50 +1434,55 @@ export default function FinEmissorNFe() {
           {/* 7. Validação e transmissão */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5" />7. Validar, assinar e transmitir</CardTitle>
+              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />7. Validar, assinar e transmitir</CardTitle>
               <CardDescription>O sistema verifica inconsistências antes do envio à SEFAZ.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {validacoes.erros.length > 0 && (
                 <Alert variant="destructive">
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Inconsistências bloqueantes ({validacoes.erros.length})</AlertTitle>
                   <AlertDescription>
-                    <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
                       {validacoes.erros.map((e, i) => <li key={i}>{e}</li>)}
                     </ul>
                   </AlertDescription>
                 </Alert>
               )}
               {validacoes.avisos.length > 0 && (
-                <Alert>
-                  <AlertCircle className="w-4 h-4" />
+                <Alert variant="warning">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Avisos ({validacoes.avisos.length})</AlertTitle>
                   <AlertDescription>
-                    <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
                       {validacoes.avisos.map((e, i) => <li key={i}>{e}</li>)}
                     </ul>
                   </AlertDescription>
                 </Alert>
               )}
               {validacoes.ok && validacoes.avisos.length === 0 && (
-                <Alert>
-                  <CheckCircle2 className="w-4 h-4" />
+                <Alert variant="success">
+                  <CheckCircle2 className="h-4 w-4" />
                   <AlertTitle>Pronto para transmitir</AlertTitle>
                   <AlertDescription>Todos os campos obrigatórios foram validados.</AlertDescription>
                 </Alert>
               )}
 
-              <div className="flex items-center justify-between border-t pt-4">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Valor total da nota: </span>
-                  <span className="text-2xl font-bold">{totalNota.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+              <div className="flex flex-col gap-4 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor total da nota</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
+                    {totalNota.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
                 </div>
-                <Button onClick={emitir} disabled={emitting || polling || !validacoes.ok} size="lg">
-                  {emitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Transmitindo à SEFAZ...</>
-                    : polling ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Aguardando autorização...</>
-                    : <><Send className="w-4 h-4 mr-2" />Assinar e transmitir</>}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={emitir} disabled={emitting || polling || !validacoes.ok} size="lg">
+                    {(emitting || polling) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {emitting ? "Transmitindo à SEFAZ…"
+                      : polling ? "Aguardando autorização…"
+                      : "Assinar e transmitir"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1271,24 +1497,29 @@ export default function FinEmissorNFe() {
             </CardHeader>
             <CardContent>
               {loadingList ? (
-                <div className="text-sm text-muted-foreground py-6 text-center">Carregando...</div>
+                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : emitidas.length === 0 ? (
-                <div className="text-sm text-muted-foreground py-6 text-center">Nenhuma nota emitida ainda.</div>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<FileText />}
+                  titulo="Nenhuma nota emitida ainda"
+                  descricao="As notas transmitidas aparecem aqui com status, chave de acesso e o link do DANFE."
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Modelo</TableHead>
-                        <TableHead>Nº/Série</TableHead>
-                        <TableHead>Chave</TableHead>
+                        <TableHead className="whitespace-nowrap">Modelo</TableHead>
+                        <TableHead className="whitespace-nowrap">Nº/Série</TableHead>
+                        <TableHead className="whitespace-nowrap">Chave</TableHead>
                         <TableHead>Destinatário</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Progresso / Motivo</TableHead>
-                        <TableHead>Ambiente</TableHead>
-                        <TableHead>Emissão</TableHead>
-                        <TableHead>Ações</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead>Progresso / motivo</TableHead>
+                        <TableHead className="whitespace-nowrap">Ambiente</TableHead>
+                        <TableHead className="whitespace-nowrap">Emissão</TableHead>
+                        <TableHead className="whitespace-nowrap">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1306,47 +1537,57 @@ export default function FinEmissorNFe() {
                               <div className="text-sm">{dest.nome || "—"}</div>
                               <div className="text-xs text-muted-foreground">{dest.documento || ""}</div>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap">{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
-                            <TableCell><Badge variant={STATUS_VARIANT[n.status] || "secondary"}>{n.status}</Badge></TableCell>
+                            <TableCell className="whitespace-nowrap text-right tabular-nums">{(n.valor_total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
+                            <TableCell><Badge variant={STATUS_VARIANT[n.status] || "muted"}>{STATUS_TEXTO[n.status] || n.status}</Badge></TableCell>
                             <TableCell className="max-w-[280px]">
-                              <div className="flex items-start gap-1.5">
-                                {n.status === "processando" && <Loader2 className="w-3 h-3 mt-0.5 animate-spin text-muted-foreground shrink-0" />}
-                                {n.status === "autorizada" && <CheckCircle2 className="w-3 h-3 mt-0.5 text-success shrink-0" />}
-                                {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="w-3 h-3 mt-0.5 text-destructive shrink-0" />}
-                                <span className="text-xs text-muted-foreground line-clamp-2" title={motivoTexto}>{motivoTexto}</span>
+                              <div className="flex items-start gap-2">
+                                {n.status === "processando" && <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-muted-foreground" />}
+                                {n.status === "autorizada" && <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success-ink" />}
+                                {(n.status === "rejeitada" || n.status === "denegada") && <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-destructive-ink" />}
+                                <span className="line-clamp-2 text-sm text-muted-foreground" title={motivoTexto}>{motivoTexto}</span>
                               </div>
                             </TableCell>
-                            <TableCell><Badge variant={n.ambiente === "producao" ? "default" : "outline"}>{n.ambiente}</Badge></TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}</TableCell>
                             <TableCell>
-                              <div className="flex gap-2 items-center flex-wrap">
+                              <Badge variant={n.ambiente === "producao" ? "info" : "muted"}>
+                                {/* valor fora do par conhecido continua aparecendo cru — rótulo não inventa ambiente */}
+                                {n.ambiente === "producao" ? "Produção" : n.ambiente === "homologacao" ? "Homologação" : n.ambiente}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{n.data_emissao ? new Date(n.data_emissao).toLocaleString("pt-BR") : "—"}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-2">
                                 {podeAtualizar && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 text-xs shrink-0"
+                                    className="shrink-0"
                                     onClick={() => atualizarStatusLinha(n.id)}
                                     disabled={isRefreshing}
                                     title="Consultar status atual na SEFAZ"
                                   >
-                                    {isRefreshing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                                    {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                     Atualizar status
                                   </Button>
                                 )}
-                                {n.xml_url && <a href={n.xml_url} target="_blank" rel="noopener noreferrer" className="text-xs underline inline-flex items-center gap-1 shrink-0">XML <ExternalLink className="w-3 h-3" /></a>}
+                                {n.xml_url && (
+                                  <a href={n.xml_url} target="_blank" rel="noopener noreferrer"
+                                    className="inline-flex shrink-0 items-center gap-1 rounded-md text-sm text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                    XML <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                )}
                                 {n.status === "autorizada" ? (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 text-xs shrink-0"
+                                    className="shrink-0"
                                     onClick={() => baixarDanfe(n.id)}
                                     disabled={downloading}
                                   >
-                                    {downloading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileDown className="w-3 h-3 mr-1" />}
+                                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                     DANFE
                                   </Button>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">DANFE indisponível</span>
+                                  <span className="text-sm text-muted-foreground">DANFE indisponível</span>
                                 )}
                               </div>
                             </TableCell>
@@ -1365,23 +1606,23 @@ export default function FinEmissorNFe() {
         <TabsContent value="guia">
           <Card>
             <CardHeader>
-              <CardTitle>Operações na Emissão — Passo a Passo</CardTitle>
+              <CardTitle>Operações na emissão — passo a passo</CardTitle>
               <CardDescription>Roteiro oficial baseado no manual SEBRAE de emissão fiscal.</CardDescription>
             </CardHeader>
             <CardContent>
               <ol className="space-y-3">
                 {ETAPAS_EMISSAO.map((e, i) => (
-                  <li key={e.id} className="flex gap-3 p-3 border rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-sm font-semibold">{i + 1}</div>
-                    <div>
-                      <div className="font-medium">{e.titulo}</div>
-                      <div className="text-sm text-muted-foreground">{e.descricao}</div>
+                  <li key={e.id} className="flex gap-3 rounded-lg border border-border p-4">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-tint text-sm font-semibold text-primary">{i + 1}</div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{e.titulo}</p>
+                      <p className="text-sm text-muted-foreground">{e.descricao}</p>
                     </div>
                   </li>
                 ))}
               </ol>
-              <Separator className="my-4" />
-              <div className="text-xs text-muted-foreground space-y-1">
+              <Separator className="my-6" />
+              <div className="space-y-2 text-xs text-muted-foreground">
                 <p><strong>Base legal:</strong> Lei 14.133/2021, Convênio ICMS 110/05, Manual de Orientação ao Contribuinte (MOC) v7.0 — SEFAZ.</p>
                 <p><strong>Certificação:</strong> A emissão exige certificado digital A1 ou A3 vinculado ao CNPJ emitente.</p>
                 <p><strong>DANFE:</strong> Documento Auxiliar — não substitui a NF-e e só é válido após autorização da SEFAZ (chave de 44 dígitos).</p>

@@ -9,7 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShieldCheck, Cloud, AlertTriangle, FileSearch, Loader2 } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { ShieldCheck, Cloud, AlertTriangle, FileSearch, Loader2, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -29,11 +30,13 @@ interface Props {
   onConcluido?: () => void;
 }
 
-const statusBadge: Record<Municipio["status"], "default" | "secondary" | "outline" | "destructive"> = {
-  homologado: "default",
-  em_homologacao: "secondary",
-  pendente: "outline",
-  indisponivel: "destructive",
+type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
+
+const statusBadge: Record<Municipio["status"], VarianteBadge> = {
+  homologado: "success",
+  em_homologacao: "warning",
+  pendente: "muted",
+  indisponivel: "danger",
 };
 
 const statusLabel: Record<Municipio["status"], string> = {
@@ -42,6 +45,13 @@ const statusLabel: Record<Municipio["status"], string> = {
   pendente: "Pendente",
   indisponivel: "Indisponível",
 };
+
+/** Status do log de consulta → família semântica (a cor é reforço; o texto fica). */
+const logBadge = (status: string): VarianteBadge =>
+  status === "sucesso" ? "success"
+    : status === "parcial" ? "warning"
+    : status === "nao_configurado" ? "muted"
+    : "danger";
 
 export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }: Props) {
   const [tipo, setTipo] = useState<"nfe" | "nfse">("nfe");
@@ -119,61 +129,72 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
   };
 
   const munSel = municipios.find(m => m.codigo_ibge === municipioCod);
+  const cnpjInvalido = cnpj.trim().length > 0 && cnpj.replace(/\D/g, "").length !== 14;
 
   return (
     <div className="space-y-4">
-      <Alert>
+      <Alert variant="info">
         <ShieldCheck className="w-4 h-4" />
         <AlertTitle>Consulta automática por CNPJ via certificado A1</AlertTitle>
-        <AlertDescription className="text-xs space-y-1">
-          <div>
+        <AlertDescription className="space-y-2">
+          <p>
             Esta integração elimina o upload manual de XMLs ao consultar diretamente a SEFAZ Nacional (NF-e) ou as prefeituras
             (NFS-e). Requer <b>certificado digital A1</b> da empresa cadastrado e, para NFS-e, que o município esteja homologado.
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Cloud className="w-3 h-3" />
+          </p>
+          <p className="flex items-center gap-2">
+            <Cloud className="w-4 h-4 shrink-0" />
             <span>O processamento mTLS é executado por proxy externo seguro (configuração de infra).</span>
-          </div>
+          </p>
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileSearch className="w-4 h-4" /> Nova consulta
+          <CardTitle className="flex items-center gap-2">
+            <FileSearch className="w-5 h-5" /> Nova consulta
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <Label>Tipo</Label>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sefaz-tipo">Tipo</Label>
               <Select value={tipo} onValueChange={(v: "nfe" | "nfse") => setTipo(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="sefaz-tipo"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nfe">NF-e (modelo 55)</SelectItem>
                   <SelectItem value="nfse">NFS-e</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>CNPJ consultante</Label>
-              <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0001-00" />
+            <div className="space-y-1.5">
+              <Label htmlFor="sefaz-cnpj">CNPJ consultante</Label>
+              <Input
+                id="sefaz-cnpj"
+                value={cnpj}
+                onChange={e => setCnpj(e.target.value)}
+                placeholder="00.000.000/0001-00"
+                aria-invalid={cnpjInvalido || undefined}
+                aria-describedby={cnpjInvalido ? "sefaz-cnpj-erro" : undefined}
+              />
+              {cnpjInvalido && (
+                <p id="sefaz-cnpj-erro" className="text-xs text-destructive-ink">CNPJ inválido — informe os 14 dígitos.</p>
+              )}
             </div>
-            <div>
-              <Label>Competência início</Label>
-              <Input type="date" value={inicio} onChange={e => setInicio(e.target.value)} />
+            <div className="space-y-1.5">
+              <Label htmlFor="sefaz-inicio">Competência início</Label>
+              <Input id="sefaz-inicio" type="date" value={inicio} onChange={e => setInicio(e.target.value)} />
             </div>
-            <div>
-              <Label>Competência fim</Label>
-              <Input type="date" value={fim} onChange={e => setFim(e.target.value)} />
+            <div className="space-y-1.5">
+              <Label htmlFor="sefaz-fim">Competência fim</Label>
+              <Input id="sefaz-fim" type="date" value={fim} onChange={e => setFim(e.target.value)} />
             </div>
           </div>
 
           {tipo === "nfse" && (
-            <div>
-              <Label>Município (homologação)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="sefaz-municipio">Município (homologação)</Label>
               <Select value={municipioCod} onValueChange={setMunicipioCod}>
-                <SelectTrigger><SelectValue placeholder="Selecione o município" /></SelectTrigger>
+                <SelectTrigger id="sefaz-municipio"><SelectValue placeholder="Selecione o município" /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   {municipios.map(m => (
                     <SelectItem key={m.codigo_ibge} value={m.codigo_ibge}>
@@ -183,7 +204,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
                 </SelectContent>
               </Select>
               {munSel && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-sm text-muted-foreground">
                   <Badge variant={statusBadge[munSel.status]}>{statusLabel[munSel.status]}</Badge>
                   <span>Padrão: <code>{munSel.padrao_nfse}</code></span>
                   {munSel.observacoes && <span>· {munSel.observacoes}</span>}
@@ -192,7 +213,7 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
               {munSel && (munSel.status === "pendente" || munSel.status === "indisponivel") && (
                 <Alert variant="destructive" className="mt-2">
                   <AlertTriangle className="w-4 h-4" />
-                  <AlertDescription className="text-xs">
+                  <AlertDescription>
                     Município ainda não homologado. Use o upload manual de XMLs ou solicite homologação ao suporte.
                   </AlertDescription>
                 </Alert>
@@ -200,19 +221,26 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
             </div>
           )}
 
-          <Button onClick={consultar} disabled={loading || !empresaId}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Consultando SEFAZ…</> : "Consultar e importar"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={consultar} disabled={loading || !empresaId}>
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Consultando SEFAZ…</> : "Consultar e importar"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Histórico de consultas</CardTitle>
+          <CardTitle>Histórico de consultas</CardTitle>
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-6 text-center">Nenhuma consulta registrada.</div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<History />}
+              titulo="Nenhuma consulta registrada"
+              descricao="As consultas feitas aqui ficam listadas com o resultado de cada importação."
+            />
           ) : (
             <ScrollArea className="max-h-80">
               <Table>
@@ -230,19 +258,15 @@ export default function FinSefazConsulta({ empresaId, cnpjEmpresa, onConcluido }
                 <TableBody>
                   {logs.map(l => (
                     <TableRow key={l.id}>
-                      <TableCell className="text-xs">{new Date(l.created_at).toLocaleString("pt-BR")}</TableCell>
-                      <TableCell><Badge variant="outline">{l.tipo.toUpperCase()}</Badge></TableCell>
-                      <TableCell className="text-xs">{l.competencia_inicio} → {l.competencia_fim}</TableCell>
+                      <TableCell className="whitespace-nowrap">{new Date(l.created_at).toLocaleString("pt-BR")}</TableCell>
+                      <TableCell><Badge variant="muted">{l.tipo.toUpperCase()}</Badge></TableCell>
+                      <TableCell className="whitespace-nowrap">{l.competencia_inicio} → {l.competencia_fim}</TableCell>
                       <TableCell>
-                        <Badge variant={
-                          l.status === "sucesso" ? "default" :
-                          l.status === "parcial" ? "secondary" :
-                          l.status === "nao_configurado" ? "outline" : "destructive"
-                        }>{l.status}</Badge>
+                        <Badge variant={logBadge(l.status)}>{l.status}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">{l.notas_encontradas ?? 0}</TableCell>
-                      <TableCell className="text-right">{l.notas_importadas ?? 0}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[260px] truncate" title={l.erro_mensagem ?? undefined}>
+                      <TableCell className="text-right tabular-nums">{l.notas_encontradas ?? 0}</TableCell>
+                      <TableCell className="text-right tabular-nums">{l.notas_importadas ?? 0}</TableCell>
+                      <TableCell className="max-w-[260px] truncate text-muted-foreground" title={l.erro_mensagem ?? undefined}>
                         {l.erro_mensagem ?? `${l.duracao_ms ?? 0}ms`}
                       </TableCell>
                     </TableRow>

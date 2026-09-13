@@ -2,13 +2,12 @@ import { useState, useRef, useMemo } from "react";
 import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Upload, FileSpreadsheet, Download, Loader2, AlertCircle, CheckCircle2,
-  Sparkles, Eye,
+  Upload, FileSpreadsheet, Download, Loader2, Sparkles, Eye,
 } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
@@ -414,9 +413,9 @@ export default function FinImportarOMIE() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Importar planilha OMIE (.xlsx)
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Importar planilha OMIE (.xlsx)
             </CardTitle>
             <Tabs value={entidade} onValueChange={handleEntidadeChange}>
               <TabsList>
@@ -428,70 +427,81 @@ export default function FinImportarOMIE() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
-            <p className="font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
-              Mapeamento inteligente — reconhece automaticamente as ~40 colunas do padrão OMIE.
-            </p>
-            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>Aceita planilhas exportadas do OMIE sem alterações</li>
-              <li>Datas em qualquer formato (ISO, dd/mm/aaaa, serial Excel)</li>
-              <li>CNPJ/CPF com ou sem máscara — vínculo automático com pessoas já cadastradas</li>
-              <li>Você pode revisar e ajustar o mapeamento coluna→campo antes de importar</li>
-            </ul>
-            <Button variant="outline" size="sm" onClick={baixarModelo}>
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar modelo OMIE ({entidade})
-            </Button>
-          </div>
+          <Alert variant="info">
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            <AlertDescription className="space-y-3">
+              <p className="font-semibold">
+                Mapeamento inteligente — reconhece automaticamente as ~40 colunas do padrão OMIE.
+              </p>
+              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                <li>Aceita planilhas exportadas do OMIE sem alterações</li>
+                <li>Datas em qualquer formato (ISO, dd/mm/aaaa, serial Excel)</li>
+                <li>CNPJ/CPF com ou sem máscara — vínculo automático com pessoas já cadastradas</li>
+                <li>Você pode revisar e ajustar o mapeamento coluna→campo antes de importar</li>
+              </ul>
+              <Button variant="outline" size="sm" onClick={baixarModelo}>
+                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo OMIE ({entidade})
+              </Button>
+            </AlertDescription>
+          </Alert>
 
-          <div className="space-y-1.5">
-            <Label>Selecione o arquivo .xlsx</Label>
+          <label
+            htmlFor="fin-omie-xlsx"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+          >
+            <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <span className="text-base font-semibold text-foreground">Selecione o arquivo .xlsx</span>
+            <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha exportada do OMIE</span>
             <input
-              ref={fileRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              id="fin-omie-xlsx"
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFile}
-              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+              className="sr-only"
             />
-          </div>
+          </label>
 
           {rows.length > 0 && (
             <>
               {/* Métricas */}
-              <div className="grid grid-cols-4 gap-3">
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Linhas lidas</p>
-                  <p className="text-2xl font-semibold">{rows.length}</p>
-                </CardContent></Card>
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Colunas mapeadas</p>
-                  <p className="text-2xl font-semibold">{Object.keys(mapping).length}/{schema.length}</p>
-                </CardContent></Card>
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Válidas</p>
-                  <p className="text-2xl font-semibold text-success">{validas.length}</p>
-                </CardContent></Card>
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Com erro</p>
-                  <p className="text-2xl font-semibold text-destructive">{invalidas.length}</p>
-                </CardContent></Card>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Linhas lidas</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{rows.length}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Colunas mapeadas</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{Object.keys(mapping).length}/{schema.length}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Válidas</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{validas.length}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Com erro</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{invalidas.length}</p>
+                </div>
               </div>
 
               {/* Toggle mapeamento */}
               <Button variant="outline" size="sm" onClick={() => setShowMapping((s) => !s)}>
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                <Eye className="w-4 h-4" aria-hidden="true" />
                 {showMapping ? "Ocultar" : "Revisar"} mapeamento de colunas
               </Button>
 
               {showMapping && (
-                <div className="rounded-md border p-3 space-y-2 max-h-[320px] overflow-y-auto">
-                  <p className="text-xs text-muted-foreground mb-2">
+                <div className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground">
                     Associe cada campo do sistema à coluna correspondente da sua planilha.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {schema.map((campo) => (
-                      <div key={campo.key} className="flex items-center gap-2 text-xs">
-                        <span className="flex-1 truncate">
+                      <div key={campo.key} className="flex items-center gap-3">
+                        <span id={`map-${campo.key}`} className="min-w-0 flex-1 truncate text-sm text-foreground">
                           {campo.label}
-                          {campo.required && <span className="text-destructive">*</span>}
+                          {campo.required && <span className="text-destructive-ink" aria-hidden="true">*</span>}
+                          {campo.required && <span className="sr-only"> (obrigatório)</span>}
                         </span>
                         <Select
                           value={mapping[campo.key]?.toString() ?? "_none"}
@@ -504,7 +514,7 @@ export default function FinImportarOMIE() {
                             });
                           }}
                         >
-                          <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-labelledby={`map-${campo.key}`} className="w-48 shrink-0 text-sm"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="_none">— Não importar —</SelectItem>
                             {headers.map((h, i) => (
@@ -521,38 +531,35 @@ export default function FinImportarOMIE() {
               )}
 
               {/* Preview linhas */}
-              <div className="rounded-md border">
-                <div className="flex items-center gap-2 p-3 border-b bg-muted/30 text-xs font-medium">
-                  <span className="w-6"></span>
-                  <span className="flex-1">Preview ({Math.min(processadas.length, 50)} de {processadas.length})</span>
+              <div className="rounded-lg border border-border">
+                <div className="border-b border-border bg-muted p-4 text-sm font-semibold">
+                  Prévia ({Math.min(processadas.length, 50)} de {processadas.length})
                 </div>
-                <div className="max-h-[320px] overflow-y-auto divide-y">
+                <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
                   {processadas.slice(0, 50).map((p, i) => (
-                    <div key={i} className="flex items-start gap-2 p-2.5 text-sm">
-                      <span className="w-6 pt-0.5">
-                        {p.erros.length === 0
-                          ? <CheckCircle2 className="w-4 h-4 text-success" />
-                          : <AlertCircle className="w-4 h-4 text-destructive" />}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">
+                    <div key={i} className="flex flex-wrap items-start gap-3 p-3">
+                      <Badge variant={p.erros.length === 0 ? "success" : "danger"} className="mt-0.5 shrink-0">
+                        {p.erros.length === 0 ? "Válida" : "Com erro"}
+                      </Badge>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-medium text-foreground">
                           {p.data.descricao || p.data.nome || <em className="text-muted-foreground">(sem identificação)</em>}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-sm text-muted-foreground">
                           {entidade === "pessoas"
                             ? [p.data.documento, p.data.endereco_municipio, p.data.endereco_uf].filter(Boolean).join(" • ")
                             : [p.data.data_vencimento, p.data.pessoa_nome, p.data.numero_documento].filter(Boolean).join(" • ")}
                         </p>
                         {p.erros.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="mt-2 flex flex-wrap gap-2">
                             {p.erros.map((e, j) => (
-                              <Badge key={j} variant="destructive" className="text-xs">{e}</Badge>
+                              <Badge key={j} variant="danger">{e}</Badge>
                             ))}
                           </div>
                         )}
                       </div>
                       {entidade !== "pessoas" && typeof p.data.valor === "number" && !isNaN(p.data.valor) && (
-                        <span className="text-right text-sm tabular-nums whitespace-nowrap">
+                        <span className="whitespace-nowrap text-right text-sm tabular-nums">
                           R$ {p.data.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </span>
                       )}
@@ -561,14 +568,14 @@ export default function FinImportarOMIE() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/30">
-                <div className="text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+                <div className="text-base">
                   Pronto para importar: <strong>{validas.length}</strong> registro(s)
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={reset} disabled={importing}>Cancelar</Button>
                   <Button onClick={handleImportar} disabled={validas.length === 0 || importing}>
-                    {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    {importing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
                     Importar {validas.length} registro(s)
                   </Button>
                 </div>

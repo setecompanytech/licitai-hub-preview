@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
 import { interpretarValorColado } from '@/lib/financeiro/valor-colado';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileSpreadsheet, Download, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Upload, Download, Loader2, Info } from "lucide-react";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -165,92 +166,114 @@ export default function FinImportarPlanilha() {
   return (
     <div className="space-y-4">
       <Card>
+        {/* Sem título no cartão, pelo mesmo motivo do FinImportarOFX: o h1 desta
+            subtela já diz "Importar Planilha CSV" (catálogo de subtelas em
+            Financeiro.tsx) e o cartão não acrescentava nada ao nome — só o
+            repetia em outra grafia. Sobra o que é escolha de verdade: para qual
+            lado o arquivo entra. */}
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileSpreadsheet className="w-5 h-5 text-muted-foreground" /> Importar planilha (CSV)
-            </CardTitle>
-            <Tabs value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
-              <TabsList>
-                <TabsTrigger value="a_pagar">Contas a Pagar</TabsTrigger>
-                <TabsTrigger value="a_receber">Contas a Receber</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
+            <TabsList>
+              <TabsTrigger value="a_pagar">Contas a Pagar</TabsTrigger>
+              <TabsTrigger value="a_receber">Contas a Receber</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md border bg-muted/20 p-3 text-xs space-y-2">
-            <p className="font-medium">Formato esperado:</p>
-            <code className="block bg-background rounded p-2 text-xs overflow-x-auto">
-              {HEADER_TEMPLATE}
-            </code>
-            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>Separador: ponto e vírgula (;) ou vírgula (,)</li>
-              <li>Datas no formato <strong>AAAA-MM-DD</strong></li>
-              <li>Valor com vírgula como decimal (ex: 1.234,56)</li>
-              <li>Encoding UTF-8</li>
-            </ul>
-            <Button variant="outline" size="sm" onClick={baixarModelo}>
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Baixar modelo
-            </Button>
-          </div>
+          <Alert variant="info">
+            <Info className="w-4 h-4" aria-hidden="true" />
+            <AlertDescription className="space-y-3">
+              <p className="font-semibold">Formato esperado</p>
+              <code className="block overflow-x-auto rounded-md border border-border bg-card p-3 text-xs">
+                {HEADER_TEMPLATE}
+              </code>
+              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                <li>Separador: ponto e vírgula (;) ou vírgula (,)</li>
+                <li>Datas no formato <strong>AAAA-MM-DD</strong></li>
+                <li>Valor com vírgula como decimal (ex: 1.234,56)</li>
+                <li>Encoding UTF-8</li>
+              </ul>
+              <Button variant="outline" size="sm" onClick={baixarModelo}>
+                <Download className="w-4 h-4" aria-hidden="true" /> Baixar modelo
+              </Button>
+            </AlertDescription>
+          </Alert>
 
-          <div className="space-y-1.5">
-            <Label>Selecione o arquivo .csv</Label>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile}
-              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" />
-          </div>
+          <label
+            htmlFor="fin-planilha-csv"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary hover:bg-primary-tint has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
+          >
+            <Upload className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <span className="text-base font-semibold text-foreground">Selecione o arquivo .csv</span>
+            <span className="text-sm text-muted-foreground">Clique aqui para escolher a planilha no seu computador</span>
+            <input
+              id="fin-planilha-csv"
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFile}
+              className="sr-only"
+            />
+          </label>
 
           {linhas.length > 0 && (
             <>
-              <div className="grid grid-cols-3 gap-3">
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Total linhas</p>
-                  <p className="text-2xl font-semibold">{linhas.length}</p>
-                </CardContent></Card>
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Válidas</p>
-                  <p className="text-2xl font-semibold text-success">{validas.length}</p>
-                </CardContent></Card>
-                <Card><CardContent className="p-3">
-                  <p className="text-xs text-muted-foreground">Com erro</p>
-                  <p className="text-2xl font-semibold text-destructive">{invalidas.length}</p>
-                </CardContent></Card>
-              </div>
-
-              <div className="rounded-md border">
-                <div className="flex items-center gap-2 p-3 border-b bg-muted/30 text-xs font-medium">
-                  <span className="w-6"></span>
-                  <span className="flex-1">Descrição</span>
-                  <span className="w-24 text-right">Vencimento</span>
-                  <span className="w-28 text-right">Valor</span>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Total de linhas</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{linhas.length}</p>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto">
-                  {linhas.map((l, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2.5 border-b text-sm">
-                      <span className="w-6">
-                        {l._erro ? <AlertCircle className="w-4 h-4 text-destructive" />
-                          : <CheckCircle2 className="w-4 h-4 text-success" />}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate">{l.descricao || <em className="text-muted-foreground">vazia</em>}</p>
-                        {l._erro && <Badge variant="destructive" className="text-xs mt-0.5">{l._erro}</Badge>}
-                      </div>
-                      <span className="w-24 text-right text-xs text-muted-foreground">{l.data_vencimento || "—"}</span>
-                      <span className="w-32 text-right tabular-nums whitespace-nowrap">
-                        R$ {l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  ))}
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Válidas</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-success-ink">{validas.length}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm text-muted-foreground">Com erro</p>
+                  <p className="text-[2rem] font-bold leading-10 tabular-nums text-destructive-ink">{invalidas.length}</p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/30">
-                <div className="text-sm">
+              {/* A altura máxima vai no scroller da própria Table (o div que
+                  ui/table.tsx cria): dois contêineres de rolagem aninhados
+                  deixariam o `sticky` do cabeçalho preso ao de dentro, que
+                  nunca rola — e a linha de títulos sumiria numa planilha
+                  longa, que é justamente quando ela faz falta. */}
+              <div className="rounded-lg border border-border [&>div]:max-h-[300px]">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-muted">
+                    <TableRow>
+                      <TableHead className="text-sm font-semibold">Situação</TableHead>
+                      <TableHead className="text-sm font-semibold">Descrição</TableHead>
+                      <TableHead className="text-sm font-semibold">Vencimento</TableHead>
+                      <TableHead className="text-right text-sm font-semibold">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {linhas.map((l, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Badge variant={l._erro ? "danger" : "success"}>{l._erro ? "Com erro" : "Válida"}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[320px] text-sm">
+                          <p className="truncate">{l.descricao || <em className="text-muted-foreground">vazia</em>}</p>
+                          {l._erro && <p className="mt-1 text-sm text-destructive-ink">{l._erro}</p>}
+                        </TableCell>
+                        <TableCell className="text-sm tabular-nums text-muted-foreground">{l.data_vencimento || "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                          R$ {l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+                <div className="text-base">
                   Total a importar: <span className="font-semibold tabular-nums">R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </div>
                 <Button onClick={handleImportar} disabled={validas.length === 0 || importing}>
-                  {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  {importing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
                   Importar {validas.length} lançamento(s)
                 </Button>
               </div>

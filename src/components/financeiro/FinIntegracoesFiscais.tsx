@@ -6,11 +6,12 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { FileSpreadsheet, RefreshCw, Plus, Loader2, Calculator, Building2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +31,10 @@ const SPED_TIPOS = [
   { value: "ecd", label: "ECD" },
   { value: "dctfweb", label: "DCTFWeb" },
 ];
+
+/** Último status do agendamento SEFAZ → família semântica (o texto continua visível). */
+const statusAgendamento = (status: string): "success" | "warning" | "danger" =>
+  status === "sucesso" ? "success" : status === "configuracao_pendente" ? "warning" : "danger";
 
 export default function FinIntegracoesFiscais() {
   const { empresaAtiva } = useEmpresa();
@@ -97,6 +102,8 @@ export default function FinIntegracoesFiscais() {
     }
   };
 
+  const cnpjInvalido = novoCnpj.trim().length > 0 && novoCnpj.replace(/\D/g, "").length !== 14;
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="sefaz" className="space-y-4">
@@ -115,70 +122,82 @@ export default function FinIntegracoesFiscais() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert>
+              <Alert variant="warning">
                 <AlertTriangle className="w-4 h-4" />
                 <AlertDescription>
                   A consulta SEFAZ exige certificado digital A1 instalado em proxy mTLS externo. Configure <code>SEFAZ_PROXY_URL</code> em Integrações para ativar; importação manual de XML continua sempre disponível.
                 </AlertDescription>
               </Alert>
 
-              <div className="flex gap-2">
-                <Input
-                  placeholder="CNPJ (somente números)"
-                  value={novoCnpj}
-                  onChange={(e) => setNovoCnpj(e.target.value)}
-                  maxLength={18}
-                  className="max-w-xs"
-                />
-                <Button onClick={adicionarAgendamento} className="shrink-0">
-                  <Plus className="w-4 h-4 mr-1.5" /> Adicionar CNPJ
-                </Button>
+              <div className="space-y-1.5">
+                <Label htmlFor="sefaz-novo-cnpj">CNPJ a monitorar</Label>
+                <div className="flex flex-wrap items-start gap-2">
+                  <Input
+                    id="sefaz-novo-cnpj"
+                    placeholder="CNPJ (somente números)"
+                    value={novoCnpj}
+                    onChange={(e) => setNovoCnpj(e.target.value)}
+                    maxLength={18}
+                    className="max-w-xs"
+                    aria-invalid={cnpjInvalido || undefined}
+                    aria-describedby={cnpjInvalido ? "sefaz-novo-cnpj-erro" : undefined}
+                  />
+                  <Button onClick={adicionarAgendamento} className="shrink-0">
+                    <Plus className="w-4 h-4" /> Adicionar CNPJ
+                  </Button>
+                </div>
+                {cnpjInvalido && (
+                  <p id="sefaz-novo-cnpj-erro" className="text-xs text-destructive-ink">CNPJ inválido — informe 14 dígitos.</p>
+                )}
               </div>
 
               {loading ? (
-                <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+                <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
               ) : agendamentos.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Nenhum CNPJ agendado.</p>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Building2 />}
+                  titulo="Nenhum CNPJ agendado"
+                  descricao="Adicione um CNPJ acima para que a SEFAZ seja consultada periodicamente por notas emitidas contra ele."
+                />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>CNPJ</TableHead>
-                      <TableHead>Frequência</TableHead>
-                      <TableHead>Última execução</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Importadas</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {agendamentos.map((a) => (
-                      <TableRow key={a.id}>
-                        <TableCell className="font-mono text-xs whitespace-nowrap">{a.cnpj}</TableCell>
-                        <TableCell className="capitalize text-xs">{a.frequencia}</TableCell>
-                        <TableCell className="text-xs whitespace-nowrap">
-                          {a.ultima_execucao ? new Date(a.ultima_execucao).toLocaleString("pt-BR") : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {a.ultimo_status ? (
-                            <Badge variant="outline" className={
-                              a.ultimo_status === "sucesso" ? "bg-success/15 text-success" :
-                              a.ultimo_status === "configuracao_pendente" ? "bg-warning/15 text-warning" :
-                              "bg-destructive/15 text-destructive"
-                            }>{a.ultimo_status}</Badge>
-                          ) : <span className="text-xs text-muted-foreground">aguardando</span>}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">{a.total_importadas || 0}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" disabled={puxando === a.id} onClick={() => puxarAgora(a.id)} className="shrink-0">
-                            {puxando === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                            Puxar agora
-                          </Button>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>CNPJ</TableHead>
+                        <TableHead>Frequência</TableHead>
+                        <TableHead>Última execução</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Importadas</TableHead>
+                        <TableHead className="text-right">Ação</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {agendamentos.map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell className="font-mono whitespace-nowrap">{a.cnpj}</TableCell>
+                          <TableCell className="capitalize">{a.frequencia}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {a.ultima_execucao ? new Date(a.ultima_execucao).toLocaleString("pt-BR") : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {a.ultimo_status ? (
+                              <Badge variant={statusAgendamento(a.ultimo_status)}>{a.ultimo_status}</Badge>
+                            ) : <span className="text-sm text-muted-foreground">aguardando</span>}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{a.total_importadas || 0}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" disabled={puxando === a.id} onClick={() => puxarAgora(a.id)} className="shrink-0">
+                              {puxando === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                              Puxar agora
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -194,38 +213,41 @@ export default function FinIntegracoesFiscais() {
             </CardHeader>
             <CardContent>
               {speds.length === 0 ? (
-                <Alert>
-                  <AlertDescription>
-                    Nenhum arquivo SPED/DCTFWeb gerado ainda. A geração será disparada conforme seu regime tributário e competências fechadas no módulo de Apuração.
-                  </AlertDescription>
-                </Alert>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<FileSpreadsheet />}
+                  titulo="Nenhum arquivo SPED/DCTFWeb gerado ainda"
+                  descricao="A geração será disparada conforme seu regime tributário e as competências fechadas no módulo de Apuração."
+                />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Competência</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Registros</TableHead>
-                      <TableHead>Recibo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {speds.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="text-xs whitespace-nowrap">
-                          {SPED_TIPOS.find((t) => t.value === s.tipo)?.label || s.tipo}
-                        </TableCell>
-                        <TableCell className="text-xs whitespace-nowrap">
-                          {new Date(s.competencia).toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}
-                        </TableCell>
-                        <TableCell><Badge variant="outline" className="capitalize">{s.status}</Badge></TableCell>
-                        <TableCell className="text-right font-mono">{s.total_registros || 0}</TableCell>
-                        <TableCell className="font-mono text-xs">{s.recibo || "—"}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Competência</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Registros</TableHead>
+                        <TableHead>Recibo</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {speds.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell className="whitespace-nowrap">
+                            {SPED_TIPOS.find((t) => t.value === s.tipo)?.label || s.tipo}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {new Date(s.competencia).toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}
+                          </TableCell>
+                          <TableCell><Badge variant="muted" className="capitalize">{s.status}</Badge></TableCell>
+                          <TableCell className="text-right tabular-nums">{s.total_registros || 0}</TableCell>
+                          <TableCell className="font-mono">{s.recibo || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -241,43 +263,47 @@ export default function FinIntegracoesFiscais() {
             </CardHeader>
             <CardContent>
               {apuracoes.length === 0 ? (
-                <Alert>
-                  <AlertDescription>
-                    Nenhuma apuração registrada. As apurações são geradas automaticamente ao fechar a competência no módulo de Apuração Fiscal.
-                  </AlertDescription>
-                </Alert>
+                <EstadoVazio
+                  tamanho="compacto"
+                  icone={<Calculator />}
+                  titulo="Nenhuma apuração registrada"
+                  descricao="As apurações são geradas automaticamente ao fechar a competência no módulo de Apuração Fiscal."
+                />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Competência</TableHead>
-                      <TableHead>Tributo</TableHead>
-                      <TableHead className="text-right">Devido</TableHead>
-                      <TableHead className="text-right">Pago</TableHead>
-                      <TableHead className="text-right">Divergência</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {apuracoes.map((ap) => {
-                      const div = Number(ap.divergencia || 0);
-                      return (
-                        <TableRow key={ap.id}>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {new Date(ap.competencia).toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}
-                          </TableCell>
-                          <TableCell className="text-xs uppercase">{ap.tributo}</TableCell>
-                          <TableCell className="text-right font-mono text-xs">R$ {Number(ap.valor_devido).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right font-mono text-xs">R$ {Number(ap.valor_pago).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className={`text-right font-mono text-xs ${Math.abs(div) > 0.01 ? "text-destructive" : "text-success"}`}>
-                            R$ {div.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell><Badge variant="outline" className="capitalize">{ap.status}</Badge></TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead>Tributo</TableHead>
+                        <TableHead className="text-right">Devido</TableHead>
+                        <TableHead className="text-right">Pago</TableHead>
+                        <TableHead className="text-right">Divergência</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {apuracoes.map((ap) => {
+                        const div = Number(ap.divergencia || 0);
+                        const divergente = Math.abs(div) > 0.01;
+                        return (
+                          <TableRow key={ap.id}>
+                            <TableCell className="whitespace-nowrap">
+                              {new Date(ap.competencia).toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}
+                            </TableCell>
+                            <TableCell className="uppercase">{ap.tributo}</TableCell>
+                            <TableCell className="text-right tabular-nums">R$ {Number(ap.valor_devido).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-right tabular-nums">R$ {Number(ap.valor_pago).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className={`text-right tabular-nums font-semibold ${divergente ? "text-destructive-ink" : "text-success-ink"}`}>
+                              R$ {div.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell><Badge variant="muted" className="capitalize">{ap.status}</Badge></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

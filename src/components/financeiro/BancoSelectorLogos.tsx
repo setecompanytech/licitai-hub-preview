@@ -199,7 +199,10 @@ export function BancoLogo({ codigo, nome, size = 28, className }: BancoLogoProps
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-md border border-border/40 bg-white overflow-hidden shrink-0 shadow-sm p-1",
+          // `bg-white` aqui é a placa da logo de terceiro, não superfície da
+          // interface: as marcas são desenhadas para fundo branco e perdem
+          // legibilidade sobre qualquer tinta do tema.
+          "flex items-center justify-center rounded-md border border-border bg-white overflow-hidden shrink-0 shadow-sm p-1",
           className,
         )}
         style={{ width: size, height: size }}
@@ -222,24 +225,28 @@ export function BancoLogo({ codigo, nome, size = 28, className }: BancoLogoProps
   const initials = brand.initials;
   const fontSize =
     initials.length <= 2 ? size * 0.45 : initials.length === 3 ? size * 0.36 : size * 0.28;
+  // Banco sem identidade mapeada não tem cor de terceiro nenhuma: aí a placa é
+  // superfície da interface e vai de token. O hex fica reservado a marca real.
+  const marcaConhecida = !!codigo && !!BRAND[codigo];
 
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-md border border-border/40 overflow-hidden shrink-0 shadow-sm",
+        "flex items-center justify-center rounded-md border border-border overflow-hidden shrink-0 shadow-sm",
+        !marcaConhecida && "bg-muted",
         className,
       )}
-      style={{ width: size, height: size, background: brand.bg }}
+      // Cor institucional do banco (dado de terceiro): não é token do tema.
+      style={{ width: size, height: size, ...(marcaConhecida ? { background: brand.bg } : {}) }}
       role="img"
       aria-label={nome ?? "Logo do banco"}
     >
       <span
-        className="font-bold leading-none tracking-tight tabular-nums select-none"
-        style={{
-          color: brand.fg,
-          fontSize,
-          fontFamily: "system-ui, -apple-system, sans-serif",
-        }}
+        className={cn(
+          "font-bold leading-none tracking-tight tabular-nums select-none",
+          !marcaConhecida && "text-muted-foreground",
+        )}
+        style={{ fontSize, ...(marcaConhecida ? { color: brand.fg } : {}) }}
       >
         {initials}
       </span>
@@ -256,6 +263,11 @@ interface BancoSelectorLogosProps {
   allowAll?: boolean;
   className?: string;
   disabled?: boolean;
+  /** Id do gatilho — permite que um <Label htmlFor> aponte para o seletor. */
+  id?: string;
+  /** Campo em erro: o gatilho recebe o estado e aponta para a mensagem. */
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
 }
 
 export default function BancoSelectorLogos({
@@ -265,6 +277,9 @@ export default function BancoSelectorLogos({
   allowAll = false,
   className,
   disabled,
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: BancoSelectorLogosProps) {
   const [open, setOpen] = useState(false);
 
@@ -283,16 +298,19 @@ export default function BancoSelectorLogos({
       <PopoverTrigger asChild>
         <Button
           type="button"
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
-          className={cn("w-full justify-between font-normal h-10 px-2.5", className)}
+          className={cn("w-full justify-between font-normal px-3", className)}
         >
           <span className="flex items-center gap-2 min-w-0">
             {isAll ? (
               <>
-                <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-primary-tint text-primary flex items-center justify-center">
                   <Search className="w-4 h-4" />
                 </div>
                 <span className="truncate">Todos os bancos</span>
@@ -341,7 +359,7 @@ export default function BancoSelectorLogos({
                   }}
                   className="gap-2"
                 >
-                  <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-md bg-primary-tint text-primary flex items-center justify-center">
                     <Search className="w-4 h-4" />
                   </div>
                   <span className="flex-1">Todos os bancos</span>

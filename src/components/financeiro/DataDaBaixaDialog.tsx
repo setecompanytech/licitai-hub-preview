@@ -59,7 +59,7 @@ export function DataDaBaixaDialog({
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => { if (!v) onFechar(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" aria-describedby="data-da-baixa-ajuda">
         <DialogHeader>
           <DialogTitle>
             {quantidade > 1
@@ -67,7 +67,7 @@ export function DataDaBaixaDialog({
               : "Baixar lançamento"}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label htmlFor="data-da-baixa">
             {tipo === "a_pagar" ? "Pago em" : "Recebido em"}
           </Label>
@@ -77,15 +77,16 @@ export function DataDaBaixaDialog({
             value={data}
             onChange={(e) => setData(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") confirmar(); }}
+            aria-describedby="data-da-baixa-ajuda"
             autoFocus
           />
-          <p className="text-xs text-muted-foreground">
+          <p id="data-da-baixa-ajuda" className="text-xs text-muted-foreground">
             Use a data do extrato — o dia em que o dinheiro de fato{" "}
             {tipo === "a_pagar" ? "saiu da" : "entrou na"} conta. Com outra
             data, o lançamento conta no mês errado.
           </p>
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onFechar} disabled={salvando}>
             Cancelar
           </Button>

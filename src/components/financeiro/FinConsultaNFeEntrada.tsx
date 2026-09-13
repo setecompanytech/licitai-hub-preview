@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Inbox, AlertCircle, Loader2, CheckCircle2, Upload, Download, Receipt, FileText } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { Inbox, AlertCircle, Loader2, CheckCircle2, Upload, Download, Receipt, FileText, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -87,11 +88,11 @@ const TIPO_LABEL: Record<string, string> = {
   nao_realizada: "Operação Não Realizada",
 };
 
-const TIPO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  ciencia: "secondary",
-  confirmacao: "default",
-  desconhecimento: "destructive",
-  nao_realizada: "destructive",
+const TIPO_VARIANT: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {
+  ciencia: "info",
+  confirmacao: "success",
+  desconhecimento: "danger",
+  nao_realizada: "danger",
 };
 
 export default function FinConsultaNFeEntrada() {
@@ -345,81 +346,82 @@ export default function FinConsultaNFeEntrada() {
     }
   };
 
+  const chaveInvalida = chaveNfe.length > 0 && chaveNfe.length !== 44;
+  const motivoInvalido = exigeMotivo && motivo.trim().length > 0 && motivo.trim().length < 15;
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
-                <Inbox className="w-5 h-5" /> NF-e Recebidas
+                <Inbox className="h-5 w-5" /> NF-e recebidas
               </CardTitle>
               <CardDescription>
                 Notas emitidas contra o CNPJ da empresa. Chegam sozinhas pelo webhook do provedor de
                 DFe — e, enquanto ele não está ativo, importe o XML aqui: mesmo acervo, mesmo fluxo.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input ref={entradaXml} type="file" accept=".xml,text/xml" className="hidden"
                 onChange={(e) => { void importarXml(e.target.files?.[0] ?? null); e.target.value = ""; }} />
               <Button size="sm" variant="outline" onClick={() => entradaXml.current?.click()}>
-                <Upload className="w-4 h-4 mr-1" /> Importar XML
+                <Upload className="h-4 w-4" /> Importar XML
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {loadingNotas ? (
-            <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : notas.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Nenhuma NF-e recebida ainda. Ative o webhook no provedor de DFe (Configuração NF-e) ou
-              importe um XML para começar.
-            </div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Inbox />}
+              titulo="Nenhuma NF-e recebida ainda"
+              descricao="Ative o webhook no provedor de DFe (Configuração NF-e) ou importe um XML para começar."
+            />
           ) : (
-            <div className="divide-y divide-border/40 rounded-md border border-border/40 max-h-[420px] overflow-y-auto">
+            <div className="max-h-[26rem] divide-y divide-border overflow-y-auto rounded-md border border-border">
               {notas.map((n) => (
-                <div key={n.id} className="flex items-start justify-between gap-3 p-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium flex items-center gap-2 flex-wrap">
-                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                <div key={n.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
                       NF-e {n.numero ?? "s/nº"}{n.serie ? ` · série ${n.serie}` : ""} — {n.emitente_nome ?? "emitente não lido"}
-                      {n.situacao === "cancelada" && (
-                        <Badge variant="outline" className="text-xs border-destructive/40 text-destructive">Cancelada</Badge>
-                      )}
-                      {n.situacao === "resumo" && (
-                        <Badge variant="outline" className="text-xs border-warning/40 text-warning">aguardando XML completo</Badge>
-                      )}
-                      {n.lancamento_id && (
-                        <Badge variant="outline" className="text-xs border-success/40 text-success">Conta a Pagar gerada</Badge>
-                      )}
-                      <Badge variant="outline" className="text-[10px]">{n.origem === "webhook" ? "automática" : "importada"}</Badge>
+                      {n.situacao === "cancelada" && <Badge variant="danger">Cancelada</Badge>}
+                      {n.situacao === "resumo" && <Badge variant="warning">Aguardando XML completo</Badge>}
+                      {n.lancamento_id && <Badge variant="success">Conta a Pagar gerada</Badge>}
+                      <Badge variant="muted">{n.origem === "webhook" ? "Automática" : "Importada"}</Badge>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">{n.chave}</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">{n.chave}</p>
                     <p className="text-xs text-muted-foreground">
                       {[n.emitente_cnpj, n.data_emissao ? new Date(n.data_emissao + "T12:00:00").toLocaleDateString("pt-BR") : null,
                         n.natureza_operacao].filter(Boolean).join(" · ")}
                     </p>
                   </div>
-                  <div className="text-right shrink-0 space-y-1">
+                  <div className="shrink-0 space-y-2 text-right">
                     <p className="font-semibold tabular-nums">{brl(n.valor_total)}</p>
-                    <div className="flex items-center gap-1 justify-end">
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => baixarXml(n)}
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => baixarXml(n)}
+                        aria-label={`Baixar o XML da NF-e ${n.numero ?? n.chave}`}
                         title="Baixar o XML da nota">
-                        <Download className="w-3.5 h-3.5" />
+                        <Download className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs"
+                      <Button size="sm" variant="ghost"
                         title="Preencher a manifestação abaixo com esta chave"
                         onClick={() => { setChaveNfe(n.chave); toast.info("Chave preenchida na manifestação, abaixo."); }}>
                         Manifestar
                       </Button>
                       {!n.lancamento_id && n.situacao !== "cancelada" && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                        <Button size="sm" variant="outline"
                           disabled={gerandoId === n.id}
                           onClick={() => gerarContaAPagar(n)}>
                           {gerandoId === n.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <><Receipt className="w-3.5 h-3.5 mr-1" /> Gerar Conta a Pagar</>}
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Receipt className="h-4 w-4" />}
+                          Gerar Conta a Pagar
                         </Button>
                       )}
                     </div>
@@ -431,35 +433,45 @@ export default function FinConsultaNFeEntrada() {
         </CardContent>
       </Card>
 
-      <Alert>
-        <AlertCircle className="w-4 h-4" />
-        <AlertTitle>Manifestação do Destinatário</AlertTitle>
+      <Alert variant="info">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Manifestação do destinatário</AlertTitle>
         <AlertDescription>
           Registre Ciência, Confirmação, Desconhecimento ou Operação Não Realizada para NF-e recebidas.
-          Requer <code className="bg-muted px-1 rounded">FOCUS_NFE_API_TOKEN</code> e certificado A1 vinculado ao CNPJ destinatário.
+          Requer <code className="rounded bg-muted px-1">FOCUS_NFE_API_TOKEN</code> e certificado A1 vinculado ao CNPJ destinatário.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Inbox className="w-5 h-5" /> Nova manifestação</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Inbox className="h-5 w-5" /> Nova manifestação</CardTitle>
           <CardDescription>Informe a chave de 44 dígitos da NF-e recebida.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Chave NF-e (44 dígitos)</Label>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="manif-chave">Chave NF-e (44 dígitos)</Label>
               <Input
+                id="manif-chave"
                 value={chaveNfe}
                 onChange={e => setChaveNfe(e.target.value.replace(/\D/g, "").slice(0, 44))}
                 placeholder="35200107..."
+                className="font-mono"
+                aria-invalid={chaveInvalida || undefined}
+                aria-describedby={chaveInvalida ? "manif-chave-erro" : "manif-chave-contador"}
               />
-              <p className="text-xs text-muted-foreground mt-1">{chaveNfe.length}/44 dígitos</p>
+              {chaveInvalida ? (
+                <p id="manif-chave-erro" className="text-xs text-destructive-ink">
+                  Chave incompleta — {chaveNfe.length} de 44 dígitos.
+                </p>
+              ) : (
+                <p id="manif-chave-contador" className="text-xs text-muted-foreground">{chaveNfe.length}/44 dígitos</p>
+              )}
             </div>
-            <div>
-              <Label>Tipo de evento</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="manif-tipo">Tipo de evento</Label>
               <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="manif-tipo"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ciencia">Ciência da Operação</SelectItem>
                   <SelectItem value="confirmacao">Confirmação da Operação</SelectItem>
@@ -470,19 +482,31 @@ export default function FinConsultaNFeEntrada() {
             </div>
           </div>
           {exigeMotivo && (
-            <div>
-              <Label>Motivo (obrigatório — 15 a 255 caracteres)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="manif-motivo">Motivo (obrigatório — 15 a 255 caracteres)</Label>
               <Input
+                id="manif-motivo"
                 value={motivo}
                 onChange={e => setMotivo(e.target.value.slice(0, 255))}
                 placeholder="Descreva o motivo do desconhecimento ou não realização da operação"
+                aria-invalid={motivoInvalido || undefined}
+                aria-describedby={motivoInvalido ? "manif-motivo-erro" : "manif-motivo-contador"}
               />
-              <p className="text-xs text-muted-foreground mt-1">{motivo.length}/255</p>
+              {motivoInvalido ? (
+                <p id="manif-motivo-erro" className="text-xs text-destructive-ink">
+                  Motivo curto — mínimo de 15 caracteres ({motivo.trim().length} até agora).
+                </p>
+              ) : (
+                <p id="manif-motivo-contador" className="text-xs text-muted-foreground">{motivo.length}/255</p>
+              )}
             </div>
           )}
-          <Button onClick={manifestar} disabled={loading}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Registrando...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Registrar manifestação</>}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={manifestar} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {loading ? "Registrando…" : "Registrar manifestação"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -493,9 +517,14 @@ export default function FinConsultaNFeEntrada() {
         </CardHeader>
         <CardContent>
           {loadingList ? (
-            <div className="text-sm text-muted-foreground py-6 text-center">Carregando...</div>
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : historico.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-6 text-center">Nenhuma manifestação registrada.</div>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<History />}
+              titulo="Nenhuma manifestação registrada"
+              descricao="As manifestações enviadas à SEFAZ aparecem aqui com evento, protocolo e origem."
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -512,20 +541,20 @@ export default function FinConsultaNFeEntrada() {
                 <TableBody>
                   {historico.map(m => (
                     <TableRow key={m.id}>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                         {new Date(m.data_manifestacao).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="font-mono text-xs">{m.chave_nfe}</TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge variant={TIPO_VARIANT[m.tipo] || "secondary"}>
+                        <Badge variant={TIPO_VARIANT[m.tipo] || "muted"}>
                           {TIPO_LABEL[m.tipo] || m.tipo}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{m.motivo || "—"}</TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-xs">{m.protocolo || "—"}</TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge variant={m.automatica ? "outline" : "secondary"}>
-                          {m.automatica ? "automática" : "manual"}
+                        <Badge variant={m.automatica ? "info" : "muted"}>
+                          {m.automatica ? "Automática" : "Manual"}
                         </Badge>
                       </TableCell>
                     </TableRow>

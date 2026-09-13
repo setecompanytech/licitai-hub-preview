@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import {
   Plus,
   Pencil,
@@ -22,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   Layers,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useLancamentos,
@@ -30,7 +32,7 @@ import {
   type LancamentoFiltro,
   type Lancamento,
 } from "@/hooks/useFinanceiro";
-import { formatBRL, formatDate, statusColor, statusLabel, tipoLabel } from "@/lib/financeiro/formatters";
+import { formatBRL, formatDate, statusLabel, tipoLabel } from "@/lib/financeiro/formatters";
 import LancamentoDialog from "./LancamentoDialog";
 import VincularContratoDialog from "./VincularContratoDialog";
 import type { LancamentoParaVincular } from "@/lib/contratos/pedido-do-lancamento";
@@ -45,6 +47,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Status em tinta (identidade 12/09). O mapa de cor que vinha dos formatters
+ * era paleta crua (amber/emerald/rose); aqui o status vira variante de Badge —
+ * sempre com TEXTO, a cor é reforço.
+ */
+const STATUS_VARIANTE: Record<string, "success" | "warning" | "danger" | "info" | "muted"> = {
+  previsto: "warning",
+  realizado: "success",
+  conciliado: "success",
+  cancelado: "muted",
+  em_atraso: "danger",
+};
 
 export default function FinLancamentos() {
   const [searchParams] = useSearchParams();
@@ -76,6 +91,11 @@ export default function FinLancamentos() {
     campo: "data_competencia",
     dir: "desc",
   });
+
+  const abrirNovo = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
 
   const contaSelecionada = useMemo(
     () => (filtro.contaId && filtro.contaId !== "todos" ? contas.find((c) => c.id === filtro.contaId) : null),
@@ -131,37 +151,26 @@ export default function FinLancamentos() {
   const temFiltroData = !!(filtro.dataInicio || filtro.dataFim);
 
   return (
-    <div className="space-y-4">
-      {/* ── Cabeçalho + ação ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Lançamentos</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Gerencie receitas, despesas e movimentações financeiras
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-          className="shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
+    <div className="space-y-6">
+      {/* ── Ação principal ── */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button onClick={abrirNovo}>
+          <Plus className="w-4 h-4" aria-hidden="true" />
           Novo lançamento
         </Button>
       </div>
 
       {/* ── Filtros ── */}
       <Card>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-6 space-y-4">
           {/* Linha principal */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
+                aria-label="Buscar lançamento por descrição"
                 placeholder="Buscar por descrição…"
-                className="pl-8 h-9"
+                className="pl-9"
                 value={filtro.busca ?? ""}
                 onChange={(e) => setFiltro((f) => ({ ...f, busca: e.target.value }))}
               />
@@ -171,7 +180,7 @@ export default function FinLancamentos() {
               value={filtro.tipo ?? "todos"}
               onValueChange={(v) => setFiltro((f) => ({ ...f, tipo: v as LancamentoFiltro["tipo"] }))}
             >
-              <SelectTrigger className="w-[150px] h-9">
+              <SelectTrigger className="w-[160px]" aria-label="Filtrar por tipo">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +196,7 @@ export default function FinLancamentos() {
               value={filtro.status ?? "todos"}
               onValueChange={(v) => setFiltro((f) => ({ ...f, status: v as LancamentoFiltro["status"] }))}
             >
-              <SelectTrigger className="w-[140px] h-9">
+              <SelectTrigger className="w-[150px]" aria-label="Filtrar por status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -204,7 +213,7 @@ export default function FinLancamentos() {
               value={filtro.contaId ?? "todos"}
               onValueChange={(v) => setFiltro((f) => ({ ...f, contaId: v }))}
             >
-              <SelectTrigger className="w-[160px] h-9">
+              <SelectTrigger className="w-[170px]" aria-label="Filtrar por conta">
                 <SelectValue placeholder="Conta" />
               </SelectTrigger>
               <SelectContent>
@@ -217,73 +226,85 @@ export default function FinLancamentos() {
 
             <Button
               variant="outline"
-              size="sm"
-              className={`h-9 gap-1.5 ${mostrarFiltrosAvancados || temFiltroData ? "border-primary text-primary" : ""}`}
+              className={mostrarFiltrosAvancados || temFiltroData ? "border-primary text-primary" : undefined}
+              aria-expanded={mostrarFiltrosAvancados}
               onClick={() => setMostrarFiltrosAvancados((v) => !v)}
             >
-              <Filter className="w-3.5 h-3.5" />
+              <Filter className="w-4 h-4" aria-hidden="true" />
               Mais filtros
-              {mostrarFiltrosAvancados ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {mostrarFiltrosAvancados
+                ? <ChevronUp className="w-4 h-4" aria-hidden="true" />
+                : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
               {temFiltroData && !mostrarFiltrosAvancados && (
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               )}
             </Button>
           </div>
 
           {/* Linha avançada */}
           {mostrarFiltrosAvancados && (
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t">
-              <div className="flex items-center gap-2">
-                <CalendarRange className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">Período:</span>
-                <Input
-                  type="date"
-                  className="w-[150px] h-8 text-xs"
-                  value={filtro.dataInicio ?? ""}
-                  onChange={(e) => setFiltro((f) => ({ ...f, dataInicio: e.target.value }))}
-                />
-                <span className="text-xs text-muted-foreground">até</span>
-                <Input
-                  type="date"
-                  className="w-[150px] h-8 text-xs"
-                  value={filtro.dataFim ?? ""}
-                  onChange={(e) => setFiltro((f) => ({ ...f, dataFim: e.target.value }))}
-                />
+            <div className="flex flex-wrap items-end gap-3 border-t border-border pt-4">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="space-y-1">
+                  <label htmlFor="fin-lanc-data-inicio" className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CalendarRange className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    Período de
+                  </label>
+                  <Input
+                    id="fin-lanc-data-inicio"
+                    type="date"
+                    className="w-[170px]"
+                    value={filtro.dataInicio ?? ""}
+                    onChange={(e) => setFiltro((f) => ({ ...f, dataInicio: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="fin-lanc-data-fim" className="text-sm text-muted-foreground">até</label>
+                  <Input
+                    id="fin-lanc-data-fim"
+                    type="date"
+                    className="w-[170px]"
+                    value={filtro.dataFim ?? ""}
+                    onChange={(e) => setFiltro((f) => ({ ...f, dataFim: e.target.value }))}
+                  />
+                </div>
               </div>
 
-              <Select
-                value={filtro.origemTipo ?? "todos"}
-                onValueChange={(v) => setFiltro((f) => ({ ...f, origemTipo: v as LancamentoFiltro["origemTipo"] }))}
-              >
-                <SelectTrigger className="w-[160px] h-8 text-xs">
-                  <Layers className="w-3 h-3 mr-1.5 text-muted-foreground" />
-                  <SelectValue placeholder="Origem" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as origens</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="importacao_csv">Importação CSV</SelectItem>
-                  <SelectItem value="importacao_ofx">Importação OFX</SelectItem>
-                  <SelectItem value="importacao_xml">Importação XML</SelectItem>
-                  <SelectItem value="sefaz_nfe">SEFAZ NF-e</SelectItem>
-                  <SelectItem value="pluggy">Open Finance</SelectItem>
-                  <SelectItem value="cnab">CNAB</SelectItem>
-                  <SelectItem value="dda">DDA</SelectItem>
-                  <SelectItem value="ocr">OCR</SelectItem>
-                  <SelectItem value="recorrencia">Recorrência</SelectItem>
-                  <SelectItem value="folha_pagamento">Folha</SelectItem>
-                  <SelectItem value="api">API</SelectItem>
-                  <SelectItem value="seed">Seed</SelectItem>
-                  <SelectItem value="demo">Demo</SelectItem>
-                  <SelectItem value="migracao">Migração</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <label id="fin-lanc-origem-label" className="text-sm text-muted-foreground">Origem</label>
+                <Select
+                  value={filtro.origemTipo ?? "todos"}
+                  onValueChange={(v) => setFiltro((f) => ({ ...f, origemTipo: v as LancamentoFiltro["origemTipo"] }))}
+                >
+                  <SelectTrigger className="w-[190px]" aria-labelledby="fin-lanc-origem-label">
+                    <Layers className="mr-2 w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <SelectValue placeholder="Origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as origens</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="importacao_csv">Importação CSV</SelectItem>
+                    <SelectItem value="importacao_ofx">Importação OFX</SelectItem>
+                    <SelectItem value="importacao_xml">Importação XML</SelectItem>
+                    <SelectItem value="sefaz_nfe">SEFAZ NF-e</SelectItem>
+                    <SelectItem value="pluggy">Open Finance</SelectItem>
+                    <SelectItem value="cnab">CNAB</SelectItem>
+                    <SelectItem value="dda">DDA</SelectItem>
+                    <SelectItem value="ocr">OCR</SelectItem>
+                    <SelectItem value="recorrencia">Recorrência</SelectItem>
+                    <SelectItem value="folha_pagamento">Folha</SelectItem>
+                    <SelectItem value="api">API</SelectItem>
+                    <SelectItem value="seed">Seed</SelectItem>
+                    <SelectItem value="demo">Demo</SelectItem>
+                    <SelectItem value="migracao">Migração</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               {(temFiltroData || (filtro.origemTipo && filtro.origemTipo !== "todos")) && (
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() =>
                     setFiltro((f) => ({ ...f, dataInicio: undefined, dataFim: undefined, origemTipo: "todos" }))
                   }
@@ -297,7 +318,7 @@ export default function FinLancamentos() {
       </Card>
 
       {/* ── Stats strip ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Entradas"
           value={formatBRL(totalEntradas)}
@@ -330,8 +351,8 @@ export default function FinLancamentos() {
 
       {/* ── Tabela ── */}
       <Card>
-        <CardHeader className="py-3 px-5 border-b flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-semibold">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-border px-6 py-4">
+          <CardTitle className="text-lg font-semibold">
             {isLoading ? "Carregando…" : `${lancs.length} lançamento${lancs.length !== 1 ? "s" : ""}`}
           </CardTitle>
           {lancs.length > 0 && (
@@ -342,55 +363,71 @@ export default function FinLancamentos() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[960px]">
+            <table className="w-full min-w-[960px] text-sm">
               <thead>
-                <tr className="bg-muted/30 text-xs text-muted-foreground uppercase tracking-wide">
+                <tr className="border-b border-border bg-muted text-sm font-semibold text-foreground">
                   <th
-                    className="text-left px-5 py-2.5 whitespace-nowrap w-[110px] cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() =>
-                      setSort((s) =>
-                        s.campo === "data_competencia"
-                          ? { ...s, dir: s.dir === "asc" ? "desc" : "asc" }
-                          : { campo: "data_competencia", dir: "desc" }
-                      )
+                    className="w-[120px] whitespace-nowrap px-4 py-3 text-left"
+                    aria-sort={
+                      sort.campo === "data_competencia"
+                        ? (sort.dir === "asc" ? "ascending" : "descending")
+                        : "none"
                     }
                   >
-                    <span className="inline-flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 transition-colors hover:text-primary"
+                      onClick={() =>
+                        setSort((s) =>
+                          s.campo === "data_competencia"
+                            ? { ...s, dir: s.dir === "asc" ? "desc" : "asc" }
+                            : { campo: "data_competencia", dir: "desc" }
+                        )
+                      }
+                    >
                       Competência
                       {sort.campo === "data_competencia" ? (
-                        sort.dir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        sort.dir === "asc"
+                          ? <ChevronUp className="w-3 h-3" aria-hidden="true" />
+                          : <ChevronDown className="w-3 h-3" aria-hidden="true" />
                       ) : (
-                        <ChevronDown className="w-3 h-3 opacity-30" />
+                        <ChevronDown className="w-3 h-3 opacity-30" aria-hidden="true" />
                       )}
-                    </span>
+                    </button>
                   </th>
-                  <th className="text-left px-3 py-2.5 whitespace-nowrap w-[110px]">Vencimento</th>
-                  <th className="text-left px-3 py-2.5">Descrição</th>
-                  <th className="text-left px-3 py-2.5 whitespace-nowrap w-[140px]">Categoria</th>
-                  <th className="text-left px-3 py-2.5 whitespace-nowrap w-[140px]">Pessoa / Conta</th>
-                  <th className="text-left px-3 py-2.5 whitespace-nowrap w-[100px]">Tipo</th>
-                  <th className="text-left px-3 py-2.5 whitespace-nowrap w-[110px]">Status</th>
-                  <th className="text-right px-3 py-2.5 whitespace-nowrap w-[130px]">Valor</th>
-                  <th className="px-4 py-2.5 w-[80px]" />
+                  <th className="w-[120px] whitespace-nowrap px-3 py-3 text-left">Vencimento</th>
+                  <th className="px-3 py-3 text-left">Descrição</th>
+                  <th className="w-[150px] whitespace-nowrap px-3 py-3 text-left">Categoria</th>
+                  <th className="w-[150px] whitespace-nowrap px-3 py-3 text-left">Pessoa / Conta</th>
+                  <th className="w-[110px] whitespace-nowrap px-3 py-3 text-left">Tipo</th>
+                  <th className="w-[120px] whitespace-nowrap px-3 py-3 text-left">Status</th>
+                  <th className="w-[140px] whitespace-nowrap px-3 py-3 text-right">Valor</th>
+                  <th className="w-[130px] px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      <td colSpan={9} className="px-5 py-2">
-                        <Skeleton className="h-8 w-full rounded" />
+                      <td colSpan={9} className="px-4 py-2">
+                        <Skeleton className="h-8 w-full rounded-md" />
                       </td>
                     </tr>
                   ))
                 ) : lancs.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-16 text-muted-foreground">
-                      <div className="flex flex-col items-center gap-2">
-                        <Scale className="w-8 h-8 text-muted-foreground/30" />
-                        <p className="text-sm">Nenhum lançamento encontrado.</p>
-                        <p className="text-xs">Ajuste os filtros ou clique em <strong>Novo lançamento</strong> para começar.</p>
-                      </div>
+                    <td colSpan={9}>
+                      <EstadoVazio
+                        icone={<Scale />}
+                        titulo="Nenhum lançamento encontrado"
+                        descricao="Ajuste os filtros ou crie um lançamento para começar."
+                        acao={
+                          <Button onClick={abrirNovo}>
+                            <Plus className="w-4 h-4" aria-hidden="true" />
+                            Novo lançamento
+                          </Button>
+                        }
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -404,19 +441,30 @@ export default function FinLancamentos() {
                     return (
                       <tr
                         key={l.id}
-                        className={`border-l-2 ${isReceita ? "border-l-success" : "border-l-destructive"} hover:bg-muted/20 transition-colors`}
+                        className={`border-l-2 ${isReceita ? "border-l-success-line" : "border-l-destructive-line"} transition-colors hover:bg-muted`}
                       >
                         {/* Competência */}
-                        <td className="pl-4 pr-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
+                        <td className="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-muted-foreground">
                           {formatDate(l.data_competencia)}
                         </td>
 
                         {/* Vencimento */}
-                        <td className="px-3 py-2.5 whitespace-nowrap text-xs">
+                        <td className="whitespace-nowrap px-3 py-3 text-sm">
                           {vencDiferente ? (
-                            <span className={isAtrasado ? "text-destructive font-medium" : "text-muted-foreground"}>
+                            <span
+                              className={
+                                isAtrasado
+                                  ? "inline-flex items-center gap-1 font-medium text-destructive-ink"
+                                  : "text-muted-foreground"
+                              }
+                            >
                               {formatDate(l.data_vencimento!)}
-                              {isAtrasado && " ⚠"}
+                              {isAtrasado && (
+                                <>
+                                  <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                  <span className="sr-only">vencimento em atraso</span>
+                                </>
+                              )}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -424,127 +472,128 @@ export default function FinLancamentos() {
                         </td>
 
                         {/* Descrição */}
-                        <td className="px-3 py-2.5 max-w-[260px]">
-                          <span className="font-medium text-sm block truncate" title={l.descricao}>
+                        <td className="max-w-[260px] px-3 py-3">
+                          <span className="block truncate text-sm font-medium" title={l.descricao}>
                             {l.descricao}
                           </span>
                           {isIgnorado && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30 mt-0.5">
+                            <Badge variant="muted" className="mt-1 font-normal">
                               ignorado no somatório
                             </Badge>
                           )}
                           {isTransferencia && (
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 font-normal text-info border-info/30 mt-0.5">
+                            <Badge variant="info" className="mt-1 font-normal">
                               transferência entre contas
                             </Badge>
                           )}
-                          {(l as any).parcela_numero && (l as any).parcela_total && (
-                            <span className="text-xs text-muted-foreground">
-                              Parcela {(l as any).parcela_numero}/{(l as any).parcela_total}
+                          {l.parcela_numero && l.parcela_total && (
+                            <span className="block text-xs text-muted-foreground">
+                              Parcela {l.parcela_numero}/{l.parcela_total}
                             </span>
                           )}
                         </td>
 
                         {/* Categoria */}
-                        <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[140px]">
-                          <span className="truncate block" title={l.categoria?.nome ?? ""}>
+                        <td className="max-w-[150px] px-3 py-3 text-sm text-muted-foreground">
+                          <span className="block truncate" title={l.categoria?.nome ?? ""}>
                             {l.categoria?.nome ?? "—"}
                           </span>
                         </td>
 
                         {/* Pessoa / Conta */}
-                        <td className="px-3 py-2.5 text-xs max-w-[140px]">
+                        <td className="max-w-[150px] px-3 py-3 text-sm">
                           {l.pessoa?.nome ? (
-                            <span className="text-foreground block truncate" title={l.pessoa.nome}>
+                            <span className="block truncate text-foreground" title={l.pessoa.nome}>
                               {l.pessoa.nome}
                             </span>
                           ) : null}
-                          <span className="text-muted-foreground block truncate" title={l.conta?.nome ?? ""}>
+                          <span className="block truncate text-muted-foreground" title={l.conta?.nome ?? ""}>
                             {l.conta?.nome ?? "—"}
                           </span>
                         </td>
 
                         {/* Tipo */}
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 font-normal whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-3">
+                          <Badge variant="muted" className="font-normal">
                             {tipoLabel[l.tipo] ?? l.tipo}
                           </Badge>
                         </td>
 
                         {/* Status */}
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs px-1.5 py-0 h-5 font-medium whitespace-nowrap ring-1 ${statusColor[l.status] ?? ""}`}
-                          >
+                        <td className="whitespace-nowrap px-3 py-3">
+                          <Badge variant={STATUS_VARIANTE[l.status] ?? "muted"}>
                             {statusLabel[l.status] ?? l.status}
                           </Badge>
                         </td>
 
                         {/* Valor */}
                         <td
-                          className={`px-3 py-2.5 text-right tabular-nums font-semibold text-sm whitespace-nowrap ${
-                            isReceita
-                              ? "text-success"
-                              : "text-destructive"
+                          className={`whitespace-nowrap px-3 py-3 text-right text-sm font-semibold tabular-nums ${
+                            isReceita ? "text-success-ink" : "text-destructive-ink"
                           }`}
                         >
                           {isReceita ? "+" : "−"} {formatBRL(Number(l.valor))}
                         </td>
 
                         {/* Ações */}
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                          {/* O mesmo elo de Contas a Receber. Ele nascera só
-                              lá, e esta é a tela em que se procura um
-                              lançamento antigo pelo nome — justamente o gesto
-                              de quem vai ligar faturamento retroativo a um
-                              contrato que entrou na gestão depois. */}
-                          {(l.tipo === "a_receber" || l.tipo === "a_pagar") && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
-                              title={l.tipo === "a_pagar"
+                        <td className="whitespace-nowrap px-3 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* O mesmo elo de Contas a Receber. Ele nascera só
+                                lá, e esta é a tela em que se procura um
+                                lançamento antigo pelo nome — justamente o gesto
+                                de quem vai ligar faturamento retroativo a um
+                                contrato que entrou na gestão depois. */}
+                            {(l.tipo === "a_receber" || l.tipo === "a_pagar") && (() => {
+                              const rotuloVinculo = l.tipo === "a_pagar"
                                 ? ((l as { contrato_id?: string | null }).contrato_id
                                     ? "Despesa atribuída a um contrato — clique para trocar"
                                     : "Atribuir esta despesa a um contrato")
                                 : ((l as { contrato_pedido_id?: string | null }).contrato_pedido_id
                                     ? "Vinculado a um pedido — clique para trocar"
-                                    : "Vincular a um contrato/pedido em Gestão")}
+                                    : "Vincular a um contrato/pedido em Gestão");
+                              const jaVinculado = l.tipo === "a_pagar"
+                                ? !!(l as { contrato_id?: string | null }).contrato_id
+                                : !!(l as { contrato_pedido_id?: string | null }).contrato_pedido_id;
+                              return (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-9 w-9"
+                                  title={rotuloVinculo}
+                                  aria-label={rotuloVinculo}
+                                  onClick={() => {
+                                    setModoDoVinculo(l.tipo === "a_pagar" ? "despesa" : "receita");
+                                    setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null });
+                                  }}
+                                >
+                                  <Link2 className={jaVinculado ? "text-primary" : undefined} />
+                                </Button>
+                              );
+                            })()}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9"
+                              title="Editar"
+                              aria-label={`Editar ${l.descricao}`}
                               onClick={() => {
-                                setModoDoVinculo(l.tipo === "a_pagar" ? "despesa" : "receita");
-                                setVinculando({ ...(l as unknown as LancamentoParaVincular), pessoa_nome: (l as { pessoa?: { nome?: string } }).pessoa?.nome ?? null });
+                                setEditing(l);
+                                setDialogOpen(true);
                               }}
                             >
-                              <Link2 className={`w-3.5 h-3.5 ${
-                                (l.tipo === "a_pagar"
-                                  ? (l as { contrato_id?: string | null }).contrato_id
-                                  : (l as { contrato_pedido_id?: string | null }).contrato_pedido_id)
-                                  ? "text-primary" : ""
-                              }`} />
+                              <Pencil />
                             </Button>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title="Editar"
-                            onClick={() => {
-                              setEditing(l);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            title="Excluir"
-                            onClick={() => setConfirmDel(l)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 text-destructive-ink"
+                              title="Excluir"
+                              aria-label={`Excluir ${l.descricao}`}
+                              onClick={() => setConfirmDel(l)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -572,7 +621,7 @@ export default function FinLancamentos() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-1.5 text-sm">
+              <div className="space-y-2 text-sm">
                 {confirmDel?.descricao && (
                   <p className="font-medium text-foreground">"{confirmDel.descricao}"</p>
                 )}
@@ -594,7 +643,7 @@ export default function FinLancamentos() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: "destructive" })}
               onClick={async () => {
                 if (confirmDel) {
                   await del.mutateAsync({
@@ -634,21 +683,21 @@ function StatCard({
 }) {
   const cls = {
     default: { text: "text-foreground", bg: "bg-muted", icon: "text-muted-foreground" },
-    success: { text: "text-success", bg: "bg-success/10", icon: "text-success" },
-    danger: { text: "text-destructive", bg: "bg-destructive/10", icon: "text-destructive" },
+    success: { text: "text-success-ink", bg: "bg-success-tint", icon: "text-success-ink" },
+    danger: { text: "text-destructive-ink", bg: "bg-destructive-tint", icon: "text-destructive-ink" },
   }[tone];
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium truncate">{label}</p>
-            <p className={`text-xl font-semibold tabular-nums mt-1 ${cls.text}`}>{value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+            <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
+            <p className={`mt-1 text-[2rem] font-bold leading-10 tabular-nums ${cls.text}`}>{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
           </div>
-          <div className={`p-2 rounded-lg shrink-0 ${cls.bg}`}>
-            <Icon className={`w-4 h-4 ${cls.icon}`} />
+          <div className={`shrink-0 rounded-md p-2 ${cls.bg}`}>
+            <Icon className={`w-5 h-5 ${cls.icon}`} aria-hidden="true" />
           </div>
         </div>
       </CardContent>
