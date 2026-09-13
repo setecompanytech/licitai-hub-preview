@@ -86,7 +86,7 @@ export default function SecaoUsuarios() {
     <>
       {erro && (
         <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>Não foi possível carregar os usuários: {erro}</AlertDescription>
         </Alert>
       )}

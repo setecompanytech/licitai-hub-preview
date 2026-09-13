@@ -10,7 +10,7 @@ const MODOS = [
     seguranca: 'Máxima',
     badge: 'Recomendado',
     icon: Server,
-    cor: 'text-success',
+    cor: 'bg-success-tint text-success-ink',
     detalhes: [
       'Instale o Agente de Lances no seu VPS (Ubuntu 22.04+)',
       'Copie o certificado .pfx para a pasta certs/ do agente',
@@ -25,7 +25,7 @@ const MODOS = [
     seguranca: 'Alta',
     badge: 'Prático',
     icon: Monitor,
-    cor: 'text-primary',
+    cor: 'bg-primary-tint text-primary',
     detalhes: [
       'Instale a extensão PRAEFECTUS no Chrome/Edge',
       'O certificado A1 deve estar instalado no navegador',
@@ -40,7 +40,7 @@ const MODOS = [
     seguranca: 'Alta',
     badge: 'Certificado A3',
     icon: Globe,
-    cor: 'text-warning',
+    cor: 'bg-warning-tint text-warning-ink',
     detalhes: [
       'Instale o Java Runtime 8+ e o driver do token/smartcard',
       'O navegador apresenta o certificado via mTLS nativo',
@@ -73,7 +73,7 @@ export default function CertificadoModoSeguranca() {
             className="rounded-lg border border-border bg-card p-4 shadow-sm"
           >
             <div className="flex items-start gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted ${modo.cor}`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${modo.cor}`}>
                 <modo.icon className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">

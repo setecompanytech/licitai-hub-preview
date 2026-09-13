@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { DialogTitle } from "@/components/ui/dialog";
 import { HUB_ITEMS } from "@/components/financeiro/FinHomeHub";
 
 interface Props {
@@ -31,6 +32,10 @@ export default function FinCommandPalette({ onNavigate }: Props) {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
+      {/* O CommandDialog monta um DialogContent sem título: sem isto o leitor de
+          tela anuncia "diálogo" sem nome e o Radix avisa no console. O Radix
+          resolve o aria-labelledby mesmo com o título dentro do Command. */}
+      <DialogTitle className="sr-only">Buscar no Financeiro</DialogTitle>
       <CommandInput placeholder="Buscar funcionalidade do Financeiro..." />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>

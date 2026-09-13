@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { nomeExibido, iniciaisDe, type MembroExibivel } from '@/lib/equipe/nomeExibido';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,14 +26,14 @@ import { MODULOS_SISTEMA, useMembroPermissoes } from '@/hooks/useMembroPermissoe
 import { useQueryClient } from '@tanstack/react-query';
 
 const EQUIPES = [
-  { value: 'geral', label: 'Geral', icon: Settings, color: 'bg-muted text-muted-foreground' },
-  { value: 'financeiro', label: 'Financeiro', icon: DollarSign, color: 'bg-muted text-muted-foreground' },
-  { value: 'comercial', label: 'Comercial', icon: Briefcase, color: 'bg-muted text-muted-foreground' },
-  { value: 'logistica', label: 'Logística', icon: Truck, color: 'bg-muted text-muted-foreground' },
-  { value: 'juridico', label: 'Jurídico', icon: Scale, color: 'bg-muted text-muted-foreground' },
-  { value: 'contabil', label: 'Contábil', icon: Calculator, color: 'bg-muted text-muted-foreground' },
-  { value: 'licitacoes', label: 'Licitações', icon: Search, color: 'bg-muted text-muted-foreground' },
-  { value: 'documentos', label: 'Documentos', icon: FileText, color: 'bg-muted text-muted-foreground' },
+  { value: 'geral', label: 'Geral', icon: Settings },
+  { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
+  { value: 'comercial', label: 'Comercial', icon: Briefcase },
+  { value: 'logistica', label: 'Logística', icon: Truck },
+  { value: 'juridico', label: 'Jurídico', icon: Scale },
+  { value: 'contabil', label: 'Contábil', icon: Calculator },
+  { value: 'licitacoes', label: 'Licitações', icon: Search },
+  { value: 'documentos', label: 'Documentos', icon: FileText },
 ];
 
 const PAPEIS: { value: string; label: string }[] = [
@@ -371,51 +374,48 @@ export default function EquipeColaboradores() {
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Equipe & Colaboradores</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
-              Gerencie os membros da equipe de {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'sua empresa'}
-            </p>
-          </div>
-          {isAdmin && (
-            <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+        <CabecalhoPagina
+          acoes={isAdmin ? (
+            <>
               <Button asChild variant="outline">
-                <a href="/equipe/permissoes">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Papéis & Permissões
-                </a>
+                <Link to="/equipe/permissoes">
+                  <Shield aria-hidden="true" />
+                  Papéis e permissões
+                </Link>
               </Button>
-              <Button onClick={() => setShowInvite(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Adicionar Colaborador
+              <Button onClick={() => setShowInvite(true)}>
+                <UserPlus aria-hidden="true" />
+                Convidar pessoa
               </Button>
-            </div>
-          )}
-        </div>
+            </>
+          ) : undefined}
+        />
 
         {!empresaAtiva ? (
-          <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
-            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Selecione uma empresa no cabeçalho para gerenciar a equipe.</p>
-          </div>
+          <section className="rounded-lg border border-border bg-card shadow-sm">
+            <EstadoVazio
+              icone={<Users />}
+              titulo="Nenhuma empresa selecionada"
+              descricao="Selecione uma empresa no cabeçalho para gerenciar a equipe."
+            />
+          </section>
         ) : (
           <Tabs defaultValue="membros">
-            <TabsList className="mb-4 flex-wrap">
-              <TabsTrigger value="membros">
-                <Users className="w-4 h-4 mr-1.5" />
+            <TabsList className="mb-4">
+              <TabsTrigger value="membros" className="gap-1.5">
+                <Users className="h-4 w-4" aria-hidden="true" />
                 Membros ({membros.length})
               </TabsTrigger>
-              <TabsTrigger value="tarefas">
-                <ClipboardList className="w-4 h-4 mr-1.5" />
+              <TabsTrigger value="tarefas" className="gap-1.5">
+                <ClipboardList className="h-4 w-4" aria-hidden="true" />
                 Tarefas
               </TabsTrigger>
-              <TabsTrigger value="comissoes">
-                <DollarSign className="w-4 h-4 mr-1.5" />
+              <TabsTrigger value="comissoes" className="gap-1.5">
+                <DollarSign className="h-4 w-4" aria-hidden="true" />
                 Bonificações
               </TabsTrigger>
-              <TabsTrigger value="relatorio">
-                <FileText className="w-4 h-4 mr-1.5" />
+              <TabsTrigger value="relatorio" className="gap-1.5">
+                <FileText className="h-4 w-4" aria-hidden="true" />
                 Relatório
               </TabsTrigger>
             </TabsList>
@@ -428,7 +428,7 @@ export default function EquipeColaboradores() {
               </div>
 
               {/* Equipe summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                 {EQUIPES.map(eq => {
                   const count = membros.filter(m => equipeDe(m) === eq.value).length;
                   const ativo = equipeFiltro === eq.value;
@@ -442,15 +442,15 @@ export default function EquipeColaboradores() {
                       // lista vazia, e a pessoa acharia que quebrou.
                       disabled={count === 0}
                       className={cn(
-                        'eleva rounded-lg border p-3 text-center transition-colors disabled:opacity-50 disabled:cursor-default',
+                        'eleva rounded-lg border p-3 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-50',
                         ativo
-                          ? 'border-accent bg-accent/10'
-                          : 'border-border/50 bg-card enabled:hover:border-muted-foreground',
+                          ? 'border-primary bg-primary-tint'
+                          : 'border-border bg-card enabled:hover:border-primary',
                       )}
                     >
-                      <eq.icon className={cn('w-5 h-5 mx-auto mb-1', ativo ? 'text-accent' : 'text-muted-foreground')} />
-                      <p className="text-xs font-semibold">{eq.label}</p>
-                      <p className="text-lg font-bold tabular-nums">{count}</p>
+                      <eq.icon className={cn('mx-auto mb-1 h-5 w-5', ativo ? 'text-primary' : 'text-muted-foreground')} aria-hidden="true" />
+                      <p className="text-sm font-semibold text-foreground">{eq.label}</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{count}</p>
                     </button>
                   );
                 })}
@@ -458,9 +458,9 @@ export default function EquipeColaboradores() {
 
               {/* Busca acima da lista, como no protótipo. */}
               {membros.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <div className="relative flex-1 min-w-[220px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="relative min-w-[220px] flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                     <Input
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
@@ -471,12 +471,11 @@ export default function EquipeColaboradores() {
                   </div>
                   {(busca || equipeFiltro) && (
                     <>
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <span className="text-sm tabular-nums text-muted-foreground">
                         {membrosFiltrados.length} de {membros.length}
                       </span>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => { setBusca(''); setEquipeFiltro(null); }}
                       >
                         Limpar
@@ -487,51 +486,69 @@ export default function EquipeColaboradores() {
               )}
 
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+                <div className="py-8 text-center text-base text-muted-foreground">Carregando...</div>
               ) : membros.length === 0 ? (
-                <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
-                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="font-semibold mb-1">Nenhum colaborador</p>
-                  <p className="text-sm text-muted-foreground">Adicione membros à equipe para começar.</p>
-                </div>
+                <section className="rounded-lg border border-border bg-card shadow-sm">
+                  <EstadoVazio
+                    icone={<Users />}
+                    titulo="Nenhum colaborador"
+                    descricao="Adicione membros à equipe para começar."
+                    acao={isAdmin ? (
+                      <Button onClick={() => setShowInvite(true)}>
+                        <UserPlus aria-hidden="true" />
+                        Convidar pessoa
+                      </Button>
+                    ) : undefined}
+                  />
+                </section>
               ) : (
                 <div className="space-y-2">
                   {membrosFiltrados.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      Nenhum colaborador encontrado para este filtro.
-                    </p>
+                    <section className="rounded-lg border border-border bg-card shadow-sm">
+                      <EstadoVazio
+                        tamanho="compacto"
+                        icone={<Search />}
+                        titulo="Nenhum colaborador encontrado"
+                        descricao="Nenhum colaborador corresponde à busca ou ao setor selecionado."
+                        acao={
+                          <Button variant="outline" onClick={() => { setBusca(''); setEquipeFiltro(null); }}>
+                            Limpar filtros
+                          </Button>
+                        }
+                      />
+                    </section>
                   )}
                   {membrosFiltrados.map((m) => {
                     const eq = getEquipeInfo(equipeDe(m));
                     const isCurrentUser = m.user_id === user?.id;
                     return (
-                      <div key={m.id} className="bg-card rounded-lg border border-border/50 p-4 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+                        <div className="flex min-w-0 items-center gap-3">
                           {/* Avatar é identidade, não ação: sai do laranja da marca
                               para o neutro elevado (regra da auditoria). */}
-                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-sm flex-shrink-0">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
                             {iniciaisDe(m as MembroExibivel)}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm truncate">{nomeExibido(m as MembroExibivel)}</span>
-                              {isCurrentUser && <Badge variant="outline" className="text-xs">Você</Badge>}
-                              <Badge className={`text-xs ${eq.color}`}>{eq.label}</Badge>
-                              <Badge variant="secondary" className="text-xs">{m.papel}</Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate text-base font-semibold text-foreground">{nomeExibido(m as MembroExibivel)}</span>
+                              {isCurrentUser && <Badge variant="info">Você</Badge>}
+                              <Badge variant="muted">{eq.label}</Badge>
+                              <Badge variant="muted">{PAPEL_LABELS[m.papel] || m.papel}</Badge>
                               {m.praca_uf && (
-                                <Badge variant="outline" className="text-xs gap-1">
-                                  <MapPin className="w-3 h-3" aria-hidden="true" />
+                                <Badge variant="muted" className="gap-1">
+                                  <MapPin className="h-3 w-3" aria-hidden="true" />
                                   {m.praca_municipio ? `${m.praca_municipio}/${m.praca_uf}` : m.praca_uf}
                                 </Badge>
                               )}
                             </div>
-                            {(m as any).email && <p className="text-xs text-muted-foreground truncate">{(m as any).email}</p>}
+                            {(m as any).email && <p className="truncate text-sm text-muted-foreground">{(m as any).email}</p>}
                           </div>
                         </div>
                         {isAdmin && (
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                             <Select value={(m as any).equipe || 'geral'} onValueChange={(v) => handleUpdateEquipe(m.id, v)}>
-                              <SelectTrigger className="w-[130px] h-8 text-xs">
+                              <SelectTrigger className="h-9 w-[140px] text-sm" aria-label={`Setor de ${nomeExibido(m as MembroExibivel)}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -550,7 +567,7 @@ export default function EquipeColaboradores() {
                                 handleUpdatePapel(m.id, v);
                               }}
                             >
-                              <SelectTrigger className="w-[130px] h-8 text-xs">
+                              <SelectTrigger className="h-9 w-[140px] text-sm" aria-label={`Papel de ${nomeExibido(m as MembroExibivel)}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -559,32 +576,33 @@ export default function EquipeColaboradores() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => abrirRenomear(m)} title="Corrigir nome de exibição">
-                              <Pencil className="w-4 h-4" />
+                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => abrirRenomear(m)} title="Corrigir nome de exibição" aria-label="Corrigir nome de exibição">
+                              <Pencil aria-hidden="true" />
                             </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)">
-                              <MapPin className="w-4 h-4" />
+                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => openPracaDialog(m)} title="Definir praça (dias úteis das metas)" aria-label="Definir praça (dias úteis das metas)">
+                              <MapPin aria-hidden="true" />
                             </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => openPermDialog(m)} title="Gerenciar Permissões">
-                              <Shield className="w-4 h-4" />
+                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => openPermDialog(m)} title="Gerenciar permissões" aria-label="Gerenciar permissões">
+                              <Shield aria-hidden="true" />
                             </Button>
                             {(m as any).email && !isCurrentUser && (
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-9 w-9"
                                 onClick={() => handleResendInvite((m as any).email)}
                                 disabled={resendingFor === (m as any).email}
                                 title="Reenviar convite por e-mail"
+                                aria-label="Reenviar convite por e-mail"
                               >
                                 {resendingFor === (m as any).email
-                                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : <Mail className="w-4 h-4" />}
+                                  ? <Loader2 className="animate-spin" aria-hidden="true" />
+                                  : <Mail aria-hidden="true" />}
                               </Button>
                             )}
                             {!isCurrentUser && (
-                              <Button variant="ghost" size="icon" className="text-destructive/60 hover:text-destructive h-8 w-8" onClick={() => handleRemove(m.id, nomeExibido(m as MembroExibivel))} title="Remover colaborador">
-                                <Trash2 className="w-4 h-4" />
+                              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => handleRemove(m.id, nomeExibido(m as MembroExibivel))} title="Remover colaborador" aria-label="Remover colaborador">
+                                <Trash2 aria-hidden="true" />
                               </Button>
                             )}
                           </div>
@@ -623,14 +641,14 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-muted-foreground" />
-                Adicionar Colaborador
+                <UserPlus className="h-5 w-5 text-primary" aria-hidden="true" />
+                Convidar pessoa
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {/* Escolha do modo de convite */}
               <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Como deseja convidar?</Label>
+                <Label className="mb-2 block">Como deseja convidar?</Label>
                 <RadioGroup
                   value={inviteMode}
                   onValueChange={(v) => setInviteMode(v as 'direto' | 'setor')}
@@ -642,14 +660,15 @@ export default function EquipeColaboradores() {
                   ] as const).map(({ value, Icon, title, sub }) => (
                     <label
                       key={value}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                        inviteMode === value ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
-                      }`}
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 transition-colors',
+                        inviteMode === value ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                      )}
                     >
                       <RadioGroupItem value={value} className="sr-only" />
-                      <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
                       <div>
-                        <p className="text-sm font-medium leading-none mb-0.5">{title}</p>
+                        <p className="text-sm font-semibold text-foreground">{title}</p>
                         <p className="text-xs text-muted-foreground">{sub}</p>
                       </div>
                     </label>
@@ -660,24 +679,25 @@ export default function EquipeColaboradores() {
               {inviteMode === 'direto' ? (
                 <>
                   <div>
-                    <Label>Nome completo</Label>
-                    <Input value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" />
+                    <Label htmlFor="convite-nome">Nome completo</Label>
+                    <Input id="convite-nome" value={inviteNome} onChange={e => setInviteNome(e.target.value)} placeholder="Nome do colaborador" className="mt-1" />
                   </div>
                   <div>
-                    <Label>E-mail</Label>
-                    <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" />
+                    <Label htmlFor="convite-email">E-mail</Label>
+                    <Input id="convite-email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@empresa.com" type="email" className="mt-1" />
                   </div>
                   <div>
                     <Label>Equipes / Departamentos</Label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {EQUIPES.map(eq => {
                         const checked = inviteEquipes.includes(eq.value);
                         return (
                           <label
                             key={eq.value}
-                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-                              checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
-                            }`}
+                            className={cn(
+                              'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors',
+                              checked ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                            )}
                           >
                             <input
                               type="checkbox"
@@ -687,22 +707,22 @@ export default function EquipeColaboradores() {
                                   checked ? prev.filter(v => v !== eq.value) : [...prev, eq.value]
                                 );
                               }}
-                              className="accent-[hsl(var(--accent))]"
+                              className="accent-primary"
                             />
-                            <eq.icon className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">{eq.label}</span>
+                            <eq.icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                            <span className="text-sm text-foreground">{eq.label}</span>
                           </label>
                         );
                       })}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Selecione uma ou mais equipes. Define a área de responsabilidade: alimentar IA Jurídica, Contábil, etc.
                     </p>
                   </div>
                   <div>
-                    <Label>Papel / Permissão</Label>
+                    <Label htmlFor="convite-papel">Papel / Permissão</Label>
                     <Select value={invitePapel} onValueChange={setInvitePapel}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="convite-papel" className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PAPEIS.map(p => (
                           <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -714,21 +734,23 @@ export default function EquipeColaboradores() {
               ) : (
                 <>
                   <div>
-                    <Label>Email do setor</Label>
+                    <Label htmlFor="setor-email">Email do setor</Label>
                     <Input
+                      id="setor-email"
                       value={sectorEmail}
                       onChange={e => setSectorEmail(e.target.value)}
                       placeholder="financeiro@empresa.com.br"
                       type="email"
+                      className="mt-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       O link de cadastro será enviado para este endereço. Qualquer colaborador que recebê-lo poderá criar um acesso para este setor.
                     </p>
                   </div>
                   <div>
-                    <Label>Setor / Equipe</Label>
+                    <Label htmlFor="setor-equipe">Setor / Equipe</Label>
                     <Select value={sectorEquipe} onValueChange={setSectorEquipe}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="setor-equipe" className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {EQUIPES.filter(eq => eq.value !== 'geral').map(eq => (
                           <SelectItem key={eq.value} value={eq.value}>{eq.label}</SelectItem>
@@ -737,9 +759,9 @@ export default function EquipeColaboradores() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Papel / Permissão</Label>
+                    <Label htmlFor="setor-papel">Papel / Permissão</Label>
                     <Select value={sectorPapel} onValueChange={setSectorPapel}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="setor-papel" className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {PAPEIS.map(p => (
                           <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -756,7 +778,6 @@ export default function EquipeColaboradores() {
                 <Button
                   onClick={handleInvite}
                   disabled={saving || !inviteEmail.trim() || inviteEquipes.length === 0}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   {saving ? 'Adicionando...' : 'Adicionar'}
                 </Button>
@@ -764,7 +785,6 @@ export default function EquipeColaboradores() {
                 <Button
                   onClick={handleSectorInvite}
                   disabled={saving || !sectorEmail.trim()}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   {saving ? 'Enviando...' : 'Enviar convite'}
                 </Button>
@@ -779,7 +799,7 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-[420px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
                 Praça de {nomeExibido(pracaDialog as MembroExibivel)}
               </DialogTitle>
             </DialogHeader>
@@ -787,11 +807,11 @@ export default function EquipeColaboradores() {
               Define quais feriados contam nos dias úteis das metas: nacionais +
               os da UF + os do município. Sem praça, só os nacionais.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label className="text-sm text-muted-foreground mb-1 block">UF</Label>
+                <Label htmlFor="praca-uf" className="mb-1 block">UF</Label>
                 <Select value={pracaUf} onValueChange={setPracaUf}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="praca-uf"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={UF_SEM_PRACA}>Sem praça</SelectItem>
                     {UFS.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
@@ -799,9 +819,9 @@ export default function EquipeColaboradores() {
                 </Select>
               </div>
               <div>
-                <Label className="text-sm text-muted-foreground mb-1 block">Município (opcional)</Label>
+                <Label htmlFor="praca-municipio" className="mb-1 block">Município (opcional)</Label>
                 <Input
-                  className="h-9"
+                  id="praca-municipio"
                   placeholder="Santa Rosa"
                   value={pracaMunicipio}
                   onChange={(e) => setPracaMunicipio(e.target.value)}
@@ -817,7 +837,7 @@ export default function EquipeColaboradores() {
             <DialogFooter>
               <Button variant="ghost" onClick={() => setPracaDialog(null)} disabled={salvandoPraca}>Cancelar</Button>
               <Button onClick={savePraca} disabled={salvandoPraca}>
-                {salvandoPraca && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                {salvandoPraca && <Loader2 className="animate-spin" aria-hidden="true" />}
                 Salvar praça
               </Button>
             </DialogFooter>
@@ -828,26 +848,29 @@ export default function EquipeColaboradores() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-muted-foreground" />
+                <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
                 Permissões de {nomeExibido(permDialog as MembroExibivel)}
               </DialogTitle>
             </DialogHeader>
-            <p className="text-xs text-muted-foreground mb-2">
-              Setor: <Badge className={`text-xs ${getEquipeInfo((permDialog as any)?.equipe || 'geral').color}`}>
+            <p className="mb-2 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+              Setor:{' '}
+              <Badge variant="muted">
                 {getEquipeInfo((permDialog as any)?.equipe || 'geral').label}
               </Badge>
-              — Os módulos padrão do setor são habilitados automaticamente. Selecione módulos adicionais abaixo:
+              <span>— Os módulos padrão do setor são habilitados automaticamente. Selecione módulos adicionais abaixo:</span>
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {MODULOS_SISTEMA.map(mod => {
                 const isDefault = mod.setores.includes((permDialog as any)?.equipe || 'geral');
                 const checked = permissoesSel.includes(mod.value) || isDefault;
                 return (
                   <label
                     key={mod.value}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors text-sm ${
-                      checked ? 'border-accent bg-accent/10' : 'border-border hover:bg-muted/50'
-                    } ${isDefault ? 'opacity-80' : ''}`}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                      checked ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted',
+                      isDefault && 'opacity-80',
+                    )}
                   >
                     <input
                       type="checkbox"
@@ -861,18 +884,18 @@ export default function EquipeColaboradores() {
                             : [...prev, mod.value]
                         );
                       }}
-                      className="accent-[hsl(var(--accent))]"
+                      className="accent-primary"
                     />
-                    <span className="text-xs">{mod.label}</span>
-                    {isDefault && <Badge variant="outline" className="text-xs ml-auto">Padrão</Badge>}
+                    <span className="text-sm text-foreground">{mod.label}</span>
+                    {isDefault && <Badge variant="muted" className="ml-auto">Padrão</Badge>}
                   </label>
                 );
               })}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPermDialog(null)}>Cancelar</Button>
-              <Button onClick={handleSavePermissoes} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                Salvar Permissões
+              <Button onClick={handleSavePermissoes}>
+                Salvar permissões
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -885,12 +908,12 @@ export default function EquipeColaboradores() {
             <DialogTitle>Corrigir nome de exibição</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Aparecendo hoje como <span className="font-medium text-foreground">{renomeando?.atual}</span>.
+            <p className="text-sm text-muted-foreground">
+              Aparecendo hoje como <span className="font-semibold text-foreground">{renomeando?.atual}</span>.
               O login continua o mesmo — muda só como a pessoa é identificada nas telas.
             </p>
             <div className="space-y-1">
-              <Label htmlFor="novo-nome" className="text-xs">Nome</Label>
+              <Label htmlFor="novo-nome">Nome</Label>
               <Input
                 id="novo-nome"
                 value={novoNome}

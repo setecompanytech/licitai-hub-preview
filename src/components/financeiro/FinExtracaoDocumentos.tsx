@@ -44,6 +44,14 @@ interface DocItem {
   vincularExpandido?: boolean;
 }
 
+/** O selo do arquivo fala português — "IMAGE" era o valor cru do detector. */
+const KIND_LABEL: Record<DocItem["kind"], string> = {
+  xml: "XML",
+  pdf: "PDF",
+  image: "Imagem",
+  outro: "Outro",
+};
+
 const VINCULO_VAZIO: VinculoContratoValue = {
   contrato_id: null,
   contrato_item_id: null,
@@ -612,7 +620,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-medium text-foreground truncate">{d.file.name}</p>
-                              <Badge variant="muted" className="uppercase">{d.kind}</Badge>
+                              <Badge variant="muted">{KIND_LABEL[d.kind]}</Badge>
                               {d.status === "ok" && (
                                 // O nome do motor ("gemini_2.5_pro") é dado de
                                 // engenharia, não de operação — na tela vira
@@ -724,11 +732,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                             {/* Bloco de vínculo com Gestão (Contrato/ATA) */}
                             {d.status === "ok" && !d.lancamentoId && (
                               <div className="mt-2">
-                                <button
+                                <Button
                                   type="button"
+                                  variant="link"
                                   aria-expanded={!!d.vincularExpandido}
                                   onClick={() => toggleVincular(d.id)}
-                                  className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  /* whitespace-normal/text-left desfazem o whitespace-nowrap
+                                     da base do buttonVariants: o rótulo longo ("Vincular a
+                                     contrato/ATA SRP" + dois ícones) envolve no mobile em vez
+                                     de empurrar a largura do cartão dentro do ScrollArea. */
+                                  className="h-auto gap-1 px-0 py-0 font-medium whitespace-normal text-left"
                                 >
                                   <Link2 className="w-4 h-4" aria-hidden="true" />
                                   {d.vinculo?.contrato_id
@@ -739,7 +752,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                   ) : (
                                     <ChevronDown className="w-4 h-4" aria-hidden="true" />
                                   )}
-                                </button>
+                                </Button>
                                 {d.vincularExpandido && (
                                   <div className="mt-2">
                                     <VinculoContratoSelector

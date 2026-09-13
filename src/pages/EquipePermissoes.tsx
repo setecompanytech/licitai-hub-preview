@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { nomeExibido, iniciaisDe, type MembroExibivel } from '@/lib/equipe/nomeExibido';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  Shield, ShieldAlert, Users, Save, RotateCcw, ChevronLeft,
+  Shield, ShieldAlert, Users, Save, RotateCcw,
   AlertTriangle, CheckCircle2, Settings, DollarSign, Briefcase,
   Truck, Scale, Calculator, Search, FileText,
 } from 'lucide-react';
@@ -214,7 +217,7 @@ export default function EquipePermissoes() {
   if (permLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-center text-muted-foreground">Verificando permissões…</div>
+        <div className="p-8 text-center text-base text-muted-foreground">Verificando permissões…</div>
       </AppLayout>
     );
   }
@@ -225,42 +228,38 @@ export default function EquipePermissoes() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <Link to="/equipe" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2">
-              <ChevronLeft className="w-3 h-3" /> Voltar para Equipe
-            </Link>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Shield className="w-5 h-5 text-muted-foreground" />
-              Administração de Papéis & Permissões
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
-              Empresa: {empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || '—'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetAll}
-              disabled={saving || dirtyIds.length === 0}
-            >
-              <RotateCcw className="w-4 h-4 mr-1.5" />
-              Descartar
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveAll}
-              disabled={saving || dirtyIds.length === 0}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              Salvar {dirtyIds.length > 0 && `(${dirtyIds.length})`}
-            </Button>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <CabecalhoPagina
+          className="mb-0"
+          icone={<Shield />}
+          titulo="Papéis e permissões"
+          descricao={`Papel, setor e módulos de cada membro de ${empresaAtiva?.nome_fantasia || empresaAtiva?.razao_social || 'sua empresa'}`}
+          trilha={[
+            { rotulo: 'Painel', para: '/dashboard' },
+            { rotulo: 'Configuração' },
+            { rotulo: 'Equipe', para: '/equipe' },
+            { rotulo: 'Papéis e permissões' },
+          ]}
+          acoes={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleResetAll}
+                disabled={saving || dirtyIds.length === 0}
+              >
+                <RotateCcw aria-hidden="true" />
+                Descartar
+              </Button>
+              <Button
+                onClick={handleSaveAll}
+                disabled={saving || dirtyIds.length === 0}
+              >
+                <Save aria-hidden="true" />
+                Salvar {dirtyIds.length > 0 && `(${dirtyIds.length})`}
+              </Button>
+            </>
+          }
+        />
 
         {/* Validation banner */}
         {adminCount === 0 && (
@@ -272,7 +271,7 @@ export default function EquipePermissoes() {
           </Alert>
         )}
         {adminCount === 1 && (
-          <Alert>
+          <Alert variant="warning">
             <AlertTriangle className="w-4 h-4" />
             <AlertDescription>
               Existe apenas <strong>1 administrador</strong> na empresa. Recomenda-se manter pelo menos 2 para redundância.
@@ -281,10 +280,10 @@ export default function EquipePermissoes() {
         )}
 
         {/* Filter */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Filtrar por setor:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="filtro-setor" className="text-sm text-muted-foreground">Filtrar por setor:</label>
           <Select value={filterSetor} onValueChange={setFilterSetor}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
+            <SelectTrigger id="filtro-setor" className="w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -294,8 +293,8 @@ export default function EquipePermissoes() {
               ))}
             </SelectContent>
           </Select>
-          <Badge variant="outline" className="text-xs ml-auto">
-            <Users className="w-3 h-3 mr-1" /> {filteredMembros.length} membro(s)
+          <Badge variant="muted" className="ml-auto gap-1">
+            <Users className="h-3 w-3" aria-hidden="true" /> {filteredMembros.length} membro(s)
           </Badge>
         </div>
 
@@ -308,11 +307,20 @@ export default function EquipePermissoes() {
           {/* TAB: Editor detalhado por membro */}
           <TabsContent value="lista" className="space-y-3 mt-4">
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Carregando…</div>
+              <div className="py-8 text-center text-base text-muted-foreground">Carregando…</div>
             ) : filteredMembros.length === 0 ? (
-              <div className="bg-card rounded-xl border border-border/50 p-8 text-center text-muted-foreground">
-                Nenhum membro neste filtro.
-              </div>
+              <section className="rounded-lg border border-border bg-card shadow-sm">
+                <EstadoVazio
+                  icone={<Users />}
+                  titulo="Nenhum membro neste filtro"
+                  descricao="Troque o setor selecionado para ver outros membros da equipe."
+                  acao={
+                    <Button variant="outline" onClick={() => setFilterSetor('todos')}>
+                      Ver todos os setores
+                    </Button>
+                  }
+                />
+              </section>
             ) : (
               filteredMembros.map((m) => {
                 const d = drafts[m.id];
@@ -326,43 +334,44 @@ export default function EquipePermissoes() {
                 return (
                   <div
                     key={m.id}
-                    className={`bg-card rounded-lg border p-4 transition-colors ${
-                      isDirty ? 'border-warning/60 bg-warning/5' : 'border-border/50'
-                    }`}
+                    className={cn(
+                      'rounded-lg border bg-card p-4 shadow-sm transition-colors',
+                      isDirty ? 'border-warning-line bg-warning-tint' : 'border-border',
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs flex-shrink-0">
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
                           {iniciaisDe(m as MembroExibivel)}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm truncate">{nomeExibido(m as MembroExibivel)}</span>
-                            {isMe && <Badge variant="outline" className="text-xs">Você</Badge>}
-                            {isDirty && <Badge className="text-xs bg-warning text-warning-foreground">Alterado</Badge>}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-base font-semibold text-foreground">{nomeExibido(m as MembroExibivel)}</span>
+                            {isMe && <Badge variant="info">Você</Badge>}
+                            {isDirty && <Badge variant="warning">Alterado</Badge>}
                           </div>
-                          {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
+                          {m.email && <p className="truncate text-sm text-muted-foreground">{m.email}</p>}
                         </div>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs flex-shrink-0"
+                        className="flex-shrink-0"
                         onClick={() => applySetorDefaults(m.id)}
                       >
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        <CheckCircle2 aria-hidden="true" />
                         Aplicar padrão do setor
                       </Button>
                     </div>
 
                     {/* Papel + Setor */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+                        <label htmlFor={`papel-${m.id}`} className="text-sm font-semibold text-foreground">
                           Papel
                         </label>
                         <Select value={d.papel} onValueChange={(v) => updateDraft(m.id, { papel: v })}>
-                          <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectTrigger id={`papel-${m.id}`} className="mt-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -373,14 +382,14 @@ export default function EquipePermissoes() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+                        <label htmlFor={`setor-${m.id}`} className="text-sm font-semibold text-foreground">
                           Setor / Equipe
                         </label>
                         <Select
                           value={d.equipe}
                           onValueChange={(v) => updateDraft(m.id, { equipe: v as Setor })}
                         >
-                          <SelectTrigger className="h-8 text-xs mt-1">
+                          <SelectTrigger id={`setor-${m.id}`} className="mt-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -394,23 +403,24 @@ export default function EquipePermissoes() {
 
                     {/* Permissões granulares */}
                     <div>
-                      <label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
-                        Permissões de Módulos ({d.permissoes.length}/{MODULOS_SISTEMA.length})
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        Permissões de módulos ({d.permissoes.length}/{MODULOS_SISTEMA.length})
+                      </p>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {MODULOS_SISTEMA.map((mod) => {
                           const checked = d.permissoes.includes(mod.value);
                           const recomendado = mod.setores.includes(d.equipe);
                           return (
                             <label
                               key={mod.value}
-                              className={`flex items-start gap-2 rounded border px-2.5 py-2 cursor-pointer transition-colors ${
+                              className={cn(
+                                'flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 transition-colors',
                                 checked
-                                  ? 'border-accent bg-accent/10'
+                                  ? 'border-primary bg-primary-tint'
                                   : recomendado
-                                  ? 'border-dashed border-accent/40 hover:bg-muted/30'
-                                  : 'border-border hover:bg-muted/30'
-                              }`}
+                                  ? 'border-dashed border-primary hover:bg-muted'
+                                  : 'border-border hover:bg-muted',
+                              )}
                             >
                               <Checkbox
                                 checked={checked}
@@ -418,8 +428,8 @@ export default function EquipePermissoes() {
                                 className="mt-0.5"
                               />
                               <div className="min-w-0 flex-1">
-                                <div className="text-xs font-medium leading-tight">{mod.label}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                <div className="text-sm font-medium text-foreground">{mod.label}</div>
+                                <div className="mt-0.5 truncate text-xs text-muted-foreground">
                                   {mod.setores.join(', ')}
                                 </div>
                               </div>
@@ -428,8 +438,8 @@ export default function EquipePermissoes() {
                         })}
                       </div>
                       {moduloMismatch.length > 0 && (
-                        <p className="text-xs text-warning mt-2 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
+                        <p className="mt-2 flex items-center gap-1 text-sm text-warning-ink">
+                          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
                           {moduloMismatch.length} módulo(s) fora do escopo do setor "{d.equipe}".
                         </p>
                       )}
@@ -442,15 +452,15 @@ export default function EquipePermissoes() {
 
           {/* TAB: Matriz consolidada */}
           <TabsContent value="matriz" className="mt-4">
-            <div className="bg-card rounded-lg border border-border/50 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 border-b border-border/50">
+            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted">
                   <tr>
-                    <th className="text-left p-2 sticky left-0 bg-muted/40 whitespace-nowrap">Membro</th>
-                    <th className="text-left p-2 whitespace-nowrap">Setor</th>
-                    <th className="text-left p-2 whitespace-nowrap">Papel</th>
+                    <th className="sticky left-0 whitespace-nowrap bg-muted p-3 text-left text-sm font-semibold text-foreground">Membro</th>
+                    <th className="whitespace-nowrap p-3 text-left text-sm font-semibold text-foreground">Setor</th>
+                    <th className="whitespace-nowrap p-3 text-left text-sm font-semibold text-foreground">Papel</th>
                     {MODULOS_SISTEMA.map((mod) => (
-                      <th key={mod.value} className="text-center p-2 whitespace-nowrap">
+                      <th key={mod.value} className="whitespace-nowrap p-3 text-center text-sm font-semibold text-foreground">
                         {mod.label}
                       </th>
                     ))}
@@ -461,23 +471,24 @@ export default function EquipePermissoes() {
                     const d = drafts[m.id];
                     if (!d) return null;
                     return (
-                      <tr key={m.id} className="border-b border-border/40 hover:bg-muted/20">
-                        <td className="p-2 sticky left-0 bg-card whitespace-nowrap font-medium">
+                      <tr key={m.id} className="border-b border-border hover:bg-muted">
+                        <td className="sticky left-0 whitespace-nowrap bg-card p-3 font-medium text-foreground">
                           {nomeExibido(m as MembroExibivel)}
                         </td>
-                        <td className="p-2 whitespace-nowrap">
-                          <Badge variant="outline" className="text-xs">{d.equipe}</Badge>
+                        <td className="whitespace-nowrap p-3">
+                          <Badge variant="muted">{EQUIPES.find((e) => e.value === d.equipe)?.label ?? d.equipe}</Badge>
                         </td>
-                        <td className="p-2 whitespace-nowrap">
-                          <Badge variant="secondary" className="text-xs">{d.papel}</Badge>
+                        <td className="whitespace-nowrap p-3">
+                          <Badge variant="muted">{PAPEIS.find((p) => p.value === d.papel)?.label ?? d.papel}</Badge>
                         </td>
                         {MODULOS_SISTEMA.map((mod) => {
                           const checked = d.permissoes.includes(mod.value);
                           return (
-                            <td key={mod.value} className="text-center p-2">
+                            <td key={mod.value} className="p-3 text-center">
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={() => togglePermissao(m.id, mod.value)}
+                                aria-label={`${mod.label} para ${nomeExibido(m as MembroExibivel)}`}
                               />
                             </td>
                           );
@@ -488,7 +499,7 @@ export default function EquipePermissoes() {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="mt-2 text-xs text-muted-foreground">
               Marque/desmarque diretamente na matriz. As alterações ficam pendentes até clicar em "Salvar".
             </p>
           </TabsContent>

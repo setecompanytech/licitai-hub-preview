@@ -12,18 +12,19 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Pencil, Trash2, Search, MapPin, Building2, Tag, Shield,
   Bell, Mail, MessageSquare, Loader2, Save, Target, Flame,
-  Clock, Star, Globe, AlertTriangle, Zap, CheckCircle2,
-  SlidersHorizontal, X, BarChart3, Send, Eye, TrendingUp
+  Clock, Star, AlertTriangle, Zap, CheckCircle2,
+  SlidersHorizontal, X, BarChart3, Send, TrendingUp
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const UFS_BRASIL = [
@@ -40,12 +41,37 @@ const MODALIDADES = [
 
 const CORES_PERFIL = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-const CLASSIFICACAO_CONFIG: Record<string, { label: string; cor: string; icon: any }> = {
-  quente: { label: '🔥 Quente', cor: 'bg-destructive', icon: Flame },
-  urgente: { label: '⚡ Urgente', cor: 'bg-warning', icon: Clock },
-  premium: { label: '⭐ Premium', cor: 'bg-chart-5', icon: Star },
-  regional: { label: '📍 Regional', cor: 'bg-info', icon: MapPin },
-  normal: { label: '📋 Normal', cor: 'bg-muted', icon: Search },
+/** Legenda das classificações automáticas: a cor é reforço, o texto é a pista. */
+const CLASSIFICACAO_CONFIG: {
+  chave: string;
+  label: string;
+  variante: 'danger' | 'warning' | 'info' | 'muted' | 'outline';
+  icone: LucideIcon;
+  criterio: string;
+}[] = [
+  { chave: 'quente', label: 'Quente', variante: 'danger', icone: Flame, criterio: 'Score ≥ 80% e urgência ≥ 80%' },
+  { chave: 'urgente', label: 'Urgente', variante: 'warning', icone: Clock, criterio: 'Abertura em até 3 dias' },
+  { chave: 'premium', label: 'Premium', variante: 'info', icone: Star, criterio: 'Score ≥ 70%' },
+  { chave: 'regional', label: 'Regional', variante: 'muted', icone: MapPin, criterio: 'Match geográfico e score ≥ 50%' },
+  { chave: 'normal', label: 'Normal', variante: 'outline', icone: Search, criterio: 'Demais processos que passam nos filtros' },
+];
+
+/** Contagem de disparos e classificações de um perfil, na aba Analytics. */
+type EstatisticaPerfil = {
+  total: number; enviado: number; pendente: number; falhou: number;
+  quente: number; urgente: number; premium: number;
+};
+
+const ESTATISTICA_ZERADA: EstatisticaPerfil = {
+  total: 0, enviado: 0, pendente: 0, falhou: 0, quente: 0, urgente: 0, premium: 0,
+};
+
+/** O que a função `calcular-scores` devolve. */
+type ResultadoScores = {
+  total_perfis?: number;
+  total_licitacoes?: number;
+  scores_calculados?: number;
+  dispatches_criados?: number;
 };
 
 type PerfilAlerta = {
@@ -127,9 +153,9 @@ export default function PerfisAlerta() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [calculando, setCalculando] = useState(false);
-  const [scoreResults, setScoreResults] = useState<any>(null);
+  const [scoreResults, setScoreResults] = useState<ResultadoScores | null>(null);
   const [analyticsTab, setAnalyticsTab] = useState<'perfis' | 'analytics'>('perfis');
-  const [dispatchStats, setDispatchStats] = useState<Record<string, { total: number; enviado: number; pendente: number; falhou: number; quente: number; urgente: number; premium: number }>>({});
+  const [dispatchStats, setDispatchStats] = useState<Record<string, EstatisticaPerfil>>({});
   const [loadingStats, setLoadingStats] = useState(false);
 
   // Temp input states for array fields
@@ -148,7 +174,7 @@ export default function PerfisAlerta() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
-    setPerfis((data as any) || []);
+    setPerfis((data as unknown as PerfilAlerta[]) || []);
     setLoading(false);
   }, [user]);
 
@@ -170,7 +196,7 @@ export default function PerfisAlerta() {
         .select('perfil_alerta_id, classificacao')
         .eq('user_id', user.id);
 
-      const stats: Record<string, any> = {};
+      const stats: Record<string, EstatisticaPerfil> = {};
       for (const p of perfis) {
         const pDispatches = (dispatches || []).filter(d => d.perfil_alerta_id === p.id);
         const pScores = (scores || []).filter(s => s.perfil_alerta_id === p.id);
@@ -352,7 +378,7 @@ export default function PerfisAlerta() {
               <Badge variant="muted">{scoreResults.total_licitacoes} licitações</Badge>
               <span aria-hidden="true">=</span>
               <Badge variant="success">{scoreResults.scores_calculados} scores</Badge>
-              {scoreResults.dispatches_criados > 0 && (
+              {(scoreResults.dispatches_criados ?? 0) > 0 && (
                 <>
                   <span aria-hidden="true">·</span>
                   <Badge variant="info">{scoreResults.dispatches_criados} alertas</Badge>
@@ -364,15 +390,22 @@ export default function PerfisAlerta() {
 
         <Tabs value={analyticsTab} onValueChange={(v) => setAnalyticsTab(v as 'perfis' | 'analytics')} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="perfis"><Target className="w-4 h-4 mr-1" /> Perfis</TabsTrigger>
-            <TabsTrigger value="analytics"><BarChart3 className="w-4 h-4 mr-1" /> Analytics</TabsTrigger>
+            <TabsTrigger value="perfis" className="gap-2">
+              <Target className="h-4 w-4" aria-hidden="true" />
+              Perfis
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" aria-hidden="true" />
+              Analytics
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="perfis">
             {/* Lista de perfis */}
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <div role="status" aria-busy="true" className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+                <span className="sr-only">Carregando perfis de alerta</span>
               </div>
             ) : perfis.length === 0 ? (
               <Card>
@@ -384,23 +417,36 @@ export default function PerfisAlerta() {
                 />
               </Card>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {perfis.map(p => (
-                  <Card key={p.id} className={`relative p-6 transition-all ${!p.ativo ? 'opacity-60' : ''}`}>
-                    <div className="absolute top-3 right-3 flex items-center gap-1">
-                      <Switch checked={p.ativo} onCheckedChange={() => handleToggleAtivo(p.id, p.ativo)} />
+                  <Card key={p.id} className={cn('relative p-6 transition-colors', !p.ativo && 'opacity-60')}>
+                    <div className="absolute right-4 top-4 flex items-center gap-2">
+                      <Switch
+                        id={`perfil-ativo-${p.id}`}
+                        checked={p.ativo}
+                        onCheckedChange={() => handleToggleAtivo(p.id, p.ativo)}
+                      />
+                      <Label htmlFor={`perfil-ativo-${p.id}`} className="sr-only">
+                        {p.ativo ? `Desativar o perfil ${p.nome}` : `Ativar o perfil ${p.nome}`}
+                      </Label>
                     </div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: p.cor + '20' }}>
-                        <Target className="w-4 h-4" style={{ color: p.cor }} />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-semibold">{p.nome}</h2>
+                    <div className="mb-3 flex items-center gap-3 pr-14">
+                      {/* A cor é dado do usuário (gravada na linha do perfil), por
+                          isso vem de `style` — o resto do cartão é token. */}
+                      <span
+                        aria-hidden="true"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
+                        style={{ backgroundColor: p.cor + '20' }}
+                      >
+                        <Target className="h-4 w-4" style={{ color: p.cor }} />
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-base font-semibold text-foreground">{p.nome}</h2>
                         <p className="text-xs text-muted-foreground">{p.frequencia}</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-1 mb-3">
+                    <div className="mb-3 flex flex-wrap gap-2">
                       {p.palavras_chave?.slice(0, 3).map(kw => (
                         <Badge key={kw} variant="muted">{kw}</Badge>
                       ))}
@@ -409,19 +455,31 @@ export default function PerfisAlerta() {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-1 mb-3 text-xs text-muted-foreground">
-                      {p.ufs?.length > 0 && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{p.ufs.slice(0, 3).join(', ')}</span>}
-                      {p.modalidades?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Shield className="w-3 h-3" />{p.modalidades.length} mod.</span>}
-                      {p.cnaes?.length > 0 && <span className="flex items-center gap-0.5 ml-2"><Tag className="w-3 h-3" />{p.cnaes.length} CNAEs</span>}
+                    <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {p.ufs?.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" aria-hidden="true" />{p.ufs.slice(0, 3).join(', ')}
+                        </span>
+                      )}
+                      {p.modalidades?.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Shield className="h-3 w-3" aria-hidden="true" />{p.modalidades.length} mod.
+                        </span>
+                      )}
+                      {p.cnaes?.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" aria-hidden="true" />{p.cnaes.length} CNAEs
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-1 mb-3">
-                      {p.canal_email && <Badge variant="info" className="gap-1"><Mail className="w-3 h-3" aria-hidden="true" />E-mail</Badge>}
-                      {p.canal_whatsapp && <Badge variant="info" className="gap-1"><MessageSquare className="w-3 h-3" aria-hidden="true" />WhatsApp</Badge>}
-                      {p.canal_sistema && <Badge variant="info" className="gap-1"><Bell className="w-3 h-3" aria-hidden="true" />Sistema</Badge>}
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {p.canal_email && <Badge variant="info" className="gap-1"><Mail className="h-3 w-3" aria-hidden="true" />E-mail</Badge>}
+                      {p.canal_whatsapp && <Badge variant="info" className="gap-1"><MessageSquare className="h-3 w-3" aria-hidden="true" />WhatsApp</Badge>}
+                      {p.canal_sistema && <Badge variant="info" className="gap-1"><Bell className="h-3 w-3" aria-hidden="true" />Sistema</Badge>}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleEditar(p)} className="flex-1">
                         <Pencil aria-hidden="true" /> Editar
                       </Button>
@@ -436,29 +494,36 @@ export default function PerfisAlerta() {
 
             {/* Legenda de classificações */}
             <Card className="mt-6 p-6">
-              <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Classificação automática de licitações
               </h2>
-              <div className="flex flex-wrap gap-4">
-                {Object.entries(CLASSIFICACAO_CONFIG).map(([key, cfg]) => (
-                  <div key={key} className="flex items-center gap-2 text-sm">
-                    <span className={`h-3 w-3 rounded-full ${cfg.cor}`} aria-hidden="true" />
-                    <span>{cfg.label}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                🔥 Quente: Score ≥80% + Urgência ≥80% · ⚡ Urgente: Abertura ≤3 dias · ⭐ Premium: Score ≥70% · 📍 Regional: Match geográfico + Score ≥50%
+              <p className="mb-4 text-sm text-muted-foreground">
+                O selo que cada processo recebe depois do cálculo de score, e o critério que o define
               </p>
+              <ul className="flex flex-col gap-3">
+                {CLASSIFICACAO_CONFIG.map(cfg => {
+                  const Icone = cfg.icone;
+                  return (
+                    <li key={cfg.chave} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <Badge variant={cfg.variante} className="gap-1">
+                        <Icone className="h-3 w-3" aria-hidden="true" />
+                        {cfg.label}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{cfg.criterio}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </Card>
           </TabsContent>
 
           <TabsContent value="analytics">
             <div className="space-y-4">
             {loadingStats ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <div role="status" aria-busy="true" className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+                <span className="sr-only">Carregando o desempenho dos perfis</span>
               </div>
             ) : perfis.length === 0 ? (
               <Card>
@@ -475,26 +540,28 @@ export default function PerfisAlerta() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <Card className="p-6 text-center">
                     <Target className="mx-auto mb-1 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                    <p className="text-[2rem] font-bold leading-10 tabular-nums">{perfis.length}</p>
-                    <p className="text-sm text-muted-foreground">Perfis ativos</p>
+                    <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{perfis.length}</p>
+                    {/* O número conta TODOS os perfis, inclusive os desligados —
+                        o rótulo diz o que ele mede. */}
+                    <p className="text-sm text-muted-foreground">Perfis cadastrados</p>
                   </Card>
                   <Card className="p-6 text-center">
                     <Send className="mx-auto mb-1 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                    <p className="text-[2rem] font-bold leading-10 tabular-nums">
+                    <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.total, 0)}
                     </p>
                     <p className="text-sm text-muted-foreground">Alertas totais</p>
                   </Card>
                   <Card className="p-6 text-center">
                     <CheckCircle2 className="mx-auto mb-1 h-5 w-5 text-success" aria-hidden="true" />
-                    <p className="text-[2rem] font-bold leading-10 tabular-nums">
+                    <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.enviado, 0)}
                     </p>
                     <p className="text-sm text-muted-foreground">Enviados</p>
                   </Card>
                   <Card className="p-6 text-center">
                     <Flame className="mx-auto mb-1 h-5 w-5 text-destructive" aria-hidden="true" />
-                    <p className="text-[2rem] font-bold leading-10 tabular-nums">
+                    <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">
                       {Object.values(dispatchStats).reduce((sum, s) => sum + s.quente, 0)}
                     </p>
                     <p className="text-sm text-muted-foreground">Oportunidades quentes</p>
@@ -502,57 +569,53 @@ export default function PerfisAlerta() {
                 </div>
 
                 {/* Per-profile analytics */}
-                <h2 className="mt-4 flex items-center gap-2 text-lg font-semibold">
-                  <TrendingUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                <h2 className="mt-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Desempenho por perfil
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {perfis.map(p => {
-                    const stats = dispatchStats[p.id] || { total: 0, enviado: 0, pendente: 0, falhou: 0, quente: 0, urgente: 0, premium: 0 };
+                    const stats = dispatchStats[p.id] || ESTATISTICA_ZERADA;
+                    const celulas: { rotulo: string; valor: number; classe?: string }[] = [
+                      { rotulo: 'Alertas', valor: stats.total },
+                      { rotulo: 'Enviados', valor: stats.enviado, classe: 'text-success-ink' },
+                      { rotulo: 'Pendentes', valor: stats.pendente, classe: 'text-warning-ink' },
+                      { rotulo: 'Falhas', valor: stats.falhou, classe: 'text-destructive-ink' },
+                      { rotulo: 'Quentes', valor: stats.quente },
+                      { rotulo: 'Urgentes', valor: stats.urgente },
+                      { rotulo: 'Premium', valor: stats.premium },
+                    ];
                     return (
                       <Card key={p.id} className="p-6">
-                        <div className="mb-3 flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: p.cor + '20' }}>
-                            <Target className="w-3 h-3" style={{ color: p.cor }} />
-                          </div>
-                          <span className="text-base font-semibold">{p.nome}</span>
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                          {/* Cor do perfil: dado do usuário, por isso `style`. */}
+                          <span
+                            aria-hidden="true"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+                            style={{ backgroundColor: p.cor + '20' }}
+                          >
+                            <Target className="h-3 w-3" style={{ color: p.cor }} />
+                          </span>
+                          <span className="text-base font-semibold text-foreground">{p.nome}</span>
                           {!p.ativo && <Badge variant="muted">Inativo</Badge>}
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums">{stats.total}</p>
-                            <p className="text-xs text-muted-foreground">Alertas</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums text-success">{stats.enviado}</p>
-                            <p className="text-xs text-muted-foreground">Enviados</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums text-warning-ink">{stats.pendente}</p>
-                            <p className="text-xs text-muted-foreground">Pendentes</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums text-destructive">{stats.falhou}</p>
-                            <p className="text-xs text-muted-foreground">Falhas</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums">🔥 {stats.quente}</p>
-                            <p className="text-xs text-muted-foreground">Quentes</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums">⚡ {stats.urgente}</p>
-                            <p className="text-xs text-muted-foreground">Urgentes</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-semibold tabular-nums">⭐ {stats.premium}</p>
-                            <p className="text-xs text-muted-foreground">Premium</p>
-                          </div>
+                        <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-4 lg:grid-cols-7">
+                          {celulas.map(c => (
+                            <div key={c.rotulo}>
+                              <p className={cn('text-lg font-semibold tabular-nums text-foreground', c.classe)}>{c.valor}</p>
+                              <p className="text-xs text-muted-foreground">{c.rotulo}</p>
+                            </div>
+                          ))}
                         </div>
                         {stats.total > 0 && (
-                          <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden flex">
-                            <div className="bg-success h-full" style={{ width: `${(stats.enviado / stats.total) * 100}%` }} />
-                            <div className="bg-warning h-full" style={{ width: `${(stats.pendente / stats.total) * 100}%` }} />
-                            <div className="bg-destructive h-full" style={{ width: `${(stats.falhou / stats.total) * 100}%` }} />
+                          <div
+                            role="img"
+                            aria-label={`${stats.enviado} enviados, ${stats.pendente} pendentes e ${stats.falhou} falhas de ${stats.total} alertas`}
+                            className="mt-4 flex h-2 overflow-hidden rounded-full bg-muted"
+                          >
+                            <div className="h-full bg-success" style={{ width: `${(stats.enviado / stats.total) * 100}%` }} />
+                            <div className="h-full bg-warning" style={{ width: `${(stats.pendente / stats.total) * 100}%` }} />
+                            <div className="h-full bg-destructive" style={{ width: `${(stats.falhou / stats.total) * 100}%` }} />
                           </div>
                         )}
                       </Card>
@@ -575,27 +638,41 @@ export default function PerfisAlerta() {
 
           {editando && (
             <Tabs defaultValue="filtros" className="w-full">
-              <TabsList className="mb-4 w-full justify-start">
-                <TabsTrigger value="filtros" className="gap-1"><Search className="w-3.5 h-3.5" aria-hidden="true" />Filtros</TabsTrigger>
-                <TabsTrigger value="regiao" className="gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden="true" />Região</TabsTrigger>
-                <TabsTrigger value="orgaos" className="gap-1"><Building2 className="w-3.5 h-3.5" aria-hidden="true" />Órgãos</TabsTrigger>
-                <TabsTrigger value="pesos" className="gap-1"><SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />Pesos</TabsTrigger>
-                <TabsTrigger value="canais" className="gap-1"><Bell className="w-3.5 h-3.5" aria-hidden="true" />Canais</TabsTrigger>
+              {/* O TabsList já embrulha sozinho — a fila de 5 abas quebra em
+                  duas linhas no celular sem precisar de largura forçada. */}
+              <TabsList className="mb-4">
+                <TabsTrigger value="filtros" className="gap-2"><Search className="h-4 w-4" aria-hidden="true" />Filtros</TabsTrigger>
+                <TabsTrigger value="regiao" className="gap-2"><MapPin className="h-4 w-4" aria-hidden="true" />Região</TabsTrigger>
+                <TabsTrigger value="orgaos" className="gap-2"><Building2 className="h-4 w-4" aria-hidden="true" />Órgãos</TabsTrigger>
+                <TabsTrigger value="pesos" className="gap-2"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Pesos</TabsTrigger>
+                <TabsTrigger value="canais" className="gap-2"><Bell className="h-4 w-4" aria-hidden="true" />Canais</TabsTrigger>
               </TabsList>
 
               {/* Dados básicos */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-sm">Nome do Perfil</Label>
-                  <Input value={editando.nome} onChange={e => setEditando({ ...editando, nome: e.target.value })} className="mt-1" placeholder="Ex: Merenda Escolar" />
+                  <Label htmlFor="perfil-nome" className="mb-2 block text-sm">Nome do perfil</Label>
+                  <Input id="perfil-nome" value={editando.nome} onChange={e => setEditando({ ...editando, nome: e.target.value })} placeholder="Ex: Merenda Escolar" />
                 </div>
                 <div>
-                  <Label className="text-sm">Cor</Label>
-                  <div className="flex gap-1 mt-1">
+                  <span className="mb-2 block text-sm font-medium">Cor</span>
+                  {/* A cor é dado do usuário (fica gravada na linha do perfil), por
+                      isso vem de `style` e não de token — o contorno e o foco, não. */}
+                  <div className="flex flex-wrap gap-2">
                     {CORES_PERFIL.map(cor => (
-                      <button key={cor} onClick={() => setEditando({ ...editando, cor })}
-                        className={`w-7 h-7 rounded-lg border-2 transition-all ${editando.cor === cor ? 'border-foreground scale-110' : 'border-transparent'}`}
-                        style={{ backgroundColor: cor }} />
+                      <button
+                        key={cor}
+                        type="button"
+                        aria-label={`Usar a cor ${cor}`}
+                        aria-pressed={editando.cor === cor}
+                        onClick={() => setEditando({ ...editando, cor })}
+                        className={cn(
+                          'h-8 w-8 rounded-md border-2 transition-all',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          editando.cor === cor ? 'border-foreground scale-110' : 'border-transparent',
+                        )}
+                        style={{ backgroundColor: cor }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -605,124 +682,148 @@ export default function PerfisAlerta() {
               <TabsContent value="filtros" className="space-y-4">
                 {/* CNAEs */}
                 <div>
-                  <Label className="text-sm font-semibold">CNAEs</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempCnae} onChange={e => setTempCnae(e.target.value)} placeholder="Ex: 4751-2/01" 
+                  <Label htmlFor="perfil-cnae" className="mb-2 block text-sm font-semibold">CNAEs</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-cnae" value={tempCnae} onChange={e => setTempCnae(e.target.value)} placeholder="Ex: 4751-2/01"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('cnaes', tempCnae, setTempCnae))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('cnaes', tempCnae, setTempCnae)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar CNAE" onClick={() => addToArray('cnaes', tempCnae, setTempCnae)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.cnaes?.map((c, i) => (
-                      <Badge key={i} variant="muted" className="cursor-pointer gap-1" onClick={() => removeFromArray('cnaes', i)}>
-                        {c} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover o CNAE ${c}`} onClick={() => removeFromArray('cnaes', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="muted" className="gap-1">
+                          {c} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Palavras-chave */}
                 <div>
-                  <Label className="text-sm font-semibold text-success-ink">Palavras-chave (positivas)</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempPalavra} onChange={e => setTempPalavra(e.target.value)} placeholder="Ex: material de escritório" 
+                  <Label htmlFor="perfil-palavra" className="mb-2 block text-sm font-semibold">Palavras-chave (positivas)</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-palavra" value={tempPalavra} onChange={e => setTempPalavra(e.target.value)} placeholder="Ex: material de escritório"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('palavras_chave', tempPalavra, setTempPalavra))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('palavras_chave', tempPalavra, setTempPalavra)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar palavra-chave" onClick={() => addToArray('palavras_chave', tempPalavra, setTempPalavra)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.palavras_chave?.map((kw, i) => (
-                      <Badge key={i} variant="success" className="cursor-pointer gap-1" onClick={() => removeFromArray('palavras_chave', i)}>
-                        {kw} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover a palavra-chave ${kw}`} onClick={() => removeFromArray('palavras_chave', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="success" className="gap-1">
+                          {kw} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Palavras negativas */}
                 <div>
-                  <Label className="text-sm font-semibold text-destructive-ink">Palavras negativas (excluir)</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempNeg} onChange={e => setTempNeg(e.target.value)} placeholder="Ex: obra, construção" 
+                  <Label htmlFor="perfil-negativa" className="mb-2 block text-sm font-semibold">Palavras negativas (excluir)</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-negativa" value={tempNeg} onChange={e => setTempNeg(e.target.value)} placeholder="Ex: obra, construção"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('palavras_negativas', tempNeg, setTempNeg))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('palavras_negativas', tempNeg, setTempNeg)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar palavra negativa" onClick={() => addToArray('palavras_negativas', tempNeg, setTempNeg)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.palavras_negativas?.map((neg, i) => (
-                      <Badge key={i} variant="danger" className="cursor-pointer gap-1" onClick={() => removeFromArray('palavras_negativas', i)}>
-                        {neg} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover a palavra negativa ${neg}`} onClick={() => removeFromArray('palavras_negativas', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="danger" className="gap-1">
+                          {neg} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Modalidades */}
                 <div>
-                  <Label className="text-sm font-semibold">Modalidades</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <span className="mb-2 block text-sm font-semibold">Modalidades</span>
+                  <div className="flex flex-wrap gap-2">
                     {MODALIDADES.map(mod => (
-                      <Badge key={mod} variant={editando.modalidades?.includes(mod) ? 'default' : 'outline'}
-                        className="cursor-pointer transition-colors"
-                        onClick={() => toggleInArray('modalidades', mod)}>
-                        {mod}
-                      </Badge>
+                      <button
+                        key={mod}
+                        type="button"
+                        aria-pressed={editando.modalidades?.includes(mod)}
+                        onClick={() => toggleInArray('modalidades', mod)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <Badge variant={editando.modalidades?.includes(mod) ? 'default' : 'outline'} className="transition-colors">
+                          {mod}
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Valor */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-sm">Valor Mínimo (R$)</Label>
-                    <MoneyInput value={editando.valor_minimo ?? 0} className="mt-1"
+                    <Label htmlFor="perfil-valor-min" className="mb-2 block text-sm">Valor mínimo (R$)</Label>
+                    <MoneyInput id="perfil-valor-min" value={editando.valor_minimo ?? 0}
                       onValueChange={v => setEditando({ ...editando, valor_minimo: v || null })} />
                   </div>
                   <div>
-                    <Label className="text-sm">Valor Máximo (R$)</Label>
-                    <MoneyInput value={editando.valor_maximo ?? 0} className="mt-1"
+                    <Label htmlFor="perfil-valor-max" className="mb-2 block text-sm">Valor máximo (R$)</Label>
+                    <MoneyInput id="perfil-valor-max" value={editando.valor_maximo ?? 0}
                       onValueChange={v => setEditando({ ...editando, valor_maximo: v || null })} />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Switch checked={editando.exclusividade_meepp} onCheckedChange={v => setEditando({ ...editando, exclusividade_meepp: v })} />
-                  <Label className="text-sm">Priorizar licitações exclusivas ME/EPP</Label>
+                  <Switch id="perfil-meepp" checked={editando.exclusividade_meepp} onCheckedChange={v => setEditando({ ...editando, exclusividade_meepp: v })} />
+                  <Label htmlFor="perfil-meepp" className="text-sm">Priorizar licitações exclusivas ME/EPP</Label>
                 </div>
               </TabsContent>
 
               {/* Tab: Região */}
               <TabsContent value="regiao" className="space-y-4">
                 <div>
-                  <Label className="text-sm font-semibold">UFs de Interesse</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <span className="mb-2 block text-sm font-semibold">UFs de interesse</span>
+                  <div className="flex flex-wrap gap-2">
                     {UFS_BRASIL.map(uf => (
-                      <Badge key={uf} variant={editando.ufs?.includes(uf) ? 'default' : 'outline'}
-                        className="w-10 cursor-pointer justify-center"
-                        onClick={() => toggleInArray('ufs', uf)}>
-                        {uf}
-                      </Badge>
+                      <button
+                        key={uf}
+                        type="button"
+                        aria-pressed={editando.ufs?.includes(uf)}
+                        onClick={() => toggleInArray('ufs', uf)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <Badge variant={editando.ufs?.includes(uf) ? 'default' : 'outline'} className="w-10 justify-center">
+                          {uf}
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-semibold">Municípios Prioritários</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempMunicipio} onChange={e => setTempMunicipio(e.target.value)} placeholder="Ex: Belém, São Paulo" 
+                  <Label htmlFor="perfil-municipio" className="mb-2 block text-sm font-semibold">Municípios prioritários</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-municipio" value={tempMunicipio} onChange={e => setTempMunicipio(e.target.value)} placeholder="Ex: Belém, São Paulo"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('municipios', tempMunicipio, setTempMunicipio))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('municipios', tempMunicipio, setTempMunicipio)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar município" onClick={() => addToArray('municipios', tempMunicipio, setTempMunicipio)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.municipios?.map((m, i) => (
-                      <Badge key={i} variant="muted" className="cursor-pointer gap-1" onClick={() => removeFromArray('municipios', i)}>
-                        {m} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover o município ${m}`} onClick={() => removeFromArray('municipios', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="muted" className="gap-1">
+                          {m} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -731,37 +832,43 @@ export default function PerfisAlerta() {
               {/* Tab: Órgãos */}
               <TabsContent value="orgaos" className="space-y-4">
                 <div>
-                  <Label className="text-sm font-semibold text-success-ink">Órgãos Favoritos</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempOrgaoFav} onChange={e => setTempOrgaoFav(e.target.value)} placeholder="Ex: Ministério da Saúde" 
+                  <Label htmlFor="perfil-orgao-fav" className="mb-2 block text-sm font-semibold">Órgãos favoritos</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-orgao-fav" value={tempOrgaoFav} onChange={e => setTempOrgaoFav(e.target.value)} placeholder="Ex: Ministério da Saúde"
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('orgaos_favoritos', tempOrgaoFav, setTempOrgaoFav))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('orgaos_favoritos', tempOrgaoFav, setTempOrgaoFav)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar órgão favorito" onClick={() => addToArray('orgaos_favoritos', tempOrgaoFav, setTempOrgaoFav)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.orgaos_favoritos?.map((o, i) => (
-                      <Badge key={i} variant="success" className="cursor-pointer gap-1" onClick={() => removeFromArray('orgaos_favoritos', i)}>
-                        {o} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover o órgão favorito ${o}`} onClick={() => removeFromArray('orgaos_favoritos', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="success" className="gap-1">
+                          {o} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-semibold text-destructive-ink">Órgãos Bloqueados</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={tempOrgaoBlock} onChange={e => setTempOrgaoBlock(e.target.value)} placeholder="Ex: Prefeitura de..." 
+                  <Label htmlFor="perfil-orgao-bloq" className="mb-2 block text-sm font-semibold">Órgãos bloqueados</Label>
+                  <div className="flex gap-2">
+                    <Input id="perfil-orgao-bloq" value={tempOrgaoBlock} onChange={e => setTempOrgaoBlock(e.target.value)} placeholder="Ex: Prefeitura de..."
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addToArray('orgaos_bloqueados', tempOrgaoBlock, setTempOrgaoBlock))} />
-                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar item" onClick={() => addToArray('orgaos_bloqueados', tempOrgaoBlock, setTempOrgaoBlock)}>
+                    <Button variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Adicionar órgão bloqueado" onClick={() => addToArray('orgaos_bloqueados', tempOrgaoBlock, setTempOrgaoBlock)}>
                       <Plus aria-hidden="true" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {editando.orgaos_bloqueados?.map((o, i) => (
-                      <Badge key={i} variant="danger" className="cursor-pointer gap-1" onClick={() => removeFromArray('orgaos_bloqueados', i)}>
-                        {o} <X className="w-3 h-3" />
-                      </Badge>
+                      <button key={i} type="button" aria-label={`Remover o órgão bloqueado ${o}`} onClick={() => removeFromArray('orgaos_bloqueados', i)}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <Badge variant="danger" className="gap-1">
+                          {o} <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -779,22 +886,26 @@ export default function PerfisAlerta() {
                   { key: 'peso_valor' as const, label: 'Faixa de Valor', icon: Target },
                   { key: 'peso_urgencia' as const, label: 'Urgência', icon: Clock },
                 ].map(({ key, label, icon: Icon }) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label className="flex items-center gap-1.5 text-sm"><Icon className="w-3.5 h-3.5 text-muted-foreground" />{label}</Label>
-                      <span className="text-sm font-semibold tabular-nums">{editando[key]}%</span>
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <span id={`rotulo-${key}`} className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{label}
+                      </span>
+                      <span className="text-sm font-semibold tabular-nums text-foreground">{editando[key]}%</span>
                     </div>
-                    <Slider value={[editando[key]]} min={0} max={100} step={5}
+                    <Slider aria-labelledby={`rotulo-${key}`} value={[editando[key]]} min={0} max={100} step={5}
                       onValueChange={([v]) => setEditando({ ...editando, [key]: v })} />
                   </div>
                 ))}
 
-                <div className="rounded-md bg-muted p-3 text-sm">
-                  <strong>Soma atual:</strong>{' '}
-                  {editando.peso_cnae + editando.peso_palavra_chave + editando.peso_regiao + editando.peso_modalidade + editando.peso_valor + editando.peso_urgencia}%
+                <div className="rounded-md border border-border bg-muted p-3 text-sm text-foreground">
+                  <strong className="font-semibold">Soma atual:</strong>{' '}
+                  <span className="tabular-nums">
+                    {editando.peso_cnae + editando.peso_palavra_chave + editando.peso_regiao + editando.peso_modalidade + editando.peso_valor + editando.peso_urgencia}%
+                  </span>
                   {(editando.peso_cnae + editando.peso_palavra_chave + editando.peso_regiao + editando.peso_modalidade + editando.peso_valor + editando.peso_urgencia) !== 100 && (
-                    <span className="ml-2 text-warning-ink">
-                      <AlertTriangle className="w-3 h-3 inline" /> Recomendado: 100%
+                    <span className="ml-2 inline-flex items-center gap-1 text-warning-ink">
+                      <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Recomendado: 100%
                     </span>
                   )}
                 </div>
@@ -803,38 +914,38 @@ export default function PerfisAlerta() {
               {/* Tab: Canais */}
               <TabsContent value="canais" className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <Label className="text-sm">E-mail</Label>
+                      <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <Label htmlFor="perfil-canal-email" className="text-sm font-medium">E-mail</Label>
                     </div>
-                    <Switch checked={editando.canal_email} onCheckedChange={v => setEditando({ ...editando, canal_email: v })} />
+                    <Switch id="perfil-canal-email" checked={editando.canal_email} onCheckedChange={v => setEditando({ ...editando, canal_email: v })} />
                   </div>
-                  <div className="flex items-center justify-between rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                      <Label className="text-sm">WhatsApp</Label>
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <Label htmlFor="perfil-canal-whatsapp" className="text-sm font-medium">WhatsApp</Label>
                     </div>
-                    <Switch checked={editando.canal_whatsapp} onCheckedChange={v => setEditando({ ...editando, canal_whatsapp: v })} />
+                    <Switch id="perfil-canal-whatsapp" checked={editando.canal_whatsapp} onCheckedChange={v => setEditando({ ...editando, canal_whatsapp: v })} />
                   </div>
-                  <div className="flex items-center justify-between rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-muted-foreground" />
-                      <Label className="text-sm">Notificação no Sistema</Label>
+                      <Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <Label htmlFor="perfil-canal-sistema" className="text-sm font-medium">Notificação no sistema</Label>
                     </div>
-                    <Switch checked={editando.canal_sistema} onCheckedChange={v => setEditando({ ...editando, canal_sistema: v })} />
+                    <Switch id="perfil-canal-sistema" checked={editando.canal_sistema} onCheckedChange={v => setEditando({ ...editando, canal_sistema: v })} />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-semibold">Frequência de Envio</Label>
+                  <Label htmlFor="perfil-frequencia" className="mb-2 block text-sm font-semibold">Frequência de envio</Label>
                   <Select value={editando.frequencia} onValueChange={v => setEditando({ ...editando, frequencia: v })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="perfil-frequencia"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="imediato">Imediato</SelectItem>
-                      <SelectItem value="resumo_diario">Resumo Diário</SelectItem>
-                      <SelectItem value="resumo_turno">Resumo por Turno</SelectItem>
-                      <SelectItem value="resumo_semanal">Resumo Semanal</SelectItem>
+                      <SelectItem value="resumo_diario">Resumo diário</SelectItem>
+                      <SelectItem value="resumo_turno">Resumo por turno</SelectItem>
+                      <SelectItem value="resumo_semanal">Resumo semanal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -845,8 +956,8 @@ export default function PerfisAlerta() {
           <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSalvar} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar Perfil
+              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+              Salvar perfil
             </Button>
           </div>
         </DialogContent>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -416,6 +416,10 @@ export default function FinPessoas() {
     setOpen(false);
   };
 
+  // Quem está prestes a sair do cadastro — o aviso nomeia a pessoa em vez de
+  // falar em "pessoa" genérica, que é o que faz clicar em Excluir sem ler.
+  const pessoaAExcluir = confirmDel ? pessoas.find((p) => p.id === confirmDel) ?? null : null;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-end gap-2">
@@ -561,7 +565,7 @@ export default function FinPessoas() {
                       disabled={buscandoCNPJ}
                       title="Consultar Receita Federal"
                       aria-label="Consultar Receita Federal"
-                      className="shrink-0"
+                      className="h-11 w-11 shrink-0"
                     >
                       {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
                     </Button>
@@ -684,7 +688,7 @@ export default function FinPessoas() {
                       disabled={buscandoCEP}
                       title="Buscar endereço pelo CEP"
                       aria-label="Buscar endereço pelo CEP"
-                      className="shrink-0"
+                      className="h-11 w-11 shrink-0"
                     >
                       {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
                     </Button>
@@ -736,7 +740,7 @@ export default function FinPessoas() {
                       disabled={validandoSefaz}
                       title="Validar Inscrição Estadual no SEFAZ"
                       aria-label="Validar Inscrição Estadual no SEFAZ"
-                      className="shrink-0"
+                      className="h-11 w-11 shrink-0"
                     >
                       {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="w-4 h-4" aria-hidden="true" />}
                     </Button>
@@ -865,11 +869,20 @@ export default function FinPessoas() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir pessoa?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogDescription>
+              {pessoaAExcluir
+                ? `“${pessoaAExcluir.nome}” sai do cadastro. Esta ação não pode ser desfeita.`
+                : "Esta ação não pode ser desfeita."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { if (confirmDel) await del.mutateAsync({ id: confirmDel }); setConfirmDel(null); }}>Excluir</AlertDialogAction>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={async () => { if (confirmDel) await del.mutateAsync({ id: confirmDel }); setConfirmDel(null); }}
+            >
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

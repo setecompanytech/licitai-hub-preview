@@ -124,8 +124,8 @@ export default function ConvitesPendentes() {
   if (carregando) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 inline animate-spin mr-2" />Carregando convites…
+        <CardContent className="py-8 text-center text-base text-muted-foreground">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden="true" />Carregando convites…
         </CardContent>
       </Card>
     );
@@ -136,62 +136,70 @@ export default function ConvitesPendentes() {
   return (
     <>
       <Card>
-        <CardHeader className="py-3 px-5 border-b">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Mail className="w-4 h-4 text-muted-foreground" />
+        <CardHeader className="border-b px-5 py-3">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+            <Mail className="h-4 w-4 text-primary" aria-hidden="true" />
             Convites de setor ativos
-            <Badge variant="outline" className="text-xs">{convites.length}</Badge>
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
+            <Badge variant="muted">{convites.length}</Badge>
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
               O mesmo link serve para todo o setor
             </span>
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-0 divide-y">
+        <CardContent className="divide-y p-0">
           {convites.map((c) => {
             const restante = tempoRestante(c.expires_at);
             const usos = c.usos ?? 0;
             return (
               <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                 <div className="min-w-[200px] flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-base font-semibold text-foreground">
                       {equipeLabels[c.equipe] ?? c.equipe}
                     </span>
-                    <Badge variant="outline" className="text-[10px]">{c.papel}</Badge>
+                    <Badge variant="muted">{c.papel}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{c.email_setor}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{c.email_setor}</p>
                 </div>
 
-                <div className="text-xs text-muted-foreground flex items-center gap-3">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1" title="Acessos criados com este link">
-                    <Users className="w-3.5 h-3.5" />
+                    <Users className="h-4 w-4" aria-hidden="true" />
                     {usos} {usos === 1 ? 'acesso' : 'acessos'}
                     {c.max_usos !== null && ` de ${c.max_usos}`}
                   </span>
-                  <span
-                    className={`inline-flex items-center gap-1 ${restante.urgente ? 'text-warning' : ''}`}
-                    title={`Expira em ${new Date(c.expires_at).toLocaleString('pt-BR')}`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    {restante.vivo ? restante.texto : 'expirado'}
-                  </span>
+                  {restante.urgente ? (
+                    <Badge variant="warning" className="gap-1" title={`Expira em ${new Date(c.expires_at).toLocaleString('pt-BR')}`}>
+                      <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                      {restante.vivo ? restante.texto : 'expirado'}
+                    </Badge>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1"
+                      title={`Expira em ${new Date(c.expires_at).toLocaleString('pt-BR')}`}
+                    >
+                      <Clock className="h-4 w-4" aria-hidden="true" />
+                      {restante.texto}
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-8" onClick={() => copiar(c)}>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => copiar(c)}>
                     {copiado === c.id
-                      ? <><Check className="w-3.5 h-3.5 mr-1.5" />Copiado</>
-                      : <><Copy className="w-3.5 h-3.5 mr-1.5" />Copiar link</>}
+                      ? <><Check aria-hidden="true" />Copiado</>
+                      : <><Copy aria-hidden="true" />Copiar link</>}
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 px-2 text-destructive/70 hover:text-destructive"
+                    className="px-2 text-muted-foreground hover:text-destructive"
                     onClick={() => setACancelar(c)}
                     title="Cancelar convite"
+                    aria-label="Cancelar convite"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -218,7 +226,7 @@ export default function ConvitesPendentes() {
               onClick={cancelar}
               disabled={cancelando}
             >
-              {cancelando && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+              {cancelando && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />}
               Cancelar convite
             </AlertDialogAction>
           </AlertDialogFooter>

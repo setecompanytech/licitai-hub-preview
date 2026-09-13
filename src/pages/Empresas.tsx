@@ -32,13 +32,10 @@ export default function Empresas() {
     <AppLayout>
       <div className="mx-auto max-w-5xl">
         <CabecalhoPagina
-          icone={<Building2 />}
-          titulo="Empresas"
-          descricao="Gerencie suas empresas e certificados digitais"
           acoes={
             <Button onClick={() => setShowForm(!showForm)} aria-expanded={showForm}>
               <Plus aria-hidden="true" />
-              Nova Empresa
+              Nova empresa
             </Button>
           }
         />

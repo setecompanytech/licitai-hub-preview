@@ -23,7 +23,7 @@ export default function EmpresaSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm font-medium text-foreground max-w-[280px]">
-          <Building2 className="w-4 h-4 text-accent flex-shrink-0" />
+          <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
           <span className="truncate">{label}</span>
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
         </button>
@@ -41,7 +41,7 @@ export default function EmpresaSelector() {
                 <DropdownMenuItem onClick={() => setEmpresaAtiva('todas')} className="gap-2">
                   <Layers className="w-4 h-4" />
                   <span className="font-medium">Todas as Empresas</span>
-                  {todasSelecionadas && <Check className="w-4 h-4 ml-auto text-accent" />}
+                  {todasSelecionadas && <Check className="w-4 h-4 ml-auto text-primary" />}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
@@ -60,7 +60,7 @@ export default function EmpresaSelector() {
                   <p className="text-xs text-muted-foreground">{m.empresa.cnpj} · {m.papel}</p>
                 </div>
                 {!todasSelecionadas && empresaAtiva?.id === m.empresa_id && (
-                  <Check className="w-4 h-4 text-accent flex-shrink-0" />
+                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
                 )}
               </DropdownMenuItem>
             ))}

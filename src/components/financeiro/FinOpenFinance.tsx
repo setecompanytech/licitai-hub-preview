@@ -252,9 +252,10 @@ export default function FinOpenFinance() {
                       </Badge>
                     </div>
                     {c.erro_mensagem && (
-                      <p className="rounded-md border border-destructive-line bg-destructive-tint p-3 text-sm text-destructive-ink">
-                        {c.erro_mensagem}
-                      </p>
+                      <Alert variant="destructive">
+                        <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                        <AlertDescription>{c.erro_mensagem}</AlertDescription>
+                      </Alert>
                     )}
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>Frequência: cada {c.frequencia_horas}h</p>

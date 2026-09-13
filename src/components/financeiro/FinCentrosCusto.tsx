@@ -44,6 +44,36 @@ export default function FinCentrosCusto() {
   const [openProj, setOpenProj] = useState(false);
   const [editCC, setEditCC] = useState<Partial<CentroCusto> | null>(null);
   const [editProj, setEditProj] = useState<Partial<Projeto> | null>(null);
+  // O que faltava só aparecia no toast, longe do campo; estas bandeiras ligam a
+  // mensagem ao input depois da primeira tentativa de salvar (identidade 12/09).
+  const [tentouSalvarCC, setTentouSalvarCC] = useState(false);
+  const [tentouSalvarProj, setTentouSalvarProj] = useState(false);
+
+  const faltaCC = (campo: "codigo" | "nome") => tentouSalvarCC && !editCC?.[campo]?.trim();
+  const faltaProj = (campo: "codigo" | "nome") => tentouSalvarProj && !editProj?.[campo]?.trim();
+
+  // O diálogo abre e fecha por dois caminhos: o primitivo (trigger, Esc, clique fora, X,
+  // que passam por onOpenChange) e o estado (Cancelar, Salvar, botão do EstadoVazio, que
+  // mexem em setOpen* direto e NÃO disparam onOpenChange). A bandeira tem de zerar nos
+  // dois, senão desistir pelo Cancelar deixa o formulário em branco reabrindo já vermelho.
+  const abrirCC = (cc: Partial<CentroCusto>) => {
+    setEditCC(cc);
+    setTentouSalvarCC(false);
+    setOpenCC(true);
+  };
+  const fecharCC = () => {
+    setOpenCC(false);
+    setTentouSalvarCC(false);
+  };
+  const abrirProj = (p: Partial<Projeto>) => {
+    setEditProj(p);
+    setTentouSalvarProj(false);
+    setOpenProj(true);
+  };
+  const fecharProj = () => {
+    setOpenProj(false);
+    setTentouSalvarProj(false);
+  };
 
   const carregar = async () => {
     if (!empresaAtiva) return;
@@ -60,14 +90,17 @@ export default function FinCentrosCusto() {
   }, [empresaAtiva?.id]);
 
   const salvarCC = async () => {
-    if (!empresaAtiva || !editCC?.codigo || !editCC?.nome) {
+    // Mesmo critério da mensagem sob o campo (faltaCC): só espaço em branco não vale.
+    if (!empresaAtiva || !editCC?.codigo?.trim() || !editCC?.nome?.trim()) {
+      setTentouSalvarCC(true);
       toast({ title: "Preencha código e nome", variant: "destructive" });
       return;
     }
+    setTentouSalvarCC(false);
     const payload = {
       empresa_id: empresaAtiva.id,
-      codigo: editCC.codigo,
-      nome: editCC.nome,
+      codigo: editCC.codigo.trim(),
+      nome: editCC.nome.trim(),
       descricao: editCC.descricao || null,
       ativo: editCC.ativo ?? true,
     };
@@ -79,7 +112,7 @@ export default function FinCentrosCusto() {
       return;
     }
     toast({ title: "Salvo" });
-    setOpenCC(false);
+    fecharCC();
     setEditCC(null);
     carregar();
   };
@@ -92,14 +125,17 @@ export default function FinCentrosCusto() {
   };
 
   const salvarProj = async () => {
-    if (!empresaAtiva || !editProj?.codigo || !editProj?.nome) {
+    // Mesmo critério da mensagem sob o campo (faltaProj): só espaço em branco não vale.
+    if (!empresaAtiva || !editProj?.codigo?.trim() || !editProj?.nome?.trim()) {
+      setTentouSalvarProj(true);
       toast({ title: "Preencha código e nome", variant: "destructive" });
       return;
     }
+    setTentouSalvarProj(false);
     const payload = {
       empresa_id: empresaAtiva.id,
-      codigo: editProj.codigo,
-      nome: editProj.nome,
+      codigo: editProj.codigo.trim(),
+      nome: editProj.nome.trim(),
       descricao: editProj.descricao || null,
       licitacao_id: editProj.licitacao_id || null,
       data_inicio: editProj.data_inicio || null,
@@ -116,7 +152,7 @@ export default function FinCentrosCusto() {
       return;
     }
     toast({ title: "Salvo" });
-    setOpenProj(false);
+    fecharProj();
     setEditProj(null);
     carregar();
   };
@@ -145,9 +181,9 @@ export default function FinCentrosCusto() {
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
             <CardTitle>Centros de Custo</CardTitle>
-            <Dialog open={openCC} onOpenChange={setOpenCC}>
+            <Dialog open={openCC} onOpenChange={(o) => { setOpenCC(o); setTentouSalvarCC(false); }}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setEditCC({ ativo: true })}>
+                <Button size="sm" onClick={() => abrirCC({ ativo: true })}>
                   <Plus className="w-4 h-4" aria-hidden="true" />
                   Novo centro de custo
                 </Button>
@@ -159,11 +195,33 @@ export default function FinCentrosCusto() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="cc-codigo">Código *</Label>
-                    <Input id="cc-codigo" value={editCC?.codigo || ""} onChange={(e) => setEditCC({ ...editCC, codigo: e.target.value })} placeholder="01" aria-required="true" />
+                    <Input
+                      id="cc-codigo"
+                      value={editCC?.codigo || ""}
+                      onChange={(e) => setEditCC({ ...editCC, codigo: e.target.value })}
+                      placeholder="01"
+                      aria-required="true"
+                      aria-invalid={faltaCC("codigo")}
+                      aria-describedby={faltaCC("codigo") ? "cc-codigo-erro" : undefined}
+                    />
+                    {faltaCC("codigo") && (
+                      <p id="cc-codigo-erro" className="text-sm text-destructive">Informe o código do centro de custo</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cc-nome">Nome *</Label>
-                    <Input id="cc-nome" value={editCC?.nome || ""} onChange={(e) => setEditCC({ ...editCC, nome: e.target.value })} placeholder="Comercial" aria-required="true" />
+                    <Input
+                      id="cc-nome"
+                      value={editCC?.nome || ""}
+                      onChange={(e) => setEditCC({ ...editCC, nome: e.target.value })}
+                      placeholder="Comercial"
+                      aria-required="true"
+                      aria-invalid={faltaCC("nome")}
+                      aria-describedby={faltaCC("nome") ? "cc-nome-erro" : undefined}
+                    />
+                    {faltaCC("nome") && (
+                      <p id="cc-nome-erro" className="text-sm text-destructive">Informe o nome do centro de custo</p>
+                    )}
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="cc-descricao">Descrição</Label>
@@ -175,7 +233,7 @@ export default function FinCentrosCusto() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpenCC(false)}>Cancelar</Button>
+                  <Button variant="outline" onClick={fecharCC}>Cancelar</Button>
                   <Button onClick={salvarCC}>Salvar</Button>
                 </DialogFooter>
               </DialogContent>
@@ -189,7 +247,7 @@ export default function FinCentrosCusto() {
                 titulo="Nenhum centro de custo"
                 descricao="Crie centros de custo para separar despesas e receitas por departamento nos lançamentos."
                 acao={
-                  <Button onClick={() => { setEditCC({ ativo: true }); setOpenCC(true); }}>
+                  <Button onClick={() => abrirCC({ ativo: true })}>
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     Novo centro de custo
                   </Button>
@@ -215,7 +273,7 @@ export default function FinCentrosCusto() {
                           <Badge variant={cc.ativo ? "success" : "muted"}>{cc.ativo ? "Ativo" : "Inativo"}</Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Button size="icon" variant="ghost" aria-label={`Editar ${cc.nome}`} onClick={() => { setEditCC(cc); setOpenCC(true); }}>
+                          <Button size="icon" variant="ghost" aria-label={`Editar ${cc.nome}`} onClick={() => abrirCC(cc)}>
                             <Pencil className="w-4 h-4" aria-hidden="true" />
                           </Button>
                           <Button size="icon" variant="ghost" aria-label={`Excluir ${cc.nome}`} onClick={() => excluirCC(cc.id)}>
@@ -236,9 +294,9 @@ export default function FinCentrosCusto() {
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
             <CardTitle>Projetos</CardTitle>
-            <Dialog open={openProj} onOpenChange={setOpenProj}>
+            <Dialog open={openProj} onOpenChange={(o) => { setOpenProj(o); setTentouSalvarProj(false); }}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => setEditProj({ ativo: true, status: "ativo" })}>
+                <Button size="sm" onClick={() => abrirProj({ ativo: true, status: "ativo" })}>
                   <Plus className="w-4 h-4" aria-hidden="true" />
                   Novo projeto
                 </Button>
@@ -250,11 +308,33 @@ export default function FinCentrosCusto() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="proj-codigo">Código *</Label>
-                    <Input id="proj-codigo" value={editProj?.codigo || ""} onChange={(e) => setEditProj({ ...editProj, codigo: e.target.value })} placeholder="P-001" aria-required="true" />
+                    <Input
+                      id="proj-codigo"
+                      value={editProj?.codigo || ""}
+                      onChange={(e) => setEditProj({ ...editProj, codigo: e.target.value })}
+                      placeholder="P-001"
+                      aria-required="true"
+                      aria-invalid={faltaProj("codigo")}
+                      aria-describedby={faltaProj("codigo") ? "proj-codigo-erro" : undefined}
+                    />
+                    {faltaProj("codigo") && (
+                      <p id="proj-codigo-erro" className="text-sm text-destructive">Informe o código do projeto</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="proj-nome">Nome *</Label>
-                    <Input id="proj-nome" value={editProj?.nome || ""} onChange={(e) => setEditProj({ ...editProj, nome: e.target.value })} placeholder="Pregão 005/2025 - SEDUC" aria-required="true" />
+                    <Input
+                      id="proj-nome"
+                      value={editProj?.nome || ""}
+                      onChange={(e) => setEditProj({ ...editProj, nome: e.target.value })}
+                      placeholder="Pregão 005/2025 - SEDUC"
+                      aria-required="true"
+                      aria-invalid={faltaProj("nome")}
+                      aria-describedby={faltaProj("nome") ? "proj-nome-erro" : undefined}
+                    />
+                    {faltaProj("nome") && (
+                      <p id="proj-nome-erro" className="text-sm text-destructive">Informe o nome do projeto</p>
+                    )}
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="proj-descricao">Descrição</Label>
@@ -282,7 +362,7 @@ export default function FinCentrosCusto() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpenProj(false)}>Cancelar</Button>
+                  <Button variant="outline" onClick={fecharProj}>Cancelar</Button>
                   <Button onClick={salvarProj}>Salvar</Button>
                 </DialogFooter>
               </DialogContent>
@@ -296,7 +376,7 @@ export default function FinCentrosCusto() {
                 titulo="Nenhum projeto"
                 descricao="Crie projetos para apurar custo e orçamento por contrato ou processo licitatório."
                 acao={
-                  <Button onClick={() => { setEditProj({ ativo: true, status: "ativo" }); setOpenProj(true); }}>
+                  <Button onClick={() => abrirProj({ ativo: true, status: "ativo" })}>
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     Novo projeto
                   </Button>
@@ -326,7 +406,7 @@ export default function FinCentrosCusto() {
                           <Badge variant={p.status === "ativo" ? "success" : "muted"} className="capitalize">{p.status}</Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Button size="icon" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => { setEditProj(p); setOpenProj(true); }}>
+                          <Button size="icon" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => abrirProj(p)}>
                             <Pencil className="w-4 h-4" aria-hidden="true" />
                           </Button>
                           <Button size="icon" variant="ghost" aria-label={`Excluir ${p.nome}`} onClick={() => excluirProj(p.id)}>

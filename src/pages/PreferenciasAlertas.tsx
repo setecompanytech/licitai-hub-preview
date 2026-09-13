@@ -2,24 +2,36 @@ import SkeletonPagina from '@/components/shared/SkeletonPagina';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { usePreferenciasAlertas, useSegmentos } from '@/hooks/useAlertas';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
   ShoppingBag, MapPin, Building2, Bell, Mail, MessageCircle,
-  Loader2, Save, Check, X, Search
+  Loader2, Save, X, Search, AlertTriangle
 } from 'lucide-react';
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
+/** Chaves de monitoramento no DOU — rótulo visível e o texto que explica cada uma. */
+const MONITORAMENTOS = [
+  { key: 'receber_alteracoes' as const, label: 'Monitorar alterações de editais', desc: 'Retificações e mudanças em processos publicados' },
+  { key: 'receber_suspensoes' as const, label: 'Monitorar suspensões de processos', desc: 'Suspensões e adiamentos de licitações' },
+  { key: 'receber_cancelamentos' as const, label: 'Monitorar cancelamentos', desc: 'Cancelamentos e revogações de editais' },
+  { key: 'receber_homologacoes' as const, label: 'Monitorar homologações em que participei', desc: 'Resultados automáticos baseados no histórico de participação' },
+  { key: 'receber_editais' as const, label: 'Receber novos editais por segmento', desc: 'Editais novos filtrados pelos segmentos e UFs configurados' },
+];
 
 export default function PreferenciasAlertas() {
   const { user } = useAuth();
@@ -146,89 +158,108 @@ export default function PreferenciasAlertas() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Bell className="w-5 h-5 text-muted-foreground" />
-            Preferências de Alertas
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Configure quais licitações monitorar, quais mudanças acompanhar e como receber os avisos
-          </p>
-        </div>
+      <div className="mx-auto max-w-5xl">
+        <Tabs defaultValue="segmentos" className="w-full">
+          {/* Item de menu: título, descrição, ícone e trilha vêm do registro
+              `lib/navegacao/paginas.ts` — a tela não os repete. */}
+          <CabecalhoPagina
+            acoes={
+              <Button onClick={handleSave} disabled={salvando}>
+                {salvando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+                Salvar preferências
+              </Button>
+            }
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="muted" className="gap-1">
+                <ShoppingBag className="h-3 w-3" aria-hidden="true" />
+                {form.segmentos.length} segmento(s)
+              </Badge>
+              <Badge variant="muted" className="gap-1">
+                <MapPin className="h-3 w-3" aria-hidden="true" />
+                {form.ufs.length} UF(s)
+              </Badge>
+            </div>
 
-        {/* Counters */}
-        <div className="flex gap-3 text-xs">
-          <Badge variant="secondary">
-            <ShoppingBag className="w-3 h-3 mr-1" />
-            {form.segmentos.length} segmento(s)
-          </Badge>
-          <Badge variant="secondary">
-            <MapPin className="w-3 h-3 mr-1" />
-            {form.ufs.length} UF(s)
-          </Badge>
-        </div>
+            <TabsList>
+              <TabsTrigger value="segmentos" className="gap-2">
+                <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+                Segmentos
+              </TabsTrigger>
+              <TabsTrigger value="empresa" className="gap-2">
+                <Building2 className="h-4 w-4" aria-hidden="true" />
+                Empresa
+              </TabsTrigger>
+              <TabsTrigger value="canais" className="gap-2">
+                <Mail className="h-4 w-4" aria-hidden="true" />
+                Canais
+              </TabsTrigger>
+            </TabsList>
+          </CabecalhoPagina>
 
-        <Tabs defaultValue="segmentos" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="segmentos">
-              <ShoppingBag className="w-4 h-4 mr-1" /> Segmentos & UFs
-            </TabsTrigger>
-            <TabsTrigger value="empresa">
-              <Building2 className="w-4 h-4 mr-1" /> CNPJ & Empresa
-            </TabsTrigger>
-            <TabsTrigger value="canais">
-              <Mail className="w-4 h-4 mr-1" /> Canais
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TAB 1: Segmentos & UFs */}
+          {/* ── Aba: Segmentos & UFs ───────────────────────────────────── */}
           <TabsContent value="segmentos" className="space-y-4">
-            <Card className="p-5 space-y-4">
+            <Card className="space-y-4 p-6">
               <div>
-                <h3 className="text-sm font-semibold">Quais licitações você quer monitorar?</h3>
-                <p className="text-xs text-muted-foreground">Selecione os segmentos de mercado e os estados onde deseja competir</p>
+                <h2 className="text-lg font-semibold text-foreground">Quais licitações você quer monitorar?</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Selecione os segmentos de mercado e os estados onde deseja competir
+                </p>
               </div>
 
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar segmento..."
-                  className="pl-9 h-8 text-xs"
-                  value={searchSeg}
-                  onChange={e => setSearchSeg(e.target.value)}
-                />
+              <div>
+                <Label htmlFor="busca-segmento" className="mb-2 block text-sm">Buscar segmento</Label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                  <Input
+                    id="busca-segmento"
+                    placeholder="Buscar segmento..."
+                    className="pl-9"
+                    value={searchSeg}
+                    onChange={e => setSearchSeg(e.target.value)}
+                  />
+                </div>
               </div>
 
               {form.segmentos.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {form.segmentos.map(cod => {
                     const s = segmentos.find(sg => sg.codigo === cod);
                     return (
-                      <Badge key={cod} variant="secondary" className="text-xs pr-1 cursor-pointer hover:bg-destructive/10" onClick={() => toggleSeg(cod)}>
-                        {s?.nome || cod} <X className="w-3 h-3 ml-1" />
-                      </Badge>
+                      <button
+                        key={cod}
+                        type="button"
+                        onClick={() => toggleSeg(cod)}
+                        aria-label={`Remover ${s?.nome || cod}`}
+                        className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <Badge variant="muted" className="gap-1">
+                          {s?.nome || cod}
+                          <X className="h-3 w-3" aria-hidden="true" />
+                        </Badge>
+                      </button>
                     );
                   })}
                 </div>
               )}
 
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+              <div className="max-h-96 space-y-4 overflow-y-auto pr-1">
                 {categorias.map(cat => {
                   const segs = filteredSegmentos.filter(s => s.categoria === cat);
                   if (segs.length === 0) return null;
                   return (
                     <div key={cat}>
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{cat}</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{cat}</p>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         {segs.map(seg => (
                           <label
                             key={seg.codigo}
-                            className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                            className={cn(
+                              'flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors',
                               form.segmentos.includes(seg.codigo)
-                                ? 'border-accent/50 bg-accent/5'
-                                : 'border-border/50 hover:bg-muted/30'
-                            }`}
+                                ? 'border-primary bg-primary-tint'
+                                : 'border-border hover:bg-muted',
+                            )}
                           >
                             <Checkbox
                               checked={form.segmentos.includes(seg.codigo)}
@@ -236,8 +267,8 @@ export default function PreferenciasAlertas() {
                               className="mt-0.5"
                             />
                             <div className="min-w-0">
-                              <p className="text-xs font-medium leading-tight">{seg.nome}</p>
-                              <p className="text-xs text-muted-foreground leading-tight mt-0.5">{seg.descricao}</p>
+                              <p className="text-sm font-medium text-foreground">{seg.nome}</p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">{seg.descricao}</p>
                             </div>
                           </label>
                         ))}
@@ -248,38 +279,44 @@ export default function PreferenciasAlertas() {
               </div>
 
               {form.segmentos.length === 0 && (
-                <p className="text-xs text-warning">⚠️ Nenhum segmento selecionado — você receberá todos os avisos sem filtro.</p>
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Nenhum segmento selecionado — você receberá todos os avisos sem filtro.
+                  </AlertDescription>
+                </Alert>
               )}
             </Card>
 
-            <Card className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    Estados em que deseja competir
-                  </h3>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => setForm(f => ({ ...f, ufs: [...UFS] }))}>
+            <Card className="space-y-4 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Estados em que deseja competir
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setForm(f => ({ ...f, ufs: [...UFS] }))}>
                     Selecionar todos
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => setForm(f => ({ ...f, ufs: [] }))}>
+                  <Button size="sm" variant="ghost" onClick={() => setForm(f => ({ ...f, ufs: [] }))}>
                     Limpar
                   </Button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {UFS.map(uf => (
                   <button
                     key={uf}
                     type="button"
-                    className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                    aria-pressed={form.ufs.includes(uf)}
+                    className={cn(
+                      'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       form.ufs.includes(uf)
-                        ? 'bg-accent text-accent-foreground border-accent'
-                        : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
-                    }`}
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-foreground hover:bg-muted',
+                    )}
                     onClick={() => toggleUf(uf)}
                   >
                     {uf}
@@ -288,45 +325,57 @@ export default function PreferenciasAlertas() {
               </div>
 
               {form.ufs.length === 0 && (
-                <p className="text-xs text-warning">⚠️ Nenhuma UF selecionada — você receberá avisos de todos os estados.</p>
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <AlertDescription>
+                    Nenhuma UF selecionada — você receberá avisos de todos os estados.
+                  </AlertDescription>
+                </Alert>
               )}
             </Card>
           </TabsContent>
 
-          {/* TAB 2: CNPJ & Empresa */}
+          {/* ── Aba: CNPJ & Empresa ────────────────────────────────────── */}
           <TabsContent value="empresa" className="space-y-4">
-            <Card className="p-5 space-y-4">
+            <Card className="space-y-4 p-6">
               <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Building2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Dados da sua empresa para monitoramento
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Usamos para buscar alterações, suspensões e homologações no DOU automaticamente
                 </p>
               </div>
 
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-xs">CNPJ</Label>
+                  <Label htmlFor="pref-cnpj" className="mb-2 block text-sm">CNPJ</Label>
                   <div className="flex gap-2">
                     <Input
+                      id="pref-cnpj"
                       placeholder="XX.XXX.XXX/XXXX-XX"
-                      className="text-sm"
                       value={form.cnpj}
                       onChange={e => setForm(f => ({ ...f, cnpj: formatCnpj(e.target.value) }))}
                       onBlur={() => { if (form.cnpj.replace(/\D/g, '').length === 14) buscarCnpj(); }}
                     />
-                    <Button size="sm" variant="outline" onClick={buscarCnpj} disabled={buscandoCnpj}>
-                      {buscandoCnpj ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-11 w-11 shrink-0"
+                      aria-label="Buscar razão social pelo CNPJ"
+                      onClick={buscarCnpj}
+                      disabled={buscandoCnpj}
+                    >
+                      {buscandoCnpj ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Razão Social</Label>
+                  <Label htmlFor="pref-razao" className="mb-2 block text-sm">Razão social</Label>
                   <Input
+                    id="pref-razao"
                     placeholder="Preenchido automaticamente pelo CNPJ"
-                    className="text-sm"
                     value={form.razao_social}
                     onChange={e => setForm(f => ({ ...f, razao_social: e.target.value }))}
                   />
@@ -334,20 +383,15 @@ export default function PreferenciasAlertas() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <p className="text-xs font-semibold">Monitoramento no Diário Oficial</p>
-                {[
-                  { key: 'receber_alteracoes' as const, label: 'Monitorar alterações de editais', desc: 'Retificações e mudanças em processos publicados' },
-                  { key: 'receber_suspensoes' as const, label: 'Monitorar suspensões de processos', desc: 'Suspensões e adiamentos de licitações' },
-                  { key: 'receber_cancelamentos' as const, label: 'Monitorar cancelamentos', desc: 'Cancelamentos e revogações de editais' },
-                  { key: 'receber_homologacoes' as const, label: 'Monitorar homologações em que participei', desc: 'Resultados automáticos baseados no histórico de participação' },
-                  { key: 'receber_editais' as const, label: 'Receber novos editais por segmento', desc: 'Editais novos filtrados pelos segmentos e UFs configurados' },
-                ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                <h3 className="text-base font-semibold text-foreground">Monitoramento no Diário Oficial</h3>
+                {MONITORAMENTOS.map(item => (
+                  <div key={item.key} className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+                    <div className="min-w-0">
+                      <Label htmlFor={`mon-${item.key}`} className="text-sm font-medium">{item.label}</Label>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>
                     </div>
                     <Switch
+                      id={`mon-${item.key}`}
                       checked={form[item.key]}
                       onCheckedChange={v => setForm(f => ({ ...f, [item.key]: v }))}
                     />
@@ -357,96 +401,95 @@ export default function PreferenciasAlertas() {
             </Card>
           </TabsContent>
 
-          {/* TAB 3: Canais */}
+          {/* ── Aba: Canais ────────────────────────────────────────────── */}
           <TabsContent value="canais" className="space-y-4">
-            <Card className="p-5 space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold">Como prefere receber os avisos?</h3>
-              </div>
+            <Card className="space-y-4 p-6">
+              <h2 className="text-lg font-semibold text-foreground">Como prefere receber os avisos?</h2>
 
               <div className="space-y-3">
-                <div className="p-3 bg-muted/30 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-3 rounded-md border border-border bg-muted p-3">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">E-mail</p>
+                      <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <Label htmlFor="canal-email" className="text-sm font-medium">E-mail</Label>
                     </div>
-                    <Switch checked={form.canal_email} onCheckedChange={v => setForm(f => ({ ...f, canal_email: v }))} />
+                    <Switch id="canal-email" checked={form.canal_email} onCheckedChange={v => setForm(f => ({ ...f, canal_email: v }))} />
                   </div>
                   {form.canal_email && (
-                    <Input
-                      placeholder="E-mail para notificações"
-                      className="text-sm"
-                      value={form.email_notificacao}
-                      onChange={e => setForm(f => ({ ...f, email_notificacao: e.target.value }))}
-                    />
+                    <div>
+                      <Label htmlFor="email-notificacao" className="mb-2 block text-sm">E-mail para notificações</Label>
+                      <Input
+                        id="email-notificacao"
+                        type="email"
+                        placeholder="voce@empresa.com.br"
+                        value={form.email_notificacao}
+                        onChange={e => setForm(f => ({ ...f, email_notificacao: e.target.value }))}
+                      />
+                    </div>
                   )}
                 </div>
 
-                <div className="p-3 bg-muted/30 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-3 rounded-md border border-border bg-muted p-3">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-success" />
-                      <p className="text-sm font-medium">WhatsApp</p>
+                      <MessageCircle className="h-4 w-4 text-success" aria-hidden="true" />
+                      <Label htmlFor="canal-whatsapp" className="text-sm font-medium">WhatsApp</Label>
                     </div>
-                    <Switch checked={form.canal_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, canal_whatsapp: v }))} />
+                    <Switch id="canal-whatsapp" checked={form.canal_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, canal_whatsapp: v }))} />
                   </div>
                   {form.canal_whatsapp && (
-                    <Input
-                      placeholder="(XX) XXXXX-XXXX"
-                      className="text-sm"
-                      value={form.whatsapp_notificacao}
-                      onChange={e => {
-                        const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
-                        let formatted = raw;
-                        if (raw.length > 2) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
-                        if (raw.length > 7) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
-                        setForm(f => ({ ...f, whatsapp_notificacao: formatted }));
-                      }}
-                    />
+                    <div>
+                      <Label htmlFor="whatsapp-notificacao" className="mb-2 block text-sm">WhatsApp para notificações</Label>
+                      <Input
+                        id="whatsapp-notificacao"
+                        inputMode="tel"
+                        placeholder="(XX) XXXXX-XXXX"
+                        value={form.whatsapp_notificacao}
+                        onChange={e => {
+                          const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                          let formatted = raw;
+                          if (raw.length > 2) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+                          if (raw.length > 7) formatted = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+                          setForm(f => ({ ...f, whatsapp_notificacao: formatted }));
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
 
-                <div className="p-3 bg-muted/30 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-info" />
-                      <p className="text-sm font-medium">Notificações no sistema</p>
-                    </div>
-                    <Switch checked={form.canal_push} onCheckedChange={v => setForm(f => ({ ...f, canal_push: v }))} />
+                <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <Label htmlFor="canal-push" className="text-sm font-medium">Notificações no sistema</Label>
                   </div>
+                  <Switch id="canal-push" checked={form.canal_push} onCheckedChange={v => setForm(f => ({ ...f, canal_push: v }))} />
                 </div>
               </div>
 
               <div className="pt-2">
-                <p className="text-xs font-semibold mb-2">Frequência de envio</p>
-                <RadioGroup value={form.frequencia} onValueChange={(v: any) => setForm(f => ({ ...f, frequencia: v }))}>
-                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/30">
+                <h3 id="rotulo-frequencia" className="mb-2 text-base font-semibold text-foreground">Frequência de envio</h3>
+                <RadioGroup
+                  aria-labelledby="rotulo-frequencia"
+                  value={form.frequencia}
+                  onValueChange={v => setForm(f => ({ ...f, frequencia: v as typeof f.frequencia }))}
+                >
+                  <div className="flex items-center gap-2 rounded-md p-2 hover:bg-muted">
                     <RadioGroupItem value="imediato" id="freq-i" />
-                    <Label htmlFor="freq-i" className="text-sm cursor-pointer">Imediato — assim que identificado</Label>
+                    <Label htmlFor="freq-i" className="cursor-pointer text-sm">Imediato — assim que identificado</Label>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/30">
+                  <div className="flex items-center gap-2 rounded-md p-2 hover:bg-muted">
                     <RadioGroupItem value="diario" id="freq-d" />
-                    <Label htmlFor="freq-d" className="text-sm cursor-pointer">Diário — resumo às 07h</Label>
+                    <Label htmlFor="freq-d" className="cursor-pointer text-sm">Diário — resumo às 07h</Label>
                   </div>
-                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/30">
+                  <div className="flex items-center gap-2 rounded-md p-2 hover:bg-muted">
                     <RadioGroupItem value="semanal" id="freq-s" />
-                    <Label htmlFor="freq-s" className="text-sm cursor-pointer">Semanal — toda segunda-feira às 08h</Label>
+                    <Label htmlFor="freq-s" className="cursor-pointer text-sm">Semanal — toda segunda-feira às 08h</Label>
                   </div>
                 </RadioGroup>
               </div>
             </Card>
           </TabsContent>
         </Tabs>
-
-        <Button
-          className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
-          onClick={handleSave}
-          disabled={salvando}
-        >
-          {salvando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Salvar Preferências
-        </Button>
       </div>
     </AppLayout>
   );

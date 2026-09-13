@@ -5,7 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import EstadoVazio from '@/components/shared/EstadoVazio';
+import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -51,18 +53,20 @@ type Licitacao = {
   objeto: string;
 };
 
-const PRIORIDADE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  baixa: { label: 'Baixa', color: 'bg-muted text-muted-foreground', icon: Clock },
-  media: { label: 'Média', color: 'bg-info/15 text-info', icon: Clock },
-  alta: { label: 'Alta', color: 'bg-warning/15 text-warning', icon: AlertTriangle },
-  urgente: { label: 'Urgente', color: 'bg-destructive/15 text-destructive', icon: AlertTriangle },
+type Variante = BadgeProps['variant'];
+
+const PRIORIDADE_CONFIG: Record<string, { label: string; variante: Variante; icon: any }> = {
+  baixa: { label: 'Baixa', variante: 'muted', icon: Clock },
+  media: { label: 'Média', variante: 'info', icon: Clock },
+  alta: { label: 'Alta', variante: 'warning', icon: AlertTriangle },
+  urgente: { label: 'Urgente', variante: 'danger', icon: AlertTriangle },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pendente: { label: 'Pendente', color: 'bg-muted text-muted-foreground' },
-  em_andamento: { label: 'Em andamento', color: 'bg-info/15 text-info' },
-  concluida: { label: 'Concluída', color: 'bg-success/15 text-success' },
-  cancelada: { label: 'Cancelada', color: 'bg-destructive/15 text-destructive' },
+const STATUS_CONFIG: Record<string, { label: string; variante: Variante }> = {
+  pendente: { label: 'Pendente', variante: 'muted' },
+  em_andamento: { label: 'Em andamento', variante: 'info' },
+  concluida: { label: 'Concluída', variante: 'success' },
+  cancelada: { label: 'Cancelada', variante: 'danger' },
 };
 
 export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: string; isAdmin: boolean }) {
@@ -208,42 +212,52 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
           {['todas', 'pendente', 'em_andamento', 'concluida'].map(s => (
             <Button key={s} variant={filtroStatus === s ? 'default' : 'outline'} size="sm"
-              onClick={() => setFiltroStatus(s)} className="text-xs">
+              onClick={() => setFiltroStatus(s)} aria-pressed={filtroStatus === s}>
               {s === 'todas' ? 'Todas' : STATUS_CONFIG[s]?.label}
-              {s !== 'todas' && <Badge variant="secondary" className="ml-1.5 text-xs">
+              {s !== 'todas' && <Badge variant="muted" className="ml-1.5">
                 {tarefas.filter(t => t.status === s).length}
               </Badge>}
             </Button>
           ))}
         </div>
         {isAdmin && (
-          <Button size="sm" onClick={() => setShowDialog(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-4 h-4 mr-1" /> Nova Tarefa
+          <Button onClick={() => setShowDialog(true)}>
+            <Plus aria-hidden="true" /> Nova tarefa
           </Button>
         )}
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <div key={key} className="bg-card rounded-lg border border-border/50 p-3 text-center">
-            <p className="text-xs text-muted-foreground">{cfg.label}</p>
-            <p className="text-xl font-bold text-foreground">{tarefas.filter(t => t.status === key).length}</p>
+          <div key={key} className="rounded-lg border border-border bg-card p-4 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">{cfg.label}</p>
+            <p className="text-[2rem] font-bold leading-10 tabular-nums text-foreground">{tarefas.filter(t => t.status === key).length}</p>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-6">Carregando tarefas...</p>
+        <p className="py-6 text-center text-base text-muted-foreground">Carregando tarefas...</p>
       ) : filtered.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border/50 p-8 text-center">
-          <CheckCircle2 className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhuma tarefa encontrada.</p>
-        </div>
+        <section className="rounded-lg border border-border bg-card shadow-sm">
+          <EstadoVazio
+            icone={<CheckCircle2 />}
+            titulo="Nenhuma tarefa encontrada"
+            descricao={filtroStatus === 'todas'
+              ? 'Crie a primeira tarefa para distribuir o trabalho da equipe.'
+              : 'Nenhuma tarefa neste status. Escolha outro filtro para ver as demais.'}
+            acao={isAdmin && filtroStatus === 'todas' ? (
+              <Button onClick={() => setShowDialog(true)}>
+                <Plus aria-hidden="true" /> Nova tarefa
+              </Button>
+            ) : undefined}
+          />
+        </section>
       ) : (
         <div className="space-y-2">
           {filtered.map(t => {
@@ -256,37 +270,42 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
             const canManage = user?.id === t.atribuido_a || user?.id === t.criado_por || isAdmin;
 
             return (
-              <div key={t.id} className={`bg-card rounded-lg border ${vencida ? 'border-destructive/50' : 'border-border/50'}`}>
+              <div key={t.id} className={cn('rounded-lg border bg-card shadow-sm', vencida ? 'border-destructive-line' : 'border-border')}>
                 <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
                         {subs.length > 0 && (
-                          <button onClick={() => toggleExpand(t.id)} className="text-muted-foreground hover:text-foreground">
-                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          <button
+                            onClick={() => toggleExpand(t.id)}
+                            className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            aria-expanded={isExpanded}
+                            aria-label={isExpanded ? 'Recolher sub-tarefas' : 'Expandir sub-tarefas'}
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
                           </button>
                         )}
-                        <span className="font-semibold text-sm">{t.titulo}</span>
-                        <Badge className={`text-xs ${prio.color}`}>{prio.label}</Badge>
-                        <Badge className={`text-xs ${st.color}`}>{st.label}</Badge>
-                        {t.licitacao_id && <Badge variant="outline" className="text-xs"><Link2 className="w-3 h-3 mr-1" />Licitação</Badge>}
-                        {vencida && <Badge className="text-xs bg-destructive/15 text-destructive">Vencida</Badge>}
+                        <span className="text-base font-semibold text-foreground">{t.titulo}</span>
+                        <Badge variant={prio.variante}>{prio.label}</Badge>
+                        <Badge variant={st.variante}>{st.label}</Badge>
+                        {t.licitacao_id && <Badge variant="muted" className="gap-1"><Link2 className="h-3 w-3" aria-hidden="true" />Licitação</Badge>}
+                        {vencida && <Badge variant="danger">Vencida</Badge>}
                         {subs.length > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            <ListPlus className="w-3 h-3 mr-1" />{subsCompleted}/{subs.length}
+                          <Badge variant="muted" className="gap-1">
+                            <ListPlus className="h-3 w-3" aria-hidden="true" />{subsCompleted}/{subs.length}
                           </Badge>
                         )}
                       </div>
-                      {t.descricao && <p className="text-xs text-muted-foreground line-clamp-2">{t.descricao}</p>}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                      {t.descricao && <p className="line-clamp-2 text-sm text-muted-foreground">{t.descricao}</p>}
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                         <span>→ {getMembroNome(t.atribuido_a)}</span>
                         {t.prazo && <span>Prazo: {new Date(t.prazo).toLocaleDateString('pt-BR')}</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                       {t.status !== 'concluida' && (
                         <Select value={t.status} onValueChange={v => handleUpdateStatus(t.id, v)}>
-                          <SelectTrigger className="w-[120px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-9 w-[150px] text-sm" aria-label={`Status da tarefa ${t.titulo}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                               <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -295,8 +314,8 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                         </Select>
                       )}
                       {isAdmin && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/60 hover:text-destructive" onClick={() => handleDelete(t.id)}>
-                          <X className="w-3.5 h-3.5" />
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)} title="Remover tarefa" aria-label="Remover tarefa">
+                          <X aria-hidden="true" />
                         </Button>
                       )}
                     </div>
@@ -305,48 +324,53 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
 
                 {/* Sub-tarefas section */}
                 {(isExpanded || subs.length === 0) && canManage && (
-                  <div className="border-t border-border/30 px-4 py-3 bg-muted/20">
+                  <div className="border-t border-border bg-muted px-4 py-3">
                     {subs.map(sub => (
-                      <div key={sub.id} className="flex items-center gap-2 py-1.5 group">
+                      <div key={sub.id} className="group flex items-center gap-2 py-1.5">
                         <button
                           onClick={() => handleToggleSubTarefa(sub.id, sub.status)}
-                          className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                          aria-pressed={sub.status === 'concluida'}
+                          aria-label={sub.status === 'concluida' ? `Reabrir ${sub.titulo}` : `Concluir ${sub.titulo}`}
+                          className={cn(
+                            'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             sub.status === 'concluida'
-                              ? 'bg-success border-success text-success-foreground'
-                              : 'border-muted-foreground/40 hover:border-accent'
-                          }`}
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary',
+                          )}
                         >
-                          {sub.status === 'concluida' && <CheckCircle2 className="w-3 h-3" />}
+                          {sub.status === 'concluida' && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
                         </button>
-                        <span className={`text-xs flex-1 ${sub.status === 'concluida' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        <span className={cn('flex-1 text-sm', sub.status === 'concluida' ? 'text-muted-foreground line-through' : 'text-foreground')}>
                           {sub.titulo}
                         </span>
                         <span className="text-xs text-muted-foreground">{getMembroNome(sub.criado_por)}</span>
                         <Button
                           variant="ghost" size="icon"
-                          className="h-5 w-5 opacity-0 group-hover:opacity-100 text-destructive/60"
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
                           onClick={() => handleDeleteSubTarefa(sub.id)}
+                          title="Remover sub-tarefa"
+                          aria-label={`Remover sub-tarefa ${sub.titulo}`}
                         >
-                          <X className="w-3 h-3" />
+                          <X aria-hidden="true" />
                         </Button>
                       </div>
                     ))}
                     {/* Add new sub-tarefa inline */}
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Input
                         value={newSubTarefa[t.id] || ''}
                         onChange={e => setNewSubTarefa(prev => ({ ...prev, [t.id]: e.target.value }))}
                         placeholder="Nova sub-tarefa..."
-                        className="h-7 text-xs flex-1"
+                        className="h-9 min-w-[200px] flex-1 text-sm"
+                        aria-label={`Nova sub-tarefa em ${t.titulo}`}
                         onKeyDown={e => e.key === 'Enter' && handleAddSubTarefa(t.id)}
                       />
                       <Button
-                        size="sm" variant="ghost"
-                        className="h-7 px-2 text-xs text-accent"
+                        size="sm" variant="outline"
                         onClick={() => handleAddSubTarefa(t.id)}
                         disabled={!newSubTarefa[t.id]?.trim()}
                       >
-                        <Plus className="w-3 h-3 mr-1" /> Adicionar
+                        <Plus aria-hidden="true" /> Adicionar
                       </Button>
                     </div>
                   </div>
@@ -356,7 +380,8 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                 {!isExpanded && subs.length > 0 && (
                   <button
                     onClick={() => toggleExpand(t.id)}
-                    className="w-full border-t border-border/30 px-4 py-1.5 text-xs text-muted-foreground hover:bg-muted/30 transition-colors text-left"
+                    aria-expanded={false}
+                    className="w-full border-t border-border px-4 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {subs.length} sub-tarefa(s) • {subsCompleted} concluída(s)
                   </button>
@@ -371,22 +396,22 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nova Tarefa</DialogTitle>
+            <DialogTitle>Nova tarefa</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Título *</Label>
-              <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Preparar documentação do edital" />
+              <Label htmlFor="tarefa-titulo">Título *</Label>
+              <Input id="tarefa-titulo" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Preparar documentação do edital" className="mt-1" />
             </div>
             <div>
-              <Label>Descrição</Label>
-              <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da tarefa..." rows={3} />
+              <Label htmlFor="tarefa-descricao">Descrição</Label>
+              <Textarea id="tarefa-descricao" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da tarefa..." rows={3} className="mt-1" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label>Atribuir a *</Label>
+                <Label htmlFor="tarefa-atribuido">Atribuir a *</Label>
                 <Select value={atribuidoA} onValueChange={setAtribuidoA}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger id="tarefa-atribuido" className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {membros.map(m => (
                       <SelectItem key={m.user_id} value={m.user_id}>{nomeExibido(m as never)}</SelectItem>
@@ -395,9 +420,9 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                 </Select>
               </div>
               <div>
-                <Label>Prioridade</Label>
+                <Label htmlFor="tarefa-prioridade">Prioridade</Label>
                 <Select value={prioridade} onValueChange={setPrioridade}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="tarefa-prioridade" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(PRIORIDADE_CONFIG).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -406,15 +431,15 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label>Prazo</Label>
-                <Input type="date" value={prazo} onChange={e => setPrazo(e.target.value)} />
+                <Label htmlFor="tarefa-prazo">Prazo</Label>
+                <Input id="tarefa-prazo" type="date" value={prazo} onChange={e => setPrazo(e.target.value)} className="mt-1" />
               </div>
               <div>
-                <Label>Vincular Licitação</Label>
+                <Label htmlFor="tarefa-licitacao">Vincular licitação</Label>
                 <Select value={licitacaoId} onValueChange={setLicitacaoId}>
-                  <SelectTrigger><SelectValue placeholder="(Opcional)" /></SelectTrigger>
+                  <SelectTrigger id="tarefa-licitacao" className="mt-1"><SelectValue placeholder="(Opcional)" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
                     {licitacoes.map(l => (
@@ -427,8 +452,8 @@ export default function TarefasColaborador({ empresaId, isAdmin }: { empresaId: 
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={saving || !titulo.trim() || !atribuidoA} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              {saving ? 'Criando...' : 'Criar Tarefa'}
+            <Button onClick={handleCreate} disabled={saving || !titulo.trim() || !atribuidoA}>
+              {saving ? 'Criando...' : 'Criar tarefa'}
             </Button>
           </DialogFooter>
         </DialogContent>
