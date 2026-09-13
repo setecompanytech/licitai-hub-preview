@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Search, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,9 @@ export function CFOPSelect({
   finalidade, placeholder = "Buscar CFOP...", className, disabled,
 }: CFOPSelectProps) {
   const [open, setOpen] = useState(false);
+  // O seletor aparece uma vez por item da NF-e: id fixo duplicaria o
+  // aria-describedby entre as linhas.
+  const erroId = `${useId()}-cfop-erro`;
 
   const opcoes = useMemo<CFOPCompleto[]>(
     () => CFOPS_COMPLETOS.filter(
@@ -75,19 +78,21 @@ export function CFOPSelect({
             role="combobox"
             aria-expanded={open}
             disabled={disabled}
+            aria-invalid={!validacao.ok}
+            aria-describedby={!validacao.ok && validacao.alerta ? erroId : undefined}
             className={cn(
               "w-full justify-between font-normal",
               !validacao.ok && "border-destructive"
             )}
           >
             {selecionado ? (
-              <span className="flex items-center gap-2 truncate">
-                <Badge variant="secondary" className="font-mono">{selecionado.codigo}</Badge>
+              <span className="flex min-w-0 items-center gap-2 truncate">
+                <Badge variant="muted" className="font-mono">{selecionado.codigo}</Badge>
                 <span className="truncate text-sm">{selecionado.descricao}</span>
               </span>
             ) : (
-              <span className="text-muted-foreground flex items-center gap-2">
-                <Search className="w-4 h-4" />
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Search className="w-4 h-4" aria-hidden="true" />
                 {placeholder}
               </span>
             )}
@@ -95,9 +100,9 @@ export function CFOPSelect({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Info className="h-4 w-4 opacity-50 hover:opacity-100" />
+                    <Info role="img" aria-label="Como o CFOP é formado" className="h-4 w-4 opacity-60 hover:opacity-100" />
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-xs text-xs space-y-1">
+                  <TooltipContent side="left" className="max-w-xs space-y-1 text-xs">
                     <p className="font-semibold">Estrutura do CFOP (4 dígitos)</p>
                     <p><b>1º</b> – Origem/destino: 1/5 mesma UF · 2/6 outra UF · 3/7 exterior</p>
                     <p><b>2º</b> – Grupo da operação (compra, venda, devolução…)</p>
@@ -105,14 +110,14 @@ export function CFOPSelect({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              <ChevronsUpDown className="h-4 w-4 opacity-60" aria-hidden="true" />
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[520px] p-0" align="start">
+        <PopoverContent className="w-[min(32rem,calc(100vw-2rem))] p-0" align="start">
           <Command>
             <CommandInput placeholder="Digite código ou descrição..." />
-            <CommandList className="max-h-[400px]">
+            <CommandList className="max-h-96">
               <CommandEmpty>Nenhum CFOP encontrado.</CommandEmpty>
               {grupos.map(([categoria, lista]) => (
                 <CommandGroup key={categoria} heading={categoria}>
@@ -122,9 +127,12 @@ export function CFOPSelect({
                       value={`${c.codigo} ${c.descricao}`}
                       onSelect={() => { onChange(c.codigo); setOpen(false); }}
                     >
-                      <Check className={cn("mr-2 h-4 w-4", value === c.codigo ? "opacity-100" : "opacity-0")} />
-                      <Badge variant="outline" className="mr-2 font-mono shrink-0">{c.codigo}</Badge>
-                      <span className="text-xs">{c.descricao}</span>
+                      <Check
+                        aria-hidden="true"
+                        className={cn("mr-2 h-4 w-4 shrink-0", value === c.codigo ? "opacity-100" : "opacity-0")}
+                      />
+                      <Badge variant="muted" className="mr-2 shrink-0 font-mono">{c.codigo}</Badge>
+                      <span className="text-sm">{c.descricao}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -135,8 +143,8 @@ export function CFOPSelect({
       </Popover>
 
       {!validacao.ok && validacao.alerta && (
-        <p className="text-xs text-destructive flex items-start gap-1">
-          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+        <p id={erroId} className="flex items-start gap-1 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {validacao.codigoRejeicao && (
               <span className="font-semibold">Rejeição {validacao.codigoRejeicao}: </span>

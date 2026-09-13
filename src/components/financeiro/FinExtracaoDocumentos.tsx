@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Upload, Loader2, FileCheck2, FileX, ScanLine,
   FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info, Link2, ChevronDown, ChevronUp,
@@ -497,7 +498,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         <DialogContent className="max-w-4xl max-h-[calc(100vh-2rem)] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
-              <ScanLine className="w-5 h-5" />
+              <ScanLine className="w-5 h-5" aria-hidden="true" />
               Extração automática de documentos — {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
             </DialogTitle>
             <DialogDescription asChild>
@@ -510,7 +511,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     precisa saber que ele fica guardado, que a leitura é só uma
                     proposta, e que o lançamento exige um clique — três coisas
                     que a tela fazia e não contava. */}
-                <ol className="text-xs space-y-0.5 list-decimal list-inside marker:text-muted-foreground/60">
+                <ol className="text-sm space-y-1 list-decimal list-inside marker:text-muted-foreground">
                   <li>O arquivo é <strong>arquivado</strong> assim que chega — mesmo se a leitura falhar.</li>
                   <li>A IA lê os campos e mostra para <strong>você conferir</strong>.</li>
                   <li>Só ao clicar em <strong>Lançar</strong> nasce o {tipoLabel} em{' '}
@@ -520,9 +521,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 overflow-y-auto overscroll-contain px-6 pb-6 pr-4 min-h-0">
+          <div className="space-y-4 overflow-y-auto overscroll-contain px-6 pb-6 pr-4 min-h-0">
             {/* Drop zone */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Arraste arquivos aqui ou clique para selecionar"
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
@@ -531,15 +535,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 adicionar(Array.from(e.dataTransfer.files));
               }}
               onClick={() => inputRef.current?.click()}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  inputRef.current?.click();
+                }
+              }}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                dragOver ? "border-primary bg-primary-tint" : "border-border hover:border-primary"
               }`}
             >
-              <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-              <p className="text-sm font-medium mt-2">
+              <Upload className="w-8 h-8 mx-auto text-muted-foreground" aria-hidden="true" />
+              <p className="text-base font-semibold text-foreground mt-2">
                 Arraste arquivos aqui ou clique para selecionar
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 XML (NF-e/NFS-e) • PDF • JPG/PNG (cupom fiscal, boleto, recibo, fatura) — até 15 MB cada
               </p>
               <input
@@ -556,34 +566,34 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             </div>
 
             {/* Aviso */}
-            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground flex gap-2">
-              <Info className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
+            <Alert variant="info">
+              <Info className="w-4 h-4" aria-hidden="true" />
+              <AlertDescription>
                 <b>XMLs de NF-e/NFS-e</b> são processados automaticamente (entrada/saída detectada pelo CNPJ da empresa).
                 <br />
                 <b>PDFs e imagens</b> passam por OCR multi-IA (Gemini Vision/Claude/GPT-5) e abrem para revisão antes de virar lançamento.
-              </div>
-            </div>
+              </AlertDescription>
+            </Alert>
 
             {/* Lista de docs */}
             {docs.length > 0 && (
               <Card>
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                      <span className="font-medium">{totalSelecionado}</span> arquivo(s)
-                      {totalOk > 0 && <Badge variant="default" className="ml-2">{totalOk} ok</Badge>}
-                      {totalErro > 0 && <Badge variant="destructive" className="ml-1">{totalErro} erro(s)</Badge>}
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span><span className="font-semibold">{totalSelecionado}</span> arquivo(s)</span>
+                      {totalOk > 0 && <Badge variant="success">{totalOk} lido(s)</Badge>}
+                      {totalErro > 0 && <Badge variant="danger">{totalErro} erro(s)</Badge>}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="ghost" onClick={limparTudo} disabled={processando}>
                         Limpar
                       </Button>
                       <Button size="sm" onClick={processarTodos} disabled={processando || docs.every((d) => d.status === "ok" || d.status === "erro")}>
                         {processando ? (
-                          <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Processando…</>
+                          <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Processando…</>
                         ) : (
-                          <><ScanLine className="w-3.5 h-3.5 mr-1" />Processar todos</>
+                          <><ScanLine className="w-4 h-4" aria-hidden="true" />Processar todos</>
                         )}
                       </Button>
                     </div>
@@ -592,65 +602,65 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   <ScrollArea className="h-[min(52vh,520px)] pr-3">
                     <div className="space-y-2">
                       {docs.map((d) => (
-                        <div key={d.id} className="border rounded-md p-2.5 flex items-start gap-3 flex-wrap">
-                          <div className="mt-0.5">
-                            {d.kind === "xml" && <FileText className="w-5 h-5 text-info" />}
-                            {d.kind === "pdf" && <FileText className="w-5 h-5 text-destructive" />}
-                            {d.kind === "image" && <ImageIcon className="w-5 h-5 text-warning" />}
-                            {d.kind === "outro" && <FileX className="w-5 h-5 text-muted-foreground" />}
+                        <div key={d.id} className="rounded-lg border border-border p-3 flex items-start gap-3 flex-wrap">
+                          <div className="mt-0.5 text-muted-foreground" aria-hidden="true">
+                            {d.kind === "xml" && <FileText className="w-5 h-5" />}
+                            {d.kind === "pdf" && <FileText className="w-5 h-5" />}
+                            {d.kind === "image" && <ImageIcon className="w-5 h-5" />}
+                            {d.kind === "outro" && <FileX className="w-5 h-5" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium truncate">{d.file.name}</p>
-                              <Badge variant="outline" className="text-xs uppercase">{d.kind}</Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">{d.file.name}</p>
+                              <Badge variant="muted" className="uppercase">{d.kind}</Badge>
                               {d.status === "ok" && (
                                 // O nome do motor ("gemini_2.5_pro") é dado de
                                 // engenharia, não de operação — na tela vira
                                 // ruído. Fica no hover para diagnóstico.
-                                <Badge variant="default" className="text-xs gap-1"
+                                <Badge variant="success" className="gap-1"
                                   title={d.motor ? `Lido por ${d.motor}` : undefined}>
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  lido
+                                  <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                                  Lido
                                 </Badge>
                               )}
                               {d.status === "erro" && (
-                                <Badge variant="destructive" className="text-xs gap-1">
-                                  <AlertCircle className="w-3 h-3" />erro
+                                <Badge variant="danger" className="gap-1">
+                                  <AlertCircle className="w-3 h-3" aria-hidden="true" />Erro
                                 </Badge>
                               )}
                               {d.status === "processando" && (
-                                <Badge variant="secondary" className="text-xs gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" />processando
+                                <Badge variant="muted" className="gap-1">
+                                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />Processando
                                 </Badge>
                               )}
                               {d.lancamentoId && (
-                                <Badge variant="default" className="text-xs gap-1">
-                                  <FileCheck2 className="w-3 h-3" />lançado
+                                <Badge variant="success" className="gap-1">
+                                  <FileCheck2 className="w-3 h-3" aria-hidden="true" />Lançado
                                 </Badge>
                               )}
                               {/* O selo que faltava: o arquivo ficou. Aparece mesmo
                                   quando a leitura falhou — é esse o ponto. */}
                               {d.documentoId && (
-                                <Badge variant="outline" className="text-xs gap-1 border-success/40 text-success">
-                                  <FileCheck2 className="w-3 h-3" />arquivado
+                                <Badge variant="info" className="gap-1">
+                                  <FileCheck2 className="w-3 h-3" aria-hidden="true" />Arquivado
                                 </Badge>
                               )}
                             </div>
 
                             {d.status === "ok" && d.dados && (
-                              <div className="text-xs text-muted-foreground mt-1 grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-0.5">
+                              <div className="text-xs text-muted-foreground mt-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1">
                                 {d.dados.emitente_nome && <span className="truncate" title={d.dados.emitente_nome}><b>Emit:</b> {d.dados.emitente_nome}</span>}
                                 {d.dados.numero_documento && <span><b>Nº:</b> {d.dados.numero_documento}</span>}
                                 {d.dados.data_emissao && <span><b>Emissão:</b> {d.dados.data_emissao}</span>}
                                 {d.dados.data_vencimento && <span><b>Venc:</b> {d.dados.data_vencimento}</span>}
-                                <span className="font-semibold text-foreground"><b>Valor:</b> {fmt(d.dados.valor_total)}</span>
+                                <span className="font-semibold text-foreground tabular-nums"><b>Valor:</b> {fmt(d.dados.valor_total)}</span>
                               </div>
                             )}
                             {/* Chave descartada não pode ser descarte silencioso: quem
                                 revisa precisa saber que o campo ficou vazio de propósito,
                                 e que a leitura da IA errou ali. */}
                             {d.status === "ok" && chaveNfeSuspeita(d.dados?.chave_nfe) && (
-                              <p className="text-xs text-warning mt-1">
+                              <p className="text-xs text-warning-ink mt-1">
                                 A leitura devolveu {String(d.dados?.chave_nfe).replace(/\D/g, "").length} dígitos
                                 onde a chave da NF-e tem 44 — provavelmente pegou o número da nota.
                                 O campo será gravado vazio; cole a chave completa se precisar dela.
@@ -662,9 +672,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 silencioso. */}
                             {d.status === "ok" && Array.isArray((d.dados as any)?.avisos) &&
                               ((d.dados as any).avisos as string[]).map((a, i) => (
-                                <p key={i} className="text-xs text-warning mt-1">{a}</p>
+                                <p key={i} className="text-xs text-warning-ink mt-1">{a}</p>
                               ))}
-                            {d.erro && <p className="text-xs text-destructive mt-1">{d.erro}</p>}
+                            {d.erro && <p className="text-xs text-destructive-ink mt-1">{d.erro}</p>}
                             {/* Onde o arquivo foi parar.
                                 Antes, o documento processado ficava num limbo: o
                                 cartão mostrava os campos lidos e três botões, e
@@ -672,11 +682,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 onde o lançamento iria. Quem enviava a nota saía
                                 da tela achando que tinha lançado. */}
                             {d.status === "ok" && !d.lancamentoId && !d.dados?._ja_lancada && (
-                              <div className="mt-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-1.5">
-                                <p className="text-xs text-warning font-medium">
+                              <div className="mt-2 rounded-md border border-dashed border-warning-line bg-warning-tint px-3 py-2">
+                                <p className="text-sm font-semibold text-warning-ink">
                                   Ainda não lançado
                                 </p>
-                                <p className="text-[11px] text-muted-foreground">
+                                <p className="text-xs text-warning-ink">
                                   O documento já está arquivado. Clique em <strong>Lançar e vincular</strong> para
                                   criar o {tipoLabel} em {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"},
                                   ou em <strong>Revisar</strong> para conferir os campos antes.
@@ -684,12 +694,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               </div>
                             )}
                             {d.lancamentoId && (
-                              <div className="mt-2 rounded-md border border-success/40 bg-success/5 px-2.5 py-1.5 flex items-center justify-between gap-2 flex-wrap">
+                              <div className="mt-2 rounded-md border border-success-line bg-success-tint px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
                                 <div className="min-w-0">
-                                  <p className="text-xs text-success font-medium">
+                                  <p className="text-sm font-semibold text-success-ink">
                                     Lançado em {tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground">
+                                  <p className="text-xs text-success-ink tabular-nums">
                                     {d.dados?.valor_total ? fmt(Number(d.dados.valor_total)) : "Valor a conferir"}
                                     {d.documentoId ? " · documento arquivado junto" : " · documento NÃO arquivado"}
                                   </p>
@@ -698,7 +708,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                     lista de Contas a Receber/Pagar, e o
                                     lançamento novo está nela. "Ver na lista"
                                     prometia navegação que não existia. */}
-                                <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                                <Button size="sm" variant="outline" className="shrink-0"
                                   title="Fecha esta janela — o lançamento está na lista logo atrás"
                                   onClick={() => onOpenChange(false)}>
                                   Fechar e ver a lista
@@ -706,7 +716,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               </div>
                             )}
                             {d.dados?._ja_lancada && (
-                              <p className="text-xs text-success mt-1">
+                              <p className="text-xs text-success-ink mt-1">
                                 Lançado automaticamente como {d.dados._direcao === "saida" ? "receita" : "despesa"}.
                               </p>
                             )}
@@ -716,17 +726,18 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               <div className="mt-2">
                                 <button
                                   type="button"
+                                  aria-expanded={!!d.vincularExpandido}
                                   onClick={() => toggleVincular(d.id)}
-                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                  className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
-                                  <Link2 className="w-3 h-3" />
+                                  <Link2 className="w-4 h-4" aria-hidden="true" />
                                   {d.vinculo?.contrato_id
                                     ? "Vinculado a contrato"
                                     : "Vincular a contrato/ATA SRP"}
                                   {d.vincularExpandido ? (
-                                    <ChevronUp className="w-3 h-3" />
+                                    <ChevronUp className="w-4 h-4" aria-hidden="true" />
                                   ) : (
-                                    <ChevronDown className="w-3 h-3" />
+                                    <ChevronDown className="w-4 h-4" aria-hidden="true" />
                                   )}
                                 </button>
                                 {d.vincularExpandido && (
@@ -755,20 +766,20 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                           </div>
 
                           {/* flex-wrap no card + linha no mobile: quando a coluna de botões
-    não cabe ao lado, ela DESCE inteira em vez de ser cortada pela
-    borda do modal — "Lançar e vinc…" truncado era isso. */}
-<div className="flex flex-row sm:flex-col flex-wrap gap-1 shrink-0 ml-auto">
+                              não cabe ao lado, ela DESCE inteira em vez de ser cortada pela
+                              borda do modal — "Lançar e vinc…" truncado era isso. */}
+                          <div className="flex flex-row sm:flex-col flex-wrap gap-2 shrink-0 ml-auto">
                             {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && (
                               <>
-                                <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>
+                                <Button size="sm" variant="default" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>
                                   {d.vinculo?.contrato_id ? "Lançar e vincular" : "Lançar"}
                                 </Button>
-                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => abrirEditorComDados(d)}>
-                                  <Pencil className="w-3 h-3 mr-1" />Revisar
+                                <Button size="sm" variant="outline" onClick={() => abrirEditorComDados(d)}>
+                                  <Pencil className="w-4 h-4" aria-hidden="true" />Revisar
                                 </Button>
                               </>
                             )}
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => removerItem(d.id)} disabled={d.status === "processando"}>
+                            <Button size="sm" variant="ghost" onClick={() => removerItem(d.id)} disabled={d.status === "processando"}>
                               Remover
                             </Button>
                           </div>

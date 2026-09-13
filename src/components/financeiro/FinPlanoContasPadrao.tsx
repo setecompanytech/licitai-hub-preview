@@ -4,10 +4,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Sparkles, Loader2, FolderTree, CheckCircle2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSyncPlanoContasCategorias } from "@/hooks/useFinanceiro";
@@ -17,11 +18,14 @@ interface PC {
   nivel: number; pai_id: string | null; aceita_lancamentos: boolean; ativo: boolean;
 }
 
-const TIPO_COLOR: Record<string, string> = {
-  receita: "bg-success/15 text-success border-success/30",
-  custo: "bg-warning/15 text-warning border-warning/30",
-  despesa: "bg-destructive/15 text-destructive border-destructive/30",
-  imposto: "bg-info/15 text-info border-info/30",
+/** Tipo do grupo na paleta semântica em tinta do Badge (identidade 12/09). */
+type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
+
+const TIPO_VARIANT: Record<string, VarianteBadge> = {
+  receita: "success",
+  custo: "warning",
+  despesa: "danger",
+  imposto: "info",
 };
 
 export default function FinPlanoContasPadrao() {
@@ -73,81 +77,95 @@ export default function FinPlanoContasPadrao() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {contas.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => syncCategorias.mutate()}
+            disabled={syncCategorias.isPending}
+            title="Copia todas as contas deste plano para a lista de Categorias usada em Contas a Pagar/Receber"
+          >
+            {syncCategorias.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+            )}
+            Sincronizar com Categorias
+          </Button>
+        )}
+        {contas.length === 0 && !loading && (
+          <Button onClick={seed} disabled={seeding}>
+            {seeding ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="w-4 h-4" aria-hidden="true" />
+            )}
+            Importar plano padrão
+          </Button>
+        )}
+      </div>
+
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FolderTree className="w-5 h-5" /> Plano de Contas (Configurável)
-            </CardTitle>
-            <CardDescription>
-              Estrutura hierárquica padrão (31 contas em 5 grupos). Você pode editar, expandir ou criar contas adicionais por empresa.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {contas.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => syncCategorias.mutate()}
-                disabled={syncCategorias.isPending}
-                className="shrink-0"
-                title="Copia todas as contas deste plano para a lista de Categorias usada em Contas a Pagar/Receber"
-              >
-                {syncCategorias.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-1.5" />
-                )}
-                Sincronizar com Categorias
-              </Button>
-            )}
-            {contas.length === 0 && !loading && (
-              <Button onClick={seed} disabled={seeding} className="shrink-0">
-                {seeding ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-                Importar plano padrão
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4 p-6">
+          <p className="text-sm text-muted-foreground">
+            Estrutura hierárquica padrão (31 contas em 5 grupos). Você pode editar, expandir ou criar contas adicionais
+            por empresa.
+          </p>
+
           {loading ? (
-            <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+            <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+              Carregando plano de contas…
+            </p>
           ) : contas.length === 0 ? (
-            <Alert>
-              <AlertDescription>
-                Nenhum plano de contas configurado. Clique em <b>Importar plano padrão</b> para criar 31 contas pré-definidas (Receitas, Custos, Despesas Operacionais, Despesas Financeiras e Impostos). Você pode editar livremente depois.
-              </AlertDescription>
-            </Alert>
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<FolderTree aria-hidden="true" />}
+              titulo="Nenhum plano de contas configurado"
+              descricao="Importe o plano padrão para criar 31 contas pré-definidas (receitas, custos, despesas operacionais, despesas financeiras e impostos). Você pode editar livremente depois."
+              acao={
+                <Button onClick={seed} disabled={seeding}>
+                  {seeding ? (
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  Importar plano padrão
+                </Button>
+              }
+            />
           ) : (
-            <div className="space-y-3">
-              <Alert>
-                <CheckCircle2 className="w-4 h-4" />
+            <div className="space-y-4">
+              <Alert variant="success">
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                 <AlertDescription>
-                  Plano ativo: <b>{contas.length} contas</b> em {grupos.length} grupos. Edição granular disponível em Plano de Contas (legado).
+                  Plano ativo: <b>{contas.length} contas</b> em {grupos.length} grupos. Edição granular disponível em
+                  Plano de Contas (legado).
                 </AlertDescription>
               </Alert>
               {grupos.map((grupo) => {
                 const filhos = contas.filter((c) => c.pai_id === grupo.id);
                 return (
-                  <div key={grupo.id} className="border border-border/50 rounded-lg p-3 bg-card/40">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
+                  <section key={grupo.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">{grupo.codigo}</span>
-                        <span className="font-medium">{grupo.nome}</span>
-                        <Badge variant="outline" className={TIPO_COLOR[grupo.tipo] || ""}>
+                        <span className="text-base font-semibold text-foreground">{grupo.nome}</span>
+                        <Badge variant={TIPO_VARIANT[grupo.tipo] ?? "muted"} className="capitalize">
                           {grupo.tipo}
                         </Badge>
                       </div>
-                      <span className="text-xs text-muted-foreground">{filhos.length} subcontas</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{filhos.length} subcontas</span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 pl-4">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       {filhos.map((f) => (
-                        <div key={f.id} className="text-xs flex items-center gap-2 py-0.5">
-                          <span className="font-mono text-muted-foreground w-12 shrink-0">{f.codigo}</span>
-                          <span className="truncate">{f.nome}</span>
+                        <div key={f.id} className="flex items-center gap-2 text-sm">
+                          <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground">{f.codigo}</span>
+                          <span className="truncate text-foreground">{f.nome}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </section>
                 );
               })}
             </div>

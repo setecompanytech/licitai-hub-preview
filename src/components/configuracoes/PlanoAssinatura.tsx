@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { CreditCard, Check, Star, Zap, Loader2, ExternalLink, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -287,6 +288,14 @@ export default function PlanoAssinatura() {
       </div>
 
       {/* Plans grid */}
+      {planos.length === 0 && (
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<CreditCard aria-hidden="true" />}
+          titulo="Nenhum plano disponível"
+          descricao="Não há planos ativos para contratar no momento. Fale com o suporte para assinar."
+        />
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {planos.map((plano) => {
           const price = getPrice(plano.preco_mensal);

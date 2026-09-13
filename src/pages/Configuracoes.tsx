@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useLocation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TimbradoConfig from '@/components/configuracoes/TimbradoConfig';
 import { Building2, Bell, Globe, Shield, Newspaper, Search, Loader2, ExternalLink, CheckCircle2, AlertTriangle, ImageIcon, User, Save, CreditCard, Settings, MapPin, BarChart3 } from 'lucide-react';
@@ -360,35 +362,34 @@ export default function Configuracoes() {
     <AppLayout>
       {/* mx-auto: o max-w prendia a largura em 1024px sem centralizar, e o
           conteúdo encostava à esquerda com a sobra toda do lado direito. */}
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Personalize a plataforma para sua empresa</p>
-        </div>
-
+      <div className="mx-auto max-w-5xl">
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="mb-6 w-full justify-start">
-            <TabsTrigger value="geral" className="gap-2">
-              <Settings className="w-4 h-4" />
-              Configurações Gerais
-            </TabsTrigger>
-            <TabsTrigger value="plano" className="gap-2">
-              <CreditCard className="w-4 h-4" />
-              Plano & Assinatura
-            </TabsTrigger>
-            <TabsTrigger value="regime" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Regime Tributário
-            </TabsTrigger>
-            <TabsTrigger value="timbrado" className="gap-2">
-              <ImageIcon className="w-4 h-4" />
-              Timbrado
-            </TabsTrigger>
-            <TabsTrigger value="seguranca" className="gap-2">
-              <Shield className="w-4 h-4" />
-              Segurança
-            </TabsTrigger>
-          </TabsList>
+          {/* Item de menu: título, descrição, ícone e trilha vêm do registro
+              `lib/navegacao/paginas.ts` — a tela não os repete. */}
+          <CabecalhoPagina>
+            <TabsList>
+              <TabsTrigger value="geral" className="gap-2">
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                Geral
+              </TabsTrigger>
+              <TabsTrigger value="plano" className="gap-2">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+                Plano
+              </TabsTrigger>
+              <TabsTrigger value="regime" className="gap-2">
+                <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                Regime
+              </TabsTrigger>
+              <TabsTrigger value="timbrado" className="gap-2">
+                <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                Timbrado
+              </TabsTrigger>
+              <TabsTrigger value="seguranca" className="gap-2">
+                <Shield className="h-4 w-4" aria-hidden="true" />
+                Segurança
+              </TabsTrigger>
+            </TabsList>
+          </CabecalhoPagina>
 
           {/* ── Tab: Timbrado — o ÚNICO lugar do timbrado (10/09) ──
               Dois pipelines convivem e são complementares:
@@ -400,12 +401,12 @@ export default function Configuracoes() {
               Antes o 2 morava na aba Geral e parecia duplicidade. */}
           <TabsContent value="timbrado" className="space-y-6">
             <TimbradoConfig />
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Papel timbrado completo (fundo / marca d'água)</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Papel timbrado completo (fundo / marca d'água)</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Imagem ou documento Word do papel timbrado pronto — usado como fundo nas peças
                 jurídicas, declarações e planilhas de composição. Complementa o cabeçalho/rodapé
                 acima (que veste os relatórios em PDF).
@@ -417,16 +418,17 @@ export default function Configuracoes() {
           {/* ── Tab: Configurações Gerais ── */}
           <TabsContent value="geral" className="space-y-6">
             {/* Dados da Empresa */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Dados da Empresa</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Dados da Empresa</h2>
               </div>
               <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">CNPJ</Label>
+                    <Label htmlFor="empresa-cnpj">CNPJ</Label>
                     <Input
+                      id="empresa-cnpj"
                       value={cnpjInput}
                       onChange={e => setCnpjInput(e.target.value)}
                       onBlur={() => {
@@ -437,110 +439,111 @@ export default function Configuracoes() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">CNAE Principal</Label>
-                    <Input value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
+                    <Label htmlFor="empresa-cnae">CNAE Principal</Label>
+                    <Input id="empresa-cnae" value={cnaePrincipal} onChange={e => setCnaePrincipal(e.target.value)} className="mt-1" />
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleConsultaCNPJ} disabled={loadingCnpj || loadingSintegra} className="text-xs gap-1.5">
-                    {loadingCnpj ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  <Button variant="outline" size="sm" onClick={handleConsultaCNPJ} disabled={loadingCnpj || loadingSintegra}>
+                    {loadingCnpj ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     Consultar Receita Federal
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleConsultaSintegra} disabled={loadingCnpj || loadingSintegra} className="text-xs gap-1.5">
-                    {loadingSintegra ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  <Button variant="outline" size="sm" onClick={handleConsultaSintegra} disabled={loadingCnpj || loadingSintegra}>
+                    {loadingSintegra ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
                     Consultar SINTEGRA
                   </Button>
-                  <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
-                    <ExternalLink className="w-3 h-3" /> Receita Federal
+                  <a href="https://servicos.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary">
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" /> Receita Federal
                   </a>
-                  <a href="http://www.sintegra.gov.br/" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent flex items-center gap-1 transition-colors">
-                    <ExternalLink className="w-3 h-3" /> SINTEGRA
+                  <a href="http://www.sintegra.gov.br/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary">
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" /> SINTEGRA
                   </a>
                 </div>
 
                 {erroCnpj && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertTriangle className="w-4 h-4" /> {erroCnpj}
-                  </div>
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                    <AlertDescription>{erroCnpj}</AlertDescription>
+                  </Alert>
                 )}
 
                 <div>
-                  <Label className="text-xs">Razão Social</Label>
-                  <Input value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
+                  <Label htmlFor="empresa-razao-social">Razão Social</Label>
+                  <Input id="empresa-razao-social" value={razaoSocial} onChange={e => setRazaoSocial(e.target.value)} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs">Nome Fantasia</Label>
-                  <Input value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
+                  <Label htmlFor="empresa-nome-fantasia">Nome Fantasia</Label>
+                  <Input id="empresa-nome-fantasia" value={nomeFantasia} onChange={e => setNomeFantasia(e.target.value)} className="mt-1" />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <Label className="text-xs">CEP</Label>
-                    <Input value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
+                    <Label htmlFor="empresa-cep">CEP</Label>
+                    <Input id="empresa-cep" value={cep} onChange={e => setCep(e.target.value)} className="mt-1" placeholder="00000-000" />
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Endereço (Logradouro, Nº)</Label>
-                    <Input value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
+                  <div className="md:col-span-2">
+                    <Label htmlFor="empresa-endereco">Endereço (Logradouro, Nº)</Label>
+                    <Input id="empresa-endereco" value={endereco} onChange={e => setEndereco(e.target.value)} className="mt-1" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <Label className="text-xs">Complemento</Label>
-                    <Input value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
+                    <Label htmlFor="empresa-complemento">Complemento</Label>
+                    <Input id="empresa-complemento" value={complemento} onChange={e => setComplemento(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label className="text-xs">Bairro</Label>
-                    <Input value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
+                    <Label htmlFor="empresa-bairro">Bairro</Label>
+                    <Input id="empresa-bairro" value={bairro} onChange={e => setBairro(e.target.value)} className="mt-1" />
                   </div>
                   <div>
-                    <Label className="text-xs">UF</Label>
-                    <Input value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
+                    <Label htmlFor="empresa-uf">UF</Label>
+                    <Input id="empresa-uf" value={uf} onChange={e => setUf(e.target.value)} className="mt-1" maxLength={2} />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Município</Label>
-                  <Input value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
+                  <Label htmlFor="empresa-municipio">Município</Label>
+                  <Input id="empresa-municipio" value={cidade} onChange={e => setCidade(e.target.value)} className="mt-1" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">Telefone</Label>
-                    <Input value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
+                    <Label htmlFor="empresa-telefone">Telefone</Label>
+                    <Input id="empresa-telefone" value={telefone} onChange={e => setTelefone(e.target.value)} className="mt-1" placeholder="(XX) XXXXX-XXXX" />
                   </div>
                   <div>
-                    <Label className="text-xs">E-mail</Label>
-                    <Input value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
+                    <Label htmlFor="empresa-email">E-mail</Label>
+                    <Input id="empresa-email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1" placeholder="contato@empresa.com" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">Inscrição Estadual</Label>
-                    <Input value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" className="mt-1" />
+                    <Label htmlFor="empresa-ie">Inscrição Estadual</Label>
+                    <Input id="empresa-ie" value={inscricaoEstadual} onChange={e => setInscricaoEstadual(e.target.value)} placeholder="Número da inscrição estadual" className="mt-1" />
                     {inscricaoEstadual && (
-                      <Badge variant="outline" className="mt-1 text-xs bg-success/10 text-success border-success/20">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Preenchido
+                      <Badge variant="success" className="mt-2 gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Preenchido
                       </Badge>
                     )}
                   </div>
                   <div>
-                    <Label className="text-xs">Inscrição Municipal</Label>
-                    <Input value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} placeholder="Número da inscrição municipal" className="mt-1" />
+                    <Label htmlFor="empresa-im">Inscrição Municipal</Label>
+                    <Input id="empresa-im" value={inscricaoMunicipal} onChange={e => setInscricaoMunicipal(e.target.value)} placeholder="Número da inscrição municipal" className="mt-1" />
                   </div>
                 </div>
               </div>
             </section>
 
             {/* Dados do Representante */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <User className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Dados do Representante Legal</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Dados do Representante Legal</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Preencha os dados do representante legal ou extraia automaticamente via upload de documento (contrato social, procuração, RG/CPF). Essas informações serão propagadas para propostas, declarações, petições, recursos e demais documentos.
               </p>
 
@@ -556,39 +559,39 @@ export default function Configuracoes() {
                 }}
               />
 
-              <div className="grid gap-4 mt-4">
+              <div className="mt-4 grid gap-4">
                 <div>
-                  <Label className="text-xs">Nome Completo</Label>
-                  <Input value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
+                  <Label htmlFor="rep-nome">Nome Completo</Label>
+                  <Input id="rep-nome" value={repNome} onChange={e => setRepNome(e.target.value)} className="mt-1" placeholder="Nome completo do representante" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">CPF</Label>
-                    <Input value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
+                    <Label htmlFor="rep-cpf">CPF</Label>
+                    <Input id="rep-cpf" value={repCpf} onChange={e => setRepCpf(e.target.value)} className="mt-1" placeholder="000.000.000-00" />
                   </div>
                   <div>
-                    <Label className="text-xs">RG</Label>
-                    <Input value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs">Órgão Expedidor</Label>
-                    <Input value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Cargo / Função</Label>
-                    <Input value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
+                    <Label htmlFor="rep-rg">RG</Label>
+                    <Input id="rep-rg" value={repRg} onChange={e => setRepRg(e.target.value)} className="mt-1" placeholder="Número do RG" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="text-xs">Naturalidade</Label>
-                    <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
+                    <Label htmlFor="rep-orgao-expedidor">Órgão Expedidor</Label>
+                    <Input id="rep-orgao-expedidor" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} className="mt-1" placeholder="SSP/XX" />
                   </div>
                   <div>
-                    <Label className="text-xs">Nacionalidade</Label>
-                    <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
+                    <Label htmlFor="rep-cargo">Cargo / Função</Label>
+                    <Input id="rep-cargo" value={repCargo} onChange={e => setRepCargo(e.target.value)} className="mt-1" placeholder="Sócio-Administrador" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="rep-naturalidade">Naturalidade</Label>
+                    <Input id="rep-naturalidade" value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} className="mt-1" placeholder="Cidade/UF" />
+                  </div>
+                  <div>
+                    <Label htmlFor="rep-nacionalidade">Nacionalidade</Label>
+                    <Input id="rep-nacionalidade" value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} className="mt-1" />
                   </div>
                 </div>
               </div>
@@ -600,10 +603,10 @@ export default function Configuracoes() {
                 (papel timbrado completo e cabeçalho/rodapé) num lugar só. */}
 
             {/* Notificações */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Notificações</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Bell className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
               </div>
               <div className="space-y-4">
                 {([
@@ -612,12 +615,13 @@ export default function Configuracoes() {
                   { key: 'atividade_concorrentes' as const, label: 'Atividade de concorrentes', desc: 'Notificação sobre novos lances de concorrentes monitorados' },
                   { key: 'relatorios_semanais' as const, label: 'Relatórios semanais', desc: 'Resumo por e-mail toda segunda-feira' },
                 ]).map((n) => (
-                  <div key={n.key} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{n.label}</p>
-                      <p className="text-xs text-muted-foreground">{n.desc}</p>
+                  <div key={n.key} className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Label htmlFor={`notif-${n.key}`} className="block text-base font-medium text-foreground">{n.label}</Label>
+                      <p className="mt-1 text-sm text-muted-foreground">{n.desc}</p>
                     </div>
                     <Switch
+                      id={`notif-${n.key}`}
                       checked={notifConfig[n.key]}
                       onCheckedChange={(v) => setNotifConfig(prev => ({ ...prev, [n.key]: v }))}
                     />
@@ -627,10 +631,10 @@ export default function Configuracoes() {
             </section>
 
             {/* Portais Monitorados */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Portais Monitorados</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Portais Monitorados</h2>
               </div>
               <div className="space-y-3">
                 {([
@@ -645,9 +649,10 @@ export default function Configuracoes() {
                   { key: 'licitanet', label: 'Licitanet' },
                   { key: 'portal_compras_publicas', label: 'Portal de Compras Públicas' },
                 ]).map((p) => (
-                  <div key={p.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{p.label}</span>
+                  <div key={p.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
+                    <Label htmlFor={`portal-${p.key}`} className="min-w-0 text-sm font-medium text-foreground">{p.label}</Label>
                     <Switch
+                      id={`portal-${p.key}`}
                       checked={portaisConfig[p.key] ?? false}
                       onCheckedChange={(v) => setPortaisConfig(prev => ({ ...prev, [p.key]: v }))}
                     />
@@ -657,10 +662,10 @@ export default function Configuracoes() {
             </section>
 
             {/* Diários Oficiais */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Newspaper className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Diários Oficiais Monitorados</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Newspaper className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Diários Oficiais Monitorados</h2>
               </div>
               <div className="space-y-3">
                 {([
@@ -671,9 +676,10 @@ export default function Configuracoes() {
                   { key: 'ioerj', label: 'IOERJ' },
                   { key: 'dodf_e', label: 'DODF.e (Distrito Federal)' },
                 ]).map((d) => (
-                  <div key={d.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium">{d.label}</span>
+                  <div key={d.key} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted p-3">
+                    <Label htmlFor={`diario-${d.key}`} className="min-w-0 text-sm font-medium text-foreground">{d.label}</Label>
                     <Switch
+                      id={`diario-${d.key}`}
                       checked={diariosConfig[d.key] ?? true}
                       onCheckedChange={(v) => setDiariosConfig(prev => ({ ...prev, [d.key]: v }))}
                     />
@@ -682,46 +688,44 @@ export default function Configuracoes() {
               </div>
             </section>
 
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">UFs prioritárias do Monitoramento</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">UFs prioritárias do Monitoramento</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Escolha as UFs que devem ser priorizadas no Monitoramento de Editais e na Central de Avisos.
                 Sem seleção, o sistema continua considerando todos os estados.
               </p>
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => setUfsInteresse([...UFS_BRASIL])}>
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setUfsInteresse([...UFS_BRASIL])}>
                   Selecionar todas
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => setUfsInteresse([])}>
+                <Button size="sm" variant="outline" onClick={() => setUfsInteresse([])}>
                   Limpar
                 </Button>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="UFs prioritárias">
                 {UFS_BRASIL.map((sigla) => {
                   const ativa = ufsInteresse.includes(sigla);
                   return (
-                    <button
+                    <Button
                       key={sigla}
                       type="button"
+                      size="sm"
+                      variant={ativa ? 'default' : 'outline'}
+                      aria-pressed={ativa}
                       onClick={() => toggleUfInteresse(sigla)}
-                      className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                        ativa
-                          ? 'bg-accent text-accent-foreground border-accent'
-                          : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50'
-                      }`}
                     >
                       {sigla}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
 
-              <p className="text-xs text-muted-foreground mt-4">
+              <p className="mt-4 text-sm text-muted-foreground">
                 {ufsInteresse.length > 0
                   ? `Prioridade ativa para: ${ufsInteresse.join(', ')}`
                   : 'Nenhuma UF específica selecionada.'}
@@ -735,23 +739,22 @@ export default function Configuracoes() {
             <BackupAgendado />
 
             {/* Exportar Dados */}
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Privacidade & Dados (LGPD)</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Privacidade &amp; Dados (LGPD)</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Exporte todos os seus dados em formato JSON. Conforme a LGPD, você tem direito à portabilidade dos seus dados a qualquer momento.
               </p>
               <ExportarDados />
             </section>
 
             <Button
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
               onClick={handleSalvar}
               disabled={loadingSalvar || !empresaAtiva}
             >
-              {loadingSalvar ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              {loadingSalvar ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
               Salvar Configurações
             </Button>
           </TabsContent>
@@ -775,31 +778,32 @@ export default function Configuracoes() {
 
           {/* ── Tab: Segurança ── */}
           <TabsContent value="seguranca" className="space-y-6">
-            <section className="bg-card rounded-xl border border-border/50 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <User className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Usuário de Acesso</h2>
+            <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <User className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <h2 className="text-lg font-semibold text-foreground">Usuário de Acesso</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Defina um nome de usuário para fazer login sem precisar digitar o e-mail. Use apenas letras minúsculas, números, ponto, hífen ou underscore.
               </p>
-              <div className="flex items-end gap-3 max-w-sm">
-                <div className="flex-1">
-                  <Label className="text-xs">Nome de usuário</Label>
+              <div className="flex max-w-sm flex-wrap items-end gap-3">
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="usuario-acesso">Nome de usuário</Label>
                   <Input
+                    id="usuario-acesso"
                     value={username}
                     onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ''))}
                     placeholder="ex: joao.silva"
                     className="mt-1 font-mono"
                   />
                 </div>
-                <Button size="sm" onClick={handleSalvarUsername} disabled={savingUsername || !username.trim()}>
-                  {savingUsername ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                <Button onClick={handleSalvarUsername} disabled={savingUsername || !username.trim()}>
+                  {savingUsername ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
                   Salvar
                 </Button>
               </div>
               {username && (
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Você pode fazer login com <span className="font-mono font-medium text-foreground">{username}</span> ou com seu e-mail.
                 </p>
               )}

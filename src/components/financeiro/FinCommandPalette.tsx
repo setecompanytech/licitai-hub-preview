@@ -50,7 +50,7 @@ export default function FinCommandPalette({ onNavigate }: Props) {
                       setOpen(false);
                     }}
                   >
-                    <Icon className="w-4 h-4 mr-2" />
+                    <Icon className="w-4 h-4 mr-2" aria-hidden="true" />
                     <span>{item.label}</span>
                     <span className="ml-2 text-xs text-muted-foreground truncate">{item.description}</span>
                   </CommandItem>

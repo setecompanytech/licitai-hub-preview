@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useMembroPermissoes } from '@/hooks/useMembroPermissoes';
@@ -179,12 +181,12 @@ export default function FinCustosPorContrato() {
 
   if (!podeVer) {
     return (
-      <Card className="p-8 text-center space-y-2">
-        <ShieldAlert className="w-8 h-8 mx-auto text-muted-foreground" />
-        <p className="text-sm font-medium">Acesso restrito</p>
-        <p className="text-xs text-muted-foreground">
-          Custos por Contrato é visível apenas para o administrador da empresa e a equipe do Financeiro.
-        </p>
+      <Card>
+        <EstadoVazio
+          icone={<ShieldAlert />}
+          titulo="Acesso restrito"
+          descricao="Custos por Contrato é visível apenas para o administrador da empresa e a equipe do Financeiro."
+        />
       </Card>
     );
   }
@@ -193,38 +195,31 @@ export default function FinCustosPorContrato() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-muted-foreground" /> Custos por Contrato
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            O que cada contrato vigente custa de verdade: despesas do Financeiro vinculadas
-            (pagas e comprometidas), custos digitados na aba Custos — sem dupla contagem — e,
-            se ligado, o rateio das despesas indiretas.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" className="text-xs" onClick={() => setVincularAberto(true)}>
-            <Link2 className="w-3.5 h-3.5 mr-1" /> Vincular despesas em lote
-          </Button>
-          <Button size="sm" variant={incluirEncerrados ? 'secondary' : 'outline'} className="text-xs"
-            onClick={() => setIncluirEncerrados(v => !v)}>
-            {incluirEncerrados ? 'Ocultar encerrados' : 'Incluir encerrados'}
-          </Button>
-          <Button size="sm" variant="outline" className="text-xs" onClick={load} disabled={loading}>
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          </Button>
-        </div>
+      {/* A descrição da tela já vem do cabeçalho padrão (registro do módulo):
+          aqui fica só a barra de ações, que embrulha no celular. */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          variant={incluirEncerrados ? 'default' : 'outline'}
+          aria-pressed={incluirEncerrados}
+          onClick={() => setIncluirEncerrados(v => !v)}
+        >
+          {incluirEncerrados ? 'Ocultar encerrados' : 'Incluir encerrados'}
+        </Button>
+        <Button variant="outline" size="icon" onClick={load} disabled={loading} aria-label="Recarregar custos por contrato" title="Recarregar">
+          {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+        </Button>
+        <Button onClick={() => setVincularAberto(true)}>
+          <Link2 aria-hidden="true" /> Vincular despesas em lote
+        </Button>
       </div>
 
       {/* Rateio: política da empresa, nunca padrão do produto (princípio 7) */}
-      <Card className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
+      <Card className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
           <Switch id="ratear" checked={config.ratear_indiretas} onCheckedChange={alternarRateio} disabled={salvandoConfig} />
           <div>
-            <Label htmlFor="ratear" className="text-sm">Ratear despesas indiretas</Label>
-            <p className="text-xs text-muted-foreground">
+            <Label htmlFor="ratear" className="text-base font-semibold">Ratear despesas indiretas</Label>
+            <p className="text-sm text-muted-foreground">
               Soma as despesas a pagar <b>sem vínculo de contrato</b> (aluguel, energia, folha,
               pró-labore…) dos últimos {config.rateio_meses} meses e reparte entre os contratos
               vigentes, proporcional ao faturamento — como linha separada, nunca misturada ao custo direto.
@@ -233,38 +228,47 @@ export default function FinCustosPorContrato() {
         </div>
         {mostraRateio && (
           <div className="text-right shrink-0">
-            <p className="text-xs text-muted-foreground">Indiretas no período</p>
-            <p className="text-sm font-semibold tabular-nums">{fmt(indiretas)}</p>
+            <p className="text-sm text-muted-foreground">Indiretas no período</p>
+            <p className="text-lg font-semibold tabular-nums">{fmt(indiretas)}</p>
           </div>
         )}
       </Card>
 
       {erro ? (
-        <Card className="p-6 text-center space-y-2">
-          <ShieldAlert className="w-6 h-6 mx-auto text-destructive" />
-          <p className="text-sm text-destructive">{erro}</p>
-          <Button size="sm" variant="outline" onClick={load}>Tentar novamente</Button>
-        </Card>
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+          <AlertTitle>Não foi possível carregar os custos</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>{erro}</p>
+            <Button size="sm" variant="outline" onClick={load}>Tentar novamente</Button>
+          </AlertDescription>
+        </Alert>
       ) : loading ? (
         <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : linhas.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Nenhum contrato {incluirEncerrados ? 'cadastrado' : 'vigente'} nesta empresa.
+        <Card>
+          <EstadoVazio
+            icone={<Briefcase />}
+            titulo={`Nenhum contrato ${incluirEncerrados ? 'cadastrado' : 'vigente'}`}
+            descricao={incluirEncerrados
+              ? 'Esta empresa ainda não tem contratos cadastrados.'
+              : 'Esta empresa não tem contratos vigentes. Use "Incluir encerrados" para ver os antigos.'}
+          />
         </Card>
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs whitespace-nowrap">Contrato</TableHead>
-                <TableHead className="text-xs whitespace-nowrap">Vigência</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Faturado</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap" title="Despesas vinculadas com status realizado/conciliado">Custo pago</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap" title="Despesas vinculadas ainda não pagas — já são custo pelo regime de competência">Comprometido</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap" title="Aba Custos do contrato (sem parcelas cujo lançamento já está vinculado)">Digitado</TableHead>
-                {mostraRateio && <TableHead className="text-xs text-right whitespace-nowrap" title="Fatia das despesas indiretas, proporcional ao faturamento entre os vigentes">Rateio</TableHead>}
-                <TableHead className="text-xs text-right whitespace-nowrap">Custo total</TableHead>
-                <TableHead className="text-xs text-right whitespace-nowrap">Margem</TableHead>
+                <TableHead className="whitespace-nowrap">Contrato</TableHead>
+                <TableHead className="whitespace-nowrap">Vigência</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Faturado</TableHead>
+                <TableHead className="text-right whitespace-nowrap" title="Despesas vinculadas com status realizado/conciliado">Custo pago</TableHead>
+                <TableHead className="text-right whitespace-nowrap" title="Despesas vinculadas ainda não pagas — já são custo pelo regime de competência">Comprometido</TableHead>
+                <TableHead className="text-right whitespace-nowrap" title="Aba Custos do contrato (sem parcelas cujo lançamento já está vinculado)">Digitado</TableHead>
+                {mostraRateio && <TableHead className="text-right whitespace-nowrap" title="Fatia das despesas indiretas, proporcional ao faturamento entre os vigentes">Rateio</TableHead>}
+                <TableHead className="text-right whitespace-nowrap">Custo total</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Margem</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -275,60 +279,73 @@ export default function FinCustosPorContrato() {
                 return (
                   <TableRow
                     key={l.contrato_id}
-                    className="cursor-pointer"
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     onClick={() => setDetalhe(l)}
+                    // A linha inteira abre a DRE: quem navega por teclado
+                    // precisa da mesma porta. Sem `role="button"` — trocar o
+                    // papel da <tr> tiraria a linha da leitura da tabela; o
+                    // guard `target === currentTarget` evita roubar o Enter do
+                    // link do contrato, que fica dentro da própria linha.
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDetalhe(l);
+                      }
+                    }}
                     title="Clique para ver o resultado detalhado (DRE do contrato)"
                   >
-                    <TableCell className="text-xs max-w-[240px]">
+                    <TableCell className="text-sm max-w-[240px]">
                       <Link
                         to={`/gestao-contratos?contrato=${l.contrato_id}`}
                         onClick={e => e.stopPropagation()}
-                        className="font-medium text-foreground hover:text-accent hover:underline"
+                        className="font-medium text-foreground hover:text-primary hover:underline"
                       >
                         {l.numero_contrato || '(sem número)'}
                       </Link>
-                      <span className="block truncate text-[11px] text-muted-foreground" title={l.orgao_contratante || undefined}>
+                      <span className="block truncate text-xs text-muted-foreground" title={l.orgao_contratante || undefined}>
                         {l.tipo_documento === 'ata_srp' ? 'ATA · ' : ''}{l.orgao_contratante || '—'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">
-                      <Badge variant="outline" className={`text-xs font-normal ${l.vigente ? 'bg-success/10 text-success border-success/30' : 'bg-muted text-muted-foreground'}`}>
+                    <TableCell className="text-sm whitespace-nowrap">
+                      <Badge variant={l.vigente ? 'success' : 'muted'}>
                         {l.vigente ? 'Vigente' : 'Encerrado'}
                       </Badge>
                       {l.data_fim && (
-                        <span className="block text-[11px] text-muted-foreground mt-0.5">
+                        <span className="mt-1 block text-xs tabular-nums text-muted-foreground">
                           até {new Date(`${l.data_fim}T12:00:00`).toLocaleDateString('pt-BR')}
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(l.faturamento)}</TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(l.custo_pago)}</TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(l.custo_comprometido)}</TableCell>
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(l.custo_digitado)}</TableCell>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.faturamento)}</TableCell>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_pago)}</TableCell>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_comprometido)}</TableCell>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(l.custo_digitado)}</TableCell>
                     {mostraRateio && (
-                      <TableCell className="text-xs text-right whitespace-nowrap tabular-nums text-muted-foreground">{fmt(calc.rateioDe(l))}</TableCell>
+                      <TableCell className="text-sm text-right whitespace-nowrap tabular-nums text-muted-foreground">{fmt(calc.rateioDe(l))}</TableCell>
                     )}
-                    <TableCell className="text-xs text-right whitespace-nowrap tabular-nums font-medium">{fmt(custoTotal)}</TableCell>
-                    <TableCell className={`text-xs text-right whitespace-nowrap tabular-nums font-medium ${margem < 0 ? 'text-destructive' : 'text-success'}`}>
+                    <TableCell className="text-sm text-right whitespace-nowrap tabular-nums font-medium">{fmt(custoTotal)}</TableCell>
+                    <TableCell className={`text-sm text-right whitespace-nowrap tabular-nums font-medium ${margem < 0 ? 'text-destructive-ink' : 'text-success-ink'}`}>
                       {fmt(margem)}
                       {pctMargem != null && (
-                        <span className="block text-[11px] font-normal text-muted-foreground">{pctMargem.toFixed(1)}%</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{pctMargem.toFixed(1)}%</span>
                       )}
                     </TableCell>
                   </TableRow>
                 );
               })}
-              <TableRow className="bg-muted/40 font-medium">
-                <TableCell className="text-xs" colSpan={2}>Total ({linhas.length} contrato{linhas.length === 1 ? '' : 's'})</TableCell>
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.faturamento)}</TableCell>
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.pago)}</TableCell>
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.comprometido)}</TableCell>
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.digitado)}</TableCell>
-                {mostraRateio && <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.rateio)}</TableCell>}
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
+              <TableRow className="bg-muted font-semibold">
+                <TableCell className="text-sm" colSpan={2}>Total ({linhas.length} contrato{linhas.length === 1 ? '' : 's'})</TableCell>
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.faturamento)}</TableCell>
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.pago)}</TableCell>
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.comprometido)}</TableCell>
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.digitado)}</TableCell>
+                {mostraRateio && <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">{fmt(calc.tot.rateio)}</TableCell>}
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
                   {fmt(calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.rateio)}
                 </TableCell>
-                <TableCell className="text-xs text-right whitespace-nowrap tabular-nums">
+                <TableCell className="text-sm text-right whitespace-nowrap tabular-nums">
                   {fmt(calc.tot.faturamento - (calc.tot.pago + calc.tot.comprometido + calc.tot.digitado + calc.tot.rateio))}
                 </TableCell>
               </TableRow>
@@ -337,7 +354,7 @@ export default function FinCustosPorContrato() {
         </div>
       )}
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         O custo automático nasce do vínculo: toda despesa em Contas a Pagar que aponta o contrato
         (a NF-e de entrada gera a conta e o vínculo é sugerido na extração). O que não nasce de
         lançamento — mão de obra própria, estimativas — é digitado na aba Custos do contrato, e a

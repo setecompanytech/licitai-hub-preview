@@ -332,7 +332,7 @@ export default function AnalyseCustosPlanos() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-9 w-9 p-0"
                         aria-label="Remover uma sessão extra"
                         onClick={() => setExtraSessions(prev => ({ ...prev, [p.slug]: Math.max(0, (prev[p.slug] ?? 0) - 1) }))}
                       >−</Button>
@@ -341,7 +341,7 @@ export default function AnalyseCustosPlanos() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-9 w-9 p-0"
                         aria-label="Adicionar uma sessão extra"
                         onClick={() => setExtraSessions(prev => ({ ...prev, [p.slug]: Math.min(10, (prev[p.slug] ?? 0) + 1) }))}
                       >+</Button>

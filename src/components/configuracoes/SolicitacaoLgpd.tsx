@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 
 type LgpdRequest = {
   id: string;
@@ -160,9 +161,13 @@ export default function SolicitacaoLgpd() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : requests.length === 0 ? (
-        <p className="py-4 text-sm text-muted-foreground">
-          Nenhuma solicitação registrada.
-        </p>
+        <EstadoVazio
+          tamanho="compacto"
+          icone={<FileWarning aria-hidden="true" />}
+          titulo="Nenhuma solicitação registrada"
+          descricao="Abra uma solicitação para exercer seus direitos de acesso, correção, exclusão ou portabilidade."
+          acao={<Button variant="outline" onClick={() => setDialogOpen(true)}><Send aria-hidden="true" /> Nova Solicitação</Button>}
+        />
       ) : (
         <div className="max-h-64 space-y-2 overflow-y-auto">
           {requests.map(req => {

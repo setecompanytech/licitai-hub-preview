@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Shield, Key, Eye, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import MfaEnrollment from './MfaEnrollment';
 import SolicitacaoLgpd from './SolicitacaoLgpd';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 
 export default function SegurancaConta() {
@@ -184,7 +185,12 @@ export default function SegurancaConta() {
             ))}
           </div>
         ) : recentLogins.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">Nenhum registro de atividade encontrado.</p>
+          <EstadoVazio
+            tamanho="compacto"
+            icone={<Eye aria-hidden="true" />}
+            titulo="Nenhum registro de atividade"
+            descricao="Os acessos e eventos de autenticação da sua conta aparecem aqui assim que acontecerem."
+          />
         ) : (
           <div className="max-h-64 space-y-2 overflow-y-auto">
             {recentLogins.map((log) => (

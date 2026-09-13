@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 import { Loader2, DollarSign, Check, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -38,10 +39,12 @@ type Row = {
   municipio: string | null;
 };
 
-const KANBAN_CFG: Record<string, { label: string; color: string }> = {
-  pedido:          { label: 'Aguard. Faturamento', color: 'bg-info/10 text-info border-info/20' },
-  separar_estoque: { label: 'Separar Estoque',     color: 'bg-warning/10 text-warning border-warning/20' },
-  faturar:         { label: 'Faturar',             color: 'bg-warning/10 text-warning border-warning/20' },
+type VarianteBadge = 'success' | 'warning' | 'danger' | 'info' | 'muted';
+
+const KANBAN_CFG: Record<string, { label: string; variante: VarianteBadge }> = {
+  pedido:          { label: 'Aguard. Faturamento', variante: 'info' },
+  separar_estoque: { label: 'Separar Estoque',     variante: 'warning' },
+  faturar:         { label: 'Faturar',             variante: 'warning' },
 };
 
 export default function FinPedidosAFaturar() {
@@ -263,43 +266,39 @@ export default function FinPedidosAFaturar() {
   const total = rows.reduce((s, r) => s + r.valor_total, 0);
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Pedidos a Faturar</h2>
-          <p className="text-sm text-muted-foreground">
-            Pedidos de contratos aguardando faturamento. Após faturar, o valor é lançado em Contas a Receber.
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Total pendente</p>
-          <p className="text-xl font-bold text-foreground">{fmt(total)}</p>
-          <p className="text-xs text-muted-foreground">{rows.length} pedido(s)</p>
-        </div>
+    <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <p className="text-sm text-muted-foreground">Total pendente</p>
+        <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">{fmt(total)}</p>
+        <p className="text-xs text-muted-foreground">
+          {rows.length} pedido{rows.length === 1 ? '' : 's'} aguardando faturamento
+        </p>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <div className="flex justify-center py-12" role="status" aria-label="Carregando pedidos">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Check className="w-10 h-10 mb-3 text-success/60" />
-          <p className="font-medium">Tudo em dia!</p>
-          <p className="text-sm">Nenhum pedido aguardando faturamento.</p>
-        </div>
+        <EstadoVazio
+          icone={<Check />}
+          titulo="Tudo em dia!"
+          descricao="Nenhum pedido aguardando faturamento."
+        />
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Contrato</TableHead>
-                <TableHead className="text-xs">N.º Pedido</TableHead>
-                <TableHead className="text-xs">Descrição</TableHead>
-                <TableHead className="text-xs text-right">Valor</TableHead>
-                <TableHead className="text-xs text-center">Data</TableHead>
-                <TableHead className="text-xs text-center">Status Kanban</TableHead>
-                <TableHead className="text-xs w-24"></TableHead>
+                <TableHead>Contrato</TableHead>
+                <TableHead>N.º Pedido</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-center">Data</TableHead>
+                <TableHead className="text-center">Status Kanban</TableHead>
+                <TableHead className="w-24">
+                  <span className="sr-only">Ações</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -307,38 +306,46 @@ export default function FinPedidosAFaturar() {
                 const kCfg = r.kanban_status ? KANBAN_CFG[r.kanban_status] : null;
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-sm">
                       <div className="flex items-center gap-1">
                         <span className="font-medium">{r.contrato_numero ?? '—'}</span>
                         {r.orgao && (
-                          <span className="text-muted-foreground truncate max-w-[140px]">· {r.orgao}</span>
+                          <span
+                            className="min-w-0 max-w-[140px] truncate text-muted-foreground"
+                            title={r.orgao}
+                          >
+                            · {r.orgao}
+                          </span>
                         )}
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="ml-1 h-8 w-8 shrink-0 text-primary"
                           onClick={() => navigate(`/contratos/${r.contrato_id}`)}
-                          className="text-primary hover:opacity-80 ml-1"
+                          aria-label={`Abrir contrato ${r.contrato_numero ?? ''}`.trim()}
                           title="Abrir contrato"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
+                          <ExternalLink aria-hidden="true" />
+                        </Button>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs font-mono font-medium">{r.numero_pedido}</TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate" title={r.descricao || undefined}>{r.descricao || '—'}</TableCell>
-                    <TableCell className="text-xs text-right font-semibold">{fmt(r.valor_total)}</TableCell>
-                    <TableCell className="text-xs text-center">
+                    <TableCell nowrap className="text-sm font-mono font-medium">{r.numero_pedido}</TableCell>
+                    <TableCell truncate className="text-sm" title={r.descricao || undefined}>{r.descricao || '—'}</TableCell>
+                    <TableCell nowrap className="text-sm text-right font-semibold tabular-nums">{fmt(r.valor_total)}</TableCell>
+                    <TableCell nowrap className="text-sm text-center tabular-nums">
                       {r.data_pedido
                         ? new Date(r.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR')
                         : '—'}
                     </TableCell>
                     <TableCell className="text-center">
                       {kCfg ? (
-                        <Badge className={`text-xs border ${kCfg.color}`}>{kCfg.label}</Badge>
+                        <Badge variant={kCfg.variante}>{kCfg.label}</Badge>
                       ) : (
-                        <span className="text-muted-foreground/40 text-xs">—</span>
+                        <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5 justify-end">
+                      <div className="flex flex-wrap items-center gap-2 justify-end">
                         <KitFaturamento
                           pedido={{
                             id: r.id,
@@ -351,10 +358,9 @@ export default function FinPedidosAFaturar() {
                         />
                         <Button
                           size="sm"
-                          className="h-7 px-2 text-xs"
                           onClick={() => { setFaturando(r); setContaId(''); setParcelas('1'); }}
                         >
-                          <DollarSign className="w-3 h-3 mr-1" /> Faturar
+                          <DollarSign aria-hidden="true" /> Faturar
                         </Button>
                       </div>
                     </TableCell>
@@ -368,35 +374,35 @@ export default function FinPedidosAFaturar() {
 
       {/* Dialog de faturamento */}
       <Dialog open={!!faturando} onOpenChange={v => { if (!v) { setFaturando(null); setContaId(''); setParcelas('1'); } }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-muted-foreground" /> Lançar Conta a Receber
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+              <DollarSign className="w-5 h-5 text-muted-foreground" aria-hidden="true" /> Lançar Conta a Receber
             </DialogTitle>
           </DialogHeader>
           {faturando && (
             <div className="space-y-4 py-1">
-              <div className="bg-muted/40 border rounded-md p-3 text-sm space-y-1">
-                <div className="flex justify-between">
+              <div className="rounded-md border border-border bg-muted p-3 text-sm space-y-1">
+                <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Pedido</span>
                   <span className="font-medium">{faturando.numero_pedido}</span>
                 </div>
                 {faturando.contrato_numero && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Contrato</span>
                     <span className="font-medium">{faturando.contrato_numero}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Valor total</span>
-                  <span className="font-bold text-foreground">{fmt(faturando.valor_total)}</span>
+                  <span className="font-bold tabular-nums text-foreground">{fmt(faturando.valor_total)}</span>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Conta destino *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="pedido-conta-destino" className="text-sm">Conta destino *</Label>
                 <Select value={contaId} onValueChange={setContaId}>
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger id="pedido-conta-destino">
                     <SelectValue placeholder="Selecione a conta bancária..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -407,11 +413,11 @@ export default function FinPedidosAFaturar() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Número de parcelas</Label>
+              <div className="space-y-2">
+                <Label htmlFor="pedido-parcelas" className="text-sm">Número de parcelas</Label>
                 <Input
+                  id="pedido-parcelas"
                   type="number" min="1" max="60"
-                  className="h-8 text-sm"
                   value={parcelas}
                   onChange={e => setParcelas(e.target.value)}
                 />
@@ -422,7 +428,7 @@ export default function FinPedidosAFaturar() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex flex-wrap justify-end gap-2 pt-1">
                 <Button variant="outline" size="sm" onClick={() => { setFaturando(null); }}>
                   Cancelar
                 </Button>
@@ -433,8 +439,8 @@ export default function FinPedidosAFaturar() {
                   onClick={() => handleFaturar(false)}
                 >
                   {saving
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <Check className="w-3.5 h-3.5 mr-1" />}
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
+                    : <Check aria-hidden="true" />}
                   Gerar {parseInt(parcelas) > 1 ? `${parcelas} parcelas` : 'conta'}
                 </Button>
                 <Button
@@ -444,8 +450,8 @@ export default function FinPedidosAFaturar() {
                   title="Cria a conta a receber e abre o Emissor com os dados do pedido carregados"
                 >
                   {saving
-                    ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    : <ExternalLink className="w-3.5 h-3.5 mr-1" />}
+                    ? <Loader2 className="animate-spin" aria-hidden="true" />
+                    : <ExternalLink aria-hidden="true" />}
                   Faturar e emitir NF-e
                 </Button>
               </div>

@@ -322,7 +322,7 @@ export default function ApuracaoRegimeTributario() {
                           }}
                           placeholder="0,00"
                           inputMode="decimal"
-                          className="h-9 max-w-xs text-right tabular-nums"
+                          className="max-w-xs text-right tabular-nums"
                         />
                       </TableCell>
                     </TableRow>
@@ -383,8 +383,8 @@ export default function ApuracaoRegimeTributario() {
                     </TableCell>
                     <TableCell className="text-center">
                       {simplesInfo?.elegivel
-                        ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
-                        : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</span>}
+                        ? <Badge variant="success" className="gap-1"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</Badge>
+                        : <Badge variant="warning" className="gap-1"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</Badge>}
                     </TableCell>
                     <TableCell>{celulaStatus('simples_nacional')}</TableCell>
                   </TableRow>
@@ -400,8 +400,8 @@ export default function ApuracaoRegimeTributario() {
                     </TableCell>
                     <TableCell className="text-center">
                       {presumidoInfo?.elegivel
-                        ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
-                        : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</span>}
+                        ? <Badge variant="success" className="gap-1"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</Badge>
+                        : <Badge variant="warning" className="gap-1"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Não</Badge>}
                     </TableCell>
                     <TableCell>{celulaStatus('lucro_presumido')}</TableCell>
                   </TableRow>
@@ -416,7 +416,7 @@ export default function ApuracaoRegimeTributario() {
                       {lucroRealInfo ? formatBRL(lucroRealInfo.totalMensal) : '—'}
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</span>
+                      <Badge variant="success" className="gap-1"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Sim</Badge>
                     </TableCell>
                     <TableCell>{celulaStatus('lucro_real')}</TableCell>
                   </TableRow>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Loader2, X, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, X, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -18,6 +18,7 @@ import { useBuscaCNPJ } from "@/hooks/useBuscaCNPJ";
 import { formatDocumento } from "@/lib/financeiro/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { toast } from "sonner";
 
 const TIPOS = [
@@ -416,55 +417,76 @@ export default function FinPessoas() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button onClick={() => openDialog(null)}>
-          <Plus className="w-4 h-4 mr-1" /> Novo Cliente/Fornecedor
+          <Plus className="w-4 h-4" aria-hidden="true" /> Novo cliente/fornecedor
         </Button>
       </div>
 
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-muted text-sm font-semibold text-foreground">
               <tr>
-                <th className="text-left px-3 py-2">Nome</th>
-                <th className="text-left px-3 py-2">Documento</th>
-                <th className="text-left px-3 py-2">Tipo</th>
-                <th className="text-left px-3 py-2">Cidade/UF</th>
-                <th className="text-left px-3 py-2">Tags</th>
-                <th className="text-left px-3 py-2">Contato</th>
-                <th className="px-3 py-2 w-24" />
+                <th className="px-4 py-3 text-left">Nome</th>
+                <th className="px-4 py-3 text-left">Documento</th>
+                <th className="px-4 py-3 text-left">Tipo</th>
+                <th className="px-4 py-3 text-left">Cidade/UF</th>
+                <th className="px-4 py-3 text-left">Tags</th>
+                <th className="px-4 py-3 text-left">Contato</th>
+                <th className="w-24 px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={7} className="p-2"><Skeleton className="h-8 w-full" /></td></tr>
+                [0, 1, 2].map((i) => (
+                  <tr key={`skel-${i}`} className="border-t border-border">
+                    <td colSpan={7} className="px-4 py-3"><Skeleton className="h-8 w-full" /></td>
+                  </tr>
+                ))
               ) : pessoas.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Nenhuma pessoa cadastrada.</td></tr>
+                <tr>
+                  <td colSpan={7}>
+                    <EstadoVazio
+                      icone={<Users aria-hidden="true" />}
+                      titulo="Nenhuma pessoa cadastrada"
+                      descricao="Cadastre clientes e fornecedores para vincular a lançamentos, notas e pedidos."
+                      acao={
+                        <Button onClick={() => openDialog(null)}>
+                          <Plus className="w-4 h-4" aria-hidden="true" /> Novo cliente/fornecedor
+                        </Button>
+                      }
+                    />
+                  </td>
+                </tr>
               ) : (
                 pessoas.map((p) => {
                   const end = (p.endereco as Endereco) ?? {};
                   const tags = ((p as any).tags as string[]) ?? [];
                   return (
-                    <tr key={p.id} className="border-t hover:bg-muted/30">
-                      <td className="px-3 py-2 font-medium">
+                    <tr key={p.id} className="border-t border-border hover:bg-muted/40">
+                      <td className="px-4 py-3 font-medium text-foreground">
                         {p.nome}
                         {p.nome_fantasia && <div className="text-xs text-muted-foreground">{p.nome_fantasia}</div>}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums">{p.documento ? formatDocumento(p.documento) : "—"}</td>
-                      <td className="px-3 py-2"><Badge variant="outline">{TIPOS.find((t) => t.value === p.tipo)?.label ?? p.tipo}</Badge></td>
-                      <td className="px-3 py-2 text-muted-foreground">{end.municipio ? `${end.municipio}/${end.uf ?? ""}` : "—"}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-3 tabular-nums text-muted-foreground">{p.documento ? formatDocumento(p.documento) : "—"}</td>
+                      <td className="px-4 py-3"><Badge variant="info">{TIPOS.find((t) => t.value === p.tipo)?.label ?? p.tipo}</Badge></td>
+                      <td className="px-4 py-3 text-muted-foreground">{end.municipio ? `${end.municipio}/${end.uf ?? ""}` : "—"}</td>
+                      <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {tags.slice(0, 3).map((t) => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                          {tags.slice(0, 3).map((t) => <Badge key={t} variant="muted">{t}</Badge>)}
                           {tags.length > 3 && <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">{p.email ?? p.telefone ?? "—"}</td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
-                        <Button size="icon" variant="ghost" onClick={() => openDialog(p)}><Pencil className="w-4 h-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => setConfirmDel(p.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <td className="px-4 py-3 text-muted-foreground">{p.email ?? p.telefone ?? "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <Button size="icon" variant="ghost" aria-label={`Editar ${p.nome}`} onClick={() => openDialog(p)}>
+                          <Pencil className="w-4 h-4" aria-hidden="true" />
+                        </Button>
+                        <Button size="icon" variant="ghost" aria-label={`Excluir ${p.nome}`} onClick={() => setConfirmDel(p.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
+                        </Button>
                       </td>
                     </tr>
                   );
@@ -482,7 +504,7 @@ export default function FinPessoas() {
           </DialogHeader>
 
           <Tabs defaultValue="identificacao" className="mt-2">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList>
               <TabsTrigger value="identificacao">Identificação</TabsTrigger>
               <TabsTrigger value="endereco">Endereço</TabsTrigger>
               <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
@@ -491,12 +513,13 @@ export default function FinPessoas() {
             </TabsList>
 
             {/* IDENTIFICAÇÃO */}
-            <TabsContent value="identificacao" className="space-y-3 pt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>CPF / CNPJ</Label>
+            <TabsContent value="identificacao" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="pes-documento">CPF / CNPJ</Label>
                   <div className="flex gap-2">
                     <Input
+                      id="pes-documento"
                       value={form.documento}
                       onChange={(e) => {
                         const d = e.target.value.replace(/\D/g, "").slice(0, 14);
@@ -530,46 +553,67 @@ export default function FinPessoas() {
                       inputMode="numeric"
                       placeholder="CPF ou CNPJ (com ou sem pontuação)"
                     />
-                    <Button type="button" variant="outline" size="icon" onClick={handleBuscarCNPJ} disabled={buscandoCNPJ} title="Consultar Receita Federal">
-                      {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleBuscarCNPJ}
+                      disabled={buscandoCNPJ}
+                      title="Consultar Receita Federal"
+                      aria-label="Consultar Receita Federal"
+                      className="shrink-0"
+                    >
+                      {buscandoCNPJ ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Pessoa</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-pessoa-tipo">Pessoa</Label>
                   <Select value={form.pessoa_tipo} onValueChange={(v) => set("pessoa_tipo", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="pes-pessoa-tipo"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PJ">Jurídica (PJ)</SelectItem>
                       <SelectItem value="PF">Física (PF)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label>Nome / Razão social *</Label>
-                  <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-nome">Nome / Razão social *</Label>
+                  <Input
+                    id="pes-nome"
+                    value={form.nome}
+                    onChange={(e) => set("nome", e.target.value)}
+                    aria-required="true"
+                    aria-invalid={!form.nome.trim()}
+                    aria-describedby={!form.nome.trim() ? "pes-nome-erro" : undefined}
+                  />
+                  {!form.nome.trim() && (
+                    <p id="pes-nome-erro" className="text-sm text-destructive">Informe o nome / razão social para salvar</p>
+                  )}
                 </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label>Nome fantasia</Label>
-                  <Input value={form.nome_fantasia} onChange={(e) => set("nome_fantasia", e.target.value)} />
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-fantasia">Nome fantasia</Label>
+                  <Input id="pes-fantasia" value={form.nome_fantasia} onChange={(e) => set("nome_fantasia", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-tipo">Tipo</Label>
                   <Select value={form.tipo} onValueChange={(v) => set("tipo", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="pes-tipo"><SelectValue /></SelectTrigger>
                     <SelectContent>{TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Site</Label>
-                  <Input value={form.site} onChange={(e) => set("site", e.target.value)} placeholder="https://..." />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-site">Site</Label>
+                  <Input id="pes-site" value={form.site} onChange={(e) => set("site", e.target.value)} placeholder="https://..." />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Tags</Label>
-                <div className="flex gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="pes-tags">Tags</Label>
+                <div className="flex flex-wrap gap-2">
                   <Input
+                    id="pes-tags"
+                    className="min-w-0 flex-1"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
@@ -577,29 +621,37 @@ export default function FinPessoas() {
                   />
                   <Button type="button" variant="outline" onClick={addTag}>Adicionar</Button>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {form.tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="gap-1">
+                    <Badge key={t} variant="muted" className="gap-1">
                       {t}
-                      <button onClick={() => removeTag(t)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(t)}
+                        aria-label={`Remover tag ${t}`}
+                        className="rounded-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="w-3 h-3" aria-hidden="true" />
+                      </button>
                     </Badge>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Observações</Label>
-                <Textarea value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} rows={2} />
+              <div className="space-y-2">
+                <Label htmlFor="pes-observacoes">Observações</Label>
+                <Textarea id="pes-observacoes" value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} rows={2} />
               </div>
             </TabsContent>
 
             {/* ENDEREÇO */}
-            <TabsContent value="endereco" className="space-y-3 pt-4">
-              <div className="grid grid-cols-6 gap-3">
-                <div className="col-span-2 space-y-1.5">
-                  <Label>CEP</Label>
+            <TabsContent value="endereco" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-cep">CEP</Label>
                   <div className="flex gap-2">
                     <Input
+                      id="pes-cep"
                       value={form.endereco.cep ?? ""}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
@@ -626,54 +678,56 @@ export default function FinPessoas() {
                     />
                     <Button
                       type="button"
-                      variant="default"
+                      variant="outline"
                       size="icon"
                       onClick={() => handleBuscarCEP()}
                       disabled={buscandoCEP}
                       title="Buscar endereço pelo CEP"
+                      aria-label="Buscar endereço pelo CEP"
+                      className="shrink-0"
                     >
-                      {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      {buscandoCEP ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Search className="w-4 h-4" aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
-                <div className="col-span-4 space-y-1.5">
-                  <Label>Logradouro</Label>
-                  <Input value={form.endereco.logradouro ?? ""} onChange={(e) => setEnd("logradouro", e.target.value)} />
+                <div className="space-y-2 md:col-span-4">
+                  <Label htmlFor="pes-logradouro">Logradouro</Label>
+                  <Input id="pes-logradouro" value={form.endereco.logradouro ?? ""} onChange={(e) => setEnd("logradouro", e.target.value)} />
                 </div>
-                <div className="col-span-1 space-y-1.5">
-                  <Label>Nº</Label>
-                  <Input value={form.endereco.numero ?? ""} onChange={(e) => setEnd("numero", e.target.value)} />
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="pes-numero">Nº</Label>
+                  <Input id="pes-numero" value={form.endereco.numero ?? ""} onChange={(e) => setEnd("numero", e.target.value)} />
                 </div>
-                <div className="col-span-3 space-y-1.5">
-                  <Label>Complemento</Label>
-                  <Input value={form.endereco.complemento ?? ""} onChange={(e) => setEnd("complemento", e.target.value)} />
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="pes-complemento">Complemento</Label>
+                  <Input id="pes-complemento" value={form.endereco.complemento ?? ""} onChange={(e) => setEnd("complemento", e.target.value)} />
                 </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label>Bairro</Label>
-                  <Input value={form.endereco.bairro ?? ""} onChange={(e) => setEnd("bairro", e.target.value)} />
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-bairro">Bairro</Label>
+                  <Input id="pes-bairro" value={form.endereco.bairro ?? ""} onChange={(e) => setEnd("bairro", e.target.value)} />
                 </div>
-                <div className="col-span-4 space-y-1.5">
-                  <Label>Município</Label>
-                  <Input value={form.endereco.municipio ?? ""} onChange={(e) => setEnd("municipio", e.target.value)} />
+                <div className="space-y-2 md:col-span-4">
+                  <Label htmlFor="pes-municipio">Município</Label>
+                  <Input id="pes-municipio" value={form.endereco.municipio ?? ""} onChange={(e) => setEnd("municipio", e.target.value)} />
                 </div>
-                <div className="col-span-1 space-y-1.5">
-                  <Label>UF</Label>
-                  <Input value={form.endereco.uf ?? ""} onChange={(e) => setEnd("uf", e.target.value.toUpperCase().slice(0, 2))} maxLength={2} />
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="pes-uf">UF</Label>
+                  <Input id="pes-uf" value={form.endereco.uf ?? ""} onChange={(e) => setEnd("uf", e.target.value.toUpperCase().slice(0, 2))} maxLength={2} />
                 </div>
-                <div className="col-span-1 space-y-1.5">
-                  <Label>IBGE</Label>
-                  <Input value={form.endereco.cod_municipio_ibge ?? ""} onChange={(e) => setEnd("cod_municipio_ibge", e.target.value)} />
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="pes-ibge">IBGE</Label>
+                  <Input id="pes-ibge" value={form.endereco.cod_municipio_ibge ?? ""} onChange={(e) => setEnd("cod_municipio_ibge", e.target.value)} />
                 </div>
               </div>
             </TabsContent>
 
             {/* FISCAL */}
-            <TabsContent value="fiscal" className="space-y-3 pt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Inscrição Estadual</Label>
+            <TabsContent value="fiscal" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="pes-ie">Inscrição Estadual</Label>
                   <div className="flex gap-2">
-                    <Input value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
+                    <Input id="pes-ie" value={form.ie} onChange={(e) => set("ie", e.target.value)} placeholder="ISENTO se aplicável" />
                     <Button
                       type="button"
                       variant="outline"
@@ -681,115 +735,116 @@ export default function FinPessoas() {
                       onClick={handleValidarSefaz}
                       disabled={validandoSefaz}
                       title="Validar Inscrição Estadual no SEFAZ"
+                      aria-label="Validar Inscrição Estadual no SEFAZ"
                       className="shrink-0"
                     >
-                      {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                      {validandoSefaz ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="w-4 h-4" aria-hidden="true" />}
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Inscrição Municipal</Label>
-                  <Input value={form.im} onChange={(e) => set("im", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-im">Inscrição Municipal</Label>
+                  <Input id="pes-im" value={form.im} onChange={(e) => set("im", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Indicador IE (NF-e)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-ind-ie">Indicador IE (NF-e)</Label>
                   <Select value={form.ind_ie_dest} onValueChange={(v) => set("ind_ie_dest", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="pes-ind-ie"><SelectValue /></SelectTrigger>
                     <SelectContent>{IND_IE.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Regime tributário</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-regime">Regime tributário</Label>
                   <Select value={form.regime_tributario} onValueChange={(v) => set("regime_tributario", v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectTrigger id="pes-regime"><SelectValue placeholder="Selecione…" /></SelectTrigger>
                     <SelectContent>{REGIMES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label>CNAE principal</Label>
-                  <Input value={form.cnae_principal} onChange={(e) => set("cnae_principal", e.target.value)} placeholder="Ex.: 4751-2/01 - Comércio varejista de informática" />
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-cnae">CNAE principal</Label>
+                  <Input id="pes-cnae" value={form.cnae_principal} onChange={(e) => set("cnae_principal", e.target.value)} placeholder="Ex.: 4751-2/01 - Comércio varejista de informática" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Limite de crédito (R$)</Label>
-                  <Input type="number" step="0.01" value={form.limite_credito} onChange={(e) => set("limite_credito", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-limite">Limite de crédito (R$)</Label>
+                  <Input id="pes-limite" type="number" step="0.01" value={form.limite_credito} onChange={(e) => set("limite_credito", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Prazo padrão (dias)</Label>
-                  <Input type="number" value={form.prazo_padrao_dias} onChange={(e) => set("prazo_padrao_dias", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-prazo">Prazo padrão (dias)</Label>
+                  <Input id="pes-prazo" type="number" value={form.prazo_padrao_dias} onChange={(e) => set("prazo_padrao_dias", e.target.value)} />
                 </div>
               </div>
             </TabsContent>
 
             {/* BANCÁRIO */}
-            <TabsContent value="bancario" className="space-y-3 pt-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-3 space-y-1.5">
-                  <Label>Banco</Label>
-                  <Input value={form.dados_bancarios.banco ?? ""} onChange={(e) => setBanc("banco", e.target.value)} placeholder="Ex.: 341 - Itaú" />
+            <TabsContent value="bancario" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="pes-banco">Banco</Label>
+                  <Input id="pes-banco" value={form.dados_bancarios.banco ?? ""} onChange={(e) => setBanc("banco", e.target.value)} placeholder="Ex.: 341 - Itaú" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Agência</Label>
-                  <Input value={form.dados_bancarios.agencia ?? ""} onChange={(e) => setBanc("agencia", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-agencia">Agência</Label>
+                  <Input id="pes-agencia" value={form.dados_bancarios.agencia ?? ""} onChange={(e) => setBanc("agencia", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Conta</Label>
-                  <Input value={form.dados_bancarios.conta ?? ""} onChange={(e) => setBanc("conta", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-conta">Conta</Label>
+                  <Input id="pes-conta" value={form.dados_bancarios.conta ?? ""} onChange={(e) => setBanc("conta", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-tipo-conta">Tipo</Label>
                   <Select value={form.dados_bancarios.tipo_conta ?? ""} onValueChange={(v) => setBanc("tipo_conta", v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectTrigger id="pes-tipo-conta"><SelectValue placeholder="Selecione…" /></SelectTrigger>
                     <SelectContent>{TIPO_CONTA.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-3 space-y-1.5">
-                  <Label>Titular (se diferente)</Label>
-                  <Input value={form.dados_bancarios.titular ?? ""} onChange={(e) => setBanc("titular", e.target.value)} />
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="pes-titular">Titular (se diferente)</Label>
+                  <Input id="pes-titular" value={form.dados_bancarios.titular ?? ""} onChange={(e) => setBanc("titular", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Tipo de chave PIX</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="pes-pix-tipo">Tipo de chave PIX</Label>
                   <Select value={form.dados_bancarios.pix_tipo ?? ""} onValueChange={(v) => setBanc("pix_tipo", v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectTrigger id="pes-pix-tipo"><SelectValue placeholder="Selecione…" /></SelectTrigger>
                     <SelectContent>{PIX_TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label>Chave PIX</Label>
-                  <Input value={form.dados_bancarios.pix_chave ?? ""} onChange={(e) => setBanc("pix_chave", e.target.value)} />
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="pes-pix-chave">Chave PIX</Label>
+                  <Input id="pes-pix-chave" value={form.dados_bancarios.pix_chave ?? ""} onChange={(e) => setBanc("pix_chave", e.target.value)} />
                 </div>
               </div>
             </TabsContent>
 
             {/* CONTATO */}
-            <TabsContent value="contato" className="space-y-3 pt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>E-mail principal</Label>
-                  <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            <TabsContent value="contato" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="pes-email">E-mail principal</Label>
+                  <Input id="pes-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Telefone principal</Label>
-                  <Input value={form.telefone} onChange={(e) => set("telefone", e.target.value)} />
+                <div className="space-y-2">
+                  <Label htmlFor="pes-telefone">Telefone principal</Label>
+                  <Input id="pes-telefone" value={form.telefone} onChange={(e) => set("telefone", e.target.value)} />
                 </div>
               </div>
-              <div className="border-t pt-3">
-                <p className="text-sm font-medium mb-2">Contato secundário (responsável)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Nome</Label>
-                    <Input value={form.contato_secundario.nome ?? ""} onChange={(e) => setContato("nome", e.target.value)} />
+              <div className="space-y-4 border-t border-border pt-4">
+                <p className="text-base font-semibold text-foreground">Contato secundário (responsável)</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="pes-contato-nome">Nome</Label>
+                    <Input id="pes-contato-nome" value={form.contato_secundario.nome ?? ""} onChange={(e) => setContato("nome", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Cargo</Label>
-                    <Input value={form.contato_secundario.cargo ?? ""} onChange={(e) => setContato("cargo", e.target.value)} />
+                  <div className="space-y-2">
+                    <Label htmlFor="pes-contato-cargo">Cargo</Label>
+                    <Input id="pes-contato-cargo" value={form.contato_secundario.cargo ?? ""} onChange={(e) => setContato("cargo", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>E-mail</Label>
-                    <Input type="email" value={form.contato_secundario.email ?? ""} onChange={(e) => setContato("email", e.target.value)} />
+                  <div className="space-y-2">
+                    <Label htmlFor="pes-contato-email">E-mail</Label>
+                    <Input id="pes-contato-email" type="email" value={form.contato_secundario.email ?? ""} onChange={(e) => setContato("email", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Telefone</Label>
-                    <Input value={form.contato_secundario.telefone ?? ""} onChange={(e) => setContato("telefone", e.target.value)} />
+                  <div className="space-y-2">
+                    <Label htmlFor="pes-contato-telefone">Telefone</Label>
+                    <Input id="pes-contato-telefone" value={form.contato_secundario.telefone ?? ""} onChange={(e) => setContato("telefone", e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -799,7 +854,7 @@ export default function FinPessoas() {
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={upsert.isPending || !form.nome.trim()}>
-              {upsert.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {upsert.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               Salvar
             </Button>
           </DialogFooter>

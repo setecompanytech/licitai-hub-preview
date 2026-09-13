@@ -9,15 +9,15 @@ export default function FinDashboardTabs() {
     <Tabs defaultValue="cfo" className="space-y-4">
       <TabsList>
         <TabsTrigger value="cfo">
-          <Activity className="w-4 h-4 mr-1.5" />
+          <Activity className="w-4 h-4 mr-2" aria-hidden="true" />
           CFO
         </TabsTrigger>
         <TabsTrigger value="executivo">
-          <BarChart3 className="w-4 h-4 mr-1.5" />
+          <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
           Executivo
         </TabsTrigger>
         <TabsTrigger value="operacional">
-          <LayoutDashboard className="w-4 h-4 mr-1.5" />
+          <LayoutDashboard className="w-4 h-4 mr-2" aria-hidden="true" />
           Operacional
         </TabsTrigger>
       </TabsList>

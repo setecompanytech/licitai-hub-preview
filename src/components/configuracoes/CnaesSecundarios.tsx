@@ -6,6 +6,7 @@ import { Plus, X, Tag, Search, Sparkles, Loader2, RefreshCw } from 'lucide-react
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import EstadoVazio from '@/components/shared/EstadoVazio';
 
 const cnaesPopulares = [
   { codigo: '42.11-1', descricao: 'Construção de rodovias e ferrovias' },
@@ -394,31 +395,39 @@ Use códigos CNAE reais da tabela IBGE/CONCLA. Não invente códigos.`;
       {/* CNAEs cadastrados */}
       <div className="mb-4">
         <p className="mb-2 text-sm text-muted-foreground">CNAEs Secundários Cadastrados ({cnaes.length})</p>
-        <div className="flex flex-wrap gap-2">
-          {cnaes.map((cnae) => (
-            <Badge
-              key={cnae.codigo}
-              variant="info"
-              className="flex items-center gap-1 whitespace-normal pr-1"
-            >
-              <span className="font-mono text-xs">{cnae.codigo}</span>
-              <span className="text-xs font-normal">– {cnae.descricao}</span>
-              <button
-                type="button"
-                onClick={() => void removeCnae(cnae.codigo)}
-                aria-label={`Remover CNAE ${cnae.codigo}`}
-                className="ml-1 rounded-full p-1 text-destructive transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {cnaes.length === 0 ? (
+          loadingIA ? (
+            <p className="text-sm text-muted-foreground">Buscando CNAEs via IA...</p>
+          ) : (
+            <EstadoVazio
+              tamanho="compacto"
+              icone={<Tag aria-hidden="true" />}
+              titulo="Nenhum CNAE secundário cadastrado"
+              descricao='Sincronize com o CNPJ, clique em "Gerar via IA" ou busque um código na base oficial abaixo.'
+            />
+          )
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {cnaes.map((cnae) => (
+              <Badge
+                key={cnae.codigo}
+                variant="info"
+                className="flex items-center gap-1 whitespace-normal pr-1"
               >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </Badge>
-          ))}
-          {cnaes.length === 0 && (
-            <p className="text-sm italic text-muted-foreground">
-              {loadingIA ? 'Buscando CNAEs via IA...' : 'Nenhum CNAE secundário cadastrado. Clique em "Gerar via IA" para começar.'}
-            </p>
-          )}
-        </div>
+                <span className="font-mono text-xs">{cnae.codigo}</span>
+                <span className="text-xs font-normal">– {cnae.descricao}</span>
+                <button
+                  type="button"
+                  onClick={() => void removeCnae(cnae.codigo)}
+                  aria-label={`Remover CNAE ${cnae.codigo}`}
+                  className="ml-1 rounded-full p-1 text-destructive transition-colors hover:bg-destructive-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Sugestões IA extras */}

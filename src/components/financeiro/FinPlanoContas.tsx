@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChevronRight, ChevronDown, Search, Sparkles, Loader2, FolderTree, Plus } from "lucide-react";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { ChevronRight, ChevronDown, Sparkles, Loader2, FolderTree, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Conta {
@@ -34,14 +35,17 @@ const NATUREZA_LABEL: Record<string, string> = {
   apuracao: "Apuração",
 };
 
-const NATUREZA_COLOR: Record<string, string> = {
-  ativo: "bg-info/10 text-info",
-  passivo: "bg-warning/10 text-warning",
-  pl: "bg-muted text-muted-foreground",
-  receita: "bg-success/10 text-success",
-  despesa: "bg-destructive/10 text-destructive",
-  custo: "bg-warning/10 text-warning",
-  apuracao: "bg-muted text-muted-foreground",
+/** Natureza da conta na paleta semântica em tinta do Badge (identidade 12/09). */
+type VarianteBadge = "success" | "warning" | "danger" | "info" | "muted";
+
+const NATUREZA_VARIANT: Record<string, VarianteBadge> = {
+  ativo: "info",
+  passivo: "warning",
+  pl: "muted",
+  receita: "success",
+  despesa: "danger",
+  custo: "warning",
+  apuracao: "muted",
 };
 
 export default function FinPlanoContas() {
@@ -136,31 +140,33 @@ export default function FinPlanoContas() {
     return (
       <div key={conta.id}>
         <div
-          className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/40 text-sm transition-colors"
-          style={{ paddingLeft: `${depth * 18 + 8}px` }}
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted/40"
+          style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           {tem ? (
-            <button onClick={() => toggle(conta.id)} className="text-muted-foreground hover:text-foreground">
-              {aberto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            <button
+              type="button"
+              onClick={() => toggle(conta.id)}
+              aria-expanded={aberto}
+              aria-label={`${aberto ? "Recolher" : "Expandir"} ${conta.nome}`}
+              className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {aberto ? <ChevronDown className="w-4 h-4" aria-hidden="true" /> : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
             </button>
           ) : (
-            <span className="w-3.5" />
+            <span className="w-4" aria-hidden="true" />
           )}
-          <code className="text-xs font-mono text-muted-foreground min-w-[68px]">{conta.codigo}</code>
-          <span className={conta.tipo_conta === "sintetica" ? "font-medium" : ""}>{conta.nome}</span>
-          <Badge variant="outline" className={`text-xs ${NATUREZA_COLOR[conta.natureza] || ""}`}>
+          <code className="min-w-[4.25rem] font-mono text-xs text-muted-foreground">{conta.codigo}</code>
+          <span className={conta.tipo_conta === "sintetica" ? "font-medium text-foreground" : "text-foreground"}>{conta.nome}</span>
+          <Badge variant={NATUREZA_VARIANT[conta.natureza] ?? "muted"}>
             {NATUREZA_LABEL[conta.natureza] || conta.natureza}
           </Badge>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="muted">
             {conta.natureza_saldo === "D" ? "Devedora" : "Credora"}
           </Badge>
-          {conta.aceita_lancamento && (
-            <Badge variant="secondary" className="text-xs">
-              Analítica
-            </Badge>
-          )}
+          {conta.aceita_lancamento && <Badge variant="info">Analítica</Badge>}
           {conta.conta_referencial_sped && (
-            <span className="text-xs text-muted-foreground ml-auto font-mono">SPED {conta.conta_referencial_sped}</span>
+            <span className="ml-auto whitespace-nowrap font-mono text-xs text-muted-foreground">SPED {conta.conta_referencial_sped}</span>
           )}
         </div>
         {aberto && tem && <div>{filhos.map((f) => renderNo(f, depth + 1))}</div>}
@@ -170,85 +176,100 @@ export default function FinPlanoContas() {
 
   if (!empresaAtiva) return null;
 
+  const vazio = contas.length === 0 && !loading;
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FolderTree className="w-5 h-5" />
-              Plano de Contas Hierárquico
-            </CardTitle>
-            <CardDescription>
-              Estrutura contábil compatível com SPED ECF (NBC TG 1000 / ITG 2000). Apenas contas analíticas aceitam
-              lançamentos.
-            </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={aplicarSeed} disabled={seeding || loading} variant="default">
-              {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              Importar Plano Padrão PME
-            </Button>
-            <Button variant="outline" disabled>
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Conta
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {contas.length === 0 && !loading && (
-          <Alert>
-            <Sparkles className="w-4 h-4" />
-            <AlertDescription>
-              Nenhuma conta cadastrada. Use <strong>Importar Plano Padrão PME</strong> para popular ~120 contas alinhadas
-              SPED ECF (Receitas, Custos, Despesas e Patrimoniais).
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código, nome ou SPED..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="border rounded-md max-h-[70vh] overflow-y-auto">
-          {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin inline mr-2" />
-              Carregando contas...
-            </div>
-          ) : filtrados ? (
-            <div className="divide-y">
-              {filtrados.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma conta encontrada.</div>
-              ) : (
-                filtrados.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2 py-1.5 px-3 text-sm">
-                    <code className="text-xs font-mono text-muted-foreground min-w-[68px]">{c.codigo}</code>
-                    <span className={c.tipo_conta === "sintetica" ? "font-medium" : ""}>{c.nome}</span>
-                    <Badge variant="outline" className={`text-xs ${NATUREZA_COLOR[c.natureza] || ""}`}>
-                      {NATUREZA_LABEL[c.natureza]}
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button onClick={aplicarSeed} disabled={seeding || loading}>
+          {seeding ? (
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
           ) : (
-            <div className="py-1">{(filhosDe.get(null) || []).map((c) => renderNo(c))}</div>
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
           )}
-        </div>
+          Importar plano padrão PME
+        </Button>
+        <Button variant="outline" disabled title="Cadastro manual de conta — em breve">
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          Nova conta
+        </Button>
+      </div>
 
-        <p className="text-xs text-muted-foreground">
-          <strong>{contas.length}</strong> contas · Analíticas: {contas.filter((c) => c.aceita_lancamento).length} ·
-          Sintéticas: {contas.filter((c) => c.tipo_conta === "sintetica").length}
-        </p>
-      </CardContent>
-    </Card>
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <p className="text-sm text-muted-foreground">
+            Estrutura contábil compatível com SPED ECF (NBC TG 1000 / ITG 2000). Apenas contas analíticas aceitam
+            lançamentos.
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="plano-contas-busca">Buscar conta</Label>
+            <Input
+              id="plano-contas-busca"
+              placeholder="Código, nome ou conta referencial SPED…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+
+          <div className="max-h-[70vh] overflow-auto rounded-md border border-border">
+            {loading ? (
+              <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                Carregando contas…
+              </p>
+            ) : vazio ? (
+              <EstadoVazio
+                tamanho="compacto"
+                icone={<FolderTree aria-hidden="true" />}
+                titulo="Nenhuma conta cadastrada"
+                descricao="Importe o plano padrão PME para popular ~120 contas alinhadas ao SPED ECF (receitas, custos, despesas e patrimoniais)."
+                acao={
+                  <Button onClick={aplicarSeed} disabled={seeding}>
+                    {seeding ? (
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" aria-hidden="true" />
+                    )}
+                    Importar plano padrão PME
+                  </Button>
+                }
+              />
+            ) : filtrados ? (
+              <div className="divide-y divide-border">
+                {filtrados.length === 0 ? (
+                  <EstadoVazio
+                    tamanho="compacto"
+                    icone={<FolderTree aria-hidden="true" />}
+                    titulo="Nenhuma conta encontrada"
+                    descricao="Nenhuma conta bate com o texto buscado. Revise o código, o nome ou a conta referencial SPED."
+                  />
+                ) : (
+                  filtrados.map((c) => (
+                    <div key={c.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                      <code className="min-w-[4.25rem] font-mono text-xs text-muted-foreground">{c.codigo}</code>
+                      <span className={c.tipo_conta === "sintetica" ? "font-medium text-foreground" : "text-foreground"}>
+                        {c.nome}
+                      </span>
+                      <Badge variant={NATUREZA_VARIANT[c.natureza] ?? "muted"}>
+                        {NATUREZA_LABEL[c.natureza] || c.natureza}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="py-1">{(filhosDe.get(null) || []).map((c) => renderNo(c))}</div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            <strong className="font-semibold text-foreground tabular-nums">{contas.length}</strong> contas · Analíticas:{" "}
+            <span className="tabular-nums">{contas.filter((c) => c.aceita_lancamento).length}</span> · Sintéticas:{" "}
+            <span className="tabular-nums">{contas.filter((c) => c.tipo_conta === "sintetica").length}</span>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

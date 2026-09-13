@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,12 +46,21 @@ const BANCOS_BR = [
   { codigo: "748", nome: "Sicredi" },
 ];
 
-const STATUS_VARIANT: Record<string, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
-  pendente: { label: "Pendente", cls: "bg-warning/10 text-warning border-warning/30", icon: AlertCircle },
-  ativa: { label: "Ativa", cls: "bg-success/10 text-success border-success/30", icon: CheckCircle2 },
-  erro: { label: "Erro", cls: "bg-destructive/10 text-destructive border-destructive/30", icon: AlertCircle },
-  revogada: { label: "Revogada", cls: "bg-muted text-muted-foreground", icon: AlertCircle },
-  expirada: { label: "Expirada", cls: "bg-destructive/10 text-destructive border-destructive/30", icon: AlertCircle },
+type VarianteStatus = "success" | "warning" | "danger" | "muted";
+
+const STATUS_VARIANT: Record<string, { label: string; variante: VarianteStatus; icon: typeof CheckCircle2 }> = {
+  pendente: { label: "Pendente", variante: "warning", icon: AlertCircle },
+  ativa: { label: "Ativa", variante: "success", icon: CheckCircle2 },
+  erro: { label: "Erro", variante: "danger", icon: AlertCircle },
+  revogada: { label: "Revogada", variante: "muted", icon: AlertCircle },
+  expirada: { label: "Expirada", variante: "danger", icon: AlertCircle },
+};
+
+/** O selo do log também fala português — o valor cru do banco fica no dado. */
+const LOG_STATUS_LABEL: Record<string, string> = {
+  sucesso: "Sucesso",
+  erro: "Erro",
+  parcial: "Parcial",
 };
 
 export default function FinOpenFinance() {
@@ -175,48 +186,54 @@ export default function FinOpenFinance() {
   return (
     <Tabs defaultValue="conexoes" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="conexoes"><Plug className="w-3.5 h-3.5 mr-1.5" />Conexões</TabsTrigger>
-        <TabsTrigger value="logs"><Activity className="w-3.5 h-3.5 mr-1.5" />Histórico de sincronizações</TabsTrigger>
+        <TabsTrigger value="conexoes"><Plug className="w-4 h-4 mr-2" aria-hidden="true" />Conexões</TabsTrigger>
+        <TabsTrigger value="logs"><Activity className="w-4 h-4 mr-2" aria-hidden="true" />Histórico de sincronizações</TabsTrigger>
       </TabsList>
 
       <TabsContent value="conexoes" className="mt-0 space-y-4">
-        <Card className="border-info/30 bg-info/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-info shrink-0 mt-0.5" />
-            <div className="text-xs text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">Open Finance & Integração Bancária</p>
-              <p>
-                Conecte suas contas bancárias para sincronização automática de extratos e saldos. Suporte a agregadores
-                <strong> Pluggy </strong>e<strong> Belvo</strong> (requer credenciais do provedor configuradas como secrets).
-                Enquanto a integração API não estiver ativa, use <strong>Importar OFX</strong> ou registre uma <strong>conexão manual</strong> para
-                organizar suas contas.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <Alert variant="info">
+          <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+          <AlertTitle>Open Finance e integração bancária</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Conecte suas contas bancárias para sincronização automática de extratos e saldos. Suporte a agregadores
+            <strong> Pluggy </strong>e<strong> Belvo</strong> (requer credenciais do provedor configuradas como secrets).
+            Enquanto a integração API não estiver ativa, use <strong>Importar OFX</strong> ou registre uma <strong>conexão manual</strong> para
+            organizar suas contas.
+          </AlertDescription>
+        </Alert>
 
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-semibold text-foreground">
             {conexoes.length} conexão(ões) configurada(s)
           </h3>
           <Button onClick={() => setNovoOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> Nova conexão
+            <Plus className="w-4 h-4" aria-hidden="true" />Nova conexão
           </Button>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8"><Loader2 className="w-5 h-5 mx-auto animate-spin" /></div>
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground" role="status">
+            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Carregando conexões…
+          </div>
         ) : conexoes.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              Nenhuma conexão bancária configurada.
+            <CardContent className="p-0">
+              <EstadoVazio
+                icone={<Building2 />}
+                titulo="Nenhuma conexão bancária configurada"
+                descricao="Registre uma conexão manual para organizar suas contas ou conecte um agregador Open Finance."
+                acao={
+                  <Button onClick={() => setNovoOpen(true)}>
+                    <Plus className="w-4 h-4" aria-hidden="true" />Nova conexão
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {conexoes.map((c) => {
-              const st = STATUS_VARIANT[c.status];
+              const st = STATUS_VARIANT[c.status] ?? { label: c.status, variante: "muted" as const, icon: AlertCircle };
               const Icon = st.icon;
               const conta = contas.find((cc) => cc.id === c.conta_id);
               return (
@@ -224,22 +241,22 @@ export default function FinOpenFinance() {
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-semibold truncate">{c.banco_nome}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-base font-semibold text-foreground truncate">{c.banco_nome}</p>
+                        <p className="text-sm text-muted-foreground">
                           {c.provedor === "manual" ? "Conexão manual" : `Via ${c.provedor.charAt(0).toUpperCase() + c.provedor.slice(1)}`}
                           {conta && ` · ${conta.nome}`}
                         </p>
                       </div>
-                      <Badge variant="outline" className={`text-xs ${st.cls}`}>
-                        <Icon className="w-3 h-3 mr-1" /> {st.label}
+                      <Badge variant={st.variante} className="gap-1">
+                        <Icon className="w-3 h-3" aria-hidden="true" />{st.label}
                       </Badge>
                     </div>
                     {c.erro_mensagem && (
-                      <p className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded p-2">
+                      <p className="rounded-md border border-destructive-line bg-destructive-tint p-3 text-sm text-destructive-ink">
                         {c.erro_mensagem}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground space-y-0.5">
+                    <div className="text-sm text-muted-foreground space-y-1">
                       <p>Frequência: cada {c.frequencia_horas}h</p>
                       <p>
                         Última sync:{" "}
@@ -248,7 +265,7 @@ export default function FinOpenFinance() {
                           : "—"}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -257,20 +274,21 @@ export default function FinOpenFinance() {
                         disabled={sincronizar.isPending}
                       >
                         {sincronizar.isPending ? (
-                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                         ) : (
-                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                          <RefreshCw className="w-4 h-4" aria-hidden="true" />
                         )}
                         Sincronizar
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Remover conexão com ${c.banco_nome}`}
                         onClick={() => {
                           if (confirm(`Remover conexão com ${c.banco_nome}?`)) remover.mutate(c.id);
                         }}
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        <Trash2 className="w-4 h-4 text-destructive" aria-hidden="true" />
                       </Button>
                     </div>
                   </CardContent>
@@ -284,36 +302,36 @@ export default function FinOpenFinance() {
       <TabsContent value="logs" className="mt-0">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Últimas 50 sincronizações</CardTitle>
+            <CardTitle>Últimas 50 sincronizações</CardTitle>
           </CardHeader>
           <CardContent>
             {logs.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">Nenhum registro de sincronização.</div>
+              <EstadoVazio
+                icone={<Activity />}
+                titulo="Nenhum registro de sincronização"
+                descricao="Assim que uma conexão sincronizar, o resultado aparece aqui."
+                tamanho="compacto"
+              />
             ) : (
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
+              <div className="max-h-96 overflow-y-auto">
                 {logs.map((l) => {
                   const conexao = conexoes.find((c) => c.id === l.conexao_id);
                   return (
-                    <div key={l.id} className="flex items-center justify-between gap-3 p-2 border-b text-sm">
+                    <div key={l.id} className="flex items-center justify-between gap-3 border-b border-border p-3 text-sm last:border-b-0">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{conexao?.banco_nome ?? "—"}</p>
+                        <p className="font-medium text-foreground truncate">{conexao?.banco_nome ?? "—"}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(l.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                           {l.duracao_ms != null && ` · ${l.duracao_ms}ms`}
                         </p>
-                        {l.erro && <p className="text-xs text-destructive truncate">{l.erro}</p>}
+                        {l.erro && <p className="text-xs text-destructive-ink truncate">{l.erro}</p>}
                       </div>
                       <Badge
-                        variant="outline"
-                        className={
-                          l.status === "sucesso"
-                            ? "bg-success/10 text-success border-success/30"
-                            : l.status === "erro"
-                            ? "bg-destructive/10 text-destructive border-destructive/30"
-                            : "bg-muted"
+                        variant={
+                          l.status === "sucesso" ? "success" : l.status === "erro" ? "danger" : "muted"
                         }
                       >
-                        {l.status} · {l.movimentos_novos} mov.
+                        {LOG_STATUS_LABEL[l.status] ?? l.status} · {l.movimentos_novos} mov.
                       </Badge>
                     </div>
                   );
@@ -334,11 +352,11 @@ export default function FinOpenFinance() {
               periodicamente. Provedores Pluggy/Belvo permitem sincronização automática (requer credenciais).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Provedor</Label>
+              <Label htmlFor="of-provedor">Provedor</Label>
               <Select value={provedor} onValueChange={(v) => setProvedor(v as typeof provedor)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="of-provedor"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="manual">Manual (importação OFX)</SelectItem>
                   <SelectItem value="pluggy">Pluggy (Open Finance)</SelectItem>
@@ -347,9 +365,9 @@ export default function FinOpenFinance() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Banco</Label>
+              <Label htmlFor="of-banco">Banco</Label>
               <Select value={bancoCodigo} onValueChange={setBancoCodigo}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger id="of-banco"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {BANCOS_BR.map((b) => (
                     <SelectItem key={b.codigo} value={b.codigo}>
@@ -360,9 +378,9 @@ export default function FinOpenFinance() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Conta vinculada (opcional)</Label>
+              <Label htmlFor="of-conta">Conta vinculada (opcional)</Label>
               <Select value={contaId} onValueChange={setContaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger id="of-conta"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {contas.filter((c) => c.ativa).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
@@ -371,14 +389,14 @@ export default function FinOpenFinance() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Frequência de sincronização (horas)</Label>
-              <Input type="number" min={1} max={168} value={frequencia} onChange={(e) => setFrequencia(e.target.value)} />
+              <Label htmlFor="of-frequencia">Frequência de sincronização (horas)</Label>
+              <Input id="of-frequencia" type="number" min={1} max={168} value={frequencia} onChange={(e) => setFrequencia(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNovoOpen(false)}>Cancelar</Button>
             <Button onClick={() => criar.mutate()} disabled={criar.isPending || !bancoCodigo}>
-              {criar.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+              {criar.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               Criar conexão
             </Button>
           </DialogFooter>

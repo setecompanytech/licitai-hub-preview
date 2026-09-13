@@ -189,7 +189,7 @@ export default function IndicadoresGerenciais() {
 
       {erro && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>Não foi possível apurar os indicadores: {erro}</AlertDescription>
         </Alert>
       )}

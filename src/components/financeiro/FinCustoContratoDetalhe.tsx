@@ -140,9 +140,9 @@ export default function FinCustoContratoDetalhe({
   const margemDe = (v: number) => (linha.faturamento > 0 ? (v / linha.faturamento) * 100 : 0);
 
   const LinhaDre = ({ rotulo, valor, negativo, forte, sub }: { rotulo: React.ReactNode; valor: number; negativo?: boolean; forte?: boolean; sub?: boolean }) => (
-    <div className={`flex items-center justify-between gap-4 ${forte ? 'font-semibold border-t pt-1.5 mt-1' : ''} ${sub ? 'pl-4 text-muted-foreground' : ''}`}>
-      <span className="text-xs min-w-0">{rotulo}</span>
-      <span className={`text-xs tabular-nums whitespace-nowrap ${negativo && valor > 0 ? 'text-destructive' : ''} ${forte ? (valor < 0 ? 'text-destructive' : 'text-success') : ''}`}>
+    <div className={`flex items-center justify-between gap-4 ${forte ? 'font-semibold border-t border-border pt-2 mt-1' : ''} ${sub ? 'pl-4 text-muted-foreground' : ''}`}>
+      <span className="text-sm min-w-0">{rotulo}</span>
+      <span className={`text-sm text-right tabular-nums whitespace-nowrap ${negativo && valor > 0 ? 'text-destructive-ink' : ''} ${forte ? (valor < 0 ? 'text-destructive-ink' : 'text-success-ink') : ''}`}>
         {negativo && valor > 0 ? '(-) ' : ''}{fmt(valor)}
       </span>
     </div>
@@ -152,17 +152,17 @@ export default function FinCustoContratoDetalhe({
     <Dialog open onOpenChange={(v) => !v && aoFechar()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">
+          <DialogTitle className="text-lg font-semibold">
             {linha.numero_contrato || '(sem número)'} — resultado do contrato
           </DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground -mt-2">{linha.orgao_contratante}</p>
+        <p className="-mt-2 text-sm text-muted-foreground">{linha.orgao_contratante}</p>
 
         {carregando ? (
           <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border p-3 space-y-1.5">
+            <div className="rounded-lg border border-border p-4 space-y-2">
               <LinhaDre rotulo={<b>Receita — pedidos/empenhos faturados no contrato</b>} valor={linha.faturamento} />
 
               <LinhaDre rotulo="Custos diretos — Contas a Pagar vinculadas (pagas)" valor={linha.custo_pago} negativo />
@@ -188,8 +188,8 @@ export default function FinCustoContratoDetalhe({
             </div>
 
             {imposto && (imposto.antes.faixa != null || imposto.antes.porte !== imposto.depois.porte) && (
-              <div className="rounded-lg border p-3 text-xs space-y-1">
-                <p className="font-medium">Efeito do contrato na carga da empresa (antes → depois)</p>
+              <div className="rounded-lg border border-border p-4 text-sm space-y-1">
+                <p className="font-semibold">Efeito do contrato na carga da empresa (antes → depois)</p>
                 <p className="text-muted-foreground">
                   Receita 12m sem o contrato: <b className="text-foreground">{fmt(imposto.antes.receita)}</b> ({imposto.antes.porte}
                   {imposto.antes.faixa != null ? `, ${imposto.antes.faixa}ª faixa, ${pct(imposto.antes.aliquotaEfetiva ?? 0)}` : ''})
@@ -200,42 +200,42 @@ export default function FinCustoContratoDetalhe({
             )}
 
             {linha.faturamento > 0 && custoDireto === 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
+              <Alert variant="warning">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>
                   O contrato faturou {fmt(linha.faturamento)} sem nenhum custo apontado — a margem exibida é irreal
                   até as compras serem vinculadas (use "Vincular despesas em lote").
                 </AlertDescription>
               </Alert>
             )}
             {imposto?.avisos.map(a => (
-              <Alert key={a} variant={a.includes('teto') || a.includes('SUBLIMITE') ? 'destructive' : 'default'}>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">{a}</AlertDescription>
+              <Alert key={a} variant={a.includes('teto') || a.includes('SUBLIMITE') ? 'destructive' : 'warning'}>
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                <AlertDescription>{a}</AlertDescription>
               </Alert>
             ))}
             {imposto && imposto.premissas.length > 0 && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Estimativa gerencial — premissas: {imposto.premissas.join(' ')} A apuração oficial é a tela de Apuração.
               </p>
             )}
 
             <div className="flex flex-wrap gap-2 justify-end">
-              <Button size="sm" variant="outline" className="text-xs" onClick={aoVincular}>
-                <Link2 className="w-3.5 h-3.5 mr-1" /> Vincular despesas em lote
+              <Button size="sm" variant="outline" onClick={aoVincular}>
+                <Link2 aria-hidden="true" /> Vincular despesas em lote
               </Button>
-              <Button size="sm" variant="outline" className="text-xs" asChild>
+              <Button size="sm" variant="outline" asChild>
                 <Link to={`/gestao-contratos?contrato=${linha.contrato_id}`}>
-                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Abrir contrato (aba Custos)
+                  <ExternalLink aria-hidden="true" /> Abrir contrato (aba Custos)
                 </Link>
               </Button>
-              <Button size="sm" variant="outline" className="text-xs" asChild>
+              <Button size="sm" variant="outline" asChild>
                 <Link to="/financeiro/a_pagar">
-                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Contas a Pagar
+                  <ExternalLink aria-hidden="true" /> Contas a Pagar
                 </Link>
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Corrigir é agir na fonte: o vínculo de cada lançamento, o pedido, a aba Custos.
               Este painel é derivado — qualquer acerto lá reflete aqui automaticamente.
             </p>

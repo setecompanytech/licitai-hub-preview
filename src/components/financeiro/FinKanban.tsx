@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { DataDaBaixaDialog } from "./DataDaBaixaDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -58,10 +58,12 @@ const COLUNAS: { id: ColunaKanban; nome: string; cor: string; icone: typeof Cloc
   // As três primeiras são DERIVADAS da data de vencimento — o lançamento se
   // move sozinho conforme o calendário anda. Só "Concluído" é um estado que se
   // escolhe (arrastar para cá marca pago/recebido; tirar daqui reabre).
-  { id: "aberto",   nome: "Em aberto",        cor: "bg-info/10 border-info/30",               icone: FileText },
-  { id: "vence_7d", nome: "Vence em 7 dias",  cor: "bg-warning/10 border-warning/30",         icone: Clock },
-  { id: "vencido",  nome: "Vencido",          cor: "bg-destructive/10 border-destructive/30", icone: AlertCircle },
-  { id: "pago",     nome: "Concluído",        cor: "bg-success/10 border-success/30",         icone: CheckCircle2 },
+  // Tinta semântica da identidade 12/09: fundo `*-tint`, contorno `*-line` —
+  // os mesmos pares do Badge e do Alert, em vez de alfa composto na mão.
+  { id: "aberto",   nome: "Em aberto",        cor: "bg-muted border-border",                    icone: FileText },
+  { id: "vence_7d", nome: "Vence em 7 dias",  cor: "bg-warning-tint border-warning-line",       icone: Clock },
+  { id: "vencido",  nome: "Vencido",          cor: "bg-destructive-tint border-destructive-line", icone: AlertCircle },
+  { id: "pago",     nome: "Concluído",        cor: "bg-success-tint border-success-line",       icone: CheckCircle2 },
 ];
 
 interface Props {
@@ -452,13 +454,13 @@ export default function FinKanban({ tipo }: Props) {
               {/* A contagem vive AO LADO do total que ela qualifica — no meio da
                   barra de ações ela era informação espremida entre botões,
                   quebrando o fluxo de quem procura um comando. */}
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
                 Total {tipo === "a_pagar" ? "a pagar" : "a receber"} em aberto
-                <Badge variant="outline" className="font-normal">
+                <Badge variant="muted">
                   {lancamentosFiltrados.length} lançamento{lancamentosFiltrados.length === 1 ? "" : "s"}
                 </Badge>
               </p>
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                 {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
@@ -467,41 +469,42 @@ export default function FinKanban({ tipo }: Props) {
               <p className="text-sm text-muted-foreground">
                 Saldo atual {filtroConta !== "todos" ? `· ${contas.find((c) => c.id === filtroConta)?.nome ?? ""}` : "· todas as contas"}
               </p>
-              <p className={cn("text-2xl font-bold tabular-nums", saldoContaAtual >= 0 ? "text-success" : "text-destructive")}>
+              <p className={cn("text-[2rem] leading-10 font-bold tabular-nums", saldoContaAtual >= 0 ? "text-success-ink" : "text-destructive-ink")}>
                 {saldoContaAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <Input
                 placeholder="Buscar descrição, doc, pessoa ou categoria…"
+                aria-label="Buscar lançamento por descrição, documento, pessoa ou categoria"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="pl-8 h-9 w-full"
+                className="pl-10 w-full"
               />
             </div>
             <Button
-              size="sm"
               variant={mostrarFiltros || filtrosAtivos > 0 ? "default" : "outline"}
               onClick={() => setMostrarFiltros((v) => !v)}
+              aria-expanded={mostrarFiltros}
             >
-              <Filter className="w-4 h-4 mr-1" />
+              <Filter aria-hidden="true" />
               Filtros
               {filtrosAtivos > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                <Badge variant="muted">
                   {filtrosAtivos}
                 </Badge>
               )}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setExtracaoOpen(true)}>
-              <ScanLine className="w-4 h-4 mr-1" />
+            <Button variant="outline" onClick={() => setExtracaoOpen(true)}>
+              <ScanLine aria-hidden="true" />
               Extrair de documento
             </Button>
-            <Button size="sm" onClick={abrirNovo}>
-              <Plus className="w-4 h-4 mr-1" />
+            <Button onClick={abrirNovo}>
+              <Plus aria-hidden="true" />
               Novo {tipo === "a_pagar" ? "pagamento" : "recebimento"}
             </Button>
           </div>
@@ -509,21 +512,21 @@ export default function FinKanban({ tipo }: Props) {
       </Card>
 
       {/* Chips de vencimento (sempre visíveis para acesso rápido) */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {VENC_CHIPS.map((c) => (
           <Button
             key={c.id}
             size="sm"
             variant={filtroVenc === c.id ? "default" : "outline"}
-            className="h-7 px-3 text-xs"
+            aria-pressed={filtroVenc === c.id}
             onClick={() => setFiltroVenc(c.id)}
           >
             {c.label}
           </Button>
         ))}
         {filtrosAtivos > 0 && (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={limparFiltros}>
-            <X className="w-3.5 h-3.5 mr-1" />
+          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={limparFiltros}>
+            <X aria-hidden="true" />
             Limpar filtros
           </Button>
         )}
@@ -532,11 +535,11 @@ export default function FinKanban({ tipo }: Props) {
       {/* Painel expansível de filtros avançados */}
       {mostrarFiltros && (
         <Card>
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Categoria</label>
+          <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-categoria" className="block text-sm font-medium text-foreground">Categoria</label>
               <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="fin-kanban-categoria"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todas as categorias</SelectItem>
                   {categorias
@@ -547,12 +550,12 @@ export default function FinKanban({ tipo }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-pessoa" className="block text-sm font-medium text-foreground">
                 {tipo === "a_pagar" ? "Fornecedor" : "Cliente"}
               </label>
               <Select value={filtroPessoa} onValueChange={setFiltroPessoa}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="fin-kanban-pessoa"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   {pessoas.map((p) => (
@@ -561,10 +564,10 @@ export default function FinKanban({ tipo }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Conta</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-conta" className="block text-sm font-medium text-foreground">Conta</label>
               <Select value={filtroConta} onValueChange={setFiltroConta}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="fin-kanban-conta"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todas as contas</SelectItem>
                   {contas.map((c) => (
@@ -573,10 +576,10 @@ export default function FinKanban({ tipo }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Responsável</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-responsavel" className="block text-sm font-medium text-foreground">Responsável</label>
               <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="fin-kanban-responsavel"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os responsáveis</SelectItem>
                   {membros.map((m) => (
@@ -589,35 +592,39 @@ export default function FinKanban({ tipo }: Props) {
             </div>
             {/* Ocupa duas colunas para que Mês/De/Até fechem a linha e os
                 campos de valor fiquem juntos na seguinte. */}
-            <div className="space-y-1 lg:col-span-2">
-              <label className="text-xs text-muted-foreground">Mês</label>
+            <div className="space-y-2 lg:col-span-2">
+              <label htmlFor="fin-kanban-mes" className="block text-sm font-medium text-foreground">Mês</label>
               <Input
+                id="fin-kanban-mes"
                 type="month"
                 value={mesSelecionado}
                 onChange={(e) => aplicarMes(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">De</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-de" className="block text-sm font-medium text-foreground">De</label>
               <Input
+                id="fin-kanban-de"
                 type="date"
                 value={dataDe}
                 max={dataAte || undefined}
                 onChange={(e) => setDataDe(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Até</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-ate" className="block text-sm font-medium text-foreground">Até</label>
               <Input
+                id="fin-kanban-ate"
                 type="date"
                 value={dataAte}
                 min={dataDe || undefined}
                 onChange={(e) => setDataAte(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Valor mínimo (R$)</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-valor-min" className="block text-sm font-medium text-foreground">Valor mínimo (R$)</label>
               <Input
+                id="fin-kanban-valor-min"
                 type="number"
                 inputMode="decimal"
                 placeholder="0,00"
@@ -625,9 +632,10 @@ export default function FinKanban({ tipo }: Props) {
                 onChange={(e) => setValorMin(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Valor máximo (R$)</label>
+            <div className="space-y-2">
+              <label htmlFor="fin-kanban-valor-max" className="block text-sm font-medium text-foreground">Valor máximo (R$)</label>
               <Input
+                id="fin-kanban-valor-max"
                 type="number"
                 inputMode="decimal"
                 placeholder="0,00"
@@ -641,10 +649,10 @@ export default function FinKanban({ tipo }: Props) {
 
       {/* Barra de seleção em lote */}
       {selecionados.size > 0 && (
-        <Card className="border-border/60 bg-muted/40">
+        <Card className="border-border bg-muted">
           <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 text-sm">
-              <CheckSquare className="w-4 h-4 text-muted-foreground" />
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <CheckSquare className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <span>
                 <strong>{selecionados.size}</strong> selecionado(s) ·{" "}
                 <span className="tabular-nums font-semibold">
@@ -652,15 +660,15 @@ export default function FinKanban({ tipo }: Props) {
                 </span>
               </span>
               {idsSelecionaveis.length > selecionados.size && (
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selecionarTodosVisiveis}>
+                <Button size="sm" variant="ghost" onClick={selecionarTodosVisiveis}>
                   Selecionar todos visíveis ({idsSelecionaveis.length})
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="ghost" onClick={limparSelecao}>Cancelar</Button>
               <Button size="sm" onClick={marcarSelecionadosPagos} disabled={upsert.isPending}>
-                <CheckCircle2 className="w-4 h-4 mr-1" />
+                <CheckCircle2 aria-hidden="true" />
                 Marcar como {tipo === "a_pagar" ? "pago" : "recebido"}
               </Button>
             </div>
@@ -683,9 +691,12 @@ export default function FinKanban({ tipo }: Props) {
             <Card
               key={col.id}
               className={cn(
+                // Contorno de 1px como todo cartão da identidade: a coluna já
+                // se distingue pela tinta (`*-tint` + `*-line`), e a moldura
+                // dupla era o único traço de 2px do módulo.
                 col.cor,
-                "border-2 kanban-col transition-shadow",
-                dragOverCol === col.id && "ring-2 ring-primary/40 shadow-lg",
+                "kanban-col transition-shadow",
+                dragOverCol === col.id && "ring-2 ring-ring shadow-md",
               )}
               onDragOver={handleColDragOver(col.id)}
               onDragLeave={(e) => {
@@ -695,14 +706,14 @@ export default function FinKanban({ tipo }: Props) {
               }}
               onDrop={handleColDrop(col.id)}
             >
-              <CardHeader className="pb-2 space-y-1">
-                <CardTitle className="text-sm flex items-center gap-2 min-w-0">
-                  <Icone className="w-4 h-4 shrink-0" />
+              <CardHeader className="p-4 pb-2 space-y-1">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2 min-w-0">
+                  <Icone className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span className="truncate">{col.nome}</span>
                   {/* A contagem como selo, não como parte da mesma frase do
                       valor: eram dois números de naturezas diferentes colados
                       por um ponto, e a leitura tropeçava nos dois. */}
-                  <span className="ml-auto shrink-0 rounded-full bg-background/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums">
+                  <span className="ml-auto shrink-0 rounded-full bg-background px-2 py-0.5 text-xs font-semibold tabular-nums">
                     {items.length}
                   </span>
                 </CardTitle>
@@ -723,12 +734,12 @@ export default function FinKanban({ tipo }: Props) {
                   <div className="kanban-col-body">
                     {items.length === 0 ? (
                       <div className={cn(
-                        "border-2 border-dashed rounded-md py-5 text-center transition-colors",
+                        "border-2 border-dashed rounded-md py-6 text-center transition-colors",
                         dragOverCol === col.id
-                          ? "border-primary/50 bg-primary/5"
-                          : "border-border/40",
+                          ? "border-primary bg-primary-tint"
+                          : "border-border",
                       )}>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                           {dragOverCol === col.id ? "Solte aqui" : "Nenhum item"}
                         </p>
                       </div>
@@ -744,8 +755,8 @@ export default function FinKanban({ tipo }: Props) {
                           <Card
                             key={l.id}
                             className={cn(
-                              "bg-card border shadow-sm kanban-card cursor-grab active:cursor-grabbing transition-all",
-                              isDragging && "opacity-40 scale-[0.98]",
+                              "bg-card border border-border shadow-sm kanban-card cursor-grab active:cursor-grabbing transition-all",
+                              isDragging && "opacity-40",
                             )}
                             draggable
                             onDragStart={handleDragStart(l.id)}
@@ -756,7 +767,7 @@ export default function FinKanban({ tipo }: Props) {
                             onDoubleClick={() => abrirEditar(l)}
                             title="Duplo clique para abrir"
                           >
-                            <CardContent className="p-2 space-y-0.5 kanban-card-body">
+                            <CardContent className="p-3 space-y-1 kanban-card-body">
                               {(() => {
                                 const aberto = cardsAbertos.has(l.id);
                                 const partes = [l.pessoa?.nome, l.numero_documento ? `Doc ${l.numero_documento}` : null]
@@ -764,7 +775,7 @@ export default function FinKanban({ tipo }: Props) {
                                 return (
                                   <>
                                     {/* L1 — identidade à esquerda, VALOR à direita. */}
-                                    <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
                                       {col.id !== "pago" && (
                                         <Checkbox
                                           checked={selecionados.has(l.id)}
@@ -774,7 +785,7 @@ export default function FinKanban({ tipo }: Props) {
                                           aria-label="Selecionar lançamento"
                                         />
                                       )}
-                                      <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                                      <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                                       <p
                                         className={cn(
                                           "text-sm font-medium min-w-0 flex-1 cursor-pointer",
@@ -786,9 +797,9 @@ export default function FinKanban({ tipo }: Props) {
                                         {l.descricao}
                                       </p>
                                       <span className={cn(
-                                        "text-sm font-bold tabular-nums whitespace-nowrap shrink-0",
-                                        col.id === "vencido" && "text-destructive",
-                                        col.id === "pago" && "text-success",
+                                        "text-sm font-bold tabular-nums whitespace-nowrap shrink-0 text-right",
+                                        col.id === "vencido" && "text-destructive-ink",
+                                        col.id === "pago" && "text-success-ink",
                                       )}>
                                         {Number(l.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                       </span>
@@ -798,63 +809,66 @@ export default function FinKanban({ tipo }: Props) {
                                         BAIXA à direita. A ação de dar baixa é
                                         o core do quadro: fica visível também
                                         no recolhido. */}
-                                    <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
                                       <p
-                                        className="text-[11px] text-muted-foreground truncate min-w-0 flex-1 cursor-pointer"
+                                        className="text-xs text-muted-foreground truncate min-w-0 flex-1 cursor-pointer"
                                         title={partes || undefined}
                                         onClick={(e) => { e.stopPropagation(); alternarCard(l.id); }}
                                       >
                                         {partes || "—"}
                                       </p>
-                                      <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
+                                      <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
                                         Venc {format(parseISO(venc), "dd/MM/yy", { locale: ptBR })}
                                       </span>
                                       {col.id !== "pago" && (
                                         <Button
                                           size="icon"
                                           variant="outline"
-                                          className="h-5 w-5 shrink-0 text-success hover:text-success hover:bg-success/10"
+                                          className="h-8 w-8 shrink-0 text-success-ink hover:text-success-ink hover:bg-success-tint"
                                           onClick={(e) => { e.stopPropagation(); marcarPago(l); }}
                                           disabled={upsert.isPending}
+                                          aria-label={tipo === "a_pagar" ? `Marcar "${l.descricao}" como pago` : `Marcar "${l.descricao}" como recebido`}
                                           title={tipo === "a_pagar" ? "Marcar pago" : "Marcar recebido"}
                                         >
-                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          <CheckCircle2 aria-hidden="true" />
                                         </Button>
                                       )}
                                     </div>
 
                                     {aberto && (
-                                      <div className="pt-1 mt-0.5 border-t border-border/40 flex items-center gap-2 flex-wrap">
+                                      <div className="pt-2 mt-1 border-t border-border flex items-center gap-2 flex-wrap">
                                         {isParcelado && (
-                                          <Badge variant="secondary" className="text-xs gap-1">
-                                            <Layers className="w-3 h-3" />
-                                            {num}/{total}
+                                          <Badge variant="muted" className="gap-1">
+                                            <Layers className="w-3 h-3" aria-hidden="true" />
+                                            Parcela {num}/{total}
                                           </Badge>
                                         )}
                                         {vendedor && (
-                                          <Badge variant="outline" className="text-xs gap-1 max-w-full truncate">
-                                            <User2 className="w-3 h-3 shrink-0" />
+                                          <Badge variant="info" className="min-w-0 max-w-full gap-1" title={vendedor}>
+                                            <User2 className="w-3 h-3 shrink-0" aria-hidden="true" />
                                             <span className="truncate">{vendedor}</span>
                                           </Badge>
                                         )}
-                                        <div className="ml-auto flex items-center gap-0.5">
+                                        <div className="ml-auto flex items-center gap-1">
                                           <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-6 w-6"
+                                            className="h-8 w-8"
                                             onClick={(e) => { e.stopPropagation(); abrirEditar(l); }}
+                                            aria-label={`Editar "${l.descricao}"`}
                                             title="Editar"
                                           >
-                                            <Pencil className="w-3.5 h-3.5" />
+                                            <Pencil aria-hidden="true" />
                                           </Button>
                                           <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            className="h-8 w-8 text-destructive-ink hover:text-destructive-ink hover:bg-destructive-tint"
                                             onClick={(e) => { e.stopPropagation(); setConfirmDel(l); }}
+                                            aria-label={`Excluir "${l.descricao}"`}
                                             title="Excluir"
                                           >
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <Trash2 aria-hidden="true" />
                                           </Button>
                                         </div>
                                       </div>
@@ -912,7 +926,7 @@ export default function FinKanban({ tipo }: Props) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: "destructive" })}
               onClick={() => {
                 if (confirmDel) agendarExclusao(confirmDel);
                 setConfirmDel(null);

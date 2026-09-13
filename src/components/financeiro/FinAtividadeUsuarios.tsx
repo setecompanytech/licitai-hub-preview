@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import EstadoVazio from "@/components/shared/EstadoVazio";
 import { Printer, RefreshCw, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
@@ -42,6 +43,13 @@ const OPERACAO_LABEL: Record<string, string> = {
   INSERT: "Inclusão",
   UPDATE: "Alteração",
   DELETE: "Exclusão",
+};
+
+/** Status sempre com texto — a tinta é reforço, nunca a única pista. */
+const OPERACAO_VARIANTE: Record<string, "success" | "warning" | "danger" | "muted"> = {
+  INSERT: "success",
+  UPDATE: "warning",
+  DELETE: "danger",
 };
 
 const TABELA_LABEL: Record<string, string> = {
@@ -161,14 +169,14 @@ export default function FinAtividadeUsuarios() {
   }, [filtrados]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Filtros */}
       <Card className="print:hidden">
-        <CardContent className="p-3 flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Período</Label>
+        <CardContent className="p-4 flex flex-wrap items-end gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="atividade-periodo" className="text-sm">Período</Label>
             <Select value={String(diasAtras)} onValueChange={(v) => setDiasAtras(Number(v))}>
-              <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="atividade-periodo" className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">Hoje</SelectItem>
                 <SelectItem value="7">Últimos 7 dias</SelectItem>
@@ -177,21 +185,26 @@ export default function FinAtividadeUsuarios() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1 flex-1 min-w-[200px]">
-            <Label className="text-xs">Filtrar por usuário</Label>
-            <Input value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)} placeholder="Nome ou e-mail..." className="h-8 text-xs" />
+          <div className="space-y-2 flex-1 min-w-[200px]">
+            <Label htmlFor="atividade-usuario" className="text-sm">Filtrar por usuário</Label>
+            <Input
+              id="atividade-usuario"
+              value={filtroUsuario}
+              onChange={(e) => setFiltroUsuario(e.target.value)}
+              placeholder="Nome ou e-mail..."
+            />
           </div>
-          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />Atualizar
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={isFetching ? "animate-spin" : undefined} aria-hidden="true" />Atualizar
           </Button>
-          <Button size="sm" variant="outline" onClick={() => window.print()}>
-            <Printer className="w-4 h-4 mr-1.5" />Imprimir / PDF
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer aria-hidden="true" />Imprimir / PDF
           </Button>
         </CardContent>
       </Card>
 
       {/* Totais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 print:hidden">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
         <KpiCard label="Total de eventos" value={totais.total} />
         <KpiCard label="Inclusões" value={totais.inclusoes} tone="success" />
         <KpiCard label="Alterações" value={totais.alteracoes} tone="warning" />
@@ -201,76 +214,81 @@ export default function FinAtividadeUsuarios() {
       {/* Relatório */}
       <Card>
         <CardContent className="p-6 print:p-0">
-          <header className="border-b pb-3 mb-4 flex items-center justify-between">
+          <header className="border-b border-border pb-3 mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-lg font-bold flex items-center gap-2"><Activity className="w-4 h-4" />Atividade dos Usuários</h1>
-              <p className="text-xs text-muted-foreground">{empresaAtiva?.razao_social}</p>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Activity className="w-5 h-5 text-muted-foreground" aria-hidden="true" />Atividade dos Usuários
+              </h2>
+              <p className="text-sm text-muted-foreground">{empresaAtiva?.razao_social}</p>
             </div>
             <div className="text-right text-xs text-muted-foreground">
               <div>Emitido em</div>
-              <div className="font-medium">{format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</div>
+              <div className="font-medium tabular-nums">{format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}</div>
             </div>
           </header>
 
           {isLoading ? (
             <div className="space-y-2"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /></div>
           ) : filtrados.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Nenhuma atividade registrada no período.</div>
+            <EstadoVazio
+              icone={<Activity />}
+              titulo="Nenhuma atividade no período"
+              descricao="Nenhum evento do Financeiro foi registrado para o período e o filtro escolhidos."
+            />
           ) : (
             <div className="space-y-6">
               {Array.from(agrupado.entries()).map(([usuario, datas]) => {
                 const totalUsuario = Array.from(datas.values()).reduce((s, d) => s + Array.from(d.values()).reduce((s2, evs) => s2 + evs.length, 0), 0);
                 return (
-                  <section key={usuario} className="text-xs">
-                    <div className="font-semibold border-b border-foreground pb-1 mb-2">
+                  <section key={usuario} className="text-sm">
+                    <h3 className="mb-2 border-b border-border pb-1 text-base font-semibold text-foreground">
                       Usuário: {usuario}
-                    </div>
+                    </h3>
                     {Array.from(datas.entries()).map(([data, tipos]) => {
                       const totalData = Array.from(tipos.values()).reduce((s, evs) => s + evs.length, 0);
                       return (
                         <div key={data} className="ml-3 mb-3">
-                          <div className="text-muted-foreground font-medium border-b border-dashed pb-0.5 mb-1">
+                          <div className="mb-2 border-b border-border pb-1 text-sm font-medium text-muted-foreground">
                             Data da Atividade: {data}
                           </div>
                           {Array.from(tipos.entries()).map(([tipo, evs]) => (
                             <div key={tipo} className="ml-3 mb-2">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground border-b border-dotted pb-0.5 mb-1">
+                              <div className="mb-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Tipo: {tipo}
                               </div>
-                              <table className="w-full">
-                                <tbody>
-                                  {evs.map((ev) => (
-                                    <tr key={ev.id} className="hover:bg-muted/30">
-                                      <td className="py-0.5 pr-3 w-24">
-                                        <Badge
-                                          variant={ev.operacao === "DELETE" ? "destructive" : "outline"}
-                                          className="text-xs px-1.5 py-0 h-4"
-                                        >
-                                          {OPERACAO_LABEL[ev.operacao]}
-                                        </Badge>
-                                      </td>
-                                      <td className="py-0.5 pr-3 truncate max-w-xs" title={ev.descricao}>{ev.descricao}</td>
-                                      <td className="py-0.5 pr-3 tabular-nums whitespace-nowrap text-right w-28">{formatBRL(ev.valor)}</td>
-                                      <td className="py-0.5 pr-3 text-muted-foreground tabular-nums w-24">
-                                        {ev.data_evento && ev.data_evento.length >= 10 ? format(new Date(ev.data_evento), "dd/MM/yyyy") : "—"}
-                                      </td>
-                                      <td className="py-0.5 text-muted-foreground truncate">{ev.categoria}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              <div className="text-xs text-muted-foreground italic ml-1 mt-0.5">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <tbody>
+                                    {evs.map((ev) => (
+                                      <tr key={ev.id} className="hover:bg-muted">
+                                        <td className="py-1 pr-3 w-28">
+                                          <Badge variant={OPERACAO_VARIANTE[ev.operacao] ?? "muted"}>
+                                            {OPERACAO_LABEL[ev.operacao]}
+                                          </Badge>
+                                        </td>
+                                        <td className="py-1 pr-3 truncate max-w-xs" title={ev.descricao}>{ev.descricao}</td>
+                                        <td className="py-1 pr-3 tabular-nums whitespace-nowrap text-right w-28">{formatBRL(ev.valor)}</td>
+                                        <td className="py-1 pr-3 text-muted-foreground tabular-nums whitespace-nowrap w-24">
+                                          {ev.data_evento && ev.data_evento.length >= 10 ? format(new Date(ev.data_evento), "dd/MM/yyyy") : "—"}
+                                        </td>
+                                        <td className="py-1 text-muted-foreground truncate">{ev.categoria}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="ml-1 mt-1 text-xs text-muted-foreground">
                                 atividades({evs.length})
                               </div>
                             </div>
                           ))}
-                          <div className="text-xs text-muted-foreground italic ml-1">
+                          <div className="ml-1 text-xs text-muted-foreground">
                             atividades por data ({totalData})
                           </div>
                         </div>
                       );
                     })}
-                    <div className="text-xs text-muted-foreground italic ml-3">
+                    <div className="ml-3 text-xs text-muted-foreground">
                       atividades por usuário ({totalUsuario})
                     </div>
                   </section>
@@ -279,8 +297,8 @@ export default function FinAtividadeUsuarios() {
             </div>
           )}
 
-          <footer className="border-t pt-2 mt-6 text-xs text-muted-foreground text-center">
-            DELETE indica que houve exclusão do registro · Gerado pelo PRAEFECTUS · Página 1
+          <footer className="border-t border-border pt-3 mt-6 text-xs text-muted-foreground text-center">
+            "Exclusão" indica que houve remoção do registro · Gerado pelo PRAEFECTUS · Página 1
           </footer>
         </CardContent>
       </Card>
@@ -289,15 +307,15 @@ export default function FinAtividadeUsuarios() {
 }
 
 function KpiCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "warning" | "danger" }) {
-  const cor = tone === "success" ? "text-success"
-    : tone === "warning" ? "text-warning"
-    : tone === "danger" ? "text-destructive"
+  const cor = tone === "success" ? "text-success-ink"
+    : tone === "warning" ? "text-warning-ink"
+    : tone === "danger" ? "text-destructive-ink"
     : "text-foreground";
   return (
     <Card>
-      <CardContent className="p-3">
-        <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-        <div className={`text-xl font-semibold tabular-nums ${cor}`}>{value}</div>
+      <CardContent className="p-6">
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className={`text-[2rem] leading-10 font-bold tabular-nums ${cor}`}>{value}</div>
       </CardContent>
     </Card>
   );

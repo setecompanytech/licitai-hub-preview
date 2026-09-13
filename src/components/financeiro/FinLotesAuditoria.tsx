@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaId } from "@/hooks/useFinanceiro";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Search, RefreshCw } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import EstadoVazio from "@/components/shared/EstadoVazio";
+import { ExternalLink, Search, RefreshCw, History } from "lucide-react";
 import { formatBRL, formatDate } from "@/lib/financeiro/formatters";
 import { toast } from "sonner";
 
@@ -73,79 +75,79 @@ export default function FinLotesAuditoria() {
   }
 
   return (
-    <div className="space-y-3">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Auditoria de Lotes — Origem dos Dados</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por descrição, job ou origem..."
-                className="pl-8"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" size="sm" onClick={rodarBackfill} disabled={running}>
-              <RefreshCw className={`w-4 h-4 mr-1.5 ${running ? "animate-spin" : ""}`} />
-              {running ? "Backfilling..." : "Backfill origem (lançamentos legados)"}
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            placeholder="Buscar por descrição, job ou origem..."
+            className="pl-9"
+            aria-label="Buscar lote por descrição, job ou origem"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+        <Button variant="outline" onClick={rodarBackfill} disabled={running}>
+          <RefreshCw className={running ? "animate-spin" : undefined} aria-hidden="true" />
+          {running ? "Backfilling..." : "Backfill origem (lançamentos legados)"}
+        </Button>
+      </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="text-left px-3 py-2 whitespace-nowrap">Data</th>
-                  <th className="text-left px-3 py-2 whitespace-nowrap">Origem</th>
-                  <th className="text-left px-3 py-2 whitespace-nowrap">Job</th>
-                  <th className="text-left px-3 py-2">Descrição</th>
-                  <th className="text-right px-3 py-2 whitespace-nowrap">Registros</th>
-                  <th className="text-right px-3 py-2 whitespace-nowrap">Valor total</th>
-                  <th className="px-3 py-2 w-24" />
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}><td colSpan={7} className="p-2"><Skeleton className="h-8 w-full" /></td></tr>
-                  ))
-                ) : filtrados.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                      Nenhum lote registrado ainda. Imports e seeds passam a registrar lote automaticamente.
-                    </td>
-                  </tr>
-                ) : (
-                  filtrados.map((l) => (
-                    <tr key={l.id} className="border-t hover:bg-muted/30">
-                      <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDate(l.created_at)}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <Badge variant="outline" className="text-xs whitespace-nowrap">{l.origem_tipo}</Badge>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{l.job ?? "—"}</td>
-                      <td className="px-3 py-2 max-w-[420px] truncate" title={l.descricao ?? ""}>{l.descricao ?? "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{l.total_registros ?? 0}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatBRL(Number(l.total_valor ?? 0))}</td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => navigate(`/financeiro/lancamentos?lote=${l.id}`)}
-                        >
-                          <ExternalLink className="w-4 h-4 mr-1" /> Ver
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
+      <Card className="overflow-x-auto">
+        <Table className="min-w-[900px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">Data</TableHead>
+              <TableHead className="whitespace-nowrap">Origem</TableHead>
+              <TableHead className="whitespace-nowrap">Job</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead className="whitespace-nowrap text-right">Registros</TableHead>
+              <TableHead className="whitespace-nowrap text-right">Valor total</TableHead>
+              <TableHead className="w-24">
+                <span className="sr-only">Ações</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={7} className="p-3"><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ))
+            ) : filtrados.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="p-0">
+                  <EstadoVazio
+                    icone={<History />}
+                    titulo={busca ? "Nenhum lote para esta busca" : "Nenhum lote registrado ainda"}
+                    descricao="Imports e seeds passam a registrar lote automaticamente."
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtrados.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell nowrap className="tabular-nums text-muted-foreground">{formatDate(l.created_at)}</TableCell>
+                  <TableCell nowrap>
+                    <Badge variant="muted">{l.origem_tipo}</Badge>
+                  </TableCell>
+                  <TableCell nowrap className="text-muted-foreground">{l.job ?? "—"}</TableCell>
+                  <TableCell truncate title={l.descricao ?? ""}>{l.descricao ?? "—"}</TableCell>
+                  <TableCell className="text-right tabular-nums">{l.total_registros ?? 0}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatBRL(Number(l.total_valor ?? 0))}</TableCell>
+                  <TableCell nowrap className="text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate(`/financeiro/lancamentos?lote=${l.id}`)}
+                    >
+                      <ExternalLink aria-hidden="true" /> Ver
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

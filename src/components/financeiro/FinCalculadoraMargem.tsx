@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useApuracaoTributaria } from "@/hooks/useApuracaoTributaria";
-import { Calculator, TrendingUp, AlertCircle, Sparkles, RefreshCw, Info } from "lucide-react";
+import { TrendingUp, AlertCircle, Sparkles, RefreshCw, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Periodo = "3" | "6" | "12";
@@ -34,7 +34,7 @@ const fmtPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
 
 export default function FinCalculadoraMargem() {
   const { empresaAtiva } = useEmpresa();
-  const { config, calcular } = useApuracaoTributaria();
+  const { config, calcular, loading: carregandoConfig } = useApuracaoTributaria();
 
   const [periodo, setPeriodo] = useState<Periodo>("6");
   const [loading, setLoading] = useState(false);
@@ -163,40 +163,35 @@ export default function FinCalculadoraMargem() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-muted-foreground" />
-                Calculadora Contábil de Margem
-              </CardTitle>
-              <CardDescription>
-                Analisa receitas, custos e despesas reais lançadas no sistema, aplica o regime tributário
-                cadastrado e sugere a margem percentual ideal para precificar produtos e serviços.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">Últimos 3 meses</SelectItem>
-                  <SelectItem value="6">Últimos 6 meses</SelectItem>
-                  <SelectItem value="12">Últimos 12 meses</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm" onClick={carregar} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-                Atualizar
-              </Button>
-            </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Analisa receitas, custos e despesas reais lançadas no sistema, aplica o regime tributário cadastrado e sugere
+          a margem percentual ideal para precificar produtos e serviços.
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="margem-periodo">Período</Label>
+            <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
+              <SelectTrigger id="margem-periodo" className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">Últimos 3 meses</SelectItem>
+                <SelectItem value="6">Últimos 6 meses</SelectItem>
+                <SelectItem value="12">Últimos 12 meses</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardHeader>
-      </Card>
+          <Button variant="outline" onClick={carregar} disabled={loading}>
+            <RefreshCw className={loading ? "w-4 h-4 animate-spin" : "w-4 h-4"} aria-hidden="true" />
+            Atualizar
+          </Button>
+        </div>
+      </div>
 
-      {!config && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
+      {/* Enquanto o regime ainda está sendo lido, `config` é null — anunciar
+          "não configurado" nesse intervalo é um status falso na tela. */}
+      {!config && !carregandoConfig && (
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertTitle>Regime tributário não configurado</AlertTitle>
           <AlertDescription>
             Cadastre o regime tributário em <strong>Apuração</strong> para que a calculadora considere a
@@ -205,9 +200,16 @@ export default function FinCalculadoraMargem() {
         </Alert>
       )}
 
+      {(carregandoConfig || loading) && !analise && (
+        <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+          Carregando lançamentos do período…
+        </p>
+      )}
+
       {analise && analise.receita === 0 && (
-        <Alert>
-          <Info className="h-4 w-4" />
+        <Alert variant="info">
+          <Info className="h-4 w-4" aria-hidden="true" />
           <AlertTitle>Sem receitas no período</AlertTitle>
           <AlertDescription>
             Não há lançamentos de receita realizados/conciliados nos últimos {analise.meses} meses para
@@ -221,12 +223,12 @@ export default function FinCalculadoraMargem() {
           {/* Análise dos lançamentos */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 Análise dos {analise.meses} últimos meses
               </CardTitle>
-              <CardDescription>
-                Regime: <Badge variant="secondary" className="ml-1 capitalize">{config?.regime ?? "—"}</Badge>
+              <CardDescription className="flex flex-wrap items-center gap-2">
+                Regime: <Badge variant="muted" className="capitalize">{config?.regime ?? "—"}</Badge>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -246,8 +248,8 @@ export default function FinCalculadoraMargem() {
           {/* Sugestão de margem */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 Sugestão de margem ideal
               </CardTitle>
               <CardDescription>
@@ -255,8 +257,8 @@ export default function FinCalculadoraMargem() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
                   <Label htmlFor="custo">Custo do produto/serviço</Label>
                   <Input
                     id="custo" type="number" min={0} step="0.01"
@@ -264,7 +266,7 @@ export default function FinCalculadoraMargem() {
                     onChange={(e) => setCustoProduto(Number(e.target.value) || 0)}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="margem">Lucro desejado (%)</Label>
                   <Input
                     id="margem" type="number" min={0} max={90} step="0.5"
@@ -288,21 +290,21 @@ export default function FinCalculadoraMargem() {
                   />
 
                   {sugestao.viavel ? (
-                    <div className="rounded-lg bg-muted border border-border/60 p-4 space-y-2">
-                      <div className="flex items-baseline justify-between">
+                    <div className="space-y-2 rounded-lg border border-border bg-muted p-4">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="text-xs text-muted-foreground">Preço de venda sugerido</span>
-                        <span className="text-2xl font-bold text-foreground">
+                        <span className="text-[2rem] leading-10 font-bold tabular-nums text-foreground">
                           {fmtBRL(sugestao.precoSugerido)}
                         </span>
                       </div>
-                      <div className="flex items-baseline justify-between text-xs">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
                         <span className="text-muted-foreground">Markup sobre o custo</span>
-                        <span className="font-medium">{fmtPct(sugestao.markupPerc)}</span>
+                        <span className="font-medium tabular-nums text-foreground">{fmtPct(sugestao.markupPerc)}</span>
                       </div>
                     </div>
                   ) : (
                     <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
+                      <AlertCircle className="h-4 w-4" aria-hidden="true" />
                       <AlertTitle>Combinação inviável</AlertTitle>
                       <AlertDescription>
                         Tributos + despesas + lucro desejado ultrapassam 100% da venda. Reduza o lucro
@@ -317,8 +319,8 @@ export default function FinCalculadoraMargem() {
         </div>
       )}
 
-      <Alert>
-        <Info className="h-4 w-4" />
+      <Alert variant="info">
+        <Info className="h-4 w-4" aria-hidden="true" />
         <AlertDescription className="text-xs">
           <strong>Como funciona:</strong> a análise soma todos os lançamentos com status <em>realizado</em> ou{" "}
           <em>conciliado</em> no período. Categorias do tipo <em>custo</em> compõem o CMV/CSP; as demais despesas
@@ -332,9 +334,11 @@ export default function FinCalculadoraMargem() {
 
 function Row({ label, value, bold, muted }: { label: string; value: string; bold?: boolean; muted?: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
-      <span className={bold ? "font-semibold tabular-nums" : "tabular-nums"}>{value}</span>
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+      <span className={muted ? "text-muted-foreground" : "text-foreground"}>{label}</span>
+      <span className={bold ? "text-right font-semibold tabular-nums text-foreground" : "text-right tabular-nums text-foreground"}>
+        {value}
+      </span>
     </div>
   );
 }
