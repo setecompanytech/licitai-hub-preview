@@ -4,6 +4,17 @@ import AppLayout from '@/components/layout/AppLayout';
 import ProcessoContextoBanner from '@/components/shared/ProcessoContextoBanner';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -396,10 +407,15 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     setDeclaracoesCustom([]);
     setProposal('');
     setCurrentStep(1);
-    setProcessoId(null);
+    // Embutido, a aba pertence AO processo do prontuário: limpar o formulário
+    // esvazia os campos, mas não pode desfazer esse vínculo — o efeito que o
+    // fixa observa só [embedded, licitacaoIdEmbed] e não voltaria a rodar, e
+    // sem processo somem a faixa da pasta Proposta, a releitura do edital, o
+    // recorte do catálogo e o "Salvar na pasta Proposta".
+    setProcessoId(embedded && licitacaoIdEmbed ? licitacaoIdEmbed : null);
     if (rascunhoId) await deleteRascunho();
     toast.success('Formulário limpo. Pronto para uma nova proposta!');
-  }, [rascunhoId, deleteRascunho, setProcessoId]);
+  }, [rascunhoId, deleteRascunho, setProcessoId, embedded, licitacaoIdEmbed]);
 
   // Auto-save on form changes
   useEffect(() => {
@@ -796,8 +812,12 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
     .map(d => d.label)
     .concat(declaracoesCustom.filter(d => d.trim()));
 
-  // Ações do topo — as mesmas em tela cheia e embutida: o botão de prévia e a
-  // ação principal do registro ("Nova proposta", que limpa o formulário).
+  // Ações do topo. O toggle de prévia vale nos dois modos; "Nova proposta" é a
+  // ação que o registro declara para a ROTA /proposta-tecnica — na aba Proposta
+  // do prontuário ela não aparece, porque ali o wizard existe para UM processo.
+  // Como o handler apaga o formulário inteiro E o rascunho salvo, passa por
+  // confirmação, igual ao "Limpar itens" da planilha.
+  const temAcoesTopo = !isMobile || !embedded;
   const acoesTopo = (
     <>
       {!isMobile && (
@@ -810,10 +830,34 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
           {showPreview ? 'Ocultar prévia' : 'Mostrar prévia'}
         </Button>
       )}
-      <Button size="sm" onClick={limparFormulario}>
-        <Sparkles className="w-4 h-4" />
-        Nova proposta
-      </Button>
+      {!embedded && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm">
+              <Sparkles className="w-4 h-4" />
+              Nova proposta
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Começar uma proposta nova?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Zera os campos das oito etapas e a planilha de preços, e apaga o rascunho
+                salvo automaticamente. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={limparFormulario}
+              >
+                Limpar e começar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 
@@ -834,10 +878,10 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
             {chipRascunho}
           </CabecalhoPagina>
         ) : (
-          (chipRascunho || acoesTopo) && (
+          (chipRascunho || temAcoesTopo) && (
             <div className="flex flex-wrap items-center justify-between gap-2">
               {chipRascunho}
-              <div className="flex flex-wrap items-center gap-2">{acoesTopo}</div>
+              {temAcoesTopo && <div className="flex flex-wrap items-center gap-2">{acoesTopo}</div>}
             </div>
           )
         )}
@@ -1098,20 +1142,20 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input placeholder="(XX) XXXXX-XXXX" value={telefone} onChange={e => setTelefone(e.target.value)} />
+                  <Label htmlFor="prop-telefone">Telefone</Label>
+                  <Input id="prop-telefone" placeholder="(XX) XXXXX-XXXX" value={telefone} onChange={e => setTelefone(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>E-mail</Label>
-                  <Input placeholder="contato@empresa.com" value={email} onChange={e => setEmail(e.target.value)} />
+                  <Label htmlFor="prop-email">E-mail</Label>
+                  <Input id="prop-email" placeholder="contato@empresa.com" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Inscrição Estadual</Label>
-                  <Input placeholder="ISENTO ou número" value={inscEstadual} onChange={e => setInscEstadual(e.target.value)} />
+                  <Label htmlFor="prop-insc-estadual">Inscrição Estadual</Label>
+                  <Input id="prop-insc-estadual" placeholder="ISENTO ou número" value={inscEstadual} onChange={e => setInscEstadual(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Inscrição Municipal</Label>
-                  <Input value={inscMunicipal} onChange={e => setInscMunicipal(e.target.value)} />
+                  <Label htmlFor="prop-insc-municipal">Inscrição Municipal</Label>
+                  <Input id="prop-insc-municipal" value={inscMunicipal} onChange={e => setInscMunicipal(e.target.value)} />
                 </div>
               </div>
 
@@ -1121,21 +1165,21 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Banco</Label>
-                    <BancoSelector value={banco} onChange={setBanco} />
+                    <Label htmlFor="prop-banco" id="prop-banco-label">Banco</Label>
+                    <BancoSelector id="prop-banco" aria-labelledby="prop-banco-label" value={banco} onChange={setBanco} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Agência</Label>
-                    <Input value={agencia} onChange={e => setAgencia(e.target.value)} />
+                    <Label htmlFor="prop-agencia">Agência</Label>
+                    <Input id="prop-agencia" value={agencia} onChange={e => setAgencia(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Conta</Label>
-                    <Input value={conta} onChange={e => setConta(e.target.value)} />
+                    <Label htmlFor="prop-conta">Conta</Label>
+                    <Input id="prop-conta" value={conta} onChange={e => setConta(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Tipo de Conta</Label>
+                    <Label htmlFor="prop-tipo-conta">Tipo de Conta</Label>
                     <Select value={tipoConta} onValueChange={setTipoConta}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="prop-tipo-conta"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Conta Corrente">Conta Corrente</SelectItem>
                         <SelectItem value="Conta Poupança">Conta Poupança</SelectItem>
@@ -1143,8 +1187,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     </Select>
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Chave PIX (opcional)</Label>
-                    <Input placeholder="CNPJ, e-mail, telefone ou chave aleatória" value={pix} onChange={e => setPix(e.target.value)} />
+                    <Label htmlFor="prop-pix">Chave PIX (opcional)</Label>
+                    <Input id="prop-pix" placeholder="CNPJ, e-mail, telefone ou chave aleatória" value={pix} onChange={e => setPix(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -1223,37 +1267,37 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               )}
               <div className="grid grid-cols-1 gap-4 pt-1 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Nome Completo *</Label>
-                  <Input value={repNome} onChange={e => setRepNome(e.target.value)} />
+                  <Label htmlFor="prop-rep-nome">Nome Completo *</Label>
+                  <Input id="prop-rep-nome" value={repNome} onChange={e => setRepNome(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>CPF *</Label>
-                  <Input placeholder="000.000.000-00" value={repCpf} onChange={e => setRepCpf(e.target.value)} />
+                  <Label htmlFor="prop-rep-cpf">CPF *</Label>
+                  <Input id="prop-rep-cpf" placeholder="000.000.000-00" value={repCpf} onChange={e => setRepCpf(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>RG</Label>
-                  <Input value={repRg} onChange={e => setRepRg(e.target.value)} />
+                  <Label htmlFor="prop-rep-rg">RG</Label>
+                  <Input id="prop-rep-rg" value={repRg} onChange={e => setRepRg(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Órgão Expedidor</Label>
-                  <Input placeholder="SSP/XX" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} />
+                  <Label htmlFor="prop-rep-orgao-exp">Órgão Expedidor</Label>
+                  <Input id="prop-rep-orgao-exp" placeholder="SSP/XX" value={repOrgaoExp} onChange={e => setRepOrgaoExp(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cargo / Função</Label>
-                  <Input placeholder="Sócio-Administrador" value={repCargo} onChange={e => setRepCargo(e.target.value)} />
+                  <Label htmlFor="prop-rep-cargo">Cargo / Função</Label>
+                  <Input id="prop-rep-cargo" placeholder="Sócio-Administrador" value={repCargo} onChange={e => setRepCargo(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Naturalidade</Label>
-                  <Input value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} />
+                  <Label htmlFor="prop-rep-naturalidade">Naturalidade</Label>
+                  <Input id="prop-rep-naturalidade" value={repNaturalidade} onChange={e => setRepNaturalidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Nacionalidade</Label>
-                  <Input value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} />
+                  <Label htmlFor="prop-rep-nacionalidade">Nacionalidade</Label>
+                  <Input id="prop-rep-nacionalidade" value={repNacionalidade} onChange={e => setRepNacionalidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Estado Civil</Label>
+                  <Label htmlFor="prop-rep-estado-civil">Estado Civil</Label>
                   <Select value={repEstadoCivil} onValueChange={setRepEstadoCivil}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectTrigger id="prop-rep-estado-civil"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
                       <SelectItem value="Casado(a)">Casado(a)</SelectItem>
@@ -1264,8 +1308,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   </Select>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Endereço do Representante</Label>
-                  <Input placeholder="Rua, número, bairro, cidade/UF" value={repEndereco} onChange={e => setRepEndereco(e.target.value)} />
+                  <Label htmlFor="prop-rep-endereco">Endereço do Representante</Label>
+                  <Input id="prop-rep-endereco" placeholder="Rua, número, bairro, cidade/UF" value={repEndereco} onChange={e => setRepEndereco(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -1291,17 +1335,17 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               {/* Identificação do certame */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Número da Licitação *</Label>
-                  <Input placeholder="Ex: PE 001/2026" value={numeroLicitacao} onChange={e => setNumeroLicitacao(e.target.value)} />
+                  <Label htmlFor="prop-numero-licitacao">Número da Licitação *</Label>
+                  <Input id="prop-numero-licitacao" placeholder="Ex: PE 001/2026" value={numeroLicitacao} onChange={e => setNumeroLicitacao(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Órgão Gerenciador *</Label>
-                  <Input placeholder="Ex: SEGEP/Prefeitura Municipal de Belém" value={orgao} onChange={e => setOrgao(e.target.value)} />
+                  <Label htmlFor="prop-orgao">Órgão Gerenciador *</Label>
+                  <Input id="prop-orgao" placeholder="Ex: SEGEP/Prefeitura Municipal de Belém" value={orgao} onChange={e => setOrgao(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Modalidade</Label>
+                  <Label htmlFor="prop-modalidade">Modalidade</Label>
                   <Select value={modalidade} onValueChange={setModalidade}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="prop-modalidade"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pregão Eletrônico">Pregão Eletrônico</SelectItem>
                       <SelectItem value="Concorrência">Concorrência</SelectItem>
@@ -1315,10 +1359,11 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Valor Global (R$)</Label>
+                  <Label htmlFor="prop-valor-global">Valor Global (R$)</Label>
                   {valorGlobal > 0 ? (
                     <>
                       <Input
+                        id="prop-valor-global"
                         value={`R$ ${fmtBRL(valorGlobal)}`}
                         readOnly
                         className="bg-muted font-semibold tabular-nums"
@@ -1330,6 +1375,7 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   ) : (
                     <>
                       <Input
+                        id="prop-valor-global"
                         placeholder="R$ 0,00"
                         value={valorEstimado}
                         onChange={e => setValorEstimado(e.target.value)}
@@ -1345,8 +1391,8 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
               </div>
 
               <div className="space-y-2">
-                <Label>Objeto da Licitação *</Label>
-                <Textarea placeholder="Descrição detalhada do produto ou serviço conforme Termo de Referência..." value={objeto} onChange={e => setObjeto(e.target.value)} rows={4} />
+                <Label htmlFor="prop-objeto">Objeto da Licitação *</Label>
+                <Textarea id="prop-objeto" placeholder="Descrição detalhada do produto ou serviço conforme Termo de Referência..." value={objeto} onChange={e => setObjeto(e.target.value)} rows={4} />
               </div>
 
               {/* Prazos, entrega e garantia — tudo que a proposta promete cumprir */}
@@ -1354,32 +1400,32 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                 <h3 className="mb-3 text-lg font-semibold text-foreground">Prazos e condições</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Calendar className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Validade da Proposta Comercial</Label>
-                  <Input value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
+                  <Label htmlFor="prop-prazo-validade" className="flex items-center gap-1"><Calendar className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Validade da Proposta Comercial</Label>
+                  <Input id="prop-prazo-validade" value={prazoValidade} onChange={e => setPrazoValidade(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Pagamento</Label>
-                  <Input placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
+                  <Label htmlFor="prop-prazo-pagamento" className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Pagamento</Label>
+                  <Input id="prop-prazo-pagamento" placeholder="Até 30 dias após recebimento definitivo" value={prazoPagamento} onChange={e => setPrazoPagamento(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Entrega</Label>
-                  <Input placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
+                  <Label htmlFor="prop-prazo-entrega" className="flex items-center gap-1"><Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Prazo de Entrega</Label>
+                  <Input id="prop-prazo-entrega" placeholder="Até X dias úteis/corridos após emissão da OF" value={prazoEntrega} onChange={e => setPrazoEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><MapPin className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Local de Entrega</Label>
-                  <Input value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
+                  <Label htmlFor="prop-local-entrega" className="flex items-center gap-1"><MapPin className="w-4 h-4 text-muted-foreground" aria-hidden="true" /> Local de Entrega</Label>
+                  <Input id="prop-local-entrega" value={localEntrega} onChange={e => setLocalEntrega(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Condições de Liquidação / NFe</Label>
-                  <Input placeholder="Conforme edital" value={liquidacaoNfe} onChange={e => setLiquidacaoNfe(e.target.value)} />
+                  <Label htmlFor="prop-liquidacao-nfe">Condições de Liquidação / NFe</Label>
+                  <Input id="prop-liquidacao-nfe" placeholder="Conforme edital" value={liquidacaoNfe} onChange={e => setLiquidacaoNfe(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Garantia</Label>
-                  <Input placeholder="Conforme Lei 8.078/1990 (CDC)" value={garantia} onChange={e => setGarantia(e.target.value)} />
+                  <Label htmlFor="prop-garantia">Garantia</Label>
+                  <Input id="prop-garantia" placeholder="Conforme Lei 8.078/1990 (CDC)" value={garantia} onChange={e => setGarantia(e.target.value)} />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Condições Especiais de Entrega</Label>
-                  <Input placeholder="Ex: Entrega parcelada conforme cronograma..." value={condicoesEntrega} onChange={e => setCondicoesEntrega(e.target.value)} />
+                  <Label htmlFor="prop-condicoes-entrega">Condições Especiais de Entrega</Label>
+                  <Input id="prop-condicoes-entrega" placeholder="Ex: Entrega parcelada conforme cronograma..." value={condicoesEntrega} onChange={e => setCondicoesEntrega(e.target.value)} />
                 </div>
                 </div>
               </div>
@@ -1521,9 +1567,9 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
-                  <Label>Fonte</Label>
+                  <Label htmlFor="prop-fonte">Fonte</Label>
                   <Select value={fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="prop-fonte"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Times New Roman">Times New Roman</SelectItem>
                       <SelectItem value="Arial">Arial</SelectItem>
@@ -1538,9 +1584,9 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   <Slider aria-label="Tamanho da fonte, em pontos" value={[fontSize]} onValueChange={([v]) => setFontSize(v)} min={10} max={14} step={1} className="mt-3" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Espaçamento</Label>
+                  <Label htmlFor="prop-espacamento">Espaçamento</Label>
                   <Select value={lineSpacing} onValueChange={setLineSpacing}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="prop-espacamento"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1.0">Simples (1.0)</SelectItem>
                       <SelectItem value="1.15">1.15</SelectItem>
@@ -1550,9 +1596,9 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Margens</Label>
+                  <Label htmlFor="prop-margens">Margens</Label>
                   <Select value={marginStyle} onValueChange={setMarginStyle}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="prop-margens"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ABNT (3/2 cm)">ABNT (3/2 cm)</SelectItem>
                       <SelectItem value="Normal (2.5 cm)">Normal (2.5 cm)</SelectItem>

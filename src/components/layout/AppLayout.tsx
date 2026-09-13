@@ -6,7 +6,7 @@ import AppTopNav from './AppTopNav';
 import LembreteDeVencimento from '@/components/documentos/LembreteDeVencimento';
 import LembreteDeConvocacao from '@/components/monitoramento/LembreteDeConvocacao';
 import AlertaVencimentoBanner from './AlertaVencimentoBanner';
-import { Bell, Search, Settings, Building2, User, Shield, Globe, CreditCard, LogOut, Palette } from 'lucide-react';
+import { Bell, Search, Building2, User, Shield, Globe, CreditCard, LogOut, Palette } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import EmpresaSelector from '@/components/empresa/EmpresaSelector';
 import AureliaChat from '@/components/aurelia/AureliaChat';
@@ -126,13 +126,13 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
       {/* Faixa da navegação: navy nos dois temas (tokens sidebar-*), marca à
           esquerda, navegação centrada, ações à direita. */}
       <header className="nao-imprime sticky top-0 z-40 h-16 md:h-[72px] bg-sidebar text-sidebar-foreground border-b border-sidebar-border flex items-center gap-2 px-4 md:px-6">
-        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex items-center flex-shrink-0">
-          <BrandLogo variant="dark" className="w-[150px] lg:w-[176px]" />
+        <Link to="/dashboard" aria-label="Praefectus — página inicial" className="flex shrink-0 items-center">
+          <BrandLogo variant="dark" className="w-[132px] lg:w-[150px]" />
         </Link>
 
         {/* min-w-0 para a fila de grupos poder encolher antes de empurrar as
             ações da direita para fora da tela. */}
-        <div className="flex flex-1 min-w-0 items-center justify-center">
+        <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden">
           <AppTopNav />
         </div>
 
@@ -151,7 +151,7 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             A divisória não é enfeite: sem ela, o seletor de empresa vira o
             quarto de uma fileira de cinco botões, e a pessoa procura ação onde
             só há informação. */}
-        <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           <button
             className="p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
             onClick={() => window.dispatchEvent(new CustomEvent('praefectus:abrir-busca'))}
@@ -178,13 +178,10 @@ const AppLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function A
             <ThemeToggle />
           </div>
 
-          <button
-            className="hidden sm:flex p-2 rounded-lg text-sidebar-foreground/85 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/60 transition-colors"
-            onClick={() => navigate('/configuracoes')}
-            title="Configurações"
-          >
-            <Settings className="w-[18px] h-[18px]" />
-          </button>
+          {/* A engrenagem solta saiu em 13/09: com a navegação no topo, o
+              grupo "Configuração" já abre Configurações, e o menu do avatar
+              leva direto a cada seção dela. Eram três portas para a mesma
+              tela; ficaram as duas que dizem para ONDE vão. */}
 
           <span
             aria-hidden="true"

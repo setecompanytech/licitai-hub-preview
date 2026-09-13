@@ -51,9 +51,19 @@ const BANCOS_BRASIL = [
 interface BancoSelectorProps {
   value: string;
   onChange: (value: string) => void;
+  /** Liga o seletor ao <Label> da tela: o `id` recebe o `htmlFor`. */
+  id?: string;
+  /** Id do rótulo visível — entra no nome acessível do gatilho, que por si só
+   *  anunciaria apenas o valor escolhido. */
+  'aria-labelledby'?: string;
 }
 
-export default function BancoSelector({ value, onChange }: BancoSelectorProps) {
+export default function BancoSelector({
+  value,
+  onChange,
+  id,
+  'aria-labelledby': ariaLabelledBy,
+}: BancoSelectorProps) {
   const [open, setOpen] = useState(false);
 
   const selectedLabel = BANCOS_BRASIL.find(b =>
@@ -64,9 +74,11 @@ export default function BancoSelector({ value, onChange }: BancoSelectorProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-labelledby={ariaLabelledBy && id ? `${ariaLabelledBy} ${id}` : ariaLabelledBy}
           className="w-full justify-between font-normal"
         >
           <span className="truncate">

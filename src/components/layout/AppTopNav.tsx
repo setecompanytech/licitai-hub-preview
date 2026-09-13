@@ -16,18 +16,24 @@ import { navGroups, type NavGroup } from '@/lib/navegacao/menu';
  * topo. A faixa herdou os tokens `sidebar-*` (navy nos dois temas) porque a
  * massa escura era a assinatura da identidade: ela mudou de lugar, não sumiu.
  *
- * Como os nove grupos cabem numa linha:
- *  - a partir de 1280px (xl), todos aparecem;
- *  - entre 768 e 1280, os cinco primeiros ficam e o resto entra em "Mais" —
- *    a divisão é por CSS (`hidden xl:flex` nos extras e `xl:hidden` no botão),
- *    sem medir largura em JavaScript, que erraria no primeiro quadro;
- *  - abaixo de 768px, hambúrguer e gaveta.
+ * Como os nove grupos cabem numa linha — a conta, não o chute: rótulo sem
+ * ícone + seta custa ~100px; a marca leva 176 e as ações (lupa, sino, tema,
+ * engrenagem, empresa, avatar) até ~420. Nove soltos pedem ~900px e só cabem
+ * a partir de 1536. Então:
+ *  - até 1535px, QUATRO grupos soltos e o resto dentro de "Mais";
+ *  - de 1536px em diante, os nove soltos e "Mais" desaparece.
+ * A divisão é por CSS (`hidden min-[1536px]:inline-flex` nos extras e o
+ * inverso no botão), sem medir largura em JavaScript — medida erra no
+ * primeiro quadro e a barra pula ao carregar. Abaixo de 768px, gaveta.
+ *
+ * O ícone do grupo saiu da barra (ficou no menu de cada um): ele custava
+ * ~22px por item e era justamente o que fazia os nove estourarem em 1440.
  *
  * A lista vem de `menu.ts`, como antes: a barra e a gaveta nunca divergem.
  */
 
-/** Quantos grupos ficam soltos na barra antes de "Mais" (abaixo de 1280px). */
-const GRUPOS_SEMPRE_VISIVEIS = 5;
+/** Quantos grupos ficam soltos na barra abaixo de 1536px. */
+const GRUPOS_SEMPRE_VISIVEIS = 4;
 
 interface AppTopNavProps {
   onNavigate?: () => void;
@@ -67,25 +73,36 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
     onNavigate?.();
   };
 
+  const classeDoGrupo = (ativo: boolean, className?: string) =>
+    cn(
+      'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+      ativo
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+        : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+      className,
+    );
+
   /** Um grupo da barra: rótulo que abre o menu com as telas do grupo. */
   const GrupoDaBarra = ({ grupo, className }: { grupo: NavGroup; className?: string }) => {
-    const Icone = grupo.icone;
     const ativo = grupoAtivo(grupo);
+
+    // Grupo de um destino só não vira menu: abrir uma lista para mostrar um
+    // item — que ainda por cima repete o nome do grupo, como "Financeiro" —
+    // é um clique a mais para chegar ao mesmo lugar.
+    if (grupo.items.length === 1) {
+      const unico = grupo.items[0];
+      return (
+        <button type="button" onClick={() => irPara(unico.path)} className={classeDoGrupo(ativo, className)}>
+          {grupo.curto ?? grupo.title}
+        </button>
+      );
+    }
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-              ativo
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-              className,
-            )}
-          >
-            {Icone && <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />}
+          <button type="button" className={classeDoGrupo(ativo, className)}>
             {grupo.curto ?? grupo.title}
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
           </button>
@@ -109,12 +126,12 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
   return (
     <>
       {/* Barra — some abaixo de 768px, onde manda a gaveta. */}
-      <nav aria-label="Navegação principal" className="hidden md:flex items-center gap-0.5">
+      <nav aria-label="Navegação principal" className="hidden md:flex min-w-0 items-center gap-0.5 overflow-hidden">
         {visiveis.map((g) => (
           <GrupoDaBarra key={g.title} grupo={g} />
         ))}
         {extras.map((g) => (
-          <GrupoDaBarra key={g.title} grupo={g} className="hidden xl:inline-flex" />
+          <GrupoDaBarra key={g.title} grupo={g} className="hidden min-[1536px]:inline-flex" />
         ))}
 
         {extras.length > 0 && (
@@ -124,7 +141,7 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
                 type="button"
                 aria-label="Mais seções"
                 className={cn(
-                  'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors xl:hidden',
+                  'inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors min-[1536px]:hidden',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
                   extras.some(grupoAtivo)
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
@@ -138,9 +155,11 @@ export default function AppTopNav({ onNavigate }: AppTopNavProps) {
             <DropdownMenuContent align="end" className="w-64">
               {extras.map((g) => (
                 <div key={g.title} className="py-1">
-                  <p className="px-2 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {g.curto ?? g.title}
-                  </p>
+                  {g.items.length > 1 && (
+                    <p className="px-2 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {g.curto ?? g.title}
+                    </p>
+                  )}
                   {g.items.map((item) => (
                     <DropdownMenuItem
                       key={item.path}

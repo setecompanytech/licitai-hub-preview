@@ -196,7 +196,11 @@ export const navGroups: NavGroup[] = [
     icone: ShieldCheck,
     items: [
       { icon: ShieldCheck, label: 'Templates IA', path: '/admin/templates' },
-      { icon: DollarSign, label: 'Financeiro', path: '/admin/financeiro' },
+      /* "Financeiro da plataforma" e não "Financeiro": este é o dos
+         assinantes (assinaturas e chamados de cobrança), não o do cliente.
+         Dois itens com o mesmo rótulo em menus diferentes fazem quem
+         procura um achar o outro. Mesmo título do registro paginas.ts. */
+      { icon: DollarSign, label: 'Financeiro da plataforma', path: '/admin/financeiro' },
       { icon: Target, label: 'Fontes Fabricantes', path: '/admin/fontes-fabricantes' },
       { icon: TrendingUp, label: 'Marketing', path: '/admin/marketing' },
       { icon: Send, label: 'Distribuição', path: '/admin/distribuicao' },
