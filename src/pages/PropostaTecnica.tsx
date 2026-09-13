@@ -1579,8 +1579,14 @@ export default function PropostaTecnica({ embedded = false, licitacaoIdEmbed }: 
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Tamanho: {fontSize}pt</p>
+                {/* O rótulo do Slider é um grupo nomeado: o `aria-label` do
+                    componente pousa no Root, que o Radix renderiza sem `role`
+                    (quem carrega `role="slider"` é o Thumb), então sozinho ele
+                    não nomeia o controle. O grupo faz o leitor de tela anunciar
+                    "Tamanho da fonte" ao entrar; o `aria-label` fica para quando
+                    ui/slider.tsx repassar o rótulo ao Thumb. */}
+                <div className="space-y-2" role="group" aria-labelledby="prop-tamanho-fonte-rotulo">
+                  <p id="prop-tamanho-fonte-rotulo" className="text-sm font-medium text-foreground">Tamanho da fonte: {fontSize}pt</p>
                   <Slider aria-label="Tamanho da fonte, em pontos" value={[fontSize]} onValueChange={([v]) => setFontSize(v)} min={10} max={14} step={1} className="mt-3" />
                 </div>
                 <div className="space-y-2">

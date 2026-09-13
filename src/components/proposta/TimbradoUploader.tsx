@@ -661,16 +661,22 @@ export default function TimbradoUploader({ empresaId, timbradoUrl, setTimbradoUr
           </div>
         </div>
 
+        {/* Cada Slider vive num grupo nomeado pelo texto visível: o `aria-label`
+            do componente pousa no Root, que o Radix renderiza sem `role` — quem
+            carrega `role="slider"` é o Thumb —, então sozinho ele não nomeia o
+            controle. O grupo faz o leitor de tela anunciar "Cabeçalho"/"Rodapé"
+            ao entrar; o `aria-label` fica para quando ui/slider.tsx repassar o
+            rótulo ao Thumb. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <div className="space-y-2" role="group" aria-labelledby="timbrado-cabecalho-rotulo">
+            <p id="timbrado-cabecalho-rotulo" className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <ArrowUp className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Cabeçalho — {headerSplit}% do topo
             </p>
             <Slider aria-label="Altura do cabeçalho, em % do topo" value={[headerSplit]} onValueChange={([v]) => setHeaderSplit(v)} min={5} max={40} step={1} className="w-full" />
           </div>
-          <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <div className="space-y-2" role="group" aria-labelledby="timbrado-rodape-rotulo">
+            <p id="timbrado-rodape-rotulo" className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <ArrowDown className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
               Rodapé — {footerSplit}% da base
             </p>
