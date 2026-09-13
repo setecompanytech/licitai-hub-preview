@@ -63,7 +63,9 @@ def ler_paginas():
     texto = FONTE.read_text()
     corpo = texto[texto.index('export const paginasPadrao'):texto.index('const porRota')]
     paginas = []
-    for bloco in re.findall(r'\{\s*\n\s*rota:.*?\n\s*\},', corpo, re.S):
+    # Tolera comentário(s) entre a chave e o campo `rota:` — o registro os usa
+    # para justificar decisões (ex.: por que o h1 diverge do rótulo do menu).
+    for bloco in re.findall(r'\{\s*\n(?:\s*//[^\n]*\n)*\s*rota:.*?\n\s*\},', corpo, re.S):
         def campo(nome):
             m = re.search(rf"{nome}: '((?:[^'\\]|\\.)*)'", bloco)
             return m.group(1).replace("\\'", "'") if m else None

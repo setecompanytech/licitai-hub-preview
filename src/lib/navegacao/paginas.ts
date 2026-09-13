@@ -216,8 +216,12 @@ export const paginasPadrao: PaginaPadrao[] = [
 
   // ── Ferramentas ───────────────────────────────────────────────────────
   {
-    rota: '/assistente', grupo: 'Ferramentas', titulo: 'Assistente IA', icone: Bot,
-    descricao: 'Pergunte sobre editais, contratos e regras — a Aurélia responde com o seu contexto',
+    // A consultora tem nome próprio, e é assim que a equipe se refere a ela:
+    // o h1 diz AURÉLIA (decisão do dono do produto em 13/09). O rótulo do
+    // menu continua "Assistente IA", que é o que se procura quem ainda não a
+    // conhece — título e rótulo divergem de propósito.
+    rota: '/assistente', grupo: 'Ferramentas', titulo: 'AURÉLIA', icone: Bot,
+    descricao: 'Pergunte sobre editais, contratos e regras — a consultora responde com o seu contexto',
     padrao: 'conversa',
   },
   {
