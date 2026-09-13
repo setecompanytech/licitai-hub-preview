@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Símbolo da marca Praefectus (prancha 12/09): dois arcos e um quadrado.
-       Versão principal — navy #102A43 e verde #087F5B. -->
-  <g transform="translate(2.67 7.47) scale(0.6627)">
-    <rect x="2" y="39" width="13" height="13" rx="2.5" fill="#087F5B"/>
-    <path d="M21 52 A30 30 0 0 1 81 52" fill="none" stroke="#102A43" stroke-width="11" stroke-linecap="round"/>
-    <path d="M38 52 A16 16 0 0 1 70 52" fill="none" stroke="#087F5B" stroke-width="11" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100.00 100.00">
+  <!-- Marca Praefectus — prancha oficial 12/09/2026. Gerado por scripts/gerar-icones-marca.py -->
+  <g transform="translate(3.00 7.01)">
+    <path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#102A43"/>
+    <path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/>
+    <rect x="34" y="52" width="12" height="12" rx="2.5" fill="#087F5B"/>
   </g>
 </svg>

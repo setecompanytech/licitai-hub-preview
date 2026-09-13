@@ -13184,3 +13184,17 @@ Correção de segurança: send-transactional-email estava ABERTO (config.toml
 com verify_jwt=false e nenhuma checagem interna, ao contrário do que o
 comentário do código dizia) — ganhou autorizadoComoCron; o único chamador
 que usava o token do usuário (gerar-link-certificado) passou ao adminClient.
+
+## 2026-09-12 — Identidade visual no banco (pesquisa e atalhos da marca) — JÁ APLICADA via Management API; recolar é inofensivo
+
+Arquivo: `supabase/migrations/20260912000003_identidade_visual.sql`
+
+A prancha oficial da marca (12/09) entrou no produto: tabela
+`identidade_visual` com o catálogo da marca — 4 logos (URLs fixas em
+/marca/*.svg, gerados por scripts/gerar-icones-marca.py), 8 cores (hex),
+2 fontes e 3 regras de aplicação, todos com palavras_chave (índice GIN)
+para a lupa geral (Ctrl+K) achar e oferecer atalho: logo abre o arquivo,
+cor copia o hex. Dado de REFERÊNCIA GLOBAL — exceção consciente à regra
+do empresa_id (é a marca do próprio Praefectus, igual para todos): RLS com
+leitura para authenticated e NENHUMA policy de escrita (só service role).
+Seed idempotente por ON CONFLICT (slug) DO UPDATE.

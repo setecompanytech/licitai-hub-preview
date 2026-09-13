@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 12 94 58">
+  <!-- Marca Praefectus — prancha oficial 12/09/2026. Gerado por scripts/gerar-icones-marca.py -->
+  <path d="M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z" fill="#FFFFFF"/>
+  <path d="M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z" fill="#087F5B"/>
+  <rect x="34" y="52" width="12" height="12" rx="2.5" fill="#FFFFFF"/>
+</svg>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator, CommandShortcut
@@ -10,9 +11,32 @@ import {
   MessageSquare, TrendingUp, Target, ClipboardCheck, BookOpen, Bell,
   Archive, CalendarDays, GraduationCap, FileText, Zap, Plus, Upload,
   CheckCheck, QrCode, ArrowRightLeft, Wallet, Receipt, Banknote,
-  FileSpreadsheet, ScanLine, LineChart, FileBarChart, Sparkles
+  FileSpreadsheet, ScanLine, LineChart, FileBarChart, Sparkles,
+  Image as ImageIcon, Palette, Type, BookMarked
 } from 'lucide-react';
 import { HUB_ITEMS } from '@/components/financeiro/FinHomeHub';
+import { supabase } from '@/integrations/supabase/client';
+
+// Identidade visual (tabela identidade_visual, prancha 12/09): a lupa acha a
+// marca por palavra-chave e oferece o atalho — logo abre o arquivo, cor copia
+// o hex, fonte/regra copiam o valor. Carregada só quando a busca abre.
+type ItemMarca = {
+  slug: string;
+  categoria: 'logo' | 'cor' | 'tipografia' | 'regra';
+  nome: string;
+  descricao: string | null;
+  uso: string | null;
+  url: string | null;
+  valor: string | null;
+  palavras_chave: string[];
+};
+
+const ICONE_MARCA: Record<ItemMarca['categoria'], React.ComponentType<{ className?: string }>> = {
+  logo: ImageIcon,
+  cor: Palette,
+  tipografia: Type,
+  regra: BookMarked,
+};
 
 type Page = {
   name: string;
@@ -93,6 +117,36 @@ const FIN_ENTRIES: FinEntry[] = HUB_ITEMS.map((i) => ({
 
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
+  const [marca, setMarca] = useState<ItemMarca[] | null>(null);
+
+  // Busca o catálogo da marca uma vez, na primeira abertura da lupa.
+  useEffect(() => {
+    if (!open || marca !== null) return;
+    let vivo = true;
+    supabase
+      .from('identidade_visual' as never)
+      .select('slug, categoria, nome, descricao, uso, url, valor, palavras_chave')
+      .order('categoria')
+      .then(({ data }) => {
+        if (vivo) setMarca((data ?? []) as unknown as ItemMarca[]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [open, marca]);
+
+  const usarItemMarca = useCallback((item: ItemMarca) => {
+    setOpen(false);
+    if (item.categoria === 'logo' && item.url) {
+      window.open(item.url, '_blank', 'noopener');
+      return;
+    }
+    const texto = item.valor ?? item.descricao ?? item.nome;
+    navigator.clipboard?.writeText(texto).then(
+      () => toast.success(`${item.nome} — copiado`, { description: texto }),
+      () => toast(item.nome, { description: texto }),
+    );
+  }, []);
 
   // A lupa da barra superior abre a mesma busca do Ctrl+K: o atalho era o
   // ÚNICO gatilho e ninguém descobre atalho sem placa (pedido de 12/09).
@@ -156,6 +210,39 @@ export default function GlobalSearch() {
             </CommandItem>
           ))}
         </CommandGroup>
+
+        {marca && marca.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Identidade visual">
+              {marca.map((item) => {
+                const Icone = ICONE_MARCA[item.categoria] ?? ImageIcon;
+                return (
+                  <CommandItem
+                    key={item.slug}
+                    value={`${item.nome} ${item.categoria} ${item.palavras_chave.join(' ')} ${item.valor ?? ''}`}
+                    onSelect={() => usarItemMarca(item)}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    {item.categoria === 'cor' && item.valor ? (
+                      <span
+                        className="w-4 h-4 rounded-full border border-border flex-shrink-0"
+                        style={{ backgroundColor: item.valor }}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Icone className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <span className="flex-1">{item.nome}</span>
+                    <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {item.categoria === 'logo' ? 'abrir arquivo' : `copiar ${item.valor ?? ''}`}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </>
+        )}
 
         <CommandSeparator />
 

@@ -1,15 +1,17 @@
 import { cn } from '@/lib/utils';
 
 /**
- * BrandLogo — a marca Praefectus (identidade 12/09/2026).
+ * BrandLogo — a marca Praefectus (prancha oficial recebida em 12/09/2026).
  *
- * O repositório não tem arquivo SVG/PNG da marca; o símbolo abaixo foi
- * vetorizado aqui a partir da prancha aprovada (dois arcos e um pequeno
- * quadrado). Quando o arquivo oficial existir, os paths deste componente são
- * o único lugar a substituir — todos os pontos do app passam por aqui.
+ * O símbolo são dois arcos AFILADOS (crescentes: grossos no meio, ponta fina
+ * no lado direito do navy e no esquerdo do verde, pé rombudo nos outros dois
+ * extremos) e um pequeno quadrado. Os paths abaixo foram vetorizados da
+ * prancha aprovada e conferidos lado a lado com ela; os mesmos paths geram o
+ * favicon.svg, os arquivos de public/marca/ e os ícones PWA — mudou aqui,
+ * regenerar lá (scripts/gerar-icones-marca.py).
  *
- * Versões (cores da prancha, fixas nos dois temas — por isso os tokens
- * `--brand-*`, que não mudam no dark):
+ * Versões (cores fixas nos dois temas — por isso os tokens `--brand-*`, que
+ * não são redefinidos no bloco dark):
  *  - principal (variant="light", fundo claro): nome e arco superior navy
  *    #102A43; arco inferior e quadrado verde #087F5B.
  *  - fundo escuro (variant="dark"): nome, arco superior e quadrado brancos;
@@ -30,6 +32,13 @@ interface BrandLogoProps {
   label?: string;
 }
 
+/** Geometria oficial do símbolo — compartilhada com favicon e ícones. */
+export const SIMBOLO_PATHS = {
+  arcoSuperior: 'M4 60 A44 44 0 0 1 90 49 A47 47 0 0 0 12 65.5 Z',
+  arcoInferior: 'M30 47 A28 28 0 0 1 80 66 L74 68 A30 30 0 0 0 30 47 Z',
+  quadrado: { x: 34, y: 52, lado: 12, raio: 2.5 },
+} as const;
+
 export default function BrandLogo({
   variant = 'light',
   mode = 'full',
@@ -41,40 +50,29 @@ export default function BrandLogo({
   const nomeEArcoSuperior = principal ? 'hsl(var(--brand-navy))' : 'white';
   const arcoInferior = 'hsl(var(--brand-green))';
   const quadrado = principal ? 'hsl(var(--brand-green))' : 'white';
+  const q = SIMBOLO_PATHS.quadrado;
 
   return (
     <svg
-      viewBox={mode === 'full' ? '0 15 326 47' : '0 15 88 44'}
+      viewBox={mode === 'full' ? '0 12 372 58' : '0 12 94 58'}
       width={width}
       role="img"
       aria-label={label}
       className={cn('h-auto select-none', className)}
     >
-      <rect x="2" y="39" width="13" height="13" rx="2.5" fill={quadrado} />
-      <path
-        d="M21 52 A30 30 0 0 1 81 52"
-        fill="none"
-        stroke={nomeEArcoSuperior}
-        strokeWidth="11"
-        strokeLinecap="round"
-      />
-      <path
-        d="M38 52 A16 16 0 0 1 70 52"
-        fill="none"
-        stroke={arcoInferior}
-        strokeWidth="11"
-        strokeLinecap="round"
-      />
+      <path d={SIMBOLO_PATHS.arcoSuperior} fill={nomeEArcoSuperior} />
+      <path d={SIMBOLO_PATHS.arcoInferior} fill={arcoInferior} />
+      <rect x={q.x} y={q.y} width={q.lado} height={q.lado} rx={q.raio} fill={quadrado} />
       {mode === 'full' && (
         <text
-          x="100"
-          y="52"
+          x="110"
+          y="62"
           fontFamily="'Manrope', 'Inter', ui-sans-serif, sans-serif"
           fontWeight={800}
-          fontSize="40"
-          letterSpacing="-0.8"
+          fontSize="46"
+          letterSpacing="-0.9"
           fill={nomeEArcoSuperior}
-          textLength="224"
+          textLength="252"
           lengthAdjust="spacingAndGlyphs"
         >
           praefectus
