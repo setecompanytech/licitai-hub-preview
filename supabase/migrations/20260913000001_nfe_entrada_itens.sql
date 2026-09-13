@@ -129,6 +129,14 @@ COMMENT ON COLUMN public.nfe_entrada_itens.cfop IS
 COMMENT ON COLUMN public.nfe_entrada_itens.credito_icms_situacao IS
   'Classificação congelada no lançamento. Não é apuração: crédito depende de regra estadual, benefício e ST.';
 
+-- `updated_at` sem gatilho é coluna que mente: nasce com now() e congela ali,
+-- afirmando que a linha nunca mudou. A função já existe no banco desde a
+-- primeira migration e é a que o resto do repo usa.
+DROP TRIGGER IF EXISTS trg_nfe_entrada_itens_updated_at ON public.nfe_entrada_itens;
+CREATE TRIGGER trg_nfe_entrada_itens_updated_at
+  BEFORE UPDATE ON public.nfe_entrada_itens
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 ALTER TABLE public.nfe_entrada_itens ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "membro le itens da nfe de entrada" ON public.nfe_entrada_itens;
@@ -174,15 +182,25 @@ ALTER TABLE public.estoque_movimentos
 -- 1) Reaponta pelo que identifica a nota de verdade: a chave de 44 dígitos.
 --    A mesma nota costuma existir nos dois acervos — o novo nasceu quando o
 --    webhook passou a gravar em `nfe_entradas`, e o histórico ficou no velho.
-UPDATE public.estoque_movimentos em
-   SET nfe_id = ne.id
-  FROM public.nfe_recebidas nr
-  JOIN public.nfe_entradas ne
-    ON ne.empresa_id = nr.empresa_id
-   AND ne.chave = nr.chave_acesso
- WHERE em.nfe_id = nr.id
-   AND nr.chave_acesso IS NOT NULL
-   AND nr.chave_acesso <> '';
+--
+--    Dentro de um DO porque `nfe_recebidas` é tabela legada: se ela já tiver
+--    sido removida do banco de destino, referenciá-la direto derrubaria a
+--    migration inteira por tabela inexistente — e aí nem a tabela nova seria
+--    criada. Passo de saneamento não pode ser mais frágil que o que ele saneia.
+DO $$
+BEGIN
+  IF to_regclass('public.nfe_recebidas') IS NOT NULL THEN
+    UPDATE public.estoque_movimentos em
+       SET nfe_id = ne.id
+      FROM public.nfe_recebidas nr
+      JOIN public.nfe_entradas ne
+        ON ne.empresa_id = nr.empresa_id
+       AND ne.chave = nr.chave_acesso
+     WHERE em.nfe_id = nr.id
+       AND nr.chave_acesso IS NOT NULL
+       AND nr.chave_acesso <> '';
+  END IF;
+END $$;
 
 -- 2) O que sobrou não existe em `nfe_entradas`: solta a referência em vez de
 --    apagar o movimento. O saldo do produto é a soma dos movimentos — sumir

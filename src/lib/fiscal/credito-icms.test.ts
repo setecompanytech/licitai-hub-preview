@@ -57,6 +57,30 @@ describe('direito a crédito de ICMS por finalidade', () => {
   });
 });
 
+describe('ICMS-ST retido pelo fornecedor', () => {
+  it('mercadoria com ST não promete crédito integral', () => {
+    // O imposto das etapas seguintes já foi recolhido antes: quem revende não
+    // destaca ICMS na saída nem credita na entrada. Sem esta checagem a tela
+    // dizia "permitido" justamente onde o crédito não existe.
+    const r = avaliarCreditoIcms('revenda', 'lucro_real', 1234.56);
+    expect(r.situacao).toBe('a_conferir');
+    expect(r.resumo).toMatch(/ST/);
+  });
+
+  it('sem ST, revenda segue creditando', () => {
+    expect(avaliarCreditoIcms('revenda', 'lucro_real', 0).situacao).toBe('permitido');
+    expect(avaliarCreditoIcms('revenda', 'lucro_real', null).situacao).toBe('permitido');
+    expect(avaliarCreditoIcms('revenda', 'lucro_real').situacao).toBe('permitido');
+  });
+
+  it('ST não muda o que já era vedado por outro motivo', () => {
+    // Uso e consumo não credita com ou sem ST — e o motivo que a tela mostra
+    // precisa ser o verdadeiro, não o primeiro que casar.
+    expect(avaliarCreditoIcms('uso_consumo', 'lucro_real', 999).fundamento).toContain('art. 33');
+    expect(avaliarCreditoIcms('revenda', 'simples_nacional', 999).fundamento).toContain('LC 123');
+  });
+});
+
 describe('de onde vem a sugestão de finalidade', () => {
   it('o CFOP da nota classifica a operação', () => {
     expect(finalidadePeloCfop('1102')).toBe('revenda'); // compra p/ comercialização

@@ -79,6 +79,8 @@ export interface AvaliacaoDoCredito {
 export function avaliarCreditoIcms(
   finalidade: FinalidadeDaEntrada,
   regime: RegimeCadastro | null | undefined,
+  /** `vICMSST` do item. Havendo ST retida, o crédito muda de natureza. */
+  icmsStRetido?: number | null,
 ): AvaliacaoDoCredito {
   if (!regime) {
     return {
@@ -93,6 +95,19 @@ export function avaliarCreditoIcms(
       resumo:
         'No Simples Nacional o ICMS é recolhido no documento único: a entrada não gera crédito a escriturar.',
       fundamento: 'LC 123/2006, art. 23',
+    };
+  }
+
+  // ST retida vem ANTES da finalidade, como o regime: o imposto das etapas
+  // seguintes já foi recolhido pelo fornecedor, e quem revende não destaca
+  // ICMS na saída nem credita na entrada. Perguntar o destino primeiro faria a
+  // tela prometer crédito integral sobre mercadoria que não o tem.
+  if (temIcmsRetidoPorSubstituicao(icmsStRetido) && finalidade === 'revenda') {
+    return {
+      situacao: 'a_conferir',
+      resumo:
+        'O fornecedor reteve ICMS-ST: a etapa seguinte já foi recolhida, e o crédito segue a regra do seu estado.',
+      fundamento: 'LC 87/1996, art. 6º · convênios e protocolos de ST',
     };
   }
 
@@ -149,6 +164,18 @@ const POR_TIPO_DE_PRODUTO: Record<string, FinalidadeDaEntrada> = {
   '08': 'imobilizado',
   '10': 'materia_prima',
 };
+
+/**
+ * O ICMS-ST já retido pelo fornecedor não é crédito.
+ *
+ * Quando a mercadoria vem com substituição tributária, o imposto das etapas
+ * seguintes já foi recolhido antes — quem revende não destaca ICMS na saída e
+ * não credita na entrada. Confundir `vICMSST` com `vICMS` numa apuração
+ * inflaria o crédito exatamente nas operações em que ele não existe.
+ */
+export function temIcmsRetidoPorSubstituicao(vIcmsSt?: number | null): boolean {
+  return (vIcmsSt ?? 0) > 0;
+}
 
 /** Sugestão de finalidade a partir do cadastro. Nunca é decisão. */
 export function finalidadeSugerida(tipoProduto?: string | null): FinalidadeDaEntrada {

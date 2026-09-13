@@ -1035,6 +1035,7 @@ export default function GestaoCompras() {
         const credito = avaliarCreditoIcms(
           m.finalidade,
           empresaAtiva.regime_tributario as never,
+          m.item.v_icms_st,
         );
         return {
           empresa_id: empresaAtiva.id,
@@ -1058,6 +1059,12 @@ export default function GestaoCompras() {
           v_prod: m.item.v_prod || null,
           v_desc: m.item.v_desc || null,
           p_icms: m.item.p_icms || null,
+          // O valor do crédito, quando a finalidade dá direito a ele. Sem isto
+          // o sistema sabia SE podia creditar e não sabia QUANTO — que é
+          // metade da informação numa tela cujo assunto é o crédito.
+          v_icms: m.item.v_icms || null,
+          v_icms_st: m.item.v_icms_st || null,
+          v_ipi: m.item.v_ipi || null,
           v_pis: m.item.v_pis || null,
           v_cofins: m.item.v_cofins || null,
           finalidade: m.finalidade,
@@ -2723,6 +2730,7 @@ export default function GestaoCompras() {
                             const credito = avaliarCreditoIcms(
                               m.finalidade,
                               empresaAtiva?.regime_tributario as never,
+                              m.item.v_icms_st,
                             );
                             const tom =
                               credito.situacao === 'permitido'

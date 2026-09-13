@@ -33,6 +33,20 @@ export interface NFeItemData {
   p_icms: number;
   p_pis: number;
   p_cofins: number;
+  /**
+   * Valor do ICMS DESTACADO NESTE ITEM — o valor do crédito, quando a operação
+   * dá direito a ele.
+   *
+   * Existe separado do `v_icms` da nota porque são coisas diferentes: o da
+   * nota é o total, e uma nota mistura itens de finalidades distintas. Comprar
+   * dez resmas para revenda e um armário para o escritório na mesma nota dá
+   * crédito sobre as resmas e não dá sobre o armário; ratear o total pelo
+   * valor dos itens erraria sempre que as alíquotas diferissem.
+   */
+  v_icms: number;
+  /** ICMS-ST já retido pelo fornecedor — não é crédito, é imposto pago antes. */
+  v_icms_st: number;
+  v_ipi: number;
   v_pis: number;
   v_cofins: number;
   cst_ibs_cbs: string;
@@ -184,6 +198,11 @@ export function parseNFeXML(xmlString: string): NFeData {
       cst_pis: det.querySelector('PIS CST')?.textContent ?? '07',
       cst_cofins: det.querySelector('COFINS CST')?.textContent ?? '07',
       p_icms: parseFloat(det.querySelector('pICMS')?.textContent || '0'),
+      // `det.querySelector` limita a busca a ESTE item — ao contrário do `get()`
+      // do cabeçalho, que varre o documento inteiro e pegaria o total da nota.
+      v_icms: parseFloat(det.querySelector('ICMS vICMS')?.textContent || '0'),
+      v_icms_st: parseFloat(det.querySelector('ICMS vICMSST')?.textContent || '0'),
+      v_ipi: parseFloat(det.querySelector('IPI vIPI')?.textContent || '0'),
       p_pis: parseFloat(det.querySelector('pPIS')?.textContent || '0'),
       p_cofins: parseFloat(det.querySelector('pCOFINS')?.textContent || '0'),
       v_pis: parseFloat(det.querySelector('PIS vPIS')?.textContent || '0'),
