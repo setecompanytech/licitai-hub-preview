@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Search, LayoutDashboard, ListOrdered, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle,
+  Search, LayoutDashboard, ListOrdered, ArrowLeft, Clock, Folder, Wallet, Users, Tags, Banknote, ArrowDownCircle, ArrowUpCircle,
   FolderTree, LineChart, FileBarChart, Briefcase, ScanLine, Plug, FileText, Inbox, BookOpen, Scale, Target,
   FileDown, Calculator, Eye, ArrowRightLeft, Upload, CheckCheck, FileSpreadsheet, ShieldCheck, Receipt,
   Building2, Sparkles, Activity, QrCode, History, Landmark, CalendarDays, Star, Clock4, Plus, Zap,
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useResumoVisorFinanceiro } from "@/hooks/useFinanceiro";
 import { formatBRL } from "@/lib/financeiro/formatters";
 import EstadoVazio from "@/components/shared/EstadoVazio";
+import CartaoPasta from "@/components/shared/CartaoPasta";
 import FinConferencia from "./FinConferencia";
 
 export type HubItem = {
@@ -123,6 +124,12 @@ interface FinHomeHubProps {
 
 export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
   const [search, setSearch] = useState("");
+  /* A pasta aberta. `null` = a estante, com as seis pastas fechadas. Era uma
+     lista única com todos os 40+ módulos empilhados por categoria: a página
+     rolava sem fim e nenhuma categoria cabia na tela. Agora a pessoa escolhe
+     a pasta e só então vê o que tem dentro. A busca ignora as pastas — quem
+     digita já sabe o que procura. */
+  const [pastaAberta, setPastaAberta] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<string>("all");
   const [favorites, setFavorites] = useState<string[]>(() => loadList(FAVORITES_KEY));
   const [recents, setRecents] = useState<string[]>(() => loadList(RECENTS_KEY));
@@ -354,152 +361,119 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
         </div>
       </div>
 
-      {/* ============ Layout 2 colunas: Sidebar categorias + conteúdo ============ */}
-      <div className="grid lg:grid-cols-[220px_1fr] gap-6">
-        {/* Sidebar de categorias */}
-        <aside className="lg:sticky lg:top-4 lg:self-start space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-2">
-            Categorias
-          </p>
-          <NavChip
-            label="Todos os módulos"
-            icon={LayoutDashboard}
-            count={HUB_ITEMS.length}
-            active={activeGroup === "all"}
-            onClick={() => setActiveGroup("all")}
+      {/* ============ A estante: seis pastas fechadas ============ */}
+      {!search && pastaAberta === null && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Recentes vem primeiro: é a pasta que responde "onde eu estava". */}
+          <CartaoPasta
+            nome="Acessados recentemente"
+            descricao={recentItems.length ? "As telas por onde você passou, na ordem" : "Ainda sem histórico nesta sessão"}
+            quantidade={recentItems.length}
+            icone={<Clock className="h-9 w-9" strokeWidth={1.5} />}
+            corDoIcone="text-muted-foreground"
+            onAbrir={() => setPastaAberta("recentes")}
           />
+          {favoriteItems.length > 0 && (
+            <CartaoPasta
+              nome="Favoritos"
+              descricao="O que você fixou para ter à mão"
+              quantidade={favoriteItems.length}
+              icone={<Star className="h-9 w-9" strokeWidth={1.5} />}
+              corDoIcone="text-warning-ink"
+              onAbrir={() => setPastaAberta("favoritos")}
+            />
+          )}
           {GROUPS.map((g) => (
-            <NavChip
+            <CartaoPasta
               key={g.id}
-              label={g.label}
-              icon={g.icon}
-              count={HUB_ITEMS.filter((i) => i.group === g.id).length}
-              active={activeGroup === g.id}
-              onClick={() => setActiveGroup(g.id)}
+              nome={g.label}
+              descricao={g.description}
+              quantidade={HUB_ITEMS.filter((i) => i.group === g.id).length}
+              icone={<g.icon className="h-9 w-9" strokeWidth={1.5} />}
+              onAbrir={() => setPastaAberta(g.id)}
             />
           ))}
+        </div>
+      )}
 
-          {/* Stats lateral */}
-          <div className="mt-4 pt-4 border-t border-border space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
-              Resumo
-            </p>
-            <div className="px-2 space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Favoritos</span>
-                <span className="font-medium tabular-nums">{favorites.length}</span>
+      {/* ============ Dentro de uma pasta, ou resultado de busca ============ */}
+      {(search || pastaAberta !== null) && (() => {
+        const grupoAberto = GROUPS.find((g) => g.id === pastaAberta);
+        const itens = search
+          ? filtered
+          : pastaAberta === "recentes"
+            ? recentItems
+            : pastaAberta === "favoritos"
+              ? favoriteItems
+              : HUB_ITEMS.filter((i) => i.group === pastaAberta);
+        const titulo = search
+          ? `Resultados para "${search.trim()}"`
+          : pastaAberta === "recentes"
+            ? "Acessados recentemente"
+            : pastaAberta === "favoritos"
+              ? "Favoritos"
+              : grupoAberto?.label ?? "";
+        const subtitulo = search
+          ? `${itens.length} de ${HUB_ITEMS.length} módulos`
+          : pastaAberta === "recentes"
+            ? "Na ordem em que você abriu"
+            : pastaAberta === "favoritos"
+              ? "Pinados por você"
+              : grupoAberto?.description;
+
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
+                {subtitulo && <p className="text-sm text-muted-foreground">{subtitulo}</p>}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Acessos recentes</span>
-                <span className="font-medium tabular-nums">{recents.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total de módulos</span>
-                <span className="font-medium tabular-nums">{HUB_ITEMS.length}</span>
-              </div>
+              <Button
+                variant="ghost"
+                onClick={() => { setPastaAberta(null); setSearch(""); }}
+              >
+                <ArrowLeft aria-hidden="true" /> Voltar às pastas
+              </Button>
             </div>
-          </div>
-        </aside>
 
-        {/* Conteúdo principal */}
-        <div className="space-y-8 min-w-0">
-          {/* Favoritos */}
-          {favoriteItems.length > 0 && !search && activeGroup === "all" && (
-            <SectionBlock
-              title="Favoritos"
-              subtitle="Pinados por você"
-              icon={Star}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {favoriteItems.map((item, idx) => (
+            {itens.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {itens.map((item, idx) => (
                   <ModuleRow
                     key={item.id}
                     item={item}
                     idx={idx}
-                    isFav
+                    isFav={favorites.includes(item.id)}
                     onNavigate={handleNavigate}
                     onToggleFav={toggleFavorite}
                   />
                 ))}
               </div>
-            </SectionBlock>
-          )}
-
-          {/* Recentes (chips horizontais) */}
-          {recentItems.length > 0 && !search && activeGroup === "all" && (
-            <SectionBlock
-              title="Acessados recentemente"
-              icon={Clock4}
-            >
-              <div className="flex flex-wrap gap-2">
-                {recentItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleNavigate(item.id)}
-                      className="inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-border bg-card text-sm transition-colors hover:border-primary/40 hover:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    >
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-tint text-primary">
-                        <Icon className="w-3 h-3" />
-                      </span>
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </SectionBlock>
-          )}
-
-          {/* Grupos */}
-          {GROUPS.map((group) => {
-            const items = grouped.get(group.id);
-            if (!items?.length) return null;
-            const GroupIcon = group.icon;
-            return (
-              <SectionBlock
-                key={group.id}
-                title={group.label}
-                subtitle={group.description}
-                icon={GroupIcon}
-                accentBar
-                count={items.length}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {items.map((item, idx) => (
-                    <ModuleRow
-                      key={item.id}
-                      item={item}
-                      idx={idx}
-                      isFav={favorites.includes(item.id)}
-                      onNavigate={handleNavigate}
-                      onToggleFav={toggleFavorite}
-                    />
-                  ))}
-                </div>
-              </SectionBlock>
-            );
-          })}
-
-          {filtered.length === 0 && (
-            <Card>
-              <CardContent className="p-0">
-                <EstadoVazio
-                  icone={<Search />}
-                  titulo="Nenhuma funcionalidade encontrada"
-                  descricao={search ? `Nada corresponde a "${search}" nesta categoria.` : "Nada nesta categoria."}
-                  acao={
-                    <Button variant="outline" onClick={() => { setSearch(""); setActiveGroup("all"); }}>
-                      Limpar filtros
-                    </Button>
-                  }
-                />
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <EstadoVazio
+                    icone={search ? <Search /> : <Folder />}
+                    titulo={search ? "Nenhuma funcionalidade encontrada" : "Pasta vazia"}
+                    descricao={
+                      search
+                        ? `Nada corresponde a "${search.trim()}".`
+                        : pastaAberta === "recentes"
+                          ? "Assim que você abrir uma tela do Financeiro, ela aparece aqui."
+                          : "Marque um módulo com a estrela para ele ficar aqui."
+                    }
+                    acao={
+                      <Button variant="outline" onClick={() => { setPastaAberta(null); setSearch(""); }}>
+                        Voltar às pastas
+                      </Button>
+                    }
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -508,72 +482,6 @@ export default function FinHomeHub({ onNavigate }: FinHomeHubProps) {
 // Subcomponentes
 // ============================================================================
 
-function NavChip({
-  label, icon: Icon, count, active, onClick,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors group relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        active
-          ? "bg-primary-tint text-foreground font-medium"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r bg-primary" aria-hidden="true" />}
-      <span className={cn(
-        "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors",
-        active ? "bg-card text-primary" : "bg-transparent group-hover:bg-muted",
-      )}>
-        <Icon className="w-4 h-4" />
-      </span>
-      <span className="flex-1 text-left truncate">{label}</span>
-      <span className={cn(
-        "shrink-0 text-xs tabular-nums px-1.5 py-0.5 rounded",
-        active ? "bg-card text-foreground" : "bg-muted text-muted-foreground",
-      )}>
-        {count}
-      </span>
-    </button>
-  );
-}
-
-function SectionBlock({
-  title, subtitle, icon: Icon, accentBar, count, children,
-}: {
-  title: string;
-  subtitle?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  accentBar?: boolean;
-  count?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        {accentBar && <span className="w-1 h-5 rounded-full bg-primary" aria-hidden="true" />}
-        <Icon className="w-5 h-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {subtitle && <span className="text-sm text-muted-foreground hidden sm:inline">— {subtitle}</span>}
-        {typeof count === "number" && (
-          <Badge variant="muted" className="ml-auto">
-            {count}
-          </Badge>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function ModuleRow({
   item, idx, isFav, onNavigate, onToggleFav,
