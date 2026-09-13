@@ -122,11 +122,18 @@ describe('a origem da mercadoria vem do XML', () => {
 describe('a ligação entre os dois lados', () => {
   it('a importação de NF-e não grava dado de operação na ficha do produto', () => {
     const fonte = readFileSync('src/pages/GestaoCompras.tsx', 'utf8');
-    // O ponto exato do defeito: o objeto passado a `criarProdutoSeNovo`.
+    // O ponto exato do defeito era o objeto passado a `criarProdutoSeNovo`.
     expect(fonte).toContain('fichaDaMercadoria(m.item)');
-    expect(fonte).not.toMatch(/cfop:\s*m\.item\.cfop/);
-    expect(fonte).not.toMatch(/p_icms:\s*m\.item\.p_icms/);
-    expect(fonte).not.toMatch(/codigo:\s*m\.item\.c_prod/);
+    // A chamada não carrega mais dado de operação junto.
+    expect(fonte).not.toMatch(/criarProdutoSeNovo\([^)]*\bcfop\b/s);
+    expect(fonte).not.toMatch(/criarProdutoSeNovo\([^)]*\bp_icms\b/s);
+    expect(fonte).not.toMatch(/criarProdutoSeNovo\([^)]*c_prod\b/s);
+
+    // Nota para quem mexer aqui: `cfop: m.item.cfop` EXISTE neste arquivo, e
+    // está certo — vai para `nfe_entrada_itens`, que é onde o dado da operação
+    // deve morar. Proibir a linha no arquivo inteiro, como este caso fazia
+    // antes, confundia o lugar errado com o dado errado. Que a ficha não
+    // carrega CFOP, o primeiro bloco deste arquivo já prova.
   });
 
   it('a emissão de saída não lê CFOP nem alíquotas da ficha do produto', () => {

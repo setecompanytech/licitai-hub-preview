@@ -164,6 +164,38 @@ CREATE POLICY "admin apaga itens da nfe de entrada" ON public.nfe_entrada_itens
 ALTER TABLE public.estoque_movimentos
   DROP CONSTRAINT IF EXISTS estoque_movimentos_nfe_id_fkey;
 
+-- Saneamento ANTES de apontar a chave para o outro lado. Sem isto, uma única
+-- linha herdada de `nfe_recebidas` derruba a migration inteira com violação de
+-- chave, e o banco fica sem FK nenhuma — pior do que estava.
+--
+-- Duas passadas, nesta ordem, porque a primeira preserva o vínculo e a segunda
+-- só desiste do que não tem para onde ir:
+
+-- 1) Reaponta pelo que identifica a nota de verdade: a chave de 44 dígitos.
+--    A mesma nota costuma existir nos dois acervos — o novo nasceu quando o
+--    webhook passou a gravar em `nfe_entradas`, e o histórico ficou no velho.
+UPDATE public.estoque_movimentos em
+   SET nfe_id = ne.id
+  FROM public.nfe_recebidas nr
+  JOIN public.nfe_entradas ne
+    ON ne.empresa_id = nr.empresa_id
+   AND ne.chave = nr.chave_acesso
+ WHERE em.nfe_id = nr.id
+   AND nr.chave_acesso IS NOT NULL
+   AND nr.chave_acesso <> '';
+
+-- 2) O que sobrou não existe em `nfe_entradas`: solta a referência em vez de
+--    apagar o movimento. O saldo do produto é a soma dos movimentos — sumir
+--    com a linha para consertar um ponteiro mudaria o estoque de hoje por
+--    causa de um registro do passado. A observação guarda o rastro para quem
+--    for investigar depois.
+UPDATE public.estoque_movimentos em
+   SET nfe_id = NULL,
+       observacoes = COALESCE(em.observacoes || ' · ', '')
+         || 'Vínculo com a NF-e perdido na migração de 13/09/2026: a nota não existe em nfe_entradas.'
+ WHERE em.nfe_id IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM public.nfe_entradas ne WHERE ne.id = em.nfe_id);
+
 ALTER TABLE public.estoque_movimentos
   ADD CONSTRAINT estoque_movimentos_nfe_id_fkey
   FOREIGN KEY (nfe_id) REFERENCES public.nfe_entradas(id) ON DELETE SET NULL;

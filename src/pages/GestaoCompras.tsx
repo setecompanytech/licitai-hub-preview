@@ -28,6 +28,10 @@ import { toast } from 'sonner';
 import { parseNFeXML, type NFeData, type NFeItemData } from '@/lib/parseNFe';
 import { STATUS_QUE_RESERVAM } from '@/lib/estoque/reserva';
 import { fichaDaMercadoria, completarFicha, type FichaDaMercadoria } from '@/lib/fiscal/entrada-para-saida';
+import {
+  sugerirFinalidade, avaliarCreditoIcms, ROTULO_FINALIDADE, DESCRICAO_FINALIDADE,
+  type FinalidadeDaEntrada,
+} from '@/lib/fiscal/credito-icms';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { trilhaDaRota } from '@/lib/navegacao/paginas';
@@ -298,7 +302,25 @@ export default function GestaoCompras() {
   const [nfeXmlStr,      setNfeXmlStr]      = useState('');
   const [nfeForm,        setNfeForm]        = useState(defaultNfeForm);
   const [nfeRegEstoque,  setNfeRegEstoque]  = useState(false);
-  const [nfeItemMaps,    setNfeItemMaps]    = useState<{ item: NFeItemData; produtoId: string; novaNome: string; incluir: boolean }[]>([]);
+  /**
+   * O mapeamento de cada item da nota, agora com a FINALIDADE da compra.
+   *
+   * A finalidade é o parâmetro do direito a crédito de ICMS (regra do dono do
+   * produto, 13/09/2026) e é do ITEM, não do produto: a mesma resma entra para
+   * o escritório numa nota e para o cliente noutra. `finalidadeOrigem` guarda
+   * de onde veio a sugestão, para separar o que alguém confirmou do que o
+   * sistema chutou — campo pré-preenchido sem procedência é palpite com cara
+   * de fato.
+   */
+  const [nfeItemMaps,    setNfeItemMaps]    = useState<{
+    item: NFeItemData;
+    produtoId: string;
+    novaNome: string;
+    incluir: boolean;
+    finalidade: FinalidadeDaEntrada;
+    finalidadeOrigem: 'cfop' | 'cadastro' | 'manual';
+    finalidadeProcedencia: string;
+  }[]>([]);
   const [nfeDragging,    setNfeDragging]    = useState(false);
   const [nfePdfLoading,  setNfePdfLoading]  = useState(false);
   const [nfeStep,        setNfeStep]        = useState<1|2|3>(1);
@@ -706,6 +728,49 @@ export default function GestaoCompras() {
     if (selectedProduto?.id === movForm.produto_id) reloadMovimentos(movForm.produto_id);
   };
 
+  /**
+   * Monta a linha de trabalho de um item da nota: a que produto ele se liga e
+   * para que a compra serve.
+   *
+   * Existia em três cópias — importar XML, importar DANFE e reabrir nota do
+   * acervo — e só uma delas tinha o casamento por código de barras. Na prática
+   * isso significava que o mesmo item era reconhecido ao reabrir a nota e
+   * ignorado ao importá-la, que é a ordem inversa do útil.
+   *
+   * O casamento por `c_prod` sozinho quase nunca acerta: aquele é o código no
+   * sistema do FORNECEDOR, e o nosso é gerado como `PRD%`. Os dois só
+   * coincidem se alguém editou à mão. O EAN, sim, é do produto e é o mesmo nos
+   * dois lados — por isso vem como segunda tentativa, e não como enfeite.
+   */
+  const montarMapaDoItem = (item: NFeItemData) => {
+    const porCodigo = item.c_prod
+      ? produtos.find((p) => p.ativo && p.codigo === item.c_prod)
+      : undefined;
+    const porEan = item.c_ean
+      ? produtos.find((p) => p.ativo && p.codigo_ean && p.codigo_ean === item.c_ean)
+      : undefined;
+    const casado = porCodigo ?? porEan;
+
+    const sugestao = sugerirFinalidade(
+      item.cfop,
+      (casado as { tipo_produto?: string } | undefined)?.tipo_produto,
+    );
+    return {
+      item,
+      produtoId: casado?.id ?? '',
+      novaNome: item.x_prod,
+      incluir: true,
+      finalidade: sugestao.finalidade,
+      // Enquanto ninguém tocar no seletor, a origem é a fonte da sugestão.
+      finalidadeOrigem: (sugestao.procedencia.startsWith('CFOP')
+        ? 'cfop'
+        : sugestao.procedencia.startsWith('cadastro')
+          ? 'cadastro'
+          : 'manual') as 'cfop' | 'cadastro' | 'manual',
+      finalidadeProcedencia: sugestao.procedencia,
+    };
+  };
+
   // ── Entrega → estoque ─────────────────────────────────────────
   /**
    * Cria o produto quando a pessoa escolheu "novo", com a FICHA DA MERCADORIA.
@@ -784,10 +849,7 @@ export default function GestaoCompras() {
         setNfeFornMatch(fornFound);
         setNfeCriarForn(!fornFound && !!cnpjNorm);
         // Auto-vincula itens da NF-e a produtos pelo código
-        setNfeItemMaps(parsed.itens.map(item => {
-          const matched = item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined;
-          return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
-        }));
+        setNfeItemMaps(parsed.itens.map(montarMapaDoItem));
         setNfeStep(2);
       } catch {
         toast.error('Não foi possível ler o XML. Verifique se é uma NF-e válida.');
@@ -838,10 +900,7 @@ export default function GestaoCompras() {
       const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
       setNfeFornMatch(fornFound);
       setNfeCriarForn(!fornFound && !!cnpjNorm);
-      setNfeItemMaps((parsed.itens || []).map(item => {
-        const matched = item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined;
-        return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
-      }));
+      setNfeItemMaps((parsed.itens || []).map(montarMapaDoItem));
       setNfeStep(2);
       toast.success('Dados extraídos do DANFE com sucesso');
     } catch (err) {
@@ -922,6 +981,10 @@ export default function GestaoCompras() {
     if (nfeParsed && nfeRow) {
       const toCreate = nfeItemMaps.filter(m => m.incluir && m.produtoId);
       const rows: any[] = [];
+      // n_item → produto_id resolvido. O item da nota conhece a sua posição; o
+      // produto só existe depois de criado, e quem grava o detalhamento
+      // precisa dos dois lados.
+      const produtosCriados = new Map<number, string>();
       for (const m of toCreate) {
         const ficha = fichaDaMercadoria(m.item);
         const pid = await criarProdutoSeNovo(m.produtoId, m.novaNome, m.item.u_com, ficha);
@@ -951,8 +1014,73 @@ export default function GestaoCompras() {
             }
           }
         }
+        produtosCriados.set(m.item.n_item, pid);
         rows.push({ empresa_id: empresaAtiva.id, produto_id: pid, nfe_id: (nfeRow as any).id, pedido_id: nfeForm.pedido_id || null, tipo: 'entrada', origem: 'nfe', quantidade: Math.abs(m.item.q_com), preco_unitario: m.item.v_un_com || null, created_by: user.id });
       }
+
+      // ── Itens da entrada, com a finalidade e a classificação do crédito ───
+      //
+      // Grava TODOS os itens da nota, não só os que viraram estoque: um item
+      // marcado "não registrar" continua sendo um item daquela nota, e some da
+      // escrituração se só o estoque o guardar. Era exatamente o que acontecia
+      // antes — os itens viviam num jsonb sem chave e o resto se perdia.
+      //
+      // A situação do crédito é congelada aqui, com a regra vigente hoje. A do
+      // uso e consumo já foi adiada cinco vezes; reavaliar na leitura faria o
+      // passado mudar de resposta conforme a lei de amanhã.
+      const itensDaEntrada = nfeItemMaps.map((m) => {
+        const vinculado = m.incluir && m.produtoId
+          ? produtosCriados.get(m.item.n_item) ?? null
+          : null;
+        const credito = avaliarCreditoIcms(
+          m.finalidade,
+          empresaAtiva.regime_tributario as never,
+        );
+        return {
+          empresa_id: empresaAtiva.id,
+          nfe_entrada_id: (nfeRow as any).id,
+          n_item: m.item.n_item,
+          produto_id: vinculado,
+          c_prod: m.item.c_prod || null,
+          c_ean: m.item.c_ean || null,
+          x_prod: m.item.x_prod || null,
+          ncm: m.item.ncm || null,
+          cest: m.item.cest || null,
+          origem_mercadoria: m.item.orig || null,
+          cfop: m.item.cfop || null,
+          cst_icms: m.item.cst_icms || null,
+          csosn: m.item.csosn || null,
+          cst_pis: m.item.cst_pis || null,
+          cst_cofins: m.item.cst_cofins || null,
+          u_com: m.item.u_com || null,
+          q_com: m.item.q_com || null,
+          v_un_com: m.item.v_un_com || null,
+          v_prod: m.item.v_prod || null,
+          v_desc: m.item.v_desc || null,
+          p_icms: m.item.p_icms || null,
+          v_pis: m.item.v_pis || null,
+          v_cofins: m.item.v_cofins || null,
+          finalidade: m.finalidade,
+          finalidade_origem: m.finalidadeOrigem,
+          credito_icms_situacao: credito.situacao,
+          credito_icms_fundamento: credito.fundamento ?? null,
+        };
+      });
+
+      if (itensDaEntrada.length) {
+        // `upsert` por (nfe_entrada_id, n_item): reimportar a mesma nota
+        // corrige os itens em vez de duplicá-los.
+        const { error: erroItens } = await (supabase.from('nfe_entrada_itens' as never) as any)
+          .upsert(itensDaEntrada, { onConflict: 'nfe_entrada_id,n_item' });
+        if (erroItens) {
+          // A nota e o estoque já valem; o detalhamento fiscal é o que falta.
+          // Dizer qual dos três é que falhou poupa a investigação.
+          toast.error('NF-e salva, mas os itens não foram detalhados', {
+            description: erroItens.message,
+          });
+        }
+      }
+
       if (rows.length) {
         const { error: me } = await supabase.from('estoque_movimentos').insert(rows as any);
         if (me) toast.error('NF-e salva, erro no estoque', { description: me.message });
@@ -1014,11 +1142,7 @@ export default function GestaoCompras() {
       const fornFound = cnpjNorm ? (fornecedores.find(f => normCnpj(f.cnpj || '') === cnpjNorm) ?? null) : null;
       setNfeFornMatch(fornFound);
       setNfeCriarForn(!fornFound && !!cnpjNorm);
-      setNfeItemMaps(parsed.itens.map(item => {
-        const matched = (item.c_prod ? produtos.find(p => p.ativo && p.codigo === item.c_prod) : undefined)
-          ?? (item.c_ean ? produtos.find(p => p.ativo && p.codigo_ean && p.codigo_ean === item.c_ean) : undefined);
-        return { item, produtoId: matched?.id ?? '', novaNome: item.x_prod, incluir: true };
-      }));
+      setNfeItemMaps(parsed.itens.map(montarMapaDoItem));
       setNfeExistenteId(n.id);
       setNfeStep(2);
       setNfeOpen(true);
@@ -2555,6 +2679,74 @@ export default function GestaoCompras() {
                             <SelectItem value="__new__">+ Criar novo produto</SelectItem>
                           </SelectContent>
                         </Select>
+                        {/* ── Finalidade da compra ─────────────────────────
+                            É o parâmetro do crédito de ICMS, e é do ITEM: a
+                            mesma mercadoria entra para o escritório numa nota e
+                            para o cliente noutra. Fica ao lado do produto
+                            porque as duas decisões são tomadas juntas, olhando
+                            a mesma linha da nota. */}
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor={`nfe-fim-${idx}`} className="g-meta text-muted-foreground">
+                            Para que esta compra serve
+                          </Label>
+                          <Select
+                            value={m.finalidade}
+                            onValueChange={(v) =>
+                              setNfeItemMaps((arr) =>
+                                arr.map((x, i) =>
+                                  i === idx
+                                    ? {
+                                        ...x,
+                                        finalidade: v as FinalidadeDaEntrada,
+                                        // Escolha da pessoa deixa de ser sugestão.
+                                        finalidadeOrigem: 'manual',
+                                        finalidadeProcedencia: 'escolha de quem lançou',
+                                      }
+                                    : x,
+                                ),
+                              )
+                            }
+                          >
+                            <SelectTrigger id={`nfe-fim-${idx}`} className="g-controle">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(['revenda', 'uso_consumo', 'imobilizado', 'materia_prima', 'nao_informada'] as FinalidadeDaEntrada[]).map((f) => (
+                                <SelectItem key={f} value={f}>
+                                  {ROTULO_FINALIDADE[f]} — {DESCRICAO_FINALIDADE[f]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {(() => {
+                            const credito = avaliarCreditoIcms(
+                              m.finalidade,
+                              empresaAtiva?.regime_tributario as never,
+                            );
+                            const tom =
+                              credito.situacao === 'permitido'
+                                ? 'text-success-ink'
+                                : credito.situacao === 'a_conferir'
+                                  ? 'text-warning-ink'
+                                  : 'text-muted-foreground';
+                            return (
+                              <p className={`g-meta ${tom}`}>
+                                <span className="font-semibold">ICMS: </span>
+                                {credito.resumo}
+                                {credito.fundamento && (
+                                  <span className="text-muted-foreground"> ({credito.fundamento})</span>
+                                )}
+                                {m.finalidadeOrigem !== 'manual' && m.finalidade !== 'nao_informada' && (
+                                  <span className="text-muted-foreground">
+                                    {' '}· sugerido pelo {m.finalidadeProcedencia}, confirme
+                                  </span>
+                                )}
+                              </p>
+                            );
+                          })()}
+                        </div>
+
                         {m.produtoId === '__new__' && (
                           <Input aria-label="Nome do novo produto" placeholder="Nome do novo produto"
                             value={m.novaNome}
